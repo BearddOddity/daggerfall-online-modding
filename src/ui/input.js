@@ -425,12 +425,26 @@ export function held(keys, action) {
  *  AUDIT UXB1 F5: the frame's polls ask this per action per frame, so it walks the maps as they stand - the
  *  dictEntries generator it replaced built a pair per key per call - and a dict's sharers only where it has any. */
 function actionDown(b, keys, action, ring) {
-  for (const [code, a] of b.primary) if (a === action && codeDown(b, keys, code, ring)) return true;
-  if (b.sharedPrimary?.size) for (const [code, list] of b.sharedPrimary) if (list.includes(action) && codeDown(b, keys, code, ring)) return true;
-  for (const [code, a] of b.secondary) if (a === action && codeDown(b, keys, code, ring)) return true;
-  if (b.sharedSecondary?.size) for (const [code, list] of b.sharedSecondary) if (list.includes(action) && codeDown(b, keys, code, ring)) return true;
-  return false;
+  // PERF-INPUT1 (2026-10-10): THE MAPS WALKED BY forEach, NOT BY THEIR ENTRIES. `for (const [code, a] of map)` minted a
+  // [key, value] pair for every binding of every action polled, every frame (~75 KB a frame by the heap profile, the
+  // frame's fourth-largest allocator; a node bench of 40 polls a frame: a scavenge every seven frames). forEach hands
+  // the callback the key and the value as arguments: no pair. The SAME codeDown calls in the SAME order - the four
+  // dicts in turn, each in its insertion order - and none once one answered (`_adHit`), exactly as the early returns
+  // stood; codeDown's modifier latch (pollModifier's assignment) sees the very sequence it saw. The callbacks are the
+  // module's own two functions over module state, so a poll allocates nothing at all; codeDown never polls an action,
+  // so nothing re-enters them.
+  _adB = b; _adKeys = keys; _adRing = ring; _adAction = action; _adHit = false;
+  b.primary.forEach(_adOne);
+  if (!_adHit && b.sharedPrimary?.size) b.sharedPrimary.forEach(_adList);
+  if (!_adHit) b.secondary.forEach(_adOne);
+  if (!_adHit && b.sharedSecondary?.size) b.sharedSecondary.forEach(_adList);
+  const hit = _adHit;
+  _adB = null; _adKeys = null; _adRing = undefined; _adAction = null;
+  return hit;
 }
+let _adB = null, _adKeys = null, _adRing = undefined, _adAction = null, _adHit = false;
+function _adOne(a, code) { if (!_adHit && a === _adAction && codeDown(_adB, _adKeys, code, _adRing)) _adHit = true; }
+function _adList(list, code) { if (!_adHit && list.includes(_adAction) && codeDown(_adB, _adKeys, code, _adRing)) _adHit = true; }
 
 /**
  * MWCROUCH (2026-09-17, Mac: "When crouching with the morrowind model.

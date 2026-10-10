@@ -1386,7 +1386,10 @@ export class Renderer {
 
   constructor(canvas) {
     this.canvas = canvas;
-    const gl = canvas.getContext('webgl2', { antialias: false });
+    // PERF-GPU1 (2026-10-10): `powerPreference: 'high-performance'` - on a machine with two GPUs (most gaming laptops)
+    // the browser may otherwise draw the game on the integrated one; a player at 5 fps on every setting, playable only
+    // at 800x600, is that shape. One GPU: no change. The desktop app asks Chromium the same at launch (app/main.cjs).
+    const gl = canvas.getContext('webgl2', { antialias: false, powerPreference: 'high-performance' });
     if (!gl) throw new Error('WebGL2 required');
     this.gl = gl;
     this._shadowCacheWanted = true;   // SC1: the static shadow cache's door (setShadowCache - the lane's install reads the page's, shadowPass.js shadowCacheOn); CACHE-COPY: on, as SC1 built it
@@ -2947,6 +2950,23 @@ export class Renderer {
     ];
   }
 
+  /** TACT4: the foes' ground pass, loaded once - off the boot graph (AUDIT TACT, BOOT2's reach). PERF-COMPILE1: the
+   *  warm asks it too, so the first wind-up of a fight does not compile it. */
+  _loadFoeTelegraph() {
+    this._foeTelegraphLoad ??= import('./foeTelegraph.js').then((m) => { this._foeTelegraph ??= new m.FoeTelegraphPass(this.gl); }).catch((e) => console.warn('[tact] the ground pass failed to load:', e?.message ?? e));
+    return this._foeTelegraphLoad;
+  }
+
+  /** PERF-COMPILE1 (2026-10-10, stutter): the renderer's OTHER on-demand programs, warmed at idle the same way
+   *  (warmPrograms) - kept apart from warmSteps, whose list its pins count: the foes' telegraph pass (built at the
+   *  first wind-up a fight shows) and the real windows' background (built at the first building with glass). */
+  lazyWarmSteps() {
+    return [
+      () => { this._loadFoeTelegraph(); },
+      () => { this._rwBg ??= this._rwBgProgram(); },
+    ];
+  }
+
   /** AUDIT RETRO1 E7: the retro present's program, built by the warm when retro mode is on at load rather than inside
    *  the first retro frame. The build binds a program and a VAO of its own, so the shadows are dropped after it. */
   _warmRetro() {
@@ -3685,10 +3705,7 @@ void main() {
     if (!list?.length || !this._proj || !this._view) return 0;
     // AUDIT TACT (BOOT2's reach): the pass is loaded on its first use, never on the boot graph - a wind-up runs 0.7 s
     // and more, so the frame or two its module takes to arrive is never a blow unseen
-    if (!this._foeTelegraph) {
-      this._foeTelegraphLoad ??= import('./foeTelegraph.js').then((m) => { this._foeTelegraph = new m.FoeTelegraphPass(this.gl); }).catch((e) => console.warn('[tact] the ground pass failed to load:', e?.message ?? e));
-      return 0;
-    }
+    if (!this._foeTelegraph) { this._loadFoeTelegraph(); return 0; }
     this._close2D();
     const n = this._foeTelegraph.draw(list, this._proj, this._view, { mode: this._fogMode, density: this._fogDensity, range: this._fogRange, camPos: this._camPos, focus: this._focus });   // AUDIT TACT D9: the frame's fog (and the travel view's focus)
     this.markForeignPass();   // the pass bound its own program and VAO

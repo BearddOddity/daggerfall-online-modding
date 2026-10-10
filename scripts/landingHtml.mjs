@@ -76,10 +76,17 @@ export function countTests(dir = 'test', read = (p) => readFileSync(p, 'utf8')) 
 }
 
 /** Lines of JavaScript under src/ - TRACKED files only (`git ls-files`),
- *  so a scratch file or the build's own stamp cannot inflate it. */
+ *  so a scratch file or the build's own stamp cannot inflate it.
+ *  NO-GIT (2026-10-10, Dudey's dev serve from a downloaded zip: "fatal: not a git repository" - the landing page an
+ *  Internal server error): a tree with no git counts every .js under src/ instead - the zip's own files. */
 export function countSrcLines(read = (p) => readFileSync(p, 'utf8')) {
-  const files = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' })
-    .split('\n').filter((f) => f.endsWith('.js'));
+  let files;
+  try {
+    files = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\n');
+  } catch {
+    files = readdirSync('src', { recursive: true }).map((f) => `src/${String(f).replace(/\\/g, '/')}`);
+  }
+  files = files.filter((f) => f.endsWith('.js'));
   let n = 0;
   for (const f of files) n += read(f).split('\n').length - 1;
   return n;

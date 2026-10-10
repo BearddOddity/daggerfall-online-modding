@@ -27,7 +27,7 @@
 
 import { ORIENTATIONS, stateFor, tableArchive, spriteKey, STATE_TABLES, frameCount } from './eotbBillboard.js';
 import { classSkinOf, classRecord, classFrame, classRecordScale } from './classSkins.js';   // SKIN2: Daggerfall's classes, past the mod's sixteen
-import { toColor32 } from '../formats/color32Order.js';   // EOTB-FLIP: the ONE row-order door a PNG crosses on its way to a world billboard
+import { toColor32, toColor32OrderInPlace } from '../formats/color32Order.js';   // EOTB-FLIP: the ONE row-order door a PNG crosses on its way to a world billboard
 import spriteInfo from '../../vendor/eye-of-the-beholder/spriteInfo.json' with { type: 'json' };
 
 const IN_BROWSER = typeof window !== 'undefined';
@@ -164,7 +164,9 @@ export function tableKeys(table, frame, look = {}) {
  * @param {{width:number,height:number,data:Uint8Array}} image a decoded PNG, top row first
  * @returns {{width:number,height:number,colors:Uint32Array}} the world billboard's order, bottom row first
  */
-export function worldOrderColors(image) {
+export function worldOrderColors(image, { owned = false } = {}) {
+  // PERF-PEERS5: a raster the caller owns (a PNG it has just decoded) is turned in its own bytes - the same answer
+  if (owned) { const { width, height, data } = toColor32OrderInPlace(image); return { width, height, colors: new Uint32Array(data.buffer, data.byteOffset, data.byteLength / 4) }; }
   const { width, height, colors } = toColor32(image);
   return { width, height, colors: new Uint32Array(colors.buffer, colors.byteOffset, colors.byteLength / 4) };
 }

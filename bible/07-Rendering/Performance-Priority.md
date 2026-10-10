@@ -235,6 +235,11 @@ marked unknown: its cache flag is cleared beside them, so its next use copies al
 
 ## PERF-NAMES — a name moves by its transform
 
+SUPERSEDED the same day by PERF-NAMES1 (`Performance-Crowd.md`, a friend's pass ported onto main), which holds this
+whole - the same transform - and adds `contain: layout style`, each value compared with what the layer last wrote, the
+words worked out when their stamp changes, and the crowd's tags let go with it (PERF-LEAK1). Below is this slice's own
+measure, as made.
+
 **Found** (`tools/nameLayerBrowserProbe.mjs`, PERF-ON2's probe, given the main thread's whole task beside its layout;
 headless Chromium, 72 names walking with the eye, 600 frames, three runs): the name layer is ~1.9 ms of the page's
 main thread a frame - the layout PERF-ON2 read (0.12-0.18 ms) is a tenth of it; the style, the paint and the commit

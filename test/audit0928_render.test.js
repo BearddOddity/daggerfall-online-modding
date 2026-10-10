@@ -167,6 +167,7 @@ function exteriorFrame({ lane, night, town, boats, eye }) {
     yards: null,   // PIN MOVED (YARD-LIGHT): the yards' lamps join the scene lights - no yard in this pin (test/yardlight.test.js runs them)
     CITY_LIGHT_COLOR_F32: lanternColor(lane, new Float32Array(CITY_LIGHT_COLOR)),
     fillLanternPool, nearestLights, rangesFor, capFadeColors, capFadePairs, withPlayerLights, wodLightColors,
+    meterFor: () => null,   // PIN MOVED (PERF-SIM3): the frame's CPU meter marks its spans inside this source - no meter in this pin
   };
   exteriorLightsSource()(scope);
   const L = renderer._pointLights, n = Math.min(L.length / 4, renderer.maxPointLights);
