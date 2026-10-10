@@ -38,7 +38,7 @@
   {
     "name": "TRADE-INFO-row-hover-bare",
     "file": "src/ui/enhancedPlayerTrade.js",
-    "old": "    b.title = [line.name, ...itemBriefLines(item, deps, { worn: true }), ...setLines(item).slice(1)].join('\\n');",
+    "old": "    b.title = [line.name, letterWorthLine(item), ...itemBriefLines(item, deps, { worn: true }), ...setLines(item).slice(1)].filter(Boolean).join('\\n');",
     "new": "    b.title = line.name;",
     "tests": [
       "test/tradeinfo.test.js"
@@ -70,5 +70,23 @@
     "tests": [
       "test/tradeinfo.test.js"
     ]
+  },
+  {
+    "name": "TRADE-LOC-worth-never-read",
+    "file": "src/ui/enhancedPlayerTrade.js",
+    "tests": [
+      "test/tradeinfo.test.js"
+    ],
+    "old": "    const bits = [letterWorthLine(selected.item), line.material,",
+    "new": "    const bits = [null, line.material,"
+  },
+  {
+    "name": "TRADE-LOC-read-off-template",
+    "file": "src/systems/walletItem.js",
+    "tests": [
+      "test/tradeinfo.test.js"
+    ],
+    "old": "? `Worth ${num(Math.max(0, Math.trunc(Number(item.value) || 0)))} gold` : null);",
+    "new": "? `Worth ${num(0)} gold` : null);"
   }
 ]

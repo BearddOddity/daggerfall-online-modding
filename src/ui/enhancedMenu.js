@@ -200,7 +200,9 @@ import { OVERHAUL_PANELS, currentOption } from '../systems/overhauls.js';
 import { setVeAddon } from '../systems/vanillaEnhanced.js';   // VE4: an add-on switched from the Texture Overhaul card
 import { installVanillaEnhancedPack } from '../systems/vanillaEnhancedPack.js';   // VE4: the shipped mods listed before any host boots
 import { PLUS_THEMES } from './enhancedFrame.js';   // PLUS2: Enhanced Plus's colours
-import { plusTheme, setPlusTheme } from './enhancedPlusStyle.js';  import { plusCursorOn, setPlusCursor } from './plusCursor.js';   // OVH1: the three looks
+import { plusTheme, setPlusTheme } from './enhancedPlusStyle.js';
+import { plusCursorOn, setPlusCursor } from './plusCursor.js';   // OVH1: the three looks
+import { GRIMOIRE_PAGES, GRIMOIRE_BACKDROPS, GRIMOIRE_VITALS, GRIMOIRE_SPELLBOOKS, grimoirePages, grimoireBackdrop, grimoireVitals, grimoireSpellbook, setGrimoirePages, setGrimoireBackdrop, setGrimoireVitals, setGrimoireSpellbook } from './grimoireDress.js';   // GRIM1: DFO Grimoire's own rows; GRIM3: and its spellbook
 import { UI_PACKS, packUrl } from '../systems/uiPack.js';   // OVH2: a pack's own picture on its card
 import { FEATURES, KINDS, KIND_ORDER, featureForControl, resolveControl, modModules, modDials, featureSearchText } from '../systems/features.js';   // FT14: each mod's curated keys (ORG2: the map places the rows, ui/settingsMap.js)
 import '../world/landView.js';   // RF4: the land-view lane registers itself with the registry
@@ -3440,12 +3442,14 @@ const ovhAt = {};   // panel id -> the option index being shown
 function overhaulPicture(p, o, inUse) {
   const pic = el('div', 'look-pic');
   pic.dataset.look = o.id;
-  const pack = p.id === 'ui' ? UI_PACKS[o.pack] : null;
+  // GRIM1: DFO Grimoire wears the pack's art too - shown by its desk, where GrimoireUI is shown by its inventory
+  const grim = p.id === 'ui' && o.dress === 'grimoire';
+  const pack = p.id === 'ui' ? UI_PACKS[o.pack] ?? (grim ? UI_PACKS.grimoire : null) : null;
   if (pack) {
     const img = el('img');
-    img.alt = `${o.name}: the inventory`;
+    img.alt = grim ? `${o.name}: the desk` : `${o.name}: the inventory`;
     img.loading = 'lazy';
-    img.src = packUrl(pack, 'Img/INVE00I0.IMG.png');
+    img.src = packUrl(pack, grim ? 'Img/BIOG00I0.IMG.png' : 'Img/INVE00I0.IMG.png');
     pic.append(img);
   } else {
     const em = el('div', 'look-emblem', o.name);
@@ -3500,7 +3504,30 @@ function overhaulPanel(p) {
   card.append(nav, el('p', 'look-blurb', o.blurb));
   // PLUS2: ENHANCED PLUS'S COLOURS - offered on its own card while it is the look in use (they are its surfaces, and
   // they change at once, no reload). One swatch per stone; the chosen one is pressed.
-  if (p.id === 'ui' && o.id === 'enhanced-plus' && o === cur) {
+  // GRIM1: DFO Grimoire is the same enhanced skin, so it offers the same rows (the cursor, the hover card, the
+  // controller) - and in place of the stones, its own two: the page the windows are written on and what the front door
+  // stands on. Both are worn at once.
+  if (p.id === 'ui' && (o.id === 'enhanced-plus' || o.id === 'dfo-grimoire') && o === cur) {
+    const choiceRow = (label, options, now, wear) => {
+      const row = el('div', 'look-colours');
+      row.setAttribute('role', 'group');
+      row.setAttribute('aria-label', label);
+      row.append(el('span', 'look-colours-label', label));
+      for (const [id, name] of Object.entries(options)) {
+        const b = el('button', 'look-colour', name);
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String(id === now));
+        b.onclick = (e) => { e.stopPropagation(); wear(id); render(); };
+        row.append(b);
+      }
+      return row;
+    };
+    if (o.id === 'dfo-grimoire') {
+      card.append(choiceRow('Pages', GRIMOIRE_PAGES, grimoirePages(), (id) => setGrimoirePages(id)));
+      card.append(choiceRow('Backdrop', GRIMOIRE_BACKDROPS, grimoireBackdrop(), (id) => setGrimoireBackdrop(id)));
+      card.append(choiceRow('Vitals', GRIMOIRE_VITALS, grimoireVitals(), (id) => setGrimoireVitals(id)));
+      card.append(choiceRow('Spellbook', GRIMOIRE_SPELLBOOKS, grimoireSpellbook(), (id) => setGrimoireSpellbook(id)));   // GRIM3: a player: "(optionally) retain the look of the original GrimoireUI spellbook"
+    } else {
     const row = el('div', 'look-colours');
     row.setAttribute('role', 'group');
     row.setAttribute('aria-label', 'Enhanced Plus colour');
@@ -3518,6 +3545,7 @@ function overhaulPanel(p) {
       row.append(b);
     }
     card.append(row);
+    }
     // PLUS6: the gauntlet cursor, on or off - worn at once
     const crow = el('div', 'look-colours');
     crow.setAttribute('role', 'group');

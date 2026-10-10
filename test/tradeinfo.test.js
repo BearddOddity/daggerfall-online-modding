@@ -16,6 +16,9 @@ import { LOOT_RARITY_KEY } from '../src/systems/lootRarity.js';
 import { POWERS_UNKNOWN_TEXT } from '../src/systems/itemPowers.js';
 import { createTradeManager, inTradeRange, OFFER_TOO_BIG_TEXT, tradeFrameBytes } from '../src/net/tradeSession.js';
 import { validTradeData, TRADE_FRAME_MAX, TRADE_DATA_MAX, TRADE_REV_MAX } from '../src/net/wire.js';
+import { letterWorthLine } from '../src/systems/walletItem.js';
+import { letterOfCredit } from '../src/systems/inventory.js';
+import { validLootList } from '../src/systems/loot.js';
 
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const tiers = (on, fn) => { setPref(LOOT_RARITY_KEY, on); try { return fn(); } finally { setPref(LOOT_RARITY_KEY, false); } };
@@ -39,7 +42,7 @@ test('TRADE-INFO the surfaces: the Enhanced card, the trade row\'s hover and the
   assert.match(inv, /\{ const lines = itemPowerLines\(picked, deps, \{ set: false, lore: false \}\); if \(lines\.length\) \{ const ul = el\('ul', 'rarity'\);/);   // CARD-FIT: the lore is the Info box's
   const t = src('src/ui/enhancedPlayerTrade.js');
   // CARD-FIT U4: both in brief (itemBriefLines: the tier, its affixes, the sigil's line, the set's name and what I wear of it)
-  assert.match(t, /b\.title = \[line\.name, \.\.\.itemBriefLines\(item, deps, \{ worn: true \}\), \.\.\.setLines\(item\)\.slice\(1\)\]\.join\('\\n'\);/, 'the row\'s hover - mine and theirs alike');
+  assert.match(t, /b\.title = \[line\.name, letterWorthLine\(item\), \.\.\.itemBriefLines\(item, deps, \{ worn: true \}\), \.\.\.setLines\(item\)\.slice\(1\)\]\.filter\(Boolean\)\.join\('\\n'\);/, 'the row\'s hover - mine and theirs alike');
   assert.match(t, /const powers = itemBriefLines\(selected\.item, deps, \{ worn: true \}\);\n\s*if \(powers\.length\) \{\n\s*const ul = el\('ul', 'rarity'\);\n\s*for \(const p of powers\) ul\.append\(el\('li', null, p\)\);\n\s*const tiers = setLines\(selected\.item\)\.slice\(1\);\n\s*if \(tiers\.length\) ul\.title = tiers\.join\('\\n'\);\n\s*info\.append\(ul\);/, 'and the detail, a line each');
   assert.match(inv, /export function itemBriefLines\(item, d = deps, \{ worn = false \} = \{\}\) \{\n  const lines = itemPowerLines\(item, d, \{ set: false, lore: false \}\);/, 'the brief is the one list, less the set\'s tiers and the lore');
 });
@@ -110,4 +113,15 @@ test('AUDIT TRADE-INFO D2 + D6: the trade window reads an artifact\'s powers whe
   assert.match(src('src/scenes/world.js'), /tradeWin = createPlayerTradeWindow\(session, \{ items: \(\) => \(playerEntity\.items \?\?= \[\]\), entity: playerEntity, gold: \(\) => tradePack\.gold\(\),\n\s*rows: \(id, pick\) => townTalk\.lines\(id, pick\) \}\);/);
   const twice = dfu({ enchantments: [{ type: 4, param: 1 }, { type: 4, param: 1 }, { type: 11, param: -1 }] });
   assert.deepEqual(tiers(false, () => itemPowerLines(twice, {})), ['Potent vs Daedra', 'Potent vs Daedra', 'Feather weight']);
+});
+
+test('TRADE-LOC (Dudey: "when players trade in any ui the letter of credit doesnt show how many gold its worth when being clicked on it in the info box"): a letter of credit says its worth in the trade window - in the detail a click opens and the row\'s hover, on either side, as it arrives over the wire; anything else says nothing of it (mutants: the worth never read; read off the template, not the letter)', () => {
+  assert.equal(letterWorthLine(letterOfCredit(12500)), 'Worth 12,500 gold');
+  assert.equal(letterWorthLine(letterOfCredit()), 'Worth 0 gold');
+  assert.equal(letterWorthLine({ templateIndex: 113, value: 900 }), null, 'a sword is not a letter');
+  const [arrived] = validLootList([JSON.parse(JSON.stringify(letterOfCredit(4321)))]);
+  assert.equal(letterWorthLine(arrived), 'Worth 4,321 gold', 'the letter the peer offered, through the wire clamp, keeps its worth');
+  const t = src('src/ui/enhancedPlayerTrade.js');
+  assert.match(t, /const bits = \[letterWorthLine\(selected\.item\), line\.material, line\.word,/, 'the detail a click opens - the window every skin wears');
+  assert.match(src('src/ui/playerTradeDoor.js'), /import\('\.\/enhancedPlayerTrade\.js'\)/, 'one window over either skin');
 });
