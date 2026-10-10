@@ -10112,7 +10112,7 @@ decorations/interior decorations should not be shown to other players".
   before it.
 - **HOME-VOTE - the vote.** A registered account votes an online home - a guild's hall among them - up (+1) or down
   (-1), changes its mind, or takes its vote back (0): one vote an account a home (`server-account/src/homeVotes.js`
-  voteHome over `migrations/0106_home_votes.sql`, POST /v1/homes/vote; the law `net/homeVoteLaw.js`). Never a guest's
+  voteHome over `migrations/0107_home_votes.sql`, POST /v1/homes/vote; the law `net/homeVoteLaw.js`). Never a guest's
   (a guest is a device - `homes-need-account`, told in a vote's own words: homeVoteRefusalLine), never on a home of its own account's characters nor on a hall of a guild
   it has a member in (`vote-own` - the one statement's own clause, VOTABLE, so a home sold or a guild joined between
   the read and the write takes no vote), never a home nobody holds (`no-home`); HOME_VOTES_MAX (120) an hour
@@ -10147,12 +10147,12 @@ decorations/interior decorations should not be shown to other players".
 - **The four hosts.** `scenes/world.js` WIRED (the paint; the yards through `scenes/homeYards.js`).
   `scenes/worldModes.js` WIRED (the door, the room). `scenes/exterior.js` (the bench) stands no online homes - HOME1's
   own - so nothing to vote or hide; `scenes/dungeonContext.js` stands no homes.
-- **Deploy.** The account service first: migration 0106 applied, acct107 (DECOR-FIGURE's refusal rides the same deploy);
+- **Deploy.** The account service first: migration 0107 applied, acct108 (DECOR-FIGURE's refusal rides the same deploy);
   then the page. An older page reads the town's answer as before (the fields are new). No relay change.
 - Pinned in `test/decorfigure.test.js` (6) and `test/homevote.test.js` (7); `tools/mutants/decorfigure.json` 14 of 14
   dead, `tools/mutants/homevote.json` 24 of 24 dead. PIN MOVED: guild_yard's and homelook's look-merge pin (a look
   counts where it is shown - never lookOfHome, which would rebuild the owner's street under the painter's preview;
-  `tools/mutants/guild_yard.json` and `housing.json` re-aimed), and acct107 across the service's version pins.
+  `tools/mutants/guild_yard.json` and `housing.json` re-aimed), and acct108 across the service's version pins.
 
 ### YARD-LIGHT - a yard's lamp lights as the town's (2026-10-07)
 

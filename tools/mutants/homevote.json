@@ -181,7 +181,7 @@
   },
   {
     "name": "HOME-VOTE-votes-kept",
-    "file": "server-account/migrations/0106_home_votes.sql",
+    "file": "server-account/migrations/0107_home_votes.sql",
     "old": "  FOREIGN KEY (map_id, building_key) REFERENCES homes(map_id, building_key) ON DELETE CASCADE,",
     "new": "  FOREIGN KEY (map_id, building_key) REFERENCES homes(map_id, building_key),",
     "tests": [

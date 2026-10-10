@@ -18,7 +18,7 @@
 //
 // Cast at the house itself - its door's plaque (scenes/worldModes.js), so
 // a vote is the word of somebody standing at it; kept on the account
-// service (server-account/src/homeVotes.js, migration 0106), which reads it
+// service (server-account/src/homeVotes.js, migration 0107), which reads it
 // out with the town's homes. Pure: no clock, no DOM, no network.
 // ═══════════════════════════════════════════════════════════════════
 
