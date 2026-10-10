@@ -26,8 +26,9 @@
 //
 // Each face wears its picture by `wagonFaceSkin` (world/largeBoatModel.js faceSkin's law): the sides' liveries banded on their
 // height, everything else tiled planar (world/galleonMesh.js planarUv), the wheels' faces and the caravan's ends laid
-// whole on their pictures. Not a DFU member. Ledger A (WAGONS1).
-import { WAGON_ARCHIVE, TEX, WAGON_TILE, BANDS, wagonArt } from './wagonArt.js';
+// whole on their pictures - the cart's on its LEVEL frame (`cartLevel`), the caravan's sides from their middle
+// (`caravanSideU`). Not a DFU member. Ledger A (WAGONS1).
+import { WAGON_ARCHIVE, TEX, WAGON_TILE, BANDS, wagonArt, CARAVAN_SIDE_WINDOW_U } from './wagonArt.js';
 import { toColor32 } from '../formats/color32Order.js';
 import { MeshBench, prism, box, planarUv, sub, add, dot } from './galleonMesh.js';
 import { benchPart } from './galleonModel.js';
@@ -71,6 +72,31 @@ export const CART_REST_PITCH_DEG = (() => {
   return (Math.atan2(b[0] - f[0], f[1] - b[1]) * 180) / Math.PI;
 })();
 
+/** The turn that stands the cart level (cartLevel's). */
+const CART_LEVEL = quatAngleAxis(-CART_REST_PITCH_DEG, [1, 0, 0]);
+/** WAGON-UV (2026-10-10, from play: "The small cart is really off angle"): A POINT OF THE CART TURNED LEVEL - about its
+ *  axle (`about` its height; 0 turns a direction), by its rest's fall undone (fromLevel's turn the other way), in the
+ *  bake's frame before the lift. The cart's pictures are laid on these: laid planar on the faces as Mac drew them -
+ *  tipped 10.1 degrees on the axle - its boards ran level with the GROUND, so on the box they stood 10 degrees off its
+ *  rail and its stakes leaned, which is how the cart is seen whenever a horse bears it level. Laid level, the boards run
+ *  along the box however it stands.
+ *  @param {number[]} p @param {number} [about] */
+export function cartLevel(p, about = MEASURED.cart.axleY) {
+  const r = quatRotate(CART_LEVEL, [p[0], p[1] - about, p[2]]);
+  return [r[0], r[1] + about, r[2]];
+}
+
+/** WAGON-UV (2026-10-10, from play: "the windows on the wagon arent centered properly"): A CARAVAN SIDE'S u, laid from
+ *  the body's middle - its livery's (BANDS.caravanSide) and its room's walls' (world/caravanRoomModel.js, so the glass
+ *  still meets). planarUv ran it from the rear axle (z 0), and the two windows - one a tile (`tile`, 2.9 m) - stood
+ *  0.3 m from the body's front end and 1.7 m from its rear. Here the body's middle is half a tile past a window's
+ *  middle (CARAVAN_SIDE_WINDOW_U), so each window stands in the middle of its half of the side, 0.99 m from its end -
+ *  on both sides (planarUv's run turns with the side). `p` the side's point (the bake's frame), `n` its outward normal. */
+export function caravanSideU(p, n, tile = WAGON_TILE.caravanSide[0]) {
+  const m = MEASURED.caravan, mid = (m.rearZ + m.bedZ[1]) / 2;
+  return planarUv([p[0], p[1], p[2] - mid], n, [tile, 1])[0] + 0.5 + CARAVAN_SIDE_WINDOW_U;
+}
+
 // ── the faces, textured ─────────────────────────────────────────────────────────────────────────────────────────────
 
 const keyOf = (rec) => Object.keys(TEX).find((k) => TEX[k] === rec);
@@ -86,10 +112,20 @@ const endUv = (sign) => (p) => {
 
 /** Which picture a face of a wagon's baked part wears, and how it lies on it: `{ rec, uv(p) }`, or `{ band, u(p) }`
  *  a face of a livery (world/galleonModel.js benchPart's skins). `kind` the wagon, `role` the part, `n` the face's
- *  normal, `c` its centre, `pivot` / `R` a wheel's. */
+ *  normal, `c` its centre, `pivot` / `R` a wheel's. WAGON-UV: the cart's faces laid on its level frame (`cartLevel` -
+ *  its wheels as they are: they roll). */
 export function wagonFaceSkin(kind, role, n, c, pivot = null, R = 1) {
+  if (kind === 'cart' && !role.startsWith('wheel')) {
+    const s = layFace(kind, role, cartLevel(n, 0), cartLevel(c));
+    return 'uv' in s ? { rec: s.rec, uv: (p) => s.uv(cartLevel(p)) } : s;
+  }
+  return layFace(kind, role, n, c, pivot, R);
+}
+
+/** wagonFaceSkin's law, on the frame the face is handed in. */
+function layFace(kind, role, n, c, pivot = null, R = 1) {
   const tiled = (rec, key = keyOf(rec)) => ({ rec, uv: (p) => planarUv(p, n, WAGON_TILE[key]) });
-  const banded = (name) => ({ band: BANDS[name], u: (p) => planarUv(p, n, [WAGON_TILE[name][0], 1])[0] });
+  const banded = (name) => ({ band: BANDS[name], u: name === 'caravanSide' ? (p) => caravanSideU(p, n) : (p) => planarUv(p, n, [WAGON_TILE[name][0], 1])[0] });
   const up = n[1] > 0.7, down = n[1] < -0.7, side = Math.abs(n[0]) > 0.7, end = Math.abs(n[2]) > 0.7;
   if (role.startsWith('wheel')) return side ? { rec: TEX.wheel, uv: wheelUv(pivot ?? c, R) } : tiled(TEX.tyre);
   if (role.startsWith('axle') || role.startsWith('shaft')) return tiled(TEX.beam);
