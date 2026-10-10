@@ -21,6 +21,7 @@
 import { modSettingsOf } from '../systems/modSettings.js';
 import { trs } from '../world/mat4.js';
 import { localAabb, transformedAabb } from '../render/frustum.js';
+import { drawSeen } from '../scenes/decorRoom.js';   // PERF-WAGON: one mesh by the street's view test
 
 /** [IL] IL_1e4d, IL_1eef: the mesh, and the model id the activation is keyed on. */
 export const WAGON_MODEL = 41239;
@@ -209,12 +210,13 @@ export function createEotbWagon() {
       if (!delta || !w.pos) return;
       w = { ...w, pos: [w.pos[0] + delta[0], w.pos[1] + delta[1], w.pos[2] + delta[2]] };
     },
-    /** Draw it, if it is active and the mesh has arrived. */
-    draw(renderer, texRemap = null) {
+    /** Draw it, if it is active and the mesh has arrived. PERF-WAGON: `cull` the host's view test over its box where it
+     *  stands (decorRoom.js DECOR_DRAW / DECOR_SHADOW / DECOR_SKIP) - in view drawn, off screen in a shadow's reach cast
+     *  alone, else nothing; none (or no box yet), drawn as before. Answers whether it was drawn on screen. */
+    draw(renderer, texRemap = null, cull = null) {
       const m = wagonMatrix(w);
       if (!m || !gpu || !renderer?.drawMesh) return false;
-      renderer.drawMesh(gpu, m, texRemap);
-      return true;
+      return drawSeen(renderer, cull, cull && localBox ? transformedAabb(localBox, m) : null, gpu, m, texRemap);
     },
     /**
      * The custom activation's target (RegisterCustomActivation at 3.2):

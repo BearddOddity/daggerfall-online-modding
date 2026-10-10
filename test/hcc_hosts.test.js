@@ -136,7 +136,8 @@ test('HCC hosts: world.js - the frame, the draw, the origin, the ray, the plaque
     /const hccActionPressed = \(action\) => !gamePaused\(\) && !pointerSurfaces\.size && !_loading && pressed\(latch\.edge, keys, action\);/,
     // AUDIT HCC U6: the mod's HUD label, where the plaque is not already naming the horse
     /horseNameTooltip\.set\(tipOn \? hcc\.tooltipText\(cam\.pos, /,
-    /camps\.draw\(renderer\);[^\n]*\n\s+hcc\.draw\(renderer, null, tvf \? \{ selfGrow: tvf\.grow, grow: peerGrow \} : undefined\);/, /camps\.offsetAll\(r\.offset\);[^\n]*\n\s+hcc\.offsetAll\(r\.offset\);/,
+    // PIN MOVED (PERF-WAGON): the tents asked the street's view test too
+    /camps\.draw\(renderer, null, yardCull\);[^\n]*\n\s+hcc\.draw\(renderer, null, tvf \? \{ selfGrow: tvf\.grow, grow: peerGrow \} : undefined, yardCull\);/, /camps\.offsetAll\(r\.offset\);[^\n]*\n\s+hcc\.offsetAll\(r\.offset\);/,
     /const _hccPick = pickActivatableHit\(cam\.pos, useFwd, hcc\.targets\(\), collider\);/, /horseCart: _hccPick,/,
     /else if \(_race\.horseCartWins\) \{ hcc\.activate\(_hccPick\.key, _hccPick\.distance, \(l\) => townTalk\.say\(l\), \(\) => setMidScreenText\(TOO_FAR_AWAY_TEXT\), plaqueActionFor\(_hccPick\.key\)\); \}/,   // ACT-MENU: and the verb the plaque lit
     /\(key\) => hcc\.hoverName\(key\),/, /horseCart: pickActivatableHit\(cam\.pos, _hd, hcc\.targets\(\), collider\),/,
@@ -174,7 +175,7 @@ test('HCC hosts: exterior.js mirrors the same seams over the fixed city (no stre
     /hccTick\(dt, now\);\n\s+_driverSeat = walkMode && player\.transportMode === TRANSPORT_MODES\.Cart && [^\n]*hcc\.driverSeat\(\) : null;\n\s+if \(_driverSeat\) cam\.pos = /,   // PIN MOVED (WAGONS3): before the camera
     /if \(hcc\.enabled\) personBatches\.push\(\.\.\.hcc\.batches\(\)\);/,
     /const hccActionPressed = \(action\) => !gamePaused\(\) && pressed\(latch\.edge, keys, action\);/,
-    /camps\.draw\(renderer, texRemap\);[^\n]*\n\s+hcc\.draw\(renderer, texRemap\);/,
+    /camps\.draw\(renderer, texRemap, streetCull\);[^\n]*\n\s+hcc\.draw\(renderer, texRemap, undefined, streetCull\);/,   // PIN MOVED (PERF-WAGON): the fixed city's tents and wagons asked its own frame's view test (PERF-TEAMS wired the world host alone)
     /const _hccPick = pickActivatableHit\(cam\.pos, useFwd, hcc\.targets\(\), collider\);/, /horseCart: _hccPick,/,
     /else if \(_race\.horseCartWins\) \{ hcc\.activate\(_hccPick\.key, _hccPick\.distance, \(l\) => townTalk\.say\(l\), \(\) => setMidScreenText\(TOO_FAR_AWAY_TEXT\), plaqueActionFor\(_hccPick\.key\)\); \}/,   // ACT-MENU: and the verb the plaque lit
     /\(key\) => hcc\.hoverName\(key\),/, /horseCart: pickActivatableHit\(cam\.pos, _hd, hcc\.targets\(\), collider\),/,

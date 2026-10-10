@@ -675,12 +675,12 @@
   {
     "name": "TECH1-AUDIT-the-service-behind-the-law",
     "file": "server-account/src/service.js",
-    "old": "export const ACCOUNT_VERSION = 'acct109';",
+    "old": "export const ACCOUNT_VERSION = 'acct110';",
     "new": "export const ACCOUNT_VERSION = 'acct107';",
     "tests": [
       "test/tech1_roster.test.js"
     ],
-    "note": "SCALE4f + SCALE4g (re-aimed by content, PIN MOVED): the service is acct109, past TECH1's acct108 at the merge - a service before law 2's acct108 still fails."
+    "note": "SCALE4f + SCALE4g (re-aimed by content, PIN MOVED): the service is acct110, past TECH1's acct108 and PATRON-LOAD's acct109 at the merges - a service before law 2's acct108 still fails."
   },
   {
     "name": "TECH1-AUDIT-the-turn-from-mid-dash",
