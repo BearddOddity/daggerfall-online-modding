@@ -7159,13 +7159,7 @@ export function createWorldModes(host) {
       const verbs = _doorText ? houseVerbs : null;
       const homeLine = verbs ? null : home ? (homeDoorFor(bd, home) === 'locked' ? 'Locked' : null) : homeSaleHover(bd);
       if (_doorText && homeLine) _doorText = { ..._doorText, subs: [...(_doorText.subs ?? []), homeLine] };
-      // HOME-VOTE: its votes, and whether its decorations are hidden - and a door whose only rows are the vote's still says
-      // "Locked", and lists them UNLIT: a plain click on a stranger's door is never a vote cast (worldHover.js
-      // actionsUnlit, a player's own list's law)
-      const voteOnly = !!verbs && isHomeVoteVerb(verbs[0]?.id);
-      const voteLines = home ? [...(voteOnly && homeDoorFor(bd, home) === 'locked' ? ['Locked'] : []), ...homeVoteLines(home)] : [];
-      if (_doorText && voteLines.length) _doorText = { ..._doorText, subs: [...(_doorText.subs ?? []), ...voteLines] };
-      if (voteOnly) _doorText = { ..._doorText, actionsUnlit: true };
+      _doorText = homeVoteDoorText(_doorText, bd, home, verbs);   // HOME-VOTE: its votes' lines, and the vote's rows unlit
       if (verbs) _doorText = { ..._doorText, actions: verbs };
       _doorTextKey = key; _doorTextGen = gen; _doorTextHomes = homesV; _doorTextVerbs = verbsSig;
       return _doorText;
@@ -7253,6 +7247,17 @@ export function createWorldModes(host) {
     // GUILD1d: and, to a guildmaster whose guild holds no hall, the house bought as the guild's hall from its treasury
     const hall = homeHallBuyRow(price, hallGuild(), hallArmed(bd));
     return hall ? [...homeBuyRows(price, homeArmed(bd)), hall] : homeBuyRows(price, homeArmed(bd));
+  }
+  /** HOME-VOTE: THE DOOR'S WORD WITH THE TOWN'S VOTES - a home's score, and whether its decorations are hidden, among its
+   *  lines (onlineHomes.js homeVoteLines); and a door whose only rows are the vote's still says "Locked" and lists them
+   *  UNLIT - a plain click on a stranger's door is never a vote cast (worldHover.js actionsUnlit, a player's own list's
+   *  law). `text` the door's word so far (null: none), `verbs` its rows (homeDoorVerbs). */
+  function homeVoteDoorText(text, bd, home, verbs) {
+    if (!text || !home) return text;
+    const voteOnly = isHomeVoteVerb(verbs?.[0]?.id);
+    const lines = [...(voteOnly && homeDoorFor(bd, home) === 'locked' ? ['Locked'] : []), ...homeVoteLines(home)];
+    const said = lines.length ? { ...text, subs: [...(text.subs ?? []), ...lines] } : text;
+    return voteOnly ? { ...said, actionsUnlit: true } : said;
   }
   /** GUILD1d: the playing character's guild as the guild book last read it (`{ name, rank, hall, treasury }`), or null -
    *  asking it again, without waiting, when that read is old. */

@@ -242,8 +242,8 @@
   {
     "name": "HOME-VOTE-lit-click-votes",
     "file": "src/scenes/worldModes.js",
-    "old": "      if (voteOnly) _doorText = { ..._doorText, actionsUnlit: true };\n",
-    "new": "",
+    "old": "    return voteOnly ? { ...said, actionsUnlit: true } : said;",
+    "new": "    return said;",
     "tests": [
       "test/homevote.test.js"
     ],

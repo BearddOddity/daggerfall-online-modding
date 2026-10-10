@@ -179,8 +179,9 @@ test('HOME-VOTE the hosts: the interior stands a shunned home as Daggerfall furn
   assert.match(m, /const shown = homeDecorShown\(interiorHome\);\n\s*const pieces = shown \? r\.data\.pieces\.map\(decorPieceOf\)\.filter\(Boolean\) : \[\];/);
   assert.match(m, /if \(!shown\) \{ interiorCtx\?\.base\?\.setHidden\(\[\]\); return; \}   \/\/ HOME-VOTE: the room as Daggerfall furnished it\n\s*interiorCtx\?\.base\?\.setHidden\(Array\.isArray\(r\.data\.hidden\)/);
   assert.match(m, /const rows = \[\.\.\.\(homeVisitorRows\(home, homeDoorFor\(bd, home\)\) \?\? \[\]\), \.\.\.homeVoteRows\(home\)\];/);
-  assert.match(m, /if \(voteOnly\) _doorText = \{ \.\.\._doorText, actionsUnlit: true \};/);
-  assert.match(m, /const voteLines = home \? \[\.\.\.\(voteOnly && homeDoorFor\(bd, home\) === 'locked' \? \['Locked'\] : \[\]\), \.\.\.homeVoteLines\(home\)\] : \[\];/);
+  assert.match(m, /_doorText = homeVoteDoorText\(_doorText, bd, home, verbs\);[^\n]*\n\s*if \(verbs\) _doorText = \{ \.\.\._doorText, actions: verbs \};/);
+  assert.match(m, /const lines = \[\.\.\.\(voteOnly && homeDoorFor\(bd, home\) === 'locked' \? \['Locked'\] : \[\]\), \.\.\.homeVoteLines\(home\)\];/);
+  assert.match(m, /return voteOnly \? \{ \.\.\.said, actionsUnlit: true \} : said;/);
   const press = m.indexOf('if (isHomeVoteVerb(verb)) {');
   const lock = m.indexOf("if (door === 'locked') { townTalk?.say?.(homeLockedLine(home)); return true; }");
   assert.ok(press > 0 && lock > press, 'a vote is pressed before the lock answers');
