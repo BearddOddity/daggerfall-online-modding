@@ -56,7 +56,7 @@ stood on, where it landed (`validParkYeet`). An owner away when it happened is t
 cell: re-saying the spot it was thrown from is answered with the throw. A word that moves the team clears the mark (and
 starts its clock again).
 
-**The version.** `world189` (`RELAY_VERSION` - `world188` on its branch, renumbered past INT11-INT14's `world188` when it was rebased onto main; `WARDEN_RELAY_MIN`, `relaySupportsWarden`). An older relay drops `ly`,
+**The version.** `world190` (`RELAY_VERSION` - `world188` then `world189` on its branch, renumbered past INT11-INT14's `world188` when it was rebased onto main and past SCALE5a's `world189` at the merge after it; `WARDEN_RELAY_MIN`, `relaySupportsWarden`). An older relay drops `ly`,
 `tw` and `rd` and throws nothing; the client sends them to any relay. **NOT YET DEPLOYED - its deploy drops every
 player once.**
 
@@ -83,7 +83,7 @@ came.
 
 **Offline** (no online session at all) the client is the watch: the road's rule alone on the stamp's own clock
 (`offlineDue`) - a wagon left on a road and loaded an hour later is thrown on the load. A town holds nobody else's team
-offline, so there is no crowd. Online the cell alone throws; a relay before `world189` throws nothing.
+offline, so there is no crowd. Online the cell alone throws; a relay before `world190` throws nothing.
 
 ## The throw, played (`scenes/wagonWardenShow.js`)
 
