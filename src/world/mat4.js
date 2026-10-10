@@ -132,8 +132,13 @@ export function transformPoint(m, x, y, z) {
 
 /** Right-handed perspective projection (GL clip space). */
 export function perspective(fovYRad, aspect, near, far) {
+  return perspectiveInto(new Float32Array(16), fovYRad, aspect, near, far);
+}
+
+/** PERF-ALLOC1: perspective written into `out` (every element: the rest are zero, as a new array's). */
+export function perspectiveInto(out, fovYRad, aspect, near, far) {
   const f = 1 / Math.tan(fovYRad / 2);
-  const out = new Float32Array(16);
+  out.fill(0);
   out[0] = f / aspect;
   out[5] = f;
   out[10] = (far + near) / (near - far);
@@ -174,23 +179,28 @@ export function mirrorProjectionX(m) {
 }
 
 export function lookAt(eye, center, up) {
-  const zx = eye[0] - center[0], zy = eye[1] - center[1], zz = eye[2] - center[2];
-  let zl = Math.hypot(zx, zy, zz);
-  const z = [zx / zl, zy / zl, zz / zl];
-  const x = [up[1] * z[2] - up[2] * z[1], up[2] * z[0] - up[0] * z[2], up[0] * z[1] - up[1] * z[0]];
-  const xl = Math.hypot(x[0], x[1], x[2]);
-  x[0] /= xl; x[1] /= xl; x[2] /= xl;
-  const y = [z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0]];
-  // prettier-ignore
-  return new Float32Array([
-    x[0], y[0], z[0], 0,
-    x[1], y[1], z[1], 0,
-    x[2], y[2], z[2], 0,
-    -(x[0] * eye[0] + x[1] * eye[1] + x[2] * eye[2]),
-    -(y[0] * eye[0] + y[1] * eye[1] + y[2] * eye[2]),
-    -(z[0] * eye[0] + z[1] * eye[1] + z[2] * eye[2]),
-    1,
-  ]);
+  return lookAtInto(new Float32Array(16), eye, center[0], center[1], center[2], up);
+}
+
+/** PERF-ALLOC1 (2026-10-10): lookAt written into `out` (a Float32Array(16)), the centre as three numbers - the same
+ *  arithmetic in the same order, so the same floats; nothing allocated. The shadow pass makes six of these a lantern a
+ *  frame (pointFaceMatrices), each of which minted four arrays and a Float32Array. */
+export function lookAtInto(out, eye, cx, cy, cz, up) {
+  const zx = eye[0] - cx, zy = eye[1] - cy, zz = eye[2] - cz;
+  const zl = Math.hypot(zx, zy, zz);
+  const z0 = zx / zl, z1 = zy / zl, z2 = zz / zl;
+  let x0 = up[1] * z2 - up[2] * z1, x1 = up[2] * z0 - up[0] * z2, x2 = up[0] * z1 - up[1] * z0;
+  const xl = Math.hypot(x0, x1, x2);
+  x0 /= xl; x1 /= xl; x2 /= xl;
+  const y0 = z1 * x2 - z2 * x1, y1 = z2 * x0 - z0 * x2, y2 = z0 * x1 - z1 * x0;
+  out[0] = x0; out[1] = y0; out[2] = z0; out[3] = 0;
+  out[4] = x1; out[5] = y1; out[6] = z1; out[7] = 0;
+  out[8] = x2; out[9] = y2; out[10] = z2; out[11] = 0;
+  out[12] = -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);
+  out[13] = -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]);
+  out[14] = -(z0 * eye[0] + z1 * eye[1] + z2 * eye[2]);
+  out[15] = 1;
+  return out;
 }
 
 export function ortho(halfW, halfH, near, far) {

@@ -1139,6 +1139,44 @@ const BB_CORNERS = Object.freeze([
 /** LPT1: a flat's corner x with its own scale on it (BB_VS reads it back: |x| twice over) - the corner times its share
  *  of the batch's size, 0..1; a whole flat's corner is its own. */
 export const bbCornerX = (x, scale = 1) => x * scale;
+
+// PERF-ARENA (2026-10-10, Mac: "Exterior performance is really bad" - "Interior is fine. It's exterior that's the
+// issue"): THE STILL FLATS SHARE THEIR BUFFERS. Every billboard batch was born with a vertex array, a vertex buffer and
+// an index buffer of its own, so every draw of one bound its VAO - the real game at Knightstale (tools/frameProbe.mjs over
+// the freeware ARENA2): 942 bindVertexArray a frame by day, 905 by night, for ~1,000 draws, and the costliest WebGL
+// call the frame makes (1.5 us each on the main thread, 1.4 ms a frame - more than the draws themselves). A town's
+// flats are all one shape (a quad: four corners, six indices, the same twenty bytes a corner), so a batch built still
+// takes a RANGE of quads in an arena - one VAO, one vertex buffer and one index buffer for thousands of batches -
+// and its draw names its range by the index offset. The arena's indices are written ONCE at its birth, every quad's
+// the very six createBillboardBatch writes for its own (b, b+2, b+1, b, b+3, b+2 from the quad's first corner), and
+// a batch's corners are the very floats it wrote: the same triangles, in the same order, from the same vertices. A
+// batch built DYNAMIC (a gib, a blood drop: its centres move every frame) keeps buffers of its own, as before.
+/** Quads in an arena when none bigger is asked for (1.3 MB of corners, 393 KB of indices). */
+export const BB_ARENA_QUADS = 16384;
+/** The bytes a quad's four corners take (five floats a corner) and its six indices take. */
+const BB_QUAD_VERT_BYTES = 4 * 5 * 4, BB_QUAD_INDEX_BYTES = 6 * 4;
+/**
+ * PERF-ARENA: the free ranges of an arena, `free` [start, length, start, length, ...] ascending by start, never two
+ * touching - the first that fits is taken from its front, and a range given back joins whichever neighbour it touches.
+ * A leaf over plain numbers, so the suite holds it without GL.
+ */
+export function arenaTake(free, quads) {
+  for (let i = 0; i < free.length; i += 2) {
+    if (free[i + 1] < quads) continue;
+    const at = free[i];
+    if (free[i + 1] === quads) free.splice(i, 2); else { free[i] += quads; free[i + 1] -= quads; }
+    return at;
+  }
+  return -1;
+}
+export function arenaGive(free, at, quads) {
+  let i = 0;
+  while (i < free.length && free[i] < at) i += 2;
+  const joinsPrev = i > 0 && free[i - 2] + free[i - 1] === at;
+  const joinsNext = i < free.length && at + quads === free[i];
+  if (joinsPrev && joinsNext) { free[i - 1] += quads + free[i + 1]; free.splice(i, 2); } else if (joinsPrev) free[i - 1] += quads;
+  else if (joinsNext) { free[i] = at; free[i + 1] += quads; } else free.splice(i, 0, at, quads);
+}
 /** AUDIT-EL F5: what a WORLD host passes beginFrame - the lane replays its records for this frame and not for a map's, a video's or a menu's. */
 export const WORLD_FRAME = Object.freeze({ world: true });
 /** The classic world programs' point-light cap (uPointLights[16] in every shader above); a lane brings its own. */
@@ -1893,6 +1931,8 @@ export class Renderer {
     // account for).
     this._lastProgram = null;
     this._lastVao = null;
+    /** PERF-ARENA: the still flats' shared buffers, each { vao, vb, ib, cap, free, taken } (_bbArenaFor) */
+    this._bbArenas = [];
     // PERF-VAO1 (PERF-NEXT item 6): ONE bindVao FOR THE LIFE OF THE RENDERER. _renderPasses minted this closure every
     // frame and handed it to the shadow and air passes - a new call target at their `f.bindVao(vao)` every frame (in node,
     // once, V8 deoptimized the shadow replay on it: "wrong call target" - PERF-NEXT 6; no gain measured). The same call,
@@ -6128,6 +6168,40 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     return tex;
   }
 
+  /** PERF-ARENA: an arena with room for `quads` - the first whose free ranges hold them (first fit), else a new one of
+   *  BB_ARENA_QUADS, or of `quads` where one batch is bigger - with the range taken (its first quad `taken`). The new
+   *  arena's VAO is a batch's own, attribute for attribute; its indices are every quad's six, written once. */
+  _bbArenaFor(quads) {
+    for (const a of this._bbArenas) {
+      const at = arenaTake(a.free, quads);
+      if (at >= 0) { a.taken = at; return a; }
+    }
+    const gl = this.gl, cap = Math.max(BB_ARENA_QUADS, quads);
+    const indices = new Uint32Array(cap * 6);
+    for (let q = 0; q < cap; q++) {
+      const b = q * 4, io = q * 6;
+      indices[io] = b; indices[io + 1] = b + 2; indices[io + 2] = b + 1;
+      indices[io + 3] = b; indices[io + 4] = b + 3; indices[io + 5] = b + 2;
+    }
+    const vao = gl.createVertexArray();
+    this._bindVao(vao);
+    const vb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+    gl.bufferData(gl.ARRAY_BUFFER, cap * BB_QUAD_VERT_BYTES, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 20, 0);
+    gl.enableVertexAttribArray(1);
+    gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 20, 12);
+    const ib = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    this._bindVao(null);
+    const a = { vao, vb, ib, cap, free: [0, cap], taken: 0 };
+    this._bbArenas.push(a);
+    a.taken = arenaTake(a.free, quads);
+    return a;
+  }
+
   /**
    * One batch = all billboards of one (archive, record): 4 verts per flat
    * (center xyz + corner offsets in -0.5..0.5), indexed quads. Positions are
@@ -6166,22 +6240,35 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
       indices[io + 5] = b + 2;
     }
 
-    const vao = gl.createVertexArray();
-    this._bindVao(vao);
-    const vb = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vb);
-    // BLOOD1b: a batch whose centres MOVE says so at birth, because the
-    // hint is the buffer's and cannot be changed after. Everything else
-    // in the tree is still STATIC_DRAW, which is what it is.
-    gl.bufferData(gl.ARRAY_BUFFER, verts, dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 20, 0);
-    gl.enableVertexAttribArray(1);
-    gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 20, 12);
-    const ib = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
-    this._bindVao(null);
+    // PERF-ARENA: a still batch takes a range of an arena's quads - its corners written where the range starts, its
+    // indices the arena's own (the same six a quad, written at the arena's birth) - and owns no buffer of its own
+    let vao, buffers, arena = null, q0 = 0;
+    if (!dynamic && count > 0 && this._bbArenas) {
+      arena = this._bbArenaFor(count);
+      q0 = arena.taken;
+      vao = arena.vao;
+      buffers = [];
+      gl.bindBuffer(gl.ARRAY_BUFFER, arena.vb);
+      gl.bufferSubData(gl.ARRAY_BUFFER, q0 * BB_QUAD_VERT_BYTES, verts);
+    } else {
+      vao = gl.createVertexArray();
+      this._bindVao(vao);
+      const vb = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+      // BLOOD1b: a batch whose centres MOVE says so at birth, because the
+      // hint is the buffer's and cannot be changed after. Everything else
+      // in the tree is still STATIC_DRAW, which is what it is.
+      gl.bufferData(gl.ARRAY_BUFFER, verts, dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 20, 0);
+      gl.enableVertexAttribArray(1);
+      gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 20, 12);
+      const ib = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+      this._bindVao(null);
+      buffers = [vb, ib];
+    }
 
     // FA1: `frame` is null for a still flat and a frame INDEX for an
     // animated one, which the draw folds into the texture key. Still
@@ -6236,7 +6323,8 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     // IDLER-STICKY: `_shIdler`, a flat whose look changed where it stands - a mover for good (shadowPass.js), born undefined.
     // MWNPC5b: `castOnly` - a foe standing in its Morrowind body: the billboard casts its shadow and draws nothing, born undefined.
     return {
-      vao, indexCount: count * 6, archive, record, size, buffers: [vb, ib], origin: null, frame: null, bounds, _quads: count, _dyn: !!dynamic,
+      vao, indexCount: count * 6, archive, record, size, buffers, origin: null, frame: null, bounds, _quads: count, _dyn: !!dynamic,
+      _arena: arena, _q0: q0, _ibOff: q0 * BB_QUAD_INDEX_BYTES,
       _scales: scales ?? null, lptProto: undefined, farH: undefined,
       _place: count > 1 && !dynamic ? placementGrid(centers) : null,
       _box: undefined, sway: undefined, windfall: undefined, tip: undefined, conceal: undefined, hitFlash: undefined, eliteGlow: undefined, eliteTime: undefined, elitePad: undefined, glint: undefined, dissolve: undefined, tint: undefined, noShadow: undefined, selfCard: undefined, _dead: undefined, _moveScratch: undefined, dwColumn: undefined,
@@ -6284,8 +6372,8 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
         verts[o + 4] = BB_CORNERS[k][1];
       }
     }
-    gl.bindBuffer(gl.ARRAY_BUFFER, batch.buffers[0]);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts, 0, count * 20);
+    gl.bindBuffer(gl.ARRAY_BUFFER, batch._arena ? batch._arena.vb : batch.buffers[0]);   // PERF-ARENA: a still batch's corners are its arena's range
+    gl.bufferSubData(gl.ARRAY_BUFFER, batch._arena ? batch._q0 * BB_QUAD_VERT_BYTES : 0, verts, 0, count * 20);
     // PERF-EXT1: the placements the shadow pass asks are the ones it was
     // BORN with - moved, they speak for nothing, and a batch tested where
     // it was built casts nothing where it is (the draw lens's prover: a
@@ -6327,10 +6415,28 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     if (!batch) return;
     batch._dead = true;   // EL2: a shadow record from the last frame may still hold it
     batch._place = null;   // PERF-EXT1: the placement grid is the batch's, and goes with it
-    if (batch.vao) gl.deleteVertexArray(batch.vao);
+    if (batch._arena) this._bbArenaFree(batch);   // PERF-ARENA: its range back to its arena - the arena's VAO is not the batch's to delete
+    else if (batch.vao) gl.deleteVertexArray(batch.vao);
     for (const b of batch.buffers || []) gl.deleteBuffer(b);
     batch.vao = null;
     batch.buffers = [];
+  }
+
+  /** PERF-ARENA: a still batch's range given back to its arena, once - its VAO (the arena's) let go with it, so no
+   *  second free and no replay can reach the range a later batch takes (every replay skips a batch with no VAO). */
+  _bbArenaFree(batch) {
+    const a = batch._arena;
+    arenaGive(a.free, batch._q0, batch._quads);
+    batch._arena = null;
+    batch.vao = null;
+    // an arena emptied whole (every batch in it freed) is let go - all but the first, which the next pixel fills - so a
+    // long road through dense woods holds no more GPU memory than the woods it stands in now
+    if (a.free.length === 2 && a.free[1] === a.cap && a !== this._bbArenas[0]) {
+      const gl = this.gl;
+      this._bbArenas.splice(this._bbArenas.indexOf(a), 1);
+      if (this._lastVao === a.vao) this._bindVao(null);
+      gl.deleteVertexArray(a.vao); gl.deleteBuffer(a.vb); gl.deleteBuffer(a.ib);
+    }
   }
 
   /** Release a createMesh bundle's GPU resources. */
@@ -6352,8 +6458,9 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
   destroyBatch(batch) {
     const gl = this.gl;
     batch._dead = true;   // EL2
+    if (batch._arena) { this._bbArenaFree(batch); return; }   // PERF-ARENA: its range back to its arena
     for (const b of batch.buffers) gl.deleteBuffer(b);
-    gl.deleteVertexArray(batch.vao);
+    if (batch.vao) gl.deleteVertexArray(batch.vao);   // PERF-ARENA: an arena's batch freed already has none
   }
 
   /** Lazily create the shared 129x129 terrain index buffer. */
@@ -7539,7 +7646,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
       const lc = b.lptProto && this._lpt?.cut.has(b.lptProto) ? 1 : 0;   // LPT1: a far picture gives way to its 3D tree near the eye - sent when that changes between batches
       if (lc !== this._bbLptCutOn) { this._uploadLptCut(lc); this._bbLptCutOn = lc; }
       this._bindVao(b.vao);
-      gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, 0);
+      gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, b._ibOff | 0);   // PERF-ARENA: a still batch's range of its arena's indices
       this.stats.draws++;
     };
     gl.uniform1i(this.bbUSpectral, 0);

@@ -55,7 +55,7 @@
 //     pointShadowAt, so any number of casters costs one texture unit);
 //     the culling above is what makes 24 face replays cheap.
 
-import { lookAt, multiply, ortho, perspective } from '../world/mat4.js';
+import { lookAt, lookAtInto, multiply, ortho, perspective, perspectiveInto } from '../world/mat4.js';
 import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInVolume } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements
 import { billboardKey } from './billboardKey.js';   // AUDIT 68 S16-bbkey-stale-shadow-reach: re-keyed here, however the batch reached the records
 import { aabbOutside } from './frustum.js';   // SHADOW-REACH: a host's box against the cascades
@@ -546,14 +546,17 @@ const CUBE_FACES = Object.freeze([
 /** The six face view-projections of a point light at `pos` reaching `far`.
  *  `out` is six Float32Array(16). */
 export function pointFaceMatrices(pos, far, out) {
-  const proj = perspective(Math.PI / 2, 1, SHADOW_POINT_NEAR, far);
+  // PERF-ALLOC1 (2026-10-10): into two scratches - the same floats (mat4.js lookAtInto / perspectiveInto), where every
+  // lantern's every frame minted a projection, six views and their twenty-four arrays (the real game at Knightstale by
+  // night: lookAt alone 47 KB a frame of the 1.4 MB the frame allocates)
+  const proj = perspectiveInto(_faceProj, Math.PI / 2, 1, SHADOW_POINT_NEAR, far);
   for (let f = 0; f < 6; f++) {
-    const [d, up] = CUBE_FACES[f];
-    const view = lookAt(pos, [pos[0] + d[0], pos[1] + d[1], pos[2] + d[2]], up);
-    multiply(proj, view, out[f]);
+    const d = CUBE_FACES[f][0], up = CUBE_FACES[f][1];
+    multiply(proj, lookAtInto(_faceView, pos, pos[0] + d[0], pos[1] + d[1], pos[2] + d[2], up), out[f]);
   }
   return out;
 }
+const _faceProj = new Float32Array(16), _faceView = new Float32Array(16);
 
 /** The depth the cube map holds for a point at `(dx, dy, dz)` from the
  *  light: the major axis is the face's view depth, and this is that depth
@@ -2433,7 +2436,7 @@ export class ShadowPass {
           if (sw !== lastSway) { gl.uniform1f(P.bb.sway, sw); lastSway = sw; }
           if (tex !== lastTex) { gl.bindTexture(gl.TEXTURE_2D, tex); lastTex = tex; }   // PERF-BASIS
           f.bindVao(b.vao);
-          gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, 0);
+          gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, b._ibOff | 0);   // PERF-ARENA: a still batch's range of its arena's indices
           draws++;
         }
       }
