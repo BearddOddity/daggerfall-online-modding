@@ -372,7 +372,7 @@
   {
     "name": "HOME-VOTE-insider-unsaid",
     "file": "server-account/src/homes.js",
-    "old": "          ...(h.kin === 1 ? { insider: true } : {}),",
+    "old": "          ...(h.kin === 1 && rank == null ? { insider: true } : {}),",
     "new": "          ...({}),",
     "tests": [
       "test/homevote.test.js"

@@ -452,7 +452,7 @@ export async function homesInTown({ db, nowS = Math.floor(Date.now() / 1000) }, 
           // AUDIT PROF-541 G2: who may say who walks in, as setHallEntry asks it (halls.js) - the rank alone, any character;
           // `keeper`'s realm clause took the door's "Who may enter" from a local Officer the service would have answered
           ...(rank != null && hallMay(rank, 'hallEntry') ? { hallEntry: true } : {}),
-          ...(h.kin === 1 ? { insider: true } : {}),   // AUDIT HOME-VOTE A5: the account has a character in its guild - no vote, its decor always
+          ...(h.kin === 1 && rank == null ? { insider: true } : {}),   // AUDIT HOME-VOTE A5: the account has another character in its guild - no vote, its decor always (a `member` is one already)
           ...lookFor(h, h.kin === 1),   // GUILD-YARD: how its keepers painted it, to everyone (AUDIT HOME-VOTE A3: but a shunned hall's)
           ...votesOf(h),   // HOME-VOTE
         };

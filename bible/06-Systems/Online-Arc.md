@@ -10121,7 +10121,7 @@ decorations/interior decorations should not be shown to other players". As it st
   home sold or a guild joined between the read and the write takes no vote); never a home nobody holds (`no-home`,
   404); HOME_VOTES_MAX (30) an hour (`vote-rate`). Taking one's own vote back is never refused. A home's SCORE is its
   votes summed, kept on its own row by the database (`homes.score`, the migration's three triggers); the town's homes
-  carry it, the reader's own vote, and a hall's `insider` - the account has a character in its guild
+  carry it, the reader's own vote, and a hall's `insider` - the account has another character in its guild (the one playing is a `member`)
   (`server-account/src/homes.js` homesInTown - each said only where it is not nothing). The votes go with the home (the
   cascade through `homes`): a home sold, released or moved by the arena starts again from none (an arena move writes
   its new row without the score - homes.js HOME_MOVE_CARRIED), and a home taken up by its line's heir keeps its own.
@@ -10203,7 +10203,7 @@ lines moved into homeVoteDoorText). FOUND, each fixed and pinned unless DOCUMENT
   one's own vote back is never refused.
 - **LOW - A5, B4, D8: a hall's insider was the account at the service and the character at the client** - another
   character of a member's account was offered votes the service refused, and saw its own guild's shunned hall bare.
-  FIXED: homesInTown says `insider` (the account), and the client reads it.
+  FIXED: homesInTown says `insider` where the account has a character in the guild other than the one playing (that one is a `member` already), and the client reads both.
 - **LOW - B3: two quick presses on Vote up took the vote back.** FIXED: the take-back is a row of its own, and a press
   sends what its row says.
 - **LOW - B5: a vote pressed on a home sold meanwhile fell to Daggerfall's lock ladder** (a held Open spell spent).
