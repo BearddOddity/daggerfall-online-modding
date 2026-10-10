@@ -497,7 +497,7 @@ test('WB2 the seams: online alone, stood before the lights, the stone in the wor
   assert.ok(frameAt > 0 && frameAt < lightsAt, 'stood before the lights read it');
   assert.equal((w.match(/\.\.\.\(gatePool\?\.lights\(\) \?\? \[\]\), \.\.\.\(riteHost\?\.lights\(\) \?\? \[\]\), \.\.\.camps\.lights\(\), \.\.\.droppedTorches\.lights\(\)\);/g) ?? []).length, 2,   // WB12d: the rite's braziers beside it
     'its fire lights the ground by night and by day - after the hand lights, before the camps and the dropped torches the renderer\'s cap cuts first');
-  assert.match(w, /gatePool\?\.draw\(renderer\);[^\n]*\n\s*camps\.draw\(renderer\);/, 'the stone in the world pass beside the tents (before them: the tents and the wagon keep their HCC pair)');
+  assert.match(w, /gatePool\?\.draw\(renderer\);[^\n]*\n\s*camps\.draw\(renderer, null, yardCull\);/, 'the stone in the world pass beside the tents (before them: the tents and the wagon keep their HCC pair)');   // PIN MOVED (PERF-WAGON): the tents by the street's view test
   const duel = w.indexOf('duelWall.draw(rings'), pass = w.indexOf('gatePool.drawPass(proj, view');
   assert.ok(duel > 0 && pass > duel, 'the fire after the duel wall');
   assert.match(w, /if \(_race\.gateWins\) \{ if \(_gatePick\.distance > _gatePick\.reach\) setMidScreenText\(TOO_FAR_AWAY_TEXT\); else if \(!riteHost\?\.activate\(_gatePick\.key\)\) gatePool\.activate\(_gatePick\.key\); \}/, 'the press\'s arm, refusing out loud past its reach (WB12d: the faithful\'s casket rides its slot)');

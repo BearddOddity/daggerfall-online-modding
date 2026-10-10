@@ -27,6 +27,8 @@
 // `clear()` takes out every one.
 import { TENT_MODEL, FIRE_FLAT } from '../systems/survival/camp.js';
 import { trs } from '../world/mat4.js';
+import { sphereAabb } from '../render/frustum.js';
+import { drawSeen } from './decorRoom.js';   // PERF-WAGON: a tent by the street's view test
 import { NATIVE_PER_M, NATIVE_PIXEL } from '../systems/livingWorld/trips.js';
 import { GLOBAL_SCALE } from '../player/activate.js';
 import { lwSeed, lwRng, textSeed } from '../systems/livingWorld/seed.js';
@@ -370,11 +372,17 @@ export function createHideouts(deps) {
       if (!s.batch) { s.batch = deps.renderer.createBillboardBatch(FIRE_FLAT.archive, FIRE_FLAT.record, fire.size, [s.centre]); if (s.batch) s.batch.frame = 0; }
       return s.batch ? [s.batch] : [];
     },
-    /** The tents, in the host's world mesh pass. @param {any} r @param {any} [texRemap] */
-    draw(r, texRemap = null) {
+    /** The tents, in the host's world mesh pass. PERF-WAGON: `cull` the host's view test over each tent's sphere
+     *  (decorRoom.js drawSeen); none, every tent drawn as before. Answers how many were drawn on screen.
+     *  @param {any} r @param {any} [texRemap] @param {any} [cull] */
+    draw(r, texRemap = null, cull = null) {
       if (!stood || !tent?.gpu || !r?.drawMesh) return 0;
-      for (const tt of stood.tents) r.drawMesh(tent.gpu, trs(tt.feet[0], tt.feet[1], tt.feet[2], 0, (tt.yaw * 180) / Math.PI, 0), texRemap);
-      return stood.tents.length;
+      let n = 0;
+      for (const tt of stood.tents) {
+        const m = trs(tt.feet[0], tt.feet[1], tt.feet[2], 0, (tt.yaw * 180) / Math.PI, 0);
+        if (drawSeen(r, cull, cull ? sphereAabb(tent.gpu.bounds, m) : null, tent.gpu, m, texRemap)) n++;
+      }
+      return n;
     },
     /**
      * HEARD OF: the band whose hideout lies within HEARD_PX of native (`x`, `z`) the character has not heard of yet, or

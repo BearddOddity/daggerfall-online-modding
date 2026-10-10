@@ -1845,7 +1845,12 @@ export async function marketVendors(ctx, player, env, { region, character = null
   const closed = shut(player, env);
   if (closed) return closed;
   if (!regionOk(region)) return { error: 'bad-region' };
-  await reckonPatrons(ctx, { region }, env).catch(() => null);   // LW15: the region's patrons first, lazily
+  // PATRON-LOAD (2026-10-10, Mac: "the newest update account service keeps failing"): THE REGION'S READ RECKONS NOTHING.
+  // Every online client standing in a living town reads it each PATRON_READ_S (scenes/world.js livingPatronsRead), and
+  // its lazy reckoning - up to PATRON_READ_STATEMENTS statements a read, one region's run by each of its readers at once,
+  // all of them on a deploy's reload - backed the database's writes up until D1 refused as overloaded and the deploy's own
+  // guest mint answered 500. The hour's cron reckons the towns waiting longest; a trader opened (/vendor) and a seller's
+  // own page (/myvendors) reckon their towns; this read tells what they sold.
   const me = typeof character === 'string' && CHAR_ID_RE.test(character) ? character : '';
   const columns = `l.*, d.map_id AS v_map, d.id AS v_id, h.building_key AS v_key, h.owner_name AS v_owner, h.player AS v_player,
       h.entry AS v_entry, (h.player = ?3 AND h.char_id = ?4) AS v_mine,
