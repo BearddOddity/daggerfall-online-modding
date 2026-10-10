@@ -76,8 +76,11 @@ harnesses that named a draw by its VAO alone and now name it by VAO and offset (
 
 `render/shadowPass.js` pointFaceMatrices runs for every lantern every frame, and made a projection, six lookAt views and
 their twenty-four arrays each time: lookAt alone was 47 KB of the 1.4 MB the night frame allocated. It writes into two
-scratches now through `world/mat4.js` lookAtInto and perspectiveInto - lookAt and perspective are those with a fresh
-array - the same arithmetic in the same order, so the same floats.
+scratches now through `lookAtInto` and `perspectiveInto` - twins of `world/mat4.js` lookAt and perspective that write
+into a given array, with mat4.js's arithmetic in its order, so its floats. They live in shadowPass.js and NOT in
+mat4.js: mat4.js is in the relay's bundle (`test/relayversion.test.js` RELAY_GRAPH), and a byte of it changed is a
+relay deploy that drops every player - the first cut put the twins there and SLAM8 caught it; mat4.js is main's, byte
+for byte.
 
 Pins: `test/perfalloc1.test.js` (2 of its 3) - every face of 4,000 random lights against the base's formulas, element
 for element (`Object.is`), and lookAt and perspective likewise; twelve lanterns' faces make no typed array. Mutants:

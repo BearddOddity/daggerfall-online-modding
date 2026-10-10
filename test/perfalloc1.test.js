@@ -2,12 +2,13 @@
 // shadow pass makes six view-projections a lantern a frame (pointFaceMatrices), and each was a fresh projection, six
 // lookAt views and their twenty-four arrays - the real game at Knightstale by night (tools/frameProbe.mjs over the
 // freeware ARENA2): lookAt alone 47 KB of the 1.4 MB the frame allocated. They are written into two scratches now, by
-// lookAtInto and perspectiveInto (world/mat4.js) - the same arithmetic in the same order, so the same floats. The
+// lookAtInto and perspectiveInto (shadowPass.js - world/mat4.js is the relay's, and its bytes stay) - mat4.js's
+// arithmetic in its order, so its floats. The
 // record is `bible/07-Rendering/Performance-Arena.md` (PERF-ALLOC1).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lookAt, lookAtInto, perspective, perspectiveInto, multiply } from '../src/world/mat4.js';
-import { pointFaceMatrices, SHADOW_POINT_NEAR } from '../src/render/shadowPass.js';
+import { lookAt, perspective, multiply } from '../src/world/mat4.js';
+import { pointFaceMatrices, lookAtInto, perspectiveInto, SHADOW_POINT_NEAR } from '../src/render/shadowPass.js';
 
 /** The base's lookAt and perspective, verbatim - the oracle. */
 function baseLookAt(eye, center, up) {
@@ -34,7 +35,7 @@ const same = (a, b) => a.length === b.length && a.every((v, i) => Object.is(v, b
 let seed = 3;
 const rnd = (s = 1) => { seed = (seed * 1103515245 + 12345) % 2147483648; return (seed / 2147483648 - 0.5) * 2 * s; };
 
-test('PERF-ALLOC1: the lanterns\' face matrices are the base\'s to the bit - over random lights (a town\'s places and a rebased origin\'s, ranges a lamp to a bonfire), each of the six view-projections equals the base\'s projection times the base\'s view, element for element; and lookAt and perspective (now through their in-place twins) answer the base\'s floats (mutants: PERFALLOC1-order, PERFALLOC1-near, PERFALLOC1-unnormalised, PERFALLOC1-centre)', () => {
+test('PERF-ALLOC1: the lanterns\' face matrices are the base\'s to the bit - over random lights (a town\'s places and a rebased origin\'s, ranges a lamp to a bonfire), each of the six view-projections equals the base\'s projection times the base\'s view, element for element; and the twins answer mat4.js\'s lookAt and perspective to the bit (mat4.js untouched: the relay\'s bundle) (mutants: PERFALLOC1-order, PERFALLOC1-near, PERFALLOC1-unnormalised, PERFALLOC1-centre)', () => {
   const out = Array.from({ length: 6 }, () => new Float32Array(16));
   for (let i = 0; i < 4000; i++) {
     const s = i % 2 ? 900 : 40000;

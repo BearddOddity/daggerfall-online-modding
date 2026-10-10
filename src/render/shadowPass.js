@@ -55,7 +55,7 @@
 //     pointShadowAt, so any number of casters costs one texture unit);
 //     the culling above is what makes 24 face replays cheap.
 
-import { lookAt, lookAtInto, multiply, ortho, perspective, perspectiveInto } from '../world/mat4.js';
+import { lookAt, multiply, ortho, perspective } from '../world/mat4.js';
 import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInCubeOf, placementsInVolume } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements
 import { billboardKey } from './billboardKey.js';   // AUDIT 68 S16-bbkey-stale-shadow-reach: re-keyed here, however the batch reached the records
 import { aabbOutside } from './frustum.js';   // SHADOW-REACH: a host's box against the cascades
@@ -546,7 +546,7 @@ const CUBE_FACES = Object.freeze([
 /** The six face view-projections of a point light at `pos` reaching `far`.
  *  `out` is six Float32Array(16). */
 export function pointFaceMatrices(pos, far, out) {
-  // PERF-ALLOC1 (2026-10-10): into two scratches - the same floats (mat4.js lookAtInto / perspectiveInto), where every
+  // PERF-ALLOC1 (2026-10-10): into two scratches - the same floats (lookAtInto / perspectiveInto, below), where every
   // lantern's every frame minted a projection, six views and their twenty-four arrays (the real game at Knightstale by
   // night: lookAt alone 47 KB a frame of the 1.4 MB the frame allocates)
   const proj = perspectiveInto(_faceProj, Math.PI / 2, 1, SHADOW_POINT_NEAR, far);
@@ -557,6 +557,38 @@ export function pointFaceMatrices(pos, far, out) {
   return out;
 }
 const _faceProj = new Float32Array(16), _faceView = new Float32Array(16);
+/** PERF-ALLOC1: world/mat4.js lookAt written into `out` (a Float32Array(16)), the centre as three numbers - its
+ *  arithmetic in its order, so its floats; nothing allocated. HERE and not in mat4.js: mat4.js is in the relay's bundle
+ *  (test/relayversion.test.js RELAY_GRAPH), and a byte of it changed is a relay deploy - the client's own scratch twin
+ *  costs the relay nothing. test/perfalloc1.test.js holds it to mat4.js's lookAt to the bit. */
+export function lookAtInto(out, eye, cx, cy, cz, up) {
+  const zx = eye[0] - cx, zy = eye[1] - cy, zz = eye[2] - cz;
+  const zl = Math.hypot(zx, zy, zz);
+  const z0 = zx / zl, z1 = zy / zl, z2 = zz / zl;
+  let x0 = up[1] * z2 - up[2] * z1, x1 = up[2] * z0 - up[0] * z2, x2 = up[0] * z1 - up[1] * z0;
+  const xl = Math.hypot(x0, x1, x2);
+  x0 /= xl; x1 /= xl; x2 /= xl;
+  const y0 = z1 * x2 - z2 * x1, y1 = z2 * x0 - z0 * x2, y2 = z0 * x1 - z1 * x0;
+  out[0] = x0; out[1] = y0; out[2] = z0; out[3] = 0;
+  out[4] = x1; out[5] = y1; out[6] = z1; out[7] = 0;
+  out[8] = x2; out[9] = y2; out[10] = z2; out[11] = 0;
+  out[12] = -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);
+  out[13] = -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]);
+  out[14] = -(z0 * eye[0] + z1 * eye[1] + z2 * eye[2]);
+  out[15] = 1;
+  return out;
+}
+/** PERF-ALLOC1: world/mat4.js perspective written into `out` (every element: the rest zero, as a new array's). */
+export function perspectiveInto(out, fovYRad, aspect, near, far) {
+  const f = 1 / Math.tan(fovYRad / 2);
+  out.fill(0);
+  out[0] = f / aspect;
+  out[5] = f;
+  out[10] = (far + near) / (near - far);
+  out[11] = -1;
+  out[14] = (2 * far * near) / (near - far);
+  return out;
+}
 
 /** The depth the cube map holds for a point at `(dx, dy, dz)` from the
  *  light: the major axis is the face's view depth, and this is that depth

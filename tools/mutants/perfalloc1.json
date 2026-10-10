@@ -1,7 +1,7 @@
 [
   {
     "name": "PERFALLOC1-order",
-    "file": "src/world/mat4.js",
+    "file": "src/render/shadowPass.js",
     "old": "  out[12] = -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);",
     "new": "  out[12] = -(x2 * eye[2] + x1 * eye[1] + x0 * eye[0]);",
     "tests": [
@@ -21,7 +21,7 @@
   },
   {
     "name": "PERFALLOC1-unnormalised",
-    "file": "src/world/mat4.js",
+    "file": "src/render/shadowPass.js",
     "old": "  x0 /= xl; x1 /= xl; x2 /= xl;\n  const y0",
     "new": "  x0 /= xl; x1 /= xl;\n  const y0",
     "tests": [
@@ -48,7 +48,7 @@
   },
   {
     "name": "PERFALLOC1-into-stale",
-    "file": "src/world/mat4.js",
+    "file": "src/render/shadowPass.js",
     "old": "  out.fill(0);\n  out[0] = f / aspect;",
     "new": "  out[0] = f / aspect;",
     "tests": [
