@@ -56,7 +56,7 @@ stood on, where it landed (`validParkYeet`). An owner away when it happened is t
 cell: re-saying the spot it was thrown from is answered with the throw. A word that moves the team clears the mark (and
 starts its clock again).
 
-**The version.** `world190` (`RELAY_VERSION` - `world188` then `world189` on its branch, renumbered past INT11-INT14's `world188` when it was rebased onto main and past SCALE5a's `world189` at the merge after it; `WARDEN_RELAY_MIN`, `relaySupportsWarden`). An older relay drops `ly`,
+**The version.** `world191` (`RELAY_VERSION` - `world188`, `world189` then `world190` on its branch, renumbered past INT11-INT14's `world188` when it was rebased onto main, past SCALE5a's `world189` at the merge after it and past AUDIT MW-NPC II's `world190` at the next; `WARDEN_RELAY_MIN`, `relaySupportsWarden`). An older relay drops `ly`,
 `tw` and `rd` and throws nothing; the client sends them to any relay. **NOT YET DEPLOYED - its deploy drops every
 player once.**
 
@@ -83,7 +83,7 @@ came.
 
 **Offline** (no online session at all) the client is the watch: the road's rule alone on the stamp's own clock
 (`offlineDue`) - a wagon left on a road and loaded an hour later is thrown on the load. A town holds nobody else's team
-offline, so there is no crowd. Online the cell alone throws; a relay before `world190` throws nothing.
+offline, so there is no crowd. Online the cell alone throws; a relay before `world191` throws nothing.
 
 ## The throw, played (`scenes/wagonWardenShow.js`)
 
@@ -104,6 +104,14 @@ are metres off where the wagon stood, its origin in the wire frame, so a recentr
 (a re-anchor, a load) ends every show and sets its team down. Every billboard it made is let go at its end (EVERY
 ALLOCATION HAS AN OWNER). The clock waits up to `SHOW_ART_WAIT` for the guard's picture; one that never comes plays the
 throw with no guard.
+
+## Beside MW-NPC (the merge of #750, 2026-10-10)
+
+MW-NPC stands the city watch's guards in Morrowind bodies (`scenes/cityGuards.js`, MWNPC6), and its census
+(`test/mwnpc_census.test.js`) holds every source that draws a living actor's sprite to a body lane or a declared reason.
+The thrower keeps its sprite, DECLARED there: the ask was the wagon "on top of their sprite", the gag is the sprite
+under the wagon, and a body has no lift to stand it in - with the bodies on, the watch that patrols is in bodies and the
+one that throws is the guards' picture. Standing the thrower in a body (a carry and a throw clip) is its own work.
 
 ## The four hosts
 
