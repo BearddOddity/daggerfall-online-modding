@@ -14,6 +14,10 @@ AUDITED the same day (the owner: "Lets do an audit on this"): five cold lanes ov
 fixed, pinned and mutated or recorded - `01-Overview/Audit-Perf-Priority.md`. What the audit changed is written into
 each section below as it now stands.
 
+PEER-RANGE (the same day; the owner: "So for online performance, I believe the rendering of players far out is
+contributing to poor performance") pulled the crowds' lever 5 below, and it DOES move the picture: past a distance the
+player chooses (300 m by default) another player is not drawn. Its section is after PERF-NAMES.
+
 ## How the pass was run
 
 NOT IN THE REAL GAME. The frame probe (`tools/frameProbe.mjs`, PERF-NEXT's recipe) needs the freeware ARENA2, and its
@@ -251,6 +255,69 @@ Pins: `test/name1_bubbles.test.js` reads the place from the transform (and never
 `tools/mutants/name1.json`'s gap and stack mutants re-aimed at the transform (the sheet's own translate is now the
 place's until the first write); 67 dead, 3 equivalent as recorded.
 
+## PEER-RANGE — the others drawn as far as they can be seen
+
+**Asked** (the owner, 2026-10-10): *"So for online performance, I believe the rendering of players far out is
+contributing to poor performance."*
+
+**Found.** A world cell hands the screen every player within the relay's range - `RANGE_PIXELS`, three map pixels
+either way, nearly 2,500 m (`net/wire.js` `inRange`, the session's `drawable`) - and the online frame handed that whole
+list to every layer. The rider and the walker were stepped and placed, the walker's lantern hung and DRAWN with no cull at
+all (`peerWalkers.drawLanterns`), an aura's cape posed, a cast's missile flown from a figure two kilometres off, a blow's
+spark struck (`peerFxFrame`), and each class sprite's `MobileUnit` stepped, faced and its frame uploaded
+(`RemotePlayers._syncMobilePeer`). The billboard pass culls a peer off the screen (PERF-ON2) but not a far one in front
+of the eye: that is a draw, two binds and its uniforms, and a shadow record when a cascade reaches it. The Morrowind
+rigs already slept past `BODY_RANGE` (120), the names past `NAME_RANGE` (60), the lights past `PEER_LIGHT_RANGE` (64)
+and the steps past `PEER_SOUND_PROFILE`'s 30 m; the sprites, the walkers, the riders, the lanterns, the auras, the casts
+and the sparks had no distance at all.
+
+**Measured** (`tools/peerRangeProbe.mjs`: the real cut in front of the real `RemotePlayers` on its class-sprite path and
+the real `Renderer.drawBillboards` over a counting GL; node 22, this container's CPU, the milliseconds relative only).
+A walking crowd in front of the eye, a few within 120 m and the rest spread from 320 m to the relay's edge:
+
+| crowd (near) | drawn at Everyone | GL calls / draws a frame | drawn at 300 m | GL calls / draws a frame | `sync` ms, Everyone -> 300 m |
+|---|---|---|---|---|---|
+| 20 (5) | 20 | 94.5 / 20 | 5 | 38.4 / 5 | 0.044 -> 0.010 |
+| 60 (10) | 60 | 229.7 / 60 | 10 | 59.0 / 10 | 0.055 -> 0.009 |
+| 120 (15) | 120 | 432.2 / 120 | 15 | 76.7 / 15 | 0.109 -> 0.010 |
+
+That is the class sprite's pass alone; the walkers, the riders, their lanterns, the auras, the casts and the sparks are
+cut by the same list and are not in it. The session's own play-out (`online.tick`, every peer of every room held) was
+measured beside it with PERF-ON's probe - 0.028 ms a frame at 100 peers - and LEFT: the map's marks, the foes' owners and
+the range itself read the pose it plays.
+
+**The fix** (`net/peerRange.js`). GATE-CROWD's cut, by distance in place of a count, run on the online frame's drawn
+list just before the court's own (`scenes/world.js` `ranged`): past the distance on the Other players card a player
+stands nowhere on this screen - no body, sprite, name, light, cast, spark or step - and their map marks, taken off the
+whole list above it, stay.
+- THE CHOICES: 150, 300 or 600 m on the ground, or Everyone (`PEER_RANGE_TIERS`; `systems/uiPrefs.js` `peerRange`, a
+  literal pinned equal to the law's for GATE-CROWD's boot-path reason; the card's Draw distance row,
+  `ui/enhancedMenu.js` `peerSpritesCard`).
+- THE DEFAULT, 300 m, IS PAST A SHOT'S REACH: a missile or an arrow flies `MISSILE_SPEED` for `MISSILE_LIFESPAN_S`, an
+  aimed one x1.3 (`BLOW.aimed.speed`) - 260 m. Nobody who can reach me with a shot is cut at the default; the near tier
+  can hide an archer, and its row says so. At 300 m a figure 1.8 m tall is five or six pixels on a 1080-line screen.
+- ALWAYS DRAWN: a party mate, and the player I duel (`duelMgr.opponent`), whatever the distance.
+- NEVER CUT UNDER THE TRAVEL VIEW: OW-PEERS grows every player to be seen from up to 450 m overhead, across more ground
+  than any tier.
+- HELD AT THE EDGE: a player drawn last frame is kept to `PEER_RANGE_HOLD` (1.1) times the range, so one walking along
+  it is not torn down and built again at every step - a mobile sprite's bundle and a walker's figure go with the peer.
+- THE DOORS: `shows(id)` is false only for a player the cut left out - the crosshair's pick and the plaque and a gift's
+  aim (`crowdDrawnHere`) and a blow's spark and a cry (`peerFxFrame`) ask it, as they ask GATE-CROWD's.
+
+THE FOUR HOSTS: `scenes/world.js` WIRED - its online frame is the one that draws other players, and the interior
+(`scenes/worldModes.js`) and the dungeon (`scenes/dungeonContext.js`) draw the list it cuts, through the host's
+`extraBillboards` and `drawPeerBodies`; `scenes/exterior.js` (the fixed city) runs no online session, so there is nobody
+to cut.
+
+Pins: `test/peerrange.test.js` (8) - the choices and the shelf, the default against a shot's reach, the law and its
+hold, the host's range and what it shows, the real `RemotePlayers` letting a sprite go past the hold and building it
+again inside, the online frame's cut (evaluated as the frame asks it) and its doors, the card. Mutants:
+`tools/mutants/peerrange.json`, 29 dead. GATE-CROWD's online-frame pin and INVIS-NET's moved with the line (the court's
+count is cut from `ranged` now); `tools/mutants/gatecrowd.json`'s spark and drawn-here mutants re-aimed, 45 dead.
+
+NOT SEEN ON A GPU OR IN THE REAL GAME: no ARENA2 and no GL here. The owner's eye is the next gate - a crowded city
+online at the default and at Everyone.
+
 ## What is left, ranked
 
 Each with what was found and whether it moves the picture (those are the owner's).
@@ -277,9 +344,9 @@ Each with what was found and whether it moves the picture (those are the owner's
 4. **The Morrowind bodies** - each visible body (up to 8) renders into the shared sprite target: two framebuffer
    switches, and the frame's uniform block - 48 lights among it - sent again after it. A body that did not re-skin and
    whose view moved little could keep its sprite. Moves the body's look on the frames it is kept.
-5. **The sprite peers** have no distance tier and no cap inside the relay's three map pixels: every drawable peer's
-   footsteps, mobile and riding clocks run every frame, seen or not; `online.tick` lerps (and allocates) a pose for
-   every peer of every room held open. A far tier changes what a far player sees.
+5. **The sprite peers** - a distance tier since PEER-RANGE (above): past the card's distance nobody is stepped or drawn.
+   Left: within it there is still no cap - a crowd inside 300 m is every one of its sprites; and `online.tick` plays a
+   pose for every peer of every room held open (measured small, 0.028 ms a frame at 100).
 6. **The Living World's dodge** walks the whole pool for each walker each frame, with an array and a sort a walker
    (`livingTown.js _dodge`). Nothing a player sees - and measured small: a street's frame is 0.2 ms mean in the great
    city (`tools/livingPerfProbe.mjs`, the pool 96 at most), the dodge a part of it.
@@ -305,4 +372,4 @@ governor - each the owner's.
 - **The A/B this branch owes**: on a machine with the data, `ARENA2_PATH=... node tools/frameProbe.mjs knight night`
   with `TREE=` the base, then this branch (`node tools/frameAb.mjs` reads the two) - the frame's own script time
   is what PERF-V8 moves, and a crowded town with yards is where PERF-YARD, PERF-INST and PERF-COL2 show.
-- **The picture's levers** above (1, 4, 5, 6b, 7) are yours: each trades a little of what is seen for frame time.
+- **The picture's levers** above (1, 4, 6b, 7) are yours - and 5's distance is the Other players card's now (PEER-RANGE): each trades a little of what is seen for frame time.

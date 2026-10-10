@@ -141,6 +141,11 @@ export const PREF_DEFAULTS = Object.freeze({
   // test/gatecrowd.test.js and not imported: the shelf is on the boot path, and the import made net/gateCrowd.js the
   // entry's 69th file, past BOOT2's ceiling (test/boot2.test.js)
   gateCrowd: 0,
+  // PEER-RANGE (2026-10-10, the owner: "the rendering of players far out is contributing to poor performance"): how far
+  // out, in metres on the ground, other players are drawn - my party and the one I duel always (net/peerRange.js
+  // PEER_RANGE_TIERS; 0 everyone the relay sends). The default 300, past a shot's reach; its PEER_RANGE_DEFAULT, pinned
+  // equal by test/peerrange.test.js and not imported, for GATE-CROWD's reason above
+  peerRange: 300,
   nightCrickets: true,   // SNDREP1: the night crickets loop (SoundClips.AmbientCrickets) - on by default; off silences it
   distantHowl: true,     // SNDREP1: the distant howl (SoundClips.AmbientDistantHowl) - on by default; off silences it
   // WS1: `mwSheathing` (Weapon Sheathing on the third-person body) is
