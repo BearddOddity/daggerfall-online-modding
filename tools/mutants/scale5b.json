@@ -1,0 +1,222 @@
+[
+  {
+    "name": "SCALE5b-default-kept",
+    "file": "src/net/wire.js",
+    "old": "    if (POSE_DEFAULTS[k] === v) continue;\n",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "every default said - the slim pose no slimmer"
+  },
+  {
+    "name": "SCALE5b-field-dropped",
+    "file": "src/net/wire.js",
+    "old": "export const POSE_DEFAULTS = Object.freeze({ mv: 0, wd: 0, an: 0, as: 0, am: 0, sr: 0, cn: 0, cr: 0, ce: 4, ar: 0, fk: 0 });",
+    "new": "export const POSE_DEFAULTS = Object.freeze({ mv: 0, wd: 0, an: 0, as: 0, am: 0, sr: 0, cn: 0, cr: 0, ce: 0, ar: 0, fk: 0 });",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the cast's element dropped at Fire - a reader fills Magic back"
+  },
+  {
+    "name": "SCALE5b-place-unrounded",
+    "file": "src/net/wire.js",
+    "old": "    out[k] = k === 'x' || k === 'y' || k === 'z' ? Math.round(v) : ",
+    "new": "    out[k] = k === 'x' || k === 'y' || k === 'z' ? v : ",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the place whole bytes of a double"
+  },
+  {
+    "name": "SCALE5b-turn-coarse",
+    "file": "src/net/wire.js",
+    "old": "k === 'yaw' || k === 'pitch' ? Math.round(v * 1e4) / 1e4 : v;",
+    "new": "k === 'yaw' || k === 'pitch' ? Math.round(v * 1e2) / 1e2 : v;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the turn to a hundredth - a peer's facing steps"
+  },
+  {
+    "name": "SCALE5b-offer-unread",
+    "file": "src/net/wire.js",
+    "old": "    if (m.w2 === 1) hello.w2 = 1;\n",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the hello's offer dropped at the door"
+  },
+  {
+    "name": "SCALE5b-offer-refused",
+    "file": "src/net/wire.js",
+    "old": "    if (m.w2 === 1) hello.w2 = 1;\n",
+    "new": "    if (m.w2 !== undefined && m.w2 !== 1) return { error: 'bad wire' };\n    if (m.w2 === 1) hello.w2 = 1;\n",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a later build's offer refused - it cannot get in on the wire both know"
+  },
+  {
+    "name": "SCALE5b-offer-loose",
+    "file": "src/net/wire.js",
+    "old": "    if (m.w2 === 1) hello.w2 = 1;\n",
+    "new": "    if (m.w2) hello.w2 = 1;\n",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "any truthy offer read as this one"
+  },
+  {
+    "name": "SCALE5b-attach-unwritten",
+    "file": "server/src/index.js",
+    "old": "...(m.w2 === 1 ? { w2: 1 } : {})",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the socket's offer never kept - every listener the first wire's"
+  },
+  {
+    "name": "SCALE5b-batch-skipped",
+    "file": "server/src/index.js",
+    "old": "      if (b.w2) this._queuePose(other, entry ??= JSON.stringify([a.id, slimPose(m.p)]));",
+    "new": "      if (b.w2) this._send(other, JSON.stringify({ t: 'poses', l: [[a.id, slimPose(m.p)]] }));",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a batch a pose - the second wire's frame count the first's"
+  },
+  {
+    "name": "SCALE5b-entry-whole",
+    "file": "server/src/index.js",
+    "old": "entry ??= JSON.stringify([a.id, slimPose(m.p)])",
+    "new": "entry ??= JSON.stringify([a.id, m.p])",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the whole pose in the batch"
+  },
+  {
+    "name": "SCALE5b-legacy-slimmed",
+    "file": "server/src/index.js",
+    "old": "      else this._send(other, out ??= JSON.stringify({ t: 'pose', id: a.id, p: m.p }));",
+    "new": "      else this._send(other, out ??= JSON.stringify({ t: 'pose', id: a.id, p: slimPose(m.p) }));",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "an old tab handed the slim pose"
+  },
+  {
+    "name": "SCALE5b-no-flush-ahead",
+    "file": "server/src/index.js",
+    "old": "    if (this._poseQ.size && this._poseQ.has(ws)) this._flushPosesOf(ws);",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a leave overtakes the pose said before it"
+  },
+  {
+    "name": "SCALE5b-queue-kept",
+    "file": "server/src/index.js",
+    "old": "  _forget(ws) { this._poseQ.delete(ws); ",
+    "new": "  _forget(ws) { ",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a socket gone still owed its batch"
+  },
+  {
+    "name": "SCALE5b-no-timer",
+    "file": "server/src/index.js",
+    "old": "    if (!this._poseFlush) this._poseFlush = setTimeout(() => this._flushPoses(), POSE_BATCH_MS);",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the batch waits for some other frame to carry it"
+  },
+  {
+    "name": "SCALE5b-timer-a-pose",
+    "file": "server/src/index.js",
+    "old": "    if (!this._poseFlush) this._poseFlush = setTimeout(() => this._flushPoses(), POSE_BATCH_MS);",
+    "new": "    this._poseFlush = setTimeout(() => this._flushPoses(), POSE_BATCH_MS);",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a timer a pose"
+  },
+  {
+    "name": "SCALE5b-hello-unoffered",
+    "file": "src/net/online.js",
+    "old": "    if (this.wire2) frame.w2 = 1;",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the session never offers"
+  },
+  {
+    "name": "SCALE5b-batch-unread",
+    "file": "src/net/online.js",
+    "old": "    if (m.t === 'poses') { this._poses(m, room); return; }",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a batch read as an unknown frame"
+  },
+  {
+    "name": "SCALE5b-entry-skipped",
+    "file": "src/net/online.js",
+    "old": "    for (let i = 0; i < l.length && i < POSES_BATCH_MAX; i++) {",
+    "new": "    for (let i = 1; i < l.length && i < POSES_BATCH_MAX; i++) {",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a batch's first pose lost"
+  },
+  {
+    "name": "SCALE5b-bound-unasked",
+    "file": "src/net/online.js",
+    "old": "    for (let i = 0; i < l.length && i < POSES_BATCH_MAX; i++) {",
+    "new": "    for (let i = 0; i < l.length; i++) {",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a relay's batch read however long"
+  },
+  {
+    "name": "SCALE5b-entry-unchecked",
+    "file": "src/net/online.js",
+    "old": "      if (Array.isArray(e)) this._frame({ t: 'pose', id: e[0], p: e[1] }, room);",
+    "new": "      this._frame({ t: 'pose', id: e[0], p: e[1] }, room);",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "an entry that is no array read - a null entry throws out of the batch, and the poses after it are lost"
+  },
+  {
+    "name": "SCALE5b-world-presence",
+    "file": "src/scenes/world.js",
+    "old": "      wire2: true,   // SCALE5b: the second wire",
+    "new": "      wire2: false,   // SCALE5b: the second wire",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the presence session never asks"
+  },
+  {
+    "name": "SCALE5b-world-link",
+    "file": "src/scenes/world.js",
+    "old": "presence: false, wave: pageWave, wire2: true });   // SCALE2c: the page's one wave; SCALE5b: the second wire\n      link.onChat",
+    "new": "presence: false, wave: pageWave });   // SCALE2c: the page's one wave; SCALE5b: the second wire\n      link.onChat",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a chat link never asks"
+  }
+]

@@ -626,7 +626,7 @@ test('CHAT-R2/ROSTER-G: the roster is the ACTIVE CHANNEL’s - everyone online, 
   assert.match(world, /roster: \(\) => chatRosterOf\(chatLog\?\.active\),/);
   assert.match(world, /const chatSessionOf = \(tabId\) => \(tabId === 'local' \? online : tabId === 'party' \|\| tabId === 'guild' \? chatLinks\?\.get\('world'\) : chatLinks\?\.get\(tabId\)\) \?\? online \?\? null;/);
   assert.match(world, /const s = chatSessionOf\(tabId\);/, 'the World and Region tabs read the session of their own channel');
-  assert.match(world, /new OnlineSession\(\{ url: online\.url[^)]*presence: false(?:, wave: pageWave)? \}\)/,   // PIN MOVED (SCALE2c): the page's one wave rides beside it
+  assert.match(world, /new OnlineSession\(\{ url: online\.url[^)]*presence: false(?:, wave: pageWave)?(?:, wire2: true)? \}\)/,   // PIN MOVED (SCALE2c): the page's one wave rides beside it; PIN MOVED (SCALE5b): and the second wire
     'the chat links really are presence-less, which is why the roster cannot come from them');
 
   // a panel built WITHOUT a roster hides the column rather than drawing an empty one

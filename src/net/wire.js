@@ -1448,6 +1448,31 @@ export function poseChanged(a, b, eps = 0.01) {
     || (a.st | 0) !== (b.st | 0);   // CARDS2b: sitting down or standing up goes out at once, as a mount does
 }
 
+/** SCALE5b (2026-10-10, Mac: "lets now tackle the bigger work ... really future proof our archetecture while also
+ *  increasing performance"; bible/11-Multiplayer/Scale-Arc.md SCALE5b): THE SECOND WIRE'S POSES. A socket whose hello
+ *  says `w2` hears the room's poses BATCHED - every pose fanned to it within POSE_BATCH_MS goes out as one frame,
+ *  `{ t: 'poses', l: [[id, pose], ...] }` - where it heard one frame a pose: in a full cell about 88 sends a pose became
+ *  about one frame a listener a batch. Each pose in a batch is SLIM: the fields at the value validPose would fill them
+ *  with are left out (validPose fills them back, at every reader), and the place and the turn are rounded to what a
+ *  reader can see - whole world units (PIXEL_UNITS 32768 to a map pixel: 2.5 cm) and a ten-thousandth of a radian. A
+ *  socket that says no `w2` hears every pose as it always has, byte for byte. */
+export const POSE_BATCH_MS = 50;
+/** SCALE5b: the most entries a reader takes from one batch - a room's every socket, twice over. */
+export const POSES_BATCH_MAX = 2 * 256;
+/** SCALE5b: the fields validPose always writes, at the value it writes for a pose that never set them. */
+export const POSE_DEFAULTS = Object.freeze({ mv: 0, wd: 0, an: 0, as: 0, am: 0, sr: 0, cn: 0, cr: 0, ce: 4, ar: 0, fk: 0 });
+/** SCALE5b: a validated pose (validPose's own) as the second wire carries it - its defaults left out, its place and turn
+ *  rounded. validPose(slimPose(p)) is p, but for the rounding. */
+export function slimPose(p) {
+  const out = {};
+  for (const k of Object.keys(p)) {
+    const v = p[k];
+    if (POSE_DEFAULTS[k] === v) continue;
+    out[k] = k === 'x' || k === 'y' || k === 'z' ? Math.round(v) : k === 'yaw' || k === 'pitch' ? Math.round(v * 1e4) / 1e4 : v;
+  }
+  return out;
+}
+
 /** A pose the room will relay, or null. */
 export function validPose(p) {
   if (!p || typeof p !== 'object') return null;
@@ -1909,6 +1934,10 @@ export function parseClient(text, { hasHello = false } = {}) {
       if (typeof m.sp !== 'string' || !TOKEN_RE.test(m.sp)) return { error: 'bad pass' };
       hello.sp = m.sp;
     }
+    // SCALE5b: the second wire, OFFERED (POSE_BATCH_MS) - 1 or nothing. Unlike a claim, any other value is read as no
+    // offer rather than refused: an offer is the one field a later build will grow (a third form), and a relay that
+    // does not know it must still let that build in on the wire both know.
+    if (m.w2 === 1) hello.w2 = 1;
     return hello;
   }
   if (m.t === 'pose') {
