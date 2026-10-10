@@ -138,13 +138,16 @@ export function createRoadTeams({ renderer, presentation, collider = () => null 
     },
     /** This frame's horse billboards (the exterior's billboard pass). */
     batches: () => drawn,
-    /** The wagons, in the host's world mesh pass. @param {any} r @param {any} [texRemap] */
-    draw(r, texRemap = null) {
+    /** The wagons, in the host's world mesh pass. PERF-WAGON: `cull` the host's view test (scenes/world.js yardCull) -
+     *  each wagon by the pool's one law (horseCartPool.js drawWagonSeen: drawn, cast alone or neither); none, drawn as
+     *  before. Answers how many were drawn on screen. @param {any} r @param {any} [texRemap] @param {any} [cull] */
+    draw(r, texRemap = null, cull = null) {
       const pres = presentation();
       if (!pres?.drawWagon) return 0;
       let n = 0;
       // WAGONS2's draw: its wheels' `turn` an object, the kind the road's, hitched as it stands (unhitched at camp)
-      for (const w of wagons) if (pres.drawWagon(r, texRemap, w.position, w.rotation, w.tier, { angle: w.angle }, w.grow, ROAD_WAGON_KIND, w.hitched)) n++;
+      const one = cull && pres.drawWagonSeen ? (/** @type {any[]} */ ...a) => pres.drawWagonSeen(r, cull, texRemap, ...a) : (/** @type {any[]} */ ...a) => pres.drawWagon(r, texRemap, ...a);
+      for (const w of wagons) if (one(w.position, w.rotation, w.tier, { angle: w.angle }, w.grow, ROAD_WAGON_KIND, w.hitched)) n++;
       return n;
     },
     /** What stands this frame (the probes; the pins). */

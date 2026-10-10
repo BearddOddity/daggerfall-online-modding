@@ -288,15 +288,6 @@
     ]
   },
   {
-    "name": "LW15-vendors-reckon",
-    "file": "server-account/src/market.js",
-    "old": "  await reckonPatrons(ctx, { region }, env).catch(() => null);",
-    "new": "  void region;",
-    "tests": [
-      "test/lw15_patrons.test.js"
-    ]
-  },
-  {
     "name": "LW15-my-reckon",
     "file": "server-account/src/market.js",
     "old": "  await reckonPatrons(ctx, { maps: [...new Set(traders.map((v) => Number(v.map_id)))] }, env).catch(() => null);",
