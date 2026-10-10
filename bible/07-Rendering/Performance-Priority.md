@@ -261,12 +261,13 @@ place's until the first write); 67 dead, 3 equivalent as recorded.
 contributing to poor performance."*
 
 **Found.** A world cell hands the screen every player within the relay's range - `RANGE_PIXELS`, three map pixels
-either way, nearly 2,500 m (`net/wire.js` `inRange`, the session's `drawable`) - and the online frame handed that whole
-list to every layer. The rider and the walker were stepped and placed, the walker's lantern hung and DRAWN with no cull at
-all (`peerWalkers.drawLanterns`), an aura's cape posed, a cast's missile flown from a figure two kilometres off, a blow's
-spark struck (`peerFxFrame`), and each class sprite's `MobileUnit` stepped, faced and its frame uploaded
-(`RemotePlayers._syncMobilePeer`). The billboard pass culls a peer off the screen (PERF-ON2) but not a far one in front
-of the eye: that is a draw, two binds and its uniforms, and a shadow record when a cascade reaches it. The Morrowind
+either way: 2.5 km pixel to pixel, up to 3.3 km along an axis (`net/wire.js` `inRange`, the session's `drawable`) - and
+the online frame handed that whole list to every layer. The rider and the walker were stepped and placed, the walker's
+lantern hung and swung, an aura's cape posed, a cast's missile flown from a figure two kilometres off, a blow's spark
+struck (`peerFxFrame`), and each class sprite's `MobileUnit` stepped, faced and its frame uploaded
+(`RemotePlayers._syncMobilePeer`). The renderer culls what is off the screen - the peers' billboards in the host's pass
+(PERF-ON2) and every `drawBillboards` call, the lanterns' among them (PERF-CROWD2) - but nothing culled a far one in
+front of the eye: that is a draw, two binds and its uniforms, and a shadow record when a cascade reaches it. The Morrowind
 rigs already slept past `BODY_RANGE` (120), the names past `NAME_RANGE` (60), the lights past `PEER_LIGHT_RANGE` (64)
 and the steps past `PEER_SOUND_PROFILE`'s 30 m; the sprites, the walkers, the riders, the lanterns, the auras, the casts
 and the sparks had no distance at all.
@@ -293,27 +294,38 @@ whole list above it, stay.
 - THE CHOICES: 150, 300 or 600 m on the ground, or Everyone (`PEER_RANGE_TIERS`; `systems/uiPrefs.js` `peerRange`, a
   literal pinned equal to the law's for GATE-CROWD's boot-path reason; the card's Draw distance row,
   `ui/enhancedMenu.js` `peerSpritesCard`).
-- THE DEFAULT, 300 m, IS PAST A SHOT'S REACH: a missile or an arrow flies `MISSILE_SPEED` for `MISSILE_LIFESPAN_S`, an
-  aimed one x1.3 (`BLOW.aimed.speed`) - 260 m. Nobody who can reach me with a shot is cut at the default; the near tier
-  can hide an archer, and its row says so. At 300 m a figure 1.8 m tall is five or six pixels on a 1080-line screen.
-- ALWAYS DRAWN: a party mate, and the player I duel (`duelMgr.opponent`), whatever the distance.
+- THE DEFAULT, 300 m, IS PAST A SHOT'S REACH: another player's arrow or spell flies `MISSILE_SPEED` for
+  `MISSILE_LIFESPAN_S` - 200 m (the one faster shot is a foe archer's aimed one, x1.3 `BLOW.aimed.speed`, 260 m - short of
+  the default too). Nobody who can reach me with a shot is cut at the default; the near tier can hide an archer, and its
+  row says so. At 300 m a figure 1.8 m tall is five or six pixels on a 1080-line screen.
+- ALWAYS DRAWN: a party mate, and the player I duel from its count on (`duelMgr.opponent`), whatever the distance. The
+  distance is asked first, the party only of a player past it (its answer allocates).
 - NEVER CUT UNDER THE TRAVEL VIEW: OW-PEERS grows every player to be seen from up to 450 m overhead, across more ground
   than any tier.
 - HELD AT THE EDGE: a player drawn last frame is kept to `PEER_RANGE_HOLD` (1.1) times the range, so one walking along
-  it is not torn down and built again at every step - a mobile sprite's bundle and a walker's figure go with the peer.
+  it is not torn down and built again at every step. A cut player's sprite batch and walker figure go with them; the
+  class sprite's bundle stays while they are in the room, so one walking back in is drawn as their sprite that frame.
+- THE ROOM'S WHOLE LIST: `RemotePlayers.sync` takes it beside the cut list (`room`) - a resurrection is seen in it, and a
+  cut player keeps their sprite's bundle by it.
 - THE DOORS: `shows(id)` is false only for a player the cut left out - the crosshair's pick and the plaque and a gift's
   aim (`crowdDrawnHere`) and a blow's spark and a cry (`peerFxFrame`) ask it, as they ask GATE-CROWD's.
 
-THE FOUR HOSTS: `scenes/world.js` WIRED - its online frame is the one that draws other players, and the interior
-(`scenes/worldModes.js`) and the dungeon (`scenes/dungeonContext.js`) draw the list it cuts, through the host's
-`extraBillboards` and `drawPeerBodies`; `scenes/exterior.js` (the fixed city) runs no online session, so there is nobody
-to cut.
+THE FOUR HOSTS: `scenes/world.js` WIRED - its online frame is the one that draws other players. The interior and the
+dungeon are drawn by `scenes/worldModes.js`, which takes the list it cuts through the host's `extraBillboards` and
+`drawPeerBodies`; `scenes/dungeonContext.js` draws no other player; `scenes/exterior.js` (the fixed city) runs no online
+session, so there is nobody to cut.
 
-Pins: `test/peerrange.test.js` (8) - the choices and the shelf, the default against a shot's reach, the law and its
-hold, the host's range and what it shows, the real `RemotePlayers` letting a sprite go past the hold and building it
-again inside, the online frame's cut (evaluated as the frame asks it) and its doors, the card. Mutants:
-`tools/mutants/peerrange.json`, 29 dead. GATE-CROWD's online-frame pin and INVIS-NET's moved with the line (the court's
-count is cut from `ranged` now); `tools/mutants/gatecrowd.json`'s spark and drawn-here mutants re-aimed, 45 dead.
+Pins: `test/peerrange.test.js` (10) - the choices and the shelf, the default against a player's shot, the law on both
+axes with me off the origin and its hold, the party asked last, the host's range (the held set forgotten on every way it
+stands down, the default range), the real `RemotePlayers` letting a sprite go past the hold and taking it back as its
+sprite in one frame with no compose, a resurrection seen in the room, the online frame's cut (evaluated as the frame asks
+it, the duel manager's own shape) and its doors, the card reading the law. Mutants: `tools/mutants/peerrange.json`, 42
+dead. Moved with the line: GATE-CROWD's online-frame pin, INVIS-NET's (twice: the cut, and the dolls' sync handed the
+room), MWBODY1's (the same two), OW-PEERS' and INVIS-LOOK's sync pins, and the boat marker's slice; `tools/mutants/gatecrowd.json`'s spark and drawn-here
+mutants re-aimed, 45 dead.
+
+AUDITED the same day (`01-Overview/Audit-Peer-Range-Halo-Thin.md`): what it changed is written into this section as it
+now stands.
 
 NOT SEEN ON A GPU OR IN THE REAL GAME: no ARENA2 and no GL here. The owner's eye is the next gate - a crowded city
 online at the default and at Everyone.

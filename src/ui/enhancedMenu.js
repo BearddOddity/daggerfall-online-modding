@@ -129,7 +129,7 @@ import { getPref, setPref, isOpen, setOpen, PREF_DEFAULTS } from '../systems/uiP
 import { TOUCH_BUTTON_SLOTS, touchButtonSlots, nextTouchButton, touchButtonChoices } from './touchButtons.js';   // TOUCH-BUTTONS: the corner's three slots
 import { DEFAULT_SERVER } from '../net/online.js';   // ONLINE1: the relay this port hosts, the field's placeholder   // R7: the port's own switches; SO1: the folded tiers' memory
 import { GATE_CROWD_TIERS } from '../net/gateCrowd.js';   // GATE-CROWD: how many other players a gate's court draws
-import { PEER_RANGE_TIERS } from '../net/peerRange.js';   // PEER-RANGE: how far out other players are drawn
+import { PEER_RANGE_TIERS, peerRangeOf } from '../net/peerRange.js';   // PEER-RANGE: how far out other players are drawn, and the distance a stored value stands for
 import { replacementCount } from '../systems/musicReplacement.js';   // M-EXT: the packs card reports what the pick covers
 import { brandMark } from './brandMark.js';   // INTRO2: Mac's supplied logo, shared with the final splash
 import { soundReplacementCount } from '../systems/soundReplacer.js';   // SNDREP1: the sound pack's count
@@ -2807,10 +2807,11 @@ function peerSpritesCard() {
   c.append(prefRow('peerAttackSounds', 'Attack sounds', 'Hear other players\u2019 weapon swings.', { home: true }));   // PEER-FS1: the two peer-sound switches, beside the sprite one
   c.append(prefRow('peerFootsteps', 'Footstep sounds', 'Hear other players\u2019 footsteps.', { home: true }));
   // PEER-RANGE (2026-10-10, the owner: "the rendering of players far out is contributing to poor performance"): far
-  // players, not drawn - the near tier is inside a shot's reach (260 m), and the row says so
+  // players, not drawn - the near tier is inside a player's shot (200 m), and the row says so; the row reads the law's own
+  // answer, so a stored value that is no tier shows the 300 m it stands for (AUDIT PEER-RANGE A L2)
   c.append(choiceRow('peerRange', 'Draw distance',
-    'How far away other players are drawn. Your party always shows. Nearer is faster; 150 m can hide an archer.',
-    PEER_RANGE_TIERS.map((m) => [m, m ? `${m} m` : 'Everyone']), { home: true }));
+    'How far away other players are drawn. Your party and your duel opponent always show. Nearer is faster; 150 m can hide an archer.',
+    PEER_RANGE_TIERS.map((m) => [m, m ? `${m} m` : 'Everyone']), { home: true, read: () => peerRangeOf(getPref('peerRange')) }));
   // GATE-CROWD (2026-10-07, Mac: "some type of filter when there are too many people"): a crowded court, thinned
   c.append(choiceRow('gateCrowd', 'Crowd in the Burning Court',
     'How many players the Burning Court draws. Your party always shows.',

@@ -17,9 +17,12 @@
 //   draws         its draw calls, a frame
 //   sync ms       RemotePlayers.sync, a frame (this container's CPU)
 //
-// Every peer stands in front of the eye, so the renderer's own frustum
-// cull passes them all - the case of a player looking across a crowded
-// square at the town beyond. The crowd walks. The class sprite is the
+// Every peer stands in front of the eye, within 25 degrees of straight
+// ahead and inside the far plane - the case of a player looking across a
+// crowded square at the town beyond, where the renderer's own frustum cull
+// (PERF-CROWD2) would pass them all. That cull is NOT exercised here: the
+// counting renderer is handed no camera, so it draws every batch (AUDIT
+// PEER-RANGE + HALO-THIN C8). The crowd walks. The class sprite is the
 // one layer measured: Eye Of The Beholder's walkers and riders, their
 // lanterns, the auras and the casts are cut by the same list and are not
 // in these numbers. The milliseconds are relative only; the counts are

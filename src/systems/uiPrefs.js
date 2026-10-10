@@ -147,7 +147,7 @@ export const PREF_DEFAULTS = Object.freeze({
   gateCrowd: 0,
   // PEER-RANGE (2026-10-10, the owner: "the rendering of players far out is contributing to poor performance"): how far
   // out, in metres on the ground, other players are drawn - my party and the one I duel always (net/peerRange.js
-  // PEER_RANGE_TIERS; 0 everyone the relay sends). The default 300, past a shot's reach; its PEER_RANGE_DEFAULT, pinned
+  // PEER_RANGE_TIERS; 0 everyone the relay sends). The default 300, past a player's shot (200 m); its PEER_RANGE_DEFAULT, pinned
   // equal by test/peerrange.test.js and not imported, for GATE-CROWD's reason above
   peerRange: 300,
   nightCrickets: true,   // SNDREP1: the night crickets loop (SoundClips.AmbientCrickets) - on by default; off silences it

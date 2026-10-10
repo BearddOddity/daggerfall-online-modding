@@ -134,11 +134,17 @@ export const GAP_MAX_MS = 1000;
  *  fan ranges me as a LISTENER (inRange, on the map pixel) and ranks me among its nearest (wire.js poseFan, by ground
  *  distance), and so its roster places me. That needs where I am, not my every step. So a halo hears a pose when it is
  *  due (`haloPoseDue`): its first since its welcome, a new map pixel (the range's own grain, and a raid's word), HALO_STEP_M
- *  moved on the ground since the last it heard (the near tier's ranking), a stop (where I stand), a fall, and the
- *  heartbeat. Whole - every pose, as before - while my own cell's socket takes none (AUDIT WORLD6b-iii(b) A5: the halos
- *  carry me then) or while a referee may stand in a halo and judge my steps (`haloWhole`, the host's: a duel, the open
- *  zone, a serpent's fight - the relay's duelPose, wildPose and trail read the pose of the room the bout is in, which is
- *  the room my opponent is heard through). */
+ *  moved on the ground since the last it heard (the near tier's ranking), standing at a place it has not heard (a stop),
+ *  and the heartbeat. A fall is sendDeath's, down every socket. Every pose still goes to a halo (whole):
+ *   - while my own cell's socket takes none (AUDIT WORLD6b-iii(b) A5: the halos carry me then);
+ *   - while the halo reaches a player in range who does not hold my cell (`_haloAlone`) - the symmetry is where everyone
+ *     WANTS to be, and a socket into my cell still opening, backing off or refused busy leaves its player hearing me
+ *     through this halo alone (AUDIT PEER-RANGE + HALO-THIN, B F1);
+ *   - while the host says a referee may stand in a halo (`haloWhole`: a duel, a serpent's fight - the relay's duelPose and
+ *     a fight's trail read the pose of the room the bout is in, and a duel's room is the one my opponent is heard
+ *     through). A word for a referee down a halo (a duel's, a rite's) brings that halo my latest pose first
+ *     (`_haloCurrent`), so the judge reads where I am. And a halo is pinged on its own clock (RELAY-H1's cadence), since
+ *     its poses no longer keep it busy. */
 export const HALO_STEP_M = 8;
 /** HALO_STEP_M in the pose's own units - a halo is a world cell's, and a cell's poses are MapsFile's frame. */
 export const HALO_STEP_UNITS = HALO_STEP_M * (PIXEL_UNITS / PIXEL_M);
@@ -146,13 +152,13 @@ export const HALO_STEP_UNITS = HALO_STEP_M * (PIXEL_UNITS / PIXEL_M);
  * HALO-THIN: is `pose` (going out now) due to a halo whose last pose from me was `last` ({ x, z, mv, at }, or null for
  * none since the halo's welcome)? Pure.
  * @param {{ x: number, z: number, mv: number, at: number }|null|undefined} last
- * @param {{ x: number, z: number, mv?: number, dd?: number }} pose
+ * @param {{ x: number, z: number, mv?: number }} pose
  * @param {number} now
  */
 export function haloPoseDue(last, pose, now) {
   if (!last) return true;
-  if (now - last.at >= HEARTBEAT_MS || pose.dd) return true;
-  if ((last.mv | 0) !== 0 && (pose.mv | 0) === 0) return true;
+  if (now - last.at >= HEARTBEAT_MS) return true;
+  if (!(pose.mv | 0) && ((last.mv | 0) !== 0 || pose.x !== last.x || pose.z !== last.z)) return true;   // standing: a stop, or a place the halo has not heard (AUDIT B F3: a walk under the step, then a stop)
   if (Math.floor(pose.x / PIXEL_UNITS) !== Math.floor(last.x / PIXEL_UNITS) || Math.floor(pose.z / PIXEL_UNITS) !== Math.floor(last.z / PIXEL_UNITS)) return true;
   const dx = pose.x - last.x, dz = pose.z - last.z;
   return dx * dx + dz * dz >= HALO_STEP_UNITS * HALO_STEP_UNITS;
@@ -321,7 +327,7 @@ const scOf = (m) => (typeof m?.sc === 'string' && REALM_CHARACTER_RE.test(m.sc) 
 //      every room not named `world:` - but a siege's battle, a Royal Tourney and an owned interior or boat carry their
 //      poses in MapsFile's frame too (scenes/world.js `nativeFrame`), 40 to the metre: a 0.75 m snap, so a runner at
 //      10 Hz (0.8 m a pose) teleported on nearly every pose. The snap is the ROOM's frame's now (nativePoseRoom).
-//   2. ONE POSE, SEVERAL ROOMS, NO ORDER. A player's pose goes down its cell's socket AND every halo's (sendPose), each
+//   2. ONE POSE, SEVERAL ROOMS, NO ORDER. A player's pose goes down its cell's socket AND each halo it is due to (sendPose, HALO-THIN), each
 //      room a Durable Object of its own; a listener sharing two of them hears it twice, and the two copies need not
 //      arrive in order. Only an identical copy was dropped (C6) - an OLDER copy landing second was eased toward, and
 //      the peer walked backwards. The frame carries no sequence to order them by, so a peer is heard through ONE room
@@ -709,6 +715,7 @@ export class OnlineSession {
     this.terminalAt = null;    // when it did (the session's clock): rejoin() waits on it
     this._welcomed = new WeakSet();   // SD-HELLO: the sockets their room has welcomed - each says its hello, then nothing more until it is here (_send)
     this._haloPosed = new WeakMap();   // HALO-THIN: a halo's socket -> the last pose it heard from me ({ x, z, mv, at }) - a new socket has heard none
+    this._haloPinged = new WeakMap();   // HALO-THIN (AUDIT B F2): a halo's socket -> when it was last pinged on its own clock
     /** HALO-THIN: the host's word that a referee may stand in a halo room this frame (a duel, the open zone, a serpent's
      *  fight) - every pose goes to every halo whole while it is true. */
     this.haloWhole = false;
@@ -1347,6 +1354,7 @@ export class OnlineSession {
     if (!gate.pass) return false;
     const s = JSON.stringify({ t: 'duel', data: d });
     if (s.length > DUEL_FRAME_MAX) return false;   // the relay's own door on a duel frame - over it the relay closes the socket
+    this._haloCurrent(ws);   // HALO-THIN (AUDIT D3): a halo's judge reads where I am
     try { ws.send(s); } catch { return false; }
     this._duelBucket = gate.bucket; this.stats.sent++; this.stats.duels = (this.stats.duels ?? 0) + 1;
     return true;
@@ -1562,6 +1570,7 @@ export class OnlineSession {
     if (!ws) return false;
     const gate = riteGate(this._riteBucket, this._now());
     if (!gate.pass) return false;
+    this._haloCurrent(ws);   // HALO-THIN (AUDIT D3): riteNear reads the pose this socket last brought
     try { ws.send(JSON.stringify({ t: 'rite', ...w })); } catch { return false; }
     this._riteBucket = gate.bucket; this.stats.sent++;
     return true;
@@ -1955,24 +1964,51 @@ export class OnlineSession {
     if (now - this._lastSentAt < 1000 / poseHzFor(this.peers.size)) return false;   // SLAM3: a crowd is spoken to less often
 
     if (now - this._lastSentAt < HEARTBEAT_MS && !poseChanged(this._lastSent, pose)) return false;
-    // WORLD6b-iii(b): the halo rooms hear my pose too - their fans range me by it and their rosters place me. AUDIT
-    // WORLD6b-iii(b) A5: through every OPEN socket, my own cell's down or not (the halos rode out nothing while the
-    // fan sat behind the primary's send)
+    // WORLD6b-iii(b): the halo rooms hear my pose too - their fans range me by it and their rosters place me - each when it
+    // is due (HALO-THIN, haloPoseDue); AUDIT WORLD6b-iii(b) A5: through every OPEN socket, my own cell's down or not (the
+    // halos rode out nothing while the fan sat behind the primary's send), and then whole
     if (!(this._ws && this.status === 'open') && ![...this._halo.values()].some((h) => h.status === 'open' && h.ws)) return false;   // nowhere to say it: nothing stamped
     const out = { ...pose, ts: this._stampTs() };   // SCALE2b: one send time for every room's copy - that is what lets a listener order them
     let went = this._send({ t: 'pose', p: out });
-    // HALO-THIN: a halo hears the pose when it is due - every one while my own cell's socket took none, or the host says a
-    // referee may stand in a halo
+    // HALO-THIN: a halo hears the pose when it is due - every one while my own cell's socket took none, the host says a
+    // referee may stand in a halo, or the halo reaches a player in range who does not hold my cell
     const whole = !went || this.haloWhole;
     let s = null;
-    for (const [, h] of this._halo) {
+    for (const [room, h] of this._halo) {
       if (h.status !== 'open' || !h.ws || !this._welcomed.has(h.ws)) continue;
-      if (!whole && !haloPoseDue(this._haloPosed.get(h.ws), out, now)) { this.stats.haloThinned++; continue; }
+      if (!whole && !haloPoseDue(this._haloPosed.get(h.ws), out, now) && !this._haloAlone(room, out)) { this.stats.haloThinned++; continue; }
       try { h.ws.send(s ??= JSON.stringify({ t: 'pose', p: out })); this.stats.sent++; went = true; this._haloPosed.set(h.ws, { x: out.x, z: out.z, mv: out.mv | 0, at: now }); } catch { /* the close will say */ }
     }
     if (!went) return false;
     this._lastSent = { ...pose }; this._lastSentAt = now; this.stats.poses++;
     return true;
+  }
+
+  /** HALO-THIN (AUDIT B F1): does this halo room report a player in range of `pose` that my own cell's room does not - one
+   *  whose socket into my cell is still opening, backing off or refused busy, and who hears me through this halo alone?
+   *  A member my own room has not reported yet (its roster cut, a join on its way) counts: an extra pose, never a lost one. */
+  _haloAlone(room, pose) {
+    const there = this._rooms.get(room);
+    if (!there?.size) return false;
+    const mine = this._rooms.get(this.room);
+    for (const id of there) {
+      if (mine?.has(id)) continue;
+      const p = this.peers.get(id);
+      const at = p?.shown ?? p?.pose;
+      if (at && inRange(room, pose, at)) return true;
+    }
+    return false;
+  }
+
+  /** HALO-THIN (AUDIT D3): a word for a referee down a halo (a duel's, a rite's) - the relay judges it by the pose that socket
+   *  last brought (duelOpen's ring, riteNear's reach), so the halo hears my latest pose first when its last is not that. */
+  _haloCurrent(ws) {
+    const pose = this._pose;
+    if (!pose || !ws || ws === this._ws || !this._welcomed.has(ws)) return;
+    const last = this._haloPosed.get(ws);
+    if (last && last.x === pose.x && last.z === pose.z && (last.mv | 0) === (pose.mv | 0)) return;
+    const out = { ...pose, ts: this._stampTs() };
+    try { ws.send(JSON.stringify({ t: 'pose', p: out })); this.stats.sent++; this._haloPosed.set(ws, { x: out.x, z: out.z, mv: out.mv | 0, at: this._now() }); } catch { /* the close will say */ }
   }
 
   /** PCORPSE1: THE LAST POSE. A dying player's body where it fell, flagged `dd`, sent ONCE through every open socket
@@ -3309,6 +3345,13 @@ export class OnlineSession {
       for (const [, h] of this._halo) if (h.status === 'open' && h.ws) { try { h.ws.send('{"t":"ping"}'); } catch { /* the halo's own retry */ } }
       if (went) this._lastPingAt = now;
     }   // CHAT1: a channel's keepalive, answered without waking the room
+    // HALO-THIN (AUDIT B F2): a halo hears a pose only when it is due, so it keeps RELAY-H1's cadence on its own clock - its
+    // last pose, its last ping here, or the shared ping above, whichever was latest
+    if (this.presence) for (const [, h] of this._halo) {
+      if (h.status !== 'open' || !h.ws) continue;
+      if (now - Math.max(this._haloPosed.get(h.ws)?.at ?? -Infinity, this._haloPinged.get(h.ws) ?? -Infinity, this._lastPingAt, h.since ?? -Infinity) < PING_MS) continue;
+      try { h.ws.send('{"t":"ping"}'); this._haloPinged.set(h.ws, now); } catch { /* the halo's own retry */ }
+    }
     if (this.presence && this.status === 'open') this._askRound(now);   // SLAM9: the fair ask over every peer not yet introduced
     if (this._rnOrder) this._flushRenown(now);   // AUDIT RENOWN1 WIRE-2: a rise a room has not confirmed goes again, on each socket's own gate
     if (this._gdHeld.length) this._flushGuild(now);   // GUILD1c: a held guild order a socket's gate kept back goes now

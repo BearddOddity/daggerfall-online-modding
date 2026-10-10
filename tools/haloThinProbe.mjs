@@ -11,10 +11,11 @@
 // clock) over test/fakeSocket.mjs for a player walking, running and
 // riding past a corner and along an edge, and counts:
 //
-//   sent/s        frames the player's sockets carried a second
-//   copies/s      the copies of its poses a neighbour holding the same
-//                 rooms receives a second (each room fans to it once)
-//   per pose      copies a neighbour receives for each pose it can use
+//   sent/s        pose frames the player's sockets carried a second - also
+//                 the most copies a second a neighbour holding all the same
+//                 rooms can receive (each room fans each to it once)
+//   per pose      those copies for each pose it can use - an upper bound:
+//                 the relay's far tier may serve it fewer
 //
 // "before" is every pose to every halo (the host's `haloWhole`, which is
 // the old law exactly); "after" is the halo hearing a pose when it is due

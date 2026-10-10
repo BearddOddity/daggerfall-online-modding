@@ -14,8 +14,9 @@
 //
 // THE COURT ALONE. Outside it the crowd is never cut by a COUNT: the street, a building and a dungeon hold duels, arena
 // bouts and battles, where a player cut from the screen could be the one fighting me. In a court nobody fights anybody
-// but him. (A player past the Other players card's draw distance is cut everywhere, the court included - PEER-RANGE,
-// net/peerRange.js, my party and my duel always, past a shot's reach by default - and this count is taken from those.)
+// but him. (A player past the Other players card's draw distance is cut everywhere but under the travel view, the court
+// included - PEER-RANGE, net/peerRange.js, my party and my duel always, past a shot's reach by default - and this count
+// is taken from the players within it.)
 //
 // The law is pure (`crowdDrawn`); `createGateCrowd` keeps the held places between frames for the host (scenes/world.js,
 // the online frame's drawn peers). Not a DFU member: Daggerfall has no other players. Ledger A (GATE-CROWD).

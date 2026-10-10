@@ -2400,8 +2400,8 @@ so a stored value that is none of them shows as Everyone on the card and reads a
 - THE COURT ALONE. The street, a building and a dungeon hold duels, arena bouts and battles, where the player cut from
   the screen could be the one fighting me. In a court nobody fights anybody but him, so the count is applied nowhere
   else. (PEER-RANGE, 2026-10-10, `07-Rendering/Performance-Priority.md`: a player past the Other players card's draw
-  distance is cut everywhere - by distance, never by count, my party and my duel always, 300 m by default and past a
-  shot's 260 m reach - and the court's count is taken from the players within it.)
+  distance is cut everywhere but under the travel view - by distance, never by count, my party and my duel always, 300 m
+  by default and past another player's shot (200 m) - and the court's count is taken from the players within it.)
 
 Pinned: `test/gatecrowd.test.js` (9) - the law and its held places, the host's crowd and who it shows, the online
 frame's cut (lifted and evaluated) and the doors that ask it, the card and the shelf's literal, `companionPlace` (lifted

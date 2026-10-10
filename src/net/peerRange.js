@@ -1,24 +1,25 @@
 // @ts-check
 // PEER-RANGE (2026-10-10, the owner: "So for online performance, I believe the rendering of players far out is
 // contributing to poor performance"): THE OTHERS, DRAWN AS FAR AS THEY CAN BE SEEN. A world cell hands the screen every
-// player within the relay's range - RANGE_PIXELS, three map pixels, nearly 2,500 m (net/wire.js inRange) - and every
-// one of them was drawn: the rider, the walker, the class sprite or the doll stepped and submitted, a lantern hung and
-// drawn (peerWalkers.drawLanterns culls nothing), an aura's cape posed, a cast's missile flown, a blow's spark struck,
-// every frame, for a figure a pixel or two tall at that distance (PERF-PRIORITY's "what is left" item 5: "The sprite
-// peers have no distance tier and no cap inside the relay's three map pixels").
+// player within the relay's range - RANGE_PIXELS, three map pixels either way (net/wire.js inRange): 2.5 km pixel to
+// pixel, up to 3.3 km along an axis - and every one of them was drawn: the rider, the walker, the class sprite or the
+// doll stepped and submitted, a lantern hung and swung, an aura's cape posed, a cast's missile flown, a blow's spark
+// struck, every frame, for a figure a pixel or two tall at that distance. The renderer culls what is off the screen
+// (PERF-CROWD2); nothing culled what is too far to see (PERF-PRIORITY's "what is left" item 5: "The sprite peers have
+// no distance tier and no cap inside the relay's three map pixels").
 //
 // THE LAW: past the distance the player chose on the Other players card, a player stands nowhere on this screen -
 // GATE-CROWD's cut (net/gateCrowd.js), by distance in place of a count: no body, sprite, name, light, cast, spark or
 // step, until they come back inside it. Their map marks stay (the host fills them from the room before this cut), and
 // nothing of the room is filtered - the relay still hears and judges them; only this screen stops drawing them.
 //
-// THE DEFAULT IS PAST A SHOT'S REACH. A missile or an arrow flies MISSILE_SPEED for MISSILE_LIFESPAN_S, an aimed one
-// x1.3 as fast (systems/spellcast.js, ai/blowShapes.js BLOW.aimed.speed): 25 x 8 x 1.3 = 260 m. At the default 300 m
-// nobody who can reach me with a shot is cut - test/peerrange.test.js holds the two numbers together. The near tier
-// (150 m) can; its row says so.
+// THE DEFAULT IS PAST A SHOT'S REACH. Another player's arrow or spell flies MISSILE_SPEED for MISSILE_LIFESPAN_S
+// (systems/spellcast.js): 25 x 8 = 200 m (x1.3 is a foe archer's aimed shot alone, BLOW.aimed.speed - 260 m, still
+// short of it). At the default 300 m nobody who can reach me with a shot is cut - test/peerrange.test.js holds the
+// numbers together. The near tier (150 m) can; its row says so.
 //
-// ALWAYS DRAWN: a party mate (AUDIT PARTY8's "a party mate before a stranger"), and the player I am dueling - whatever
-// the distance. Under the travel view nothing is cut: OW-PEERS grows every player to be seen from up to 450 m overhead,
+// ALWAYS DRAWN: a party mate (AUDIT PARTY8's "a party mate before a stranger"), and the player I duel, from its count
+// on (duelMgr.opponent) - whatever the distance. The distance is asked first, the party only of a player past it. Under the travel view nothing is cut: OW-PEERS grows every player to be seen from up to 450 m overhead,
 // across more ground than any tier.
 //
 // HELD AT THE EDGE. A player drawn last frame keeps being drawn until they stand PEER_RANGE_HOLD past the range, so one
@@ -58,11 +59,12 @@ export function rangeDrawn(peers, me, { at, range = PEER_RANGE_DEFAULT, mate = (
   }
   const near = range * range, kept = range * hold * range * hold;
   for (const p of peers) {
-    if (mate(p.id)) { out.add(p.id); continue; }
     const f = at(p);
-    if (!f) continue;
-    const dx = f[0] - me[0], dz = f[2] - me[2];
-    if (dx * dx + dz * dz <= (was?.has(p.id) ? kept : near)) out.add(p.id);
+    if (f) {
+      const dx = f[0] - me[0], dz = f[2] - me[2];
+      if (dx * dx + dz * dz <= (was?.has(p.id) ? kept : near)) { out.add(p.id); continue; }
+    }
+    if (mate(p.id)) out.add(p.id);   // AUDIT A L5: the party asked of a player past the range alone (social's answer allocates)
   }
   return out;
 }

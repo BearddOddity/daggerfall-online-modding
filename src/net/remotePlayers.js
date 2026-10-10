@@ -802,9 +802,9 @@ export class RemotePlayers {
    * answers 0 for every peer.
    * @param {Iterable<any>} peers
    * @param {(p: any) => number[]} [toScene]
-   * @param {{bodyHeight?: (id: any) => number, dt?: number, eye?: number[]|null, poseAgeMs?: ((peer: any) => number)|null, conceal?: (id: any) => object|null, hidden?: (id: any) => boolean, grow?: ((feet: number[]) => number)|null}} [opts]  PEER-FS1: `eye` is the listener, for the falloff; INVIS-LOOK: `conceal` a concealed peer's draw (ECV1's visual) or null
+   * @param {{bodyHeight?: (id: any) => number, dt?: number, eye?: number[]|null, poseAgeMs?: ((peer: any) => number)|null, conceal?: (id: any) => object|null, hidden?: (id: any) => boolean, grow?: ((feet: number[]) => number)|null, room?: Iterable<any>|null}} [opts]  PEER-FS1: `eye` is the listener, for the falloff; INVIS-LOOK: `conceal` a concealed peer's draw (ECV1's visual) or null; AUDIT PEER-RANGE A L1/L6: `room` every peer the room draws before a screen's cut (the draw distance's, the court's) - a resurrection is seen in it, and a peer in it keeps its class sprite's bundle while it is cut (`peers` when absent)
    */
-  sync(peers, toScene = (p) => [p.x, p.y, p.z], { bodyHeight = () => 0, dt = 0, eye = null, poseAgeMs = null, conceal = () => null, hidden = () => false, grow = null } = {}) {
+  sync(peers, toScene = (p) => [p.x, p.y, p.z], { bodyHeight = () => 0, dt = 0, eye = null, poseAgeMs = null, conceal = () => null, hidden = () => false, grow = null, room = null } = {}) {
     const live = new Set();
     this._grow = grow;   // OW-PEERS (FIELD BUGS 2026-10-01 #11): under the Overworld, feet -> how many times its size a sprite is drawn
     // PCORPSE1: the fallen lie on whatever the living do - placed, aged out, drawn
@@ -874,10 +874,11 @@ export class RemotePlayers {
     // AUDIT DROPS E4: a peer drawn as a Morrowind BODY holds no batch, so the sweep above never reached their
     // stride machine or their swing edge - the entries stayed for the life of the session (SLAM4's class), and a
     // stale `an` played a phantom swing when that peer came back
-    // RESURRECT1: a fallen player standing again where they fell (a resurrection) takes their body with them
+    // RESURRECT1: a fallen player standing again where they fell (a resurrection) takes their body with them - seen in the
+    // whole room (AUDIT PEER-RANGE A L1: one raised past the draw distance left the body lying its full minute)
     if (this._corpses.length) {
       const up = new Map();
-      for (const peer of peers) if (peer?.shown && peer.id) up.set(peer.id, peer.shown);
+      for (const peer of room ?? peers) if (peer?.shown && peer.id) up.set(peer.id, peer.shown);
       for (const c of [...this._corpses]) {
         const s = up.get(c.id);
         if (!s) continue;
@@ -894,7 +895,11 @@ export class RemotePlayers {
     // 2026-09-17: a departed peer's mobile bundle (or its in-flight build) goes with it. AUDIT 68
     // S14-remoteplayers-mobiles-unswept: swept against `live`, not inside the batch sweep - a peer gone before its build
     // landed held no batch, and the build then stored a whole bundle for nobody (`_mobileFor`'s own race check drops it now)
-    for (const id of this._mobiles.keys()) if (!live.has(id)) this._mobiles.delete(id);
+    // AUDIT PEER-RANGE A L6: but a peer the screen's cut leaves undrawn who is still in the room keeps its bundle - one walking
+    // back inside the draw distance stood on the doll path a frame, and composed a paperdoll for it, at every crossing
+    let inRoom = null;
+    if (room) { inRoom = new Set(); for (const peer of room) if (peer?.id) inRoom.add(peer.id); }
+    for (const id of this._mobiles.keys()) if (!live.has(id) && !inRoom?.has(id)) this._mobiles.delete(id);
   }
 
   /** PEER-FS1 (Mac, 2026-09-18: "footstep sounds depending where they walk
