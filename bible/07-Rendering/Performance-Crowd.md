@@ -86,6 +86,8 @@ peer lab's churn: 86-156 nodes left after each wave before, 6 (the lab's own pag
 
 ## PERF-INPUT1 — the binding maps walked without pairs
 
+**SUPERSEDED at the merge onto main (2026-10-10) by main's AUDIT TECH-FX** (`src/ui/input.js` actionCodes): an action's codes are kept in an index rebuilt on a binding change, so a poll walks no map at all - better than the forEach walk below, which was dropped for it. `test/perfcrowd1.test.js` keeps this slice's behaviour half (the secondary dict answers, the primary first, nothing unbound); TECH-FX's own pins hold the mechanism.
+
 PERF-NEXT item 2. `actionDown` walked the four binding dicts with `for (const [code, a] of map)`, a pair a binding for
 every action polled every frame - 75 KB a frame by the real game's heap profile. It walks them with `forEach` and two
 module callbacks over module state: the same `codeDown` calls in the same order (codeDown's modifier latch sees the

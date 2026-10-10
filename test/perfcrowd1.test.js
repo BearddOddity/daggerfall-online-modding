@@ -21,11 +21,7 @@ import { perspective, mirrorProjectionX, lookAt, multiply } from '../src/world/m
 
 const rd = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
-test('PERF-INPUT1: a poll walks the binding maps by forEach, in the same order, and stops asking once one answered - the answers are the walk\'s (mutant: the secondary dict skipped; the early stop dropped)', () => {
-  const src = rd('src/ui/input.js');
-  const body = src.slice(src.indexOf('function actionDown('), src.indexOf('function _adList('));
-  assert.doesNotMatch(body.replace(/\/\/[^\n]*/g, ''), /for \(const \[code/, 'no [key, value] pair a binding');
-  assert.match(body, /b\.primary\.forEach\(_adOne\);\n\s*if \(!_adHit && b\.sharedPrimary\?\.size\) b\.sharedPrimary\.forEach\(_adList\);\n\s*if \(!_adHit\) b\.secondary\.forEach\(_adOne\);\n\s*if \(!_adHit && b\.sharedSecondary\?\.size\) b\.sharedSecondary\.forEach\(_adList\);/, 'the four dicts, in DFU\'s order');
+test('PERF-INPUT1 (SUPERSEDED at the merge by main\'s AUDIT TECH-FX - an action\'s codes kept in an index rebuilt on a binding change, which walks no map a poll at all; its own pins hold the mechanism): a poll still answers as the walk did - a key bound in the secondary dict alone holds the action, the primary\'s too, another action\'s key and nothing held do not', () => {
   // behaviour: a key bound in the SECONDARY dict alone answers; an unbound one does not; a primary answers first
   const real = bindings();
   const b = { primary: new Map([['KeyW', 'MoveForwards']]), secondary: new Map([['ArrowUp', 'MoveForwards'], ['KeyQ', 'Jump']]), sharedPrimary: new Map(), sharedSecondary: new Map(), combos: real.combos ?? new Map() };
