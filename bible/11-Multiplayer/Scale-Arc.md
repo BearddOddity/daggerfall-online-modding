@@ -61,8 +61,8 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE4e | The account deploy outlasts an overloaded database: `migrations apply` asked again on D1's overload alone, for 5.5 minutes | No | **Built** (2026-10-10, this branch) |
 | SCALE5a | At 500 online: the hub's hello and leave without a walk of every socket, a busy refusal that mints nothing, the World tab's count past the roster's cut | Yes, once | **Deployed** (2026-10-10, #755; world189) |
 | SCALE5 | Past about 1-2k players: the hub split (presence and social state per account, world chat over shard rooms), slimmer or binary poses, pose-only halo frames | Yes | **Planned** as the slices below (THE PLAN PAST 2,000) |
-| SCALE2c | The reconnect wave spread by the room's own count, the empty foes frame and the halo's full-rate poses dropped - client only | No | Planned, first |
-| SCALE4f | The mint folded to a handful of statements; the account metrics that say how busy the primary is; the writes a player makes an hour coalesced | No | Planned |
+| SCALE2c | The reconnect wave spread by the hub's own count; a full foes frame that says nothing said once - client only | No | **Built** (2026-10-10, this branch) |
+| SCALE4f | The mint's realm row read once (four statements in one); every statement's D1 wait, rows and a replica's serving on the metrics point; an overloaded D1 a 503 | No | **Built** (2026-10-10, this branch; acct107) - the guild and seat reads and the writes coalesced are left |
 | SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | Planned |
 | SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | Planned |
 | SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | Planned |
@@ -856,6 +856,174 @@ last wait stopping it with the error; the one apply line and the step's place. `
 mutants, 5 dead. Re-aimed by content, still dead: ACC1CI-4 (the migrations listed again), whose apply line now
 sits inside the retry.
 
+## SCALE2c: built (2026-10-10, this branch - the client's half, no relay deploy)
+
+The plan's first slice: two changes to the client that the relay and the account service need nothing for. The site's
+deploy ships them; nobody is dropped.
+
+### A relay deploy's reconnect, spread by the hub's own count
+
+**The cause.** A relay deploy closes every socket of every player at once, and each page's first retry was uniform
+over [1 s, 2 s] (`_scheduleRetry`). A page mints one token for its sockets (SCALE2), so every player online asked the
+account service for one inside the same second or two - 500 at once at today's count. #755's deploy measured what
+follows: the primary overloaded 23 s in (SCALE4e).
+
+**The fix** (`src/net/reconnectWave.js`, one per page, which the world host hands to the presence session and every
+chat link):
+- **A wave** is two or more of the page's open sockets dropped within WAVE_WINDOW_MS (2 s) of each other while the
+  browser says it is online. A deploy closes them all in one instant. One room's object restarting closes one, and a
+  lost network takes the browser offline first; neither is held.
+- **The spread** is as long as the hub takes to admit everyone online at its own gate: `n / CHAT_HELLO_HZ_MAX`
+  seconds (WAVE_MINTS_PER_S), from the count the hub link already hears (`n`), capped at WAVE_SPREAD_MAX_MS (40 s) so
+  it stays inside TOKEN_REUSE_MS and a page's sockets still share one token.
+- **Each page draws one offset** in it, once a wave. At a socket's first retry after the drop (the cell's, a halo's,
+  the hub's, the region's), it waits until the page's slot if that is later. The slot is the same instant for every
+  socket of the page, so the page still mints once.
+- A busy refusal, a tokenless one and a terminal close are not drops: their ladders are unchanged. A session made
+  without the page's wave (a test's, a tool's) weighs only its own sockets and knows no count, so it spreads nothing.
+
+**Measured** with `tools/hubWaveModel.mjs` (a model: every socket dropped at once, no connect or mint time; twenty
+seeds, the median), which now counts each page's mint and takes `SPREAD=1`:
+
+| players | busy refusals at the hub | the busiest second's mints | hub welcomes, median / last |
+|---|---|---|---|
+| 500 | 635 -> 32 | 500 -> 102 | 5.0 / 13.3 s -> 5.2 / 12.9 s |
+| 1,000 | 2,329 -> 81 | 1,000 -> 102 | 10.0 / 24.6 s -> 10.2 / 23.0 s |
+| 2,000 | 9,108 -> 163 | 2,000 -> 102 | 20.0 / 44.4 s -> 20.1 / 42.9 s |
+| 5,000 | 56,138 -> 35,256 | 5,000 -> 257 | the hub's own gate and cap (SCALE5c) |
+
+The hub could not welcome them faster anyway, so nobody waits longer for the hub. **The cost** is the cell: a page
+that saw the wave comes back to its own cell at its slot, not in a second or two - at 500 online, five seconds later
+on average, ten at most. Before this, at 500, the mints overloaded the database, and a page whose mint failed waited
+out STORM-SHED's cooling instead.
+
+### A full foes frame that says nothing, said once
+
+**The cause.** In a cell every client streams its own foes whenever anyone else is there, and a full frame went every
+FOES_FULL_MS (2 s) even from a player with nothing in the world: no foe, no camp, no horse, no boat, no ring, no
+portal. Its whole word was "none". In a crowded city that is about 128 frames a second to each client, and they spend
+the room's 4 MiB/s foes budget, past which the relay drops frames silently, real fights' among them.
+
+**The fix** (`src/net/foesQuiet.js`):
+- `quietFoesFrame` reads a built frame as quiet when every field but its own bookkeeping (`n`, `k`, `full`) is
+  absent, null or an empty list. A field it does not know, with any other value, is news, so the frame goes.
+- `quietFoesGate`, the cell stream's memory, leaves a quiet full frame unsaid only when the same room's last frame
+  from it was a quiet full one. So "none" is said once to each room, the first after anything else (which is what
+  takes the owner's last foe down at a reader), and a reader's own staleness sweep (FOES_STALE_MS) lets the owner go
+  with nothing to take.
+- Deltas, the own lane, a dungeon host's stream (its frames are the readers' heartbeat of the host) and a refused send
+  are untouched.
+
+**Pins.** `test/scale2c.test.js` (8):
+- the spread's law;
+- the wave's rules;
+- a page's cell, halo and hub driven over the pins' fake socket, held to one slot and reopened in one instant;
+- a lone drop, two busy refusals, and a drop with the browser offline back at the old retry;
+- the world host handing the page's wave to all three sessions;
+- an idle player's frame built from its producers (the pool, the horse's word, the riders') read as quiet, and
+  each kind of news read as news;
+- the gate's memory per room, delta, refusal and world room;
+- the cell stream asking it.
+
+`tools/mutants/scale2c.json`: 17 mutants, 17 dead. One more survived its first run, `sent` checking a cell that `skip`
+already checks. It was redundant, so it is gone.
+
+## SCALE4f: built (2026-10-10, this branch - acct107, no migration)
+
+The account service's half of the plan, first part.
+
+### The mint's realm row, read once
+
+A mint asked four statements of the same `realm_characters` row:
+- whether the named character is the account's realm character in play (`rc`, realmCharacterHeld);
+- its level (`cl`, realmLevelOf);
+- its arms (`wa`, realmArmsOf);
+- its house, through its line (legacy.js realmHouseOf).
+
+`server-account/src/realm.js` realmMintFacts asks one: the row and its line in one `LEFT JOIN`. It answers the four's
+answers, the three behind `rc` as the mint asked them. The four are gone from the service, so the law has one home.
+Their reasons (REALM-DOOR, INT9's lease, LEGACY7's tombstone, ARENA4b's and INT7's level, INT7's arms, LEGACY7's house)
+are carried into the fold's own comment.
+
+Measured on the real Worker over node:sqlite (test/accountDb.mjs), a realm character's mint on its session:
+
+| | before | after |
+|---|---|---|
+| seats closed | 8 | 5 |
+| seats open (production) | 11 | 8 |
+| plus the honours on the binding (AUDIT SCALE4d A1) | 1-3 | 1-3 |
+
+The guild's reads (the guild badge, the seat badge, the ribbon - three reads of one membership) and the write
+coalescing are left, with their reasons below.
+
+### How busy the one primary is
+
+**Before.** The metrics point counted a request's statements (`double3`). It never said how long D1 made the request
+wait, and a primary going under shows first as that wait: a queue D1 exposes nowhere else.
+
+**Now** `server-account/src/metrics.js` countedDb wraps each statement it prepares (timedStatement):
+- every way of running one (`first`, `all`, `run`, `raw`) and every batch is timed;
+- an answer's `meta` gives its rows read and written, and whether a read replica served it (`served_by_primary` false);
+- a `first()` answers a row with no meta, so its rows go uncounted, but its wait does not.
+
+Each method is called on the statement itself, and D1's batch is handed its own statements back. workerd's are a class
+with private fields, and AUDIT SCALE4d D8's law holds one level down too.
+
+The point grows four doubles after its three:
+
+| Double | Holds |
+|---|---|
+| `double4` | rows written (a cron point's `double4` is the rows its job changed: the same measure) |
+| `double5` | the D1 wait, in ms |
+| `double6` | rows read |
+| `double7` | the statements a replica served |
+
+The last says, for the first time, whether SCALE4d's replicas serve the mint at all.
+
+### An overloaded D1, counted apart
+
+**Before.** #755's deploy met D1's overload (SCALE4e), and the service answered an overload as any other fault:
+`server`, 500.
+
+**Now** it is still `server`. Every book asks that again, and a new word would be a final refusal to the eight books
+whose retry lists do not know it - an act dropped, not kept. But it is 503 (service.js d1Overloaded: D1's "overloaded",
+"queued for too long", its code 7429), so the metrics count an overload apart from a bug.
+
+**Left, each with its reason:**
+- **The guild's three reads of one membership** (the guild badge, the seat badge and the season's ribbon). Each joins
+  other tables (the guild, the seat holds, the ribbons) under laws of their own (a guildmaster's title, a member joined
+  before the Turning). Folding them is SCALE4f's second part, with an oracle of its own.
+- **The writes coalesced** (the session's touch, Renown, the checkpoint's judge). They change when a write lands, so
+  each needs its own pins. SCALE4f's metrics will say which writes are dearest.
+- **`TOKEN_REUSE_MS`**: as the plan says. A room would hear a level or a guild up to four minutes stale.
+
+**Pins.**
+- `test/scale4f.test.js` (5):
+  - the fold held to the four, frozen as they stood at acct106 and copied into the test, over fourteen states of four
+    characters for two askers, every arm reached on both sides;
+  - the mint asking its realm row once, with its token as it was;
+  - every statement's wait, rows and a replica's serving, over a D1 shaped as workerd's (private fields, a batch that
+    refuses what it did not make);
+  - the point's seven doubles;
+  - an overload a 503 `server` and any other throw a 500.
+- `tools/mutants/scale4f.json`: 16 mutants, 16 dead. Two more survived their first run:
+  - a tombstone's lease, which no death writes, so the oracle now stands one;
+  - the house asked behind its line, where houseOn already answers null, so that check is gone.
+
+PIN MOVED:
+- scale4d's two statement counts (eight to five).
+- ARENA4b's, INT7's, LEGACY7's and REALM-DOOR's direct asks of the four, now asks of the fold's fields.
+- Nine mutant records re-aimed by content onto the fold: ARENA4B-TOK-ANOTHERS, -SUMMARY-UNREAD, -BOUND and -OFFLINE,
+  INT7-AUDIT-REALM-ANOTHERS-ARMS and -THE-LEVEL-UNJUDGED, LEGACY7-dead-held-at-the-door (still equivalent: a death clears
+  the lease) and -tomb-wears-house, LEGACY7-mint-no-house, and REALM-DOOR-rc-any-realm-shaped-id and -rc-any-account.
+  All dead. And SCALE1-B-statements-uncounted, whose prepare is timed now.
+- ACCOUNT_VERSION's pins (18 files, and the fb1004d and gatekeys records) to acct107.
+
+**Found on the way, fixed.** LEGACY7-model-rewritten survived, on main too: a line's model change sent with the stored
+copy's `base` reached the UPDATE, which keeps the model column, and would have written a record that says another
+model. Only a write with no `base` was pinned, and the stale path refused that one. `test/legacy7_service.test.js` now
+sends one made from the stored copy, and the mutant dies.
+
 ## THE PLAN PAST 2,000 (2026-10-10)
 
 Mac, after #755's merge: "Alright lets now tackle the bigger work. I want to go deep and really future proof our
@@ -890,20 +1058,23 @@ slice below measures again with a tool of its own in the tree.
 ### The slices, in order
 
 1. **SCALE4e** (built, above): the deploy outlasts an overloaded database.
-2. **SCALE2c - the client's half, no relay deploy.**
-   - The reconnect after an unexpected close is jittered over a window that grows with the online count the hub
-     already says (`n`), so the mints arrive at a rate the primary can take, not all in two seconds.
-   - The full foes frame is not sent while it carries nothing new: in a crowd it is 128 frames a second per client
-     that the room's budget then drops.
-   - A halo hears a player's pose at the keepalive's rate; only the player's own cell hears every pose. Every peer in
-     range holds the sender's cell, so nobody hears less.
-3. **SCALE4f - the account's half, no drop.**
+2. **SCALE2c - the client's half, no relay deploy** (built, below).
+   - A relay deploy's reconnect waits for the page's one slot in a window as long as the hub takes to admit everyone
+     online, so the mints arrive at the hub's rate, not all in two seconds.
+   - A full foes frame that says nothing is said once, not every two seconds.
+   - (Moved to SCALE5b: a halo hearing a player's pose at the keepalive's rate. The relay judges serpent fights,
+     trails, duels and the Wild zone off the poses that reach each cell, halo copies included, so the thinning is the
+     relay's to do with those referees in hand, not the client's alone.)
+3. **SCALE4f - the account's half, no drop** (its first part built, below).
    - The mint folded from 13 statements to about 4: the character's four realm rows, its Renown and its guild in one
      keyed read; the week's seat titles kept.
    - The metrics the primary's ceiling needs: SQL time per request (how busy the primary is), rows read and written,
      whether a replica served it, and D1's overload as its own refusal, not `server`.
    - The writes coalesced: the session touch one statement, Renown reported less often or at a level, the
      checkpoint's judge folded into its UPDATE.
+   - Whether TOKEN_REUSE_MS rises toward the token's five minutes: about 10-30 mints a player-hour come from doors
+     and room changes, not deploys, but a room would then hear a level or a guild up to four minutes stale (it is a
+     minute today).
 4. **SCALE4g - replicas for the read routes, no drop.** The heartbeat, motherlodes, the seats list, professions and
    the account view on a D1 session that starts from the bookmark the client carries back from its last request, so a
    player always reads their own writes. About 55-62% of reads leave the primary.
@@ -915,6 +1086,8 @@ slice below measures again with a tool of its own in the tree.
      quantised poses without default fields, batched per listener a tick (88 sends a pose become about one a
      listener a tick), channel joins and leaves as one roster delta a tick (the N^2/2 wave gone), looks by hash.
    - `BOSS_BODY` and the Discord settings read at run time, so changing one no longer drops every player.
+   - A halo hearing a player's pose at a walking rate, with the referees that read halo poses (the serpent's fight,
+     INT11's trails, duels, the Wild zone) kept at full rate.
 6. **SCALE5c - the hub split, ONE announced drop.**
    - **Sixteen hubs, chosen by the account** (`chat:world.<k>`, k from the account's subject). An account's every tab
      lands on the same hub, so ONE-SEAT, the account's record, its receipts and its tabs stay on one object. At 10k

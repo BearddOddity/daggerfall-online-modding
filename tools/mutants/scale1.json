@@ -47,11 +47,12 @@
   {
     "name": "SCALE1-B-statements-uncounted",
     "file": "server-account/src/metrics.js",
-    "old": "tally.n += 1; return target.prepare(...args);",
-    "new": "return target.prepare(...args);",
+    "old": "tally.n += 1; return timedStatement(target.prepare(...args), tally);",
+    "new": "return timedStatement(target.prepare(...args), tally);",
     "tests": [
       "test/scale1.test.js"
-    ]
+    ],
+    "note": "SCALE4f (2026-10-10) re-aimed it by content: a prepared statement is timed too (timedStatement)."
   },
   {
     "name": "SCALE1-B-a-throwing-sink-costs-the-request",

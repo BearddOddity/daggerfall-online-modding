@@ -74,13 +74,14 @@
   {
     "name": "LEGACY7-dead-held-at-the-door",
     "file": "server-account/src/realm.js",
-    "old": "'SELECT 1 FROM realm_characters WHERE id = ? AND player = ? AND dead_at IS NULL AND lease IS NOT NULL').bind(id, playerId).first());   // LEGACY7: never a tombstone",
-    "new": "'SELECT 1 FROM realm_characters WHERE id = ? AND player = ? AND lease IS NOT NULL').bind(id, playerId).first());   // LEGACY7: never a tombstone",
+    "old": "  if (!row || row.dead_at != null || row.lease == null) return none;",
+    "new": "  if (!row || row.lease == null) return none;",
     "equivalent": true,
     "why": "INT9's audit: the door asks for a lease too (realm.js realmCharacterHeld, `lease IS NOT NULL`), and a death clears it in the statement that marks it dead (legacy.js: `SET dead_at = ?, dead_why = ?, lease = NULL`) - no tombstone holds a lease; the dead's refusal is pinned by test/legacy7_service.test.js.",
     "tests": [
       "test/legacy7_service.test.js"
-    ]
+    ],
+    "note": "SCALE4f (2026-10-10) re-aimed it by content: the four reads of the realm row are one (realm.js realmMintFacts); its tests its own again - test/scale4f.test.js's oracle stands a tombstone with a lease (a row no death writes) to hold the fold to the four, and kills it there."
   },
   {
     "name": "LEGACY7-dead-listed",

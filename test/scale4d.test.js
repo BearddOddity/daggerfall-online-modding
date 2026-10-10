@@ -59,7 +59,9 @@ test('SCALE4d the mint runs on ONE D1 session opened first-primary - its first s
   const [s] = raw._sessions;
   assert.equal(s.constraint, 'first-primary', 'its first statement the primary\'s');
   assert.match(s.statements[0], /FROM sessions s LEFT JOIN players p/, 'and that first statement is the session lookup');
-  assert.ok(s.statements.length >= 8, `a realm character's mint - the session, its arena, Renown, guild, three realm rows, rating and house - rides it (${s.statements.length})`);
+  // PIN MOVED (SCALE4f): a realm character's mint is five statements here - the session, Renown, the guild, its realm row
+  // (the four reads of it folded into one, realm.js realmMintFacts) and the rating; it was eight
+  assert.ok(s.statements.length >= 5, `a realm character's mint - the session, Renown, guild, its realm row and rating - rides it (${s.statements.length})`);
   // AUDIT SCALE4d A1: the arena's and Iliac Hand's honours - the one read-then-write a mint makes (a stale #1 counted
   // again and stored) - on the binding, and nothing else of the mint
   // (the board a #1 is counted over reads arena_pvp, as the token's own rating read does - that one is a claim read, and
@@ -110,9 +112,9 @@ test('SCALE4d a mint on a session is still a mint\'s statements on its metrics p
   assert.equal((await S.call('/v1/auth/token', { character: R.id, guild: true }, who.secret)).status, 200);
   const p = points.find((x) => x.indexes[0] === '/v1/auth/token');
   assert.ok(p, 'the mint wrote its point');
-  assert.ok(raw._sessions[0].statements.length >= 8);
+  assert.ok(raw._sessions[0].statements.length >= 5);   // PIN MOVED (SCALE4f): five, the realm row's four reads in one
   assert.equal(p.doubles[2], raw._sessions[0].statements.length + asked.length, 'every statement the session ran, counted - beside the honours\' on the binding (AUDIT SCALE4d A1)');
-  assert.ok(p.doubles[2] >= 8, `a realm character's mint (${p.doubles[2]})`);
+  assert.ok(p.doubles[2] >= 6, `a realm character's mint (${p.doubles[2]})`);
 });
 
 test('SCALE4d the session answers DB_ROOT with the binding it came from, through the counter too - what an isolate keeps beside its database stays one store; a binding with no sessions is answered as it stands (mutants: DB_ROOT the session; the fallback dropped)', () => {

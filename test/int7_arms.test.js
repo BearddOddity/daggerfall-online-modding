@@ -21,7 +21,7 @@ import { createWeapon } from '../src/combat/enemyEquipment.js';
 import { seededRng } from '../src/systems/wind.js';
 import { standService, T0 } from './accountDb.mjs';
 import { seatRealm } from './realmSeat.mjs';
-import { realmArmsOf } from '../server-account/src/realm.js';
+import { realmMintFacts } from '../server-account/src/realm.js';   // PIN MOVED (SCALE4f): realmArmsOf is realmMintFacts' `wa`
 import { fakeRoom } from './fakeRoom.mjs';
 
 const { subtle } = globalThis.crypto;
@@ -120,7 +120,7 @@ test('INT7 THE MINT: a judged realm character\'s token signs its arms off the pa
   raw.prepare('UPDATE realm_characters SET arms_top = 27, arms_bow = 1 WHERE id = ?').run(R.id);
   const B = await S.registered('Bran');
   assert.equal('wa' in (await claimsOf({ character: R.id }, B.secret)), false, 'another account naming it');
-  assert.equal(await realmArmsOf({ db: S.env.DB }, B.id, R.id), null);
+  assert.equal((await realmMintFacts({ db: S.env.DB }, B.id, R.id)).wa, null);
   assert.equal('wa' in (await claimsOf({})), false, 'none named');
   // AUDIT INT7 (the pins' own): the level signed is the one the judge trusts, over the tile's word
   raw.prepare("UPDATE realm_characters SET level_seen = 9, summary = json_set(COALESCE(summary, '{}'), '$.level', 30) WHERE id = ?").run(R.id);

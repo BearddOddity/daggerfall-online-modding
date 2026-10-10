@@ -179,7 +179,7 @@ import {
   ACCOUNT_MAX, ACCOUNT_WINDOW_S,
 } from './accounts.js';
 import { mintToken, mintOrder, mintRenownOrder, mintGuildOrder, mintGuildOutOrder, MAX_TTL_S, TOKEN_V, ID_RE, SEAT_TITLES, CHAPTER_TITLES, TOKEN_MAX_CHARS, TOKEN_BODY_MAX, tokenBodyOf } from '../../src/net/identityToken.js';
-import { ACCOUNT_VERSION, MAX_BODY_BYTES, ROUTES, OPEN_ROUTES, PATREON_OPEN_ROUTES, savePathOf, realmPathOf, SAVE_MAX_BYTES, SHOT_MAX_BYTES, maintaining, REPLICA_ROUTES, replicaDb } from './service.js';   // SCALE4d: the routes a read replica may serve, and the session they are served on
+import { ACCOUNT_VERSION, MAX_BODY_BYTES, ROUTES, OPEN_ROUTES, PATREON_OPEN_ROUTES, savePathOf, realmPathOf, SAVE_MAX_BYTES, SHOT_MAX_BYTES, maintaining, REPLICA_ROUTES, replicaDb, d1Overloaded } from './service.js';   // SCALE4d: the routes a read replica may serve, and the session they are served on
 import { listSaves, putCard, putBlob, getBlob, deleteSave, saveCardOf } from './saves.js';
 import { signingKey, gatePublicKey } from './signing.js';
 import { stakeCards, cashoutCards } from './cards.js';   // CARDS6: a card table's stakes, escrowed
@@ -240,14 +240,14 @@ import { motherlodesRead, strikeMotherlode, isMotherlodeNode } from './motherlod
 import { marketRead, marketList, marketBuy, marketCancel, marketOrder, marketFill, marketUnorder, marketCollect, marketReport, marketRemove, marketAuction, marketBid, marketGoldCollect, marketVendor, marketVendors, marketMyVendors } from './market.js';   // PROF5: the market; PROF5b: its auctions; GOLD-MARKET: gold held collected
 import {
   listRealm, createRealm, customsRealm, joinRealm, checkpointRealm, getRealmBlob, leaveRealm, deleteRealm, undoRealm,
-  realmCharacterHeld, realmLevelOf, realmArmsOf, grantCustomsPass, REALM_CHARACTERS_MAX, REALM_MAX_BYTES, objectBytesOf,
+  realmMintFacts, grantCustomsPass, REALM_CHARACTERS_MAX, REALM_MAX_BYTES, objectBytesOf,
 } from './realm.js';   // REALM P1: the realm's characters; ARENA4b: the level on a realm character's tile, the token's `cl`
 import { grantSpoils } from './budget.js';   // INT5: a signed win's spoils fill the playing character's budget
 import { reviewAct } from './review.js';   // INT6: the review of the judge's verdicts
 import { isGzip, gzipSizeOf, gunzipText, REALM_TEXT_MAX_BYTES } from '../../src/net/realmSaveCodec.js';   // REALM-GZIP: a save rides packed
 import { tradeRealm, REALM_TRADE_BODY_MAX } from './realmTrade.js';   // REALM P2.1: a trade, settled here
 import { wildFall } from './wild.js';   // INT9: a death in the open zone's drop, taken off the record
-import { listLineages, putLineage, realmDie, realmHouseOf, realmWed, listUnions, LINEAGE_BODY_MAX, isTombstone } from './legacy.js';   // LEGACY7: Project Legacy's lines and the tombstone
+import { listLineages, putLineage, realmDie, realmWed, listUnions, LINEAGE_BODY_MAX, isTombstone } from './legacy.js';   // LEGACY7: Project Legacy's lines and the tombstone
 import { measured } from './metrics.js';   // SCALE1: every request counted (Workers Analytics Engine)
 import { runCron } from './cron.js';   // SCALE4b: the service's own clock
 import { heartbeat } from './heartbeat.js';   // SCALE4c: one request for a tab's three clocks
@@ -852,20 +852,23 @@ const service = {
         // as a realm character and names it here; a build from before the realm names its offline character, or none.
         // The relay refuses a 0 at its door, so online is the realm's at the servers too. Stamped on every mint, a 0
         // included: a token with no `rc` is a service from before this, which the relay still admits.
-        const rc = (await realmCharacterHeld(ctx, who.player.id, body.character)) ? 1 : 0;
+        // SCALE4f: THE FOUR READS OF ITS ROW IN ONE (realm.js realmMintFacts) - whether it is the realm's, its level, its arms
+        // and its house, each exactly as its own read answered it
+        const facts = await realmMintFacts(ctx, who.player.id, body.character);
+        const rc = facts.rc;
         // ARENA4b: AND THAT REALM CHARACTER'S LEVEL, `cl` - the level on its tile (realm.js realmLevelOf: INT7 - the level
         // its judge trusts, else its summary, 1..1000), which the relay reads (a bout's vitality) as it reads `lv`. Absent for any
         // other character, none named, or a level out of the claim's bounds - a token without it is a token as before.
-        const cl = rc ? await realmLevelOf(ctx, who.player.id, body.character) : null;
+        const cl = facts.cl;
         // INT7: AND THAT REALM CHARACTER'S ARMS, `wa` - the most reach of its judged pack's lawful weapons and its bow
         // (realm.js realmArmsOf), every referee's clip of a blow between players. Absent before its first judged checkpoint.
-        const wa = rc ? await realmArmsOf(ctx, who.player.id, body.character) : null;
+        const wa = facts.wa;
         // ARENA4: AND THE ACCOUNT'S ARENA RATING this season, for a registered account - the hall queues by it (net/arenaLaw.js
         // pairQueue), off the signature, never a word of the client's. A guest's token carries none (a guest is not queued).
         const ar = who.player.handle ? (await arenaRatingOf(ctx, who.player.id, arenaSeasonOf(nowS))).rating : undefined;
         // LEGACY7 part two: AND THAT REALM CHARACTER'S HOUSE (legacy.js realmHouseOf: its line's surname, its given name, a
         // Bloodline's mark, the generation's numeral) - off the line the service holds, never a word of the client's
-        const house = rc ? await realmHouseOf(ctx, who.player.id, body.character) : null;
+        const house = facts.house;
         // AUDIT LEGACY III O1: AND WHICH REALM CHARACTER (`ci`, beside a 1 alone) - the relay stamps it on a wedding's frames,
         // so each half names the character its player saw. Kept when a house is left unsaid: the widest token without a
         // house is under TOKEN_MAX_CHARS with it (test/auditlegacy3)
@@ -1871,7 +1874,7 @@ const service = {
       // AUDIT ONLINE A17's law, on this side too: an uncaught error is
       // LOGGED, not lost, and a player is told nothing about it.
       console.error('[account]', path, e?.stack ?? String(e));
-      return no('server', 500, origin);
+      return no('server', d1Overloaded(e) ? 503 : 500, origin);   // SCALE4f: an overloaded primary counted apart
     }
   },
 };
