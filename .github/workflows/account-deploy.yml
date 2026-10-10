@@ -851,8 +851,17 @@ jobs:
         run: |
           set -euo pipefail
           base="${{ steps.deploy.outputs.base }}"
-          guest=$(curl -fsS --max-time 15 -X POST "$base/v1/auth/guest" \
-            -H 'content-type: application/json' -d "{\"label\":\"deploy-smoke\",\"terms\":\"$LEGAL_TERMS\",\"privacy\":\"$LEGAL_PRIVACY\"}")
+          # PATRON-LOAD: the guest mint asked again on a 5xx (the password route's step below, the same) - this step's one
+          # unasked call failed a deploy whose Worker had taken, D1 still working off an overload
+          guest=""
+          for i in $(seq 1 7); do
+            ans=$(curl -sS --max-time 15 -o /tmp/guest.json -w '%{http_code}' -X POST "$base/v1/auth/guest" \
+              -H 'content-type: application/json' -d "{\"label\":\"deploy-smoke\",\"terms\":\"$LEGAL_TERMS\",\"privacy\":\"$LEGAL_PRIVACY\"}") || ans=000
+            if [ "$ans" = "200" ]; then guest=$(cat /tmp/guest.json); break; fi
+            echo "  /v1/auth/guest -> $ans (attempt $i)" >&2
+            if [ "${ans#5}" = "$ans" ] && [ "$ans" != "000" ]; then cat /tmp/guest.json >&2 || true; break; fi
+            sleep 5
+          done
           secret=$(echo "$guest" | sed -n 's/.*"secret":"\([^"]*\)".*/\1/p')
           test -n "$secret" || { echo "::error::no guest session - /v1/auth/guest did not answer a secret"; echo "$guest"; exit 1; }
           # AUDIT (the pre-merge audit, S3): one ask - a timeout or a reset is an answer to ask again (000), never the
