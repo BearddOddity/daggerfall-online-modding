@@ -49,6 +49,7 @@ import { hallMay } from '../../src/net/hallLaw.js';   // GUILD1d: a hall's keepe
 import { heraldryOfRow } from './halls.js';   // GUILD1d: a hall's heraldry, on its door
 import { openGatesAt } from './seatHolding.js';   // SEAT1d: Open Gates, where the town's holder proclaims it
 import { OWNS } from './decor.js';   // GUILD-YARD: a home's character, or a hall's keeper - as its decor asks
+import { homeMyVoteOf } from '../../src/net/homeVoteLaw.js';   // HOME-VOTE: the caller's own vote, as the law reads one
 import { LAYOUT_MATCH_SQL, layoutMatchBinds, TOWN_LAYOUT_SQL, townLayoutRefusal } from './townLayout.js';   // WD3: a town's homes in one layout (AUDIT PRE-MERGE 1003 WD1: a hall's too)
 
 const homeOf = (row) => ({
@@ -405,8 +406,12 @@ export async function homesInTown({ db, nowS = Math.floor(Date.now() / 1000) }, 
       (SELECT m.rank FROM guild_members m WHERE m.guild_id = h.guild_id AND m.player = ?2 AND m.char_id = ?3) AS my_rank,
       (h.guild_id IS NULL AND h.entry = 'guild' AND EXISTS (SELECT 1 FROM guild_members a JOIN guild_members b ON b.guild_id = a.guild_id
         WHERE a.player = h.player AND a.char_id = h.char_id AND b.player = ?2 AND b.char_id = ?3)) AS guildmate,
-      EXISTS (SELECT 1 FROM realm_characters rc WHERE rc.id = ?3 AND rc.player = ?2) AS me_realm
+      EXISTS (SELECT 1 FROM realm_characters rc WHERE rc.id = ?3 AND rc.player = ?2) AS me_realm,
+      (SELECT COALESCE(SUM(v.vote), 0) FROM home_votes v WHERE v.map_id = h.map_id AND v.building_key = h.building_key) AS score,
+      (SELECT v.vote FROM home_votes v WHERE v.map_id = h.map_id AND v.building_key = h.building_key AND v.player = ?2) AS my_vote
     FROM homes h LEFT JOIN guilds g ON g.id = h.guild_id WHERE h.map_id = ?4 ORDER BY h.building_key LIMIT ?5`).bind(nowS, player.id, me, mapId, HOME_TOWN_MAX).all();
+  // HOME-VOTE (homeVotes.js): each home's score - its votes summed - and the caller's own vote, said where there is one
+  const votesOf = (h) => ({ ...(Number(h.score) ? { score: Number(h.score) } : {}), ...(homeMyVoteOf(h.my_vote) ? { vote: homeMyVoteOf(h.my_vote) } : {}) });
   return {
     mapId, ...(open ? { openGates: true } : {}),
     // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: a deed held for the named character is no online home to it - its door, storage
@@ -426,6 +431,7 @@ export async function homesInTown({ db, nowS = Math.floor(Date.now() / 1000) }, 
           // `keeper`'s realm clause took the door's "Who may enter" from a local Officer the service would have answered
           ...(rank != null && hallMay(rank, 'hallEntry') ? { hallEntry: true } : {}),
           ...lookOfRow(h),   // GUILD-YARD: how its keepers painted it, to everyone
+          ...votesOf(h),   // HOME-VOTE
         };
       }
       const mine = h.player === player.id;
@@ -443,6 +449,7 @@ export async function homesInTown({ db, nowS = Math.floor(Date.now() / 1000) }, 
         ...lookOfRow(h),   // HOME-LOOK: how its owner painted it
         ...(h.guildmate === 1 ? { guildmate: true } : {}),   // GUILD1d: the named character is in the owner's character's guild
         ...(h.deed === 1 ? { deed: true } : {}),   // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: a deed held, never bought
+        ...votesOf(h),   // HOME-VOTE
       };
     }),
   };

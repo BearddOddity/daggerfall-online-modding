@@ -234,6 +234,10 @@ export const REFUSALS = Object.freeze({
   'home-arena': ARENA_TEXT.homeMove.arena,
   'home-unmoved': ARENA_TEXT.homeMove.unmoved,
   'home-changed': ARENA_TEXT.homeMove.changed,
+  // HOME-VOTE: a town's word on a player's house (server-account/src/homeVotes.js) - met at its door
+  'vote-own': 'You cannot vote on your own home, or on the hall of your own guild.',
+  'vote-rate': 'You have voted on a great many homes this hour. Try again later.',
+  'bad-vote': 'The account service could not read that vote. The game may need updating.',
   // HOME-LOOK: an online home's outside (server-account/src/homes.js setHomeLook)
   'bad-look': 'The account service could not read that look. The game may need updating.',
   // DECOR1: an online home's decor (server-account/src/decor.js)
@@ -1331,6 +1335,8 @@ export function accountHomes({ fetch, storage }) {
     collectRent: ({ mapId, buildingKey, character, realm = null }) => post('/v1/homes/rooms/collect', { mapId, buildingKey, character, ...(realm ? { realm } : {}) }),
     // HOME-LOOK: how a home looks outside, painted by its owner (null: the town's own)
     look: ({ mapId, buildingKey, character, look = null }) => post('/v1/homes/look', { mapId, buildingKey, character, look }),
+    // HOME-VOTE: this account's word on another's home - up (1), down (-1), or taken back (0)
+    vote: ({ mapId, buildingKey, vote }) => post('/v1/homes/vote', { mapId, buildingKey, vote }),
     // ARENA4b: a home the arena displaced, moved to the house this client picked (its record named when the pieces' refund
     // comes onto it); the moves this character has not read; and one read
     arenaMove: ({ mapId, from, to, character, realm = null }) => post('/v1/homes/arena-move', { mapId, from, to, character, ...(realm ? { realm } : {}) }),

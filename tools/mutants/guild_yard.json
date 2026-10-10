@@ -146,8 +146,9 @@
   {
     "name": "GUILD-YARD-the-refresh-asks-no-keeper",
     "file": "src/scenes/world.js",
-    "old": "(row?.look || row?.mine || row?.keeper)) merged = true;",
-    "new": "(row?.look || row?.mine)) merged = true;",
+    "old": "((row?.look && homeDecorShown(row)) || row?.mine || row?.keeper)) merged = true;",
+    "new": "((row?.look && homeDecorShown(row)) || row?.mine)) merged = true;",
+    "note": "HOME-VOTE (PIN MOVED): a look counts only where it is shown - a shunned home's stays in the merge",
     "tests": [
       "test/guild_yard.test.js"
     ]

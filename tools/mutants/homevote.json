@@ -1,0 +1,242 @@
+[
+  {
+    "name": "HOME-VOTE-zero-shunned",
+    "file": "src/net/homeVoteLaw.js",
+    "old": "export const homeShunned = (score) => homeScoreOf(score) < 0;",
+    "new": "export const homeShunned = (score) => homeScoreOf(score) <= 0;",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "every new home hidden"
+  },
+  {
+    "name": "HOME-VOTE-owner-hidden",
+    "file": "src/net/homeVoteLaw.js",
+    "old": "  if (home.mine === true || home.member === true) return true;",
+    "new": "  if (home.member === true) return true;",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "the owner loses its own decor"
+  },
+  {
+    "name": "HOME-VOTE-member-hidden",
+    "file": "src/net/homeVoteLaw.js",
+    "old": "  if (home.mine === true || home.member === true) return true;",
+    "new": "  if (home.mine === true) return true;",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a hall's members lose theirs"
+  },
+  {
+    "name": "HOME-VOTE-visitor-shown",
+    "file": "src/net/homeVoteLaw.js",
+    "old": "  return !homeShunned(home.score);",
+    "new": "  return true;",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "the vote hides nothing"
+  },
+  {
+    "name": "HOME-VOTE-owner-votes",
+    "file": "src/systems/onlineHomes.js",
+    "old": "export const homeVotable = (home) => !!home && !home.own && home.mine !== true && !(home.hall && home.member === true);",
+    "new": "export const homeVotable = (home) => !!home && !home.own && !(home.hall && home.member === true);",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "the owner's other character offered a vote"
+  },
+  {
+    "name": "HOME-VOTE-member-votes",
+    "file": "src/systems/onlineHomes.js",
+    "old": "export const homeVotable = (home) => !!home && !home.own && home.mine !== true && !(home.hall && home.member === true);",
+    "new": "export const homeVotable = (home) => !!home && !home.own && home.mine !== true;",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a member offered a vote on its own hall"
+  },
+  {
+    "name": "HOME-VOTE-take-back-never-sent",
+    "file": "src/systems/onlineHomes.js",
+    "old": "  return homeMyVoteOf(home?.myVote) === v ? 0 : v;",
+    "new": "  return v;",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a vote can never be taken back"
+  },
+  {
+    "name": "HOME-VOTE-score-unread",
+    "file": "src/systems/onlineHomes.js",
+    "old": "            score: homeScoreOf(h.score), myVote: homeMyVoteOf(h.vote),",
+    "new": "            score: 0, myVote: 0,",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "the client never hears the score"
+  },
+  {
+    "name": "HOME-VOTE-vote-unshown",
+    "file": "src/systems/onlineHomes.js",
+    "old": "      if (row) wrote(id, buildingKey, { ...row, score, myVote: mine }, { mine: false });",
+    "new": "      if (row) wrote(id, buildingKey, row, { mine: false });",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a vote cast shows nothing until the town is read"
+  },
+  {
+    "name": "HOME-VOTE-listener-told",
+    "file": "src/systems/onlineHomes.js",
+    "old": "{ ...row, score, myVote: mine }, { mine: false });",
+    "new": "{ ...row, score, myVote: mine });",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a vote told as a home of the line's changed"
+  },
+  {
+    "name": "HOME-VOTE-change-dropped",
+    "file": "server-account/src/homeVotes.js",
+    "old": "      ON CONFLICT (map_id, building_key, player) DO UPDATE SET vote = excluded.vote, voted_at = excluded.voted_at`)",
+    "new": "      ON CONFLICT (map_id, building_key, player) DO NOTHING`)",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a change of mind never lands"
+  },
+  {
+    "name": "HOME-VOTE-owner-votes-service",
+    "file": "server-account/src/homeVotes.js",
+    "old": "  AND NOT ((h.guild_id IS NULL AND h.player = ?)",
+    "new": "  AND NOT ((h.guild_id IS NULL AND h.player = ? AND 0)",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "an owner votes its own home up"
+  },
+  {
+    "name": "HOME-VOTE-member-votes-service",
+    "file": "server-account/src/homeVotes.js",
+    "old": "g.guild_id = h.guild_id AND g.player = ?))))",
+    "new": "g.guild_id = h.guild_id AND g.player = ? AND 0))))",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a guild votes its own hall up"
+  },
+  {
+    "name": "HOME-VOTE-rate-uncounted",
+    "file": "server-account/src/homeVotes.js",
+    "old": "  if (await overRate({ db, nowS }, `vote:${player.id}`, HOME_VOTES_MAX, HOME_VOTES_WINDOW_S)) return { error: 'vote-rate' };\n",
+    "new": "",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a script votes without end"
+  },
+  {
+    "name": "HOME-VOTE-bad-vote-taken",
+    "file": "server-account/src/homeVotes.js",
+    "old": "  if (!homeMapIdOk(mapId) || !homeBuildingKeyOk(buildingKey) || !homeVoteOk(vote)) return { error: 'bad-vote' };",
+    "new": "  if (!homeMapIdOk(mapId) || !homeBuildingKeyOk(buildingKey)) return { error: 'bad-vote' };",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a vote of 2 reaches the database"
+  },
+  {
+    "name": "HOME-VOTE-withdraw-inserted",
+    "file": "server-account/src/homeVotes.js",
+    "old": "  const write = vote === 0\n",
+    "new": "  const write = false\n",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a vote taken back written as a vote of 0"
+  },
+  {
+    "name": "HOME-VOTE-score-unsaid",
+    "file": "server-account/src/homes.js",
+    "old": "        ...votesOf(h),   // HOME-VOTE\n      };",
+    "new": "      };",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "the town never says a home's score"
+  },
+  {
+    "name": "HOME-VOTE-vote-unsaid",
+    "file": "server-account/src/homes.js",
+    "old": "...(homeMyVoteOf(h.my_vote) ? { vote: homeMyVoteOf(h.my_vote) } : {})",
+    "new": "...({})",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "the reader never hears its own vote"
+  },
+  {
+    "name": "HOME-VOTE-votes-kept",
+    "file": "server-account/migrations/0106_home_votes.sql",
+    "old": "  FOREIGN KEY (map_id, building_key) REFERENCES homes(map_id, building_key) ON DELETE CASCADE,",
+    "new": "  FOREIGN KEY (map_id, building_key) REFERENCES homes(map_id, building_key),",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a sold home's votes kept for its next owner (the delete refused)"
+  },
+  {
+    "name": "HOME-VOTE-yard-unasked",
+    "file": "src/scenes/homeYards.js",
+    "old": "        const pieces = homeDecorShown(home) ? town?.byKey.get(bk) ?? null : null;",
+    "new": "        const pieces = town?.byKey.get(bk) ?? null;",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a shunned home's yard stands for everyone"
+  },
+  {
+    "name": "HOME-VOTE-room-stood",
+    "file": "src/scenes/worldModes.js",
+    "old": "        const r = shown ? answer : { ...answer, data: { ...answer.data, pieces: [], hidden: [] } };",
+    "new": "        const r = answer;",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a shunned home's room stands for everyone"
+  },
+  {
+    "name": "HOME-VOTE-look-painted",
+    "file": "src/scenes/world.js",
+    "old": ": homeDecorShown(row) ? row?.look ?? null : null);",
+    "new": ": row?.look ?? null);",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a shunned home's paint stands for everyone"
+  },
+  {
+    "name": "HOME-VOTE-press-unread",
+    "file": "src/scenes/worldModes.js",
+    "old": "            if (isHomeVoteVerb(verb)) { if (homeVotable(home)) pressHomeVote(bd, verb === HOME_VOTE_VERB.up); return true; }\n",
+    "new": "",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a vote row pressed answers \"Locked\""
+  },
+  {
+    "name": "HOME-VOTE-lit-click-votes",
+    "file": "src/scenes/worldModes.js",
+    "old": "      if (voteOnly) _doorText = { ..._doorText, actionsUnlit: true };\n",
+    "new": "",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a plain click on a stranger's door casts a vote"
+  }
+]

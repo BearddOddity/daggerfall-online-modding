@@ -370,7 +370,7 @@ test('GUILD1d the cloth: rows of two triangles; the clock wrapped and every rate
 
 test('GUILD1d wired: the building host - the hall\'s rows and its buy, the chest, stations and rest for members, the keepers\' decor as a hall; the world host - the door measured at the build, the banners built and drawn after the duel walls, the guild\'s hall handed down; the decorator offers a hall no personal things (by source)', () => {
   const wm = src('src/scenes/worldModes.js');
-  assert.match(wm, /if \(home\) return homeVisitorRows\(home, homeDoorFor\(bd, home\)\);[^\n]*GUILD1d/);
+  assert.match(wm, /GUILD1d: a hall's members go in, its keepers say who may;\n[^\n]*\n\s*const rows = \[\.\.\.\(homeVisitorRows\(home, homeDoorFor\(bd, home\)\) \?\? \[\]\), \.\.\.homeVoteRows\(home\)\];/);   // PIN MOVED: HOME-VOTE - the hall's rows, and the town's votes under them
   assert.match(wm, /const hall = homeHallBuyRow\(price, hallGuild\(\), hallArmed\(bd\)\);/);
   assert.match(wm, /if \(verb === HALL_VERB\.buy && price\) \{ pressHallBuy\(bd, price\); return true; \}/);
   assert.match(wm, /if \(c && \(\(interiorHome\?\.hall && interiorHome\.member\) \|\| interiorSeatHall\?\.member\)\) \{ openHallChest\(\); return true; \}/);   // PIN MOVED (SEAT-HALL): the palace's hall shares the line

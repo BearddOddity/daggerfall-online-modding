@@ -1,0 +1,142 @@
+[
+  {
+    "name": "DECOR-FIGURE-no-figure",
+    "file": "src/net/decorLaw.js",
+    "old": "  return !!piece && piece.model == null && !piece.item && Array.isArray(piece.flat) && isNpcFlat(piece.flat[0]);",
+    "new": "  return false;",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "nothing is a figure: every piece scales"
+  },
+  {
+    "name": "DECOR-FIGURE-own-item-a-figure",
+    "file": "src/net/decorLaw.js",
+    "old": "  return !!piece && piece.model == null && !piece.item && Array.isArray(piece.flat) && isNpcFlat(piece.flat[0]);",
+    "new": "  return !!piece && piece.model == null && Array.isArray(piece.flat) && isNpcFlat(piece.flat[0]);",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "one's own item read as a figure"
+  },
+  {
+    "name": "DECOR-FIGURE-drawn-at-record",
+    "file": "src/net/decorLaw.js",
+    "old": "export const decorDrawnScale = (piece) => (decorIsFigure(piece) ? 1 : piece?.scale ?? 1);",
+    "new": "export const decorDrawnScale = (piece) => (piece?.scale ?? 1);",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "a figure grown before drawn grown"
+  },
+  {
+    "name": "DECOR-FIGURE-scale-unasked",
+    "file": "src/net/decorLaw.js",
+    "old": "export const decorScaleOk = (piece) => !decorIsFigure(piece) || piece.scale === 1;",
+    "new": "export const decorScaleOk = (piece) => true;",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "the service writes a figure at any size"
+  },
+  {
+    "name": "DECOR-FIGURE-step-taken",
+    "file": "src/systems/decorPlacer.js",
+    "old": "      if (figure) return;\n",
+    "new": "",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "Bigger grows a figure"
+  },
+  {
+    "name": "DECOR-FIGURE-old-size-kept",
+    "file": "src/systems/decorPlacer.js",
+    "old": "  if (figure) s.scale = 1;\n",
+    "new": "",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "a figure grown before keeps its size when moved"
+  },
+  {
+    "name": "DECOR-FIGURE-kind-unread",
+    "file": "src/systems/decorPlacer.js",
+    "old": "export const decorEntrySized = (entry) => !(entry?.kind === 'people' || decorIsFigure(entry));",
+    "new": "export const decorEntrySized = (entry) => !decorIsFigure(entry);",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "a Vendor in another archive scales"
+  },
+  {
+    "name": "DECOR-FIGURE-flat-unread",
+    "file": "src/systems/decorPlacer.js",
+    "old": "export const decorEntrySized = (entry) => !(entry?.kind === 'people' || decorIsFigure(entry));",
+    "new": "export const decorEntrySized = (entry) => !(entry?.kind === 'people');",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "a figure moved before the catalogue is read scales"
+  },
+  {
+    "name": "DECOR-FIGURE-buttons-kept",
+    "file": "src/ui/decorPanel.js",
+    "old": "      if (!!smaller.hidden === sized) { smaller.hidden = !sized; bigger.hidden = !sized; keys.textContent = keysText(sized); }\n",
+    "new": "",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "the bar keeps Smaller and Bigger"
+  },
+  {
+    "name": "DECOR-FIGURE-bar-untold",
+    "file": "src/scenes/decorTool.js",
+    "old": "      sized: decorEntrySized(p.entry),   // DECOR-FIGURE: no Smaller or Bigger for one of Daggerfall's people\n",
+    "new": "",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "the tool never tells the bar"
+  },
+  {
+    "name": "DECOR-FIGURE-room-draws-record",
+    "file": "src/scenes/decorRoom.js",
+    "old": "        const k = decorDrawnScale(piece);",
+    "new": "        const k = piece.scale;",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "the room draws a figure at its record's size"
+  },
+  {
+    "name": "DECOR-FIGURE-place-unguarded",
+    "file": "server-account/src/decor.js",
+    "old": "  if (!sent || !decorScaleOk(sent)) return { error: 'bad-decor' };",
+    "new": "  if (!sent) return { error: 'bad-decor' };",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "a giant figure placed"
+  },
+  {
+    "name": "DECOR-FIGURE-move-unguarded",
+    "file": "server-account/src/decor.js",
+    "old": "  if (!decorScaleOk({ ...was, ...pl }) && pl.scale !== was.scale) return { error: 'bad-decor' };\n",
+    "new": "",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "a figure grown by a move"
+  },
+  {
+    "name": "DECOR-FIGURE-old-turn-refused",
+    "file": "server-account/src/decor.js",
+    "old": "  if (!decorScaleOk({ ...was, ...pl }) && pl.scale !== was.scale) return { error: 'bad-decor' };",
+    "new": "  if (!decorScaleOk({ ...was, ...pl })) return { error: 'bad-decor' };",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "a figure grown before can no longer be turned"
+  }
+]

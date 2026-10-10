@@ -769,6 +769,7 @@ import { caravanRoomOf, caravanKeyOf } from '../net/privateInterior.js';   // WA
 import { CARAVAN_TEXT } from '../systems/caravanRoom.js';   // WAGONS2 (FINAL AUDIT): a caravan's save that cannot come back, said
 import { caravanEntryOf, setDrivenCaravanEntry, caravanMayEnter, CARAVAN_VISIT_TEXT } from '../systems/caravanVisit.js';   // WAGONS2-VISIT: who may enter a caravan, and a visit to another's
 import { HOME_ENTRY_WORDS, homeNextEntry } from '../systems/onlineHomes.js';   // WAGONS2-VISIT: a caravan's door is turned as a home's is
+import { homeDecorShown } from '../net/homeVoteLaw.js';   // HOME-VOTE: a shunned home's paint stands for its insiders alone
 import { createCaravanVisitLink } from '../net/caravanVisitLink.js';   // WAGONS2-VISIT: the visited caravan's cell, heard from inside it
 import { RECEIVER_MARKS } from '../net/realmTradeLaw.js';   // WAGONS2-VISIT (AUDIT): the last owner's marks, never carried to the next
 import { GATE_BRAIN_V } from '../net/wire.js';   // AUDIT WBX R7: the brain's law this client knows, said on every `in`
@@ -1645,7 +1646,8 @@ export async function bootWorld(canvas, renderer, params, status) {
   let _lookPreviewGen = 0;
   /** @type {Map<string, any>} `${mapId}:${buildingKey}` -> a look the owner's painter is trying */
   const _lookPreview = new Map();
-  const lookOfHome = (mapId, bk, row) => (_lookPreview.has(`${mapId}:${bk}`) ? _lookPreview.get(`${mapId}:${bk}`) : row?.look ?? null);
+  // HOME-VOTE: a home the town voted below zero stands in its town's own paint but for its insiders (net/homeVoteLaw.js)
+  const lookOfHome = (mapId, bk, row) => (_lookPreview.has(`${mapId}:${bk}`) ? _lookPreview.get(`${mapId}:${bk}`) : homeDecorShown(row) ? row?.look ?? null : null);
   // MARKS1 (PROF0 10.5): the account's Marks as this page knows them - the balance, the Bank's sale carried to its end
   // (a sale whose answer was lost is kept and settled), a guild's Marks moved (net/marksBook.js). Online only.
   const marksBook = params.has('online')
@@ -6592,7 +6594,9 @@ export async function bootWorld(canvas, renderer, params, status) {
       let merged = false;
       // a home the merge swallowed rebuilds its pixel once a look is WRITTEN on it, or once it is this account's - never
       // for the painter's preview (AUDIT: a colour tried tore the owner's street down under the open panel)
-      for (const [bk, row] of homes) if (!p.homeKeys.has(bk) && p.buildingKeys.has(bk) && (row?.look || row?.mine || row?.keeper)) merged = true;   // GUILD-YARD: a hall kept
+      // HOME-VOTE: a look shown - a shunned home's stands in the merge for everyone but its insiders (never lookOfHome: the
+      // painter's preview would tear the owner's street down)
+      for (const [bk, row] of homes) if (!p.homeKeys.has(bk) && p.buildingKeys.has(bk) && ((row?.look && homeDecorShown(row)) || row?.mine || row?.keeper)) merged = true;   // GUILD-YARD: a hall kept
       if (merged) { _reskin.mark(key); continue; }
       for (const m of p.models) {
         if (!m._home) continue;

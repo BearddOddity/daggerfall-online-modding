@@ -35,7 +35,7 @@
 
 import { trs } from '../world/mat4.js';
 import { transformedAabb } from '../render/frustum.js';
-import { decorPieceOf, decorPrice, decorMountFrame, DECOR_SCALE_MIN, DECOR_SCALE_MAX, DECOR_MOUNT_LIFT } from '../net/decorLaw.js';
+import { decorPieceOf, decorPrice, decorMountFrame, decorIsFigure, DECOR_SCALE_MIN, DECOR_SCALE_MAX, DECOR_MOUNT_LIFT } from '../net/decorLaw.js';   // DECOR-FIGURE: a person stands at its own size
 
 export const DECOR_TURN_STEP = 15;
 export const DECOR_TURN_FINE = 1;
@@ -59,6 +59,11 @@ const snapTo = (v, step) => round(Math.round(v / step) * step, 3);
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const DEG = 180 / Math.PI;
 
+/** DECOR-FIGURE: whether a catalogue entry takes a size step - never one of Daggerfall's people (the catalogue's Vendors,
+ *  or a person's flat however it was reached: a piece moved before the catalogue is read). The placer's law and the
+ *  bar's buttons (scenes/decorTool.js) ask this one. */
+export const decorEntrySized = (entry) => !(entry?.kind === 'people' || decorIsFigure(entry));
+
 /**
  * THE TOOL for one catalogue `entry`. `radius` its measured radius in metres (null: unmeasured), `box` a model's local
  * bounds [minX, minY, minZ, maxX, maxY, maxZ] (render/frustum.js localAabb), null for a flat. DECOR1e: `from` a placed
@@ -69,6 +74,10 @@ const DEG = 180 / Math.PI;
 export function createDecorPlacer(entry, { radius = null, box = null, from = null, free = false } = {}) {
   const mount = !!entry.mount;
   const s = { yaw: from ? wrapTurn((mount ? from.rot?.[2] : from.rot?.[0]) ?? 0) : 0, raise: 0, scale: from?.scale ?? 1, snap: false };
+  // DECOR-FIGURE: one of Daggerfall's people takes no size step - placed or moved, it stands at scale 1, one grown before
+  // brought back to its own size
+  const figure = !decorEntrySized(entry);
+  if (figure) s.scale = 1;
 
   /** How far above a surface point the piece's origin stands, before the owner's own lift. */
   function lift() {
@@ -113,8 +122,11 @@ export function createDecorPlacer(entry, { radius = null, box = null, from = nul
     turn(deg) { s.yaw = wrapTurn(round(s.yaw + deg, 1)); },
     /** Lift or lower by `d` metres, within the tool's own bound. */
     raise(d) { s.raise = round(Math.min(DECOR_RAISE_MAX, Math.max(DECOR_RAISE_MIN, s.raise + d)), 3); },
-    /** A size step up or down, within the law's. */
+    /** DECOR-FIGURE: whether the piece takes a size step at all - a figure takes none. */
+    sized: !figure,
+    /** A size step up or down, within the law's (DECOR-FIGURE: none for a figure). */
     rescale(up) {
+      if (figure) return;
       const next = up ? s.scale * DECOR_SCALE_STEP : s.scale / DECOR_SCALE_STEP;
       s.scale = round(Math.min(DECOR_SCALE_MAX, Math.max(DECOR_SCALE_MIN, next)), 3);
     },

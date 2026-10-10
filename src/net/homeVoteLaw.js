@@ -1,0 +1,71 @@
+// @ts-check
+// ═══════════════════════════════════════════════════════════════════
+// HOME-VOTE (2026-10-10) — A TOWN'S WORD ON A PLAYER'S HOUSE.
+//
+// The owner: "I want to implement a house voting system within vicinity
+// of player houses. If the house votes run negative, the exterior
+// decorations/interior decorations should not be shown to other players".
+//
+// A VOTE is one registered account's word on one online home (a guild's
+// hall among them): up (+1) or down (-1), changed or taken back (0) at
+// will, never more than one standing an account. A home's SCORE is its
+// votes summed; while it runs NEGATIVE the home is SHUNNED, and what its
+// owner chose to show stands for its insiders alone - every other player
+// walks into the room Daggerfall furnished (no placed piece, nothing
+// taken out), past a yard with nothing in it and a house in its town's own
+// paint (homeDecorShown). Nothing is deleted: a vote turned round shows it
+// all again, and the owner never stops seeing their own.
+//
+// Cast at the house itself - its door's plaque (scenes/worldModes.js), so
+// a vote is the word of somebody standing at it; kept on the account
+// service (server-account/src/homeVotes.js, migration 0106), which reads it
+// out with the town's homes. Pure: no clock, no DOM, no network.
+// ═══════════════════════════════════════════════════════════════════
+
+/** The votes an account may stand on a home - down and up; 0, sent, takes its vote back. */
+export const HOME_VOTE_DOWN = -1;
+export const HOME_VOTE_UP = 1;
+/** Whether `v` is a vote the service takes: -1, +1, or 0 (withdrawn). */
+export const homeVoteOk = (v) => v === HOME_VOTE_DOWN || v === HOME_VOTE_UP || v === 0;
+/** How many votes an account may cast an hour - a walk down a street of houses, never a script. */
+export const HOME_VOTES_MAX = 120;
+export const HOME_VOTES_WINDOW_S = 3600;
+
+/** A home's score as the service answers it (its votes summed), 0 for none or a word that is no number. */
+export const homeScoreOf = (raw) => (Number.isSafeInteger(raw) ? raw : 0);
+/** An account's own vote on a home as the service answers it - -1, +1, or 0 for none. */
+export const homeMyVoteOf = (raw) => (raw === HOME_VOTE_DOWN || raw === HOME_VOTE_UP ? raw : 0);
+/** THE LAW: a home whose votes run negative is shunned. */
+export const homeShunned = (score) => homeScoreOf(score) < 0;
+
+/**
+ * WHETHER A HOME'S DECOR STANDS FOR THE PLAYER LOOKING - its placed pieces inside and out, the furniture its owner took
+ * out, and the paint on its outside. Always for its INSIDERS: the owner's own account (`mine` - any of its characters)
+ * and, for a guild's hall, its members (`member`); for everyone else, unless the home is shunned. `home` is the client's
+ * registry row (systems/onlineHomes.js homeAt); none - not an online home - shows what stands.
+ */
+export function homeDecorShown(home) {
+  if (!home) return true;
+  if (home.mine === true || home.member === true) return true;
+  return !homeShunned(home.score);
+}
+
+/** The score as the plaque says it: +3, 0, -2. */
+export const homeScoreText = (score) => {
+  const n = homeScoreOf(score);
+  return n > 0 ? `+${n}` : String(n);
+};
+/** The door's line under a voted home, to anyone who may vote on it: its score, and the reader's own vote. */
+export const homeVotesLine = (score, mine = 0) => `Votes: ${homeScoreText(score)}${mine === HOME_VOTE_UP ? ' - you voted up' : mine === HOME_VOTE_DOWN ? ' - you voted down' : ''}`;
+/** What a shunned home's owner is told at their own door - its decor hidden from everyone else until its score climbs. */
+export const homeShunnedOwnerLine = (score) => `Votes: ${homeScoreText(score)} - your home's decorations are hidden from other players.`;
+/** What a visitor is told at a shunned home's door. */
+export const HOME_SHUNNED_LINE = 'Its decorations are hidden: the town has voted it down.';
+/** A vote refused in its own words where the home door's would mislead - a guest's (the route's wall says owning a home
+ *  needs an account), a home nobody holds now (the door's word is "not yours any more") - else null. */
+export const homeVoteRefusalLine = (error) => (error === 'homes-need-account' ? 'Voting on a home needs a username and a password. Give this account one and you can vote.'
+  : error === 'no-home' ? 'Nobody owns that home any more.' : null);
+/** A vote landed, in words. */
+export const homeVotedLine = (vote, score) => (vote === HOME_VOTE_UP ? `You voted this home up. Its votes: ${homeScoreText(score)}.`
+  : vote === HOME_VOTE_DOWN ? `You voted this home down. Its votes: ${homeScoreText(score)}.`
+    : `You took your vote back. Its votes: ${homeScoreText(score)}.`);

@@ -1089,7 +1089,8 @@ export function createDecorPanel({
 }
 
 /**
- * THE BAR, while a piece is being placed. `show(info)` / `hide()`; `info` is { name, price, why, snap } and, for a move
+ * THE BAR, while a piece is being placed. `show(info)` / `hide()`; `info` is { name, price, why, snap, sized } (DECOR-FIGURE:
+ * `sized` false hides Smaller and Bigger - a figure stands at its own size) and, for a move
  * (DECOR1e), `priceText` - free, or what a resize costs or gives back. The buttons are
  * the keys' twins: `on` holds place, back, turnLeft, turnRight, raise, lower, smaller, bigger, grid - and, on a touch
  * screen (DECOR1e), `fly(dir)`: Fly up (1) or Fly down (-1) held, 0 let go. A touch screen's bar stands at the top,
@@ -1102,9 +1103,10 @@ export function createDecorBar({ on, touch = false, doc = document }) {
   const root = el('div', `dfdecor-bar${touch ? ' touch' : ''}`);
   root.dataset.up = '0';
   const what = el('div', 'dfdecor-bar-what');
-  const keys = el('div', 'dfdecor-bar-keys',
-    touch ? 'Fly: the stick, and hold Fly up or Fly down - Look: drag - the piece stands where you look.'
-      : 'Fly: walk keys, Jump up, Crouch down, Run faster - Look: mouse - Turn: wheel or Turn Left/Right (Shift: fine; a picture turned half round faces the other way) - Raise/lower: Float Up/Down - Size: - and = - Grid: / - Place: click or Interact - Back: right click or Escape');
+  // DECOR-FIGURE: a piece that takes no size step (one of Daggerfall's people) is told no Size key
+  const keysText = (sized) => (touch ? 'Fly: the stick, and hold Fly up or Fly down - Look: drag - the piece stands where you look.'
+    : `Fly: walk keys, Jump up, Crouch down, Run faster - Look: mouse - Turn: wheel or Turn Left/Right (Shift: fine; a picture turned half round faces the other way) - Raise/lower: Float Up/Down - ${sized ? 'Size: - and = - ' : ''}Grid: / - Place: click or Interact - Back: right click or Escape`);
+  const keys = el('div', 'dfdecor-bar-keys', keysText(true));
   const why = el('div', 'dfdecor-bar-why');
   const btns = el('div', 'dfdecor-bar-btns');
   const b = (label, key, cls = 'dfdecor-chip') => {
@@ -1125,8 +1127,9 @@ export function createDecorBar({ on, touch = false, doc = document }) {
     for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) n.addEventListener(t, () => { if (flyDir === dir) flyTo(0); });
     return n;
   };
+  const smaller = b('Smaller', 'smaller'), bigger = b('Bigger', 'bigger');   // DECOR-FIGURE: hidden for a figure (show's `sized`)
   btns.append(b('Place', 'place', 'dfdecor-btn'), b('Turn left', 'turnLeft'), b('Turn right', 'turnRight'), b('Raise', 'raise'),
-    b('Lower', 'lower'), b('Smaller', 'smaller'), b('Bigger', 'bigger'), grid);
+    b('Lower', 'lower'), smaller, bigger, grid);
   if (touch) btns.append(hold('Fly up', 1), hold('Fly down', -1));
   btns.append(b('Back', 'back'));
   root.append(what, keys, why, btns);
@@ -1135,10 +1138,12 @@ export function createDecorBar({ on, touch = false, doc = document }) {
   let alive = true;
   return {
     root,
-    show({ name, price, priceText = null, why: whyText = null, snap = false }) {
+    show({ name, price, priceText = null, why: whyText = null, snap = false, sized = true }) {
       if (!alive) return;
       const w = `${name} - ${priceText ?? decorPriceText(price)}`;
       if (what.textContent !== w) what.textContent = w;
+      // DECOR-FIGURE: one of Daggerfall's people stands at its own size - no Smaller, no Bigger, no Size key told
+      if (!!smaller.hidden === sized) { smaller.hidden = !sized; bigger.hidden = !sized; keys.textContent = keysText(sized); }
       const y = whyText ?? '';
       if (why.textContent !== y) why.textContent = y;
       grid.setAttribute('aria-pressed', snap ? 'true' : 'false');

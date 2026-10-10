@@ -342,7 +342,9 @@ import {
   homeClaimLayout,   // AUDIT PRE-MERGE 1003 WD1: a hall is bought in its town's layout, as a home is
   realmDeedAt,   // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: the house the realm gave a knight is theirs, never for sale to them
   homeFootprintM2,   // HOME-PRICE: the ground a house stands on
+  homeVoteRows, homeVotable, homeVoteOfPress, homeVoteLines, isHomeVoteVerb, HOME_VOTE_VERB,   // HOME-VOTE: the town's word on it, at its door
 } from '../systems/onlineHomes.js';
+import { homeDecorShown, homeVotedLine, homeVotesLine, homeVoteRefusalLine } from '../net/homeVoteLaw.js';   // HOME-VOTE: a shunned home's decor stands for its insiders alone
 import { goldSum, accountWords } from '../systems/homeWords.js';   // AUDIT HOME-PRICE E4: a home's sums and the account they moved in
 import { guildHallPrice, GUILD_HALL_ENTRY_WORDS } from '../net/hallLaw.js';   // GUILD1d: what a hall costs, in its refusal's words; who may walk in
 import { SEAT_HALL_DECOR_CAP, SEAT_HALL_CLEAR_M, SEAT_HALL_TEXT } from '../net/townSeatLaw.js';   // SEAT-HALL: the palace as the holder's hall
@@ -5038,8 +5040,12 @@ export function createWorldModes(host) {
     askDecorList({
       ask: () => host.homeDecor.list(homeTownOf(b), b.buildingKey, seat),
       live: () => visit === _decorVisit && interiorBuilding === b && _decorListed !== visit,
-      stand: (r) => {
+      stand: (answer) => {
         _decorListed = visit;   // DECOR-SHELL: stood - nothing later will stand the room over a placement
+        // HOME-VOTE: a home the town voted below zero stands as Daggerfall furnished it for everyone but its insiders - no
+        // placed piece, nothing taken out (net/homeVoteLaw.js homeDecorShown; the owner, and a hall's members, see theirs)
+        const shown = homeDecorShown(interiorHome);
+        const r = shown ? answer : { ...answer, data: { ...answer.data, pieces: [], hidden: [] } };
         const pieces = r.data.pieces.map(decorPieceOf).filter(Boolean);
         interiorDecor.set(pieces);
         if (interiorHome?.own) decorReturnStrays(pieces);   // DECOR2a: the owner's own things the room no longer stands
@@ -7137,6 +7143,13 @@ export function createWorldModes(host) {
       const verbs = _doorText ? houseVerbs : null;
       const homeLine = verbs ? null : home ? (homeDoorFor(bd, home) === 'locked' ? 'Locked' : null) : homeSaleHover(bd);
       if (_doorText && homeLine) _doorText = { ..._doorText, subs: [...(_doorText.subs ?? []), homeLine] };
+      // HOME-VOTE: its votes, and whether its decorations are hidden - and a door whose only rows are the vote's still says
+      // "Locked", and lists them UNLIT: a plain click on a stranger's door is never a vote cast (worldHover.js
+      // actionsUnlit, a player's own list's law)
+      const voteOnly = !!verbs && isHomeVoteVerb(verbs[0]?.id);
+      const voteLines = home ? [...(voteOnly && homeDoorFor(bd, home) === 'locked' ? ['Locked'] : []), ...homeVoteLines(home)] : [];
+      if (_doorText && voteLines.length) _doorText = { ..._doorText, subs: [...(_doorText.subs ?? []), ...voteLines] };
+      if (voteOnly) _doorText = { ..._doorText, actionsUnlit: true };
       if (verbs) _doorText = { ..._doorText, actions: verbs };
       _doorTextKey = key; _doorTextGen = gen; _doorTextHomes = homesV; _doorTextVerbs = verbsSig;
       return _doorText;
@@ -7213,7 +7226,12 @@ export function createWorldModes(host) {
   function homeDoorVerbs(bd, home) {
     if (!host.onlineHomes || getInteractionMode() === 'steal') return null;
     if (home?.own) return homeOwnerRows(home.entry);
-    if (home) return homeVisitorRows(home, homeDoorFor(bd, home));   // HOME-RENT: a tenant's own room, or a room to rent; GUILD1d: a hall's members go in, its keepers say who may
+    if (home) {
+      // HOME-RENT: a tenant's own room, or a room to rent; GUILD1d: a hall's members go in, its keepers say who may;
+      // HOME-VOTE: and the town's word on it, under whatever else the door does, to anyone who is not its insider
+      const rows = [...(homeVisitorRows(home, homeDoorFor(bd, home)) ?? []), ...homeVoteRows(home)];
+      return rows.length ? rows : null;
+    }
     const price = homeOfferPrice(bd);
     if (!price) return null;
     // GUILD1d: and, to a guildmaster whose guild holds no hall, the house bought as the guild's hall from its treasury
@@ -7458,6 +7476,12 @@ export function createWorldModes(host) {
           // room to rent - asks which room, and for how long, before Daggerfall's lock ladder
           if (home && !home.own && !isBash && !homeAsked && getInteractionMode() !== 'steal'
             && (verb === HOME_VERB.rent || (verb == null && door === 'locked' && home.rent))) { openHomeRent(bd, home).catch((e) => console.error(e)); return true; }
+          // HOME-VOTE: a vote row pressed - read against the home as it stands now; and, where the plaque lists no rows (a
+          // touch screen, World Tooltips off), an Info press on a home I may vote on asks (the owner's menu's own mode)
+          if (home && !isBash && !homeAsked && getInteractionMode() !== 'steal') {
+            if (isHomeVoteVerb(verb)) { if (homeVotable(home)) pressHomeVote(bd, verb === HOME_VOTE_VERB.up); return true; }
+            if (verb == null && getInteractionMode() === 'info' && homeVotable(home)) { openHomeVoteMenu(bd, home, door === 'enter' ? homeOnward(hit, entries) : null); return true; }
+          }
           if (door === 'locked') { townTalk?.say?.(homeLockedLine(home)); return true; }
           // HOME2: THE VERB THE PLAQUE LIT, pressed - read against the door as it stands now, not as it was drawn
           const mode = getInteractionMode();
@@ -7809,6 +7833,31 @@ export function createWorldModes(host) {
         { code: 'KeyG', label: 'G - go in', action: homeOnward(hit, entries) },
         { code: 'KeyW', label: 'W - who may enter', action: () => openHomeEntryMenu(bd, home.entry) },
         { code: 'KeyS', label: 'S - sell it', action: () => openHomeSale(bd) },
+        { code: 'Escape', label: 'Esc - close', action: () => {} },
+      ],
+    }));
+  }
+  /** HOME-VOTE: A VOTE PRESSED at a home's door - sent in the order pressed (a press while one is out waits its turn and
+   *  reads the home as the one before it left it: ASYNC NEVER DROPS), the answer said. */
+  let _homeVoting = Promise.resolve();
+  function pressHomeVote(bd, up) {
+    _homeVoting = _homeVoting.then(async () => {
+      const home = homeOf(bd);
+      if (!homeVotable(home)) return;
+      const r = await host.onlineHomes.vote(homeTownOf(bd), bd.buildingKey, homeVoteOfPress(home, up));
+      townTalk?.say?.(r.ok ? homeVotedLine(r.vote, r.score) : homeVoteRefusalLine(r.error) ?? accountRefusalText(r.error));
+    }).catch((e) => console.error(e));
+  }
+  /** HOME-VOTE: the Info press's ask at a home I may vote on - its owner, its votes, and the two votes (and the way in,
+   *  where the door opens for me: `onward`). */
+  function openHomeVoteMenu(bd, home, onward = null) {
+    const rows = homeVoteRows(home);
+    townTalk?.showOverlay?.(new ChoiceWindow({
+      lines: [homeDoorTitle(home), ...(homeVoteLines(home).length ? homeVoteLines(home) : [homeVotesLine(home.score)])],
+      options: [
+        ...(onward ? [{ code: 'KeyG', label: 'G - go in', action: onward }] : []),
+        { code: 'KeyU', label: `U - ${rows[0]?.label ?? 'Vote up'}`, action: () => pressHomeVote(bd, true) },
+        { code: 'KeyD', label: `D - ${rows[1]?.label ?? 'Vote down'}`, action: () => pressHomeVote(bd, false) },
         { code: 'Escape', label: 'Esc - close', action: () => {} },
       ],
     }));
