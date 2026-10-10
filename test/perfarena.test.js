@@ -224,3 +224,29 @@ test('PERF-ARENA the arenas fill and spill: still batches past an arena\'s room 
   assert.equal(s.r._bbArenas.length, 1, 'the first arena is kept, empty');
   assert.deepEqual(s.r._bbArenas[0].free, [0, BB_ARENA_QUADS]);
 });
+
+test('PERF-ARENA stray array state: a foreign pass that bound an array of its own behind the shadow\'s back (no markForeignPass) and left it bound - every flat of the next billboard call still draws from its arena (the call forgets the shadow on entry); and the snow\'s shared blanket, built with the arena\'s array left bound, cuts no flat\'s indices away (its element buffer is bound with no array bound) (mutants: PERFARENA-shadow-trusted, PERFARENA-snow-on-the-arena)', async () => {
+  const { SnowfallSurface } = await import('../src/render/snowfallSurface.js');
+  const base = stand(false), arena = stand(true);
+  const runs = [base, arena].map((s) => {
+    const batches = town(s.r).slice(0, 12);
+    s.r.beginFrame(PROJ, VIEW, new Float32Array([0.3, 0.8, 0.2]), WORLD_FRAME);
+    s.r.drawBillboards(batches.slice(0, 6), RIGHT, UP);
+    s.r._bindVao(batches[6].vao);   // the shadow names a flat's array (the arena's) ...
+    s.gl.bindVertexArray(s.gl.createVertexArray());   // ... and a foreign pass binds its own behind its back
+    s.draws.length = 0;
+    s.r.drawBillboards(batches.slice(6), RIGHT, UP);
+    const drawnHere = drawn(s);
+    // the snow's shared blanket built while the arena's array is bound
+    const snow = new SnowfallSurface(s.gl, s.r);   // built at the snow's start, long before its blanket
+    s.r._bindVao(batches[0].vao);
+    snow._sharedBlanket({ uv: new Float32Array(8), index: new Uint32Array(6) });
+    s.draws.length = 0;
+    s.r.drawBillboards(batches.slice(0, 6), RIGHT, UP);
+    return { after: drawnHere, again: drawn(s) };
+  });
+  assert.equal(runs[0].after.length, 6, 'the base drew the six after the stray bind');
+  assert.deepEqual(runs[1].after, runs[0].after, 'the arena\'s flats drew their own triangles after the stray bind');
+  assert.equal(runs[0].again.length, 6);
+  assert.deepEqual(runs[1].again, runs[0].again, 'and after the snow\'s blanket was built, the same');
+});

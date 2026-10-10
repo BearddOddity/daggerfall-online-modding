@@ -1,4 +1,4 @@
-# PERF-ARENA + PERF-ALLOC1 — the exterior's frame in the real game (2026-10-10)
+# PERF-ARENA + PERF-ALLOC1/2 — the exterior's frame in the real game (2026-10-10)
 
 *The owner: "Exterior performance is really bad" - "Interior is fine. It's exterior that's the issue" - "If you need
 to, pull the freeware online and do it yourself".*
@@ -52,14 +52,22 @@ flats bind one VAO where each bound its own.
 - An arena emptied whole is deleted, all but the first: a long road through dense woods holds no more GPU memory than
   the woods it stands in now.
 - The batch is born with its three new fields (`_arena`, `_q0`, `_ibOff`), in `contract.js` - one shape (PERF-EXT10).
+- STRAY ARRAY STATE (the arena's own audit): one array for many batches makes two old hazards wide. A flat whose VAO
+  the shadow says is bound skips the bind - with a VAO a batch, a stale shadow could only fool the same batch drawn
+  twice; with an arena, any flat after a foreign pass that bound its own array behind the shadow's back would draw from
+  it. So `drawBillboards` forgets the shadow on entry (one bind a call; the air pass's emitters already did, and the
+  shadow pass runs after beginFrame's own reset). And an element buffer bound is the BOUND array's state: the snow's
+  shared blanket (`render/snowfallSurface.js` _sharedBlanket) bound its index buffer, and then none, onto whatever array
+  the last pass left bound - with an arena that is every still flat's indices cut away. It binds no array first now,
+  through the renderer. Every other element-buffer bind in src/ binds an array of its own first (audited, 27 sites).
 
-Pins: `test/perfarena.test.js` (4) - the allocator over 6,000 random takes and gives; THE PICTURE: a GL that keeps what is
+Pins: `test/perfarena.test.js` (5) - the allocator over 6,000 random takes and gives; THE PICTURE: a GL that keeps what is
 written into its buffers resolves every triangle a draw rasterises (each corner's five floats, at the draw's uOrigin and
 uSize), and a town of forty batches (woods, single flats, three records and a lamp, scaled flats, five pixels) drawn
 through the main pass, the air pass's emitters and the shadow replay resolves to the base's triangles draw for draw,
 with ONE VAO bound for the main pass's forty draws (the base: forty); a batch's life (freed once, the range reused, a
-move, a gib's own buffers, a batch bigger than an arena); the spill and the let-go. Mutants:
-`tools/mutants/perfarena.json` (13, all dead). Pins moved: `test/hard3_types.test.js` (58 fields), `test/la_cost.test.js`
+move, a gib's own buffers, a batch bigger than an arena); the spill and the let-go; the stray array state, both halves.
+Mutants: `tools/mutants/perfarena.json` (15, all dead). Pins moved: `test/hard3_types.test.js` (58 fields), `test/la_cost.test.js`
 (a two-flat call 107 -> 30 GL calls, one VAO bind fewer), `test/blood1_decals.test.js` (the move's write), and three
 harnesses that named a draw by its VAO alone and now name it by VAO and offset (`test/perfexta.test.js`,
 `test/perfextb.test.js`, `test/lpt1_lowpolytrees.test.js`).
@@ -71,19 +79,26 @@ their twenty-four arrays each time: lookAt alone was 47 KB of the 1.4 MB the nig
 scratches now through `world/mat4.js` lookAtInto and perspectiveInto - lookAt and perspective are those with a fresh
 array - the same arithmetic in the same order, so the same floats.
 
-Pins: `test/perfalloc1.test.js` (2) - every face of 4,000 random lights against the base's formulas, element for element
-(`Object.is`), and lookAt and perspective likewise; twelve lanterns' faces make no typed array. Mutants:
-`tools/mutants/perfalloc1.json` (6: 5 dead, 1 recorded equivalent - the translation's three-term sum reordered, which
-float32 rounding cannot tell from the base's).
+Pins: `test/perfalloc1.test.js` (2 of its 3) - every face of 4,000 random lights against the base's formulas, element
+for element (`Object.is`), and lookAt and perspective likewise; twelve lanterns' faces make no typed array. Mutants:
+`tools/mutants/perfalloc1.json` (6 of its 8: 5 dead, 1 recorded equivalent - the translation's three-term sum
+reordered, which float32 rounding cannot tell from the base's).
+
+## PERF-ALLOC2 — the lantern walk's cube through a typed array
+
+`_candidateQuads` (shadowPass.js) asks `placementsInCube` once a placed batch a lantern a frame, and handed it five
+doubles each time - 153 KB of the 1.4 MB the night frame allocated, because a double handed to a call V8 does not
+inline is a heap number. It writes the cube into its own Float64Array now and asks `placementsInCubeOf` (bounds.js),
+which reads the same doubles back exactly; `placementsInCube` is that with a scratch, for its other callers. Pins:
+`test/perfalloc1.test.js` (its third) - the cube test against a brute-force oracle over random woods and cubes, through
+both doors, and the walk's call by its source. Mutants: `tools/mutants/perfalloc1.json` (its last 2, dead); three older
+records re-aimed by content onto the moved expression (AUDIT637-B2b, PERF-SHADOW1-d, PERF-SHADOW1-f).
 
 ## Measured, and left
 
 - **The shadow pass** is the frame's largest part (5.2-5.4 ms): by day the sun's three cascades replay ~200 draws a
   frame; by night twelve lanterns redraw their dynamic faces (~72 face replays, ~208 draws). PERF-FACE already redraws
   only the faces a mover is in; the rest is FLICKER-FIX's trade (Performance-Next.md "For Mac").
-- **The caster walks' boxed arguments**: `_candidateQuads` allocated 153 KB a night frame - five doubles a call into
-  `placementsInCube`, which V8 boxes when the call is not inlined. Passing the cube through a typed array ends it; its
-  own slice (its pins and two mutant records name the signature).
 - **The snow** (winter, which is where the game starts): the near pixels sorted every frame for the blanket's ring,
   with a stamp string a pixel; small, and its own slice.
 - **The online crowd**: the next measure is `tools/onlineFrameProbe.mjs` at 20 and 60 peers.

@@ -56,7 +56,7 @@
 //     the culling above is what makes 24 face replays cheap.
 
 import { lookAt, lookAtInto, multiply, ortho, perspective, perspectiveInto } from '../world/mat4.js';
-import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInVolume } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements
+import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInCubeOf, placementsInVolume } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements
 import { billboardKey } from './billboardKey.js';   // AUDIT 68 S16-bbkey-stale-shadow-reach: re-keyed here, however the batch reached the records
 import { aabbOutside } from './frustum.js';   // SHADOW-REACH: a host's box against the cascades
 import { getPref } from '../systems/uiPrefs.js';
@@ -1096,6 +1096,7 @@ export class ShadowPass {
     // faces' own culls of what the cube kept, smaller than it read before the pre-pass for the same frame.
     this._planes = new Float32Array(24);   // EL5: the replay's frustum
     this._bSphere = new Float64Array(4);   // AUDIT 68 S16-batch-sphere-dup: batchSphere's scratch for the SC1 scans
+    this._cubeArgs = new Float64Array(5);   // PERF-ALLOC2: _candidateQuads' cube for placementsInCubeOf
     this._selfAt = new Float64Array(3);    // DISC29-E: where the player's own card stands this frame (_selfCardAt)
     this._selfCard = null;                 // AUDIT PRE-MERGE 0929 E2: the card, noted as recordBillboards meets it (cleared by discard)
     this._slotOfScratch = new Int32Array(SHADOW_POINT_CASTERS);   // SC1: rank -> slot
@@ -2062,7 +2063,7 @@ export class ShadowPass {
     const cand = this._candOf[rank];
     if (!cand || !this._candQuads[rank]) return;
     this._candQuads[rank] = 0;
-    const lim = this._candLim, o = rank * 5, sp = this._bSphere;
+    const lim = this._candLim, o = rank * 5, sp = this._bSphere, cube = this._cubeArgs;
     const rec = cand.rec, bb = cand.bb;
     let w = 0;
     for (let j = 0; j < cand.n; j++) {
@@ -2077,7 +2078,10 @@ export class ShadowPass {
             const c = batchSphere(b, sp);
             if (c && c[0] === c[0] && c[1] === c[1] && c[2] === c[2] && c[3] === c[3]) {
               const rad = quadRadius(r, wl, law, b);
-              if (rad === rad && !placementsInCube(b, rad, lim[o], lim[o + 1], lim[o + 2], lim[o + 3] + cubeReach(rad) - rad + lim[o + 4])) continue;   // AUDIT 637: the cube's own reach (placementsInCube adds the radius itself)
+              if (rad === rad) {   // PERF-ALLOC2: the cube through a typed array - five doubles a call were five heap numbers
+                cube[0] = rad; cube[1] = lim[o]; cube[2] = lim[o + 1]; cube[3] = lim[o + 2]; cube[4] = lim[o + 3] + cubeReach(rad) - rad + lim[o + 4];
+                if (!placementsInCubeOf(b, cube)) continue;   // AUDIT 637: the cube's own reach (placementsInCube adds the radius itself)
+              }
             }
           }
           list[m++] = b;

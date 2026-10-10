@@ -7448,6 +7448,11 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
   drawBillboards(batches, camRight, camUp) {
     this._close2D();   // PERF-2D: the baseline back, before anything that needs it
     const gl = this.gl;
+    // PERF-ARENA: the still flats share their arena's VAO, so consecutive flats skip the bind on the shadow's word - and
+    // a pass that bound an array of its own behind the shadow's back (a foreign pass that forgot markForeignPass) would
+    // have every flat after it draw from that array. The shadow is forgotten on entry: one bind a call, then trusted -
+    // nothing inside the call binds an array but through it (the low-poly trees included)
+    this._lastVao = undefined;
     if (this._casting) this._shadows.recordBillboards(batches, this._flatWind, camRight, camUp, this._windfall);   // EL2 (EL3: with the basis); WINDFALL1: and the mod's law
     // PERF-CROWD2: the frame's planes, once a CALL - after the shadow
     // record above, on purpose: everything still CASTS, only the drawing

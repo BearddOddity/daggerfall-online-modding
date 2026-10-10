@@ -54,5 +54,23 @@
     "tests": [
       "test/perfalloc1.test.js"
     ]
+  },
+  {
+    "name": "PERFALLOC2-boxed-again",
+    "file": "src/render/shadowPass.js",
+    "old": "                if (!placementsInCubeOf(b, cube)) continue;",
+    "new": "                if (!placementsInCube(b, rad, cube[1], cube[2], cube[3], cube[4])) continue;",
+    "tests": [
+      "test/perfalloc1.test.js"
+    ]
+  },
+  {
+    "name": "PERFALLOC2-cube-short",
+    "file": "src/render/bounds.js",
+    "old": "  const rad = c[0], px = c[1], py = c[2], pz = c[3], far = c[4];",
+    "new": "  const rad = c[0], px = c[1], py = c[2], pz = c[3], far = c[4] - c[0];",
+    "tests": [
+      "test/perfalloc1.test.js"
+    ]
   }
 ]

@@ -868,7 +868,7 @@ test('PERF-EXT (the review): ONE HOME EACH - the flat\'s half-height lift is wri
   assert.deepEqual(count(/size\??\.h(?: \?\? 0\))? \* 0\.5/g), ['bounds.js'], 'one lift: half the height, at its home');
   assert.deepEqual(count(/Math\.hypot\([\w.]*size\.w, [\w.]*size\.h\)/g), ['bounds.js'], 'one half-diagonal, at its home');
   const b = src['bounds.js'];
-  for (const fn of ['batchSphere', 'placementsInCube', 'placementsInVolume']) {
+  for (const fn of ['batchSphere', 'placementsInCubeOf', 'placementsInVolume']) {   // PIN MOVED (PERF-ALLOC2): placementsInCube hands its cube to placementsInCubeOf, which asks the lift
     const body = b.slice(b.indexOf(`export function ${fn}(`), b.indexOf('\n}', b.indexOf(`export function ${fn}(`)));
     assert.match(body, /batchLift\(b\)/, `${fn} lifts by the home`);
   }

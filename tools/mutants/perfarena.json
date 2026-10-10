@@ -115,5 +115,23 @@
     "tests": [
       "test/perfarena.test.js"
     ]
+  },
+  {
+    "name": "PERFARENA-shadow-trusted",
+    "file": "src/render/renderer.js",
+    "old": "    this._lastVao = undefined;\n",
+    "new": "",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "PERFARENA-snow-on-the-arena",
+    "file": "src/render/snowfallSurface.js",
+    "old": "    if (this.renderer?._bindVao) this.renderer._bindVao(null); else gl.bindVertexArray(null);\n",
+    "new": "",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
   }
 ]
