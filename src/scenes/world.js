@@ -29472,6 +29472,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   // for the tap ray before the draw), once a frame: the same `spherePlanes` over the same product. AUDIT PERF-YARD 3:
   // keyed on the view matrix itself, which every frame mints anew (lookAt, the shake's) - not on the frame's timestamp,
   // which two frames share under a coarsened clock (a turn on the second frame culled by the first frame's planes).
+  // PERF-WAGON (2026-10-10, Mac: "For carts, wagons, etc, we need culling"): the same pass's carts and wagons - mine,
+  // the other players', the road's teams, the cart - and the camps' and the hideouts' tents are asked this same test.
   const _yardPlanes = new Float32Array(24), _yardPv = new Float32Array(16);
   let _yardPlanesOf = null;
   function yardCull(box) {
@@ -33295,16 +33297,16 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       mwViewDrawBody(canvas, { proj, view, eye: mwv.eye, feet: player.bodyFeetAt(), yaw: player.bodyYawFor(cam.yaw), viewYaw: cam.yaw, face: tvFace });   // DISC18: the body at the capsule's own feet, not the camera's smoothed ones
       drawPeerBodies(proj, view, mwv.eye, tvf ? tvFace : null);   // MWBODY1: the others' bodies, the same pass; OW-PEERS: grown under the Overworld
     } finally { renderer.flushCharacterSpriteBatch?.(); }   // MWNPC2: every body's picture in one bind of the sprite target
-    mwViewDrawWagon(renderer);   // EOTB-IL: the cart, when the transport is the cart
+    mwViewDrawWagon(renderer, null, yardCull);   // EOTB-IL: the cart, when the transport is the cart; PERF-WAGON: by the street's view test
     riteHost?.draw(renderer, null, mwv.eye);   // WB12d: the faithful's circle and their tents - AUDIT WB12d (G6): its sigil from near the eye alone
     sigilBroker?.draw(renderer);   // BROKER-CAGE: the Sigil Broker's cage beside it, and its door
     gatePool?.draw(renderer);   // WB2: the Oblivion Gate's stone
-    camps.draw(renderer);   // SURV3: the tents, the cart's own pass
-    hcc.draw(renderer, null, tvf ? { selfGrow: tvf.grow, grow: peerGrow } : undefined);   // HCC: the trailing / parked / following wagon and its cargo, mine and the peers' (the horses ride the flats' pass); WAGON-HITCH x OW-BIG: a cart's wagon grown with its rider under the Overworld
+    camps.draw(renderer, null, yardCull);   // SURV3: the tents, the cart's own pass; PERF-WAGON: by the street's view test
+    hcc.draw(renderer, null, tvf ? { selfGrow: tvf.grow, grow: peerGrow } : undefined, yardCull);   // PERF-TEAMS: each wagon culled as the town's own models are; HCC: the trailing / parked / following wagon and its cargo, mine and the peers' (the horses ride the flats' pass); WAGON-HITCH x OW-BIG: a cart's wagon grown with its rider under the Overworld
     if (tvf) drawTvDungeonModels(travelView?.eye ?? null, tvf.fullyUp);   // OW-DUNGEONS: each dungeon's own model, grown under the Overworld; TV-BURST: loaded once the view is up, one a frame
     else if (_tvDngModel.size) dropTvDungeonModels();   // TV-BURST: the view down, its models let go (kept warm on their shelf)
-    if (livingRoads && livingWorldOn() && _mode() === 'exterior') livingRoads.drawTeams(renderer);   // LW10: the living world's wagons, in the cart's own pass
-    _livingHideoutsHost?.draw(renderer);   // LW12: a band's tents
+    if (livingRoads && livingWorldOn() && _mode() === 'exterior') livingRoads.drawTeams(renderer, yardCull);   // LW10: the living world's wagons, in the cart's own pass; PERF-WAGON: by the street's view test
+    _livingHideoutsHost?.draw(renderer, null, yardCull);   // LW12: a band's tents; PERF-WAGON: by the street's view test
     bountyFarms?.draw(renderer);   // BOUNTY-FARM: a held farm bounty's farmstead
     quays?.draw(renderer);   // QUAYS: the harbours' quays and the gangways to my ships made fast
     yards?.draw(renderer);   // HOME-YARD: the pieces outside the town's homes, and the one being placed

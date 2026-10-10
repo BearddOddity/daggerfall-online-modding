@@ -455,7 +455,7 @@ test('LW12 the host\'s wiring: the trouble world\'s bands over the trip\'s two r
   assert.match(w, /const livingRouts = \(\) => livingRelations\.turns\(\)\.routed;/);
   assert.match(w, /if \(livingWorldOn\(\) && _mode\(\) === 'exterior' && !tvf\) \{ livingHideoutsHostOf\(\)\.frame\(dt\); livePersonBatches\.push\(\.\.\.livingHideoutsHostOf\(\)\.batches\(\)\); \}/);
   assert.match(w, /\n\s*else _livingHideoutsHost\?\.clear\(\);/);
-  assert.match(w, /_livingHideoutsHost\?\.draw\(renderer\);   \/\/ LW12/);
+  assert.match(w, /_livingHideoutsHost\?\.draw\(renderer, null, yardCull\);   \/\/ LW12/);   // PIN MOVED (PERF-WAGON): the tents by the street's view test
   assert.match(w, /for \(const m of livingHideoutsHostOf\(\)\.marks\(hereN\.x, hereN\.z, skyMinutes\(\)\)\) if \(markShown\(\{ kind: m\.kind \}\)\) marks\.push\(/);
   assert.match(w, /foe: n\.band \?\? \(n\.foe != null \? livingFoeWord\(n\.foe, 2\) : ''\)/);
   assert.match(w, /spawn: \(type, feet, o\) => exteriorFoes\.spawnFoe\(type, feet, \{ yaw: o\.yaw, gender: o\.gender, level: o\.level, allied: false, loose: true, transient: true, managed: true \}\),/);   // PIN MOVED (AUDIT LW-II C3): managed - the host owns their lives

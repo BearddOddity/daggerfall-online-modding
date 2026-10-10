@@ -668,7 +668,7 @@
   {
     "name": "LW12-wire-draw",
     "file": "src/scenes/world.js",
-    "old": "    _livingHideoutsHost?.draw(renderer);   // LW12: a band's tents\n",
+    "old": "    _livingHideoutsHost?.draw(renderer, null, yardCull);   // LW12: a band's tents; PERF-WAGON: by the street's view test\n",
     "new": "",
     "tests": [
       "test/lw12_outlaws.test.js"

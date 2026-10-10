@@ -186,10 +186,11 @@ test('LW10 the roads\' layer lays the teams: a caravan on the road its train (it
   assert.equal(synced[synced.length - 1], 'clear');
   const host = readFileSync(new URL('../src/scenes/world.js', import.meta.url), 'utf8');
   assert.match(host, /teams: createRoadTeams\(\{ renderer, presentation: \(\) => hcc\.presentation, collider: \(\) => collider \}\)/);
-  assert.match(host, /if \(livingRoads && livingWorldOn\(\) && _mode\(\) === 'exterior'\) livingRoads\.drawTeams\(renderer\);/);
+  assert.match(host, /if \(livingRoads && livingWorldOn\(\) && _mode\(\) === 'exterior'\) livingRoads\.drawTeams\(renderer, yardCull\);/);   // PIN MOVED (PERF-WAGON): the street's view test handed on
   const pool = readFileSync(new URL('../src/scenes/horseCartPool.js', import.meta.url), 'utf8');
   // PIN MOVED (WAGONS1 x LW10): the runtime's hitch the driven wagon's; the road's wagon a kind's parts and hitch
-  assert.match(pool, /presentation: \{ wagonParts, horseArt, hitchOf: \(\) => hitchOf\(myKind\(\)\), onChanged: \(\) => onChanged\?\.\(\), drawWagon, poseHorse: poseHorseBatch, partsOf, hitchOfKind: hitchOf \}/);
+  // PIN MOVED (PERF-WAGON): and the culled draw the road's teams take under the street's view test
+  assert.match(pool, /presentation: \{ wagonParts, horseArt, hitchOf: \(\) => hitchOf\(myKind\(\)\), onChanged: \(\) => onChanged\?\.\(\), drawWagon, drawWagonSeen, poseHorse: poseHorseBatch, partsOf, hitchOfKind: hitchOf \}/);
 });
 
 test('AUDIT LW-II LW10: the wheels turn forward on the way home - the distance walked the way the wagon faces; the roads\' layer lays a train on the march in the train\'s own places, and a camped caravan\'s wagons parked CAMP_PARK_N beyond its ring, facing its fire (mutants: E8 the wheels home, F3 the people in the train, F3 the park)', () => {
