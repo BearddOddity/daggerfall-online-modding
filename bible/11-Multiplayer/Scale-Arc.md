@@ -64,7 +64,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE2c | The reconnect wave spread by the hub's own count; a full foes frame that says nothing said once - client only | No | **Built** (2026-10-10, this branch) |
 | SCALE4f | The mint's realm row read once (four statements in one), and its guild membership once (three in one); every statement's D1 wait, rows and a replica's serving on the metrics point; an overloaded D1 a 503 | No | **Built** (2026-10-10, this branch; acct109) - the writes stay, with their reasons |
 | SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | **Built** (2026-10-10, this branch; acct109) |
-| SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | Planned |
+| SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | **Built** (2026-10-10, this branch; relay world191, NOT YET DEPLOYED) - with the relay's settings at run time and a halo at a walking rate |
 | SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | Planned |
 | SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | Planned, by the metrics |
 | SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | Planned, by the metrics |
@@ -1121,6 +1121,134 @@ PIN MOVED:
 
 **Also fixed:** SCALE4f's `d1Overloaded` had been inserted between SCALE4d's comment and the constant it describes.
 They stand together again.
+
+## SCALE5b: built (2026-10-10, this branch - relay world191, NOT YET DEPLOYED: one announced drop)
+
+The plan's fifth slice: the relay's hygiene and the wire's second form, in the one relay deploy it costs. A socket that
+offers nothing hears every frame byte for byte as world190 said it, so an open tab from before it keeps playing.
+
+**The second wire** (`src/net/wire.js` POSE_BATCH_MS, ROSTER_BATCH_MS, WIRE2_BATCH_MAX, slimPose, wire2Batch):
+- **Offered by the hello.** A session asked for it (`wire2`, which the world host asks on every socket the page holds -
+  the presence session, its halo, each chat link and the hall) says `w2: 1` in its hello. The relay keeps it on the
+  socket's attachment. Any other value is read as no offer rather than refused, so a later build's third form still
+  gets in on the wire both know. A relay before world191 reads no such field and speaks the first wire, which the
+  client still reads.
+- **A room's poses, batched and slim.** A pose fanned to a `w2` socket is owed it as a slim entry `[id, pose]`, built
+  once a pose, and every socket's owed entries go out as one `{t:'poses', l}` frame each POSE_BATCH_MS (50 ms, one
+  timer a room). `slimPose` leaves out the fields at the value validPose would fill them with, and rounds the place to
+  whole world units (2.5 cm) and the turn to a ten-thousandth of a radian; validPose reads it back as the pose it was.
+  A standing pose goes from about 157 bytes to 66.
+- **A channel's roster, batched a second.** A channel's join and leave to a `w2` socket are owed it for ROSTER_BATCH_MS
+  (a second): a hub's reconnect wave of N joins was N^2/2 frames, one a join a listener.
+- **One order.** Everything owed a socket is one queue in the order the room said it, and goes out ahead of any other
+  frame the room sends that socket (`_send`), so a leave never overtakes the pose said before it. Poses alone are a
+  `poses` frame; anything else is one frame batch (`{t:'fb', f}`) with each run of poses one `poses` frame where it fell;
+  one frame alone is itself. A queue that reaches WIRE2_BATCH_MAX goes out at once, and a reader takes no more from a
+  batch, nor reads a batch within one.
+- **A boss's beat, one frame.** The gate's, a siege's, a Remnant's, a serpent's and a bout's beats sent each of their
+  frames as a send of its own to every socket; a `w2` socket hears them as one frame batch, at once (`_fanFrames`).
+
+Measured on the real Room over the pins' fake object (`node tools/wire2Bench.mjs`, every socket on one wire, then on the
+other):
+
+| Scene | First wire | Second wire |
+|---|---|---|
+| 120 players moving in one block, 5 s at 20 Hz | 129,024 sends/s, 24.8 MB/s | 2,462 sends/s, 10.8 MB/s |
+| 600 players arriving at a region's channel at its gate | 180,300 sends | 4,907 sends (the bytes the same) |
+
+A send is what the runtime charges a Durable Object for: the cell's fan is about fifty times cheaper, and its bytes
+under half. The client parses the same frames either way.
+
+**The relay's hygiene** (`server/src/index.js`):
+- **The host kept, not walked for.** A world room asked `_hostOf` on every foes frame, memory write and blow - a walk of
+  every socket each. It keeps its answer until a socket's id or hello stamp moves (`_reindex`) or the index's re-walk
+  finds the room moved, and walks only for the one question it cannot answer from that (the host asked without itself).
+- **Directed frames by an id index.** A blow, a heal, a who's answer, a trade, a cast, a card, a wedding's word, a page,
+  a duel's and a siege's blow each found its target by copying the whole index and searching it - O(N) and an array of N
+  a frame. `_idFirst`/`_withId` read an id index kept as SCALE5a's account index is, and answer exactly what the search
+  answered: the first socket but the sender holding the id, in the index's order.
+- **The foes fan, a method with its budget asked first.** The foes and own arms ran inside `_message`, which is past
+  V8's optimizing ceiling (PERF-RELAY1), so their walks ran interpreted. `_foesFan` is a method, and a frame the room
+  cannot afford for even one listener is dropped before any walk - in a crowded cell, where the budget drops most of
+  them, that was a copy of the index and a range test a socket for nothing. The bucket is left exactly where the old
+  law left it (refilled to now, nothing spent).
+- **The drain's sweep, not paid twice.** A room's last leave sweeps it, and its next first hello swept it again: a
+  halo's every step into an empty cell paid both. A room now remembers, while awake, that its drain swept and nothing
+  has said hello since. A woken room, or one a socket left with nothing said, sweeps as before.
+
+**The metrics point**, `double13` on (Analytics Engine takes twenty; these are the last eight):
+
+| Double | Holds |
+|---|---|
+| `double13` | sockets refused `room full` - the door that refused them counted nothing before |
+| `double14` | frames the room's byte budgets dropped (foes and own) |
+| `double15` | the most sockets the room held in the window |
+| `double16` | foes frames |
+| `double17` | blows |
+| `double18` | chat lines |
+| `double19` | items the second wire carried in batches |
+| `double20` | the batch frames that carried them (items over batches: the sends saved) |
+
+**The relay's settings, at run time** (`src/net/relayCfg.js`). BOSS_BODY (the line the boss fights' count runs by) and
+the herald's three Discord roles were the Worker's vars alone, and a var changed is a Worker redeployed - every player
+online dropped, to move one number. A developer now sets each in game, `/relay <setting> <value>` (a staff command, the
+Developer's alone - a token whose glyphs say `dev`), and `/relay <setting> -` hands it back to the var:
+- the hub keeps it in its storage and answers what is now in force; anyone else is answered in words and struck for
+  nothing; outside the hub the frame is junk;
+- the hub's herald reads it at once (the herald is rebuilt when the settings are read or move);
+- a boss's room - the gate's court, an Abyss realm, a serpent's cell - asks the hub at its beat at most every
+  RELAY_CFG_TTL_MS (a minute), and a hub that does not answer leaves the last answer standing;
+- the var is the setting while the hub holds none.
+
+**A halo hears a pose at a walking rate** (`src/net/wire.js` HALO_POSE_MS, poseSaysMore). Every pose a player says
+went to its own cell and to each neighbour its halo holds open, and each fanned it to everyone in range there. A halo
+now hears a pose that only moved at most every HALO_POSE_MS (250 ms); a pose that says anything more - a swing, a cast,
+a stop, a mount, a death - goes at once. SCALE2c moved this here because the relay judges fights off the poses that
+reach each cell, a halo's copies too:
+- a cell that judges them - a duel's bout, the Wild zone's fighters, a serpent's fight - says so in its welcome (`rf`)
+  and, when that moves, to the second wire's sockets (`{t:'rf', on}`);
+- a halo to such a cell hears every pose, and so does a halo whose relay is older than world191 (it cannot say).
+
+**Pins.**
+- `test/scale5b.test.js` (23):
+  - slimPose's round trip over every field the wire carries;
+  - the relay's batch: one frame of slim entries in order, the first wire byte for byte, the hello's offer, owed frames
+    ahead of any other, a closed socket owed nothing, one timer a room, the bound;
+  - wire2Batch's runs; a channel's roster batched a second and flushed ahead of a line; the client's frame batch read
+    frame by frame against the same frames said one at a time;
+  - the host, the id index and `_withId` held to their walks over random stories of hellos, reconnects, closes, silent
+    closes, wakes and re-walks;
+  - the drain's marker; a beat one frame; the foes fan held to its law over budgets below one listener's worth,
+    between one's and all of theirs, and above - and the index never walked for a frame refused below one's;
+  - the metrics; the settings' law, the hub's keeping, the herald's roles, a boss's room's ask and its minute, the
+    client and `/relay`;
+  - poseSaysMore, the relay's referee word, and the session's thinning (every swing in the pose that said it).
+- `tools/mutants/scale5b.json`: 95 mutants, 93 dead, 2 equivalent as recorded (a hello stamp never moves without its
+  id; an id never held by two sockets where `_idFirst` is asked).
+- `tools/wire2Bench.mjs`: the table above.
+
+PIN MOVED, each a pin that read a line SCALE5b moved:
+- RELAY_VERSION's pins (39 files and the soc1 record) to world191; `test/relayversion.test.js` holds world191's law,
+  and `src/net/relayCfg.js` joins the relay's import graph.
+- The chat links' constructor (chat1, chatroster_namefilter, scale2c's default), the join and leave fans (scale5a,
+  soc1_hub), the healer's lookup (gateheal), the herald's roles (discordgates, sdherald, serpent2_herald), the staff
+  commands' list (staff1), the calls between rooms (scale2b: nineteen, fifteen on ROOM_CALL_MS), the metrics point's
+  doubles (scale2b), parseClient's doc (`cfg`), and serpent1_auditbooks' failing hub (it fails the kill's tells alone -
+  the cell's beat asks the hub for the settings too).
+- `.github/workflows/account-deploy.yml` lists `src/net/relayCfg.js`: wire.js imports it, so the account Worker
+  bundles it.
+- Re-aimed by content, all dead: AC-relay-fans-to-the-room, AUDIT1003-S1 x2, AOWN x2, GATE-HEAL-the-peer-never-read,
+  JRN-relay-self-not-junk, ONESEAT-R1 x2, OWN1 x3, G2-channel-join-not-said, SCALE2b-socket-not-adopted,
+  SCALE2b-stamp-per-room, SCALE2c-link-own-wave, SCALE5a-adopt-unplaced, U7-foes-borrows (now killed by the band
+  between one listener's worth and all of theirs, which slam11's own pin cannot reach past the budget asked first),
+  Q10-budget-after-scan, DISCORD-GATES-the-herald-ignores-its-door, INT11-RELAY-ENFORCE-DEFAULT, SD-HERALD-own-role-unread,
+  SERPENT2-own-role-unread, X12-welcome-without-v.
+
+**Found on the way, fixed:** the kept host first answered over a room whose index walk was due - its oracle caught it
+before it shipped (`_hostOf` now asks `_all()` first, as its walk did).
+
+**The deploy.** One announced relay drop: SCALE2c spreads its reconnect wave, SCALE4e's deploy outlasts the database's
+overload, and the account service (acct108) ships first or with it. Nothing in it needs a database migration.
 
 ## THE PLAN PAST 2,000 (2026-10-10)
 
