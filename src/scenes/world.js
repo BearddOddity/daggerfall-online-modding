@@ -3550,20 +3550,24 @@ export async function bootWorld(canvas, renderer, params, status) {
   // while a living town stands online; each town's LivingTown asks its own (`patronsOf`): the sales told as sky minutes
   // (an online sky day is a real hour), the traders' doors
   const PATRON_READ_S = 600;
-  /** AUDIT LW-II-2 W3: a region's read that failed is asked again this soon (real seconds), never a whole PATRON_READ_S on. */
+  /** AUDIT LW-II-2 W3: a region's read that failed is asked again this soon (real seconds), never a whole PATRON_READ_S on.
+   *  PATRON-LOAD: the first retry - each failure in a row doubles it, to PATRON_READ_S: every client's minute was the
+   *  service's load at the moment it could least bear it. */
   const PATRON_RETRY_S = 60;
   /** @type {Map<number, { v: number, told: { door: number, t: number, seed: number }[], traders: number[] }>} */
   const _livingPatrons = new Map();
   /** AUDIT LW-II-2 W3/H8: EACH REGION'S LAST READ - its real second, and whether it failed. One clock for every region left
    *  a region crossed into unread up to PATRON_READ_S (four living hours online: no browser, no patron walking in, where a
    *  reader who stood there longer had them), and a region asked while a read was out was dropped (ASYNC NEVER DROPS: it
-   *  is remembered, `_livingPatronsWant`, and read once the one out settles). @type {Map<number, { at: number, failed: boolean }>} */
+   *  is remembered, `_livingPatronsWant`, and read once the one out settles). PATRON-LOAD: `fails` the failures in a row.
+   *  @type {Map<number, { at: number, failed: boolean, fails: number }>} */
   const _livingPatronsRead = new Map();
   let _livingPatronsV = 0, _livingPatronsBusy = false, _livingPatronsNow = 0;
   /** AUDIT LW-II-2 W3: the region asked while a read was out - read once it settles. @type {number|null} */
   let _livingPatronsWant = null;
-  /** AUDIT LW-II-2 W3: a region never read, or read PATRON_READ_S ago (a failed read PATRON_RETRY_S), is read now. */
-  const livingPatronsDue = (region, nowS) => { const r = _livingPatronsRead.get(region); return !r || nowS - r.at >= (r.failed ? PATRON_RETRY_S : PATRON_READ_S); };
+  /** AUDIT LW-II-2 W3: a region never read, or read PATRON_READ_S ago (a failed read PATRON_RETRY_S - PATRON-LOAD: doubled
+   *  for each failure in a row before it, to PATRON_READ_S), is read now. */
+  const livingPatronsDue = (region, nowS) => { const r = _livingPatronsRead.get(region); return !r || nowS - r.at >= (r.failed ? Math.min(PATRON_READ_S, PATRON_RETRY_S * 2 ** (r.fails - 1)) : PATRON_READ_S); };
   /** AUDIT LW-II-2 W11: the region whose traders are read - the one the player stands in, while a living town stands (a
    *  built LivingTown) alone: in the wilderness none (a read there was /vendors and up to PATRON_READ_STATEMENTS of the
    *  service's reckoning each PATRON_READ_S, for towns nobody walks). */
@@ -3582,10 +3586,11 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** LW15: a region's traders read - AUDIT LW-II-2 W3: marked read now, and failed where the service answered none. */
   const livingPatronsRead = (region, nowS) => {
     _livingPatronsBusy = true;
-    const mark = { at: nowS, failed: false };
+    const was = _livingPatronsRead.get(region);
+    const mark = { at: nowS, failed: false, fails: was?.failed ? was.fails : 0 };   // PATRON-LOAD: the failures in a row carried
     _livingPatronsRead.set(region, mark);
     Promise.resolve(marketBook.vendors(region)).then((r) => {
-      if (!r?.ok) { mark.failed = true; return; }
+      if (!r?.ok) { mark.failed = true; mark.fails++; return; }
       const rows = r.data?.rows ?? [];
       const byMap = new Map();
       for (const row of rows) {
@@ -3613,7 +3618,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         _livingPatrons.set(map, { v: ++_livingPatronsV, told, traders, region, sig });
       }
       for (const [map, e] of _livingPatrons) if (e.region === region && !byMap.has(map)) _livingPatrons.delete(map);
-    }).catch(() => { mark.failed = true; }).finally(() => {
+    }).catch(() => { mark.failed = true; mark.fails++; }).finally(() => {
       _livingPatronsBusy = false;
       const want = _livingPatronsWant;   // AUDIT LW-II-2 W3: the region asked while it was out, read now (still due)
       _livingPatronsWant = null;

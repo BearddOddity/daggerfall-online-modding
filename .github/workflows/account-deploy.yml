@@ -886,8 +886,19 @@ jobs:
         run: |
           set -euo pipefail
           base="${{ steps.deploy.outputs.base }}"
-          guest=$(curl -fsS --max-time 15 -X POST "$base/v1/auth/guest" \
-            -H 'content-type: application/json' -d "{\"label\":\"deploy-smoke\",\"terms\":\"$LEGAL_TERMS\",\"privacy\":\"$LEGAL_PRIVACY\"}")
+          # PATRON-LOAD (2026-10-10, the owner: "the newest update account service keeps failing"): THE GUEST MINT IS ASKED
+          # AGAIN ON A 5xx, as every call below is (DEPLOY-FLAKE) - it alone went out with curl -f, so the platform's first
+          # moments after a deploy, D1 refusing as overloaded under a reload's reads, failed three runs whose Workers had
+          # taken. A 5xx writes nothing (a batch that failed whole); one that still fails after half a minute is real.
+          guest=""
+          for i in $(seq 1 7); do
+            code=$(curl -sS --max-time 15 -o /tmp/guest.json -w '%{http_code}' -X POST "$base/v1/auth/guest" \
+              -H 'content-type: application/json' -d "{\"label\":\"deploy-smoke\",\"terms\":\"$LEGAL_TERMS\",\"privacy\":\"$LEGAL_PRIVACY\"}") || code=000
+            if [ "$code" = "200" ]; then guest=$(cat /tmp/guest.json); break; fi
+            echo "  /v1/auth/guest -> $code (attempt $i)" >&2
+            if [ "${code#5}" = "$code" ] && [ "$code" != "000" ]; then cat /tmp/guest.json >&2 || true; break; fi
+            sleep 5
+          done
           secret=$(echo "$guest" | sed -n 's/.*"secret":"\([^"]*\)".*/\1/p')
           test -n "$secret" || { echo "::error::no guest session - /v1/auth/guest did not answer a secret"; echo "$guest"; exit 1; }
 
