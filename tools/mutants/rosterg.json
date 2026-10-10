@@ -12,13 +12,13 @@
   {
     "name": "G2-channel-join-not-said",
     "file": "server/src/index.js",
-    "old": "        this._fanBut(ws, said);   // SCALE5a: the index walked in place, by a method of its own\n",
+    "old": "        this._fanRoster(ws, said);   // SCALE5a: the index walked in place, by a method of its own; SCALE5b: the second wire's batched\n",
     "new": "",
     "tests": [
       "test/rosterg.test.js",
       "test/chat1.test.js"
     ],
-    "note": "SCALE5a (re-aimed by content): the fans walk the index in place (`_fanBut`, `_sayLine`)."
+    "note": "SCALE5a (re-aimed by content): the fans walk the index in place (`_fanBut`, `_sayLine`). SCALE5b (re-aimed by content): the channel's join by `_fanRoster`."
   },
   {
     "name": "G3-channel-leave-skipped-again",

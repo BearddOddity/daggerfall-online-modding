@@ -16,16 +16,18 @@
   {
     "name": "AOWN-own-arm-unguarded",
     "file": "server/src/index.js",
-    "old": "      const out = fanOut('own', a.id, m.data, message.length);   // AUDIT (pre-merge) O3/O4\n      if (out == null) { this._junk(ws); return; }",
-    "new": "      const out = JSON.stringify({ t: 'own', id: a.id, data: m.data });",
-    "tests": ["test/own1.test.js"]
+    "old": "    const out = fanOut(kind, a.id, data, length);   // AUDIT (pre-merge) O3/O4\n    if (out == null) { this._junk(ws); return budget.bucket; }",
+    "new": "    const out = kind === 'own' ? JSON.stringify({ t: 'own', id: a.id, data }) : fanOut(kind, a.id, data, length);   // AUDIT (pre-merge) O3/O4\n    if (out == null) { this._junk(ws); return budget.bucket; }",
+    "tests": ["test/own1.test.js"],
+    "note": "SCALE5b (re-aimed by content): the foes and own arms share `_foesFan` - the own arm's frame unguarded."
   },
   {
     "name": "AOWN-foes-arm-unguarded",
     "file": "server/src/index.js",
-    "old": "      const out = fanOut('foes', a.id, m.data, message.length);   // AUDIT (pre-merge) O3/O4\n      if (out == null) { this._junk(ws); return; }",
-    "new": "      const out = JSON.stringify({ t: 'foes', id: a.id, data: m.data });",
-    "tests": ["test/own1.test.js"]
+    "old": "    const out = fanOut(kind, a.id, data, length);   // AUDIT (pre-merge) O3/O4\n    if (out == null) { this._junk(ws); return budget.bucket; }",
+    "new": "    const out = kind === 'foes' ? JSON.stringify({ t: 'foes', id: a.id, data }) : fanOut(kind, a.id, data, length);   // AUDIT (pre-merge) O3/O4\n    if (out == null) { this._junk(ws); return budget.bucket; }",
+    "tests": ["test/own1.test.js"],
+    "note": "SCALE5b (re-aimed by content): the foes and own arms share `_foesFan` - the foes arm's frame unguarded."
   },
   {
     "name": "AOWN-hit-arm-unguarded",

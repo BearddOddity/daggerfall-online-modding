@@ -315,3 +315,192 @@ test('SCALE5b the world host asks the second wire on every socket the page holds
   for (const l of links) assert.match(l, /wire2: true/, l.slice(0, 80));
   assert.match(world, /wave: pageWave,[^\n]*\n\s+wire2: true,/, 'the presence session');
 });
+
+// ═══ PART THREE: THE RELAY'S HYGIENE ════════════════════════════════════════════════════════════════════════════════
+
+/** A story of a room's sockets - hellos, a reconnect replacing its own id, closes said and unsaid, wakes, the clock past
+ *  the index's trust - and after every step `check(room, sockets)`. */
+async function socketStory(seed, key, check, { steps = 120, ids = 9 } = {}) {
+  const realNow = Date.now;
+  let clock = 1_800_000_000_000;
+  Date.now = () => clock;
+  try {
+    await quiet(async () => {
+      const R = fakeRoom(key, { now: () => clock });
+      const rnd = roll(seed);
+      const open = [];
+      for (let step = 0; step < steps; step++) {
+        const r = rnd();
+        clock += 150 + Math.floor(rnd() * 400);
+        if (r < 0.5 || open.length < 2) {
+          const ws = R.connect();
+          const id = `p-${String(Math.floor(rnd() * ids)).padStart(4, '0')}`;
+          await R.hello(ws, id, { x: (BX + rnd()) * PIXEL_UNITS, y: 0, z: (499 - BY + rnd()) * PIXEL_UNITS, yaw: 0, pitch: 0 });
+          if (!ws.closed) open.push(ws);
+        } else if (r < 0.75) {
+          const ws = open.splice(Math.floor(rnd() * open.length), 1)[0];
+          await R.drop(ws);
+        } else if (r < 0.85) {
+          // the runtime lets a socket go and says nothing - the index finds it gone on its next walk past IDX_TRUST_MS
+          const ws = open.splice(Math.floor(rnd() * open.length), 1)[0];
+          const i = R.sockets.indexOf(ws); if (i >= 0) R.sockets.splice(i, 1);
+          clock += 1100;
+        } else if (r < 0.92) R.wake();
+        else clock += 1100;
+        check(R.room, R.state.getWebSockets(), step);
+      }
+    });
+  } finally { Date.now = realNow; }
+}
+
+test('SCALE5b the host KEPT: `_hostOf` answers what its walk of every socket answers - asked with no socket left out and with each one - after every hello, reconnect, close, silent close, wake and the index\'s re-walk (mutants: the host never asked again after a hello; after a close; after a wake\'s walk; the kept answer for the host left out)', async () => {
+  let asked = 0, changed = 0, last;
+  for (const seed of [1, 2, 3, 4]) {
+    await socketStory(seed, KEY, (room, sockets) => {
+      const host = room._hostOf();
+      assert.equal(host, room._hostWalk(null), 'the room\'s host');
+      if (host !== last) changed++;
+      last = host;
+      for (const ws of sockets) { assert.equal(room._hostOf(ws), room._hostWalk(ws), 'with one socket left out'); asked++; }
+    });
+  }
+  assert.ok(asked > 400 && changed > 12, `asked ${asked} times, the host changed ${changed} times`);
+});
+
+test('SCALE5b directed frames by the id index: `_idFirst(id, except)` is the first socket but `except` holding the id in the index\'s order - what the copy and search of every socket answered - and `_withId` every one, over the same story (mutants: the index not moved on a hello; not on a close; not rebuilt with the walk; the order unread; `except` unread)', async () => {
+  let found = 0, asked = 0;
+  for (const seed of [5, 6, 7]) {
+    await socketStory(seed, KEY, (room, sockets) => {
+      for (const id of [null, undefined, '', ...Array.from({ length: 9 }, (_, i) => `p-${String(i).padStart(4, '0')}`)]) {
+        for (const except of [null, ...sockets]) {
+          const want = id ? [...room._all()].find(([o, b]) => o !== except && b.id === id) ?? null : null;
+          const got = room._idFirst(id, except);
+          assert.equal(got?.[0] ?? null, want?.[0] ?? null, `the socket of ${id}`);
+          assert.equal(got?.[1] ?? null, want?.[1] ?? null);
+          if (want) found++;
+          asked++;
+          if (id) assert.deepEqual(room._withId(id, except).map((e) => e[0]), [...room._all()].filter(([o, b]) => o !== except && b.id === id).map((e) => e[0]));
+        }
+      }
+    }, { steps: 80 });
+  }
+  assert.ok(found > asked / 8, `found ${found} of ${asked}`);
+});
+
+test('SCALE5b the drain\'s sweep not paid twice: an empty room\'s first hello after a drain\'s sweep lists nothing - and one after a wake, or with leftovers a silent close kept, sweeps as before (mutants: the marker never set; never cleared by a hello; the marker read where a socket stands)', async () => {
+  const realNow = Date.now;
+  let clock = 1_800_000_000_000;
+  Date.now = () => clock;
+  try {
+    await quiet(async () => {
+      const R = fakeRoom(KEY, { now: () => clock });
+      let lists = 0;
+      const real = R.state.storage.list.bind(R.state.storage);
+      R.state.storage.list = (...a) => { lists++; return real(...a); };
+      const enter = async (id) => { const ws = R.connect(); clock += 300; await R.hello(ws, id, null); assert.equal(ws.closed, null); return ws; };
+      const a = await enter('p-0001');
+      assert.ok(lists > 0, 'a room never swept sweeps at its first hello');
+      lists = 0;
+      await R.drop(a);
+      assert.ok(lists > 0, 'the drain sweeps');
+      lists = 0;
+      const b = await enter('p-0002');
+      assert.equal(lists, 0, 'the next hello into the drained room sweeps nothing');
+      const c = await enter('p-0003');
+      assert.equal(lists, 0);
+      await R.drop(c);
+      assert.equal(lists, 0, 'a leave that is not the last sweeps nothing');
+      lists = 0;
+      await R.drop(b);
+      lists = 0;
+      R.wake();
+      R.state.storage.list = (...x) => { lists++; return real(...x); };
+      const d = await enter('p-0004');
+      assert.ok(lists > 0, 'a woken room does not know it was swept - it sweeps');
+      // a socket the runtime let go with nothing said leaves its look and secret behind: the next empty hello sweeps them
+      const i = R.sockets.indexOf(d); R.sockets.splice(i, 1);
+      clock += 1100;
+      lists = 0;
+      await enter('p-0005');
+      assert.ok(lists > 0, 'an empty room no drain swept sweeps');
+      assert.equal(await R.state.storage.get('secret:p-0004'), undefined, 'and takes what was left behind');
+      // and awake: a drain's sweep, then a hello that writes, then that socket let go with nothing said - the room is not
+      // as the drain left it, and the next empty hello sweeps
+      const e = R.sockets[R.sockets.length - 1];
+      await R.drop(e);
+      const f = await enter('p-0006');
+      R.sockets.splice(R.sockets.indexOf(f), 1);
+      clock += 1100;
+      lists = 0;
+      await enter('p-0007');
+      assert.ok(lists > 0, 'a hello since the drain\'s sweep - the next empty hello sweeps');
+      assert.equal(await R.state.storage.get('secret:p-0006'), undefined, 'and takes what it left behind');
+    });
+  } finally { Date.now = realNow; }
+});
+
+test('SCALE5b a beat\'s frames: a socket of the second wire hears a boss\'s beat as ONE frame batch, at once - one frame alone as itself - and any other socket each frame as it always did (mutants: the batch for the second wire; one frame wrapped)', async () => {
+  await cell(async ({ R, w2, old, w2b }) => {
+    R.room._gateFan([{ k: 'hp', v: 3 }, { k: 'move', x: 1 }, { k: 'say', s: 'ha' }]);
+    assert.deepEqual(old.sent, [{ t: 'gate', k: 'hp', v: 3 }, { t: 'gate', k: 'move', x: 1 }, { t: 'gate', k: 'say', s: 'ha' }]);
+    for (const ws of [w2, w2b]) assert.deepEqual(ws.sent, [{ t: 'fb', f: old.sent }], 'one frame, now');
+    for (const ws of [w2, old]) ws.sent.length = 0;
+    R.room._siegeFan([{ k: 'hp', v: 2 }]);
+    assert.deepEqual(w2.sent, [{ t: 'siege', k: 'hp', v: 2 }]);
+    assert.deepEqual(old.sent, w2.sent);
+  });
+});
+
+test('SCALE5b the foes fan, a method of its own with the budget asked before its walk: every frame reaches exactly the listeners the law names and leaves the room\'s bucket exactly where the law leaves it - over budgets below one listener\'s worth, between one\'s and all of theirs, and above - and a frame the room cannot afford for one listener walks nobody (mutants: the budget borrowed; the walk before the budget; the range unread; the sender heard)', async () => {
+  const realNow = Date.now;
+  let clock = 1_800_000_000_000;
+  Date.now = () => clock;
+  try {
+    await quiet(async () => {
+      const key = KEY;   // a cell's room: its foes are anyone's, ranged as the pose is
+      const R = fakeRoom(key, { now: () => clock });
+      const rnd = roll(41);
+      const socks = [];
+      for (let i = 0; i < 14; i++) {
+        const ws = R.connect(); clock += 300;
+        const far = i % 4 === 3 ? 7 : 0;   // a quarter of them out of range
+        await R.hello(ws, `f-${String(i).padStart(4, '0')}`, { x: (BX + far + rnd()) * PIXEL_UNITS, y: 0, z: (499 - BY + rnd()) * PIXEL_UNITS, yaw: 0, pitch: 0 });
+        socks.push(ws);
+      }
+      const { byteGate, inRange, FOES_ROOM_BYTES_PER_S } = relay;
+      let dropped = 0, passed = 0, between = 0;
+      const low = [], mid = [];   // how many times the index was asked for a frame refused below one listener's worth, and for one refused between
+      for (let round = 0; round < 60; round++) {
+        clock += 1000;   // past every sender's own meter
+        for (const ws of socks) ws.sent.length = 0;
+        const from = socks[Math.floor(rnd() * socks.length)];
+        const a = R.room._attach(from);
+        const frame = JSON.stringify({ t: 'foes', data: { n: round, full: 1, f: Array.from({ length: 1 + Math.floor(rnd() * 8) }, (_, i) => ({ i, x: 1, y: 0, z: 1, h: 10 })) } });
+        const per = frame.length + a.id.length + 8;
+        const heard = socks.filter((o) => o !== from && inRange(key, a.pose, R.room._attach(o).pose));
+        const want = per * heard.length;
+        // the bucket stood anywhere from empty to past the whole fan's cost
+        const bytes = [0, per / 2, per, (per + want) / 2, want - 1, want, want * 2][round % 7];
+        if (bytes >= per && bytes < want) between++;
+        R.room._roomFoes = { bytes, at: clock };
+        const law = byteGate({ bytes, at: clock }, clock, want, FOES_ROOM_BYTES_PER_S);
+        let walked = 0;
+        const all = R.room._all.bind(R.room);
+        R.room._all = () => { walked++; return all(); };
+        const before = walked;
+        await R.raw(from, frame);
+        R.room._all = all;
+        const got = socks.filter((o) => o.sent.some((f) => f.t === 'foes'));
+        assert.deepEqual(got, law.pass ? heard : [], `round ${round}: the listeners (bucket ${bytes}, a listener ${per}, all ${want})`);
+        assert.deepEqual(R.room._roomFoes, law.bucket, `round ${round}: the bucket`);
+        if (law.pass) passed++; else dropped++;
+        assert.equal(R.room._meterOf(from).junk ?? 0, 0, `round ${round}: never junk`);
+        (bytes < per ? low : bytes < want ? mid : []).push(walked - before);
+      }
+      assert.ok(dropped > 10 && passed > 10 && between > 10, `both answers, and the band between one listener and all (${dropped} dropped, ${passed} passed, ${between} between)`);
+      assert.ok(R.room._metrics.c.foesDropped >= dropped, 'each counted');
+      assert.ok(low.length > 5 && mid.length > 5);
+      assert.ok(Math.max(...low) < Math.min(...mid), `a frame the room cannot afford for one listener walks nobody - the index asked ${JSON.stringify([...new Set(low)])} times for it, ${JSON.stringify([...new Set(mid)])} for one that walked`);
+    });
+  } finally { Date.now = realNow; }
+});

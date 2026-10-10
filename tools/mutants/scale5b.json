@@ -348,5 +348,199 @@
       "test/scale5b.test.js"
     ],
     "note": "a chat link never asks"
+  },
+  {
+    "name": "SCALE5b-host-not-forgotten",
+    "file": "server/src/index.js",
+    "old": "    if ((was?.id || null) !== (a?.id || null) || (was?.since ?? 0) !== (a?.since ?? 0)) this._hostMemo = undefined;",
+    "new": "    if (false) this._hostMemo = undefined;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the kept host never asked again after a hello or a close"
+  },
+  {
+    "name": "SCALE5b-host-stamp-unread",
+    "file": "server/src/index.js",
+    "old": "    if ((was?.id || null) !== (a?.id || null) || (was?.since ?? 0) !== (a?.since ?? 0)) this._hostMemo = undefined;",
+    "new": "    if ((was?.id || null) !== (a?.id || null)) this._hostMemo = undefined;",
+    "equivalent": true,
+    "why": "A socket's hello stamp (`since`) is written by its hello alone, in the one `_setAttach` that gives it its id - so a stamp never moves without the id moving with it, and the id's clause forgets the host first. Kept: a later door that writes a stamp on its own is answered by it.",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a reconnect's new hello stamp leaves the host as it stood"
+  },
+  {
+    "name": "SCALE5b-host-walk-not-first",
+    "file": "server/src/index.js",
+    "old": "    this._all();   // a walk due past IDX_TRUST_MS runs first",
+    "new": "    // a walk due past IDX_TRUST_MS runs first",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the kept host answered over a room whose walk is due"
+  },
+  {
+    "name": "SCALE5b-host-kept-past-walk",
+    "file": "server/src/index.js",
+    "old": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._idIdx = null; this._hostMemo = undefined; }",
+    "new": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._idIdx = null; }",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a socket the runtime let go still the host"
+  },
+  {
+    "name": "SCALE5b-host-except-unread",
+    "file": "server/src/index.js",
+    "old": "    if (this._all().get(except)?.id !== host) return host;",
+    "new": "    return host;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the host asked without itself answers itself"
+  },
+  {
+    "name": "SCALE5b-id-index-unmoved",
+    "file": "server/src/index.js",
+    "old": "    keyMove(this._idIdx, ws, was?.id || null, a?.id || null);   // SCALE5b: and the id index",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a hello's id never in the index"
+  },
+  {
+    "name": "SCALE5b-id-index-kept-past-walk",
+    "file": "server/src/index.js",
+    "old": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._idIdx = null; this._hostMemo = undefined; }",
+    "new": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._hostMemo = undefined; }",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a socket the runtime let go still a target"
+  },
+  {
+    "name": "SCALE5b-id-except-unread",
+    "file": "server/src/index.js",
+    "old": "    for (const ws of s) { if (ws === except) continue; const q = this._idxSeq.get(ws) ?? 0;",
+    "new": "    for (const ws of s) { const q = this._idxSeq.get(ws) ?? 0;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a frame directed back at its sender"
+  },
+  {
+    "name": "SCALE5b-id-order-unread",
+    "file": "server/src/index.js",
+    "old": "if (q < seq) { seq = q; best = ws; } }",
+    "new": "if (best === null) { seq = q; best = ws; } }",
+    "equivalent": true,
+    "why": "Two sockets hold one id only between a reconnect's hello finding its old socket and replacing it (`_withId`, then `id: null`), and nothing asks `_idFirst` there; an id's set and the index are both kept in the order the same doors move them. Kept: the order is the copy-and-search's, and a door that ever leaves two of one id is answered by it.",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the set's order for the index's"
+  },
+  {
+    "name": "SCALE5b-withid-empty",
+    "file": "server/src/index.js",
+    "old": "    const s = id ? this._byId().get(id) : null;   // SCALE5b: the id's own sockets, never a walk of every socket\n    if (!s) return [];",
+    "new": "    const s = id ? this._byId().get(id) : null;   // SCALE5b: the id's own sockets, never a walk of every socket\n    if (!s || s) return [];",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a reconnect's old socket never found - two sockets of one id in the room"
+  },
+  {
+    "name": "SCALE5b-swept-never-set",
+    "file": "server/src/index.js",
+    "old": "await this._sweep(); this._swept = this.state.getWebSockets().length === 0;",
+    "new": "await this._sweep();",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "every drained room swept again at its next hello"
+  },
+  {
+    "name": "SCALE5b-swept-never-cleared",
+    "file": "server/src/index.js",
+    "old": "      this._swept = false;   // SCALE5b: this hello writes",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a room swept once is never swept at an empty hello again"
+  },
+  {
+    "name": "SCALE5b-swept-unread",
+    "file": "server/src/index.js",
+    "old": "      if (!others.length && !carried && !this._swept) {",
+    "new": "      if (!others.length && !carried) {",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the drained room swept twice"
+  },
+  {
+    "name": "SCALE5b-beat-each-frame",
+    "file": "server/src/index.js",
+    "old": "      if (b.w2 && outs.length > 1) this._send(ws, one ??= wire2Batch(outs));",
+    "new": "      if (false) this._send(ws, one ??= wire2Batch(outs));",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a beat a send a frame to the second wire"
+  },
+  {
+    "name": "SCALE5b-beat-one-wrapped",
+    "file": "server/src/index.js",
+    "old": "      if (b.w2 && outs.length > 1) this._send(ws, one ??= wire2Batch(outs));",
+    "new": "      if (b.w2 && outs.length > 0) this._send(ws, one ??= JSON.stringify({ t: 'fb', f: outs.map((o) => JSON.parse(o)) }));",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "one frame wrapped in a batch"
+  },
+  {
+    "name": "SCALE5b-foes-walk-first",
+    "file": "server/src/index.js",
+    "old": "    if (!ahead.pass) { this._metrics.c.foesDropped = (this._metrics.c.foesDropped ?? 0) + 1; return ahead.bucket; }   // SCALE5b: not one listener's worth - no walk\n",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "every refused frame walks the room first"
+  },
+  {
+    "name": "SCALE5b-foes-range-unread",
+    "file": "server/src/index.js",
+    "old": "    for (const [other, b] of this._all()) if (other !== ws && b.id && (!reach || reach(b.pose))) listeners.push(other);",
+    "new": "    for (const [other, b] of this._all()) if (other !== ws && b.id) listeners.push(other);",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a cell's foes to sockets out of range"
+  },
+  {
+    "name": "SCALE5b-foes-sender-heard",
+    "file": "server/src/index.js",
+    "old": "    for (const [other, b] of this._all()) if (other !== ws && b.id && (!reach || reach(b.pose))) listeners.push(other);",
+    "new": "    for (const [other, b] of this._all()) if (b.id && (!reach || reach(b.pose))) listeners.push(other);",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the sender hears its own foes"
+  },
+  {
+    "name": "SCALE5b-foes-drop-uncounted",
+    "file": "server/src/index.js",
+    "old": "    if (!ahead.pass) { this._metrics.c.foesDropped = (this._metrics.c.foesDropped ?? 0) + 1; return ahead.bucket; }",
+    "new": "    if (!ahead.pass) { return ahead.bucket; }",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a drop below one listener's worth never counted"
   }
 ]

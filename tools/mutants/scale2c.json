@@ -102,12 +102,12 @@
   {
     "name": "SCALE2c-link-own-wave",
     "file": "src/scenes/world.js",
-    "old": "      const link = new OnlineSession({ url: online.url, name: online.name, look: online.look, id: online.id, secret: online.secret, presence: false, wave: pageWave });   // SCALE2c: the page's one wave\n      link.onChat",
-    "new": "      const link = new OnlineSession({ url: online.url, name: online.name, look: online.look, id: online.id, secret: online.secret, presence: false });\n      link.onChat",
+    "old": "presence: false, wave: pageWave, wire2: true });   // SCALE2c: the page's one wave; SCALE5b: the second wire\n      link.onChat",
+    "new": "presence: false, wire2: true });\n      link.onChat",
     "tests": [
       "test/scale2c.test.js"
     ],
-    "note": "the chat links on waves of their own - the hub's count never reaches the cell's session"
+    "note": "the chat links on waves of their own - the hub's count never reaches the cell's session SCALE5b (re-aimed by content): the link also asks the second wire."
   },
   {
     "name": "SCALE2c-quiet-number",

@@ -577,6 +577,9 @@ export class Room {
     this._roomRenown = null;     // AUDIT RENOWN1 SEC-2/WIRE-1: the room's budget for renown fans (RENOWN_ROOM_HZ_MAX) - on the instance, as the chat's is
     this._acctIdx = null;        // SOC1: account -> its hello'd sockets, built from the index when asked; SCALE5a: then KEPT by the doors that change a socket's account (`_reindex`), rebuilt only when the index itself is re-walked
     this._idxSeq = new WeakMap(); this._idxN = 0;   // SCALE5a: each socket's place in the index's own order (`_enter`) - a per-account set is read back in it
+    this._idIdx = null;          // SCALE5b: peer id -> its sockets, kept as the account index is - a directed frame's target without a walk (`_idFirst`)
+    this._hostMemo = undefined;  // SCALE5b: the room's host (`_hostOf`), kept until a socket's id or hello stamp moves - undefined: not known
+    this._swept = false;         // SCALE5b: the drain's sweep ran and nothing has said hello since - the next empty room's hello need not sweep again
     this._subIdx = null;         // SCALE5a: verified account (`sub`) -> its hello'd sockets, kept as the account index is - ONE-SEAT's other tabs (`_otherTabsOf`) without a walk of every socket
     this._parties = new Bounded(PARTIES_MAX);   // SOC1: party id -> record, kept while the object is awake (a party pose reads its party once a second; a wake reads storage once and keeps it again)
     this._recs = new Bounded(RECS_MAX);      // AUDIT SOC A5: account id -> record, kept while the object is awake - every write goes through _putAcct/_putAccts so the copy is the storage's; bounded at RECS_MAX
@@ -685,7 +688,7 @@ export class Room {
   }
   /** SCALE2b: a socket the runtime has just accepted, into the index - the one door a socket comes in by (the index
    *  is never rebuilt for one; a wake's first `_all` reads every socket the runtime holds). */
-  _adopt(ws, att) { if (!this._idx) return; if (!this._idx.has(ws)) this._enter(ws); this._idx.set(ws, att); }   // SCALE5a: its place in the index's order
+  _adopt(ws, att) { if (!this._idx) return; const was = this._idx.get(ws); if (!was) this._enter(ws); this._idx.set(ws, att); this._reindex(ws, was, att); }   // SCALE5a: its place in the index's order; SCALE5b: and in the kept indexes (a socket accepted with no id moves none)
   /** SCALE5a: a socket NEW to the index takes the next place in its order - the order a walk of the index gives (a Map's
    *  insertion order: a key set again keeps its place, a key deleted and set again goes last, as here). */
   _enter(ws) { this._idxSeq.set(ws, ++this._idxN); }
@@ -713,11 +716,11 @@ export class Room {
     const now = Date.now();
     if (this._idx && now - this._idxAt < IDX_TRUST_MS) return this._idx;
     const sockets = this.state.getWebSockets();
-    if (!this._idx) { this._idx = new Map(); this._acctIdx = null; this._subIdx = null; }
+    if (!this._idx) { this._idx = new Map(); this._acctIdx = null; this._subIdx = null; this._idIdx = null; this._hostMemo = undefined; }
     let moved = false;
     if (this._idx.size) { const live = new Set(sockets); for (const ws of [...this._idx.keys()]) if (!live.has(ws)) { this._idx.delete(ws); moved = true; } }
     for (const ws of sockets) if (!this._idx.has(ws)) { let a; try { a = ws.deserializeAttachment() ?? {}; } catch { a = {}; } this._enter(ws); this._idx.set(ws, a); moved = true; }
-    if (moved) { this._acctIdx = null; this._subIdx = null; }   // SOC1: rebuilt with the index; SCALE5a: the subject index too
+    if (moved) { this._acctIdx = null; this._subIdx = null; this._idIdx = null; this._hostMemo = undefined; }   // SOC1: rebuilt with the index; SCALE5a: the subject index too; SCALE5b: the id index and the host
     this._idxAt = now;
     return this._idx;
   }
@@ -740,6 +743,8 @@ export class Room {
   _reindex(ws, was, a) {
     keyMove(this._acctIdx, ws, was?.id && was.acct ? was.acct : null, a?.id && a.acct ? a.acct : null);
     keyMove(this._subIdx, ws, was?.id && was.sub ? was.sub : null, a?.id && a.sub ? a.sub : null);   // and the subject index
+    keyMove(this._idIdx, ws, was?.id || null, a?.id || null);   // SCALE5b: and the id index
+    if ((was?.id || null) !== (a?.id || null) || (was?.since ?? 0) !== (a?.since ?? 0)) this._hostMemo = undefined;   // SCALE5b: the host is asked again once an id or a hello stamp moves
   }
   /** SCALE5a: the hello'd sockets of each verified account (`sub`) - built as `_byAcct` is, kept the same way. */
   _bySub() {
@@ -748,6 +753,28 @@ export class Room {
     const m = new Map();
     for (const [ws, a] of this._all()) if (a.id && a.sub) { let s = m.get(a.sub); if (!s) m.set(a.sub, s = new Set()); s.add(ws); }
     return (this._subIdx = m);
+  }
+  /** SCALE5b: the sockets of each peer id - built as `_byAcct` is, kept the same way. */
+  _byId() {
+    this._all();   // as `_byAcct`'s
+    if (this._idIdx) return this._idIdx;
+    const m = new Map();
+    for (const [ws, a] of this._all()) if (a.id) { let s = m.get(a.id); if (!s) m.set(a.id, s = new Set()); s.add(ws); }
+    return (this._idIdx = m);
+  }
+  /** SCALE5b (2026-10-10, Mac: "lets now tackle the bigger work ... really future proof our archetecture while also
+   *  increasing performance"; bible/11-Multiplayer/Scale-Arc.md SCALE5b): A DIRECTED FRAME'S TARGET WITHOUT A WALK. A
+   *  blow, a heal, a who's answer and every act at one peer found its socket by copying the whole index and searching
+   *  it - O(N) and an array of N a frame, in a full cell at every blow. The first socket but `except` holding `id`, in
+   *  the index's order, with its attachment - exactly what `[...this._all()].find(([o, b]) => o !== except && b.id ===
+   *  id)` answered - read off the id's own sockets (one, but for a reconnect's moment). */
+  _idFirst(id, except = null) {
+    if (!id) return null;
+    const s = this._byId().get(id);
+    if (!s) return null;
+    let best = null, seq = Infinity;
+    for (const ws of s) { if (ws === except) continue; const q = this._idxSeq.get(ws) ?? 0; if (q < seq) { seq = q; best = ws; } }
+    return best ? [best, this._all().get(best)] : null;
   }
   /** SCALE5a: a set's sockets in the index's own order - what a walk of the index would have listed. */
   _inOrder(set) {
@@ -787,8 +814,10 @@ export class Room {
   /** The sockets but `ws` holding the id `id` - a reconnect's old socket, which it replaces. A list, made before any is
    *  replaced. */
   _withId(id, ws) {
-    const out = [];
-    for (const [other, b] of this._all()) if (other !== ws && b.id === id) out.push([other, b]);
+    const s = id ? this._byId().get(id) : null;   // SCALE5b: the id's own sockets, never a walk of every socket
+    if (!s) return [];
+    const idx = this._all(), out = [];
+    for (const other of this._inOrder(s)) if (other !== ws) out.push([other, idx.get(other)]);
     return out;
   }
   /** Everyone but `ws` the room can name - hello'd, and never a socket this object closed or whose leave is said
@@ -871,6 +900,44 @@ export class Room {
   /** SCALE5b: a channel's join or leave - to a socket of the second wire, owed it for the roster's batch; to any other,
    *  at once, as `_fanBut` says it. */
   _fanRoster(ws, out) { for (const [other, b] of this._all()) if (other !== ws && b.id) { if (b.w2) this._owe(other, out, ROSTER_BATCH_MS); else this._send(other, out); } }
+  /** SCALE5b: A BEAT'S FRAMES, ONE FRAME A LISTENER. A boss's beat (the gate's, a siege's, a Remnant's, a serpent's, a
+   *  bout's) said each of its frames as a send of its own to every socket that hears it; a socket of the second wire
+   *  hears them as one frame batch (wire.js wire2Batch) - at once, never waiting on a batch's timer - and any other one
+   *  send a frame as before, a send that fails ending that socket's (its close is said). The index walked in place. */
+  _fanFrames(outs, hears) {
+    if (!outs.length) return;
+    let one = null;
+    for (const [ws, b] of this._all()) {
+      if (!hears(b)) continue;
+      if (b.w2 && outs.length > 1) this._send(ws, one ??= wire2Batch(outs));
+      else for (const s of outs) if (!this._send(ws, s)) break;
+    }
+  }
+  /** SCALE5b (PERF-RELAY1's lesson, `_poseFrame`): THE FOES FRAME'S FAN, A METHOD OF ITS OWN. Written inside `_message`,
+   *  which is past V8's ceiling for an optimized function, it ran in the interpreter for the life of the object - at
+   *  the rate a full cell's every socket streams its foes. And the room's byte budget is asked BEFORE the walk: a frame
+   *  the room cannot afford for even one listener is dropped without one (the budget's bucket left exactly as the walk
+   *  and a refusal, or a fan to nobody, would have left it - refilled to now, nothing spent). In a crowded cell, where
+   *  the budget drops most frames, that was a copy of the whole index and a range test per socket for nothing.
+   *  `kind` 'foes' (a cell's: ranged as the pose is - AUDIT WORLD6b A4; a world room's host's: everyone) or 'own'
+   *  (OWN1: everyone); answers the budget's bucket. A5: the fan is the frame times its listeners, and over the budget
+   *  the frame is dropped and nobody struck (the next full frame heals it); AUDIT WORLD6b A3: asked before the frame is
+   *  re-serialised (the fan's bytes estimated: the frame's plus the envelope's), so a dropped frame costs no stringify. */
+  _foesFan(ws, a, kind, data, length, ranged, bucket, now) {
+    const per = length + a.id.length + 8;
+    const ahead = byteGate(bucket, now, per, FOES_ROOM_BYTES_PER_S);
+    if (!ahead.pass) { this._metrics.c.foesDropped = (this._metrics.c.foesDropped ?? 0) + 1; return ahead.bucket; }   // SCALE5b: not one listener's worth - no walk
+    const reach = ranged ? inRangeOf(a.key, a.pose) : null;
+    const listeners = [];
+    for (const [other, b] of this._all()) if (other !== ws && b.id && (!reach || reach(b.pose))) listeners.push(other);
+    const budget = byteGate(bucket, now, per * listeners.length, FOES_ROOM_BYTES_PER_S);
+    if (!budget.pass) { this._metrics.c.foesDropped = (this._metrics.c.foesDropped ?? 0) + 1; return budget.bucket; }
+    if (!listeners.length) return budget.bucket;
+    const out = fanOut(kind, a.id, data, length);   // AUDIT (pre-merge) O3/O4
+    if (out == null) { this._junk(ws); return budget.bucket; }
+    for (const other of listeners) this._send(other, out);
+    return budget.bucket;
+  }
 
   /** A frame to one socket; a socket that will not take it is closed (A10). */
   _send(ws, s) {
@@ -906,8 +973,20 @@ export class Room {
     }
   }
 
-  /** WORLD1: the room's host - the hello'd socket in the room longest (the earliest hello stamp; ties by id), or null. */
+  /** WORLD1: the room's host - the hello'd socket in the room longest (the earliest hello stamp; ties by id), or null.
+   *  SCALE5b: KEPT, NOT WALKED FOR. A world room asked it on every foes frame, every memory write and every blow - a walk
+   *  of every socket each - and it moves only when a socket's id or hello stamp does (`_reindex`, `_all`). Asked without
+   *  `except`, or with a socket that is not the host's, the kept answer; else the walk. */
   _hostOf(except = null) {
+    this._all();   // a walk due past IDX_TRUST_MS runs first, as the walk below would have run it - and forgets the kept host if it finds the room moved
+    if (this._hostMemo === undefined) this._hostMemo = this._hostWalk(null);
+    const host = this._hostMemo;
+    if (except == null || host == null) return host;
+    if (this._all().get(except)?.id !== host) return host;
+    return this._hostWalk(except);
+  }
+  /** The walk itself - what `_hostOf` answered before SCALE5b. */
+  _hostWalk(except) {
     let best = null;
     for (const [ws, a] of this._all()) {
       if (ws === except || !a.id) continue;
@@ -1878,7 +1957,8 @@ export class Room {
       // carried over - a claim that closed the account's other tabs, or a reconnect that replaced its own old socket,
       // moved a seat the room never lost, and the sweep below took every party in the hub with it (a stranger's too)
       const carried = !!replaced || (!!m.cl && seatHeld.length > 0);
-      if (!others.length && !carried) { try { await this._sweep(); } catch (e) { console.warn('[room] sweep failed', e?.message ?? e); } }   // AUDIT-SEATS R3: a battle room's fighter spent no stored bucket   // an empty room forgets every look and secret an unclean close left behind - not its hello gate (AUDIT SOC A2: contained - a failed list here made every first hello into an empty hub throw before its welcome)
+      if (!others.length && !carried && !this._swept) { try { await this._sweep(); } catch (e) { console.warn('[room] sweep failed', e?.message ?? e); } }   // AUDIT-SEATS R3: a battle room's fighter spent no stored bucket   // an empty room forgets every look and secret an unclean close left behind - not its hello gate (AUDIT SOC A2: contained - a failed list here made every first hello into an empty hub throw before its welcome)   // SCALE5b: not when the drain's sweep already ran and nothing has said hello since - a halo's every step into an empty cell paid both
+      this._swept = false;   // SCALE5b: this hello writes
       if (held !== m.secret || !this._secrets.has(m.id)) { await this.state.storage.put(secretKey(m.id), m.secret); this._secrets.set(m.id, m.secret); }   // SCALE2b: written when it is new, not on every hello (or when an empty room's sweep, just above, took it)
       if (!chat && (!this._looks.has(m.id) || JSON.stringify(this._looks.get(m.id)) !== JSON.stringify(m.look))) { await this.state.storage.put(lookKey(m.id), m.look); this._looks.set(m.id, m.look); }   // SCALE2b: and a look when it changed   // a channel keeps no look: nobody is drawn from it
       const guild = who.gi ? { gi: who.gi, gt: who.gt, gm: who.gm } : {};   // GUILD1c: the guild the token carried, when it carried one
@@ -2118,19 +2198,7 @@ export class Room {
       // reader, and a dungeon's bound (`i >= _layoutFoes`, a layout every client built) has no cell equivalent; over
       // it the frame is junk, counted (the relay still reads nothing inside a record)
       if (cell && (!Array.isArray(m.data.f) || m.data.f.length > CELL_FRAME_RECORDS_MAX)) { this._junk(ws); return; }
-      // AUDIT WORLD6b A4: a cell's fan is RANGED as the pose's is (RANGE_PIXELS inside a sixteen-pixel cell) - a foe
-      // nobody near me can see stands nowhere on my screen; a dungeon's reaches every socket in the place
-      const listeners = [...this._all()].filter(([other, b]) => other !== ws && b.id && (!cell || inRange(a.key, a.pose, b.pose)));
-      // A5: the room's byte budget - the fan is the frame times its listeners, and one host into a full room was
-      // 191 MiB/s out of one object; over it the frame is dropped and nobody struck (the next full frame heals it).
-      // AUDIT WORLD6b A3: the budget is asked BEFORE the frame is re-serialised (the fan's bytes are the frame's plus
-      // the envelope's, estimated), so a dropped frame costs no stringify
-      const budget = byteGate(this._roomFoes, now, (message.length + a.id.length + 8) * listeners.length, FOES_ROOM_BYTES_PER_S);
-      this._roomFoes = budget.bucket;
-      if (!budget.pass || !listeners.length) return;
-      const out = fanOut('foes', a.id, m.data, message.length);   // AUDIT (pre-merge) O3/O4
-      if (out == null) { this._junk(ws); return; }
-      for (const [other] of listeners) this._send(other, out);
+      this._roomFoes = this._foesFan(ws, a, 'foes', m.data, message.length, cell, this._roomFoes, now);   // SCALE5b: a method of its own
       return;
     }
     if (m.t === 'own') {
@@ -2139,13 +2207,7 @@ export class Room {
       const now = Date.now();
       if (doored !== 'own') { if (!isWorldRoom(a.key)) { this._junk(ws); return; } a = this._meterFoes(ws, a, now); if (!a) return; }
       if (!Array.isArray(m.data.f) || m.data.f.length > CELL_FRAME_RECORDS_MAX) { this._junk(ws); return; }
-      const listeners = [...this._all()].filter(([other, b]) => other !== ws && b.id);
-      const budget = byteGate(this._roomOwn, now, (message.length + a.id.length + 8) * listeners.length, FOES_ROOM_BYTES_PER_S);
-      this._roomOwn = budget.bucket;
-      if (!budget.pass || !listeners.length) return;
-      const out = fanOut('own', a.id, m.data, message.length);   // AUDIT (pre-merge) O3/O4
-      if (out == null) { this._junk(ws); return; }
-      for (const [other] of listeners) this._send(other, out);
+      this._roomOwn = this._foesFan(ws, a, 'own', m.data, message.length, false, this._roomOwn, now);   // SCALE5b: the foes frame's method
       return;
     }
     if (m.t === 'hit') {
@@ -2164,7 +2226,7 @@ export class Room {
       // AUDIT WORLD6b A1: the ROUTE is resolved before anything is spent - a `to` that names no socket in the room (a
       // peer gone, or a name a hostile client made up) delivers nothing, buys nothing, and is counted as junk (AUDIT
       // WORLD2 A4's instrument), so a stream of them is struck out; a world room's host is always a socket
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === host) ?? null;
+      const target = this._idFirst(host, ws);
       if (!target) { if (owned) this._junk(ws); return; }
       // A6: the funnel onto the destination's ONE socket - all strikers together, HIT_ROOM_HZ_MAX a second; over it
       // the blow is dropped and nobody struck. AUDIT WORLD6b A1/A2: the budget is the DESTINATION's (its own bucket,
@@ -2201,7 +2263,7 @@ export class Room {
       if (isChatRoom(a.key) || isSocialRoom(a.key)) return;
       const to = m.data.to;
       if (to === a.id) { this._junk(ws); return; }
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       // the funnel onto the destination's ONE socket - every sender together (the hit arm's A6 law, its own bucket)
       const [tws] = target;
@@ -2230,7 +2292,7 @@ export class Room {
       if (isChatRoom(a.key) || isSocialRoom(a.key)) return;
       const to = m.data.to;
       if (to === a.id) { this._junk(ws); return; }
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       const [tws] = target;
       // AUDIT ALLY-CAST B2: the funnel onto the destination is PER SENDER (wire.js CAST_DEST_SENDERS_MAX) - one bucket
@@ -2251,7 +2313,7 @@ export class Room {
       if (isChatRoom(a.key) || isSocialRoom(a.key)) return;
       const to = m.data.to;
       if (to === a.id) { this._junk(ws); return; }
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       const [tws] = target;
       // THE CAST ARM'S FUNNEL, SHARED - not a second one: one sender, one destination, one bucket, whatever the directed
@@ -2284,7 +2346,7 @@ export class Room {
       const k = m.data.k;
       if (k === 'strike' || k === 'spell') { await this._duelBlow(a, m.data, now); return; }   // INT8: the referee's, routed to nobody
       if ((k === 'end' || k === 'cancel') && await this._duelForfeit(a, m.data, now)) return;   // INT8: a fighter's own end of its bout
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       const [tws, tb] = target;
       // the funnel onto the destination, per sender - the cast's shape on slots of its own at the duel's rate
@@ -2311,7 +2373,7 @@ export class Room {
       if (isChatRoom(a.key) || isSocialRoom(a.key)) return;
       const to = m.data.to;
       if (to === a.id) { this._junk(ws); return; }
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       const [tws] = target;
       // the funnel onto the destination, per sender - the duel's shape on slots of its own at the wedding's rate
@@ -2351,7 +2413,7 @@ export class Room {
       if (wildDirected(m.data)) {
         const to = m.data.to;
         if (to === a.id) { this._junk(ws); return; }
-        const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+        const target = this._idFirst(to, ws);
         if (!target) return;
         const [tws] = target;
         if (!this._senderFunnel(tws, a.id, now, 'wiin', WILD_HZ_MAX)) return;
@@ -2375,7 +2437,7 @@ export class Room {
       if (isChatRoom(a.key) || isSocialRoom(a.key)) return;
       const to = m.data.to;
       if (to === a.id) { this._junk(ws); return; }
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       const [tws] = target;
       // the funnel onto the destination, per sender - the cast's and the card's ONE (_senderFunnel says why)
@@ -2781,7 +2843,7 @@ export class Room {
       const budget = tokenGate(this._roomWho, now, WHO_ROOM_HZ_MAX);
       this._roomWho = budget.bucket;
       if (!budget.pass) return;
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === id) ?? null;
+      const target = this._idFirst(id, ws);
       if (!target) return;
       const [tws, b] = target;
       let look = this._looks.get(b.id) ?? null;
@@ -3111,7 +3173,7 @@ export class Room {
     // ONESEAT R4), when it stays, said gone, as the old index re-read it, until the walk finds it unlisted
     if (!listed.includes(ws)) this._forget(ws);   // SCALE5a: still listed, its place in the kept account index stands
     const last = listed.length === 0 || (listed.length === 1 && listed[0] === ws);   // SCALE5a: nobody but this one - said without a filtered copy of every socket
-    if (last) { try { await this._sweep(); if (isWorldRoom(a.key)) await this.state.storage.setAlarm(Date.now() + WORLD_TTL_MS); } catch { /* the next drain, or the next empty hello */ } this._metricsTick(true); }   // SCALE2b: a drained room says its last window
+    if (last) { try { await this._sweep(); this._swept = this.state.getWebSockets().length === 0; if (isWorldRoom(a.key)) await this.state.storage.setAlarm(Date.now() + WORLD_TTL_MS); } catch { /* the next drain, or the next empty hello */ } this._metricsTick(true); }   // SCALE2b: a drained room says its last window
     if (!a.id) return;   // never said hello, or replaced - the id lives on in another socket
     // INT9 (AUDIT): a fighter whose last socket here went is out of the zone (a closed tab kept its `zone` for good, and a
     // room of them refused every newcomer)
@@ -3742,8 +3804,7 @@ export class Room {
    *  hello'd socket, so one told the seats are full heard the whole bout all the same (sixty seats a bound on nothing). */
   _boutFan(words) {
     if (!words?.length) return;
-    const outs = words.map((w) => JSON.stringify({ t: 'arena', ...w }));
-    for (const [ws, b] of [...this._all()]) if (b.id && (b.af || b.asp)) for (const s of outs) if (!this._send(ws, s)) break;
+    this._fanFrames(words.map((w) => JSON.stringify({ t: 'arena', ...w })), (b) => b.id && (b.af || b.asp));   // SCALE5b: a beat one frame to the second wire
   }
   /** The whole bout to every socket on its sand or in its stands - each with its own fighter id, '' in the stands. */
   _boutFanState(st) { for (const [ws, b] of [...this._all()]) if (b.id && (b.af || b.asp)) this._arenaSend(ws, stateWord(st, b.afid ?? '')); }
@@ -4286,8 +4347,7 @@ export class Room {
   /** Frames to everyone in the room. */
   _siegeFan(frames) {
     if (!frames.length) return;
-    const outs = frames.map((fr) => JSON.stringify({ t: 'siege', ...fr }));
-    for (const [ws, b] of [...this._all()]) if (b.id) for (const o of outs) if (!this._send(ws, o)) break;
+    this._fanFrames(frames.map((fr) => JSON.stringify({ t: 'siege', ...fr })), (b) => b.id);   // SCALE5b: a beat one frame to the second wire
   }
   /** The next fall's wave armed, unless an earlier alarm stands. */
   async _siegeArm(at) {
@@ -4466,8 +4526,7 @@ export class Room {
     // its two) - a defender 45 m over the Rebel Captain shot every rebel down where none of their blows reached it
     if (siegeOffGround(siegeGroundOf(b, a.sub), by.pose) > SIEGE_HEIGHT_M) return;
     if (isSiegeNpcId(m.to)) { await this._siegeNpcBlow(ws, a, s, b, by, m, now); return; }   // SEAT2b part two (c): on one of the relay's own fighters
-    let target = null;
-    for (const [, t] of this._all()) if (t.id === m.to) { target = t; break; }
+    const target = this._idFirst(m.to)?.[1] ?? null;   // SCALE5b: by the id index
     const to = target?.sub ? s.fighters[target.sub] : null;
     if (!to) return;   // a spectator, or a socket gone: nothing to strike
     // AUDIT-SEATS R9: ONCE A BATTLE STANDS, A BLOW OR A CAST IS BETWEEN SIDED FIGHTERS ALONE. A developer who entered PVP-REF's
@@ -4665,7 +4724,7 @@ export class Room {
   // Seats-Arc 7.6: DUEL1's ring, every blow the referee's; one bout at a time; the ladder the room's (net/siegeRef.js).
   /** A peer id's account here, or null. */
   _royalSubOf(id) {
-    for (const [, t] of this._all()) if (t.id === id && t.sub) return t.sub;
+    for (const [, t] of this._withId(id, null)) if (t.sub) return t.sub;   // SCALE5b: the id's own sockets, in the index's order
     return null;
   }
   /** The ladder as the room says it - each contender by its peer id here ('' for one gone). */
@@ -4853,8 +4912,7 @@ export class Room {
   /** The brain's frames to everyone in the room, in order. */
   _gateFan(frames) {
     if (!frames.length) return;
-    const outs = frames.map((fr) => JSON.stringify({ t: 'gate', ...fr }));
-    for (const [ws, b] of [...this._all()]) if (b.id) for (const s of outs) if (!this._send(ws, s)) break;
+    this._fanFrames(frames.map((fr) => JSON.stringify({ t: 'gate', ...fr })), (b) => b.id);   // SCALE5b: a beat one frame to the second wire
   }
   /** The fight to storage - every CHECKPOINT_MS from the beat, at once on a join and on the kill. */
   async _gateSave(f, now, force) {
@@ -4906,7 +4964,7 @@ export class Room {
       const pose = a.pose ? this._courtOf(a.pose) : null;   // the fallen too: a heal before a fall may be said after it
       const me = f.players[a.sub];
       for (const [by, n] of m.h) {
-        const healer = [...this._all()].find(([, b]) => b.id === by)?.[1]?.sub ?? null;
+        const healer = this._idFirst(by)?.[1]?.sub ?? null;   // SCALE5b: by the id index
         // AUDIT INT11: and what was believed, the count's too - an ally's mend, never its own budget's (net/bossBody.js
         // bodyHealed), at the brain's own reference health (healRef - generous, so the share it reads is the least)
         const got = healer ? applyHeal(f, a.sub, healer, n, pose, now) : 0;
@@ -5232,8 +5290,7 @@ export class Room {
   /** A fight's frames to everyone who hears it, in order - AUDIT SERPENT 2 F1: each naming the fight's site. */
   _serpentFan(fights, id, f, frames) {
     if (!frames.length) return;
-    const outs = frames.map((fr) => JSON.stringify({ t: 'serpent', ...fr, sx: f.sx, sz: f.sz }));
-    for (const [ws, b] of [...this._all()]) if (this._serpentHears(id, f, b)) for (const o of outs) if (!this._send(ws, o)) break;
+    this._fanFrames(frames.map((fr) => JSON.stringify({ t: 'serpent', ...fr, sx: f.sx, sz: f.sz })), (b) => this._serpentHears(id, f, b));   // SCALE5b: a beat one frame to the second wire
   }
   /** AUDIT 2 XB6 (2026-10-06): a fight's words said - the fight kept first when one lays what every screen draws
    *  (serpentBrain.js serpentSaysTrack), so a relay restarted wakes it no earlier than any screen holds it. */
@@ -6101,8 +6158,7 @@ export class Room {
   /** The fight's frames to everyone in the realm, in order. */
   _sdFightFan(frames) {
     if (!frames.length) return;
-    const outs = frames.map((fr) => JSON.stringify({ t: 'sd', ...fr }));
-    for (const [ws, b] of [...this._all()]) if (b.id) for (const s of outs) if (!this._send(ws, s)) break;
+    this._fanFrames(frames.map((fr) => JSON.stringify({ t: 'sd', ...fr })), (b) => b.id);   // SCALE5b: a beat one frame to the second wire
   }
   /** The beat is armed now unless it already is, sooner. */
   async _sdFightArm(now) {
@@ -6967,7 +7023,7 @@ export class Room {
   async _wildBlow(a, d, now) {
     if (!a.sub) return;
     const st = await this._wildSt();
-    const target = [...this._all()].find(([, b]) => b.id === d.to) ?? null;
+    const target = this._idFirst(d.to);   // SCALE5b: by the id index
     const tb = target?.[1];
     const fa = st.fighters.get(a.sub), ft = tb?.sub ? st.fighters.get(tb.sub) : null;
     // INT9 (AUDIT): what the referee refuses anyway is refused before the hub is asked (a blow a frame asked it)
@@ -7538,7 +7594,7 @@ export class Room {
   /** The account an act names: `acct` as given, `peer` through the hub socket that holds that id; never oneself. */
   _targetOf(me, m) {
     if (m.acct) return m.acct === me ? { error: 'that is you' } : { acct: m.acct };
-    for (const [, b] of this._all()) if (b.id === m.peer) { if (!b.acct) return { error: 'they have no account' }; return b.acct === me ? { error: 'that is you' } : { acct: b.acct }; }
+    for (const [, b] of this._withId(m.peer, null)) { if (!b.acct) return { error: 'they have no account' }; return b.acct === me ? { error: 'that is you' } : { acct: b.acct }; }
     return { error: 'they are not online' };
   }
   /** An account out of a party - by choice, by the leader's hand, by a yes to another, by a lapsed seat: the seat passes to

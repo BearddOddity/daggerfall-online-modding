@@ -132,7 +132,7 @@ test('SCALE2c the world host hands the page\'s one wave to the presence session 
   assert.equal(links.length, 2, 'the chat links and the arena hall');
   for (const l of links) assert.match(l, /wave: pageWave/);
   const online = readFileSync(new URL('../src/net/online.js', import.meta.url), 'utf8');
-  assert.match(online, /rand = Math\.random, wave = reconnectWave\(\) \} = \{\}\) \{/, 'its own, by default: a test\'s or a tool\'s session shares nothing');
+  assert.match(online, /rand = Math\.random, wave = reconnectWave\(\)(?:, wire2 = false)? \} = \{\}\) \{/, 'its own, by default: a test\'s or a tool\'s session shares nothing');   // PIN MOVED (SCALE5b): the second wire's offer beside it
 });
 
 // ═══ A FULL FOES FRAME THAT SAYS NOTHING, SAID ONCE ════════════════════════════════════════════════════════════════════

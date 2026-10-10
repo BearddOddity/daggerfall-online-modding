@@ -62,12 +62,12 @@
   {
     "name": "SCALE5a-adopt-unplaced",
     "file": "server/src/index.js",
-    "old": "if (!this._idx.has(ws)) this._enter(ws); this._idx.set(ws, att); }",
-    "new": "this._idx.set(ws, att); }",
+    "old": "if (!was) this._enter(ws); this._idx.set(ws, att); this._reindex(ws, was, att); }",
+    "new": "this._idx.set(ws, att); this._reindex(ws, was, att); }",
     "tests": [
       "test/scale5a.test.js"
     ],
-    "note": "a socket adopted takes no place in the order - it sorts first"
+    "note": "a socket adopted takes no place in the order - it sorts first SCALE5b (re-aimed by content): the adopt now also reindexes."
   },
   {
     "name": "SCALE5a-subject-not-moved",

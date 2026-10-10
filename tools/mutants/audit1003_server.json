@@ -20,11 +20,12 @@
   {
     "name": "AUDIT1003-S1-the-fan-to-every-socket",
     "file": "server/src/index.js",
-    "old": "for (const [ws, b] of [...this._all()]) if (b.id && (b.af || b.asp)) for (const s of outs) if (!this._send(ws, s)) break;",
-    "new": "for (const [ws, b] of [...this._all()]) if (b.id) for (const s of outs) if (!this._send(ws, s)) break;",
+    "old": "this._fanFrames(words.map((w) => JSON.stringify({ t: 'arena', ...w })), (b) => b.id && (b.af || b.asp));",
+    "new": "this._fanFrames(words.map((w) => JSON.stringify({ t: 'arena', ...w })), (b) => b.id);",
     "tests": [
       "test/audit1003_server.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): the bout's words by `_fanFrames`."
   },
   {
     "name": "AUDIT1003-S1-the-state-to-every-socket",
@@ -38,11 +39,12 @@
   {
     "name": "AUDIT1003-S1-the-fan-to-the-sand-alone",
     "file": "server/src/index.js",
-    "old": "for (const [ws, b] of [...this._all()]) if (b.id && (b.af || b.asp)) for (const s of outs) if (!this._send(ws, s)) break;",
-    "new": "for (const [ws, b] of [...this._all()]) if (b.id && b.af) for (const s of outs) if (!this._send(ws, s)) break;",
+    "old": "this._fanFrames(words.map((w) => JSON.stringify({ t: 'arena', ...w })), (b) => b.id && (b.af || b.asp));",
+    "new": "this._fanFrames(words.map((w) => JSON.stringify({ t: 'arena', ...w })), (b) => b.id && b.af);",
     "tests": [
       "test/audit1003_server.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): the bout's words by `_fanFrames`."
   },
   {
     "name": "AUDIT1003-S2-the-signed-level-uncapped",

@@ -668,9 +668,10 @@ test('AUDIT SOC: the widest picture an account can hold - FRIENDS_MAX friends, P
 
 test('SOC1 hub: the source - the account is handled after the channel\'s welcome and join, the leave stamps the account, the sweep spares acct: and asecret:, and the presence rooms are untouched (mutants: the picture before the welcome; the leave silent; a cell reading the account)', () => {
   const s = rd('server/src/index.js');
+  // PIN MOVED (SCALE5b): and then `_fanRoster` (the second wire's sockets owed it for the roster's batch, every other told at once)
   // PIN MOVED (SCALE5a): the join's fan is `_fanBut` (the index walked in place, by a method of its own) - and that fan is every hello'd socket but the joiner's
   assert.match(s, /_fanBut\(ws, out\) \{ for \(const \[other, b\] of this\._all\(\)\) if \(other !== ws && b\.id\) this\._send\(other, out\); \}/);
-  assert.match(s, /this\._fanBut\(ws, said\);[^\n]*\n\s*\/\/ SOC1[^\n]*\n[^\n]*\n\s*if \(isSocialRoom\(a\.key\) && m\.acct\) \{ try \{ await this\._helloAccount\(ws, m, now\); \}/, 'the account after the join fan (AUDIT SOC A2: contained)');
+  assert.match(s, /this\._fanRoster\(ws, said\);[^\n]*\n\s*\/\/ SOC1[^\n]*\n[^\n]*\n\s*if \(isSocialRoom\(a\.key\) && m\.acct\) \{ try \{ await this\._helloAccount\(ws, m, now\); \}/, 'the account after the join fan (AUDIT SOC A2: contained)');
   assert.match(s, /if \(isSocialRoom\(a\.key\) && a\.acct\) \{ try \{ await this\._leaveAccount\(ws, a, Date\.now\(\)\); \}/, 'the leave');
   const drain = s.slice(s.indexOf('async _sweep() {'), s.indexOf('async _keysOf('));
   assert.match(drain, /for \(const prefix of \['look:', 'secret:'\]\)/, 'the drain\'s prefixes'); assert.doesNotMatch(drain, /acctKey|acctSecretKey|'acct:'|'asecret:'/, 'the drain never sweeps an account or its secret (AUDIT SOC A3: the hub\'s alarm does, one page of the idle and unlisted at a time)');
