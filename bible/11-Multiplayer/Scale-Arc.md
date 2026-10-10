@@ -63,7 +63,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE5 | Past about 1-2k players: the hub split (presence and social state per account, world chat over shard rooms), slimmer or binary poses, pose-only halo frames | Yes | **Planned** as the slices below (THE PLAN PAST 2,000) |
 | SCALE2c | The reconnect wave spread by the hub's own count; a full foes frame that says nothing said once - client only | No | **Built** (2026-10-10, this branch) |
 | SCALE4f | The mint's realm row read once (four statements in one); every statement's D1 wait, rows and a replica's serving on the metrics point; an overloaded D1 a 503 | No | **Built** (2026-10-10, this branch; acct107) - the guild and seat reads and the writes coalesced are left |
-| SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | Planned |
+| SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | **Built** (2026-10-10, this branch; acct107) |
 | SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | Planned |
 | SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | Planned |
 | SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | Planned, by the metrics |
@@ -1024,6 +1024,64 @@ copy's `base` reached the UPDATE, which keeps the model column, and would have w
 model. Only a write with no `base` was pinned, and the stale path refused that one. `test/legacy7_service.test.js` now
 sends one made from the stored copy, and the mutant dies.
 
+## SCALE4g: built (2026-10-10, this branch - acct107, beside SCALE4f; no migration)
+
+SCALE4d put the mint's reads on a D1 session opened `first-primary`. The reads a tab keeps asking - the heartbeat
+(every minute in a town), the account view, the realm's list, the professions' state and the day's motherlodes - still
+all read the one primary. They read the player's own writes back, so a replica could only serve them once the tab can
+say how new a replica must be.
+
+**The service** (`server-account/src/service.js`):
+- REPLICA_ROUTES is now route AND method: the mint (POST), the heartbeat (POST), the account view (GET), the realm's
+  list (GET), the professions' state (POST) and the day's motherlodes (POST).
+- `routeDb` runs such a request on a D1 session started from the bookmark it carries (`x-d1-bookmark`, d1BookmarkOf).
+  Every read is then at least as new as everything that tab has seen and written. A request with no bookmark starts at
+  the primary, as does one whose bookmark D1 will not take.
+- `fetch` wraps `route` and hands the session's newest bookmark back on the answer, exposed to the page. The preflight
+  allows the header.
+- Each route's writes stay the primary's:
+  - the beat is a single `UPDATE`, which a session sends to the primary;
+  - the motherlodes' pick is an `INSERT OR IGNORE` of a pure roll, read back on the session after it.
+- The one read-then-store - the arena's and Iliac Hand's #1, counted again and STORED where stale - runs on the binding
+  wherever a session route asks it, as AUDIT SCALE4d A1 put the mint's there: the letterbox's and the board's authors'
+  honours through `ctx.primary` (letters.js, board.js).
+- The seats list stays on the binding. Its isolate keeps its rows a minute, and a replica's read could refill that
+  cache with rows older than the Turning that just emptied it.
+
+**The client** (`src/net/accountClient.js` `call`, the one door every account call goes through):
+- It keeps the newest bookmark any answer under its session secret has said, and sends it on every call.
+- D1's bookmarks begin with fixed-width hex positions, so an answer that arrives out of order never replaces a newer
+  one.
+- It belongs to its secret: a sign-in, a new guest or another account starts with none. A session made a moment ago is
+  therefore never looked for on a replica that has not heard of it - SCALE4d's reason for `first-primary`, kept.
+- It lives in memory, so a new page starts at the primary.
+
+**What it moves.** By the service survey's model, about 55-62% of the reads a playing tab asks leave the primary once
+replicas serve. SCALE4f's `double7` will say whether they do. Under Smart Placement the Worker runs beside the primary,
+and whether D1 then serves a session from a replica is the open question SCALE4d named.
+
+**Pins.**
+- `test/scale4g.test.js` (4):
+  - the routes by route and method, and the session's start (the bookmark, none, one D1 refuses);
+  - the header's law;
+  - over the real Worker: a heartbeat's session started from its bookmark and its answer carrying the newer position
+    its beat wrote, exposed; the account view and the realm's list on sessions; a write route opening none and saying
+    none; the preflight;
+  - a heartbeat's letterbox badging its sender's honours on the binding and none on the session (and by source, the
+    board's);
+  - the client: none at first, the answer's kept and sent back, an older one never over a newer, a malformed one never
+    kept, another session starting with none.
+- `test/accountDb.mjs`'s fake sessions now answer the database's position as their bookmark (`d1Position`).
+- `tools/mutants/scale4g.json`: 13 mutants, 13 dead.
+
+PIN MOVED:
+- scale4d's route list and its "every other route" probe (the heartbeat and the realm's list ride sessions now).
+- Re-aimed by content, all dead: SCALE4d-routes-empty, -mint-on-binding and -every-route-on-session;
+  ACC1b-24 and REALM1-cors-shut (the preflight's header list); AUDIT1003-S8's two (the honours, now `{ db: primary }`).
+
+**Also fixed:** SCALE4f's `d1Overloaded` had been inserted between SCALE4d's comment and the constant it describes.
+They stand together again.
+
 ## THE PLAN PAST 2,000 (2026-10-10)
 
 Mac, after #755's merge: "Alright lets now tackle the bigger work. I want to go deep and really future proof our
@@ -1075,7 +1133,7 @@ slice below measures again with a tool of its own in the tree.
    - Whether TOKEN_REUSE_MS rises toward the token's five minutes: about 10-30 mints a player-hour come from doors
      and room changes, not deploys, but a room would then hear a level or a guild up to four minutes stale (it is a
      minute today).
-4. **SCALE4g - replicas for the read routes, no drop.** The heartbeat, motherlodes, the seats list, professions and
+4. **SCALE4g - replicas for the read routes, no drop** (built, below). The heartbeat, motherlodes, the seats list, professions and
    the account view on a D1 session that starts from the bookmark the client carries back from its last request, so a
    player always reads their own writes. About 55-62% of reads leave the primary.
 5. **SCALE5b - the relay's hygiene and the wire's second form, ONE announced drop.**

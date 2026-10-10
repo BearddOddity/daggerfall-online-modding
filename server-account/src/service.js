@@ -42,19 +42,32 @@ export const MAX_BODY_BYTES = 4 * 1024;
  *  binding; the binding has no such member and is its own. */
 export const DB_ROOT = Symbol('db-root');
 
-/** SCALE4d (2026-10-10, Mac: "we just hit 500 online people. I think its time to scale up our server and improve
- *  performance for more people"): THE ROUTES WHOSE READS A D1 READ REPLICA MAY SERVE. The token's mint is a dozen
- *  reads, and a relay deploy asks it of every player in the same minute: the wave that overloaded the one primary on
- *  2026-10-06 (STORM-SHED). Its writes are the primary's - a stale session's touch, and a region's chapters, written
- *  only over the version they read (npcHalls.js) - and its one read-then-write, the arena's and Iliac Hand's #1 counted
- *  again and stored, runs on the binding (index.js, AUDIT SCALE4d A1). Every other route stays on the binding. */
 /** SCALE4f (2026-10-10): WHETHER AN ERROR IS D1 OVERLOADED - the primary's queue full ("D1 DB is overloaded. Requests
  *  queued for too long.", D1's code 7429), which #755's deploy met and the service answered as any other fault: `server`,
  *  500. It is still `server` (every book asks that again, and a new word would be a refusal to eight of them), but 503,
  *  so the metrics count an overload apart from a bug. */
 export const d1Overloaded = (/** @type {unknown} */ e) => /overloaded|queued for too long|\b7429\b/i.test(String((/** @type {any} */ (e))?.message ?? e ?? ''));
 
-export const REPLICA_ROUTES = new Set(['/v1/auth/token']);
+/** SCALE4d (2026-10-10, Mac: "we just hit 500 online people. I think its time to scale up our server and improve
+ *  performance for more people"): THE ROUTES WHOSE READS A D1 READ REPLICA MAY SERVE. The token's mint is a dozen
+ *  reads, and a relay deploy asks it of every player in the same minute: the wave that overloaded the one primary on
+ *  2026-10-06 (STORM-SHED). Its writes are the primary's - a stale session's touch, and a region's chapters, written
+ *  only over the version they read (npcHalls.js) - and its one read-then-write, the arena's and Iliac Hand's #1 counted
+ *  again and stored, runs on the binding (index.js, AUDIT SCALE4d A1). Every other route stays on the binding. */
+export const REPLICA_ROUTES = new Map([
+  ['/v1/auth/token', 'POST'],
+  // SCALE4g (2026-10-10, Mac: "really future proof our archetecture"; bible/11-Multiplayer/Scale-Arc.md SCALE4g): AND THE
+  // READS A PLAYER'S TAB KEEPS ASKING, each on the session of the bookmark it carries (d1BookmarkOf) - the heartbeat (the
+  // board, the box, the post; its beat a single UPDATE, which a session sends to the primary), the account view, the
+  // realm's list, the professions' state and the day's motherlodes (their pick an INSERT OR IGNORE of a pure roll). Their
+  // one read-then-store - the arena's and Iliac Hand's #1, counted again where it is stale - runs on the binding wherever
+  // it is asked (index.js `honoursCtx`, board.js through `ctx.primary`), as AUDIT SCALE4d A1 put the mint's there.
+  ['/v1/heartbeat', 'POST'],
+  ['/v1/account', 'GET'],
+  ['/v1/realm', 'GET'],
+  ['/v1/prof/state', 'POST'],
+  ['/v1/prof/motherlodes', 'POST'],
+]);
 /** SCALE4d: where a replica session's FIRST statement goes - the primary. A mint's first statement is the session
  *  lookup, and every statement after it is served by a replica at least as new as that answer (D1's Sessions API: one
  *  session is sequentially consistent), so a mint reads exactly what the primary held when it began. Not
@@ -68,6 +81,25 @@ export const REPLICA_CONSTRAINT = 'first-primary';
  *  harness's fake) is answered as it stands: the primary, as before. A write in a session goes to the primary - a
  *  replica takes none - and the session's later reads see it. Until the database's read replication is turned on
  *  (account-deploy.yml) every statement of a session is the primary's anyway. */
+/** SCALE4g: A D1 BOOKMARK, as D1 writes one (`0000007f-0018eec1-00005100-e64ff3f3...`: a position in the database's log)
+ *  or as a client carries one back - anything else is no bookmark, and its request's session starts at the primary. */
+export const D1_BOOKMARK_RE = /^[0-9A-Za-z][0-9A-Za-z-]{0,159}$/;
+/** SCALE4g: THE BOOKMARK A REQUEST CARRIES (`x-d1-bookmark`, the client's newest under its session secret), or null. */
+export function d1BookmarkOf(/** @type {Request} */ request) {
+  const b = request?.headers?.get?.('x-d1-bookmark') ?? null;
+  return typeof b === 'string' && D1_BOOKMARK_RE.test(b) ? b : null;
+}
+
+/** SCALE4g: THE DATABASE A REQUEST RUNS ON - a D1 session for a route and method REPLICA_ROUTES names, started from the
+ *  bookmark the request carries (every read at least as new as that position: the caller's own last writes, read back)
+ *  or at the primary for a request that carries none; the binding itself for every other route. A bookmark D1 will not
+ *  take starts at the primary instead. */
+export function routeDb(/** @type {any} */ db, /** @type {string} */ path, /** @type {string} */ method, /** @type {string|null} */ bookmark = null) {
+  if (REPLICA_ROUTES.get(path) !== method) return db;
+  if (bookmark) { try { return replicaDb(db, bookmark); } catch { /* a bookmark D1 refuses: the primary, below */ } }
+  return replicaDb(db);
+}
+
 export function replicaDb(/** @type {any} */ db, constraint = REPLICA_CONSTRAINT) {
   const open = db?.withSession;
   if (typeof open !== 'function') return db;

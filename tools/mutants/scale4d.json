@@ -2,32 +2,32 @@
   {
     "name": "SCALE4d-routes-empty",
     "file": "server-account/src/service.js",
-    "old": "export const REPLICA_ROUTES = new Set(['/v1/auth/token']);",
-    "new": "export const REPLICA_ROUTES = new Set([]);",
+    "old": "  ['/v1/auth/token', 'POST'],\n",
+    "new": "",
     "tests": [
       "test/scale4d.test.js"
     ],
-    "note": "no route on a session - the reconnect wave's mints back on the one primary"
+    "note": "no route on a session - the reconnect wave's mints back on the one primary SCALE4g (2026-10-10) re-aimed it by content."
   },
   {
     "name": "SCALE4d-mint-on-binding",
     "file": "server-account/src/index.js",
-    "old": "    const db = REPLICA_ROUTES.has(path) && request.method === 'POST' ? replicaDb(env.DB) : env.DB;",
-    "new": "    const db = env.DB;",
+    "old": "    const db = routeDb(env.DB, path, request.method, d1BookmarkOf(request));",
+    "new": "    const db = path === '/v1/auth/token' ? env.DB : routeDb(env.DB, path, request.method, d1BookmarkOf(request));",
     "tests": [
       "test/scale4d.test.js"
     ],
-    "note": "the mint left on the binding"
+    "note": "the mint left on the binding SCALE4g (2026-10-10) re-aimed it by content."
   },
   {
     "name": "SCALE4d-every-route-on-session",
     "file": "server-account/src/index.js",
-    "old": "    const db = REPLICA_ROUTES.has(path) && request.method === 'POST' ? replicaDb(env.DB) : env.DB;",
-    "new": "    const db = replicaDb(env.DB);",
+    "old": "    const db = routeDb(env.DB, path, request.method, d1BookmarkOf(request));",
+    "new": "    const db = routeDb(env.DB, '/v1/heartbeat', 'POST', d1BookmarkOf(request));",
     "tests": [
       "test/scale4d.test.js"
     ],
-    "note": "every route on a session - a write's reads served by a replica the route never reasoned about"
+    "note": "every route on a session - a write's reads served by a replica the route never reasoned about SCALE4g (2026-10-10) re-aimed it by content."
   },
   {
     "name": "SCALE4d-unconstrained",

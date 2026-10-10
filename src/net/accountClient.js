@@ -695,6 +695,27 @@ export const handleShapeOk = (handle) => typeof handle === 'string' && HANDLE_RE
  * @param {object|null} [body]  POST body, or null for a GET
  * @returns {Promise<{ok: boolean, data?: any, error?: string, status?: number, unknown?: boolean}>}
  */
+/** SCALE4g (2026-10-10, Mac: "really future proof our archetecture"; bible/11-Multiplayer/Scale-Arc.md SCALE4g): THE
+ *  PAGE'S D1 BOOKMARK - the newest position in the account database any answer to this session has said it saw. Sent
+ *  back on every call (`x-d1-bookmark`), so a read route the service answers off a read replica answers no older than
+ *  everything this tab has seen and written there. It belongs to the session secret it was earned under: a sign-in, a
+ *  new guest or another account starts with none (the service then starts at the primary), so a session made a moment
+ *  ago is never looked for on a replica that has not heard of it yet. Kept in memory only - a new page starts fresh. */
+export const D1_BOOKMARK_RE = /^[0-9A-Za-z][0-9A-Za-z-]{0,159}$/;
+let _d1Mark = { secret: null, mark: null };
+/** D1's own shape - fixed-width hex positions first - orders by its first 26 characters; another shape is taken as newest. */
+const D1_POSITION_RE = /^[0-9a-f]{8}-[0-9a-f]{8}-[0-9a-f]{8}-/;
+const newerMark = (/** @type {string} */ a, /** @type {string} */ b) => !(D1_POSITION_RE.test(a) && D1_POSITION_RE.test(b)) || a.slice(0, 26) >= b.slice(0, 26);
+/** The bookmark to send with a call under `secret` - null for none, or for another session's. */
+export function d1BookmarkFor(/** @type {string|null} */ secret) { return secret && _d1Mark.secret === secret ? _d1Mark.mark : null; }
+/** An answer under `secret` said `mark`: kept if it is the session's first or no older than the one kept. */
+export function noteD1Bookmark(/** @type {string|null} */ secret, /** @type {unknown} */ mark) {
+  if (!secret || typeof mark !== 'string' || !D1_BOOKMARK_RE.test(mark)) return;
+  if (_d1Mark.secret !== secret || !_d1Mark.mark || newerMark(mark, _d1Mark.mark)) _d1Mark = { secret, mark };
+}
+/** The pins' door: forget the page's bookmark. */
+export function forgetD1Bookmark() { _d1Mark = { secret: null, mark: null }; }
+
 export async function call({ fetch, base = DEFAULT_ACCOUNT_SERVICE, secret = null, keepalive = false }, path, body = null) {
   const headers = { accept: 'application/json' };
   if (body) headers['content-type'] = 'application/json';
@@ -702,6 +723,8 @@ export async function call({ fetch, base = DEFAULT_ACCOUNT_SERVICE, secret = nul
   // to reach and no argument that could add one - AUDIT-ACC F13 shut
   // that door on the service and this side does not get to reopen it.
   if (secret) headers.authorization = `Bearer ${secret}`;
+  const mark = d1BookmarkFor(secret);   // SCALE4g: the session's newest D1 position, for a read a replica serves
+  if (mark) headers['x-d1-bookmark'] = mark;
 
   let res;
   try {
@@ -720,6 +743,7 @@ export async function call({ fetch, base = DEFAULT_ACCOUNT_SERVICE, secret = nul
     return { ok: false, error: 'offline' };
   }
 
+  try { noteD1Bookmark(secret, res.headers?.get?.('x-d1-bookmark')); } catch { /* a fake answer with no headers says none */ }   // SCALE4g
   let data = null, read = false;
   try { data = await res.json(); read = true; } catch { data = null; }
 

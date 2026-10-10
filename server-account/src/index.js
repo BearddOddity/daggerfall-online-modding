@@ -179,7 +179,7 @@ import {
   ACCOUNT_MAX, ACCOUNT_WINDOW_S,
 } from './accounts.js';
 import { mintToken, mintOrder, mintRenownOrder, mintGuildOrder, mintGuildOutOrder, MAX_TTL_S, TOKEN_V, ID_RE, SEAT_TITLES, CHAPTER_TITLES, TOKEN_MAX_CHARS, TOKEN_BODY_MAX, tokenBodyOf } from '../../src/net/identityToken.js';
-import { ACCOUNT_VERSION, MAX_BODY_BYTES, ROUTES, OPEN_ROUTES, PATREON_OPEN_ROUTES, savePathOf, realmPathOf, SAVE_MAX_BYTES, SHOT_MAX_BYTES, maintaining, REPLICA_ROUTES, replicaDb, d1Overloaded } from './service.js';   // SCALE4d: the routes a read replica may serve, and the session they are served on
+import { ACCOUNT_VERSION, MAX_BODY_BYTES, ROUTES, OPEN_ROUTES, PATREON_OPEN_ROUTES, savePathOf, realmPathOf, SAVE_MAX_BYTES, SHOT_MAX_BYTES, maintaining, routeDb, d1BookmarkOf, D1_BOOKMARK_RE, d1Overloaded } from './service.js';   // SCALE4d: the routes a read replica may serve, and the session they are served on
 import { listSaves, putCard, putBlob, getBlob, deleteSave, saveCardOf } from './saves.js';
 import { signingKey, gatePublicKey } from './signing.js';
 import { stakeCards, cashoutCards } from './cards.js';   // CARDS6: a card table's stakes, escrowed
@@ -537,7 +537,20 @@ async function readBody(request, max = MAX_BODY_BYTES) {
 // SCALE1: THE SERVICE, and below it the handler workerd calls - which serves it and counts it (metrics.js). The
 // service is a plain object, not an export: this module still exports `default` and nothing else.
 const service = {
+  /** SCALE4g: THE ANSWER CARRIES ITS SESSION'S NEWEST BOOKMARK (`x-d1-bookmark`, exposed to the page), so the tab's next
+   *  read starts no older than everything this one saw and wrote - the routes `route` answers are untouched. */
   async fetch(request, env) {
+    const held = { session: null };
+    const res = await service.route(request, env, held);
+    let mark = null;
+    try { mark = held.session?.getBookmark?.() ?? null; } catch { mark = null; }
+    if (typeof mark !== 'string' || !D1_BOOKMARK_RE.test(mark)) return res;
+    const out = new Response(res.body, res);   // its status and headers, copied - a copy's headers may be set
+    out.headers.set('x-d1-bookmark', mark);
+    out.headers.append('access-control-expose-headers', 'x-d1-bookmark');
+    return out;
+  },
+  async route(request, env, held = { session: null }) {
     const subtle = crypto.subtle;
     const rand = (b) => crypto.getRandomValues(b);
     const nowS = Math.floor(Date.now() / 1000);
@@ -551,7 +564,7 @@ const service = {
         headers: {
           'access-control-allow-origin': origin,
           'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'access-control-allow-headers': 'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary',   // REALM P1: a checkpoint's lease, sequence and tile
+          'access-control-allow-headers': 'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary, x-d1-bookmark',   // REALM P1: a checkpoint's lease, sequence and tile; SCALE4g: the tab's D1 bookmark
           'access-control-max-age': '86400',
         },
       });
@@ -609,8 +622,11 @@ const service = {
     // SCALE4d: the token's mint on one D1 session whose first statement (the session lookup) is the primary's and whose
     // reads after it a replica may serve - the reconnect wave's dozen reads a player off the one primary (service.js
     // REPLICA_ROUTES); every other route on the binding as before
-    const db = REPLICA_ROUTES.has(path) && request.method === 'POST' ? replicaDb(env.DB) : env.DB;
-    const ctx = { db, subtle, rand, nowS };
+    // SCALE4g: and the reads a tab keeps asking, each on the session of the bookmark it carries; the session is held so
+    // the answer can carry its newest bookmark back (`fetch`, below)
+    const db = routeDb(env.DB, path, request.method, d1BookmarkOf(request));
+    if (db !== env.DB) held.session = db;
+    const ctx = { db, primary: env.DB, subtle, rand, nowS };   // SCALE4g: `primary` the binding, for a read-then-store a session must not make (board.js)
 
     try {
       // PATREON-LINK: THE THREE DOORS A BROWSER AND PATREON KNOCK AT. No session: each is proven by what it carries

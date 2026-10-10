@@ -65,8 +65,13 @@ class FakeD1Session {
   constructor(db, rec) { this.#db = db; this.#rec = rec; }
   prepare(sql) { this.#rec.statements.push(sql); return this.#db.prepare(sql); }
   batch(list) { return this.#db.batch(list); }
-  getBookmark() { return null; }
+  /** SCALE4g: the session's position, as D1 writes one - the database's total changes so far, D1's shape (fixed-width
+   *  hex positions, so a newer one orders after an older one). */
+  getBookmark() { return d1Position(this.#db); }
 }
+
+/** SCALE4g: a fake database's position in D1's bookmark shape. */
+export const d1Position = (db) => `${Number(db._raw.prepare('SELECT total_changes() AS c').get().c).toString(16).padStart(8, '0')}-00000000-00000000-${'0'.repeat(32)}`;
 
 /** A UTC day's middle. */
 export const T0 = 1_800_000_000;

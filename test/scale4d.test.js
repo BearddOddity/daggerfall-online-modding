@@ -46,7 +46,7 @@ async function stood(extra = {}) {
 }
 
 test('SCALE4d the mint runs on ONE D1 session opened first-primary - its first statement the session lookup, every claim read through it; AUDIT SCALE4d A1: the honours (a #1 counted again and STORED) on the binding (mutants: the route set emptied; the route left on the binding; the constraint first-unconstrained; the honours on the session)', async () => {
-  assert.deepEqual([...REPLICA_ROUTES], ['/v1/auth/token'], 'the token alone');
+  assert.equal(REPLICA_ROUTES.get('/v1/auth/token'), 'POST', 'the token\'s mint');   // PIN MOVED (SCALE4g): the token was alone - the reads a tab keeps asking joined it (test/scale4g.test.js)
   assert.equal(REPLICA_CONSTRAINT, 'first-primary');
   const { S, who, R } = await stood();
   const raw = S.env.DB;
@@ -78,12 +78,14 @@ test('SCALE4d every other route stays on the binding - no session opened (mutant
   raw._sessions.length = 0;
   // AUDIT SCALE4d D3: real routes, each answered 200 (two of these four were routes the service never served - a 404 opens
   // no session either, so they proved nothing)
-  for (const [path, body] of [['/v1/account/played', {}], ['/v1/heartbeat', { parts: { box: {} } }], ['/v1/renown/xp', { character: R.id, xp: 1 }]]) {
+  // PIN MOVED (SCALE4g): the heartbeat and the realm's list ride a session now (test/scale4g.test.js) - the beat's own
+  // route and Renown's, both writes, stay on the binding
+  for (const [path, body] of [['/v1/account/played', {}], ['/v1/renown/xp', { character: R.id, xp: 1 }]]) {
     const r = await S.call(path, body, who.secret);
     assert.equal(r.status, 200, `${path} answered (${JSON.stringify(r.body)})`);
   }
-  const list = await S.fetch('https://accounts.invalid/v1/realm', { method: 'GET', headers: { authorization: `Bearer ${who.secret}` } });
-  assert.equal(list.status, 200, 'the realm\'s list answered');
+  const lineages = await S.fetch('https://accounts.invalid/v1/realm/lineages', { method: 'POST', headers: { authorization: `Bearer ${who.secret}`, 'content-type': 'application/json' }, body: '{}' });
+  assert.equal(lineages.status, 200, 'the realm\'s lines answered');
   assert.equal(raw._sessions.length, 0, 'no session for any of them');
 });
 
