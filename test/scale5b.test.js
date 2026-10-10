@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { fakeRoom } from './fakeRoom.mjs';
 import { fakeSocketClass } from './fakeSocket.mjs';
 import { OnlineSession } from '../src/net/online.js';
-import { validPose, slimPose, POSE_DEFAULTS, POSE_BATCH_MS, POSES_BATCH_MAX, PIXEL_UNITS, POSE_HZ_MAX, RELAY_VERSION } from '../src/net/wire.js';
+import { validPose, slimPose, wire2Batch, POSE_DEFAULTS, POSE_BATCH_MS, ROSTER_BATCH_MS, WIRE2_BATCH_MAX, PIXEL_UNITS, POSE_HZ_MAX, RELAY_VERSION, chatRegionRoom, CHAT_HELLO_HZ_MAX } from '../src/net/wire.js';
 import * as relay from '../server/src/relay.js';
 
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -54,7 +54,7 @@ async function cell(fn, { speakers = 3 } = {}) {
       for (let i = 0; i < speakers; i++) said.push(await join(`spk-${i}`));
       for (const ws of R.state.getWebSockets()) ws.sent.length = 0;
       const speak = async (ws, p) => { clock += Math.ceil(1000 / POSE_HZ_MAX) + 1; await R.pose(ws, p); };
-      try { return await fn({ R, w2, old, w2b, said, speak, rnd, tick: (ms) => { clock += ms; } }); } finally { clearTimeout(R.room._poseFlush); R.room._poseFlush = null; }
+      try { return await fn({ R, w2, old, w2b, said, speak, rnd, tick: (ms) => { clock += ms; } }); } finally { R.room._flushOwed(); }
     });
   } finally { Date.now = realNow; }
 }
@@ -105,14 +105,14 @@ test('SCALE5b the relay: a `w2` listener hears the batch\'s poses as ONE `poses`
     const offer = (w2) => relay.parseClient(JSON.stringify({ t: 'hello', id: 'lsn-0001', secret: 'secret-of-lsn-0001', name: 'x', look, pose: null, w2 }));
     assert.equal(offer(1).w2, 1, 'the offer read');
     for (const v of [2, true, '1', 0, null, undefined]) { const h = offer(v); assert.equal(h.error, undefined, `an offer of ${JSON.stringify(v)} lets the hello in`); assert.equal(h.w2, undefined, `and is no offer of this wire (${JSON.stringify(v)})`); }
-    R.room._flushPoses();
+    R.room._flushOwed();
     for (const ws of [w2, w2b]) {
       assert.equal(ws.sent.length, 1, 'one frame for the batch');
       const [f] = ws.sent;
       assert.equal(f.t, 'poses');
       assert.deepEqual(f.l, order.map(([id, p]) => [id, JSON.parse(JSON.stringify(slimPose(p)))]), 'each pose as its slim entry, in order');
     }
-    R.room._flushPoses();
+    R.room._flushOwed();
     assert.equal(w2.sent.length, 1, 'a flush with nothing owed says nothing');
   });
 });
@@ -128,26 +128,98 @@ test('SCALE5b the relay: a `w2` socket\'s owed poses go out AHEAD of any other f
     assert.deepEqual(w2.sent[0].l, [['spk-0', JSON.parse(JSON.stringify(slimPose(p)))]]);
     // the second listener closes owing a pose: nothing is kept for it, and nothing sent
     await speak(said[1], drawn(rnd));
-    assert.equal(R.room._poseQ.has(w2b), true);
+    assert.equal(R.room._owed.has(w2b), true);
     await R.drop(w2b);
-    assert.equal(R.room._poseQ.has(w2b), false, 'the queue went with the socket');
+    assert.equal(R.room._owed.has(w2b), false, 'the queue went with the socket');
     const before = w2b.sent.length;
-    R.room._flushPoses();
+    R.room._flushOwed();
     assert.equal(w2b.sent.length, before, 'and the batch sent it nothing');
   });
 });
 
 test('SCALE5b the relay: the batch goes out on its own every POSE_BATCH_MS, one timer for the room however many listeners are owed, and none while nothing is (mutants: the timer never set; a timer a pose)', async () => {
   await cell(async ({ R, w2, w2b, said, speak, rnd }) => {
-    assert.equal(R.room._poseFlush, null, 'no timer while nothing is owed');
+    assert.equal(R.room._owedSoon, null, 'no timer while nothing is owed');
     await speak(said[0], drawn(rnd));
-    const first = R.room._poseFlush;
+    const first = R.room._owedSoon;
     assert.ok(first, 'a timer once a pose is owed');
     await speak(said[1], drawn(rnd));
-    assert.equal(R.room._poseFlush, first, 'the same timer for the next');
+    assert.equal(R.room._owedSoon, first, 'the same timer for the next');
     await new Promise((r) => setTimeout(r, POSE_BATCH_MS + 40));
-    assert.equal(R.room._poseFlush, null);
+    assert.equal(R.room._owedSoon, null);
     for (const ws of [w2, w2b]) { assert.equal(ws.sent.length, 1); assert.equal(ws.sent[0].l.length, 2); }
+  });
+});
+
+test('SCALE5b wire2Batch: what a socket is owed as the ONE frame that carries it - poses alone a `poses` frame, one frame alone itself, anything else a frame batch with every run of poses one `poses` frame where it fell, in the order owed (mutants: the runs merged out of order; one frame wrapped; the poses frame for frames)', () => {
+  const pose = (id) => JSON.stringify([id, { x: 1, y: 2, z: 3, yaw: 0, pitch: 0 }]);
+  const frame = (t, id) => JSON.stringify({ t, id });
+  const read = (items) => JSON.parse(wire2Batch(items));
+  assert.deepEqual(read([pose('a'), pose('b')]), { t: 'poses', l: [JSON.parse(pose('a')), JSON.parse(pose('b'))] });
+  assert.deepEqual(read([frame('join', 'a')]), { t: 'join', id: 'a' }, 'one frame alone goes as itself');
+  assert.deepEqual(read([frame('join', 'a'), frame('leave', 'b')]), { t: 'fb', f: [{ t: 'join', id: 'a' }, { t: 'leave', id: 'b' }] });
+  assert.deepEqual(read([pose('a'), frame('leave', 'a'), pose('b'), pose('c'), frame('join', 'd')]), { t: 'fb', f: [
+    { t: 'poses', l: [JSON.parse(pose('a'))] }, { t: 'leave', id: 'a' }, { t: 'poses', l: [JSON.parse(pose('b')), JSON.parse(pose('c'))] }, { t: 'join', id: 'd' },
+  ] }, 'a pose said before a leave stays before it');
+  assert.deepEqual(read([frame('join', 'a'), pose('a')]), { t: 'fb', f: [{ t: 'join', id: 'a' }, { t: 'poses', l: [JSON.parse(pose('a'))] }] });
+});
+
+/** A region's channel on a clock of its own: `w2` the second wire's listener, `old` the first's. */
+async function channel(fn) {
+  const realNow = Date.now;
+  let clock = 1_800_000_000_000;
+  Date.now = () => clock;
+  try {
+    return await quiet(async () => {
+      const R = fakeRoom(chatRegionRoom(3), { now: () => clock });
+      const join = async (id, extra = {}) => { const ws = R.connect(); clock += Math.ceil(1000 / CHAT_HELLO_HZ_MAX) + 1; await R.hello(ws, id, null, extra); assert.equal(ws.closed, null, `${id} taken`); return ws; };
+      const w2 = await join('lsn-w2', { w2: 1 });
+      const old = await join('lsn-old');
+      R.room._flushOwed();   // the listener's own join, owed the other
+      for (const ws of [w2, old]) ws.sent.length = 0;
+      try { return await fn({ R, w2, old, join, tick: (ms) => { clock += ms; } }); } finally { R.room._flushOwed(); }
+    });
+  } finally { Date.now = realNow; }
+}
+
+test('SCALE5b the relay: a channel\'s joins and leaves to a socket of the second wire are owed it for the roster\'s batch, and go out as ONE frame of exactly the frames a socket of the first wire heard one at a time, in their order - the room\'s count in each (mutants: the join said at once; the leave said at once; a pose\'s cadence for the roster; the roster\'s timer never set)', async () => {
+  await channel(async ({ R, w2, old, join }) => {
+    const came = [];
+    for (let i = 0; i < 5; i++) came.push(await join(`jn-${i}`));
+    await R.drop(came[1]);
+    assert.deepEqual(old.sent.map((f) => `${f.t}:${f.id}:${f.n}`), ['join:jn-0:3', 'join:jn-1:4', 'join:jn-2:5', 'join:jn-3:6', 'join:jn-4:7', 'leave:jn-1:6'], 'the first wire: one frame each, as it always was');
+    assert.equal(w2.sent.length, 0, 'nothing yet to the second');
+    assert.equal(R.room._owedSoon, null, 'no pose\'s timer for a roster');
+    assert.ok(R.room._owedLate, 'the roster\'s');
+    R.room._flushOwed();
+    assert.equal(w2.sent.length, 1, 'one frame for the batch');
+    assert.deepEqual(w2.sent[0], { t: 'fb', f: old.sent }, 'exactly the frames the first wire heard, in their order');
+    assert.equal(R.room._owedLate, null);
+  });
+});
+
+test('SCALE5b the relay: a channel\'s owed roster goes ahead of a line said after it, and goes out on its own after ROSTER_BATCH_MS (mutants: the flush before a send; the roster\'s timer a pose\'s)', async () => {
+  await channel(async ({ R, w2, old, join }) => {
+    await join('jn-0');
+    await R.chat(old, 'hail');
+    assert.deepEqual(w2.sent.map((f) => f.t), ['join', 'chat'], 'the join it was owed, then the line');
+    await join('jn-1');
+    await new Promise((r) => setTimeout(r, POSE_BATCH_MS + 30));
+    assert.equal(w2.sent.length, 2, 'not out at a pose\'s batch');
+    await new Promise((r) => setTimeout(r, ROSTER_BATCH_MS - POSE_BATCH_MS + 30));
+    assert.deepEqual(w2.sent.map((f) => f.t), ['join', 'chat', 'join'], 'out at the roster\'s');
+  });
+});
+
+test('SCALE5b the relay: a socket owed WIRE2_BATCH_MAX items is sent them at once, in one frame - a reader takes no more from a batch (mutants: the bound unasked)', async () => {
+  await cell(async ({ R, w2 }) => {
+    const entry = JSON.stringify(['spk-0', { x: 1, y: 2, z: 3, yaw: 0, pitch: 0 }]);
+    for (let i = 0; i < WIRE2_BATCH_MAX - 1; i++) R.room._owe(w2, entry);
+    assert.equal(w2.sent.length, 0);
+    R.room._owe(w2, entry);
+    assert.equal(w2.sent.length, 1);
+    assert.equal(w2.sent[0].l.length, WIRE2_BATCH_MAX);
+    assert.equal(R.room._owed.has(w2), false);
   });
 });
 
@@ -162,7 +234,7 @@ function welcomed(opts = {}) {
   return { s, ws: sockets[0], hello: JSON.parse(sockets[0].sent.find((x) => x.startsWith('{"t":"hello"'))) };
 }
 /** What a session holds of its peers - every field but the clock's. */
-const held = (s) => JSON.stringify([...s.peers].map(([id, p]) => [id, p.pose, p.name, p.src, [...s._roomSet(KEY)].sort()]));
+const held = (s, room = KEY) => JSON.stringify([...s.peers].map(([id, p]) => [id, p.pose, p.name, p.src, [...s._roomSet(room)].sort()]));
 
 test('SCALE5b the client: a session asked for the second wire says `w2` in its hello and one not asked says nothing; a `poses` batch is read entry by entry through the door every pose comes in by - the peers it stands are exactly those its poses, said one frame each and whole, stand (mutants: the hello\'s `w2`; the batch unread; an entry skipped; the bound unasked; a malformed entry read)', async () => {
   await quiet(() => {
@@ -184,12 +256,55 @@ test('SCALE5b the client: a session asked for the second wire says `w2` in its h
     assert.equal(held(batched), held(single), 'the batch stood every peer where its poses, said whole, stand them');
     // the bound, and an entry that is no entry
     const { s: bounded, ws: wbd } = welcomed({ wire2: true });
-    const many = Array.from({ length: POSES_BATCH_MAX + 5 }, (_, i) => [`far-${String(i).padStart(4, '0')}`, slimPose(poses[0][1])]);
+    const many = Array.from({ length: WIRE2_BATCH_MAX + 5 }, (_, i) => [`far-${String(i).padStart(4, '0')}`, slimPose(poses[0][1])]);
     wbd.receive({ t: 'poses', l: [null, 7, ['x'], [5, {}], ['bad-0001', null], ...many] });
-    assert.equal(bounded.peers.size, POSES_BATCH_MAX - 5, 'POSES_BATCH_MAX entries read at most - the five that were no entry among them, read as nothing');
+    assert.equal(bounded.peers.size, WIRE2_BATCH_MAX - 5, 'WIRE2_BATCH_MAX entries read at most - the five that were no entry among them, read as nothing');
     assert.equal(bounded.peers.has('far-0000'), true);
     wbd.receive({ t: 'poses', l: 'nope' });
     wbd.receive({ t: 'poses' });
+  });
+});
+
+test('SCALE5b the client: a frame batch is read frame by frame as if each came alone - its runs of poses through the pose arm, its joins, leaves and lines through theirs - WIRE2_BATCH_MAX all told, and no batch within a batch (mutants: the batch unread; a frame skipped; the bound unasked; a batch read within a batch)', async () => {
+  await quiet(() => {
+    const room = chatRegionRoom(3);
+    const open = (wire2) => {
+      const { FakeWS, sockets } = fakeSocketClass();
+      const s = new OnlineSession({ url: 'wss://relay.test', name: 'Mac', id: 'mac-0001', secret: 'secret-of-mac-0001', WebSocketImpl: FakeWS, now: () => 1_000_000, rand: () => 0, presence: false, wire2 });
+      const lines = [];
+      s.onChat = (l) => lines.push(`${l.id}:${l.text}`);
+      s.join(room);
+      sockets[0].open();
+      sockets[0].receive({ t: 'welcome', id: 'mac-0001', peers: [], n: 600, v: RELAY_VERSION, now: 1_000_000 });   // a roster cut: the room's count is kept
+      return { s, ws: sockets[0], lines };
+    };
+    const rnd = roll(31);
+    const p = () => { const q = drawn(rnd); for (const k of ['x', 'y', 'z']) q[k] = Math.round(q[k]); for (const k of ['yaw', 'pitch']) q[k] = Math.round(q[k] * 1e4) / 1e4; return validPose(q); };
+    const said = [
+      { t: 'join', id: 'ann-0001', name: 'Ann', n: 2 }, { t: 'join', id: 'bob-0001', name: 'Bob', n: 3 },
+      { t: 'chat', id: 'ann-0001', name: 'Ann', text: 'hail' },
+      { t: 'pose', id: 'ann-0001', p: p() }, { t: 'pose', id: 'bob-0001', p: p() },
+      { t: 'leave', id: 'bob-0001', n: 2 }, { t: 'join', id: 'cat-0001', name: 'Cat', n: 3 }, { t: 'chat', id: 'cat-0001', name: 'Cat', text: 'well met' },
+    ];
+    const one = open(false), many = open(true);
+    for (const f of said) one.ws.receive(f);
+    const f = [said[0], said[1], said[2], { t: 'poses', l: [[said[3].id, slimPose(said[3].p)], [said[4].id, slimPose(said[4].p)]] }, said[5], said[6], said[7]];
+    many.ws.receive({ t: 'fb', f });
+    assert.deepEqual(many.lines, one.lines);
+    assert.deepEqual(many.lines, ['ann-0001:hail', 'cat-0001:well met']);
+    assert.equal(many.s.roomCount, one.s.roomCount);
+    assert.equal(many.s.roomCount, 3);
+    assert.equal(held(many.s, room), held(one.s, room), 'the same peers, where the same poses stand them');
+    // the bound: frames and poses counted together; a batch within a batch read as nothing
+    const bound = open(true);
+    const joins = Array.from({ length: WIRE2_BATCH_MAX }, (_, i) => ({ t: 'join', id: `j-${String(i).padStart(4, '0')}`, name: 'J' }));
+    bound.ws.receive({ t: 'fb', f: [null, { t: 'fb', f: [{ t: 'join', id: 'deep-0001', name: 'Deep' }] }, { t: 'poses', l: [[said[3].id, slimPose(said[3].p)]] }, ...joins] });
+    assert.equal(bound.s.peers.has('deep-0001'), false, 'no batch within a batch');
+    assert.equal(bound.s.peers.has(said[3].id), true, 'the poses frame in it read');
+    assert.equal(bound.s.peers.has('j-0000'), true);
+    assert.equal(bound.s.peers.size, 1 + WIRE2_BATCH_MAX - 3, 'WIRE2_BATCH_MAX all told');
+    bound.ws.receive({ t: 'fb', f: 'nope' });
+    bound.ws.receive({ t: 'fb' });
   });
 });
 

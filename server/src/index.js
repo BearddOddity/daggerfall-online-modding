@@ -278,7 +278,7 @@ import { mintArenaReceipt } from '../../src/net/arenaReceipt.js';
 import { owIdInCell, owRowInCell, owRowSane, owFoldSpent, owFoldRows, owRowsBehind, owPrune, owLedgerOf, owLedgerEmpty, toWelcome } from '../../src/net/overworldLaw.js';
 
 import { serpentGate, validSerpentOut, SERPENT_INTERNAL_FELL, SERPENT_TELL_RETRY_MS, SERPENT_FIGHT_KEY, SERPENT_FIGHTS_KEY, SERPENT_SITES_MAX, serpentFightId, SERPENT_FELLS_KEY, SERPENT_FELLS_MAX, SERPENT_RC_PREFIX } from './relay.js';   // SERPENT1: the serpent's frame and its doors (the wire's, through relay.js - walked last, as ever)
-import { roomOf, parseClient, inRange, inRangeOf, poseGate, chatGate, redGate, dmGate, muteGate, tokenGate, rosterFor, badged, isChatRoom, isWorldRoom, isCellRoom, streamsFoes, hitOwnerOf, worldFrameMaxFor, CELL_FRAME_RECORDS_MAX, HELLO_HZ_MAX, CHAT_HELLO_HZ_MAX, CHAT_ROOM_HZ_MAX, SOCKETS_MAX, CHAT_SOCKETS_MAX, DROP_STRIKES_MAX, CHAT_STRIKES_MAX, WORLD_MIN_MS, WORLD_CHUNK, WORLD_TTL_MS, WORLD_PREFIX, FOES_PREFIX, OWN_PREFIX, foesGate, byteGate, FOES_ROOM_BYTES_PER_S, HIT_ROOM_HZ_MAX, ACT_ROOM_HZ_MAX, ACT_ROOM_BYTES_PER_S, actGate, MAX_FRAME_BYTES, CLOSE_REPLACED, CLOSE_POLICY, CLOSE_BUSY, HIT_ROOM_BYTES_PER_S, whoGate, whoIdOf, WHO_ROOM_HZ_MAX, poseFan, poseChanged, RELAY_VERSION, KEEPALIVE_FAN_MS, ACT_SENDER_BYTES_PER_S, CHAT_ROSTER_MAX, isSocialRoom, socialGate, partyGate, SOCIAL_ROOM_HZ_MAX, FRIENDS_MAX, PENDING_MAX, PARTY_MAX, PARTY_INVITES_MAX, INVITE_TTL_MS, PARTY_OFFLINE_MS, ACCOUNT_TABS_MAX, mintPartyId, SOCIAL_REPEAT_MS, ACCOUNT_IDLE_MS, ACCOUNT_SWEEP_MS, SWEEP_STEP_MS, SWEEP_PAGE, questShareGate, amapShareGate, AMAP_ROOM_HZ_MAX, QUEST_ROOM_HZ_MAX, QUEST_ROOM_BYTES_PER_S, QUEST_PREFIX, QUEST_FRAME_MAX, tradeGate, TRADE_ROOM_HZ_MAX, TRADE_ROOM_BYTES_PER_S, castGate, CAST_HZ_MAX, CAST_DEST_SENDERS_MAX, parkGate, parkKey, parkKeyOf, PARK_KEY_RE, CARAVAN_DECOR_KEY, parkRegistryRoom, cellRoomOfWire, PARK_INTERNAL_REG, PARK_INTERNAL_DROP, PARK_CELL_MAX, PARK_ACCOUNT_MAX, PARK_TTL_MS, PARK_REFRESH_MS, CARAVAN_DOC_MIN_MS, PARTY_CHAT_ROOM_HZ_MAX, rollGate, rollDice, cardGate, pageGate, duelGate, DUEL_HZ_MAX, wedGate, WED_HZ_MAX, renownGate, renownRoomGate, lookGate, eventGate, EVENT_KEY, validLiveEvent, gateGate, siegeGate, SIEGE_IN_MS, GATE_INTERNAL_FELL, SOCIAL_ROOM, validGateOut, HELLO_WAIT_MS, GATE_TELL_RETRY_MS, gateReceiptKey, GATE_BRAIN_MIN, GATE_HERE_HOLD_MS, guildGate, guildRoomGate, GUILD_CHAT_ROOM_HZ_MAX, SEAT_ELSEWHERE, raidGate, RAID_INTERNAL_CLEAN, RAID_INTERNAL_DAY, RAID_DAY_ASK_MS, raidTownsGate, RAID_TELL_RETRY_MS, RAID_CLEANS_MAX, RAID_LEDGER_PREFIX, raidLedgerKey, RAID_RC_PREFIX, raidReceiptKeyOf, RAID_RC_KEEP, RAID_RC_KEEP_MS, mapPixelOfWire, validRaidOut, worldRoom, sharedClassicMinutes, wallMsForClassicMinutes, isRegionRoom, travHubGate, travRoomGate, TRAV_STALE_MS, TRAV_WELCOME_MAX, owGate, owRoomGate, OW_LEDGER_KEY, REALM_DOOR_WORD, riteRelayGate, validRiteOut, sanitizeName, RITE_INTERNAL_BROKEN, RITE_INTERNAL_DAY, RITE_TELL_RETRY_MS, RITE_KEY, RITE_BY_MAX, RITE_CIRCLES_MAX, RITE_HUB_CIRCLES_MAX, RITE_ASK_EVERY_MS, RITE_ASK_TIMEOUT_MS, arenaGate, bodyWordRelayGate, BUSY_TOKEN_UNREAD, POSE_BATCH_MS, slimPose } from './relay.js';   // AUDIT INT15: bodyWordRelayGate - a body's word on a bucket of its own
+import { roomOf, parseClient, inRange, inRangeOf, poseGate, chatGate, redGate, dmGate, muteGate, tokenGate, rosterFor, badged, isChatRoom, isWorldRoom, isCellRoom, streamsFoes, hitOwnerOf, worldFrameMaxFor, CELL_FRAME_RECORDS_MAX, HELLO_HZ_MAX, CHAT_HELLO_HZ_MAX, CHAT_ROOM_HZ_MAX, SOCKETS_MAX, CHAT_SOCKETS_MAX, DROP_STRIKES_MAX, CHAT_STRIKES_MAX, WORLD_MIN_MS, WORLD_CHUNK, WORLD_TTL_MS, WORLD_PREFIX, FOES_PREFIX, OWN_PREFIX, foesGate, byteGate, FOES_ROOM_BYTES_PER_S, HIT_ROOM_HZ_MAX, ACT_ROOM_HZ_MAX, ACT_ROOM_BYTES_PER_S, actGate, MAX_FRAME_BYTES, CLOSE_REPLACED, CLOSE_POLICY, CLOSE_BUSY, HIT_ROOM_BYTES_PER_S, whoGate, whoIdOf, WHO_ROOM_HZ_MAX, poseFan, poseChanged, RELAY_VERSION, KEEPALIVE_FAN_MS, ACT_SENDER_BYTES_PER_S, CHAT_ROSTER_MAX, isSocialRoom, socialGate, partyGate, SOCIAL_ROOM_HZ_MAX, FRIENDS_MAX, PENDING_MAX, PARTY_MAX, PARTY_INVITES_MAX, INVITE_TTL_MS, PARTY_OFFLINE_MS, ACCOUNT_TABS_MAX, mintPartyId, SOCIAL_REPEAT_MS, ACCOUNT_IDLE_MS, ACCOUNT_SWEEP_MS, SWEEP_STEP_MS, SWEEP_PAGE, questShareGate, amapShareGate, AMAP_ROOM_HZ_MAX, QUEST_ROOM_HZ_MAX, QUEST_ROOM_BYTES_PER_S, QUEST_PREFIX, QUEST_FRAME_MAX, tradeGate, TRADE_ROOM_HZ_MAX, TRADE_ROOM_BYTES_PER_S, castGate, CAST_HZ_MAX, CAST_DEST_SENDERS_MAX, parkGate, parkKey, parkKeyOf, PARK_KEY_RE, CARAVAN_DECOR_KEY, parkRegistryRoom, cellRoomOfWire, PARK_INTERNAL_REG, PARK_INTERNAL_DROP, PARK_CELL_MAX, PARK_ACCOUNT_MAX, PARK_TTL_MS, PARK_REFRESH_MS, CARAVAN_DOC_MIN_MS, PARTY_CHAT_ROOM_HZ_MAX, rollGate, rollDice, cardGate, pageGate, duelGate, DUEL_HZ_MAX, wedGate, WED_HZ_MAX, renownGate, renownRoomGate, lookGate, eventGate, EVENT_KEY, validLiveEvent, gateGate, siegeGate, SIEGE_IN_MS, GATE_INTERNAL_FELL, SOCIAL_ROOM, validGateOut, HELLO_WAIT_MS, GATE_TELL_RETRY_MS, gateReceiptKey, GATE_BRAIN_MIN, GATE_HERE_HOLD_MS, guildGate, guildRoomGate, GUILD_CHAT_ROOM_HZ_MAX, SEAT_ELSEWHERE, raidGate, RAID_INTERNAL_CLEAN, RAID_INTERNAL_DAY, RAID_DAY_ASK_MS, raidTownsGate, RAID_TELL_RETRY_MS, RAID_CLEANS_MAX, RAID_LEDGER_PREFIX, raidLedgerKey, RAID_RC_PREFIX, raidReceiptKeyOf, RAID_RC_KEEP, RAID_RC_KEEP_MS, mapPixelOfWire, validRaidOut, worldRoom, sharedClassicMinutes, wallMsForClassicMinutes, isRegionRoom, travHubGate, travRoomGate, TRAV_STALE_MS, TRAV_WELCOME_MAX, owGate, owRoomGate, OW_LEDGER_KEY, REALM_DOOR_WORD, riteRelayGate, validRiteOut, sanitizeName, RITE_INTERNAL_BROKEN, RITE_INTERNAL_DAY, RITE_TELL_RETRY_MS, RITE_KEY, RITE_BY_MAX, RITE_CIRCLES_MAX, RITE_HUB_CIRCLES_MAX, RITE_ASK_EVERY_MS, RITE_ASK_TIMEOUT_MS, arenaGate, bodyWordRelayGate, BUSY_TOKEN_UNREAD, POSE_BATCH_MS, ROSTER_BATCH_MS, WIRE2_BATCH_MAX, slimPose, wire2Batch } from './relay.js';   // AUDIT INT15: bodyWordRelayGate - a body's word on a bucket of its own
 import { holdemGate, holdemSitRoomGate } from './relay.js';   // CARDS5: the card table's gate; AUDIT CARDS-3 A4: the room's sits
 import { newTable, topUp as holdemTopUp, sit as holdemSit, sitRefusal as holdemSitRefusal, stand as holdemStand, actAt as holdemAct, tick as holdemTick, nextAt as holdemNextAt, emptyTable as holdemEmpty, tableLook as holdemLook, stateDelta as holdemDelta, holdemGoldTable } from '../../src/net/holdemTable.js';   // CARDS5: THE RELAY DEALS - the room's card tables (holdemTable.js imports only cardLaw.js, which imports only dice.js)
 // WILD1 (2026-10-07, the owner: "Wrothgarian mountains need to be turned into a open pvp zone"): ONE FILE JOINS THE
@@ -515,8 +515,9 @@ export class Room {
      *  provider links - the record says exactly what that does and does
      *  not close. */
     this._spent = new Map();
-    this._poseQ = new Map();   // SCALE5b: the second wire's batch - socket -> the slim poses owed it, flushed every POSE_BATCH_MS
-    this._poseFlush = null;    // SCALE5b: the batch's timer, while one is owed
+    this._owed = new Map();    // SCALE5b: the second wire's batch - socket -> what the room has said it and not yet sent (`_owe`)
+    this._owedSoon = null;     // SCALE5b: the batch's timer while a pose is owed (POSE_BATCH_MS)
+    this._owedLate = null;     // SCALE5b: and while only a channel's roster is (ROSTER_BATCH_MS)
     /** MOD1: THE NEWEST MUTE ORDER THIS ROOM HAS APPLIED, per account -
      *  `{i, mu, sig}`. Two jobs: an order older than one already applied
      *  is ignored (so a replayed mute cannot undo an unmute inside its
@@ -841,32 +842,39 @@ export class Room {
     idx.set(ws, a);
     return true;
   }
-  _forget(ws) { this._poseQ.delete(ws); const a = this._idx?.get(ws); if (this._idx?.delete(ws)) this._reindex(ws, a, null); }   // SCALE5b: and owed no poses   // SCALE5a: out of the account index too - not the whole of it dropped
+  _forget(ws) { this._owed.delete(ws); const a = this._idx?.get(ws); if (this._idx?.delete(ws)) this._reindex(ws, a, null); }   // SCALE5b: and owed nothing   // SCALE5a: out of the account index too - not the whole of it dropped
 
-  /** SCALE5b: THE SECOND WIRE'S BATCH (wire.js POSE_BATCH_MS). A pose fanned to a socket whose hello said `w2` is queued
-   *  for it as its slim entry (`[id, pose]`, built once a pose), and every queue goes out as one `poses` frame at the
-   *  batch's end - or sooner, ahead of any other frame the room sends that socket (`_send`), so a leave, a hit or a
-   *  join never overtakes a pose said before it. */
-  _queuePose(ws, entry) {
-    let q = this._poseQ.get(ws);
-    if (!q) this._poseQ.set(ws, q = []);
-    q.push(entry);
-    if (!this._poseFlush) this._poseFlush = setTimeout(() => this._flushPoses(), POSE_BATCH_MS);
+  /** SCALE5b: THE SECOND WIRE'S BATCH (wire.js POSE_BATCH_MS, ROSTER_BATCH_MS, wire2Batch). What the room fans to a
+   *  socket whose hello offered `w2` is OWED it, in the order the room said it - a pose as its slim entry (`[id, pose]`,
+   *  built once a pose), a channel's join or leave as its whole frame - and goes out as ONE frame: at the batch's end,
+   *  or sooner, ahead of any other frame the room sends that socket (`_send`), so nothing the room says overtakes what
+   *  it said before. A queue that reaches WIRE2_BATCH_MAX goes out at once - a reader takes no more. */
+  _owe(ws, item, ms = POSE_BATCH_MS) {
+    let q = this._owed.get(ws);
+    if (!q) this._owed.set(ws, q = []);
+    q.push(item);
+    if (q.length >= WIRE2_BATCH_MAX) { this._flushOwedOf(ws); return; }
+    if (ms <= POSE_BATCH_MS) { if (!this._owedSoon) this._owedSoon = setTimeout(() => this._flushOwed(), POSE_BATCH_MS); }
+    else if (!this._owedSoon && !this._owedLate) this._owedLate = setTimeout(() => this._flushOwed(), ms);
   }
-  _flushPosesOf(ws) {
-    const q = this._poseQ.get(ws);
+  _flushOwedOf(ws) {
+    const q = this._owed.get(ws);
     if (!q) return;
-    this._poseQ.delete(ws);
-    this._send(ws, `{"t":"poses","l":[${q.join(',')}]}`);
+    this._owed.delete(ws);
+    this._send(ws, wire2Batch(q));
   }
-  _flushPoses() {
-    this._poseFlush = null;
-    for (const ws of [...this._poseQ.keys()]) this._flushPosesOf(ws);
+  _flushOwed() {
+    clearTimeout(this._owedSoon); clearTimeout(this._owedLate);
+    this._owedSoon = this._owedLate = null;
+    for (const ws of [...this._owed.keys()]) this._flushOwedOf(ws);
   }
+  /** SCALE5b: a channel's join or leave - to a socket of the second wire, owed it for the roster's batch; to any other,
+   *  at once, as `_fanBut` says it. */
+  _fanRoster(ws, out) { for (const [other, b] of this._all()) if (other !== ws && b.id) { if (b.w2) this._owe(other, out, ROSTER_BATCH_MS); else this._send(other, out); } }
 
   /** A frame to one socket; a socket that will not take it is closed (A10). */
   _send(ws, s) {
-    if (this._poseQ.size && this._poseQ.has(ws)) this._flushPosesOf(ws);   // SCALE5b: a socket's batched poses go ahead of any other frame to it - its order is the order the room said them in
+    if (this._owed.size && this._owed.has(ws)) this._flushOwedOf(ws);   // SCALE5b: what a socket is owed goes ahead of any other frame to it - its order is the order the room said them in
     try { ws.send(s); this._metrics.c.sends++; this._metrics.c.bytesOut += s.length; return true; } catch {
       try { ws.close(1011, 'send failed'); } catch { /* gone */ }
       this._dead.add(ws);   // AUDIT WORLD34 D1: closed by the object - its leave is ours to say
@@ -1695,7 +1703,7 @@ export class Room {
       if (reach(b.pose)) heard.push([other, b]);
     }
     for (const [other, b] of (still ? heard : poseFan(heard, m.p, (e) => e[1].pose, met.turn, (e) => e[1].id))) {   // SLAM10: the far tier bucketed by the listener's ID, so a moving crowd cannot shuffle who is served
-      if (b.w2) this._queuePose(other, entry ??= JSON.stringify([a.id, slimPose(m.p)]));   // SCALE5b: the second wire's - batched, slim
+      if (b.w2) this._owe(other, entry ??= JSON.stringify([a.id, slimPose(m.p)]));   // SCALE5b: the second wire's - batched, slim
       else this._send(other, out ??= JSON.stringify({ t: 'pose', id: a.id, p: m.p }));
     }
     // SEAT1b (Seats-Arc 4.2): THE WATCH - a verified account standing in a cell, having moved, is ticked every
@@ -1910,7 +1918,7 @@ export class Room {
         // joiner whose welcome failed (its leave said, no join), a reconnect after its old socket's leave. The count each
         // join and leave carries is the room's own, so nothing can drift (SCALE5a's `re` retired with it).
         const said = JSON.stringify(badged({ t: 'join', id: m.id, name: who.name, sub: who.subject, n: others.length + 1 }, who));
-        this._fanBut(ws, said);   // SCALE5a: the index walked in place, by a method of its own
+        this._fanRoster(ws, said);   // SCALE5a: the index walked in place, by a method of its own; SCALE5b: the second wire's batched
         // SOC1: the account, in the hub - after the welcome and the join, so a client's session has reset on the
         // welcome before its picture lands; a hello naming none is a build before this slice, admitted as it was
         if (isSocialRoom(a.key) && m.acct) { try { await this._helloAccount(ws, m, now); } catch (e) { console.warn('[hub] account hello failed', e?.message ?? e); } }   // AUDIT SOC A2: contained, as the acts and the leave are
@@ -3114,7 +3122,7 @@ export class Room {
     if (!last) { try { await this.state.storage.delete([lookKey(a.id), secretKey(a.id)]); } catch { /* the room forgets it on the next empty hello */ } }
     // ROSTER-G: a channel says its leaves now, as it says its joins - the roster beside the chat is everyone online
     const out = JSON.stringify({ t: 'leave', id: a.id, ...(isChatRoom(a.key) ? { n: this._namedCount() } : {}) });   // AUDIT SCALE5a C1-C3: a channel's leave says the room's count, as its join does
-    this._fanBut(ws, out);   // SCALE5a: in place, as the join's
+    if (isChatRoom(a.key)) this._fanRoster(ws, out); else this._fanBut(ws, out);   // SCALE5a: in place, as the join's; SCALE5b: a channel's, the second wire's batched
     this._travOwed.delete(a.id);   // AUDIT DEEP2 C2: the leave takes the mark out - an owed clear of it is said
     if (!isChatRoom(a.key) && this._leads(a, ws)) this._sayHost({ skip: ws, except: ws });   // WORLD1: the host left - the next-longest in the room is the host now, said to everyone (ROSTER-G: a channel has no host)
     if (isBattleRoom(a.key) && a.sub) { try { await this._siegeGone(ws, a.sub, Date.now()); } catch (e) { console.warn('[siege] leave failed', e?.message ?? e); } }   // AUDIT-SEATS T3: a fighter's place kept from now

@@ -1457,8 +1457,13 @@ export function poseChanged(a, b, eps = 0.01) {
  *  reader can see - whole world units (PIXEL_UNITS 32768 to a map pixel: 2.5 cm) and a ten-thousandth of a radian. A
  *  socket that says no `w2` hears every pose as it always has, byte for byte. */
 export const POSE_BATCH_MS = 50;
-/** SCALE5b: the most entries a reader takes from one batch - a room's every socket, twice over. */
-export const POSES_BATCH_MAX = 2 * 256;
+/** SCALE5b: how long a channel's join or leave may wait for its batch - a roster beside the chat is not a pose, and a
+ *  hub's reconnect wave of N joins was N^2/2 frames, one a join a listener; batched a second, it is one a listener a
+ *  second, whatever the wave. */
+export const ROSTER_BATCH_MS = 1000;
+/** SCALE5b: the most a batch carries - entries and frames together - and the most a reader takes from one: a room's
+ *  every socket, twice over. A relay's queue that reaches it goes out at once. */
+export const WIRE2_BATCH_MAX = 2 * 256;
 /** SCALE5b: the fields validPose always writes, at the value it writes for a pose that never set them. */
 export const POSE_DEFAULTS = Object.freeze({ mv: 0, wd: 0, an: 0, as: 0, am: 0, sr: 0, cn: 0, cr: 0, ce: 4, ar: 0, fk: 0 });
 /** SCALE5b: a validated pose (validPose's own) as the second wire carries it - its defaults left out, its place and turn
@@ -1471,6 +1476,24 @@ export function slimPose(p) {
     out[k] = k === 'x' || k === 'y' || k === 'z' ? Math.round(v) : k === 'yaw' || k === 'pitch' ? Math.round(v * 1e4) / 1e4 : v;
   }
   return out;
+}
+
+/** SCALE5b: what a socket is owed, as the ONE frame that carries it - each item a pose's slim entry (`[id, pose]`'s JSON)
+ *  or a whole frame's (`{...}`'s), in the order the room said them. Poses alone are a `poses` frame; anything else, a
+ *  frame batch (`fb`), every run of poses in it one `poses` frame where it fell; one frame alone, itself. */
+export function wire2Batch(items) {
+  let poses = true;
+  for (const s of items) if (s.charCodeAt(0) !== 91) { poses = false; break; }
+  if (poses) return `{"t":"poses","l":[${items.join(',')}]}`;
+  const f = [];
+  let run = [];
+  for (const s of items) {
+    if (s.charCodeAt(0) === 91) { run.push(s); continue; }
+    if (run.length) { f.push(`{"t":"poses","l":[${run.join(',')}]}`); run = []; }
+    f.push(s);
+  }
+  if (run.length) f.push(`{"t":"poses","l":[${run.join(',')}]}`);
+  return f.length === 1 ? f[0] : `{"t":"fb","f":[${f.join(',')}]}`;
 }
 
 /** A pose the room will relay, or null. */

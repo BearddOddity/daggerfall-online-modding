@@ -82,7 +82,7 @@
   {
     "name": "SCALE5b-batch-skipped",
     "file": "server/src/index.js",
-    "old": "      if (b.w2) this._queuePose(other, entry ??= JSON.stringify([a.id, slimPose(m.p)]));",
+    "old": "      if (b.w2) this._owe(other, entry ??= JSON.stringify([a.id, slimPose(m.p)]));",
     "new": "      if (b.w2) this._send(other, JSON.stringify({ t: 'poses', l: [[a.id, slimPose(m.p)]] }));",
     "tests": [
       "test/scale5b.test.js"
@@ -112,7 +112,7 @@
   {
     "name": "SCALE5b-no-flush-ahead",
     "file": "server/src/index.js",
-    "old": "    if (this._poseQ.size && this._poseQ.has(ws)) this._flushPosesOf(ws);",
+    "old": "    if (this._owed.size && this._owed.has(ws)) this._flushOwedOf(ws);",
     "new": "",
     "tests": [
       "test/scale5b.test.js"
@@ -122,7 +122,7 @@
   {
     "name": "SCALE5b-queue-kept",
     "file": "server/src/index.js",
-    "old": "  _forget(ws) { this._poseQ.delete(ws); ",
+    "old": "  _forget(ws) { this._owed.delete(ws); ",
     "new": "  _forget(ws) { ",
     "tests": [
       "test/scale5b.test.js"
@@ -132,8 +132,8 @@
   {
     "name": "SCALE5b-no-timer",
     "file": "server/src/index.js",
-    "old": "    if (!this._poseFlush) this._poseFlush = setTimeout(() => this._flushPoses(), POSE_BATCH_MS);",
-    "new": "",
+    "old": "    if (ms <= POSE_BATCH_MS) { if (!this._owedSoon) this._owedSoon = setTimeout(() => this._flushOwed(), POSE_BATCH_MS); }",
+    "new": "    if (ms <= POSE_BATCH_MS) { /* none */ }",
     "tests": [
       "test/scale5b.test.js"
     ],
@@ -142,12 +142,92 @@
   {
     "name": "SCALE5b-timer-a-pose",
     "file": "server/src/index.js",
-    "old": "    if (!this._poseFlush) this._poseFlush = setTimeout(() => this._flushPoses(), POSE_BATCH_MS);",
-    "new": "    this._poseFlush = setTimeout(() => this._flushPoses(), POSE_BATCH_MS);",
+    "old": "    if (ms <= POSE_BATCH_MS) { if (!this._owedSoon) this._owedSoon = setTimeout(() => this._flushOwed(), POSE_BATCH_MS); }",
+    "new": "    if (ms <= POSE_BATCH_MS) { this._owedSoon = setTimeout(() => this._flushOwed(), POSE_BATCH_MS); }",
     "tests": [
       "test/scale5b.test.js"
     ],
     "note": "a timer a pose"
+  },
+  {
+    "name": "SCALE5b-roster-timer-unset",
+    "file": "server/src/index.js",
+    "old": "    else if (!this._owedSoon && !this._owedLate) this._owedLate = setTimeout(() => this._flushOwed(), ms);",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a channel's owed roster waits for a line to carry it"
+  },
+  {
+    "name": "SCALE5b-roster-at-pose-cadence",
+    "file": "server/src/index.js",
+    "old": "    else if (!this._owedSoon && !this._owedLate) this._owedLate = setTimeout(() => this._flushOwed(), ms);",
+    "new": "    else if (!this._owedSoon && !this._owedLate) this._owedSoon = setTimeout(() => this._flushOwed(), POSE_BATCH_MS);",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the roster at a pose's cadence - twenty frames a second where one would do"
+  },
+  {
+    "name": "SCALE5b-bound-unflushed",
+    "file": "server/src/index.js",
+    "old": "    if (q.length >= WIRE2_BATCH_MAX) { this._flushOwedOf(ws); return; }",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a queue past what a reader takes"
+  },
+  {
+    "name": "SCALE5b-join-at-once",
+    "file": "server/src/index.js",
+    "old": "        this._fanRoster(ws, said);",
+    "new": "        this._fanBut(ws, said);",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a channel's join said at once to the second wire"
+  },
+  {
+    "name": "SCALE5b-leave-at-once",
+    "file": "server/src/index.js",
+    "old": "    if (isChatRoom(a.key)) this._fanRoster(ws, out); else this._fanBut(ws, out);",
+    "new": "    this._fanBut(ws, out);",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a channel's leave said at once to the second wire"
+  },
+  {
+    "name": "SCALE5b-batch-runs-merged",
+    "file": "src/net/wire.js",
+    "old": "    if (run.length) { f.push(`{\"t\":\"poses\",\"l\":[${run.join(',')}]}`); run = []; }\n    f.push(s);",
+    "new": "    f.push(s);",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a pose said before a leave lands after it"
+  },
+  {
+    "name": "SCALE5b-batch-one-wrapped",
+    "file": "src/net/wire.js",
+    "old": "  return f.length === 1 ? f[0] : `{\"t\":\"fb\",\"f\":[${f.join(',')}]}`;",
+    "new": "  return `{\"t\":\"fb\",\"f\":[${f.join(',')}]}`;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "one frame wrapped in a batch - its bytes and a reader's walk for nothing"
+  },
+  {
+    "name": "SCALE5b-batch-all-poses",
+    "file": "src/net/wire.js",
+    "old": "  for (const s of items) if (s.charCodeAt(0) !== 91) { poses = false; break; }",
+    "new": "  for (const s of items) if (s.charCodeAt(0) !== 91) { break; }",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "frames read as poses"
   },
   {
     "name": "SCALE5b-hello-unoffered",
@@ -162,7 +242,7 @@
   {
     "name": "SCALE5b-batch-unread",
     "file": "src/net/online.js",
-    "old": "    if (m.t === 'poses') { this._poses(m, room); return; }",
+    "old": "    if (m.t === 'poses') { this._poses(m, room); return; }   // SCALE5b: the second wire's batch of poses",
     "new": "",
     "tests": [
       "test/scale5b.test.js"
@@ -170,10 +250,60 @@
     "note": "a batch read as an unknown frame"
   },
   {
+    "name": "SCALE5b-fb-unread",
+    "file": "src/net/online.js",
+    "old": "    if (m.t === 'fb') { this._batch(m, room); return; }      // SCALE5b: and of frames",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a frame batch read as an unknown frame"
+  },
+  {
+    "name": "SCALE5b-fb-frame-skipped",
+    "file": "src/net/online.js",
+    "old": "    for (let i = 0; i < f.length && left > 0; i++) {",
+    "new": "    for (let i = 1; i < f.length && left > 0; i++) {",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a frame batch's first frame lost"
+  },
+  {
+    "name": "SCALE5b-fb-bound-unasked",
+    "file": "src/net/online.js",
+    "old": "      else { left--; if (x.t !== 'fb') this._frame(x, room); }",
+    "new": "      else { if (x.t !== 'fb') this._frame(x, room); }",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a relay's frame batch read however long"
+  },
+  {
+    "name": "SCALE5b-fb-poses-uncounted",
+    "file": "src/net/online.js",
+    "old": "      if (x.t === 'poses') left -= Math.max(1, this._poses(x, room, left));",
+    "new": "      if (x.t === 'poses') this._poses(x, room, left);",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a batch's poses counted against nothing"
+  },
+  {
+    "name": "SCALE5b-fb-nested",
+    "file": "src/net/online.js",
+    "old": "      else { left--; if (x.t !== 'fb') this._frame(x, room); }",
+    "new": "      else { left--; if (x.t === 'fb') this._batch(x, room); else this._frame(x, room); }",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a batch read within a batch - a relay nests its way past the bound"
+  },
+  {
     "name": "SCALE5b-entry-skipped",
     "file": "src/net/online.js",
-    "old": "    for (let i = 0; i < l.length && i < POSES_BATCH_MAX; i++) {",
-    "new": "    for (let i = 1; i < l.length && i < POSES_BATCH_MAX; i++) {",
+    "old": "    let i = 0;\n    for (; i < l.length && i < max; i++) {",
+    "new": "    let i = 1;\n    for (; i < l.length && i < max; i++) {",
     "tests": [
       "test/scale5b.test.js"
     ],
@@ -182,8 +312,8 @@
   {
     "name": "SCALE5b-bound-unasked",
     "file": "src/net/online.js",
-    "old": "    for (let i = 0; i < l.length && i < POSES_BATCH_MAX; i++) {",
-    "new": "    for (let i = 0; i < l.length; i++) {",
+    "old": "    for (; i < l.length && i < max; i++) {",
+    "new": "    for (; i < l.length; i++) {",
     "tests": [
       "test/scale5b.test.js"
     ],
