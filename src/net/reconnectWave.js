@@ -1,3 +1,4 @@
+// @ts-check
 // SCALE2c (2026-10-10, Mac: "lets now tackle the bigger work ... really future proof our archetecture while also
 // increasing performance"; bible/11-Multiplayer/Scale-Arc.md SCALE2c): A RELAY DEPLOY'S RECONNECT, SPREAD BY THE ROOM'S
 // OWN COUNT. A relay deploy closes every socket of every player at once, and each page's first retry was uniform over
