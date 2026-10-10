@@ -892,11 +892,11 @@ jobs:
           # taken. A 5xx writes nothing (a batch that failed whole); one that still fails after half a minute is real.
           guest=""
           for i in $(seq 1 7); do
-            code=$(curl -sS --max-time 15 -o /tmp/guest.json -w '%{http_code}' -X POST "$base/v1/auth/guest" \
-              -H 'content-type: application/json' -d "{\"label\":\"deploy-smoke\",\"terms\":\"$LEGAL_TERMS\",\"privacy\":\"$LEGAL_PRIVACY\"}") || code=000
-            if [ "$code" = "200" ]; then guest=$(cat /tmp/guest.json); break; fi
-            echo "  /v1/auth/guest -> $code (attempt $i)" >&2
-            if [ "${code#5}" = "$code" ] && [ "$code" != "000" ]; then cat /tmp/guest.json >&2 || true; break; fi
+            ans=$(curl -sS --max-time 15 -o /tmp/guest.json -w '%{http_code}' -X POST "$base/v1/auth/guest" \
+              -H 'content-type: application/json' -d "{\"label\":\"deploy-smoke\",\"terms\":\"$LEGAL_TERMS\",\"privacy\":\"$LEGAL_PRIVACY\"}") || ans=000
+            if [ "$ans" = "200" ]; then guest=$(cat /tmp/guest.json); break; fi
+            echo "  /v1/auth/guest -> $ans (attempt $i)" >&2
+            if [ "${ans#5}" = "$ans" ] && [ "$ans" != "000" ]; then cat /tmp/guest.json >&2 || true; break; fi
             sleep 5
           done
           secret=$(echo "$guest" | sed -n 's/.*"secret":"\([^"]*\)".*/\1/p')
