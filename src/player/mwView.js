@@ -428,10 +428,11 @@ export function mwViewRebase(delta) {
 /** The host's mesh pipeline, for CreateDaggerfallMeshGameObject's model 41239. */
 export function mwViewAttachWagon(pipeline) { eotbWagon.attach(pipeline); }
 
-/** The cart in the host's world pass, after its models. Off the lane there is no cart. */
-export function mwViewDrawWagon(renderer, texRemap = null) {
+/** The cart in the host's world pass, after its models. Off the lane there is no cart. PERF-WAGON: `cull` the host's
+ *  view test, handed on (player/eotbWagon.js draw). */
+export function mwViewDrawWagon(renderer, texRemap = null, cull = null) {
   if (!eotbLane()) return false;
-  return eotbWagon.draw(renderer, texRemap);
+  return eotbWagon.draw(renderer, texRemap, cull);
 }
 
 /** RegisterCustomActivation(41239, CheckWagon, 3.2): the pick's target, for the hosts' one ray. */

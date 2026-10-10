@@ -659,6 +659,8 @@ import { preloadPrisonScreenArt, preloadCourtScreenArt } from '../ui/prisonScree
 import { TerrainGenClient } from '../world/terrainGenClient.js';   // EV7: the pixel kernel, off the main thread (samples/blend/tiles/grid/nature moved whole to terrainGen.js)
 import { getPref } from '../systems/uiPrefs.js';
 import { createCoverIndex, isCoverFlat, coverProxy, coverProxies, FELLED } from '../ai/cover.js';   // TACT1: billboards are cover; LPT1: a felled tree stands no 3D tree
+import { techniqueMarksNow, techniqueHudChips, offsetTechniques, TECHNIQUE_ACTION } from '../combat/techniques.js';   // TECH1 (bible/05-Combat/Weapon-Techniques.md): the player's marks on the ground, the HUD's chip, the recentre's shift
+import { setHudTechniqueChips } from '../ui/enhancedHud.js';   // TECH1: the technique's chip, beside the set powers'
 import { noteLocalPlayer, tacticsNow, tickTactics, offsetTactics } from '../ai/tactics.js';   // TACT2; TACT4: the brain's clock; AUDIT TACT: its tick, the recentre's shift
 import { drawableBlows, registerBlowDodgedListener } from '../ai/foeBlows.js';   // TACT4; AUDIT ARENA-LADDER: a dodge told
 import { landViewRead } from '../world/landView.js';   // LV1: the enhanced lane's own streamed radius; FT2: the read is the module's
@@ -855,7 +857,7 @@ import { AuraRingRenderer, auraWearers, auraLookOf, auraBeastStep, auraMotionSte
 import { duelAttackerOf, duelWeaponOf, duelSwingOf, resolveDuelStrike, duelWearDamage, duelStub } from '../combat/duelCombat.js';   // DUEL1: the blow between two duellists - INT8/INT9: the striker's half alone, the relay referees
 import { createPageWindow, pageView } from '../ui/pageWindow.js';   // JOURNAL1: a page another player holds out, read and kept
 import { PageOffers, pageOfferText, pageShownText, pageTooFarText, keptPageTokens, keptLetterTokens, letterOfPage, PAGE_UNSUPPORTED_TEXT, PAGE_NO_READERS_TEXT, PAGE_GONE_TEXT } from '../net/journalPage.js';   // JOURNAL1: a page of the journal shown, and one shown to me kept
-import { quickslotTag, quickslotHand, tagText } from '../ui/quickslotTags.js';   // JOURNAL1: the F-menu's own key, named off the live bindings
+import { quickslotTag, quickslotHand, tagText, actionKeyWord } from '../ui/quickslotTags.js';   // JOURNAL1: the F-menu's own key, named off the live bindings
 import { isTouchDevice } from '../ui/touchDevice.js';   // JOURNAL1: ...or a tap, where a finger points
 import { composeCard, createCardAnswerGate, CARD_WAIT_MS } from '../net/profileCard.js';   // INSPECT1: my card when asked, and how often one asker is answered
 import { relayVersionSeen, buildUpdateSeen, fetchLiveBuildTag, RELAY_RESTART_TEXT, BUILD_UPDATE_TEXT, BUILD_POLL_MS } from '../net/updateNotice.js';   // SRV-N: the relay moved, or the build did
@@ -1154,6 +1156,19 @@ export async function bootWorld(canvas, renderer, params, status) {
   // Wrath's a fire cast (element 0), Eventide's a magic cast (element 4 - Chameleon's own, as its bundle carries)
   setSetsWearer(() => playerEntity);   // SET5: the classic tooltip's and a plaque's set lines read my worn sets
   setHudSetChips((e) => [...setHudChips(e), ...lootHudChips(e)]);   // SET5: the set powers' windows and recoveries, as chips after the HUD's effects; LOOT5: and the Legendary powers' beside them
+  // TECH1: and the weapon's technique - its name, its seconds while it recovers or its key while ready - off the MODE's
+  // rig (indoors and underground world.js's own is never readied; the live arm names the one in hand)
+  // AUDIT TECH-FX: the key's word only when the chip is ready, and looked up once a binding change (the store's `rev`) -
+  // asked each frame, getBinding walked every binding (10 KB and 11 us a frame, a technique in hand or none)
+  // FINAL AUDIT (TECH-CARD): the card's word (quickslotTags.js actionKeyWord) - the key that answers, primary or secondary,
+  // and the pad's button while a pad is in hand - asked again when the pad is taken up or put down
+  let _techKey = null, _techKeyStore = null, _techKeyRev = -1, _techKeyPad = null;
+  const techniqueKeyWord = () => {
+    const b = bindings(), rev = b?.rev ?? 0, pad = controllerLook() ? (padFamily() ?? 'xbox') : null;
+    if (_techKey === null || _techKeyStore !== b || _techKeyRev !== rev || _techKeyPad !== pad) { _techKeyStore = b; _techKeyRev = rev; _techKeyPad = pad; _techKey = actionKeyWord(TECHNIQUE_ACTION, { bindings: b, controller: pad !== null, family: pad ?? 'xbox' }); }
+    return _techKey;
+  };
+  setHudTechniqueChips((e) => techniqueHudChips(e, (modes?.liveArm?.()?.rig ?? weaponRig)?.playerWeapon, techniqueKeyWord));
   setSetPowersVoice({ sound: (name) => {
     if (name === 'unbroken') audio.playOneShot(SOUND.Parry6, 1);
     else if (name === 'wrath') audio.playOneShotId(SPELL_CAST_SOUND[0], 1);
@@ -3535,20 +3550,24 @@ export async function bootWorld(canvas, renderer, params, status) {
   // while a living town stands online; each town's LivingTown asks its own (`patronsOf`): the sales told as sky minutes
   // (an online sky day is a real hour), the traders' doors
   const PATRON_READ_S = 600;
-  /** AUDIT LW-II-2 W3: a region's read that failed is asked again this soon (real seconds), never a whole PATRON_READ_S on. */
+  /** AUDIT LW-II-2 W3: a region's read that failed is asked again this soon (real seconds), never a whole PATRON_READ_S on.
+   *  PATRON-LOAD: the first retry - each failure in a row doubles it, to PATRON_READ_S: every client's minute was the
+   *  service's load at the moment it could least bear it. */
   const PATRON_RETRY_S = 60;
   /** @type {Map<number, { v: number, told: { door: number, t: number, seed: number }[], traders: number[] }>} */
   const _livingPatrons = new Map();
   /** AUDIT LW-II-2 W3/H8: EACH REGION'S LAST READ - its real second, and whether it failed. One clock for every region left
    *  a region crossed into unread up to PATRON_READ_S (four living hours online: no browser, no patron walking in, where a
    *  reader who stood there longer had them), and a region asked while a read was out was dropped (ASYNC NEVER DROPS: it
-   *  is remembered, `_livingPatronsWant`, and read once the one out settles). @type {Map<number, { at: number, failed: boolean }>} */
+   *  is remembered, `_livingPatronsWant`, and read once the one out settles). PATRON-LOAD: `fails` the failures in a row.
+   *  @type {Map<number, { at: number, failed: boolean, fails: number }>} */
   const _livingPatronsRead = new Map();
   let _livingPatronsV = 0, _livingPatronsBusy = false, _livingPatronsNow = 0;
   /** AUDIT LW-II-2 W3: the region asked while a read was out - read once it settles. @type {number|null} */
   let _livingPatronsWant = null;
-  /** AUDIT LW-II-2 W3: a region never read, or read PATRON_READ_S ago (a failed read PATRON_RETRY_S), is read now. */
-  const livingPatronsDue = (region, nowS) => { const r = _livingPatronsRead.get(region); return !r || nowS - r.at >= (r.failed ? PATRON_RETRY_S : PATRON_READ_S); };
+  /** AUDIT LW-II-2 W3: a region never read, or read PATRON_READ_S ago (a failed read PATRON_RETRY_S - PATRON-LOAD: doubled
+   *  for each failure in a row before it, to PATRON_READ_S), is read now. */
+  const livingPatronsDue = (region, nowS) => { const r = _livingPatronsRead.get(region); return !r || nowS - r.at >= (r.failed ? Math.min(PATRON_READ_S, PATRON_RETRY_S * 2 ** (r.fails - 1)) : PATRON_READ_S); };
   /** AUDIT LW-II-2 W11: the region whose traders are read - the one the player stands in, while a living town stands (a
    *  built LivingTown) alone: in the wilderness none (a read there was /vendors and up to PATRON_READ_STATEMENTS of the
    *  service's reckoning each PATRON_READ_S, for towns nobody walks). */
@@ -3567,10 +3586,11 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** LW15: a region's traders read - AUDIT LW-II-2 W3: marked read now, and failed where the service answered none. */
   const livingPatronsRead = (region, nowS) => {
     _livingPatronsBusy = true;
-    const mark = { at: nowS, failed: false };
+    const was = _livingPatronsRead.get(region);
+    const mark = { at: nowS, failed: false, fails: was?.failed ? was.fails : 0 };   // PATRON-LOAD: the failures in a row carried
     _livingPatronsRead.set(region, mark);
     Promise.resolve(marketBook.vendors(region)).then((r) => {
-      if (!r?.ok) { mark.failed = true; return; }
+      if (!r?.ok) { mark.failed = true; mark.fails++; return; }
       const rows = r.data?.rows ?? [];
       const byMap = new Map();
       for (const row of rows) {
@@ -3598,7 +3618,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         _livingPatrons.set(map, { v: ++_livingPatronsV, told, traders, region, sig });
       }
       for (const [map, e] of _livingPatrons) if (e.region === region && !byMap.has(map)) _livingPatrons.delete(map);
-    }).catch(() => { mark.failed = true; }).finally(() => {
+    }).catch(() => { mark.failed = true; mark.fails++; }).finally(() => {
       _livingPatronsBusy = false;
       const want = _livingPatronsWant;   // AUDIT LW-II-2 W3: the region asked while it was out, read now (still due)
       _livingPatronsWant = null;
@@ -11611,6 +11631,21 @@ export async function bootWorld(canvas, renderer, params, status) {
     // the weapon drew over the map.
     sheetWindowUp: () => townTalk.overlay?.holdsScreen === true,
     actTool: () => gatherHost?.handTool() ?? null,   // PROF1/PROF2: the Sickle for the steady hand's length, the Pick-Axe for a vein's (FORAGE0 14.2)
+    // TECH1 (bible/05-Combat/Weapon-Techniques.md): THE WEAPON TECHNIQUE'S DOOR into this host (combat/techniques.js) - the
+    // body a leap flies (this host's motor), the street's own arrow lane for a technique's shafts (a Volley's from the sky,
+    // `sky`: from that point; a Piercing Shot's from the bow hand or the gun's barrel, as a loose's), the exterior's
+    // fatigue door (its collapse law), and the view turned on a foe (Shadowstep's landing). The interior and dungeon
+    // modes hand their own rigs their own doors (worldModes.js).
+    technique: {
+      motor: () => player,
+      fireArrow: (from, dir, o) => arrows.fire(from, dir, { fromPlayer: true, weapon: o?.weapon ?? weaponRig.playerWeapon.weapon, muzzle: o?.sky ? { world: [...from] } : weaponRig.thunderlockMuzzle(fieldOfView()), technique: o?.technique ?? null, ...(o?.speedScale ? { speedScale: o.speedScale } : {}) }),
+      drainFatigue: (n) => drainExteriorFatigue(n),
+      face: (p, from) => { if (!Array.isArray(p)) return; const o = Array.isArray(from) ? from : player.pos; cam.yaw = Math.atan2(p[0] - o[0], p[2] - o[2]); lookFilter.settle(); },   // AUDIT TECH1: from where the body lands
+      blocked: () => gamePaused(),   // AUDIT TECH1: a window holds the world - and the technique's key (the mouse's side button reaches `keys` under any window)
+      fx: (recipe, at, o) => magic.techniqueFx?.(recipe, at, o),   // TECH-FX: a technique's burst, in this host's cast engine's impact pass
+      shake: (k) => betterAmbience.weaponKick(k),   // TECH-FX: the one shaker, under Better Ambience's own switch and cap
+      sound: (clip, volume, pitch) => audio.playOneShot(clip, volume, pitch),   // TECH-FX: the technique's layer over the swing's own
+    },
   });
   // PROF1/PROF2 (bible/06-Systems/Professions-Arc.md 22, 23): THE GATHERING PROFESSIONS IN THE STREAMING WORLD - the day's
   // herb patches, veins and boulders on every built wilderness pixel, the prompt, the act, the answer (scenes/gatherHost.js,
@@ -29472,6 +29507,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   // for the tap ray before the draw), once a frame: the same `spherePlanes` over the same product. AUDIT PERF-YARD 3:
   // keyed on the view matrix itself, which every frame mints anew (lookAt, the shake's) - not on the frame's timestamp,
   // which two frames share under a coarsened clock (a turn on the second frame culled by the first frame's planes).
+  // PERF-WAGON (2026-10-10, Mac: "For carts, wagons, etc, we need culling"): the same pass's carts and wagons - mine,
+  // the other players', the road's teams, the cart - and the camps' and the hideouts' tents are asked this same test.
   const _yardPlanes = new Float32Array(24), _yardPv = new Float32Array(16);
   let _yardPlanesOf = null;
   function yardCull(box) {
@@ -32743,6 +32780,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       exteriorFoes.offsetAll(r.offset);   // X-slice
       labGrassField?.shiftOrigin(r.offset);   // PERF-EXT21: the field keeps its own origin and follows this one - every cell stays where it grew (AUDIT 49 F2 / GR5 threw it away here and regrew it for three seconds)
       offsetTactics(r.offset);   // AUDIT TACT D3: the noted player and every live wind-up move with the world
+      offsetTechniques(r.offset);   // TECH1: and the player's own - an aim, a leap's landing, a Volley's falling shafts
       hazeGl?.offsetOrigin(r.offset);   // HAZE1: the shimmer's noise stands on the land, not the scene
       heatHaze.offsetOrigin(r.offset);   // HAZE1 (AUDIT ENVIRONS I7): and the ring's layer, held while airborne, with it
       windfall.offsetOrigin(r.offset);   // WINDFALL1: the trees' places in the mod's wind, and its leaves, stand on the land
@@ -33295,16 +33333,16 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       mwViewDrawBody(canvas, { proj, view, eye: mwv.eye, feet: player.bodyFeetAt(), yaw: player.bodyYawFor(cam.yaw), viewYaw: cam.yaw, face: tvFace });   // DISC18: the body at the capsule's own feet, not the camera's smoothed ones
       drawPeerBodies(proj, view, mwv.eye, tvf ? tvFace : null);   // MWBODY1: the others' bodies, the same pass; OW-PEERS: grown under the Overworld
     } finally { renderer.flushCharacterSpriteBatch?.(); }   // MWNPC2: every body's picture in one bind of the sprite target
-    mwViewDrawWagon(renderer);   // EOTB-IL: the cart, when the transport is the cart
+    mwViewDrawWagon(renderer, null, yardCull);   // EOTB-IL: the cart, when the transport is the cart; PERF-WAGON: by the street's view test
     riteHost?.draw(renderer, null, mwv.eye);   // WB12d: the faithful's circle and their tents - AUDIT WB12d (G6): its sigil from near the eye alone
     sigilBroker?.draw(renderer);   // BROKER-CAGE: the Sigil Broker's cage beside it, and its door
     gatePool?.draw(renderer);   // WB2: the Oblivion Gate's stone
-    camps.draw(renderer);   // SURV3: the tents, the cart's own pass
-    hcc.draw(renderer, null, tvf ? { selfGrow: tvf.grow, grow: peerGrow } : undefined);   // HCC: the trailing / parked / following wagon and its cargo, mine and the peers' (the horses ride the flats' pass); WAGON-HITCH x OW-BIG: a cart's wagon grown with its rider under the Overworld
+    camps.draw(renderer, null, yardCull);   // SURV3: the tents, the cart's own pass; PERF-WAGON: by the street's view test
+    hcc.draw(renderer, null, tvf ? { selfGrow: tvf.grow, grow: peerGrow } : undefined, yardCull);   // PERF-TEAMS: each wagon culled as the town's own models are; HCC: the trailing / parked / following wagon and its cargo, mine and the peers' (the horses ride the flats' pass); WAGON-HITCH x OW-BIG: a cart's wagon grown with its rider under the Overworld
     if (tvf) drawTvDungeonModels(travelView?.eye ?? null, tvf.fullyUp);   // OW-DUNGEONS: each dungeon's own model, grown under the Overworld; TV-BURST: loaded once the view is up, one a frame
     else if (_tvDngModel.size) dropTvDungeonModels();   // TV-BURST: the view down, its models let go (kept warm on their shelf)
-    if (livingRoads && livingWorldOn() && _mode() === 'exterior') livingRoads.drawTeams(renderer);   // LW10: the living world's wagons, in the cart's own pass
-    _livingHideoutsHost?.draw(renderer);   // LW12: a band's tents
+    if (livingRoads && livingWorldOn() && _mode() === 'exterior') livingRoads.drawTeams(renderer, yardCull);   // LW10: the living world's wagons, in the cart's own pass; PERF-WAGON: by the street's view test
+    _livingHideoutsHost?.draw(renderer, null, yardCull);   // LW12: a band's tents; PERF-WAGON: by the street's view test
     bountyFarms?.draw(renderer);   // BOUNTY-FARM: a held farm bounty's farmstead
     quays?.draw(renderer);   // QUAYS: the harbours' quays and the gangways to my ships made fast
     yards?.draw(renderer);   // HOME-YARD: the pieces outside the town's homes, and the one being placed
@@ -33644,6 +33682,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     meterFor(renderer.gl)?.markCpu('flats');   // PERF-CPU: submitting the billboards - the draws themselves, from JS. ABOVE setFlatWind, not between it and the draw: WIND3 pins the two as ADJACENT, and the wind is part of this phase anyway.
     yards?.drawDecals(renderer);   // HOME-YARD: the lot's marked edge while a piece is placed
     renderer.drawFoeTelegraphs?.(drawableBlows(tacticsNow(), walkMode && playerSpawned ? player.pos : cam.pos));   // TACT4: a foe's wind-up on the ground, under the bodies
+    renderer.drawFoeTelegraphs?.(techniqueMarksNow());   // TECH1: and the player's own marks, after the foes' (bible/05-Combat/Weapon-Techniques.md)
     bloodMarks.draw(camRight, UP_Y);   // BLOOD1a: the marks go down BEFORE the billboards, so a body standing in its own blood is over it and not under it. ABOVE setFlatWind for the reason its own neighbour gives: WIND3 pins the wind and the draw as ADJACENT.
     if (lowPolyTrees) lowPolyTreesFrame(cullOn ? _planes : null);   // LPT1: the near 3D trees, for the flats' call below (AFTER the gibs' call above, which would spend them)
     renderer.setFlatWind(floraSwayOn() && wd.on ? [wd.windV[0], wd.windV[1], windClock, wd.gust] : null, floraSwayOn() && wd.on ? windfallLaw : null);   // WIND3: the flats lean with the one wind; the flora batches carry their share (sway); WINDFALL1: by the mod's law while it is on
@@ -34395,6 +34434,10 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
             // AUDIT 29g: a swing that stopped on a spared body (r.spared) met someone - no door behind him is bashed
             else if (r?.spared || !modes?.attemptExteriorDoorBash?.(cam.pos, lookFwd)) audio.playOneShot(swingSoundFor(weaponRig.playerWeapon.weapon), 1.1);
           }).catch((e) => console.error('[civil]', e));
+        } else if (weaponRig.playerWeapon.techniqueBlow) {
+          // TECH1 (AUDIT): the watch took the swing - and a technique's blow strikes all it reaches, so the encounter foes
+          // in its ring are offered it too (one swing: the watch's pool already tallied it and rolled its grunt - `swing`)
+          if (exteriorFoes.resolvePlayerHit(weaponRig.playerWeapon, cam.pos, lookFwd, player.pos, makeInView(proj, view, multiply), guardHitSound, { swing })) surfacePlayer();
         }
       }
     }

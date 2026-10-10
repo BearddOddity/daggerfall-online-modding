@@ -378,7 +378,9 @@ test('LW15 the host\'s seams: the region\'s patrons read online alone, now and t
   const m = readFileSync(new URL('../server-account/src/market.js', import.meta.url), 'utf8');
   // PIN MOVED (AUDIT LW-II P10): each read hands the reckoning the service's env - its secret, the draw's
   assert.match(m, /await reckonPatrons\(ctx, \{ maps: \[vend\.map\] \}, env\)\.catch\(\(\) => null\);/);
-  assert.match(m, /await reckonPatrons\(ctx, \{ region \}, env\)\.catch\(\(\) => null\);/);
+  // PIN MOVED (PATRON-LOAD): the region's read - every client's, each ten minutes - reckons no patrons; a trader opened does
+  assert.ok(!/reckonPatrons\(ctx, \{ region \}/.test(m), 'the region\'s read reckons nothing');
+  assert.match(m, /await reckonPatrons\(ctx, \{ maps: \[vend\.map\] \}, env\)\.catch\(\(\) => null\);/);
   assert.match(m, /await reckonPatrons\(ctx, \{ maps: \[\.\.\.new Set\(traders\.map\(\(v\) => Number\(v\.map_id\)\)\)\] \}, env\)\.catch\(\(\) => null\);/);
 });
 
@@ -547,8 +549,16 @@ test('AUDIT LW-II P5: A READ\'S RECKONING BOUNDED - the law\'s dice asked before
   const reader = await a.registered('Reader');
   _now = T0 + 50 * 3600;
   const tally = counted(a);
+  // PIN MOVED (PATRON-LOAD): the region's read reckons nothing - a few statements and not a mark moved - and each town is
+  // reckoned by its own trader's read, two statements a town (it was the region's read that reckoned them all)
+  const marksBefore = towns.flatMap((m) => a.marks(m));
   assert.equal((await a.call('/v1/market/vendors', { region: DF }, reader.secret)).status, 200);
-  assert.ok(tally.n <= 2 * towns.length + 10, `a region two days behind: ${tally.n} statements`);
+  assert.ok(tally.n <= 6, `the region's read: ${tally.n} statements`);
+  assert.equal(a.sales().length, 0, 'the region\'s read sells nothing');
+  assert.deepEqual(towns.flatMap((m) => a.marks(m)), marksBefore, 'and moves no town\'s mark');
+  tally.n = 0;
+  for (const m of towns) assert.equal((await a.call('/v1/market/vendor', { vendor: { map: m, id: `t${m}k10` } }, reader.secret)).status, 200);
+  assert.ok(tally.n <= 2 * towns.length + 10 * towns.length, `thirty towns by their traders: ${tally.n} statements`);
   assert.deepEqual([...new Set(towns.flatMap((m) => a.marks(m)))], [Math.floor(_now / 3600) - 1], 'every town reckoned through');
   tally.n = 0; tally.w = 0;
   assert.equal((await a.call('/v1/market/vendor', { vendor: { map: towns[0], id: `t${towns[0]}k10` } }, reader.secret)).status, 200);
@@ -587,6 +597,7 @@ test('AUDIT LW-II P6, P9: THE SALES KEPT AND TOLD - each sale told once, at the 
   s.home(mal, 9001, 77, { entry: 'private', id: 'evetrader01' });
   for (const it of loot(10)) s.list(eve, v, it);
   _now = T0 + 20 * 3600;
+  assert.equal((await s.call('/v1/market/vendor', { vendor: v }, mal.secret)).status, 200);   // PIN MOVED (PATRON-LOAD): the trader's read reckons; the region's tells
   const r = await s.call('/v1/market/vendors', { region: DF }, mal.secret);
   assert.equal(r.status, 200);
   const sold = s.sales();
