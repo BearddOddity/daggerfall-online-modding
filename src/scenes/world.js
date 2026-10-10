@@ -122,7 +122,7 @@ import { createRelations, LIVING_WORLD_VENDOR } from '../systems/livingWorld/rel
 import { ResidentWalker } from '../characters/residentWalker.js';
 import { firstNameOf } from '../systems/livingWorld/lines.js';
 import { travellerRoster, mintResident } from '../systems/livingWorld/census.js';   // LW3: a town's travellers, off its MAPS row alone; LW4: a newcomer to a place the road emptied
-import { townTrips, visitorsOf as tripVisitorsOf, awayOf as tripAwayOf, placeCycle, setsOut, newsOf, paceScale, NEWS_DAYS, diversAt, cycleOf, handsOn, nativeDry } from '../systems/livingWorld/trips.js';   // LW3: the roads, pure; LW4: the places' cycles, the town's news; LW7: a townsperson's cycle, a trip's hand deaths; LW-DRY: the ground a party stops on
+import { townTrips, visitorsOf as tripVisitorsOf, awayOf as tripAwayOf, placeCycle, setsOut, newsOf, paceScale, NEWS_DAYS, diversAt, cycleOf, handsOn, nativeDry, divesIn, TRIP_REACH_PX } from '../systems/livingWorld/trips.js';   // LW3: the roads, pure; LW4: the places' cycles, the town's news; LW7: a townsperson's cycle, a trip's hand deaths; LW-DRY: the ground a party stops on
 import { createDryGround } from '../world/dryGround.js';   // LW-DRY: the height map's own dry ground, every client's alike
 import { placeAt, turnKey } from '../systems/livingWorld/lives.js';   // LW4: who holds a traveller's place
 import { peoplePage, residentOfId } from '../systems/livingWorld/people.js';   // LW7c: the chronicle's People page; AUDIT FB1010 C1: a betrothed as the census mints them
@@ -131,12 +131,23 @@ import { foeWord } from '../systems/livingWorld/lines.js';   // LW4: a foe's wor
 import { portPackets, berthOf, sailorAt, crewsAshore } from '../systems/livingWorld/portCrews.js';   // LW5: the Bay's sailors
 import { createWayBook } from '../systems/livingWorld/ways.js';   // LW3: the travellers' ways, planned by the living world itself
 import { createLivingRoads } from './livingRoads.js';   // LW3: the parties on the road near the player
+import { createRoadTeams } from '../world/roadTeams.js';   // LW10: their horses and wagons
+import { createCaravanHost, travellerOf, tripOfId } from './caravanHost.js';   // LW11: the caravan's door
+import { createHideouts, createHideoutBook, bandChest, BAND_KEEP_M } from './hideouts.js';   // LW12: a band's hideout, stood
+import { patronWords } from '../systems/livingWorld/patrons.js';   // LW15: a patron named (the town deals them - LivingTown patronOfSale)
+import { routeOf as deepRouteOf, clearedOf as deepClearedOf, stopOfMinute, DIVE_CLEAR_MIN } from '../systems/livingWorld/deepRoute.js';   // LW14: a company's way through the deep
+import { hideoutsOf, outlawBandAt, bandTrouble } from '../systems/livingWorld/outlaws.js';   // LW12: the outlaws
+import { stockShopShelf } from '../systems/shopStock.js';   // LW11: a caravan's counter, the shops' own roll
+import { townTrips as tripsOfTown, partyAt as livingPartyAt } from '../systems/livingWorld/trips.js';   // LW11: a merchant's trip, and where a party is
 import { createRoadFights, LIVE_M } from './roadFights.js';   // LW4b: a beset party's fight, stood live
 import { createRoadStands, FIGHT_NEAR_M } from './roadStands.js';   // LW7b: the armed beyond the walls - a hostile drawing, a friend at the player's side
 import { createDungeonDivers } from './dungeonDivers.js';   // LW6: the divers met in the dungeon
-import { createDeepRemains } from './deepRemains.js';   // LW6b: the fallen of a dive, found in its dungeon
+import { createDeepRemains, apartOf as deepRemainsApartOf } from './deepRemains.js';   // LW6b: the fallen of a dive, found in its dungeon (AUDIT LW-II-2 D6: one dive's laid apart)
 import { watchStep } from './livingWatch.js';   // LW-FIX2: a struck watchman's guard followed to his end
 import { fallenIn } from '../systems/livingWorld/trips.js';   // LW6b: ...the deep's word of them
+import { innGuestsOf, patrolCover, placeName, INN_TYPE } from '../systems/livingWorld/trips.js';   // LW9: the inn's guests, the patrol's cover; AUDIT LW-II E7: a trip's end in the talk
+import { PATROL_HALT_LINES } from '../systems/livingWorld/lines.js';   // LW9: the law beyond the walls
+import { lwSeed } from '../systems/livingWorld/seed.js';   // LW9: the halt's word, the hour's
 import { enemyLootTableKey } from '../systems/loot.js';   // LW6b: ...what they carried, their class's table
 import { goldStack } from '../systems/inventory.js';   // LW6b: ...and their purse
 import { mintKeepsake } from '../systems/livingWorld/keepsake.js'; import { lwRng, textSeed } from '../systems/livingWorld/seed.js';   // LW6c: ...and their keepsake, carried home; AUDIT-C5: their goods their key's own (on this line, so no cite below it moves)
@@ -757,7 +768,7 @@ import { RemotePlayers, composeLook, createSightCache, NAME_RANGE } from '../net
 import { createNameLayer, nameLayerWanted } from '../ui/nameLayer.js';   // NAME1 + BUBBLE1: the names and the chat bubbles, in the enhanced face; AUDIT NAME1 F7: and who gets that face
 import { enhancedHudScale, setHudSetChips, enhancedHudBottom, enhancedHudQuick } from '../ui/enhancedHud.js';   // AUDIT NAME1 F3: the player's own HUD scale, which the names wear like every other enhanced surface; SET5: the set powers' chips
 import { makeHitPend } from '../net/hitPend.js';   // AUDIT FOES FOE2: a blow the wire refused waits and goes
-import { PeerBodies, peerIsWolf } from '../net/peerBodies.js';   // MWBODY1: the others in the Morrowind body; WEREWOLF1: and in Bloodmoon's wolf
+import { PeerBodies, peerIsWolf, BODY_BUILD_GATE } from '../net/peerBodies.js';   // MWBODY1: the others in the Morrowind body; WEREWOLF1: and in Bloodmoon's wolf
 import { ChatLog, CHAT_REJOIN_MS } from '../net/chat.js';   // CHAT1: the tabs and their lines
 import { oocText, localLineHeard, nextRegionRoom, regionJoinedText, CHAN_OLD_RELAY_TEXT, ROLL_OLD_RELAY_TEXT, EMOTE_OLD_RELAY_TEXT, GUILD_OLD_RELAY_TEXT, NO_GUILD_TEXT, SOLO_LOCAL_TEXT, partyNoteTab } from '../net/chat.js';   // CHAT-CHAN: the channels' own laws (a second chat import: CHAT1's pin holds the first as it stands)
 import { parseChatLine, HELP_LINES, CHAT_GREETING_TEXT, unknownCommandText, emptyCommandText, hostMisuseText, badRollText, expandShortcodes, EMOTE_LINES } from '../net/chatCommands.js';   // CHAT-CHAN: what a typed line IS; DICE1: and a roll; EMOTE1: an action, a gesture, a shortcode
@@ -829,7 +840,9 @@ import { stacksWith } from '../systems/inventory.js';
 import { setHudZone } from '../ui/enhancedHud.js';
 import { setZoneEntity } from '../ui/hudActiveSpells.js';   // WILD1: the classic row's zone glyph
 import { createWedManager, wedWhyText, wedMineText } from '../net/wedSession.js';   // LEGACY7 part three: two players wed - the handshake's state machine (pure)
-import { createFamilyBodies, familyRoomSprites } from '../world/familyBodies.js';   // LEGACY7 part four: the line drawn in its own body, as an online peer is
+import { createFamilyBodies, familyRoomSprites } from '../world/familyBodies.js';
+import { createPopulationLane, holdNpcBodies } from '../characters/npcBodies.js'; import { folkActor } from '../characters/folkBodies.js'; import { residentWalkerActor } from '../characters/rosterBodies.js';
+import { personLook, personActor } from '../characters/peopleBodies.js'; import { staticNpcData } from '../characters/staticNpc.js';   // MWNPC8b: the street's standing people   // MWNPC7: the street's walkers in Morrowind bodies   // LEGACY7 part four: the line drawn in its own body, as an online peer is
 import { houseLine } from '../net/houseLaw.js'; import { houseWord } from '../systems/legacy/houseName.js';   // LEGACY7 part three: the house a proposal comes from, on its prompt; LEGACY-NAME: a seat's house said once
 import { createDuelRecords, duelUncountedText } from '../net/duelRecord.js';   // DUEL1: the Inspect card's duelling record, asked and kept
 import { createDuelPrompt } from '../ui/duelPrompt.js';   // DUEL1: the challenge, as the challenged player sees it
@@ -2690,7 +2703,9 @@ export async function bootWorld(canvas, renderer, params, status) {
   });
   registerModSaveData(LIVING_WORLD_VENDOR, {
     newSaveData: () => null,
-    getSaveData: () => livingRelations.snapshot(),
+    // AUDIT LW-II-2 C3: the caravan host's counters written first - what left a shelf reached the record only at its next
+    // step, and a save inside that second shelved the piece again beside the one in the pack
+    getSaveData: () => { _caravanHost?.flush(); return livingRelations.snapshot(); },
     restoreSaveData: (rec) => { livingRelations = createRelations(rec); },
     // LEGACY6: a new character knows nobody - unless born of the house on this page: the birth's share of the parent's
     // regard (legacyHost.seedRegards), whichever of the birth and this reset lands first
@@ -2698,6 +2713,12 @@ export async function bootWorld(canvas, renderer, params, status) {
   });
   /** The Living World's day of the sky's minute (livingTown.js dayOf: a day starts at 04:00). */
   const livingRegardDay = () => Math.floor((skyMinutes() - 240) / 1440);
+  /** LW16: a resident's regard of the one played - their own where they have one, else (one of the town the street
+   *  stands) a stranger's by its repute (systems/livingWorld/carried.js): read, never stored */
+  const livingRegardOf = (res, day) => {
+    const lt = livingRelations.known(res.id) ? null : livingTownOfMap(res.town);
+    return lt ? lt.reputeAt().regard : livingRelations.regard(res.id, day);
+  };
 
   // A5b: OUTDOOR MUSIC. AssignPlaylist's City/Wilderness arms - night
   // overrides everything, and by day the weather picks the list
@@ -2786,6 +2807,15 @@ export async function bootWorld(canvas, renderer, params, status) {
   let _livingTowns = null;
   /** AUDIT LEGACY III W1: the game's rows let go once both indices that read them stand. */
   const releaseHubRows = () => { if (_livingTowns && _livingDungeons) _hubRows.length = 0; };
+  /** LW12: a region's towns (the index's, by region). @type {Map<number, any[]> | null} */
+  let _livingByRegion = null;
+  const livingTownsOfRegion = (region) => {
+    if (!_livingByRegion) {
+      _livingByRegion = new Map();
+      for (const t of livingTownsIndex().values()) { const k = t.region | 0; if (!_livingByRegion.has(k)) _livingByRegion.set(k, []); _livingByRegion.get(k)?.push(t); }
+    }
+    return _livingByRegion.get(region | 0) ?? [];
+  };
   const livingTownsIndex = () => {
     if (_livingTowns) return _livingTowns;
     _livingTowns = new Map();
@@ -2864,6 +2894,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     templeTown: (t) => t.type === LOCATION_TYPES.ReligionTemple || t.blocks >= 9,
     dungeonsNear: livingDungeonsNear,   // LW6: an adventurer's dives
     dryAt: (nx, nz) => (_livingDry ??= nativeDry(createDryGround(woods)))(nx, nz),   // LW-DRY: a party's camp, halt and fallen on dry ground
+    townsIn: (region) => livingTownsOfRegion(region),   // LW12: a region's towns, its bands' legs
   };
   const _livingTripMemo = new Map();
   let _livingWaysSeen = 0;
@@ -2939,6 +2970,29 @@ export async function bootWorld(canvas, renderer, params, status) {
     const place = roster.find((r) => r.slot === res.slot) ?? res;
     return livingPlaceOf(place, placeCycle(place, roster, Math.floor(trip.outT0 / 1440), livingScale()));
   };
+  // LW12 (bible/06-Systems/Living-World-II.md): THE OUTLAWS' HIDEOUTS - each region's, once its legs' roads are planned
+  // (kept for the network's generation), and the character's routs (relations.js `routed`). AUDIT LW-II C8: a region
+  // waiting on its roads is asked again now and then (hideouts.js HIDEOUTS_ASK_MS), and its bands found, the troubles
+  // read band-less meanwhile are made again - every reader's the band's alike, however late its roads were planned.
+  // AUDIT LW-II-2 H3: and LW16's word kept off them (its told trips, its visitors, its carried visits): the late reader's
+  // towns told the band-less news they read while it waited. As livingWordFresh makes it again - B11's last word told
+  // while it is worked
+  const livingHideoutsOf = createHideoutBook({
+    of: (region) => hideoutsOf(region, livingTripWorld),
+    generation: () => livingWays.generation,
+    resolved: () => { _livingFates.clear(); _livingTripMemo.clear(); _livingToldKept.clear(); _livingVisitorsKept.clear(); for (const x of _livingCarried.values()) if (x.visits) _livingCarriedLast.set(x.map, x.visits); _livingCarried.clear(); },
+  });
+  const livingRouts = () => livingRelations.turns().routed;
+  /** The hideouts about native (`x`, `z`): of the regions of the towns within eight pixels. */
+  const livingHideoutsNear = (x, z) => {
+    const px = Math.floor(x / 32768), py = 499 - Math.floor(z / 32768);
+    const regions = new Set(livingTripWorld.townsNear(px, py, 8).map((t) => t.region | 0));
+    return [...regions].flatMap((r) => livingHideoutsOf(r));
+  };
+  // AUDIT LW-II E1: a patrol's cover still waiting on a round's way (patrolCover's undefined) - the trouble read meanwhile is
+  // no answer: it is never kept (`fate`), so every reader's trouble is the one read with every round known
+  let _livingCoverPending = false;
+  const livingCovered = (c) => { if (c === undefined) _livingCoverPending = true; return !!c; };
   const livingTroubleWorld = {
     climateAt: (px, py) => maps.getClimateIndex(px, py),
     foesOf: ({ climateIndex, dungeonType, minute, level, size, rolls }) => (dungeonType != null
@@ -2948,6 +3002,9 @@ export async function bootWorld(canvas, renderer, params, status) {
     dies: (res, trip) => { const pl = livingTripPlace(res, trip); return pl.dies && pl.hand == null; },   // LW7: one a hand took first the road's trouble never takes
     diced: (res, trip) => livingTripPlace(res, trip).diced,   // AUDIT-B1: the dice's own death - the trouble's shape, never a turn's
     turnOf: (id) => { const t = livingRelations.turns(); return t.won.has(id) ? 'won' : t.lost.has(id) ? 'lost' : null; },
+    covered: (trip) => livingCovered(patrolCover(trip, livingTripWorld, { mpm: PERSON_MOVE_SPEED / livingBaseRate(), memo: _livingTripMemo })),   // LW9: a patrol keeps the road
+    // LW12: THE OUTLAWS - a band's hold-up, over the hideouts of the trip's two regions and the character's routs
+    bandAt: (trip, px, py, t) => bandTrouble(trip, px, py, t, [...livingHideoutsOf(trip.from?.region), ...(trip.to?.region != null && trip.to.region !== trip.from?.region ? livingHideoutsOf(trip.to.region) : [])], livingRouts()),
   };
   livingTripWorld.holderOf = (res, k) => livingPlaceOf(res, k).holder;
   livingTripWorld.fated = (res, k) => livingPlaceOf(res, k).diced;   // AUDIT-B1: the dice's - a trip a spare re-rolled was gone from the road
@@ -2955,7 +3012,13 @@ export async function bootWorld(canvas, renderer, params, status) {
     const key = `${trip.id}|${trip.party.map((m) => m.id).join(',')}`;
     let f = _livingFates.get(key);
     if (!f) {
-      f = troubledTrip(trip, troubleOf(trip, livingTroubleWorld));
+      const was = _livingCoverPending;
+      _livingCoverPending = false;
+      const enc = troubleOf(trip, livingTroubleWorld);
+      const waits = _livingCoverPending;
+      _livingCoverPending = was;   // a trouble read inside another's keeps that one's word
+      if (waits) return undefined;   // AUDIT LW-II E1: a way still asked - townTrips waits, as for any way
+      f = troubledTrip(trip, enc);
       f = handsOn(f, (m) => livingPlaceOf(m, livingCycleOf(m, Math.floor((trip.outT0 - 240) / 1440))).hand);   // LW7: its hand deaths, gone from that minute
       if (_livingFates.size > 20000) _livingFates.clear();
       _livingFates.set(key, f);
@@ -2967,11 +3030,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   const livingTripsOf = (town, day) => {
     livingMemoFresh();   // a new network, new ways
     livingTurnsFresh();
+    livingWordFresh();   // LW16: the town's news kept with the roads
     const o = { mpm: PERSON_MOVE_SPEED / livingBaseRate(), memo: _livingTripMemo };
     const noon = day * 1440 + 240 + 720;
     const trips = townTrips(town, noon, livingTripWorld, o);
-    const visitors = tripVisitorsOf(town, day, livingTripWorld, o);
-    if (trips === undefined || visitors === undefined) return undefined;
+    const roadVisitors = tripVisitorsOf(town, day, livingTripWorld, o);
+    const guests = town.type === INN_TYPE ? innGuestsOf(town, day, livingTripWorld, o) : [];   // LW9: the inn on the road's guests
+    if (trips === undefined || roadVisitors === undefined || guests === undefined) return undefined;
+    const visitors = roadVisitors.concat(guests.filter((g) => !roadVisitors.some((v) => v.res.id === g.res.id)));
     // LW4: who holds each traveller's place today (a holder the road takes with no road to meet it on is gone abroad,
     // the whole cycle), and each one's away windows by their own id
     const roster = livingTripWorld.rosterOf(town);
@@ -2987,13 +3053,121 @@ export async function bootWorld(canvas, renderer, params, status) {
       if (w.length) away.set(h.id, w);
     }
     // LW4: the town's news of the road - its own parties' troubles of the last days, each known once they were home
-    const told = [];
-    for (let d = 0; d <= NEWS_DAYS; d++) { const tr = townTrips(town, noon - d * 1440, livingTripWorld, o); if (tr) told.push(...tr); }
-    const won = livingRelations.turns().won;
-    const news = newsOf(told, noon).map((n) => ({ ...n, foe: n.foe != null ? livingFoeWord(n.foe, 2) : '', helped: won.has(n.enc) }));   // LW7: a fight the player turned
+    const { told, news } = livingRoadNewsAt(town, noon, o);
     // LW-TALK: the towns of its road - where its people's trips of these days were bound - for its talk's {place}
-    const places = [...new Set([...trips, ...told].map((tr) => tr.to?.name).filter(Boolean))].sort();
+    const places = [...new Set([...trips, ...told].map((tr) => placeName(tr.to)).filter(Boolean))].sort();   // AUDIT LW-II E7: never "the wild" (a hunter's: no town)
     return { away, visitors, holders, news, places };
+  };
+  /** LW4: a town's news of the road at minute `t` - its own parties' troubles of the last NEWS_DAYS days, each known once
+   *  they were home (trips.js newsOf); LW7 a fight the player turned (`helped`); LW12 a band by its name. */
+  const livingRoadNewsAt = (town, t, o) => {
+    const noon = Math.floor((t - 240) / 1440) * 1440 + 240 + 720;
+    const k = `${town.mapId >>> 0}:${noon}`;
+    let told = _livingToldKept.get(k);
+    if (!told) {
+      told = [];
+      let whole = true;
+      for (let d = 0; d <= NEWS_DAYS; d++) { const tr = townTrips(town, noon - d * 1440, livingTripWorld, o); if (tr) told.push(...tr); else whole = false; }
+      if (whole) { if (_livingToldKept.size > 2000) _livingToldKept.clear(); _livingToldKept.set(k, told); }   // LW16: kept while the roads' memo stands
+    }
+    const won = livingRelations.turns().won;
+    return { told, whole: _livingToldKept.get(k) === told, news: newsOf(told, t).map((n) => ({ ...n, foe: n.band ?? (n.foe != null ? livingFoeWord(n.foe, 2) : ''), helped: won.has(n.enc) })) };   // AUDIT LW-II B4: whether every day of it was read
+  };
+  /**
+   * LW16: THE WORD CARRIED - THE VISITS a town has had these NEWS_DAYS days (carried.js carriedNews' `visits`): each
+   * party come in from a town about, where from, when it came in and set out, its town's news of the road when it set
+   * out, and a courier's (`relay`, when `relay` is asked) the visits its own town had had by then - one hop, never two.
+   * A generator, worked a slice a frame (`livingCarriedStep`): the towns about, cold, cost tens of milliseconds.
+   * @param {any} town @param {number} day @param {any} o @param {boolean} relay
+   */
+  function* livingVisitsGen(town, day, o, relay) {
+    /** @type {any[] & { partial?: boolean }} */
+    const out = [];
+    const seen = new Set();
+    for (let d = 0; d <= NEWS_DAYS; d++) {
+      // the towns about read a town a slice (townTrips keeps each day's: the visitors' read after them is the book's)
+      const noon = (day - d) * 1440 + 240 + 720;
+      for (const near of livingTripWorld.townsNear(town.px ?? 0, town.py ?? 0, TRIP_REACH_PX)) { if (townTrips(near, noon, livingTripWorld, o) === undefined) out.partial = true; yield; }
+      const vs = livingVisitorsCached(town, day - d, o);
+      if (vs === undefined) out.partial = true;   // a way still asked: the word worked again later
+      yield;
+      for (const v of vs ?? []) {
+        const tr = v.trip;
+        if (!tr?.from || seen.has(tr.id)) continue;
+        seen.add(tr.id);
+        const courier = tr.party.some((m) => m.job === 'courier');
+        const from = { mapId: tr.from.mapId, region: tr.from.region, name: tr.from.name ?? '' };
+        const heard = relay && courier ? yield* livingVisitsGen(tr.from, Math.floor((tr.outT0 - 240) / 1440), o, false) : [];
+        if (heard.partial) out.partial = true;
+        const fromNoon = Math.floor((tr.outT0 - 240) / 1440) * 1440 + 240 + 720;
+        for (let b = 0; b <= NEWS_DAYS; b++) { townTrips(tr.from, fromNoon - b * 1440, livingTripWorld, o); yield; }   // its town's news, a day a slice
+        const said = livingRoadNewsAt(tr.from, tr.outT0, o);
+        if (!said.whole) out.partial = true;   // AUDIT LW-II B4: a day of its town's news still asked - the word worked again
+        out.push({ id: tr.id, from, inT: tr.outT1, outT0: tr.outT0, courier, news: said.news, ...(heard.length ? { relay: heard } : {}) });
+        yield;
+      }
+    }
+    return out;
+  }
+  /** LW16: a town's visitors of a day, and its told trips by a noon, kept while the roads' memo stands (a town about is
+   *  asked by every town near it). */
+  const _livingVisitorsKept = new Map(), _livingToldKept = new Map();
+  const livingVisitorsCached = (town, day, o) => {
+    const k = `${town.mapId >>> 0}:${day}`;
+    if (_livingVisitorsKept.has(k)) return _livingVisitorsKept.get(k);
+    const vs = tripVisitorsOf(town, day, livingTripWorld, o);
+    if (vs !== undefined) { if (_livingVisitorsKept.size > 2000) _livingVisitorsKept.clear(); _livingVisitorsKept.set(k, vs); }   // a way still asked: asked again
+    return vs;
+  };
+  /** LW16: each town's carried word by its day - `{ gen }` while it is worked, `{ visits }` once done. */
+  const _livingCarried = new Map();
+  /** LW16: the visits a town's word carries on `day` - null while they are worked (the town tells its own meanwhile). */
+  const livingCarriedOf = (town, day) => {
+    livingWordFresh();
+    const k = `${town.mapId >>> 0}:${day}`;
+    let e = _livingCarried.get(k);
+    if (e?.visits?.partial && performance.now() - e.at > LIVING_CARRIED_RETRY_MS) e = null;   // a way asked then: again, now
+    if (!e) {
+      if (_livingCarried.size > 16) { for (const x of _livingCarried.values()) if (x.visits) _livingCarriedLast.set(x.map, x.visits); _livingCarried.clear(); }
+      const was = _livingCarried.get(k)?.visits;
+      if (was) _livingCarriedLast.set(town.mapId >>> 0, was);
+      e = { gen: livingVisitsGen(town, day, { mpm: PERSON_MOVE_SPEED / livingBaseRate(), memo: _livingTripMemo }, true), visits: null, at: 0, map: town.mapId >>> 0 };
+      _livingCarried.set(k, e);
+    }
+    // AUDIT LW-II B11: while it is worked again (a way asked then, a turn of fate, a new day) the town tells the word it
+    // had - its strangers' regard and words never blink out for the frames the working takes
+    return e.visits ?? _livingCarriedLast.get(town.mapId >>> 0) ?? null;
+  };
+  /** AUDIT LW-II B11: each town's last worked word, by its map id - this character's (made again with the record). */
+  const _livingCarriedLast = new Map();
+  /** LW16: how long a word worked while a way was still asked stands before it is worked again (real ms). */
+  const LIVING_CARRIED_RETRY_MS = 5000;
+  /** LW16: the kept word made again with the roads (a new network, a turn of fate, another character's record). */
+  let _livingWordV = null;
+  const livingWordFresh = () => {
+    livingMemoFresh();
+    livingTurnsFresh();
+    const v = `${livingWays.generation}|${livingRelations.turnsVersion()}`;
+    if (_livingWordV === v && _livingWordRel === livingRelations) return;
+    if (_livingWordRel !== livingRelations) _livingCarriedLast.clear();   // another character's record: nothing of the last's
+    else for (const x of _livingCarried.values()) if (x.visits) _livingCarriedLast.set(x.map, x.visits);
+    _livingWordV = v; _livingWordRel = livingRelations;
+    _livingCarried.clear(); _livingVisitorsKept.clear(); _livingToldKept.clear();
+  };
+  let _livingWordRel = null;
+  /** LW16: the most of a frame the carried word is worked for. */
+  const LIVING_CARRIED_SLICE_MS = 3;
+  /** LW16: the carried word worked for at most `budgetMs` of a frame. @param {number} budgetMs */
+  const livingCarriedStep = (budgetMs) => {
+    const t0 = performance.now();
+    for (const e of _livingCarried.values()) {
+      while (!e.visits) {
+        if (performance.now() - t0 >= budgetMs) return;
+        let r;
+        try { r = e.gen.next(); } catch (err) { console.warn('[living] the carried word', /** @type {any} */ (err)?.message ?? err); r = { done: true, value: null }; }   // AUDIT LW-II B13: a throw wedged the slice for good
+        if (r.done) { e.visits = r.value ?? Object.assign([], { partial: true }); e.at = performance.now(); _livingCarriedLast.set(e.map, e.visits); }   // AUDIT LW-II-2 W7: the town's last word, the next day's told it until its own is done
+      }
+    }
   };
   // LW5: THE BAY'S SAILORS (systems/livingWorld/portCrews.js) - a port's sailors the crews of the packets calling at it,
   // each where her clock has her (the shared one the naval host stands and steers her by, raidNowMs): aboard under way,
@@ -3072,6 +3246,37 @@ export async function bootWorld(canvas, renderer, params, status) {
     livingDungeonsIndex();
     return row?.mapTableData ? _livingDungeonById.get(row.mapTableData.mapId >>> 0) ?? null : null;
   };
+  // LW14 (bible/06-Systems/Living-World-II.md "LW14"): THE DIVE'S ROUTE over this dungeon's stops (the pool's own,
+  // in a company's order - systems/livingWorld/deepRoute.js), kept by trip for the pool; the stops a dive left within
+  // DIVE_CLEAR_MIN, read at the dungeon's build (the modes host's `deepCleared`)
+  let _deepRoutes = new Map(), _deepRoutesPool = null;
+  const livingDeepRoute = (trip) => {
+    const d = _dungeonPool();
+    const stops = d?.deepStops?.() ?? [];
+    if (!stops.length || !trip?.dive) return null;
+    if (_deepRoutesPool !== d) { _deepRoutes = new Map(); _deepRoutesPool = d; }
+    let r = _deepRoutes.get(trip.id);
+    if (r === undefined) { const e = d.deepEntry?.(); r = deepRouteOf(stops, e ? { x: e.x, z: e.z } : { x: stops[0].x, z: stops[0].z }, trip); _deepRoutes.set(trip.id, r); }
+    return r;
+  };
+  const livingDeepCleared = (loc, stops, entry) => {
+    // AUDIT LW-II D5: online none - a room's dungeon is the room's (its stream says which foe is dead and what a pile
+    // holds), and a read at each reader's own build minute over its own book (cold, it has the ways still to ask) cannot
+    // promise every reader the same set: the authority's dead reached a joiner as kit-rolled corpses, a joiner's were
+    // stood up again by the stream with their packs emptied
+    if (!livingWorldOn() || params.has('online') || !stops?.length || !loc?.mapTableData) return null;
+    // AUDIT LW-II-2 D7: nor the Ocean Holes abyss - a CLONE of its template (cloneDungeon keeps the template's map table;
+    // RenameDungeon writes the abyss's own id only once the build stands), so its dives were the template's. The build's
+    // one mark is the mod's own word on its loot (ShouldUpgradeLoot: the abyss building, bound, or a Recall landing in it)
+    if (ohAbyss?.shouldUpgradeLoot()) return null;
+    livingDungeonsIndex();
+    const here = _livingDungeonById.get(loc.mapTableData.mapId >>> 0);
+    if (!here) return null;
+    const tBuild = skyMinutes();
+    const from = entry ? { x: entry.x, z: entry.z } : { x: stops[0].x, z: stops[0].z };
+    const dives = divesIn(here, tBuild - DIVE_CLEAR_MIN, tBuild, livingTripWorld, { mpm: PERSON_MOVE_SPEED / livingBaseRate(), memo: _livingTripMemo }).dives;
+    return deepClearedOf(dives.map((tr) => deepRouteOf(stops, from, tr)), tBuild);
+  };
   const livingDiversStep = (now) => {
     const d = _dungeonPool();
     if (!d?.spawnLooseFoe || !livingWorldOn()) { if (livingDivers) { livingDivers.clear(); livingDivers = null; } return; }
@@ -3093,6 +3298,13 @@ export async function bootWorld(canvas, renderer, params, status) {
         spawnFoe: (type, feet, o) => d.spawnLooseFoe(type, feet, { yawRad: o.yaw, allied: false, gender: o.gender, level: o.level }),   // LW7b: one who draws on the player
         slay: livingSlay,
         died: livingDied,   // AUDIT-C3: one cut down beside the player died at their side, at that minute
+        // LW14: met where their route has them, heard at their fight, a choice at their door, a rival to the player's finds
+        route: livingDeepRoute,
+        floor: (x, y, z) => d.floorAt?.(x, y, z) ?? [x, y, z],
+        clearLine: (a, b) => d.clearLine?.(a, b) ?? false,
+        ring: (feet) => d.ringAt?.(feet),
+        choose: (lines, options) => modes?.dungeonCtx?.showOverlay?.(new ChoiceWindow({ lines, options })),
+        stopPile: (key) => d.stopPile?.(key) ?? null,
       }), { pool: d });
       _livingDiversAt = -Infinity;
     }
@@ -3125,11 +3337,14 @@ export async function bootWorld(canvas, renderer, params, status) {
     items.push(mintKeepsake(res));   // LW6c: their own keepsake, for their household
     return d.layRemains(items, feet, { archive: corpse.archive, record: corpse.record });
   };
+  /** AUDIT LW-II D9: where each of the dungeon's remains lies (placeOf), by its key - this dungeon's. */
+  const _livingRemainsPlace = new Map();
   const livingRemainsStep = (now) => {
     const d = _dungeonPool();
     if (!d?.layRemains || !livingWorldOn()) { if (livingRemains) { livingRemains.clear(); livingRemains = null; } return; }
     if (livingRemains?.pool !== d) {
       livingRemains?.clear();
+      _livingRemainsPlace.clear();
       livingRemains = Object.assign(createDeepRemains({
         spots: () => d.restingSpots(),
         laid: (key) => livingRelations.turns().laid.has(key),
@@ -3140,6 +3355,19 @@ export async function bootWorld(canvas, renderer, params, status) {
         feet: () => (playerSpawned ? [player.pos[0], player.pos[1], player.pos[2]] : null),
         say: (text) => d.hudSay?.(text),
         townName: (res) => livingTownOfId(res.town)?.name ?? '',
+        // LW14: where the dice's end fell - the stop on the dive's route its minute reaches, on its floor
+        placeOf: (r) => {   // AUDIT LW-II D9: kept by the remains' key (the floor's five rays once, not each beat)
+          if (_livingRemainsPlace.has(r.key)) return _livingRemainsPlace.get(r.key);
+          const s = stopOfMinute(livingDeepRoute(r.trip), r.t);
+          const at = s ? d.floorAt?.(s.x, s.y, s.z) ?? null : null;
+          // AUDIT LW-II-2 D6: one dive's fallen share its minute, so its stop - each a pace apart (deepRemains.js apartOf),
+          // walked out from the stop's floor as the divers' own `spot` is (never into a wall)
+          const dx = at ? deepRemainsApartOf(r) : 0;
+          if (dx) { try { d.collider?.move(at, dx, 0, 0, 1.8); } catch { /* the stop's own floor */ } }
+          if (_livingRemainsPlace.size > 256) _livingRemainsPlace.clear();
+          _livingRemainsPlace.set(r.key, at);
+          return at;
+        },
       }), { pool: d });
       _livingRemainsAt = -Infinity;
     }
@@ -3164,12 +3392,26 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  look drawn as an online peer is, by layers of the line's own for each place (the street's, a room's): a RemotePlayers
    *  with no sound - a townsperson's steps are the town's - and a PeerBodies behind the enhanced lane's own gate. */
   let familyStreet = null, familyRoom = null;
+  // MWNPC7 (bible/04-Characters/Morrowind-NPCs.md section 12): THE STREET'S WALKERS IN MORROWIND BODIES - every town's
+  // population offered as the street walks it, on the 'folk' lane under the switch's tier (the line's own members keep
+  // the family's bodies, above)
+  const folkStreet = createPopulationLane({ laneName: 'folk', renderer, collider: () => collider });
+  // MWNPC8b (section 13b): AND THE STREET'S STANDING PEOPLE - each StaticNPC flat its own batch (standPixelNpcs), offered
+  // from the near rings as the pixels are walked, read as the buildings' are (their data, their faction's row)
+  const streetPeople = createPopulationLane({ laneName: 'people', renderer, collider: () => collider });
+  const offerStreetPerson = (a, b) => streetPeople.offer(a, b);   // AUDIT MW-NPC II P1: the yards' keepers offered on it
+  const streetLook = (pn) => {
+    if (pn._mwLook !== undefined) return pn._mwLook;
+    const dict = _questStore()?.dict ?? null;
+    if (!dict) return null;   // never before the faction table: asked again
+    return personLook(pn, staticNpcData(pn, { getFaction: (id) => dict.get(id) ?? null, raceOfCurrentRegion: () => REGION_RACES[_questRegionIndex()] + 1 }), dict.get(pn.factionID) ?? null);
+  };
   /** CARDS4b: THE REGULARS AT THE CARD TABLE (world/cardRegulars.js) - stood by the interior host each frame on layers of
    *  their own, seated through the pose's `st` as a seated peer is; what they say, over their heads. */
   let cardRegularBodies = null, _cardBarks = [];
   const makeFamilyBodies = () => createFamilyBodies({
     dolls: new RemotePlayers({ renderer, deps: { fetchBytes, palette, getTexture, uploadRecordFrame } }),
-    bodies: new PeerBodies({ renderer, enabled: () => isEnhanced() && morrowindDataCount() > 0, generation: morrowindDataGeneration, collider: () => collider }),
+    bodies: new PeerBodies({ renderer, enabled: () => isEnhanced() && morrowindDataCount() > 0, generation: morrowindDataGeneration, collider: () => collider, gate: BODY_BUILD_GATE }),   // MWNPC4: on the page's one build queue
   });
   const _livingIndoorsDoor = {
     refuses: (p) => livingIndoors?.town()?.refuses(p) ?? null,
@@ -3185,7 +3427,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const livingIndoorsStep = (dt) => {
     if (!livingWorldOn() || _mode() !== 'interior') { if (livingIndoors?.size || livingIndoors?.spots().length) livingIndoors.clear(); return; }   // LW-FIX1: a room with nobody in it let go too (a house asleep) - the next way in sounds it again
     livingIndoors ??= createLivingIndoors({
-      sprites: familyRoomSprites(createTravellerSprites({ renderer, getTexture, uploadRecordFrame, living: _livingIndoorsDoor }), (familyRoom ??= makeFamilyBodies()), _livingIndoorsDoor),   // LEGACY7 part four: the line in its own body, the rest as before
+      sprites: familyRoomSprites(createTravellerSprites({ renderer, getTexture, uploadRecordFrame, living: _livingIndoorsDoor, laneName: 'room' }), (familyRoom ??= makeFamilyBodies()), _livingIndoorsDoor),   // LEGACY7 part four: the line in its own body, the rest as before
       building: () => {
         const b = modes?.interiorBuilding;
         const town = b ? livingTownOfMap(b.townMapId ?? 0) : null;
@@ -3232,18 +3474,220 @@ export async function bootWorld(canvas, renderer, params, status) {
     return { archive: flat.archive, record: flat.record, frameCount: Math.max(1, tex.getFrameCount(flat.record)) };
   };
   // the person's town on the road: the roads' layer answers a refusal and notes a word (townTalk's `livingTalk` door)
-  const _livingRoadsDoor = { refuses: (p) => livingRoads?.refuses(p) ?? null, talked: (p) => livingRoads?.talked(p) ?? null, caught: (p) => livingRoads?.caught(p) ?? null, roadside: true };
+  const _livingRoadsDoor = { refuses: (p) => livingRoads?.refuses(p) ?? null, talked: (p) => livingRoads?.talked(p) ?? null, caught: (p) => livingRoadCaught(p), roadside: true };
   _livingRoadsDoor.toned = (p, tone) => livingRoads?.toned(p, tone) ?? null;   // LW7: a word's tone on the road too
   /** @type {ReturnType<typeof createLivingRoads> | null} */
   let livingRoads = null;
+  // LW11 (bible/06-Systems/Living-World-II.md): THE CARAVAN'S DOOR - the counter, the deeds and their reports, the hold-up
+  // and the escort (scenes/caravanHost.js), on this host's windows, its clock and its character's records
+  const livingTripO = () => ({ mpm: PERSON_MOVE_SPEED / livingBaseRate(), memo: _livingTripMemo });
+  /** A traveller by id (`L<map>.t<slot>`, a newcomer's with its `~<gen>`) - AUDIT LW-II C1: the newcomer minted, as the
+   *  lives mint them (the roster holds the census's own alone). */
+  const livingTravellerOf = (id) => travellerOf(id, livingTownOfId, livingTripWorld.rosterOf);
+  /** AUDIT LW-II C4: the player's own hand struck a resident down by minute `t` (relations.js `slain`, at their place
+   *  and cycle) - never one who died beside them, nor one another hand took. */
+  const livingSlainAt = (res, t) => {
+    const slain = livingRelations.turns().slain;
+    if (!slain.size) return false;
+    const h = slain.get(turnKey(res, livingCycleOf(res, Math.floor((t - 240) / 1440))));
+    return h != null && h.t <= t;
+  };
+  /** The trip a traveller leads at minute `t` (on the road, or about to set out): their town's trips of the day. */
+  const livingTripLedBy = (res, t) => {
+    const town = res ? livingTownOfId(res.town) : null;
+    return town ? (tripsOfTown(town, t, livingTripWorld, livingTripO()) ?? []).find((tr) => tr.leader?.id === res.id && t < tr.backT1) ?? null : null;
+  };
+  let _caravanHost = null, _caravanT = 0;
+  /** AUDIT LW-II-2 C6/H1: the travel map's refusal of a journey (toggleTravelMap's AreEnemiesNearby, DUEL1's duel, NAV-H's
+   *  hostile ship) - travelled on with a caravan refused as every journey is. */
+  const livingTravelEnemies = () => duelEnemyNear() || areEnemiesNearby([...cityGuards.guards, ...exteriorFoes.foes]) || navalHostileNear();
+  /** LW11: the caravan host's step once a second - in the open world and (AUDIT LW-II C5b) the modal frame's too: an
+   *  escort waited out indoors was never asked where its escort was, and paid at the town. */
+  const caravanStep = (dt) => { if (livingWorldOn() && (_caravanT -= dt) <= 0) { _caravanT = 1; caravanHostOf().step(); } };
+  const caravanHostOf = () => (_caravanHost ??= createCaravanHost({
+    relations: () => livingRelations, clock: () => skyMinutes(), day: (t) => Math.floor((t - 240) / 1440), roads: () => livingRoads,
+    findTrip: livingTripLedBy,
+    tripById: (id, t) => tripOfId(id, t, livingTownOfId, (town, at) => tripsOfTown(town, at, livingTripWorld, livingTripO())),   // AUDIT LW-II C1: undefined while they wait
+    resOf: livingTravellerOf, slainAt: livingSlainAt,
+    stock: (counter, trip) => stockShopShelf({ buildingType: counter.buildingType, quality: counter.quality }, playerEntity, { rolls: lwRng(textSeed(trip.id), 0x77617265) }),   // 'ware': the same roll all trip
+    openTrade: (o) => !!modes?.openRoadTrade?.(o, o.mode ?? 'Buy'),
+    openLoot: ({ items }) => {
+      if (!inventoryDoorReady()) { townTalk.say('Inventory is still loading. Please try again.'); return false; }
+      const w = makeInventoryWindow({ loot: { items: () => items, containerImage: () => CONTAINER_IMAGES.Chest, playerOwned: false } });
+      if (!w) return false;
+      townTalk.showOverlay(w);
+      return true;
+    },
+    choose: (lines, options) => townTalk.showOverlay(new ChoiceWindow({ lines, options })),
+    say: (text) => townTalk.say(text),
+    regionAt: (x, z) => maps.getRegionIndexAt(Math.floor(x / 32768), 499 - Math.floor(z / 32768)),
+    charge: (region, crime) => { lowerRepForCrime(playerEntity, region, crime); tallyCrimeGuildRequirements(playerEntity, false, 1); },
+    deadAt: livingDeadAt,
+    here: () => (playerSpawned && _mode() !== 'dungeon' ? state.worldCoords(walkMode ? player.pos : cam.pos) : null),   // AUDIT LW-II C5b: below, nowhere near a party; indoors at the building (an interior stands at its building's world matrix - a night at the inn the party lodges at is beside it)
+    level: () => playerEntity.level ?? 1,
+    pay: (gold) => addGoldPieces(playerEntity, gold),
+    goldItem: (n) => goldStack(n),
+    online: () => params.has('online'),
+    // offline the escort travels on with the caravan to its next stop: the one clock moved as a journey moves it, the
+    // player set down beside the party (online the world's clock is everyone's - LIVED1). AUDIT LW-II-2 C6/H1: AS A
+    // JOURNEY GOES - offered only outdoors with nothing near (`travelFree`: the travel map's IsPlayerInside, then its
+    // AreEnemiesNearby, a duel, a hostile ship) and refused here the same; reached inside all the same, out to the open
+    // world first, as every teleport here goes (a lodged party's door at an inn moved the open world under the building),
+    // and the teleport's failure caught. AUDIT LW-II-2 C7: at its town the party has no place (`stay`) - set down where it last walked
+    travelFree: () => _mode() === 'exterior' && !livingTravelEnemies(),
+    travelWith: (trip, until) => {
+      if (params.has('online')) return false;
+      if (livingTravelEnemies()) { townTalk.say(CANNOT_TRAVEL_ENEMIES_TEXT); return false; }
+      if (_mode() !== 'exterior') modes?.forceExitToExterior();
+      advanceOwnMinutes(Math.max(0, until - skyMinutes()));
+      const at = livingPartyAt(trip, Math.min(until, trip.outT1 - 1));
+      if (at.x != null) ohTeleportToWorld(/** @type {number} */ (at.x) + 120, /** @type {number} */ (at.z)).catch(() => {});
+      return true;
+    },
+  }));
+  // LW15 (bible/06-Systems/Living-World-II.md "LW15"): THE PATRONS DRAWN - the region's public traders and what the
+  // service's patrons bought of them (market.js reckonPatrons, its `patrons`), read once each PATRON_READ_S of real time
+  // while a living town stands online; each town's LivingTown asks its own (`patronsOf`): the sales told as sky minutes
+  // (an online sky day is a real hour), the traders' doors
+  const PATRON_READ_S = 600;
+  /** AUDIT LW-II-2 W3: a region's read that failed is asked again this soon (real seconds), never a whole PATRON_READ_S on. */
+  const PATRON_RETRY_S = 60;
+  /** @type {Map<number, { v: number, told: { door: number, t: number, seed: number }[], traders: number[] }>} */
+  const _livingPatrons = new Map();
+  /** AUDIT LW-II-2 W3/H8: EACH REGION'S LAST READ - its real second, and whether it failed. One clock for every region left
+   *  a region crossed into unread up to PATRON_READ_S (four living hours online: no browser, no patron walking in, where a
+   *  reader who stood there longer had them), and a region asked while a read was out was dropped (ASYNC NEVER DROPS: it
+   *  is remembered, `_livingPatronsWant`, and read once the one out settles). @type {Map<number, { at: number, failed: boolean }>} */
+  const _livingPatronsRead = new Map();
+  let _livingPatronsV = 0, _livingPatronsBusy = false, _livingPatronsNow = 0;
+  /** AUDIT LW-II-2 W3: the region asked while a read was out - read once it settles. @type {number|null} */
+  let _livingPatronsWant = null;
+  /** AUDIT LW-II-2 W3: a region never read, or read PATRON_READ_S ago (a failed read PATRON_RETRY_S), is read now. */
+  const livingPatronsDue = (region, nowS) => { const r = _livingPatronsRead.get(region); return !r || nowS - r.at >= (r.failed ? PATRON_RETRY_S : PATRON_READ_S); };
+  /** AUDIT LW-II-2 W11: the region whose traders are read - the one the player stands in, while a living town stands (a
+   *  built LivingTown) alone: in the wilderness none (a read there was /vendors and up to PATRON_READ_STATEMENTS of the
+   *  service's reckoning each PATRON_READ_S, for towns nobody walks). */
+  const livingPatronsRegion = () => {
+    for (const b of built.values()) if (b.population instanceof LivingTown) { const p = playerTravelPixel(); return p ? maps.getRegionIndexAt(p.x, p.y) : null; }
+    return null;
+  };
+  const livingPatronsStep = (nowS, regionOf) => {
+    if (!params.has('online') || !marketBook) return;
+    _livingPatronsNow = nowS;
+    const region = regionOf();
+    if (region == null || region < 0 || !livingPatronsDue(region, nowS)) return;
+    if (_livingPatronsBusy) { _livingPatronsWant = region; return; }   // AUDIT LW-II-2 W3: read when the one out settles
+    livingPatronsRead(region, nowS);
+  };
+  /** LW15: a region's traders read - AUDIT LW-II-2 W3: marked read now, and failed where the service answered none. */
+  const livingPatronsRead = (region, nowS) => {
+    _livingPatronsBusy = true;
+    const mark = { at: nowS, failed: false };
+    _livingPatronsRead.set(region, mark);
+    Promise.resolve(marketBook.vendors(region)).then((r) => {
+      if (!r?.ok) { mark.failed = true; return; }
+      const rows = r.data?.rows ?? [];
+      const byMap = new Map();
+      for (const row of rows) {
+        if (row.home?.entry !== 'public') continue;
+        if (!byMap.has(row.map)) byMap.set(row.map, { told: [], traders: new Set() });
+        byMap.get(row.map).traders.add(Number(row.buildingKey));
+      }
+      for (const p of r.data?.patrons ?? []) {
+        const door = p.buildingKey;
+        if (!Number.isSafeInteger(door)) continue;
+        if (!byMap.has(p.map)) byMap.set(p.map, { told: [], traders: new Set() });
+        // AUDIT LW-II B5: the sale's instant is the service's own (its UTC hour and minute) - this machine's offset to the
+        // relay is for this machine's clock (Date.now) alone: added, a clock some minutes off moved the sale's day
+        byMap.get(p.map).told.push({ door, t: skyClassicMinutes((p.hour * 3600 + p.minute * 60) * 1000), seed: p.seed });
+      }
+      // AUDIT LW-II B6/B7: each town's word in one order for every reader (the traders by their key - the rows came newest
+      // listing first, and a new listing at another trader moved a browser's errand - the sales by their minute), its
+      // version moved only when its word did (every read made every town's whole day again); a town of the region read
+      // with nothing now (its trader shut, private, sold out) forgets what it had
+      for (const [map, e] of byMap) {
+        const told = e.told.sort((a, b) => a.t - b.t || a.seed - b.seed || a.door - b.door);
+        const traders = [...e.traders].sort((a, b) => a - b);
+        const sig = JSON.stringify([told, traders]);
+        if (_livingPatrons.get(map)?.sig === sig) continue;
+        _livingPatrons.set(map, { v: ++_livingPatronsV, told, traders, region, sig });
+      }
+      for (const [map, e] of _livingPatrons) if (e.region === region && !byMap.has(map)) _livingPatrons.delete(map);
+    }).catch(() => { mark.failed = true; }).finally(() => {
+      _livingPatronsBusy = false;
+      const want = _livingPatronsWant;   // AUDIT LW-II-2 W3: the region asked while it was out, read now (still due)
+      _livingPatronsWant = null;
+      if (want != null && livingPatronsDue(want, _livingPatronsNow)) livingPatronsRead(want, _livingPatronsNow);
+    });
+  };
+  /** LW15: who of a town a patron's sale names, for the Vendor page - its LivingTown's dealt resident where the town
+   *  stands (AUDIT LW-II B12: the one holding the place the day they come), else a townsperson of it.
+   *  @param {{ map: number, seed: number, hour: number, minute: number }} pt */
+  const livingPatronName = (pt) => {
+    const lt = livingTownOfMap(pt.map);
+    const t = skyClassicMinutes((pt.hour * 3600 + pt.minute * 60) * 1000);
+    return patronWords(lt ? lt.patronOfSale(pt.seed, t) : null, livingTownOfId(pt.map >>> 0)?.name ?? '');
+  };
+  /** LW7/LW11: a traveller struck down - the hand's turn, and the road's report of it. */
+  const livingRoadSlay = (res, t, seen) => { livingSlay(res, t, seen); caravanHostOf().slain(res, t); };
+  /** LW3/LW11: a hand caught in a traveller's purse - their regard, and the road's report; no watch, so no town's crime
+   *  (talk.js pickpocket sets one whenever it is handed no target: AUDIT LW-II-2 C15, townTalk puts back the flag that
+   *  stood before it - this door cleared it to None, and any crime standing before the pickpocket with it) */
+  const livingRoadCaught = (p) => {
+    const id = livingRoads?.caught(p) ?? null;
+    if (p?.living?.res) caravanHostOf().caught(p.living.res, skyMinutes());
+    return id;
+  };
+  // LW12 (bible/06-Systems/Living-World-II.md): A BAND'S HIDEOUT STOOD (scenes/hideouts.js) - its tents and fire, its
+  // people as the encounter pool's foes, its chest a ground pile of its take; the rout the character's tale
+  let _livingHideoutsHost = null;
+  /** The chest of a band (hideouts.js bandChest - AUDIT LW-II-2 C4/C5/P5): its take over the troubled trips of its leg's
+   *  two towns of late, worked a town-day a step by the host's frame - goods drawn off a general store's roll on the
+   *  band's own seed (the same chest each time it is stood) and the gold. */
+  const livingBandChest = (band, t) => bandChest(band, t, {
+    townOf: (id) => livingTownOfId(id),
+    tripsOf: (town, at) => tripsOfTown(town, at, livingTripWorld, livingTripO()),
+    shelf: (o) => stockShopShelf({ buildingType: TALK_BUILDING_TYPES.GeneralStore, quality: 10 }, playerEntity, o),
+    gold: (n) => goldStack(n),
+  });
+  /** The fights' own election: the lowest id of those within BAND_KEEP_M of it stands it (offline always) - AUDIT
+   *  LW-II-2 C13: KEEP, not LIVE: one standing it from past BAND_LIVE_M is still standing it, and a reader who saw none
+   *  within LIVE stood its people beside them. */
+  const livingHideoutOwner = (feet) => amGroupRollOwner(online?.id ?? null, player.feetAt(), (peersNear() ?? []).filter((p) => Math.hypot(p.feet[0] - feet[0], p.feet[2] - feet[2]) <= BAND_KEEP_M), Infinity);
+  const livingHideoutsHostOf = () => (_livingHideoutsHost ??= createHideouts({
+    hideoutsNear: livingHideoutsNear,
+    bandAt: (h, t) => outlawBandAt(h, t, livingRouts()),
+    clock: () => skyMinutes(),
+    here: () => (playerSpawned ? state.worldCoords(walkMode ? player.pos : cam.pos) : null),
+    ready: () => !!walkMode && !!playerSpawned && !_loading && !modes?.transitioning && _mode() === 'exterior' && !playerAfloat(),
+    owner: livingHideoutOwner,
+    sceneOf: (nx, nz) => tvSceneOf(nx, nz, 0),
+    // AUDIT LW-II C3: managed - this host owns their lives (the relevance cull took them as dead at 120 m, the camp stood
+    // at 200: walked up to, a band was routed)
+    spawn: (type, feet, o) => exteriorFoes.spawnFoe(type, feet, { yaw: o.yaw, gender: o.gender, level: o.level, allied: false, loose: true, transient: true, managed: true }),
+    remove: (f) => exteriorFoes.removeFoe(f),
+    inPool: (f) => exteriorFoes.foes.includes(f),
+    relations: () => livingRelations,
+    say: (text) => townTalk.say(text),
+    chest: livingBandChest,
+    dropPile: (items, feet) => droppedLoot.seedPile(items, feet, { archive: TREASURE_PILE_ARCHIVE, record: 0 }, null, null, { unsaved: true, owner: 'lw-hideout' }),
+    removePile: (pile) => droppedLoot.removePile(pile),
+    engaged: (f) => !!f.ai?.detected && f.ai.targetIsLocalPlayer !== false,   // AUDIT LW-II-2 C14: on me - the pool's cull's own spare
+    renderer, meshes: { getGpuMesh, cpuModels }, getTexture, uploadRecordFrame,
+  }));
   const livingRoadsOf = () => (livingRoads ??= createLivingRoads({
     world: livingTripWorld, mpm: PERSON_MOVE_SPEED / livingBaseRate(), clock: skyMinutes, baseRate: livingBaseRate,
     sceneOf: (nx, nz) => tvSceneOf(nx, nz, 0),
     here: () => (playerSpawned ? state.worldCoords(walkMode ? player.pos : cam.pos) : null),
     sprites: createTravellerSprites({ renderer, getTexture, uploadRecordFrame, living: _livingRoadsDoor }),
+    teams: createRoadTeams({ renderer, presentation: () => hcc.presentation, collider: () => collider }),   // LW10: the wagon trains, with Horse Cart and Cargo's own pieces
     memo: _livingTripMemo, relations: () => livingRelations, playerName: () => playerEntity.name ?? '', weather: () => weather,
     foeName: livingFoeWord,   // LW4: what besets a party, on its mark
-    slay: livingSlay,   // LW7: a traveller struck down - the hand's turn
+    slay: livingRoadSlay,   // LW7: a traveller struck down - the hand's turn; LW11: and the road's report of it
+    robbed: (tripId) => caravanHostOf().robbed(tripId),   // LW11: a caravan this character robbed carries a quarter
+    // LW12: a traveller's greeting warns of a band whose hideout lies near, and the character has heard of it
+    unheard: (t) => { const h = livingHideoutsHostOf(), here = playerSpawned ? state.worldCoords(player.pos) : null; return here ? h.unheardNear(here.x, here.z, t) : null; },
+    heard: (band) => livingHideoutsHostOf().heard(band),
     // LW4b: THE FIGHT STOOD - a beset party near the player on foot, its foes the encounter pool's own and its armed the
     // player's allies, when this player stands it (the camps' election, by the players' own feet)
     fights: createRoadFights({
@@ -3271,11 +3715,14 @@ export async function bootWorld(canvas, renderer, params, status) {
       ready: () => !!walkMode && !!playerSpawned && !_loading && !modes?.transitioning && _mode() === 'exterior' && !playerAfloat(),
       sceneOf: (nx, nz) => tvSceneOf(nx, nz, 0),
       relations: () => livingRelations,
-      slay: livingSlay, died: livingDied,
+      slay: livingRoadSlay, died: livingDied,
       deadAt: livingDeadAt,   // AUDIT-B4: one a hand took is never stood again (the roads' parties are read once a second)
       fighting: () => hccThreats().some((q) => Math.hypot(q[0] - player.pos[0], q[2] - player.pos[2]) <= FIGHT_NEAR_M),
       say: (text) => townTalk.say(text),
       door: _livingRoadsDoor,
+      // LW9: a patrol's knight before a player its region knows for a criminal draws on them, with the law's word
+      wanted: (res, trip) => (res.job === 'patrol' && trip?.from?.region != null && knownCriminal(playerEntity, trip.from.region, { ownNow: ownMinutes(), worldNow: trustedWorldMinutes() })
+        ? PATROL_HALT_LINES[lwSeed(textSeed(res.id)) % PATROL_HALT_LINES.length] : null),
     }),
   }));
   /** LW3: the bodies on the road as the street's talk targets, beside the town's (`_livePersons`) - for the talk ray and
@@ -5571,6 +6018,8 @@ export async function bootWorld(canvas, renderer, params, status) {
           suppressSpawns: () => racialSuppressPopulationSpawns(playerEntity),   // V4: the transformed lycanthrope empties the streets - here they stay in
           relations: () => livingRelations, playerName: () => playerEntity.name ?? '', weather: () => weather,
           townName: dfLocation.name, regionName: dfLocation.regionName ?? '',
+          patronsOf: () => _livingPatrons.get(livingTown.mapId >>> 0) ?? null,   // LW15: its patrons' errands, its traders' doors
+          carriedOf: (day) => livingCarriedOf(livingTown, day),   // LW16: the word carried in from the towns about
           tripsOf: (day) => livingTripsOf(livingTown, day), armOf: livingArmOf, flatOf: livingFlatOf,   // LW3: its travellers away and armed, its visitors - LW-LOOKS: its still pictures
           familyNews: (t) => legacyHost?.newsFor(livingTown.mapId, t) ?? null,   // LEGACY6: what the town says of the line
           // CHAP5b (Chapters-Arc 9): a guild's chapter here off the sheet the tab holds - its band, its guild named - for
@@ -6238,23 +6687,23 @@ export async function bootWorld(canvas, renderer, params, status) {
       renderer.destroyBatch(b);
     }
     entry.npcBatches = [];
-    const npcGroups = new Map();
+    // MWNPC8b (bible/04-Characters/Morrowind-NPCs.md section 13b): ONE BATCH A PERSON - it was one per archive/record
+    // over the active NPCs; a person's own lets their Morrowind body take their place and their billboard cast alone.
+    // The pixel's list, its cull and its teardown carry them as they carried the groups.
     for (const pn of entry.npcs) {
+      pn.standBatch = null;
       if (!pn.active) continue;
-      const k = `${pn.drawArchive ?? pn.textureArchive}_${pn.drawRecord ?? pn.textureRecord}`;   // NUDE-FLATS: the picture the build chose
-      if (!npcGroups.has(k)) npcGroups.set(k, []);
-      npcGroups.get(k).push([pn.x, pn.y, pn.z]);
-    }
-    for (const [k, centers] of npcGroups) {
-      const [archive, record] = k.split('_').map(Number);
+      const archive = pn.drawArchive ?? pn.textureArchive, record = pn.drawRecord ?? pn.textureRecord;   // NUDE-FLATS: the picture the build chose
       const t = await getTexture(archive);
       if (built.get(`${entry.px},${entry.py}`) !== entry) return;   // AUDIT (49faf853) B2: torn down during the await - a batch made now would be nobody's
       if (!t || record >= t.recordCount) continue;
       (entry.placeHold ?? pipeline).uploadRecord(archive, record);   // FIELD BUGS 2026-10-04d PLACE-LRU: the street's people are the pixel's to hold
       const size = billboardSize(t, record);
+      const centers = [[pn.x, pn.y, pn.z]];
       const batch = renderer.createBillboardBatch(archive, record, size, centers);
       batch._box = flatBatchAabb(centers, size);   // EV3
       armFlatAnim(batch, t, archive, record, entry.flatAnims, (entry.placeHold ?? pipeline).uploadRecordFrame);
+      pn.standBatch = batch;
       entry.npcBatches.push(batch);
       entry.batches.push(batch);
     }
@@ -7040,7 +7489,8 @@ export async function bootWorld(canvas, renderer, params, status) {
     // LW2: the living world's two doors - an enemy's refusal, and a word noted in the resident's regard (the body's
     // own town answers both: systems/livingWorld/livingTown.js)
     livingTalk: { refuses: (person) => person?.living?.town?.refuses(person) ?? null, talked: (person) => person?.living?.town?.talked(person), caught: (person) => person?.living?.town?.caught?.(person),
-      kin: (person, talk) => legacyMeetKin(person, talk) },   // LEGACY-HOME: one of the player's line, met
+      kin: (person, talk) => legacyMeetKin(person, talk),   // LEGACY-HOME: one of the player's line, met
+      offers: (person, talk) => (livingWorldOn() ? caravanHostOf().offers(person, talk) || (_mode() === 'dungeon' && !!livingDivers?.offers(person, talk)) : false) },   // LW11: a caravan's merchant, a pedlar, a carter asks first; LW14: a company below - AUDIT LW-II-2 D4: below alone (one met there and left holding never answers the street's talk)
     legacyTopics: (person) => legacyTopicRows(person),   // LEGACY5: courting, the proposal, the wedding, the family
     livingTone: (person, tone) => person?.living?.town?.toned?.(person, tone),   // LW7: a question's tone, in a resident's regard
     // RP1: a GETTER, not startLoc's number - see the note above. It is
@@ -13337,6 +13787,9 @@ export async function bootWorld(canvas, renderer, params, status) {
     // this pool is built with no `onSpawn`, so it owns its splash
     // batches and this is the one place they are freed.
     hitEffects.clear();
+    // AUDIT LW-II-2 H9: AND A BAND'S HIDEOUT STOOD, let go beside the camps - its tents, fire and pile in the old frame, its
+    // people the old place's. The open-world frame let it go a second later, the camp stood in the new frame meanwhile
+    _livingHideoutsHost?.clear();
     // AUDIT SURV-TIERS (the third pass): AND THE CAMPS, the same frame's. A camp stands in scene space too, spared by
     // the pixel sweep (AUDIT SURV B: the pool outlives the streaming), and `state.init` below moved the origin under it
     // with no offset to ride: a tent pitched by Daggerfall stood beside the traveller in Wayrest, and the next save
@@ -14255,7 +14708,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (!res || !legacyHost) return [];
     const day = livingRegardDay();
     return legacyHost.topicRows(res, {
-      regard: livingRelations.regard(res.id, day), personality: liveStat(playerEntity, 'personality'),
+      regard: livingRegardOf(res, day), personality: liveStat(playerEntity, 'personality'),   // LW16: a stranger's by the town's repute
       etiquette: skillValue(playerEntity, SKILLS.Etiquette), townName: _townOfMapId.get(res.town >>> 0)?.name ?? '',   // their own town's - the street's, a room's or a road's alike
     });
   }
@@ -20739,7 +21192,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     remotePlayers = new RemotePlayers({ renderer, deps: { fetchBytes, palette, getTexture, uploadRecordFrame, audio } });   // 2026-09-17: uploadRecordFrame added for the class-enemy billboard path (net/remotePlayers.js _buildMobile/_syncMobilePeer) - the doll path never touches it
     // MWBODY1: the enhanced skin with Morrowind data attached puts every peer in a body of its own; otherwise the doll
     const enhanced = isEnhanced();   // the skin cannot change without a reload (switchSkin), so it is read once, not per frame
-    peerBodies = new PeerBodies({ renderer, enabled: () => enhanced && morrowindDataCount() > 0, generation: morrowindDataGeneration, collider: () => collider });   // MWA4: attached is on   // CLIMB6: the floor under a hanging peer
+    peerBodies = new PeerBodies({ renderer, enabled: () => enhanced && morrowindDataCount() > 0, generation: morrowindDataGeneration, collider: () => collider, gate: BODY_BUILD_GATE });   // MWA4: attached is on   // CLIMB6: the floor under a hanging peer
     const eotbArt = createEotbArt({ renderer });   // DISC23-B: one store for the riders' and the walkers' art
     peerRiders = createPeerRiders({ renderer, art: eotbArt });   // RIDE: the others in the saddle
     peerWalkers = createPeerWalkers({ renderer, art: eotbArt, enabled: () => getPref('peerClassSprites') !== false });   // DISC23-B: the others on foot, as the set they chose - the 'Other players' card's sprite side
@@ -26347,6 +26800,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   setVendorPage({
     shown: () => vendorMarketOpen() && marketBook.goldOk === true,
     mine: () => marketBook.myVendors(), search: (region) => vendorReachable(region),
+    patronName: (pt) => livingPatronName(pt),   // LW15: who of the town bought it
     regionHere: vendorRegionHere, regionNames: REGION_NAMES, nameOf: vendorNameOf, townOf: vendorTownOf, stats: vendorItemStats,
     take: (row) => vendorTake(row), collectGold: async () => {
       const region = vendorRegionHere();
@@ -27868,6 +28322,9 @@ export async function bootWorld(canvas, renderer, params, status) {
       for (const fb of p.batches) {
         if (aabbOutside(planes, fb._box, t[0], t[1], t[2]) || !farFlatVisibleAt(ring, fb.farH ?? fb.size?.h ?? 0, fb.frame != null)) continue;
         fb.origin = t;
+        // MWNPC8b x RW1: no Morrowind body stands in the view out, so a standing person's flat is drawn here, never left
+        // cast-only by the street frame's last mark (it was, for the people nearest the house); the street marks it anew
+        fb.castOnly = false;
         flats.push(fb);
       }
     }
@@ -27986,6 +28443,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     csaActivationPick: (eye, dir) => csaActivationPick(eye, dir),   // CSA-D: ...and the one ray on it, in the building's or the dungeon's ladder
     csaActivate: (pick) => csaActivate(pick),
     livingBillboards: () => (livingIndoors?.batches() ?? []),   // LW8: the residents inside, on the building's own pass
+    drawLivingBodies: (canvas, proj, view, eye, dt) => { livingIndoors?.drawBodies(canvas, proj, view, eye, dt); },   // MWNPC10c: and their Morrowind bodies, before it
     cardRegularBillboards: () => cardRegularBodies?.batches() ?? [],   // CARDS4b: the card table's regulars, on the building's pass beside them
     drawCardRegulars: ({ proj, view, eye }) => cardRegularBodies?.draw(canvas, { proj, view, eye }),   // CARDS4b: their bodies, after the peers'
     cardRegulars: (list, dt, eye) => {
@@ -28069,6 +28527,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     },
     // WB4: the telegraph on the court's floor, in the dungeon arm's world pass - fogged as the floor is; WB6b: and the
     // air's life after it (the embers and the ash, render/deadlands.js drawLife), in the same air and the sky's light
+    drawGateBodies: (canvas, proj, view, eye, dt) => { gateCourt?.drawBodies(canvas, proj, view, eye, dt); },   // MWNPC10: the court's creatures in their Morrowind bodies
     drawGateCourt: ({ proj, view, eye }) => {
       const fog = courtFogNow();
       const told = gateCourt?.drawPass(proj, view, eye, performance.now() / 1000, fog);
@@ -28546,6 +29005,8 @@ export async function bootWorld(canvas, renderer, params, status) {
     horseCart: hccRuntimeOn,   // HCC: the runtime's transition handlers and storage-access word, when the mod is on
     onPreTransition: () => { const n = handOverFoes(); if (n) console.info(`[foes] handed ${n} foe(s) at the door`); },   // AUDIT PSCALE1 NET-3: a door out of the open country hands my foes to the players outside
     horseCartSave: () => hccRuntime.getSaveData(),   // AUDIT HCC H3: the record a dungeon save carries (DFU's per-mod slot, whatever the switch says)
+    deepCleared: (loc, stops, entry) => livingDeepCleared(loc, stops, entry),   // LW14: the stops a company left, at a dungeon's build
+    openLivingDiver: (rec) => (livingWorldOn() && rec?.living ? !!livingDivers?.offers(rec, () => modes?.dungeonCtx?.hudSay?.(`${firstNameOf(rec.living.res?.name ?? '')}: "Keep your blade up down here."`)) : false),   // LW14: a company below, pressed
     outerCampsSave: () => camps.snapshot(campToRecord),   // AUDIT REST II H6: my camps standing outside, for a dungeon's own save; AUDIT LANDFORMS C1: DFU's frame
     outerCampsLoad: (extras) => standSavedOuterCamps(extras),   // AUDIT REST III A1: and the save's stood again by the dungeon's own load
     horseCartLoad: (rec) => { hccRuntime.handleStartLoad(); if (rec) hccRuntime.restoreSaveData(rec); },   // AUDIT HCC H3: a same-dungeon load's OnStartLoad and RestoreSaveData
@@ -30488,6 +30949,9 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // LW3: THE ROAD'S PARTIES - a caravan, pilgrims, a pedlar, each where it is and where it is bound (scenes/livingRoads.js)
     if (livingRoads && livingWorldOn()) {
       for (const m of livingRoads.marks()) if (markShown({ kind: m.kind })) marks.push({ key: m.key, at: [m.at[0], m.at[1] + 2, m.at[2]], label: m.label, kind: m.kind });
+      // LW12: the hideouts of bands the character has heard of - rumoured, a ring
+      const hereN = state.worldCoords(cam.pos);
+      for (const m of livingHideoutsHostOf().marks(hereN.x, hereN.z, skyMinutes())) if (markShown({ kind: m.kind })) marks.push({ key: m.key, at: [m.at[0], m.at[1] + 2, m.at[2]], label: m.label, kind: m.kind });
     }
     // TV7: THE BANDS - each with its kind and number where it walks; one chasing me held at the edge, pointing
     const bms = bandNowMs();
@@ -31339,7 +31803,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // the whole indoor visit, swept only on the first frame back
     // outside. DestroyLightSources_OnTransition is an EVENT in the mod
     // (0x7d1), not a frame-tail chore.
-    if (restoresSoFar() !== _portalRestores) { _portalRestores = restoresSoFar(); portalGates.clear(); }   // PORTAL1: A LOAD ENDS EVERY PORTAL STANDING - asked at the one door every load passes (save.js restorePlayer: the world's, a classic import, a dungeon's own), so no branch of any load keeps one (AUDIT PORTAL1 U9); the save's pack is the truth
+    if (restoresSoFar() !== _portalRestores) { _portalRestores = restoresSoFar(); portalGates.clear(); livingDivers?.clear(); livingRemains?.clear(); _livingRemainsPlace.clear(); }   // PORTAL1: A LOAD ENDS EVERY PORTAL STANDING - asked at the one door every load passes (save.js restorePlayer: the world's, a classic import, a dungeon's own), so no branch of any load keeps one (AUDIT PORTAL1 U9); the save's pack is the truth. AUDIT LW-II-2 D2: and LETS THE DEEP'S LAYERS GO - a same-dungeon load keeps the pool, so the divers read the bodies its rewind cut as cut down beside the player (a death, a slaying, in the loaded game) and the remains a pile it wiped as taken (spent); met and laid again from the save's world
     if (_bootLoaded) { const gift = takePortalGiftNotice(); if (gift) townTalk.say(PORTAL_TEXT.gift(gift)); }   // PORTAL-GIFT: the stones a load gave, said once the world stands - every load's (the boot's, F9's, a dungeon's own), in every mode
     if (_mode() !== _torchesMode) { droppedTorches.destroyAll(); weaponRig.silenceTorch();   /* DISC6: the street's rig leaves (or retakes) the frame - its torch loop falls silent, and the rig that ticks starts its own */ if (_torchesMode === 'exterior') { closeBrokerDoor(); sigilBroker?.destroyAll(); }   /* AUDIT SET W2: the street left (the gate's court entered under the veil's 1.2 s, an interior, a travel) - her window shut and her post down, never carried in */ if (_torchesMode === 'exterior') lefay?.destroyAll();   /* LEFAY1: the monument's collider down, never carried in */ portalGates.forgetSteps(); _torchesMode = _mode(); }   // HT1; PORTAL1: the step forgotten at every change of place
     if (modes.frame(dt, now)) {
@@ -31362,8 +31826,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       if (livingRoads) livingRoads.clear();   // LW3: indoors, underground - the road's bodies freed with the open world they stood in
       familyStreet?.clear();   // AUDIT LEGACY III W6: the line's street rigs too
       livingWays.frame(); livingMemoFresh();   // AUDIT-E2: the ways asked indoors too - a load made in a tavern or below asked once and never again
-      livingDiversStep(now);   // LW6: underground, the companies diving here met
-      livingRemainsStep(now);   // LW6b: ...and the dead the deep kept there
+      try { livingDiversStep(now); } catch (e) { console.warn('[divers] step', e); }   // LW6: underground, the companies diving here met (AUDIT LW-II-2: wrapped as its neighbours are - a throw never kills the frame loop)
+      try { livingRemainsStep(now); } catch (e) { console.warn('[remains] step', e); }   // LW6b: ...and the dead the deep kept there
       livingIndoorsStep(townTalk.overlayActive ? 0 : dt);   // LW8: in a building, the residents whose day has them inside (AUDIT-E3: held under a talk, as the street's)
       if (dwPlayer) {
         audio.setListenerLowPass(0);   // DW-D: UpdateAudioFilter's IsPlayerInside - RemoveAudioFilter
@@ -31416,6 +31880,10 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       warmAshesFrame(gamePaused() ? 0 : dt * worldTimeScale());   // WA1: the mod's coroutine clock, in every mode (a MonoBehaviour's Time.deltaTime)
       raidingPartiesFrame(gamePaused() ? 0 : dt);   // RAID1: indoors too - the day's roll, the region's news, a raid running out; nothing is stood (FindCurrentRaid wants the street)
       if (_bandChase.size) bandDrop();   // AUDIT OW4 B5: a door ends every chase, spent - the band frame never runs indoors, and a chase froze there to take up again on the way out
+      caravanStep(dt);   // AUDIT LW-II C5b: the reports carried in and the escort, indoors and below too
+      if (livingWorldOn()) livingCarriedStep(LIVING_CARRIED_SLICE_MS);   // AUDIT LW-II-2 H7: the word carried worked indoors and below too - a town first asked from a room (a save loaded in its tavern, a day begun abed) told none all its stay
+      folkStreet.destroy();   // MWNPC7: indoors, the walkers' bodies let go with the street they walked
+      streetPeople.destroy();   // MWNPC8b: and the standing people's
       heatHaze.suppress();   // HAZE1: inside is no exterior - the strength is 0 at once (HeatHazeMod.Update), and eases up again outside
       { const _wfPx = playerTravelPixel(); windfall.frame({ dt: gamePaused() ? 0 : dt * worldTimeScale(), outside: false, weather, minutes: skyMinutes(), climate: maps.getClimateIndex(_wfPx.x, _wfPx.y), mapPixel: _wfPx, feet: player.pos, height: player.height }); }   // WINDFALL1: WindMod.Update indoors - the gust eases out, the sources fade, the leaves stop (AUDIT ENVIRONS W1: on the game's seconds)
       { const _snPx = playerTravelPixel(); _snowPixels.clear(); snowfall.frame({ now: now / 1000, inside: true, player: null, weather, seconds: worldMinutes() * 60, winter: season === SEASON.Winter, climate: maps.getClimateIndex(_snPx.x, _snPx.y), corpses: snowBodies }); }   // SNOWFALL1: DynamicSnowController.Update indoors - the surfaces hidden, the snowpack and the refill kept by the event clock
@@ -32313,6 +32781,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       droppedLoot.offsetAll(r.offset);
       dwFish?.offsetAll(r.offset);   // DW-E3: the fish and their schools' centres (Port-Ledger A, the Iliac Puddle row)
       droppedTorches.offsetAll(r.offset);   // HT1: the torches too
+      _livingHideoutsHost?.offsetAll(r.offset);   // AUDIT LW-II-2 H2: a band's hideout stood - its tents and its fire stood 819.2 behind every crossing
       camps.offsetAll(r.offset);   // SURV3: and the camps
       hcc.offsetAll(r.offset);   // HCC: FloatingOrigin.OnPositionUpdate - every scene point the runtime holds, the peers' teams, the parked wagon's collider
       if (csaRuntime) csaCall(() => csaRuntime.OnPositionUpdate(r.offset)); else csa.offsetAll(r.offset);
@@ -32353,6 +32822,10 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       if (_onlineLast) { _onlineLast[0] += r.offset[0]; _onlineLast[1] += r.offset[1]; _onlineLast[2] += r.offset[2]; }
       if (peerBodies) peerBodies.offsetAll(r.offset);   // MWBODY1 (AUDIT MWBODY B2): the bodies' feet follow the origin as the dolls do
       familyStreet?.offsetAll(r.offset);   // LEGACY7 part four: and the line's in the street
+      folkStreet.offsetAll(r.offset);   // MWNPC7: and the walkers'
+      streetPeople.offsetAll(r.offset);   // MWNPC8b: and the standing people's
+      livingRoads?.offsetBodies(r.offset);   // MWNPC10c: and the road's people's
+      navalCrew.offsetBodies(r.offset); siegeNpcs?.offsetBodies(r.offset);   // MWNPC10: and the crews' and the siege's
     }
     };
     frameOriginShift();
@@ -32545,6 +33018,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       const _dp = _lockChest ? projectToScreen(_lockChest, canvas.clientWidth, canvas.clientHeight, proj, view, worldViewportRect(canvas.clientWidth, canvas.clientHeight)) : null;
       touch.setLockDot(_dp && _dp.front ? _dp.x : null, _dp?.y);
     }
+    holdNpcBodies(!!tvf);   // AUDIT MW-NPC II H2: UNDER THE OVERWORLD NO NPC BODY STANDS (C3's law, every lane's) - a figure a few pixels tall, drawn upright under the flats' lean
     // World clock (R5): sun, ambient, window style, sky frame by time.
     const minute = minuteNow();
     // A1: DaggerfallLocation.Update's season poll (:118-130), on the
@@ -32846,9 +33320,12 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     meterFor(renderer.gl)?.markCpu('bodies');   // PERF-ZONE2: the Morrowind bodies - the player's, every peer's - the wagon and the camps, which the renderer's own 'world' mark used to swallow
     if (deepWaters) { _dwNowMs = now; beginDeepWatersFrame(minute); }   // DW-C: the look and the distance fog - a frame's, so after the clear of both
     // MW-D24: the player's own body, in third person only.
-    renderer.setCloudShadow(sky?.cloudShadow ?? null);   // VC4: the frame's deck, for the body and everything before the pixel loop
-    mwViewDrawBody(canvas, { proj, view, eye: mwv.eye, feet: player.bodyFeetAt(), yaw: player.bodyYawFor(cam.yaw), viewYaw: cam.yaw, face: tvFace });   // DISC18: the body at the capsule's own feet, not the camera's smoothed ones
-    drawPeerBodies(proj, view, mwv.eye, tvf ? tvFace : null);   // MWBODY1: the others' bodies, the same pass; OW-PEERS: grown under the Overworld
+    renderer.beginCharacterSpriteBatch?.();
+    try {
+      renderer.setCloudShadow(sky?.cloudShadow ?? null);   // VC4: the frame's deck, for the body and everything before the pixel loop
+      mwViewDrawBody(canvas, { proj, view, eye: mwv.eye, feet: player.bodyFeetAt(), yaw: player.bodyYawFor(cam.yaw), viewYaw: cam.yaw, face: tvFace });   // DISC18: the body at the capsule's own feet, not the camera's smoothed ones
+      drawPeerBodies(proj, view, mwv.eye, tvf ? tvFace : null);   // MWBODY1: the others' bodies, the same pass; OW-PEERS: grown under the Overworld
+    } finally { renderer.flushCharacterSpriteBatch?.(); }   // MWNPC2: every body's picture in one bind of the sprite target
     mwViewDrawWagon(renderer);   // EOTB-IL: the cart, when the transport is the cart
     riteHost?.draw(renderer, null, mwv.eye);   // WB12d: the faithful's circle and their tents - AUDIT WB12d (G6): its sigil from near the eye alone
     sigilBroker?.draw(renderer);   // BROKER-CAGE: the Sigil Broker's cage beside it, and its door
@@ -32857,6 +33334,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     hcc.draw(renderer, null, tvf ? { selfGrow: tvf.grow, grow: peerGrow } : undefined);   // HCC: the trailing / parked / following wagon and its cargo, mine and the peers' (the horses ride the flats' pass); WAGON-HITCH x OW-BIG: a cart's wagon grown with its rider under the Overworld
     if (tvf) drawTvDungeonModels(travelView?.eye ?? null, tvf.fullyUp);   // OW-DUNGEONS: each dungeon's own model, grown under the Overworld; TV-BURST: loaded once the view is up, one a frame
     else if (_tvDngModel.size) dropTvDungeonModels();   // TV-BURST: the view down, its models let go (kept warm on their shelf)
+    if (livingRoads && livingWorldOn() && _mode() === 'exterior') livingRoads.drawTeams(renderer);   // LW10: the living world's wagons, in the cart's own pass
+    _livingHideoutsHost?.draw(renderer);   // LW12: a band's tents
     bountyFarms?.draw(renderer);   // BOUNTY-FARM: a held farm bounty's farmstead
     quays?.draw(renderer);   // QUAYS: the harbours' quays and the gangways to my ships made fast
     yards?.draw(renderer);   // HOME-YARD: the pieces outside the town's homes, and the one being placed
@@ -32943,6 +33422,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // test before its shader runs. The order is the pixel's grid
     // distance from the player's own pixel - a hundred-odd integers,
     // sorted into a scratch array kept across frames, no allocation.
+    const _peopleOn = streetPeople.frame();   // MWNPC8b
     _pixelOrder.length = 0;
     for (const p of built.values()) { p._dist2 = (p.px - state.current.x) ** 2 + (p.py - state.current.y) ** 2; _pixelOrder.push(p); }
     _pixelOrder.sort((a, b) => a._dist2 - b._dist2);
@@ -33061,9 +33541,22 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         b.origin = t;
         (off ? castBatches : allBatches).push(b);   // SHADOW-REACH: the maps alone, or the frame
       }
+      // MWNPC8b: the street's standing people offered their bodies - the near rings' alone (a billboard's cast-only is
+      // read at the draw, so after the walk does as well as before it)
+      if (p.npcs) for (const pn of p.npcs) {
+        if (!pn.standBatch) continue;
+        const look = _peopleOn && ring <= 1 ? streetLook(pn) : null;
+        if (!look) { pn.standBatch.castOnly = false; continue; }
+        const f = pn._mwFeet ??= [0, 0, 0];
+        f[0] = pn.x + t[0]; f[1] = pn.y + t[1]; f[2] = pn.z + t[2];
+        streetPeople.offer(personActor(pn, look, f, mwv.eye, dt), pn.standBatch);
+      }
     }
     };
     framePixelWalk();
+    if (merchantYards && _mode() === 'exterior') merchantYards.offerBodies(offerStreetPerson, mwv.eye, townTalk.overlayActive ? 0 : dt);   // AUDIT MW-NPC II P1: the Stables' and the Wagon Yards' keepers, standing people (their flats ride livePersonBatches)
+    streetPeople.draw(canvas, proj, view, mwv.eye, townTalk.overlayActive ? 0 : dt);   // MWNPC8b: the standing people's bodies - before the flats draw
+    siegeNpcs?.drawBodies(canvas, proj, view, mwv.eye, dt);   // MWNPC10: and the siege's fighters' (their batches ride the flats)
     // SNOWFALL1 (AUDIT ENVIRONS G7): THE SNOW BEFORE THE GROUND UNDER IT - GROUND-LAST's own law a layer up: an opaque
     // surface over the ground (SNOW_LAYER keeps it over whichever is drawn first), so a ground fragment under the snow
     // fails the depth test before its shader runs, and the picture is the same. By the ground's own program, the
@@ -33272,6 +33765,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     meterFor(renderer.gl)?.markCpu('people');   // PERF-CPU: the towns' own pools
     _livePersons.length = 0;   // T3b: rebuilt each frame in WORLD space   // PERF-TOWN1: the SAME array and the same entries, refilled
     familyStreet?.begin();   // LEGACY7 part four: the line's own bodies, stood again this frame
+    const _folkOn = folkStreet.frame();   // MWNPC7: and the walkers', when wanted
     const framePopulation = () => {   // PERF-V8
     for (const p of built.values()) {
       if (!p.population) continue;
@@ -33315,12 +33809,15 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         const kin = person.living?.res;
         if (kin?.look && (familyStreet ??= makeFamilyBodies()).stand(kin, batch.origin, person.yaw, person.state === 'move')) continue;
         livePersonBatches.push(batch);
+        if (_folkOn) { const a = person.living?.res ? residentWalkerActor(person, batch.origin) : folkActor(person, batch.origin, p.population.race); if (a) folkStreet.offer(a, batch); else batch.castOnly = false; }   // MWNPC7: a walker offered their body; AUDIT MW-NPC C4: a living resident as themselves - the billboard casts alone where it stands   // AUDIT MW-NPC II K1: a beggar's picture keeps the street (null)
+        else batch.castOnly = false;
       }
     }
     };
     framePopulation();
     // AUDIT LEGACY III W4: held under a talk window, as the street is (the member met walked on the spot behind their card)
     if (familyStreet) { familyStreet.end(townTalk.overlayActive ? 0 : dt, cam.pos); livePersonBatches.push(...familyStreet.batches()); }
+    folkStreet.draw(canvas, proj, view, mwv.eye, townTalk.overlayActive ? 0 : dt);   // MWNPC7: the walkers' bodies - held under a talk, as the street is
     // LW3: THE ROADS - the living world's parties near, in file by day and about their fires by night (scenes/
     // livingRoads.js), on the ground and grown under the Overworld; the planner asked a few ways a frame
     livingWays.frame(); livingMemoFresh();   // LW3: a new network, new ways (AUDIT-B8: and the memo's bound)
@@ -33328,10 +33825,17 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     if (livingWorldOn() && _mode() === 'exterior') {
       livingRoadsOf().frame(townTalk.overlayActive ? 0 : dt, cam.pos, { overworld: tvf ? { grow: tvf.grow, blend: tvf.blend } : null });
       livePersonBatches.push(...livingRoads.batches());
+      livingRoads.drawBodies(canvas, proj, view, mwv.eye, townTalk.overlayActive ? 0 : dt);   // MWNPC10c: the road's people in their bodies - before the person billboards draw
     } else if (livingRoads) livingRoads.clear();
+    caravanStep(dt);   // LW11: the hold-ups, the reports carried in, the escort - anywhere (a report lands, an escort ends, indoors too)
+    if (livingWorldOn() && _mode() === 'exterior' && !tvf) { livingHideoutsHostOf().frame(dt); livePersonBatches.push(...livingHideoutsHostOf().batches()); }   // LW12: a band's hideout near, stood
+    else _livingHideoutsHost?.clear();
+    if (livingWorldOn() && _mode() === 'exterior') livingPatronsStep(Date.now() / 1000, livingPatronsRegion);   // LW15: the region's patrons, now and then (AUDIT LW-II-2 W11: while a living town stands)
+    if (livingWorldOn()) livingCarriedStep(LIVING_CARRIED_SLICE_MS);   // LW16: the word carried, worked a slice a frame
     if (livingWorldOn()) { livingWatchStep(); livingPeerWatchStep(); }   // LW7 / WATCH-FIX: the turned watch followed, mine and a peer's
     if (livingIndoors?.size || livingIndoors?.spots().length) livingIndoors.clear();   // LW8: the street again - the room's residents freed (LW-FIX1: and an empty room's sounding)
     if (livingRemains) { livingRemains.clear(); livingRemains = null; }   // LW6b: ...and the deep's layer let go with its dungeon
+    if (livingDivers) { livingDivers.clear(); livingDivers = null; }   // AUDIT LW-II-2 D4 / H5: ...and the divers' - a company left holding below kept its door on the street's talk
     // G1: the guards drive + draw on the same flats' axis. WINFOE1
     // (2026-09-17, Mac: "enemies should still be able to do damage"): the
     // ENEMY pools no longer freeze under a window - a rest, the
@@ -33408,6 +33912,9 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       }
       livePersonBatches.length = keep;
     }
+    navalCrew.drawBodies(canvas, proj, view, mwv.eye, foeDt);   // MWNPC10: the crews' hands on their decks
+    cityGuards.drawBodies(canvas, proj, view, mwv.eye, foeDt);   // MWNPC6: and the watch's, the same way
+    exteriorFoes.drawBodies(canvas, proj, view, mwv.eye, foeDt);   // MWNPC5c: the foes in their bodies - what batches() offered this frame, before the billboards draw (cast-only where a body stands)
     if (deepWaters && livePersonBatches.length) dwFlagColumnFlats(livePersonBatches);   // DW-F: the foes, the corpses and the piles in a carved sea take the column's share
     if (livePersonBatches.length) renderer.drawBillboards(livePersonBatches, camRight, bbUp);
     if (castBatches.length) renderer.recordShadowBillboards(castBatches, camRight, UP_Y);   // SHADOW-REACH: the flats the view cull rejected, for the maps alone (the wind is the frame's, set above)
@@ -33694,6 +34201,11 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     };
     frameHaze();
     drawFalling();   // RAIN-OVER-GRASS: after the grass and the banners, before the translucent bodies and the fires
+    exteriorFoes.drawVeiledBodies();   // MWNPC5c: the concealed foes' bodies, beside the peers'
+    cityGuards.drawVeiledBodies();   // MWNPC6: and the watch's
+    navalCrew.drawVeiledBodies();   // MWNPC10: and a concealed owner's crew
+    livingRoads?.drawVeiledBodies();   // MWNPC13: and a road's ghosts
+    folkStreet.drawVeiled();   // MWNPC7: and the walkers'
     drawVeiledPeerBodies();   // INVIS-LOOK: the concealed peers' bodies, translucent - after the opaque world, the flats and the grass
     // DUEL1: THE RINGS' WALLS - my own duel's, rising in and dying away, and every duel the cells around me say stands
     // (each once: both duellists say it). After the grass, from the view's own eye (mwv.eye, the bolts' law), fogged as
