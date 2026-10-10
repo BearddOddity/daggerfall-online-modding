@@ -62,7 +62,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE5a | At 500 online: the hub's hello and leave without a walk of every socket, a busy refusal that mints nothing, the World tab's count past the roster's cut | Yes, once | **Deployed** (2026-10-10, #755; world189) |
 | SCALE5 | Past about 1-2k players: the hub split (presence and social state per account, world chat over shard rooms), slimmer or binary poses, pose-only halo frames | Yes | **Planned** as the slices below (THE PLAN PAST 2,000) |
 | SCALE2c | The reconnect wave spread by the hub's own count; a full foes frame that says nothing said once - client only | No | **Built** (2026-10-10, this branch) |
-| SCALE4f | The mint's realm row read once (four statements in one); every statement's D1 wait, rows and a replica's serving on the metrics point; an overloaded D1 a 503 | No | **Built** (2026-10-10, this branch; acct109) - the guild and seat reads and the writes coalesced are left |
+| SCALE4f | The mint's realm row read once (four statements in one), and its guild membership once (three in one); every statement's D1 wait, rows and a replica's serving on the metrics point; an overloaded D1 a 503 | No | **Built** (2026-10-10, this branch; acct109) - the writes stay, with their reasons |
 | SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | **Built** (2026-10-10, this branch; acct109) |
 | SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | Planned |
 | SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | Planned |
@@ -992,13 +992,48 @@ The last says, for the first time, whether SCALE4d's replicas serve the mint at 
 whose retry lists do not know it - an act dropped, not kept. But it is 503 (service.js d1Overloaded: D1's "overloaded",
 "queued for too long", its code 7429), so the metrics count an overload apart from a bug.
 
-**Left, each with its reason:**
-- **The guild's three reads of one membership** (the guild badge, the seat badge and the season's ribbon). Each joins
-  other tables (the guild, the seat holds, the ribbons) under laws of their own (a guildmaster's title, a member joined
-  before the Turning). Folding them is SCALE4f's second part, with an oracle of its own.
-- **The writes coalesced** (the session's touch, Renown, the checkpoint's judge). They change when a write lands, so
-  each needs its own pins. SCALE4f's metrics will say which writes are dearest.
+### Part two: the mint's guild membership, read once
+
+The guild's badge (guilds.js guildBadgeOf), the seat badge (seatTurning.js seatBadgeOf) and the Season's ribbon
+(seatRibbons.js ribbonOf) each read the named character's `guild_members` row for itself: three statements of one row.
+
+`guilds.js` mintMemberOf now reads it once: the member row (its rowid, guild, rank and when it joined) and its guild's
+(id, tag and heraldry, through a `LEFT JOIN`). Each of the three takes it as `member` and keeps its own law over it:
+- the badge needs the guild's row;
+- the seat badge reads the guild's holds and the member's rank;
+- the ribbon asks the Season's ribbon of the member's guild, earned no earlier than the member joined - the old join's
+  own `m.joined_at <= r.at` - in the guild's colours as they are now.
+
+Asked without `member`, each reads as it always has, so each law still has one home.
+
+A realm character's mint with the seats open:
+
+| | before | after |
+|---|---|---|
+| a character in no guild, where a Season stands | 8 | 6 |
+| a character in no guild, with no Season | 8 | 7 |
+| a member | 9 | 8 |
+
+**The writes, each left with its reason:**
+- **The session's touch.** Its second statement writes `players.last_seen`, which nothing reads. Its own comment records
+  the decision to keep it - a column that silently stops being maintained is worse than one that costs a write, and
+  dropping it is a migration - and the column is NOT NULL in every insert and fixture. It is about 2% of writes, so it
+  stays.
+- **The checkpoint's four writes.** They are one batch, one transaction, carrying the Integrity arc's verdict and its
+  guards (a rev, `mustChange`). Folding them would rewrite the judge's own steps.
+- **Renown's report every minute.** Its answer draws the page's own bar, so its pace is the player's to notice, and a
+  slower report is a gameplay change.
 - **`TOKEN_REUSE_MS`**: as the plan says. A room would hear a level or a guild up to four minutes stale.
+
+**Pins.** `test/scale4f_guild.test.js` (2):
+- the three asked with the one read held to each reading for itself, over twelve membership states and every Season;
+  the states are none, a member, the guildmaster with a palace and a crown seat, a ribbon earned while a member, before
+  it joined and the instant it joined, another Season's, two Seasons', no heraldry, heraldry that is no JSON, and a
+  member whose guild is gone (D1 refuses to leave one; the read is held to it all the same);
+- the mint reading the character's membership once, its tag signed.
+
+`tools/mutants/scale4f_guild.json`: 7 mutants, 7 dead. The banner's own law made one survive its first run: a test
+banner the law refused read as the plain ribbon either way. The pin now flies a lawful one.
 
 **Pins.**
 - `test/scale4f.test.js` (5):
