@@ -32,6 +32,31 @@ The costliest WebGL call the frame made was `bindVertexArray`: 1.48 us each on t
 more than the 992 `drawElements` it served (0.36 ms). Nearly one a draw, because every billboard batch was born with a
 vertex array of its own.
 
+## Measured after (the real game, the same probe)
+
+Knightstale by night (`frameProbe.mjs night`, 40 frames a window, `INSTR=shadow`), the base the PERF-CROWD head above and
+the after this branch's head with PERF-ARENA, its hardening, PERF-ALLOC1 and PERF-ALLOC2 (and main's #749 and #746
+merged in between - their own code is in the after's totals). Milliseconds of this container's CPU a frame, by sample
+count.
+
+| | before | after |
+|---|---|---|
+| `bindVertexArray` a frame | 905 | 508 (-44%) |
+| WebGL calls a frame (draws: 952 both) | 6,986 | 6,587 |
+| `bindVertexArray`'s own time | 1.13 | 0.46 |
+| the world host's frame (its JavaScript) | 25.7 | 22.1 |
+| - the shadow pass (`shadowPass.render`) | 5.2 | 4.0 |
+| - the billboards (`drawBillboards`; `drawOne` 1.69 -> 1.14) | 2.8 | 2.4 |
+| allocated a frame | 1.42 MB | 1.17 MB |
+| - `lookAt` (the lanterns' faces) | 47 KB | 0 |
+| - `_candidateQuads` | 153 KB | 45 KB |
+
+The boot was the same (443 s and 439 s to ready). The base's window also held a major collection (62 ms a frame of
+garbage collection against the after's 2.7) - the major collections come with the old space's growth, which the
+allocation feeds but does not decide alone, so that gap is not claimed for this branch. The 508 binds left are the
+meshes' (every model archetype its own vertex array) and the terrain's (a pixel's own): a mesh arena would be the next
+lever, its own slice.
+
 ## PERF-ARENA — the still flats share their buffers
 
 `render/renderer.js` createBillboardBatch: a batch built STILL (every town flat, every wood, every lamp; not a gib or a
@@ -104,4 +129,6 @@ records re-aimed by content onto the moved expression (AUDIT637-B2b, PERF-SHADOW
   only the faces a mover is in; the rest is FLICKER-FIX's trade (Performance-Next.md "For Mac").
 - **The snow** (winter, which is where the game starts): the near pixels sorted every frame for the blanket's ring,
   with a stamp string a pixel; small, and its own slice.
+- **The meshes' vertex arrays**: 508 binds a frame remain, the models' and the terrain's - a mesh arena (indices offset
+  by their base corner at upload; WebGL2 draws no base vertex) is the next lever.
 - **The online crowd**: the next measure is `tools/onlineFrameProbe.mjs` at 20 and 60 peers.
