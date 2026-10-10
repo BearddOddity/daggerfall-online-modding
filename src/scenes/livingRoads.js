@@ -608,6 +608,12 @@ export function createLivingRoads(deps) {
     batches: () => (deps.teams ? [...deps.sprites.batches(), ...deps.teams.batches()] : deps.sprites.batches()),
     /** LW10: the teams' wagons, in the host's world mesh pass. @param {any} r */
     drawTeams: (r) => deps.teams?.draw(r) ?? 0,
+    /** MWNPC10c: their Morrowind bodies, before the exterior's billboard pass. */
+    drawBodies(canvas, proj, view, eye, dt) { deps.sprites.drawBodies?.(canvas, proj, view, eye, dt); },
+    /** MWNPC10c: the floating origin moved - the bodies' feet follow it. @param {number[]} o */
+    offsetBodies(o) { deps.sprites.offsetBodies?.(o); },
+    /** MWNPC13: the veiled ones (a ghost besetting a party), after the opaque world. */
+    drawVeiledBodies() { deps.sprites.drawVeiledBodies?.(); },
     /** The parties read about the player (the probes; the pins). */
     parties: () => parties,
     /** The person's town: the roads note a word in the resident's regard ... */

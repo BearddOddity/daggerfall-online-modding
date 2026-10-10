@@ -242,6 +242,10 @@ D3 (the road fixer's): see R.
 - Main merged in after the lanes (#745 INT11-INT15, #748 WAGONS3 + MERCHANT-YARDS): LW15's migration renumbered
   `0106_patrons` and the account's version `acct106`, past INT11-INT14's `0105_body` and acct105 (every version pin moved
   with a note); `review.js` keeps both its routes; C4's pin reads the General Store MERCHANT-YARDS left (PIN MOVED).
+- Main merged in again before the merge of the pull request (#750 MW-NPC, #755 SCALE4d + SCALE5a): SCALE4d took
+  `acct106` with no migration, so LW15's version moved on to `acct107` (migration `0106_patrons` unchanged; every
+  version pin and the two mutant records that name it moved with a note); the roads layer hands the host both the
+  teams (LW10) and MW-NPC's bodies; the modal frame keeps the carried word (H7) beside MW-NPC's street teardown.
 - Each lane's branch merged onto the head in turn, its records written as it landed; two moved pins only the whole
   suite could see were moved after the merges, each marked where it stands: `test/fixtures/time1_census.json` (C15's
   line in `livingRoadCaught`, named by its text) and `tv7_bands` TV7 host (the modal arm's window, 7000 to 7600: H7's

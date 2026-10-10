@@ -1004,7 +1004,7 @@ errand in `dayPlan.js`.
 - `scenes/worldModes.js`, `scenes/dungeonContext.js`, `scenes/exterior.js`: none.
 - The service: migration `0106_patrons.sql` (`market_listings.patron_hour`, `market_patron_sales` and its indexes,
   `realm_faucets`; 0105 on the branch, renumbered past INT11-INT14's `0105_body` at the merge; the account's version
-  `acct106` - acct105 on the branch - and `accountworker`'s table list and every `ACCOUNT_VERSION` pin
+  `acct107` - acct105, then acct106, on the branch, past INT11-INT14's acct105 and SCALE4d's acct106 at the merges - and `accountworker`'s table list and every `ACCOUNT_VERSION` pin
   moved with it - AUDIT LW-II-2 P15), `market.js` (the reckoning, the reads, the prune), `homes.js` (a door opened marks its trader),
   `cron.js` (HOUR_JOBS `patrons`, behind the market's switches), `budget.js` (FAUCET_KINDS,
   `faucetStatement`), `.github/workflows/account-deploy.yml` (the law's file among the paths that deploy the Worker,
