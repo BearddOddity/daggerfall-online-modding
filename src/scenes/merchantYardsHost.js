@@ -53,7 +53,7 @@ import { quatAngleAxis } from '../world/quat.js';
 import { calculateHorseOrientation, horseViewFor, HORSE_BOX_CENTER, HORSE_BOX_SIZE } from '../systems/horseCartLaw.js';
 import { HORSE_ARCHIVE, horseStillRecord, HORSE_BILLBOARD_WIDTH, HORSE_BILLBOARD_HEIGHT, boxTriangles } from './horseCartPool.js';
 import { localAabb, transformedAabb } from '../render/frustum.js';   // PERF-YARD (AUDIT): a yard's box for the street's view test
-import { DECOR_DRAW, DECOR_SHADOW, DECOR_SKIP } from './decorRoom.js';
+import { DECOR_DRAW, DECOR_SHADOW, DECOR_SKIP, castOnly } from './decorRoom.js';   // PERF-WAGON: the cast-only renderer the wagons' pool shares
 
 /** The ground under a yard is read again every this many frames (a pixel built finer moves it). */
 export const YARD_GROUND_EVERY = 30;
@@ -159,13 +159,6 @@ export function createMerchantYards({
     for (const w of y.wagons) if (w.box) for (let i = 0; i < 3; i++) { l[i] = Math.min(l[i], w.box[i]); l[i + 3] = Math.max(l[i + 3], w.box[i + 3]); }
     return transformedAabb(l, y.matrix);
   }
-  /** PERF-YARD (AUDIT 15): `r` as the shadow maps alone take it - every draw a caster's record, none on screen (a draw
-   *  that casts nothing casts nothing here either). */
-  let castOf = null, cast = null;
-  const castOnly = (r) => {
-    if (castOf !== r) { castOf = r; cast = { drawMesh: (mesh, m, remap, o) => { if (!o?.noShadow) r.recordShadowMesh?.(mesh, m, remap); } }; }
-    return cast;
-  };
   function meshOf(kind) {
     if (meshes.has(kind)) return meshes.get(kind);
     if (!renderer?.createMesh) return null;

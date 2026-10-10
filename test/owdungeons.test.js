@@ -303,7 +303,7 @@ test('OW-DUNGEONS the host\'s draw: under the view alone, the set kept in step (
   assert.ok(!map.has('dng:built'));
   assert.equal(s.loads.length, 2, 'the one still there not loaded again');
   // drawn from the exterior frame under the view alone, beside the grown wagon
-  assert.match(WORLD, /hcc\.draw\(renderer, null, tvf \? \{ selfGrow: tvf\.grow, grow: peerGrow \} : undefined\);[^\n]*\n\s*if \(tvf\) drawTvDungeonModels\(travelView\?\.eye \?\? null, tvf\.fullyUp\);/);
+  assert.match(WORLD, /hcc\.draw\(renderer, null, tvf \? \{ selfGrow: tvf\.grow, grow: peerGrow \} : undefined, yardCull\);[^\n]*\n\s*if \(tvf\) drawTvDungeonModels\(travelView\?\.eye \?\? null, tvf\.fullyUp\);/);
   assert.match(WORLD, /pipeline\.keepPlaces\('owdungeon', TV_DUNGEON_MODELS_MAX\);/);
   assert.match(WORLD, /tvDngModels = \{ at: null, dg: -1, n: -1, list: \[\] \}; for \(const e of _tvDngModel\.values\(\)\) e\.hold\.release\(\); _tvDngModel\.clear\(\);   \/\/ OW-DUNGEONS: nor their models, once the view is cut/, 'a load forgets them');
 });
