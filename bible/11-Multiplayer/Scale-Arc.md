@@ -1033,7 +1033,9 @@ A realm character's mint with the seats open:
 - the mint reading the character's membership once, its tag signed.
 
 `tools/mutants/scale4f_guild.json`: 7 mutants, 7 dead. The banner's own law made one survive its first run: a test
-banner the law refused read as the plain ribbon either way. The pin now flies a lawful one.
+banner the law refused read as the plain ribbon either way. The pin now flies a lawful one. Re-aimed by content, all dead: AUDIT MERGE-PLUS
+A6, GUILD1c-mint-guild-off-the-body and -every-character-the-accounts-guild (now aimed at mintMemberOf's read), and
+SEASON1-idx-badge-season.
 
 **Pins.**
 - `test/scale4f.test.js` (5):
