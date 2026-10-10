@@ -49,6 +49,7 @@ on:
       - "server-account/**"
       - "src/net/identityToken.js"
       - "src/net/staffTeleport.js"
+      - "src/net/relayCfg.js"
       - "src/net/privateInterior.js"
       - "src/net/boatIdentity.js"
       - "src/net/handleShape.js"

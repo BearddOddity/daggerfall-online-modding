@@ -218,11 +218,12 @@
   {
     "name": "DISCORD-GATES-the-herald-ignores-its-door",
     "file": "server/src/index.js",
-    "old": "this._herald = hook ? { hook, role: heraldRole(this.env?.GATE_DISCORD_ROLE), serpentRole: serpentHeraldRole(this.env?.SERPENT_DISCORD_ROLE, this.env?.GATE_DISCORD_ROLE), sdRole: serpentHeraldRole(this.env?.SD_DISCORD_ROLE, this.env?.GATE_DISCORD_ROLE) } : null;",
-    "new": "this._herald = { hook: String(this.env?.GATE_DISCORD_WEBHOOK), role: heraldRole(this.env?.GATE_DISCORD_ROLE), serpentRole: serpentHeraldRole(this.env?.SERPENT_DISCORD_ROLE, this.env?.GATE_DISCORD_ROLE), sdRole: serpentHeraldRole(this.env?.SD_DISCORD_ROLE, this.env?.GATE_DISCORD_ROLE) };",
+    "old": "this._herald = hook ? { hook, role: heraldRole(role('gateRole')), serpentRole: serpentHeraldRole(role('serpentRole'), role('gateRole')), sdRole: serpentHeraldRole(role('sdRole'), role('gateRole')) } : null;",
+    "new": "this._herald = { hook: String(this.env?.GATE_DISCORD_WEBHOOK), role: heraldRole(role('gateRole')), serpentRole: serpentHeraldRole(role('serpentRole'), role('gateRole')), sdRole: serpentHeraldRole(role('sdRole'), role('gateRole')) };",
     "tests": [
       "test/discordgates.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): the roles through relayCfgValue."
   },
   {
     "name": "DISCORD-GATES-a-refusal-marked-posted",

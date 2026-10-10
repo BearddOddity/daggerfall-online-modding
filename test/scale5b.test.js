@@ -11,6 +11,8 @@ import { readFileSync } from 'node:fs';
 import { fakeRoom } from './fakeRoom.mjs';
 import { fakeSocketClass } from './fakeSocket.mjs';
 import { OnlineSession } from '../src/net/online.js';
+import { SOCKETS_MAX } from '../src/net/wire.js';
+import { RoomMetrics } from '../server/src/relayScale.js';
 import { validPose, slimPose, wire2Batch, POSE_DEFAULTS, POSE_BATCH_MS, ROSTER_BATCH_MS, WIRE2_BATCH_MAX, PIXEL_UNITS, POSE_HZ_MAX, RELAY_VERSION, chatRegionRoom, CHAT_HELLO_HZ_MAX } from '../src/net/wire.js';
 import * as relay from '../server/src/relay.js';
 
@@ -445,9 +447,11 @@ test('SCALE5b a beat\'s frames: a socket of the second wire hears a boss\'s beat
     assert.deepEqual(old.sent, [{ t: 'gate', k: 'hp', v: 3 }, { t: 'gate', k: 'move', x: 1 }, { t: 'gate', k: 'say', s: 'ha' }]);
     for (const ws of [w2, w2b]) assert.deepEqual(ws.sent, [{ t: 'fb', f: old.sent }], 'one frame, now');
     for (const ws of [w2, old]) ws.sent.length = 0;
+    const batches = R.room._metrics.c.batches;
     R.room._siegeFan([{ k: 'hp', v: 2 }]);
     assert.deepEqual(w2.sent, [{ t: 'siege', k: 'hp', v: 2 }]);
     assert.deepEqual(old.sent, w2.sent);
+    assert.equal(R.room._metrics.c.batches, batches, 'one frame is no batch');
   });
 });
 
@@ -498,9 +502,270 @@ test('SCALE5b the foes fan, a method of its own with the budget asked before its
         (bytes < per ? low : bytes < want ? mid : []).push(walked - before);
       }
       assert.ok(dropped > 10 && passed > 10 && between > 10, `both answers, and the band between one listener and all (${dropped} dropped, ${passed} passed, ${between} between)`);
-      assert.ok(R.room._metrics.c.foesDropped >= dropped, 'each counted');
+      assert.equal(R.room._metrics.c.drops, dropped, 'each drop counted');
+      assert.equal(R.room._metrics.c.foes, 60, 'and each frame');
       assert.ok(low.length > 5 && mid.length > 5);
       assert.ok(Math.max(...low) < Math.min(...mid), `a frame the room cannot afford for one listener walks nobody - the index asked ${JSON.stringify([...new Set(low)])} times for it, ${JSON.stringify([...new Set(mid)])} for one that walked`);
     });
   } finally { Date.now = realNow; }
+});
+
+test('SCALE5b the metrics point: a socket refused \'room full\' is counted - the door counted nothing - and the window says the most sockets it held, the frames its budgets dropped, its foes frames, blows and lines, and the second wire\'s items and the batches that carried them, in doubles 13 to 20 (mutants: the full room uncounted; the peak the window\'s last count; a batch uncounted; an item uncounted)', async () => {
+  const hadPair = globalThis.WebSocketPair;
+  globalThis.WebSocketPair = class { constructor() { this[0] = {}; this[1] = { serializeAttachment() {} }; } };
+  const realNow = Date.now; const now = realNow(); Date.now = () => now;
+  try {
+    await quiet(async () => {
+      const points = [];
+      const busy = fakeRoom('town:m8');
+      busy.room.env.METRICS = { writeDataPoint: (p) => points.push(p) };
+      for (let i = 0; i < SOCKETS_MAX; i++) { const ws = busy.connect(); ws.att.at = now - 1; }
+      const upgrade = (p) => new Request(`https://relay.test${p}`, { headers: { Upgrade: 'websocket' } });
+      assert.equal((await busy.room.fetch(upgrade('/room/town:m8'))).status, 503);
+      assert.equal((await busy.room.fetch(upgrade('/room/town:m8'))).status, 503);
+      assert.equal(busy.room._metrics.c.full, 2, 'each refusal counted');
+      for (const ws of busy.sockets.slice(0, 200)) busy.sockets.splice(busy.sockets.indexOf(ws), 1);
+      busy.room._idx = null;   // the runtime let them go; the index walks again
+      busy.room._metricsTick(true);
+      assert.equal(points.length, 1);
+      const d = points[0].doubles;
+      assert.equal(d.length, 20);
+      assert.equal(d[12], 2, 'double13: refused room full');
+      assert.equal(d[14], SOCKETS_MAX, 'double15: the most it held in the window, not the count at its end');
+    });
+  } finally { globalThis.WebSocketPair = hadPair; Date.now = realNow; }
+  // the second wire's work, a cell's frames by type
+  await cell(async ({ R, w2, w2b, old, said, speak, rnd }) => {
+    const c0 = { ...R.room._metrics.c };
+    for (const ws of said) await speak(ws, drawn(rnd));
+    R.room._flushOwed();
+    const c = R.room._metrics.c;
+    assert.equal(c.owed - c0.owed, 2 * said.length, 'every pose owed the two listeners of the second wire');
+    assert.equal(c.batches - c0.batches, 2, 'and one batch each');
+    R.room._gateFan([{ k: 'a' }, { k: 'b' }]);
+    assert.equal(c.batches - c0.batches, 4, 'a beat a batch to each of the second wire');
+    assert.equal(c.owed - c0.owed, 2 * said.length + 4);
+    await R.chat(old, 'hail');
+    assert.equal(c.chats - c0.chats, 1);
+    await R.raw(said[0], JSON.stringify({ t: 'hit', data: { to: 'spk-0001', i: 0, d: 3 } }));
+    assert.equal(c.hits - c0.hits, 1);
+    void w2; void w2b;
+  });
+  // the law alone: the point's last eight, in their order
+  const m = new RoomMetrics(0);
+  Object.assign(m.c, { frames: 1, full: 3, drops: 4, peak: 9, foes: 5, hits: 6, chats: 7, owed: 8, batches: 2 });
+  const got = [];
+  m.flush({ writeDataPoint: (p) => got.push(p) }, 'world', 7, 'w', 1, true);
+  assert.deepEqual(got[0].doubles.slice(12), [3, 4, 9, 5, 6, 7, 8, 2]);
+  const n = new RoomMetrics(0);
+  n.c.full = 1;
+  assert.equal(n.flush({ writeDataPoint: (p) => got.push(p) }, 'world', 0, 'w', 1, true), true, 'a window that only refused a full room still says so');
+  assert.equal(got[1].doubles[14], 0);
+  const k = new RoomMetrics(0);
+  k.c.frames = 1; k.c.peak = 3;
+  k.flush({ writeDataPoint: (p) => got.push(p) }, 'world', 11, 'w', 1, true);
+  assert.equal(got[2].doubles[14], 11, 'the peak is never under the sockets the room holds at the point');
+});
+
+// ═══ PART FOUR: THE RELAY'S SETTINGS, AT RUN TIME (net/relayCfg.js) ═════════════════════════════════════════════════
+
+test('SCALE5b relayCfg: a setting is one of four names and a string of at most RELAY_CFG_VALUE_MAX, or null (handed back to the var); the one in force is the hub\'s, else the var; a developer alone may set one; /relay\'s words (mutants: a name not a setting\'s; the bound unasked; null refused; the var over the hub\'s; a Dungeon Master let in)', async () => {
+  const C = await import('../src/net/relayCfg.js');
+  assert.deepEqual(C.RELAY_CFG_KEYS, ['bossBody', 'gateRole', 'serpentRole', 'sdRole']);
+  assert.deepEqual(Object.values(C.RELAY_CFG_VARS), ['BOSS_BODY', 'GATE_DISCORD_ROLE', 'SERPENT_DISCORD_ROLE', 'SD_DISCORD_ROLE']);
+  assert.deepEqual(C.validRelayCfgIn({ k: 'gateRole', v: '1555589839825670258' }), { k: 'gateRole', v: '1555589839825670258' });
+  assert.deepEqual(C.validRelayCfgIn({ k: 'bossBody', v: null }), { k: 'bossBody', v: null });
+  assert.deepEqual(C.validRelayCfgIn({ k: 'bossBody', v: 'x'.repeat(C.RELAY_CFG_VALUE_MAX) })?.v.length, C.RELAY_CFG_VALUE_MAX);
+  for (const bad of [null, {}, { k: 'BOSS_BODY', v: '' }, { k: 'toString', v: '' }, { k: 'bossBody' }, { k: 'bossBody', v: 5 }, { k: 'bossBody', v: 'x'.repeat(C.RELAY_CFG_VALUE_MAX + 1) }]) assert.equal(C.validRelayCfgIn(bad), null, JSON.stringify(bad)?.slice(0, 60));
+  assert.deepEqual(C.validRelayCfgOut({ k: 'sdRole', v: '' }), { k: 'sdRole', v: '' });
+  assert.deepEqual(C.validRelayCfgOut({ k: 'sdRole', error: 'no' }), { k: 'sdRole', error: 'no' });
+  assert.equal(C.validRelayCfgOut({ k: 'sdRole' }), null);
+  const env = { BOSS_BODY: '{"enforce":true}', GATE_DISCORD_ROLE: '1' };
+  assert.equal(C.relayCfgValue({}, env, 'bossBody'), '{"enforce":true}', 'the var while the hub holds none');
+  assert.equal(C.relayCfgValue({ bossBody: '' }, env, 'bossBody'), '', 'the hub\'s - an empty one too - over the var');
+  assert.equal(C.relayCfgValue(null, env, 'gateRole'), '1');
+  assert.equal(C.relayCfgValue([], {}, 'sdRole'), undefined);
+  assert.equal(C.mayRelayCfg(['dev']), true);
+  for (const g of [['dm'], ['shadowfang'], ['mod'], [], null, 'dev']) assert.equal(C.mayRelayCfg(g), false, String(g));
+  assert.equal(C.relayCfgSupported('world190'), false); assert.equal(C.relayCfgSupported('world191'), true); assert.equal(C.relayCfgSupported('x'), false);
+  const { parseStaffCommand, STAFF_HELP_LINES } = await import('../src/net/staffCommands.js');
+  assert.deepEqual(parseStaffCommand('/relay'), { cmd: 'relay' });
+  assert.deepEqual(parseStaffCommand('/relay bossbody {"enforce": true}'), { cmd: 'relay', k: 'bossBody', v: '{"enforce": true}' });
+  assert.deepEqual(parseStaffCommand('/relay gateRole -'), { cmd: 'relay', k: 'gateRole', v: null });
+  assert.ok('error' in parseStaffCommand('/relay gateRole'));
+  assert.ok('error' in parseStaffCommand('/relay nothing 5'));
+  assert.ok(STAFF_HELP_LINES.some((l) => l.startsWith('/relay')));
+});
+
+test('SCALE5b the hub keeps a developer\'s setting - in its storage, in force for its herald at once - answers what is now in force, and refuses anyone else in words; outside the hub the frame is junk; a boss\'s room reads the hub\'s at its beat, at most every RELAY_CFG_TTL_MS, and its count runs by it (mutants: the glyph unasked; the setting unkept; the herald kept; the hand-back ignored; the room never asking; asking every beat)', async () => {
+  const C = await import('../src/net/relayCfg.js');
+  const realNow = Date.now;
+  let clock = 1_800_000_000_000;
+  Date.now = () => clock;
+  try {
+    await quiet(async () => {
+      const W = (await import('./fakeRoom.mjs')).fakeRooms({ now: () => clock });
+      const H = W.room('chat:world');
+      H.env.GATE_DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/123456789/abcDEF_-x';
+      H.env.GATE_DISCORD_ROLE = '111111111111111111';
+      H.env.BOSS_BODY = '';
+      const join = async (id, glyphs) => { const ws = H.connect(); clock += 300; await H.hello(ws, id, null, glyphs ? { glyphs } : {}); assert.equal(ws.closed, null); ws.sent.length = 0; return ws; };
+      const dev = await join('dev-0001', ['dev']);
+      const dm = await join('dm-0001', ['dm']);
+      assert.equal(H.room._heraldOf().role, '111111111111111111', 'the var, while the hub holds nothing');
+      const say = async (ws, k, v) => { clock += 5000; await H.raw(ws, JSON.stringify({ t: 'cfg', k, v })); return ws.sent.filter((f) => f.t === 'cfg').at(-1); };
+      assert.deepEqual(await say(dm, 'gateRole', '222222222222222222'), { t: 'cfg', k: 'gateRole', error: 'only a developer may change the relay\'s settings' });
+      assert.equal(dm.closed, null, 'and nobody struck');
+      assert.deepEqual(await say(dev, 'gateRole', '222222222222222222'), { t: 'cfg', k: 'gateRole', v: '222222222222222222' });
+      assert.deepEqual(await H.state.storage.get('relaycfg'), { gateRole: '222222222222222222' }, 'kept in the hub\'s storage');
+      assert.equal(H.room._heraldOf().role, '222222222222222222', 'the herald\'s at once');
+      assert.equal(H.room._heraldOf().serpentRole, '222222222222222222', 'and the roles that fall back to it');
+      H.wake();
+      assert.equal(H.room._heraldOf().role, '111111111111111111', 'a woken hub, its settings not yet read: the var');
+      await H.room._relayCfgOf();
+      assert.equal(H.room._heraldOf().role, '222222222222222222', 'a woken hub reads it back - and its herald with it');
+      const body = JSON.stringify({ enforce: true, body: { depth: 0.5, perS: 0.02 } });
+      const dev2 = await join('dev-0002', ['dev']);
+      assert.deepEqual(await say(dev2, 'bossBody', body), { t: 'cfg', k: 'bossBody', v: body });
+      // a boss's room: the hub's line at its beat, asked again only past RELAY_CFG_TTL_MS
+      const G = W.room('world:9,9');
+      G.env.BOSS_BODY = '';
+      assert.equal(G.room._bodyLine().enforce, false, 'the var\'s line before it asks');
+      let asked = 0;
+      const hub = W.made.get('chat:world');
+      const fetch0 = hub.room.fetch.bind(hub.room);
+      hub.room.fetch = (req) => { if (new URL(req.url).pathname === C.RELAY_INTERNAL_CFG) asked++; return fetch0(req); };
+      await G.room._relayCfgFresh(clock);
+      assert.equal(asked, 1);
+      assert.equal(G.room._bodyLine().enforce, true, 'the hub\'s line, from its beat on');
+      assert.equal(G.room._bodyLine().body.depth, 0.5);
+      await G.room._relayCfgFresh(clock + C.RELAY_CFG_TTL_MS - 1);
+      assert.equal(asked, 1, 'not again inside RELAY_CFG_TTL_MS');
+      assert.deepEqual(await say(dev2, 'bossBody', null), { t: 'cfg', k: 'bossBody', v: '' }, 'handed back to the var - which is empty');
+      await G.room._relayCfgFresh(clock + C.RELAY_CFG_TTL_MS);
+      assert.equal(asked, 2);
+      assert.equal(G.room._bodyLine().enforce, false, 'the var\'s again');
+      // outside the hub the frame is junk
+      const ws = G.connect(); clock += 300; await G.hello(ws, 'dev-0003', null, { glyphs: ['dev'] });
+      await G.raw(ws, JSON.stringify({ t: 'cfg', k: 'gateRole', v: '1' }));
+      assert.equal(G.room._meterOf(ws).junk, 1);
+      assert.equal(await G.state.storage.get('relaycfg'), undefined);
+      // every boss's beat asks before it judges: the gate's court, an Abyss realm's Remnant, a serpent's cell
+      const relay = src('server/src/index.js');
+      for (const tick of ['async _gateTick() {', 'async _sdFightTick() {', 'async _serpentTick() {']) {
+        const body = relay.slice(relay.indexOf(tick), relay.indexOf('\n  }\n', relay.indexOf(tick)));
+        assert.match(body, /const now = Date\.now\(\);\n\s+await this\._relayCfgFresh\(now\);/, `${tick} asks the hub at its beat`);
+      }
+    });
+  } finally { Date.now = realNow; }
+});
+
+test('SCALE5b the client: a session sends a relay setting only on the hub\'s link to a relay that takes one, reads the hub\'s answer from the hub alone; the world host runs /relay for a developer alone and hands the answer to the tab that asked (mutants: the version unasked; the answer from any room; the developer unasked)', async () => {
+  await quiet(() => {
+    const { FakeWS, sockets } = fakeSocketClass();
+    const s = new OnlineSession({ url: 'wss://relay.test', name: 'Mac', id: 'mac-0001', secret: 'secret-of-mac-0001', WebSocketImpl: FakeWS, now: () => 1_000_000, rand: () => 0, presence: false });
+    const heard = [];
+    s.onRelayCfg = (m) => heard.push(m);
+    s.join('chat:world');
+    sockets[0].open();
+    sockets[0].receive({ t: 'welcome', id: 'mac-0001', peers: [], n: 1, v: 'world190', now: 1_000_000 });
+    assert.equal(s.sendRelayCfg({ k: 'gateRole', v: '1' }), false, 'a relay before it takes none');
+    sockets[0].receive({ t: 'welcome', id: 'mac-0001', peers: [], n: 1, v: 'world191', now: 1_000_000 });
+    assert.equal(s.sendRelayCfg({ k: 'gateRole', v: '1' }), true);
+    assert.equal(s.sendRelayCfg({ k: 'nope', v: '1' }), false);
+    assert.deepEqual(JSON.parse(sockets[0].sent.at(-1)), { t: 'cfg', k: 'gateRole', v: '1' });
+    sockets[0].receive({ t: 'cfg', k: 'gateRole', v: '1' });
+    assert.deepEqual(heard, [{ k: 'gateRole', v: '1' }]);
+  });
+  const world = src('src/scenes/world.js');
+  assert.match(world, /if \(c\.cmd === 'relay'\) \{[\s\S]{0,300}if \(!mayRelayCfg\(staffGlyphs\(\)\)\) \{ say\('Only a developer may change the relay\\'s settings\.'\); return; \}/);
+  assert.match(world, /relayCfgTab = tabId;\s*if \(!relayCfgLink\?\.sendRelayCfg\(\{ k: c\.k, v: c\.v \}\)\)/);
+  assert.match(world, /if \(tab\.room === SOCIAL_ROOM\) \{\s*relayCfgLink = link;[^\n]*\n\s*link\.onRelayCfg = \(m\) => chatLog\.push\(relayCfgTab \?\? tab\.id,/);
+});
+
+// ═══ PART FIVE: A HALO HEARS MY POSE AT A WALKING RATE ═════════════════════════════════════════════════════════════
+
+test('SCALE5b poseSaysMore: a pose says more than the last a halo heard when any field but its place, its turn and its send time differs - one added or taken away too (mutants: the send time read; the turn read; a field taken away unread)', async () => {
+  const { poseSaysMore, HALO_POSE_MS, haloThinSupported } = await import('../src/net/wire.js');
+  const a = { x: 1, y: 2, z: 3, yaw: 0.1, pitch: 0, mv: 1, an: 4, ts: 10 };
+  assert.equal(poseSaysMore(null, a), true);
+  assert.equal(poseSaysMore(a, { ...a, x: 9, y: 9, z: 9, yaw: 2, pitch: 1, ts: 99 }), false, 'moved, turned, later - nothing more');
+  for (const k of ['mv', 'an']) assert.equal(poseSaysMore(a, { ...a, [k]: 0 }), true, `${k} moved`);
+  assert.equal(poseSaysMore(a, { ...a, dd: 1 }), true, 'a field added - a death');
+  const { an, ...noSwing } = a; void an;
+  assert.equal(poseSaysMore(a, noSwing), true, 'a field taken away');
+  assert.equal(HALO_POSE_MS, 250);
+  assert.equal(haloThinSupported('world190'), false); assert.equal(haloThinSupported('world191'), true);
+});
+
+test('SCALE5b the relay\'s referee word: a cell that judges the poses reaching it - a duel, the Wild zone, a serpent\'s fight - says so in its welcome (`rf`), and when that moves says it to the second wire\'s sockets, once (mutants: the welcome\'s word unsaid; the change unsaid; said every pose; said to the first wire)', async () => {
+  const { newWildRef } = await import('../src/net/wildRef.js');
+  await cell(async ({ R, w2, w2b, old, said, speak, rnd }) => {
+    const rf = (ws) => ws.sent.filter((f) => f.t === 'rf');
+    await speak(said[0], drawn(rnd));
+    assert.equal(rf(w2).length, 0, 'nothing to say while nothing judges');
+    R.room._wildRef = newWildRef();
+    R.room._wildRef.fighters.set('acct-nobody', { id: 'nobody' });
+    await speak(said[0], drawn(rnd));
+    await speak(said[1], drawn(rnd));
+    for (const ws of [w2, w2b]) assert.deepEqual(rf(ws), [{ t: 'rf', on: 1 }], 'said once, as it began');
+    assert.deepEqual(rf(old), [], 'never to the first wire');
+    const ws = R.connect(); await R.hello(ws, 'late-0001', drawn(rnd), { w2: 1 });
+    assert.equal(ws.sent.find((f) => f.t === 'welcome').rf, 1, 'a newcomer\'s welcome says it');
+    R.room._wildRef.fighters.clear();
+    R.room._serpents = new Map([['s1', { players: {} }]]);
+    await speak(said[2], drawn(rnd));
+    assert.equal(rf(w2).length, 1, 'a serpent\'s fight judges as the zone did - nothing moved');
+    R.room._serpents = new Map();
+    await speak(said[2], drawn(rnd));
+    assert.deepEqual(rf(w2).at(-1), { t: 'rf', on: 0 }, 'and said as it ended');
+    const ws2 = R.connect(); await R.hello(ws2, 'late-0002', drawn(rnd), { w2: 1 });
+    assert.equal(ws2.sent.find((f) => f.t === 'welcome').rf, undefined);
+  });
+});
+
+test('SCALE5b the session thins what a halo hears: a pose that only moved goes to a halo at most every HALO_POSE_MS while its own cell hears every one; a pose that says more goes at once; a halo whose cell judges poses, or whose relay cannot say, hears every one (mutants: the halo never thinned; the referee word unread; an older relay thinned; a swing held)', async () => {
+  const { HALO_POSE_MS } = await import('../src/net/wire.js');
+  await quiet(() => {
+    const run = ({ v = 'world191', rf = false, swingEvery = 0, word = null } = {}) => {
+      const { FakeWS, sockets } = fakeSocketClass();
+      let t = 1_000_000;
+      const s = new OnlineSession({ url: 'wss://relay.test', name: 'Mac', id: 'mac-0001', secret: 'secret-of-mac-0001', WebSocketImpl: FakeWS, now: () => t, rand: () => 0 });
+      const at = (dx) => ({ x: (BX + 0.5) * PIXEL_UNITS + dx, y: 0, z: (499 - BY + 0.5) * PIXEL_UNITS, yaw: 0, pitch: 0, mv: 1, an: 0 });
+      s.join(KEY, at(0));
+      s.setHalo([`world:${Math.floor(BX / 16) + 1},${Math.floor(BY / 16)}`]);
+      for (const ws of sockets) ws.open();
+      const [cellWs, haloWs] = sockets;
+      cellWs.receive({ t: 'welcome', id: 'mac-0001', peers: [], v, now: t });
+      haloWs.receive({ t: 'welcome', id: 'mac-0001', peers: [], v, now: t, ...(rf ? { rf: 1 } : {}) });
+      const sentPoses = (ws) => ws.sent.filter((x) => x.startsWith('{"t":"pose"')).length;
+      const c0 = sentPoses(cellWs), h0 = sentPoses(haloWs);
+      let swings = 0;
+      for (let i = 1; i <= 40; i++) {
+        if (word && word[i] !== undefined) haloWs.receive({ t: 'rf', on: word[i] });   // the cell's later word
+        t += 110;
+        const p = at(i * 300);
+        if (swingEvery && i % swingEvery === 0) p.an = ++swings;
+        else p.an = swings;
+        s.sendPose(p);
+      }
+      return { cell: sentPoses(cellWs) - c0, halo: sentPoses(haloWs) - h0, heard: haloWs.sent.filter((x) => x.startsWith('{"t":"pose"')).map((x) => JSON.parse(x).p) };
+    };
+    const thin = run();
+    assert.equal(thin.cell, 40, 'its own cell hears every pose');
+    const every = Math.ceil(HALO_POSE_MS / 110);   // a pose every 110 ms: the halo hears every third
+    assert.equal(thin.halo, Math.ceil(40 / every), `the halo one a HALO_POSE_MS (${thin.halo} of 40)`);
+    assert.equal(run({ rf: true }).halo, 40, 'a halo whose cell judges poses hears every one');
+    assert.equal(run({ v: 'world190' }).halo, 40, 'a relay that cannot say is never thinned');
+    const turned = run({ word: { 1: 1, 21: 0 } });
+    assert.equal(turned.heard.slice(0, 20).length, 20, 'a cell that says it judges from now hears every pose from now');
+    assert.equal(turned.halo, 20 + Math.floor(20 / every), 'and one a HALO_POSE_MS again once it says it no longer does - from the last it heard');
+    const swung = run({ swingEvery: 5 });
+    for (let n = 1; n <= 8; n++) {
+      const first = swung.heard.find((p) => p.an === n);
+      assert.ok(first, `swing ${n} heard by the halo`);
+      assert.equal(first.x, (BX + 0.5) * PIXEL_UNITS + 5 * n * 300, `swing ${n} heard in the pose that said it, not a later one`);
+    }
+    assert.ok(swung.halo < 40, 'and the poses between still thinned');
+  });
 });

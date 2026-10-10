@@ -181,6 +181,7 @@
 import { routeStaffTeleport } from './staffTeleport.js';
 import { privateInteriorOf, privateInteriorAdmits, caravanKeyOf } from '../../src/net/privateInterior.js';   // WAGONS2-VISIT: and a caravan's own room
 import { isStaff } from '../../src/net/staffCommands.js';
+import { RELAY_CFG_TTL_MS, RELAY_INTERNAL_CFG, mayRelayCfg, relayCfgValue } from '../../src/net/relayCfg.js';   // SCALE5b: the relay's settings, at run time
 import { verifyToken, verifyOrder, verifyStakeOrderAnyAge, importPublicKeyB64, MAX_TTL_S, ORDER_TTL_S, renownIssuable, deckDigest, remainsDigest } from '../../src/net/identityToken.js';   // MOD1: and the mute order, checked with the same key
 /** ACC1d/F8: the most spent signatures one room remembers. Every entry
  *  expires within MAX_TTL_S and the hello gate bounds how fast they can
@@ -579,6 +580,9 @@ export class Room {
     this._idxSeq = new WeakMap(); this._idxN = 0;   // SCALE5a: each socket's place in the index's own order (`_enter`) - a per-account set is read back in it
     this._idIdx = null;          // SCALE5b: peer id -> its sockets, kept as the account index is - a directed frame's target without a walk (`_idFirst`)
     this._hostMemo = undefined;  // SCALE5b: the room's host (`_hostOf`), kept until a socket's id or hello stamp moves - undefined: not known
+    this._relayCfg = undefined;  // SCALE5b: the relay's settings (net/relayCfg.js) - the hub's from its storage, any other room's as the hub last answered
+    this._relayCfgAt = -Infinity;   // SCALE5b: when a room not the hub last asked
+    this._rfSaid = false;        // SCALE5b: whether this cell last said it judges the poses that reach it (`_rfSay`)
     this._swept = false;         // SCALE5b: the drain's sweep ran and nothing has said hello since - the next empty room's hello need not sweep again
     this._subIdx = null;         // SCALE5a: verified account (`sub`) -> its hello'd sockets, kept as the account index is - ONE-SEAT's other tabs (`_otherTabsOf`) without a walk of every socket
     this._parties = new Bounded(PARTIES_MAX);   // SOC1: party id -> record, kept while the object is awake (a party pose reads its party once a second; a wake reads storage once and keeps it again)
@@ -653,6 +657,7 @@ export class Room {
     if (path === GATE_INTERNAL_FELL) return this._gateFellInternal(request);   // WB3: a gate's kill, said to the hub
     if (path === SERPENT_INTERNAL_FELL) return this._serpentFellInternal(request);   // SERPENT1: the serpent's kill, said to the hub
     if (path === RAID_INTERNAL_CLEAN) return this._raidCleanInternal(request);   // RAID3: a raid's cleanse, said to the hub
+    if (path === RELAY_INTERNAL_CFG) return json(await this._relayCfgOf());   // SCALE5b: a boss's room asking the hub for the relay's settings
     if (path === RAID_INTERNAL_DAY) return this._raidDayInternal(request);   // RAID-ROLL: a cell asking the hub for the day's roll
     if (path === WDUN_INTERNAL_RESET) return this._wdunResetInternal(request);   // PVPDUNGEONS: the hub wiping a hall's world room
     if (path === WDUN_INTERNAL_KIN) return this._wdunKinInternal(request);   // PVPDUNGEONS: a place room asking the hub whether two accounts share a party
@@ -673,7 +678,7 @@ export class Room {
     // gate's court included, for its whole day. Each socket is stamped as it opens; a full room first closes the silent
     // ones past HELLO_WAIT_MS (busy - a real client retries), and is full only if it still is.
     const cap = isChatRoom(key) ? CHAT_SOCKETS_MAX : SOCKETS_MAX;
-    if (this.state.getWebSockets().length >= cap) { this._unseatSilent(Date.now()); if (this.state.getWebSockets().length >= cap) return json({ error: 'room full' }, 503); }   // the runtime drops a socket the object closed from the list at once (AUDIT WORLD34 D1)
+    if (this.state.getWebSockets().length >= cap) { this._unseatSilent(Date.now()); if (this.state.getWebSockets().length >= cap) { this._metrics.c.full++; this._metricsTick(); return json({ error: 'room full' }, 503); } }   // SCALE5b: counted   // the runtime drops a socket the object closed from the list at once (AUDIT WORLD34 D1)
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     // hibernation API: the object may sleep between messages; every
@@ -688,7 +693,7 @@ export class Room {
   }
   /** SCALE2b: a socket the runtime has just accepted, into the index - the one door a socket comes in by (the index
    *  is never rebuilt for one; a wake's first `_all` reads every socket the runtime holds). */
-  _adopt(ws, att) { if (!this._idx) return; const was = this._idx.get(ws); if (!was) this._enter(ws); this._idx.set(ws, att); this._reindex(ws, was, att); }   // SCALE5a: its place in the index's order; SCALE5b: and in the kept indexes (a socket accepted with no id moves none)
+  _adopt(ws, att) { if (!this._idx) return; const was = this._idx.get(ws); if (!was) this._enter(ws); this._idx.set(ws, att); this._reindex(ws, was, att); if (this._idx.size > this._metrics.c.peak) this._metrics.c.peak = this._idx.size; }   // SCALE5a: its place in the index's order; SCALE5b: and in the kept indexes (a socket accepted with no id moves none)
   /** SCALE5a: a socket NEW to the index takes the next place in its order - the order a walk of the index gives (a Map's
    *  insertion order: a key set again keeps its place, a key deleted and set again goes last, as here). */
   _enter(ws) { this._idxSeq.set(ws, ++this._idxN); }
@@ -882,6 +887,7 @@ export class Room {
     let q = this._owed.get(ws);
     if (!q) this._owed.set(ws, q = []);
     q.push(item);
+    this._metrics.c.owed++;
     if (q.length >= WIRE2_BATCH_MAX) { this._flushOwedOf(ws); return; }
     if (ms <= POSE_BATCH_MS) { if (!this._owedSoon) this._owedSoon = setTimeout(() => this._flushOwed(), POSE_BATCH_MS); }
     else if (!this._owedSoon && !this._owedLate) this._owedLate = setTimeout(() => this._flushOwed(), ms);
@@ -890,6 +896,7 @@ export class Room {
     const q = this._owed.get(ws);
     if (!q) return;
     this._owed.delete(ws);
+    this._metrics.c.batches++;
     this._send(ws, wire2Batch(q));
   }
   _flushOwed() {
@@ -900,6 +907,18 @@ export class Room {
   /** SCALE5b: a channel's join or leave - to a socket of the second wire, owed it for the roster's batch; to any other,
    *  at once, as `_fanBut` says it. */
   _fanRoster(ws, out) { for (const [other, b] of this._all()) if (other !== ws && b.id) { if (b.w2) this._owe(other, out, ROSTER_BATCH_MS); else this._send(other, out); } }
+  /** SCALE5b: DOES THIS CELL JUDGE THE POSES THAT REACH IT - a duel's bout (INT8), the Wild zone's fighters (INT9), a sea
+   *  serpent's fight (SERPENT1, INT11's trails and INT13's hulls)? Each reads every pose a fighter's socket here says, a
+   *  halo's copy too, and a client thins what it says to a halo that is none of these (wire.js HALO_POSE_MS) - so the
+   *  room says which it is: in its welcome (`rf`) and, when it moves, to the second wire's sockets (`_rfSay`). */
+  _refereesPoses() { return !!(this._duelRef?.bouts?.size || this._wildRef?.fighters?.size || this._serpents?.size); }
+  /** SCALE5b: the referee's word, said again - `{t:'rf', on}` to every socket of the second wire, each a halo's or a cell's. */
+  _rfSay() {
+    const rf = this._refereesPoses();
+    this._rfSaid = rf;
+    const out = JSON.stringify({ t: 'rf', on: rf ? 1 : 0 });
+    for (const [ws, b] of this._all()) if (b.id && b.w2) this._send(ws, out);
+  }
   /** SCALE5b: A BEAT'S FRAMES, ONE FRAME A LISTENER. A boss's beat (the gate's, a siege's, a Remnant's, a serpent's, a
    *  bout's) said each of its frames as a send of its own to every socket that hears it; a socket of the second wire
    *  hears them as one frame batch (wire.js wire2Batch) - at once, never waiting on a batch's timer - and any other one
@@ -909,7 +928,7 @@ export class Room {
     let one = null;
     for (const [ws, b] of this._all()) {
       if (!hears(b)) continue;
-      if (b.w2 && outs.length > 1) this._send(ws, one ??= wire2Batch(outs));
+      if (b.w2 && outs.length > 1) { this._metrics.c.owed += outs.length; this._metrics.c.batches++; this._send(ws, one ??= wire2Batch(outs)); }
       else for (const s of outs) if (!this._send(ws, s)) break;
     }
   }
@@ -926,12 +945,13 @@ export class Room {
   _foesFan(ws, a, kind, data, length, ranged, bucket, now) {
     const per = length + a.id.length + 8;
     const ahead = byteGate(bucket, now, per, FOES_ROOM_BYTES_PER_S);
-    if (!ahead.pass) { this._metrics.c.foesDropped = (this._metrics.c.foesDropped ?? 0) + 1; return ahead.bucket; }   // SCALE5b: not one listener's worth - no walk
+    this._metrics.c.foes++;   // SCALE5b: the frames by type
+    if (!ahead.pass) { this._metrics.c.drops++; return ahead.bucket; }   // SCALE5b: not one listener's worth - no walk
     const reach = ranged ? inRangeOf(a.key, a.pose) : null;
     const listeners = [];
     for (const [other, b] of this._all()) if (other !== ws && b.id && (!reach || reach(b.pose))) listeners.push(other);
     const budget = byteGate(bucket, now, per * listeners.length, FOES_ROOM_BYTES_PER_S);
-    if (!budget.pass) { this._metrics.c.foesDropped = (this._metrics.c.foesDropped ?? 0) + 1; return budget.bucket; }
+    if (!budget.pass) { this._metrics.c.drops++; return budget.bucket; }
     if (!listeners.length) return budget.bucket;
     const out = fanOut(kind, a.id, data, length);   // AUDIT (pre-merge) O3/O4
     if (out == null) { this._junk(ws); return budget.bucket; }
@@ -1406,7 +1426,7 @@ export class Room {
    *  drain, re-armed by every later one - unless someone is in the room when it fires: a world parked in a room
    *  nobody plays would cost storage for ever, and the rooms a client can name are many. */
   async alarm() {
-    if (await this.state.storage.get('hub')) { await this._sweepHub(Date.now()); await this._heraldBeat(Date.now()); await this._serpentHeraldBeat(Date.now()); await this._sdBeat(Date.now()); await this._sdHeraldBeat(Date.now()); return; }   // AUDIT SOC A3: the hub's alarm is its sweep, whoever is in the room; DISCORD-GATES: and its herald's posts; SERPENT2: and the serpent's; SD3: and the Super dungeon's director; SD-HERALD: and its herald's, after the director's moves
+    if (await this.state.storage.get('hub')) { await this._relayCfgOf(); await this._sweepHub(Date.now()); await this._heraldBeat(Date.now()); await this._serpentHeraldBeat(Date.now()); await this._sdBeat(Date.now()); await this._sdHeraldBeat(Date.now()); return; }   // AUDIT SOC A3: the hub's alarm is its sweep, whoever is in the room; DISCORD-GATES: and its herald's posts; SERPENT2: and the serpent's; SD3: and the Super dungeon's director; SD-HERALD: and its herald's, after the director's moves
     // AUDIT 68 X8-park-registry-unbounded: an owner's registry (HCC-PARK) is one object per account and character a
     // client names - its word goes PARK_TTL_MS after it was said, as the cell's record it points at does
     const reg = await this.state.storage.get('reg');
@@ -1506,6 +1526,8 @@ export class Room {
   }
   /** SCALE2b: the window's metrics point, when it is due (or `force`d - a drain) - relayScale.js RoomMetrics. */
   _metricsTick(force = false) {
+    const n = this._idx?.size ?? 0;
+    if (n > this._metrics.c.peak) this._metrics.c.peak = n;   // SCALE5b: the window's most, seen at every door that ticks (and every socket adopted)
     try { this._metrics.flush(this.env?.METRICS, this._kind ?? 'none', this._idx?.size ?? 0, RELAY_VERSION, Date.now(), force); } catch { /* a metric never costs a frame */ }
   }
 
@@ -1737,6 +1759,7 @@ export class Room {
     if (posed && this._duelRef?.bouts.size) { duelPose(this._duelRef, a.sub, m.p, now); await this._duelBeat(now); }
     if (posed && this._wildRef?.fighters.has(a.sub)) { wildPose(this._wildRef, a.sub, m.p, now); await this._wildBeat(now); }   // INT9: the zone's believed place, and a fall waiting on a pick
     if (posed && this._trailing(a)) this._trailPose(ws, m.p, now);   // INT11: where a boss fight's body stood, as its poses came - AUDIT INT11: its socket's, in a fight that lives
+    if (posed && isCellRoom(a.key) && this._refereesPoses() !== this._rfSaid) this._rfSay();   // SCALE5b: a referee begun or ended here - the halos told
     // AUDIT-SEATS T2 (Seats-Arc 6.6: "no body drawn to fighters, no collider, excluded from every banner count, a free
     // camera over the town"): A SPECTATOR IS NO BODY - in a battle room a socket that is no fighter (a spectator's pass,
     // or a fighter's before its `in`) keeps its camera on its own attachment and is drawn to nobody: the fan below said
@@ -1750,7 +1773,7 @@ export class Room {
       if (cur.af) { try { const st = await this._boutOf(); if (st && cur.afid) poseOf(st, cur.afid, m.p.x, m.p.z, now); } catch (e) { console.warn('[arena] pose', e?.message ?? e); } }
     }
     // SCALE5b: the frame built once, as each kind of listener needs it - the whole pose for a socket that said no `w2`,
-    // the slim entry for one that did (its batch, `_queuePose`)
+    // the slim entry for one that did (its batch, `_owe`)
     let out = null, entry = null;
     // SLAM1: the fan is BOUNDED. A room's cost was N senders times N listeners, and the range cull does not help
     // the one case that matters - an event, where everybody stands in one place and every range test passes.
@@ -2088,7 +2111,9 @@ export class Room {
       // AUDIT WORLD5 C11: stamped as the welcome is BUILT, not as the hello began - four storage awaits sit between the
       // two, and every millisecond of them was an offset the client carried as the relay's clock
       // SRV-N / SLAM13 (AUDIT SLAM A5): the relay's VERSION rides it (`v`, last), so a client can tell a restarted relay from the one it was talking to, and one built against another law can say so
-      const welcome = `{"t":"welcome","id":${JSON.stringify(m.id)},"peers":${JSON.stringify(roster)},"host":${JSON.stringify(host)}${ow},"world":${world ?? 'null'},"now":${Date.now()},"v":${JSON.stringify(RELAY_VERSION)}}`;
+      const rf = isCellRoom(a.key) && this._refereesPoses() ? ',"rf":1' : '';   // SCALE5b: this cell judges the poses that reach it - a halo's at their full rate
+      if (isCellRoom(a.key)) this._rfSaid = !!rf;
+      const welcome = `{"t":"welcome","id":${JSON.stringify(m.id)},"peers":${JSON.stringify(roster)},"host":${JSON.stringify(host)}${ow},"world":${world ?? 'null'},"now":${Date.now()},"v":${JSON.stringify(RELAY_VERSION)}${rf}}`;
       if (!this._send(ws, welcome)) return;
       // HCC-PARK: the cell's parked teams, after the welcome that resets the joiner's session (a halo's hello included)
       // AUDIT HCC-PARK (client C3): ALWAYS, an empty list included - a reconnect's welcome is the whole truth, and a
@@ -2211,6 +2236,7 @@ export class Room {
       return;
     }
     if (m.t === 'hit') {
+      this._metrics.c.hits++;   // SCALE5b: the frames by type
       // WORLD2: a blow on the host's foe - from anyone but the host, in a world room, on the pose bucket, to the
       // host's socket alone (the host applies it through its own damage door and the next foes frame says so)
       const now = Date.now();
@@ -2699,6 +2725,22 @@ export class Room {
       routeStaffTeleport(this, ws, a, m, now);
       return;
     }
+    if (m.t === 'cfg') {
+      // SCALE5b: A RELAY SETTING (net/relayCfg.js) - in the hub alone, from a developer's verified glyphs alone, on a bucket
+      // of its own: kept in the hub's storage, in force for the hub at once and for a boss's room within RELAY_CFG_TTL_MS.
+      // Anyone else is answered in words and struck for nothing - a staff command a Dungeon Master typed is no attack
+      const now = Date.now();
+      if (!this._spend(ws, now, (b, t) => tokenGate(b, t, 1, 4), 'cfgbucket', 'cfgdrops', 'too many settings')) return;
+      if (!isSocialRoom(a.key)) { this._junk(ws); return; }
+      if (!mayRelayCfg(a.glyphs)) { this._send(ws, JSON.stringify({ t: 'cfg', k: m.k, error: 'only a developer may change the relay\'s settings' })); return; }
+      const cfg = { ...(await this._relayCfgOf()) };
+      if (m.v === null) delete cfg[m.k]; else cfg[m.k] = m.v;
+      await this.state.storage.put('relaycfg', cfg);
+      this._relayCfg = cfg; this._herald = undefined; this._bodyCfg = undefined;
+      console.info('[cfg] set', m.k, m.v === null ? '(the var)' : m.v);
+      this._send(ws, JSON.stringify({ t: 'cfg', k: m.k, v: relayCfgValue(cfg, this.env, m.k) ?? '' }));
+      return;
+    }
     if (m.t === 'social') {
       // SOC1: a friend or party act - on the acts' own bucket (the same strikes), in the hub alone (outside it junk: a
       // correct client sends none there), from an account (without one refused in words), under the room's budget
@@ -2864,6 +2906,7 @@ export class Room {
     }
     if (m.t === 'pose' || m.t === 'ping') return this._poseFrame(ws, a, m);   // PERF-RELAY1: the room's hottest path, a method of its own
     if (m.t === 'chat') {
+      this._metrics.c.chats++;   // SCALE5b: the frames by type
       // CHAT1: the chat gate, its own bucket and strikes (a talker is not a mover)
       const now = Date.now();
       if (!this._spend(ws, now, chatGate, 'cbucket', 'cdrops', 'too many lines', CHAT_STRIKES_MAX)) return;   // over the rate: dropped, never queued
@@ -4835,7 +4878,25 @@ export class Room {
   // ── INT11-INT13: THE BODY COUNTED (net/bossBody.js, net/bossRef.js; bible/06-Systems/Integrity-Arc.md section 6) ──
   /** The line the boss fights' count runs by - the BOSS_BODY var (bodyConfig: a mistyped one is the default, which
    *  measures and enforces nothing), read once an instance. */
-  _bodyLine() { return (this._bodyCfg ??= bodyConfig(this.env?.BOSS_BODY)); }
+  _bodyLine() { return (this._bodyCfg ??= bodyConfig(relayCfgValue(this._relayCfg, this.env, 'bossBody'))); }   // SCALE5b: the hub's setting over the var
+  /** SCALE5b: THE RELAY'S SETTINGS (net/relayCfg.js) - the hub's, read from its storage once a wake and kept. */
+  async _relayCfgOf() {
+    if (this._relayCfg === undefined) { const v = await this.state.storage.get('relaycfg'); this._relayCfg = v && typeof v === 'object' && !Array.isArray(v) ? v : {}; }
+    return this._relayCfg;
+  }
+  /** SCALE5b: a boss's room asks the hub for the settings at most every RELAY_CFG_TTL_MS, at its beat - a hub that does
+   *  not answer leaves the last answer standing (or none: the Worker's vars). A setting that moved is in force from here. */
+  async _relayCfgFresh(now) {
+    if (now - this._relayCfgAt < RELAY_CFG_TTL_MS) return;
+    this._relayCfgAt = now;
+    const rooms = this.env?.ROOMS;
+    if (!rooms?.idFromName || !rooms?.get) return;
+    try {
+      const res = await rooms.get(rooms.idFromName(SOCIAL_ROOM)).fetch(new Request(`https://relay.internal${RELAY_INTERNAL_CFG}`, { signal: AbortSignal.timeout(ROOM_CALL_MS) }));
+      const v = res?.ok ? await res.json() : null;
+      if (v && typeof v === 'object' && !Array.isArray(v) && JSON.stringify(v) !== JSON.stringify(this._relayCfg ?? {})) { this._relayCfg = v; this._bodyCfg = undefined; }
+    } catch (e) { console.warn('[cfg] the hub did not answer', e?.message ?? e); }
+  }
   /**
    * AUDIT INT11: DOES THIS SOCKET'S POSE GO ON A TRAIL? A socket of an account a fight here counts, while that fight lives
    * - a gate's court, an Abyss Dungeon's realm, a serpent's waters in its cell (the fights the instance holds awake). A cell
@@ -4997,6 +5058,7 @@ export class Room {
     const f = await this._gateFightOf();
     if (!f) return false;
     const now = Date.now();
+    await this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it
     const end = gateTimes(f.day).wrathAt + GATE_COLLAPSE_MS;
     if (now >= end) { this._fight = null; await this.state.storage.delete('gatefight'); return true; }
     try {
@@ -5444,6 +5506,7 @@ export class Room {
     const fights = await this._serpentFights();
     if (!fights.size) return null;
     const now = Date.now();
+    await this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it
     let at = Infinity, live = false;
     for (const [id, f] of [...fights]) {
       const end = f.soundAt + SERPENT_DIVE_MS + SERPENT_KEEP_MS;
@@ -5587,12 +5650,15 @@ export class Room {
   /** The hub's door to Discord, read once an instance: the channel's webhook (GATE_DISCORD_WEBHOOK, a Worker SECRET) and
    *  the role its omen pings (GATE_DISCORD_ROLE, a var), or null - no webhook, no herald: nothing posted, nothing kept. */
   _heraldOf() {
-    if (this._herald === undefined) {
+    if (this._herald === undefined || this._heraldCfg !== this._relayCfg) {   // SCALE5b: and again once the hub's settings are read, or moved
+      this._heraldCfg = this._relayCfg;
       const hook = heraldWebhook(this.env?.GATE_DISCORD_WEBHOOK);
       if (!hook && this.env?.GATE_DISCORD_WEBHOOK) console.warn('[herald] GATE_DISCORD_WEBHOOK is not a Discord webhook\'s URL - nothing is posted');
       // SERPENT2: and the role the serpent's bells ping - SERPENT_DISCORD_ROLE when the operator names one, else the gate's
       // SD-HERALD: and the role the Abyss Dungeon's rise and find ping - SD_DISCORD_ROLE, else the gate's (the serpent's law)
-      this._herald = hook ? { hook, role: heraldRole(this.env?.GATE_DISCORD_ROLE), serpentRole: serpentHeraldRole(this.env?.SERPENT_DISCORD_ROLE, this.env?.GATE_DISCORD_ROLE), sdRole: serpentHeraldRole(this.env?.SD_DISCORD_ROLE, this.env?.GATE_DISCORD_ROLE) } : null;
+      // SCALE5b: each role the hub's setting when it holds one (net/relayCfg.js), else the var - `_relayCfgOf` read first
+      const cfg = this._relayCfg, role = (k) => relayCfgValue(cfg, this.env, k);
+      this._herald = hook ? { hook, role: heraldRole(role('gateRole')), serpentRole: serpentHeraldRole(role('serpentRole'), role('gateRole')), sdRole: serpentHeraldRole(role('sdRole'), role('gateRole')) } : null;
     }
     return this._herald;
   }
@@ -6257,6 +6323,7 @@ export class Room {
     const f = await this._sdFightOf();
     if (!f || f.lost || (f.said && f.told)) return false;
     const now = Date.now();
+    await this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it
     try {
       // INT12: ITS BLOWS JUDGED HERE first, on the census as the count has it - one life: a fall by the count, enforced,
       // is the realm's own (_sdMarkFallenAt), and no death rises again here

@@ -71,6 +71,7 @@ import { relaySupportsFoeInventory } from './wire.js';
 //
 // Not a DFU member: Daggerfall Unity has no multiplayer. Ledger A row.
 import { validStaffTeleportIn, validStaffTeleportOut, staffTeleportSupported } from './staffTeleport.js';
+import { validRelayCfgIn, validRelayCfgOut, relayCfgSupported } from './relayCfg.js';   // SCALE5b: the relay's settings, a developer's
 import { layoutRoomKey } from '../world/interiorShared.js';   // WD3 (AUDIT WD3 B3): an interior's room is its layout's
 import { tabStorage } from '../systems/appStorage.js';   // the tab's own storage - the seam, never the browser's own (a PIN)
 import { REALM_CHARACTER_RE } from './identityToken.js';   // AUDIT LEGACY III O1: a wed frame's stamped realm character, by the token's own shape
@@ -81,7 +82,7 @@ import { isBattleRoom, isRoyalRoom } from './siegeRef.js';   // SEAT2a part four
 import { privateInteriorOf, caravanKeyOf } from './privateInterior.js';   // NET-SMOOTH: an owned interior's poses are MapsFile's frame; WAGONS2-VISIT: a caravan's own room
 import { relaySupportsCaravan, validCaravanData } from './wire.js';   // WAGONS2-VISIT: what a caravan's owner placed, said to its room
 import { isArenaRoom, validArenaIn } from './arenaLaw.js';   // ARENA4: the arena's hall and its bouts
-import { poseChanged, POSE_TS_MOD, poseTsDiff, SOCKETS_MAX, WORLD_CELL, RANGE_PIXELS, PIXEL_UNITS, CLOSE_REPLACED, CLOSE_POLICY, CLOSE_BUSY, WORLD_FRAME_MAX, worldFrameMaxFor, isCellRoom, hitOwnerOf, validPose, validLook, sanitizeName, readBadge, readAura, readRibbon, sanitizeChat, chatGate, redGate, dmGate, relaySupportsDm, muteGate, subOf, mutedUntilOf, worldRoom, inRange, relayUrl, isWorldRoom, isChatRoom, foesGate, FOES_FRAME_MAX, MAX_FRAME_BYTES, hitGate, actGate, actFrameFits, whoGate, WHO_RETRY_MS, HEARTBEAT_MS, PING_MS, relayVersionOf, chatInGate, CHAT_ROOM_HZ_MAX, socialGate, partyGate, validPartyPose, validSocialFrame, validPartyFrame, PARTY_SEND_MS, validSocialAct, socialInGate, noteInGate, partyInGate, SOCIAL_IN_HZ_MAX, NOTE_IN_HZ_MAX, INBOUND_FRAME_MAX, questInGate, validQuestFrame, QUEST_SEND_MS, QUEST_HUB_MIN_MS, PARTY_MAX, tokenGate, validTradeData, tradeGate, tradeInGate, validCastData, castGate, castInGate, CAST_FRAME_MAX, CAST_IN_HZ_MAX, relaySupportsCast, TRADE_IN_HZ_MAX, relaySupportsTrade, TRADE_FRAME_MAX, parkGate, relaySupportsPark, PARK_CELL_MAX, PARK_KEY_RE, PARK_TTL_MS, relaySupportsChannels, CHAT_LINE_CHANNELS, partyChatInGate, PARTY_CHAT_ROOM_HZ_MAX, relaySupportsRoll, rollGate, validRollSpec, validRoll, relaySupportsEmote, validCardData, cardGate, cardInGate, CARD_FRAME_MAX, CARD_IN_HZ_MAX, relaySupportsCard, validPageData, pageGate, pageInGate, PAGE_FRAME_MAX, PAGE_IN_HZ_MAX, relaySupportsPage, validDuelData, duelGate, duelInGate, DUEL_FRAME_MAX, DUEL_IN_HZ_MAX, relaySupportsBossRef, bodyWordGate, relaySupportsDuelRef, validDuelRefOut, validWedData, wedGate, wedInGate, WED_FRAME_MAX, WED_IN_HZ_MAX, relaySupportsWed, readRenown, renownGate, relaySupportsRenown, RENOWN_ORDER_KEEP_MS, RENOWN_RESEND_MS, lookGate, relaySupportsLook, relaySupportsPartyTravel, relaySupportsRestOpt, relaySupportsEvent, relayKnowsLiveEvent, eventGate, validLiveEvent, LIVE_EVENTS, isSocialRoom, validGateIn, validGateOut, gateGate, relaySupportsGate, relaySupportsOwn, relaySupportsGateSpent, relaySupportsGateSite, relaySupportsGateHeal, gatePlaceWire, readGuildTag, readHouse, relaySupportsGuild, GUILD_ORDER_KEEP_MS, guildChatInGate, GUILD_CHAT_ROOM_HZ_MAX, validRaidIn, validRaidOut, raidGate, relaySupportsRaid, validRaidTownsIn, isRegionRoom, validTravellerMark, validTravellerFrame, relaySupportsTravellers, travInGate, TRAV_SEND_MIN_MS, TRAV_WELCOME_MAX, TRAV_STALE_MS, relaySupportsPartyWalk, relaySupportsPartyLead, relaySupportsPartyMap, validAmapFrame, amapBody, AMAP_SEND_MS, AMAP_HUB_MIN_MS, validSiegeIn, validSiegeOut, siegeGate, relayFightsBattles, relayRunsRoyal, validRiteIn, validRiteOut, riteGate, relaySupportsRite, arenaGate, relaySupportsArena, readArenaOut, validWildData, validWildOut, wildDirected, wildGate, wildInGate, WILD_IN_HZ_MAX, WILD_FRAME_MAX, relaySupportsWildRef, validWildRefOut, relaySupportsWdun, relaySupportsWdunGiants, validWdunIn, validWdunOut, BUSY_TOKEN_UNREAD, WIRE2_BATCH_MAX } from './wire.js';   // SCALE5a: a busy close's word that the token went unread   // SOC2: the hub's law, at home; AUDIT SOC B3/B11/B20: the act's projection, the inbound gates, the inbound bound
+import { poseChanged, POSE_TS_MOD, poseTsDiff, SOCKETS_MAX, WORLD_CELL, RANGE_PIXELS, PIXEL_UNITS, CLOSE_REPLACED, CLOSE_POLICY, CLOSE_BUSY, WORLD_FRAME_MAX, worldFrameMaxFor, isCellRoom, hitOwnerOf, validPose, validLook, sanitizeName, readBadge, readAura, readRibbon, sanitizeChat, chatGate, redGate, dmGate, relaySupportsDm, muteGate, subOf, mutedUntilOf, worldRoom, inRange, relayUrl, isWorldRoom, isChatRoom, foesGate, FOES_FRAME_MAX, MAX_FRAME_BYTES, hitGate, actGate, actFrameFits, whoGate, WHO_RETRY_MS, HEARTBEAT_MS, PING_MS, relayVersionOf, chatInGate, CHAT_ROOM_HZ_MAX, socialGate, partyGate, validPartyPose, validSocialFrame, validPartyFrame, PARTY_SEND_MS, validSocialAct, socialInGate, noteInGate, partyInGate, SOCIAL_IN_HZ_MAX, NOTE_IN_HZ_MAX, INBOUND_FRAME_MAX, questInGate, validQuestFrame, QUEST_SEND_MS, QUEST_HUB_MIN_MS, PARTY_MAX, tokenGate, validTradeData, tradeGate, tradeInGate, validCastData, castGate, castInGate, CAST_FRAME_MAX, CAST_IN_HZ_MAX, relaySupportsCast, TRADE_IN_HZ_MAX, relaySupportsTrade, TRADE_FRAME_MAX, parkGate, relaySupportsPark, PARK_CELL_MAX, PARK_KEY_RE, PARK_TTL_MS, relaySupportsChannels, CHAT_LINE_CHANNELS, partyChatInGate, PARTY_CHAT_ROOM_HZ_MAX, relaySupportsRoll, rollGate, validRollSpec, validRoll, relaySupportsEmote, validCardData, cardGate, cardInGate, CARD_FRAME_MAX, CARD_IN_HZ_MAX, relaySupportsCard, validPageData, pageGate, pageInGate, PAGE_FRAME_MAX, PAGE_IN_HZ_MAX, relaySupportsPage, validDuelData, duelGate, duelInGate, DUEL_FRAME_MAX, DUEL_IN_HZ_MAX, relaySupportsBossRef, bodyWordGate, relaySupportsDuelRef, validDuelRefOut, validWedData, wedGate, wedInGate, WED_FRAME_MAX, WED_IN_HZ_MAX, relaySupportsWed, readRenown, renownGate, relaySupportsRenown, RENOWN_ORDER_KEEP_MS, RENOWN_RESEND_MS, lookGate, relaySupportsLook, relaySupportsPartyTravel, relaySupportsRestOpt, relaySupportsEvent, relayKnowsLiveEvent, eventGate, validLiveEvent, LIVE_EVENTS, isSocialRoom, validGateIn, validGateOut, gateGate, relaySupportsGate, relaySupportsOwn, relaySupportsGateSpent, relaySupportsGateSite, relaySupportsGateHeal, gatePlaceWire, readGuildTag, readHouse, relaySupportsGuild, GUILD_ORDER_KEEP_MS, guildChatInGate, GUILD_CHAT_ROOM_HZ_MAX, validRaidIn, validRaidOut, raidGate, relaySupportsRaid, validRaidTownsIn, isRegionRoom, validTravellerMark, validTravellerFrame, relaySupportsTravellers, travInGate, TRAV_SEND_MIN_MS, TRAV_WELCOME_MAX, TRAV_STALE_MS, relaySupportsPartyWalk, relaySupportsPartyLead, relaySupportsPartyMap, validAmapFrame, amapBody, AMAP_SEND_MS, AMAP_HUB_MIN_MS, validSiegeIn, validSiegeOut, siegeGate, relayFightsBattles, relayRunsRoyal, validRiteIn, validRiteOut, riteGate, relaySupportsRite, arenaGate, relaySupportsArena, readArenaOut, validWildData, validWildOut, wildDirected, wildGate, wildInGate, WILD_IN_HZ_MAX, WILD_FRAME_MAX, relaySupportsWildRef, validWildRefOut, relaySupportsWdun, relaySupportsWdunGiants, validWdunIn, validWdunOut, BUSY_TOKEN_UNREAD, WIRE2_BATCH_MAX, HALO_POSE_MS, haloThinSupported, poseSaysMore } from './wire.js';   // SCALE5a: a busy close's word that the token went unread   // SOC2: the hub's law, at home; AUDIT SOC B3/B11/B20: the act's projection, the inbound gates, the inbound bound
 import { relaySupportsHoldem, holdemGate, validHoldemIn, validHoldemOut, relaySupportsIliac, validIliacIn, validIliacOut } from './wire.js';   // CARDS5: the relay's card table, both ways
 import { RAID_TOWNS_CHUNK } from './raidLaw.js';   // RAID-ROLL: the towns table's pieces
 import { dungeonRoomTag } from './wire.js';   // SD-ONLINE: a dungeon's room carries the size it was built at
@@ -468,6 +469,10 @@ export class OnlineSession {
     this._lastAmapAt = -Infinity; // PARTY-MAP: the client's own floor between two sends (AMAP_SEND_MS)
     this.onStaffTeleport = null;
     this.staffTeleportOk = false;
+    this._thinOk = new WeakMap();  // SCALE5b: socket -> its relay says whether a cell judges poses (haloThinSupported, at its welcome)
+    this._rfOn = new WeakMap();    // SCALE5b: socket -> its cell judges the poses that reach it (`rf`) - a halo's are never thinned then
+    this.onRelayCfg = null;       // SCALE5b: ({k, v}|{k, error}) => void - the hub's answer to a relay setting
+    this.relayCfgOk = false;      // SCALE5b: the hub's relay takes a setting (its welcome says, relayCfgSupported)
     this.onTraveller = null;      // TV3: (frame) => void - a traveller's mark in my region (p null: they went in, or hid)
     this.onTravellerRoom = null;  // TV3: (frames) => void - the region room's marks, whole, on its welcome
     this.onTravellerLeft = null;  // TV3: (id) => void - a traveller left my region's room
@@ -1780,6 +1785,7 @@ export class OnlineSession {
         this._lastParty = null; this._lastPartyAt = -Infinity;   // SOC2: a fresh socket is a fresh attachment at the hub - the next party pose goes whole
         this.amapOk = false;   // PARTY-MAP: likewise, the welcome says
         this.staffTeleportOk = false;
+        this.relayCfgOk = false;   // SCALE5b: likewise
         this.travOk = false;   // AUDIT DEEP T3-5: this socket's relay says whether it knows `trav` on ITS welcome (a rollback to world121 closes on one)
         this._send(frame);
         if (!this.presence) this._lastSentAt = this._now();   // the heartbeat clock starts at the hello
@@ -1932,7 +1938,9 @@ export class OnlineSession {
     if (!(this._ws && this.status === 'open') && ![...this._halo.values()].some((h) => h.status === 'open' && h.ws)) return false;   // nowhere to say it: nothing stamped
     const out = { ...pose, ts: this._stampTs() };   // SCALE2b: one send time for every room's copy - that is what lets a listener order them
     let went = this._send({ t: 'pose', p: out });
-    if (this._halo.size) { const s = JSON.stringify({ t: 'pose', p: out }); for (const [, h] of this._halo) if (h.status === 'open' && h.ws && this._welcomed.has(h.ws)) { try { h.ws.send(s); this.stats.sent++; went = true; } catch { /* the close will say */ } } }
+    // SCALE5b: a halo hears a pose that only moved at most every HALO_POSE_MS - unless its relay cannot say whether it
+    // judges poses, or says it does (`rf`), or the pose says more than the last it heard (wire.js poseSaysMore)
+    if (this._halo.size) { let s = null; for (const [, h] of this._halo) if (h.status === 'open' && h.ws && this._welcomed.has(h.ws)) { if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue; try { h.ws.send(s ??= JSON.stringify({ t: 'pose', p: out })); this.stats.sent++; went = true; h.posedAt = now; h.posed = out; } catch { /* the close will say */ } } }
     if (!went) return false;
     this._lastSent = { ...pose }; this._lastSentAt = now; this.stats.poses++;
     return true;
@@ -2276,6 +2284,14 @@ export class OnlineSession {
     return true;
   }
 
+  /** SCALE5b: a relay setting (net/relayCfg.js) to the hub - its answer comes back through `onRelayCfg`. False when this
+   *  session is not the hub's, its relay takes none, or the setting is not one. */
+  sendRelayCfg(frame) {
+    if (!this.relayCfgOk || !isSocialRoom(this.room)) return false;
+    const m = validRelayCfgIn(frame);
+    return !!m && this._send({ t: 'cfg', ...m });
+  }
+
   /** Exact destinations use only the updated, authenticated global hub. */
   sendStaffTeleport(frame) {
     if (!this.staffTeleportOk || !isSocialRoom(this.room)) return false;
@@ -2610,6 +2626,8 @@ export class OnlineSession {
       if (primary) this.partyLeadOk = relaySupportsPartyLead(relayV);   // PARTY-LEAD
       else { const h = this._halo.get(room); if (h) h.lookOk = relaySupportsLook(relayV); }   // PROFILE2: a halo says for itself
       if (primary) this.staffTeleportOk = staffTeleportSupported(relayV);
+      if (primary) this.relayCfgOk = relayCfgSupported(relayV);   // SCALE5b
+      { const ws = primary ? this._ws : this._halo.get(room)?.ws; if (ws) { this._thinOk.set(ws, haloThinSupported(relayV)); this._rfOn.set(ws, m.rf === 1); } }   // SCALE5b: whether its cell judges poses, a halo's thinning's word
       if (primary) this.travOk = relaySupportsTravellers(relayV);   // TV3
       if (primary) this.amapOk = relaySupportsPartyMap(relayV);   // PARTY-MAP
       // TV3: A REGION'S WELCOME SAYS ITS TRAVELLERS (`tr`), and says none when there are none - so it REPLACES the book,
@@ -3069,6 +3087,15 @@ export class OnlineSession {
       if (!primary || !isSocialRoom(room)) return;
       const f = validStaffTeleportOut(m);
       if (f) this._deliver('staff teleport', () => this.onStaffTeleport?.(f));
+    } else if (m.t === 'rf') {
+      // SCALE5b: a cell's word that it judges the poses that reach it now (or no longer) - its socket's, for my halo there
+      const ws = primary ? this._ws : this._halo.get(room)?.ws;
+      if (ws && (m.on === 1 || m.on === 0)) this._rfOn.set(ws, m.on === 1);
+    } else if (m.t === 'cfg') {
+      // SCALE5b: the hub's answer to a relay setting - from the hub alone
+      if (!primary || !isSocialRoom(room)) return;
+      const f = validRelayCfgOut(m);
+      if (f) this._deliver('relay setting', () => this.onRelayCfg?.(f));
     } else if (m.t === 'party') {
       // AUDIT SOC B3: the other members' poses, at PARTY_IN_HZ_MAX (PARTY_MAX - 1 members at PARTY_HZ_MAX each) - per room
       const g = partyInGate(this._inParty.get(room), now);

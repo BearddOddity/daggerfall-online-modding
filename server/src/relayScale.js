@@ -65,10 +65,10 @@ export class RoomMetrics {
   constructor(now = Date.now()) { this.reset(now); }
   reset(now) {
     this.since = now;
-    this.c = { hellos: 0, busy: 0, frames: 0, bytesIn: 0, poses: 0, sends: 0, bytesOut: 0, reads: 0, writes: 0, refusals: 0 };
+    this.c = { hellos: 0, busy: 0, frames: 0, bytesIn: 0, poses: 0, sends: 0, bytesOut: 0, reads: 0, writes: 0, refusals: 0, full: 0, drops: 0, peak: 0, foes: 0, hits: 0, chats: 0, owed: 0, batches: 0 };   // SCALE5b: from `full` on
   }
   /** Anything to say? */
-  get busy() { const c = this.c; return c.hellos + c.busy + c.frames + c.sends + c.reads + c.writes + c.refusals > 0; }
+  get busy() { const c = this.c; return c.hellos + c.busy + c.frames + c.sends + c.reads + c.writes + c.refusals + c.full > 0; }   // SCALE5b: a room that only refused a socket for being full has that to say
   /** The window's point to `sink` (env.METRICS) when it is over (or `force`d), and a new window. True when written. */
   flush(sink, kind, sockets, version, now = Date.now(), force = false) {
     if (!force && now - this.since < METRICS_WINDOW_MS) return false;
@@ -77,7 +77,13 @@ export class RoomMetrics {
       try {
         sink.writeDataPoint({
           indexes: [kind], blobs: [kind, String(version)],
-          doubles: [now - this.since, sockets, c.hellos, c.busy, c.frames, c.bytesIn, c.poses, c.sends, c.bytesOut, c.reads, c.writes, c.refusals],
+          // SCALE5b (2026-10-10; bible/11-Multiplayer/Scale-Arc.md SCALE5b): WHAT SAYS A ROOM'S LIMIT IS NEAR, from double13 -
+          // the sockets refused 'room full' (the Worker's door, which counted nothing), the frames its byte budgets dropped,
+          // the most sockets it held in the window, the foes frames, blows and lines it took, and the second wire's work:
+          // the items it carried in batches and the batch frames that carried them (items over batches: the sends saved).
+          // Analytics Engine takes twenty doubles; these are the last eight.
+          doubles: [now - this.since, sockets, c.hellos, c.busy, c.frames, c.bytesIn, c.poses, c.sends, c.bytesOut, c.reads, c.writes, c.refusals,
+            c.full, c.drops, Math.max(c.peak, sockets), c.foes, c.hits, c.chats, c.owed, c.batches],
         });
       } catch { /* a metric never costs a frame */ }
     }

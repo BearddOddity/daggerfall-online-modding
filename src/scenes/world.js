@@ -941,6 +941,7 @@ import { privateInteriorPrefix, privateInteriorRoom, privateBoatRoom, privateInt
 const TEST_GODMODE = false;
 const isStaffT = (g) => TEST_GODMODE || isStaff(g);
 import { isStaff, parseStaffCommand, STAFF_HELP_LINES, findPlace } from '../net/staffCommands.js';   // STAFF1: the staff's own commands
+import { RELAY_CFG_KEYS, mayRelayCfg } from '../net/relayCfg.js';   // SCALE5b: the relay's settings, a developer's
 import { fieldFromNative, nativeFromField, fieldOfPixelLocal } from '../systems/weatherField.js';   // WEATHER2b: the field's metres from the streaming world's natives, and back
 import { cellOfField, VC_PROFILE } from '../render/volumetricClouds.js';   // WEATHER2c: the field's cells as the clouds' cells   // W1: the live weather state (the save halves ride save.js); SAV3: the classic import's zone array
 import { classicSaveToSnapshot, takePendingClassicSave, peekPendingClassicSave } from '../systems/classicSave.js';   // SAV3: the classic-save import arm
@@ -7537,6 +7538,7 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  event handlers that ask this are bound before it exists. */
   let staffTeleportClient = null, staffTeleportHeld = false;
   let _staffGlyphs = [];
+  let relayCfgLink = null, relayCfgTab = null;   // SCALE5b: the hub's link a relay setting goes down, and the tab that asked
   const gamePaused = () => staffTeleportHeld || townTalk.overlayActive || (modes?.overlayHeld ?? false);
   _dwOverlayUp = () => gamePaused();   // DW-E2: the Deep Waters runtime's IsPlayingGame, now that the slot exists - AUDIT DW-F: every stack over the frame (a building's or a dungeon's window too), as IsPlayingGame asks of every window
   preloadCharSheetArt({ renderer, fetchBytes, palette });   // U8a: INFO00I0 warms at boot
@@ -20720,6 +20722,14 @@ export async function bootWorld(canvas, renderer, params, status) {
     const say = (line) => chatLog.push(tabId, { text: line, system: true });
     if ('error' in c) { say(c.error); return; }
     if (c.cmd === 'staff') { for (const line of STAFF_HELP_LINES) say(line); return; }
+    if (c.cmd === 'relay') {
+      // SCALE5b: a relay setting, to the hub (net/relayCfg.js) - the Developer's alone; the hub's answer lands in this tab
+      if (!mayRelayCfg(staffGlyphs())) { say('Only a developer may change the relay\'s settings.'); return; }
+      if (!c.k) { say(`Relay settings: ${RELAY_CFG_KEYS.join(', ')} - /relay <setting> <value>, or /relay <setting> - for the Worker's own.`); return; }
+      relayCfgTab = tabId;
+      if (!relayCfgLink?.sendRelayCfg({ k: c.k, v: c.v })) say('The relay\'s settings need the hub online, on a relay that takes them.');
+      return;
+    }
     if (c.cmd === 'god' || c.cmd === 'fly') {
       setStaffPowers({ [c.cmd]: c.on });
       say(`${c.cmd === 'god' ? 'God mode' : 'Flying'} ${c.on ? 'on' : 'off'}.`);
@@ -21291,6 +21301,8 @@ export async function bootWorld(canvas, renderer, params, status) {
       if (tab.room) link.join(tab.room);   // CHAT-CHAN: the Region tab's room waits for the region and the relay (chatRegionFrame)
       chatLinks.set(tab.id, link);
       if (tab.room === SOCIAL_ROOM) {
+        relayCfgLink = link;   // SCALE5b: a relay setting goes down the hub's link, and its answer comes back to the tab that asked
+        link.onRelayCfg = (m) => chatLog.push(relayCfgTab ?? tab.id, { text: m.error ? `Relay: ${m.error}.` : `Relay: ${m.k} is now ${m.v === '' ? 'unset' : m.v}.`, system: true });
         staffTeleportClient?.cancel();
         const client = createStaffTeleportClient({ send: (m) => link.sendStaffTeleport(m), capture: staffDestination });
         staffTeleportClient = client;

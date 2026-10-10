@@ -1,5 +1,6 @@
 // @ts-check
 import { validStaffTeleportIn } from './staffTeleport.js';
+import { validRelayCfgIn } from './relayCfg.js';   // SCALE5b: a relay setting, said to the hub
 // ONLINE1 (2026-09-12, Mac: "the basic bones of multiplayer ... being
 // able to see and traverse with other players"): THE WIRE'S LAW, pure,
 // ONE HOME (AUDIT ONLINE B7/B8). The relay (server/src/relay.js) re-exports
@@ -1309,7 +1310,7 @@ export const KEEPALIVE_FAN_MS = HEARTBEAT_MS / 2;
  *  is deployed by CI and the relay by hand, so a skew between them is the ordinary state of a release day, and until
  *  now nothing on either end could see it. */
 // Integrated Arena spectator visibility with staff teleport, stable boat identity and private ownership; deploy relay before clients.
-export const RELAY_VERSION = 'world190';   // AUDIT MW-NPC II (2026-10-10, the MW-NPC arc's second audit, world188, then world189, on its branch - renumbered past main's INT11-INT14 world188 and SCALE5a world189 at the merges; bible/04-Characters/Morrowind-NPCs.md section 23; NOT YET DEPLOYED): a foe record may carry the look its owner stands it in - `ls` its seed and `lw` a person's worn kit (validFoeRecord) - read by the clients alone; the relay forwards foe frames unread, so no frame changes shape and the bundle's bytes move only by wire.js's own. A new version rather than one re-hashed: the one before it is main's INT11-INT14, and may be deployed before this lands.
+export const RELAY_VERSION = 'world191';   // SCALE5b (2026-10-10, Mac: "lets now tackle the bigger work ... really future proof our archetecture while also increasing performance"; bible/11-Multiplayer/Scale-Arc.md SCALE5b; NOT YET DEPLOYED - one announced drop): the second wire, offered by the hello (`w2`) - a room's poses batched a listener every POSE_BATCH_MS and slim (slimPose), a channel's joins and leaves batched a second (ROSTER_BATCH_MS), a boss's beat one frame (wire2Batch); the relay's hygiene (the host kept, directed frames by an id index, the foes fan a method with its budget asked first, the drain's sweep not paid twice); eight more doubles on the metrics point; the relay's settings at run time (net/relayCfg.js, a developer's `cfg`); a cell's word that it judges the poses reaching it (`rf`), which the client's halo thinning reads (HALO_POSE_MS). A socket that offers nothing hears every frame byte for byte as world190 said it. World190 before it: AUDIT MW-NPC II (2026-10-10, the MW-NPC arc's second audit, world188, then world189, on its branch - renumbered past main's INT11-INT14 world188 and SCALE5a world189 at the merges; bible/04-Characters/Morrowind-NPCs.md section 23; NOT YET DEPLOYED): a foe record may carry the look its owner stands it in - `ls` its seed and `lw` a person's worn kit (validFoeRecord) - read by the clients alone; the relay forwards foe frames unread, so no frame changes shape and the bundle's bytes move only by wire.js's own. A new version rather than one re-hashed: the one before it is main's INT11-INT14, and may be deployed before this lands.
 // world189:   SCALE5a (2026-10-10, Mac: "we just hit 500 online people. I think its time to scale up our server and improve performance for more people"; bible/11-Multiplayer/Scale-Arc.md SCALE5a; NOT YET DEPLOYED): THE HUB'S HELLO AND LEAVE WITHOUT A WALK OF EVERY SOCKET - the account index and a subject index kept by the doors that move a socket, not rebuilt by a walk at every hello and leave; a channel's hello asks no host; the hello's walks methods of their own (`_message` runs interpreted); the join's, the leave's and the channel's fans walk the index in place; a drain told without a filtered copy; a hub hello's serpent receipt asked once. A BUSY REFUSAL THAT MINTS NOTHING: a room's hello gate, asked before the token, closes with BUSY_TOKEN_UNREAD and the client carries the unspent token again. A channel's join and leave say the room's count (`n`), so a roster cut at CHAT_ROSTER_MAX holds the room's own - AUDIT SCALE5a (five lenses; `re` retired, re-hashed in place, undeployed).
 // world188:   INT11-INT14 (2026-10-10, world186 on its branch - renumbered past main's SD-HERALD world186 and WAGONS1 world187 at the merge; the INTEGRITY arc's lane 3 - bible/06-Systems/Integrity-Arc.md section 6; Mac: "I want to do everything and do it properly", and "Measure, then enforce"; NOT YET DEPLOYED): THE BODY COUNTED - the relay judges each boss's blows no save answers on the poses it holds (net/bossRef.js: a gate's, the Abyss Dungeon's Remnant, the serpent's on a hull - each landing on the pose trail before and after it, in the struck player's favour) and keeps its own count of each fighter's body or hull (net/bossBody.js): a fighter's word of its body (`vt`, the gate's, `sd`'s and `serpent`'s new kind) believed as a mend out of a budget; the count's measure carried on each boss receipt (`m`), for the account service (acct105) to keep - deploy this relay first. MEASURE FIRST: the BOSS_BODY var's line enforces nothing until staff set `enforce` (then a fall by the count is a fall: `bd` to the fallen, the Abyss Dungeon's one life, a ship wrecked). Four new files in its bundle: net/bossBody.js, net/bossRef.js, net/gateStrike.js, systems/serpentStrike.js.
 // world187:   WAGONS1 (2026-10-09, world182, world183, world185 then world186 on its branch - renumbered past main's CARDS10 world182 at the first merge, past CHAP4c world183 and PERF-RELAY1 world184 at the second, past INT7-INT10 world185 at the third and past SD-HERALD world186 at the fourth; NOT YET DEPLOYED - one deploy with TV-BEYOND's world181, CARDS10's world182, CHAP4c's world183, PERF-RELAY1's world184, INT7-INT10's world185 and SD-HERALD's world186, below, if they have not gone): a parked wagon's park record keeps its kind and its horse in harness (validParkData `wk`, `wh` - systems/horseCartWire.js), so the cell remembers a caravan as a caravan; an older relay drops both and the cell remembers a cart. WAGONS2 (re-hashed in place, the same undeployed version): and its paint (`wl`, 1..PARK_WAGON_LOOK_MAX - systems/wagonLooks.js), or the cell remembers it as built. No frame changes shape. WAGONS2-VISIT (re-hashed in place again, still undeployed): a caravan's own room, `caravan:<k>` (net/privateInterior.js caravanRoomOf - its owner's park key), keeps what its owner placed in it - the new frame `caravan` (validCaravanData; relaySupportsCaravan, CARAVAN_RELAY_MIN 187 - an older relay closes the socket on it), stored from the owner alone (parkKeyOf of the token's account and the frame's character is the room's key), handed to every joiner after its welcome, fanned, and forgotten PARK_TTL_MS after it was said (the alarm); and a parked caravan's record keeps who may enter it (`we` 1..PARK_WAGON_ENTRY_MAX, `wg` the guild's tag with the guild's). WAGONS2-VISIT AUDIT (re-hashed in place again, still undeployed): the `caravan` frame metered - one a second a socket (CARAVAN_DOC_MIN_MS), an unchanged document neither stored again nor fanned until its lease wants renewing, the fan charged to the sender's act bytes; and a caravan's door (`wagonEntry`) among the receiver's marks the wire's clamp leaves behind (net/realmTradeLaw.js RECEIVER_MARKS). WAGONS2 FINAL AUDIT (re-hashed in place again, still undeployed): the `caravan` frame's second the ROOM's (CARAVAN_DOC_MIN_MS - an owner's N sockets were N seconds), its fan charged to the room's act bytes after the sender's, and a fan refused in debt owed to the alarm at the repay, never dropped (its visitors kept the old layout). TV-BEYOND, world181 (2026-10-09, world180 on its branch - renumbered past main's TAVERN-TABLES world180 at the merge; the field: "if i bug the game outside of the bay i can become invisible to everyone and everyone becomes invisible to me"; bible/01-Overview/Field-Bugs-2026-10-09.md; NOT YET DEPLOYED): the world's pixels on the wire are TAMRIEL2's, not the Bay's (WORLD_PIXEL_BOUND) - a pose past 1024 pixels no longer refused (the relay closed the socket), a cell west or north of the Bay a cell (CELL_ROOM, cellHaloFor), a traveller's mark, a party pose and its walk, a duel's point and a park's anchor past the Bay carried; deploy relay before clients.
@@ -1494,6 +1495,27 @@ export function wire2Batch(items) {
   }
   if (run.length) f.push(`{"t":"poses","l":[${run.join(',')}]}`);
   return f.length === 1 ? f[0] : `{"t":"fb","f":[${f.join(',')}]}`;
+}
+
+/** SCALE5b: A HALO HEARS MY POSE AT A WALKING RATE. Every pose a player says goes to its own cell and to each neighbour
+ *  its halo holds open (WORLD6b-iii(b)), and each of those fans it to everyone in range there - a crowd at a cell's
+ *  edge was heard in full in up to four rooms. A halo now hears a pose that only moved at most every HALO_POSE_MS; a
+ *  pose that says anything more (a swing, a cast, a stop, a mount, a death) goes at once, and a halo whose relay says
+ *  it judges the poses that reach it (`rf`: a duel, the Wild zone, a serpent's fight) hears every one. */
+export const HALO_POSE_MS = 250;
+/** SCALE5b: the first relay that says whether a cell judges poses (RELAY_VERSION's number) - a halo of an older one is
+ *  never thinned, for it cannot say. */
+export const HALO_THIN_RELAY_MIN = 191;
+export const haloThinSupported = (v) => Number(/^world(\d+)$/.exec(String(v ?? ''))?.[1]) >= HALO_THIN_RELAY_MIN;
+/** SCALE5b: the fields a pose may move without saying anything more - where the player stands, which way it faces, and
+ *  when it was said. */
+const POSE_PLACE = Object.freeze({ x: 1, y: 1, z: 1, yaw: 1, pitch: 1, ts: 1 });
+/** SCALE5b: does pose `b` say anything pose `a` (the last a halo heard) did not, beyond its place? True with no `a`. */
+export function poseSaysMore(a, b) {
+  if (!a) return true;
+  for (const k of Object.keys(b)) if (!POSE_PLACE[k] && a[k] !== b[k]) return true;
+  for (const k of Object.keys(a)) if (!POSE_PLACE[k] && !(k in b)) return true;
+  return false;
 }
 
 /** A pose the room will relay, or null. */
@@ -1761,7 +1783,7 @@ export function inRangeOf(roomKey, from) {
   return (to) => !!to && Math.max(Math.abs(fx - Math.floor(to.x / PIXEL_UNITS)), Math.abs(fy - Math.floor(to.z / PIXEL_UNITS))) <= RANGE_PIXELS;
 }
 
-/** One client frame, parsed and checked: {t:'hello'|'pose'|'ping'|'chat'|'roll'|'say'|'narrate'|'stage'|'mute'|'renown'|'guild'|'guildout'|'world'|'foes'|'own'|'hit'|'act'|'who'|'quest'|'social'|'party'|'trade'|'cast'|'card'|'page'|'duel'|'wed'|'park'|'caravan'|'look'|'gate'|'siege'|'arena'|'raid'|'raidtowns'|'rite'|'ow'|'trav'|'amap'|'stp'|'serpent'|'sd'|'wild'|'wdun'|'holdem'|'iliac', ...}
+/** One client frame, parsed and checked: {t:'hello'|'pose'|'ping'|'chat'|'roll'|'say'|'narrate'|'stage'|'mute'|'renown'|'guild'|'guildout'|'world'|'foes'|'own'|'hit'|'act'|'who'|'quest'|'social'|'party'|'trade'|'cast'|'card'|'page'|'duel'|'wed'|'park'|'caravan'|'look'|'gate'|'siege'|'arena'|'raid'|'raidtowns'|'rite'|'ow'|'trav'|'amap'|'stp'|'cfg'|'serpent'|'sd'|'wild'|'wdun'|'holdem'|'iliac', ...}
  *  or {error} - the caller closes on an error. INSPECT1: every arm below, named - this line had fallen seven behind
  *  (test/auditworld2.test.js derives the list from the arms now, so it cannot fall behind again - the merge with
  *  main's HCC-PARK was its first catch: the park arm, unnamed). */
@@ -2056,6 +2078,11 @@ export function parseClient(text, { hasHello = false } = {}) {
     if (!hasHello) return { error: 'stp before hello' };
     const f = validStaffTeleportIn(m);
     return f ? { t: 'stp', ...f } : { error: 'bad stp' };
+  }
+  if (m.t === 'cfg') {   // SCALE5b: a relay setting (net/relayCfg.js) - its name and value; who may say it is the hub's to ask
+    if (!hasHello) return { error: 'cfg before hello' };
+    const f = validRelayCfgIn(m);
+    return f ? { t: 'cfg', ...f } : { error: 'bad cfg' };
   }
   if (m.t === 'social') {   // SOC1: a friend or party act - a KIND from SOCIAL_ACTS naming what that kind must name, and nothing else
     if (!hasHello) return { error: 'social before hello' };

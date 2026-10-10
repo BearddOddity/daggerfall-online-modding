@@ -525,11 +525,12 @@
   {
     "name": "INT11-RELAY-ENFORCE-DEFAULT",
     "file": "server/src/index.js",
-    "old": "  _bodyLine() { return (this._bodyCfg ??= bodyConfig(this.env?.BOSS_BODY)); }",
+    "old": "  _bodyLine() { return (this._bodyCfg ??= bodyConfig(relayCfgValue(this._relayCfg, this.env, 'bossBody'))); }",
     "new": "  _bodyLine() { return (this._bodyCfg ??= bodyConfig('{\"enforce\":true}')); }",
     "tests": [
       "test/int12_body_relay.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): the line through relayCfgValue."
   },
   {
     "name": "INT11-RELAY-NO-BD",

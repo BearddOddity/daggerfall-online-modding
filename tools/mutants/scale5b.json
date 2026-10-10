@@ -486,27 +486,27 @@
   {
     "name": "SCALE5b-beat-each-frame",
     "file": "server/src/index.js",
-    "old": "      if (b.w2 && outs.length > 1) this._send(ws, one ??= wire2Batch(outs));",
-    "new": "      if (false) this._send(ws, one ??= wire2Batch(outs));",
+    "old": "      if (b.w2 && outs.length > 1) { this._metrics.c.owed",
+    "new": "      if (false) { this._metrics.c.owed",
     "tests": [
       "test/scale5b.test.js"
     ],
     "note": "a beat a send a frame to the second wire"
   },
   {
-    "name": "SCALE5b-beat-one-wrapped",
+    "name": "SCALE5b-beat-one-a-batch",
     "file": "server/src/index.js",
-    "old": "      if (b.w2 && outs.length > 1) this._send(ws, one ??= wire2Batch(outs));",
-    "new": "      if (b.w2 && outs.length > 0) this._send(ws, one ??= JSON.stringify({ t: 'fb', f: outs.map((o) => JSON.parse(o)) }));",
+    "old": "      if (b.w2 && outs.length > 1) { this._metrics.c.owed",
+    "new": "      if (b.w2 && outs.length > 0) { this._metrics.c.owed",
     "tests": [
       "test/scale5b.test.js"
     ],
-    "note": "one frame wrapped in a batch"
+    "note": "one frame counted a batch (wire2Batch says it as itself, so only the count tells)"
   },
   {
     "name": "SCALE5b-foes-walk-first",
     "file": "server/src/index.js",
-    "old": "    if (!ahead.pass) { this._metrics.c.foesDropped = (this._metrics.c.foesDropped ?? 0) + 1; return ahead.bucket; }   // SCALE5b: not one listener's worth - no walk\n",
+    "old": "    if (!ahead.pass) { this._metrics.c.drops++; return ahead.bucket; }   // SCALE5b: not one listener's worth - no walk\n",
     "new": "",
     "tests": [
       "test/scale5b.test.js"
@@ -536,11 +536,421 @@
   {
     "name": "SCALE5b-foes-drop-uncounted",
     "file": "server/src/index.js",
-    "old": "    if (!ahead.pass) { this._metrics.c.foesDropped = (this._metrics.c.foesDropped ?? 0) + 1; return ahead.bucket; }",
+    "old": "    if (!ahead.pass) { this._metrics.c.drops++; return ahead.bucket; }",
     "new": "    if (!ahead.pass) { return ahead.bucket; }",
     "tests": [
       "test/scale5b.test.js"
     ],
     "note": "a drop below one listener's worth never counted"
+  },
+  {
+    "name": "SCALE5b-foes-uncounted",
+    "file": "server/src/index.js",
+    "old": "    this._metrics.c.foes++;   // SCALE5b: the frames by type\n",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a foes frame uncounted"
+  },
+  {
+    "name": "SCALE5b-full-uncounted",
+    "file": "server/src/index.js",
+    "old": "{ this._metrics.c.full++; this._metricsTick(); return json({ error: 'room full' }, 503); }",
+    "new": "{ this._metricsTick(); return json({ error: 'room full' }, 503); }",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a room full counted nowhere, as before"
+  },
+  {
+    "name": "SCALE5b-peak-at-end",
+    "file": "server/src/relayScale.js",
+    "old": "c.full, c.drops, Math.max(c.peak, sockets), c.foes,",
+    "new": "c.full, c.drops, sockets, c.foes,",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the window's peak the count at its end"
+  },
+  {
+    "name": "SCALE5b-peak-under-now",
+    "file": "server/src/relayScale.js",
+    "old": "c.full, c.drops, Math.max(c.peak, sockets), c.foes,",
+    "new": "c.full, c.drops, c.peak, c.foes,",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a peak under the sockets the room holds"
+  },
+  {
+    "name": "SCALE5b-peak-untracked",
+    "file": "server/src/index.js",
+    "old": "    if (n > this._metrics.c.peak) this._metrics.c.peak = n;",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the peak only what an adopt saw"
+  },
+  {
+    "name": "SCALE5b-full-not-busy",
+    "file": "server/src/relayScale.js",
+    "old": " + c.refusals + c.full > 0; }",
+    "new": " + c.refusals > 0; }",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a window that only refused a full room says nothing"
+  },
+  {
+    "name": "SCALE5b-doubles-order",
+    "file": "server/src/relayScale.js",
+    "old": "c.full, c.drops, Math.max(c.peak, sockets), c.foes, c.hits, c.chats, c.owed, c.batches],",
+    "new": "c.drops, c.full, Math.max(c.peak, sockets), c.foes, c.hits, c.chats, c.owed, c.batches],",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "two doubles swapped - a dashboard reads the wrong column"
+  },
+  {
+    "name": "SCALE5b-batch-uncounted",
+    "file": "server/src/index.js",
+    "old": "    this._metrics.c.batches++;\n    this._send(ws, wire2Batch(q));",
+    "new": "    this._send(ws, wire2Batch(q));",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a batch frame uncounted"
+  },
+  {
+    "name": "SCALE5b-owed-uncounted",
+    "file": "server/src/index.js",
+    "old": "    q.push(item);\n    this._metrics.c.owed++;",
+    "new": "    q.push(item);",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "an item owed uncounted"
+  },
+  {
+    "name": "SCALE5b-hits-uncounted",
+    "file": "server/src/index.js",
+    "old": "      this._metrics.c.hits++;   // SCALE5b: the frames by type",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a blow uncounted"
+  },
+  {
+    "name": "SCALE5b-chats-uncounted",
+    "file": "server/src/index.js",
+    "old": "      this._metrics.c.chats++;   // SCALE5b: the frames by type",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a line uncounted"
+  },
+  {
+    "name": "SCALE5b-cfg-glyph-unasked",
+    "file": "server/src/index.js",
+    "old": "      if (!mayRelayCfg(a.glyphs)) {",
+    "new": "      if (false) {",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "anyone sets the relay's settings"
+  },
+  {
+    "name": "SCALE5b-cfg-dm-let-in",
+    "file": "src/net/relayCfg.js",
+    "old": "export const mayRelayCfg = (glyphs) => Array.isArray(glyphs) && glyphs.includes('dev');",
+    "new": "export const mayRelayCfg = (glyphs) => Array.isArray(glyphs) && glyphs.some((g) => g === 'dev' || g === 'dm');",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a Dungeon Master sets the relay's settings"
+  },
+  {
+    "name": "SCALE5b-cfg-unkept",
+    "file": "server/src/index.js",
+    "old": "      await this.state.storage.put('relaycfg', cfg);\n",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a setting forgotten at the next wake"
+  },
+  {
+    "name": "SCALE5b-cfg-herald-kept",
+    "file": "server/src/index.js",
+    "old": "      this._relayCfg = cfg; this._herald = undefined; this._bodyCfg = undefined;",
+    "new": "      this._herald = undefined; this._bodyCfg = undefined;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the hub's own herald on the old setting"
+  },
+  {
+    "name": "SCALE5b-cfg-handback-ignored",
+    "file": "server/src/index.js",
+    "old": "      if (m.v === null) delete cfg[m.k]; else cfg[m.k] = m.v;",
+    "new": "      if (m.v !== null) cfg[m.k] = m.v;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a setting never handed back to the var"
+  },
+  {
+    "name": "SCALE5b-cfg-var-over-hub",
+    "file": "src/net/relayCfg.js",
+    "old": "  if (typeof held === 'string') return held;\n",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the var over the hub's setting"
+  },
+  {
+    "name": "SCALE5b-cfg-null-refused",
+    "file": "src/net/relayCfg.js",
+    "old": "  if (m.v === null) return { k: m.k, v: null };\n",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "no hand-back"
+  },
+  {
+    "name": "SCALE5b-cfg-bound-unasked",
+    "file": "src/net/relayCfg.js",
+    "old": "  if (typeof m.v !== 'string' || m.v.length > RELAY_CFG_VALUE_MAX) return null;\n  return { k: m.k, v: m.v };\n}\n\n/**\n * The hub's answer",
+    "new": "  if (typeof m.v !== 'string') return null;\n  return { k: m.k, v: m.v };\n}\n\n/**\n * The hub's answer",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a setting of any length"
+  },
+  {
+    "name": "SCALE5b-cfg-gate-never-asks",
+    "file": "server/src/index.js",
+    "old": "    await this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it\n    const end = gateTimes",
+    "new": "    const end = gateTimes",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a gate's court never asks the hub"
+  },
+  {
+    "name": "SCALE5b-cfg-sd-never-asks",
+    "file": "server/src/index.js",
+    "old": "    const now = Date.now();\n    await this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it\n    try {\n      // INT12",
+    "new": "    const now = Date.now();\n    try {\n      // INT12",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "an Abyss realm never asks the hub"
+  },
+  {
+    "name": "SCALE5b-cfg-serpent-never-asks",
+    "file": "server/src/index.js",
+    "old": "    await this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it\n    let at = Infinity, live = false;",
+    "new": "    let at = Infinity, live = false;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a serpent's cell never asks the hub"
+  },
+  {
+    "name": "SCALE5b-cfg-ttl-unread",
+    "file": "server/src/index.js",
+    "old": "    if (now - this._relayCfgAt < RELAY_CFG_TTL_MS) return;\n",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a boss's room asks the hub every beat"
+  },
+  {
+    "name": "SCALE5b-cfg-room-line-kept",
+    "file": "server/src/index.js",
+    "old": "{ this._relayCfg = v; this._bodyCfg = undefined; }",
+    "new": "{ this._relayCfg = v; }",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a boss's room keeps the line it read first"
+  },
+  {
+    "name": "SCALE5b-cfg-herald-unreread",
+    "file": "server/src/index.js",
+    "old": "    if (this._herald === undefined || this._heraldCfg !== this._relayCfg) {",
+    "new": "    if (this._herald === undefined) {",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the herald built before the hub's settings were read keeps the var's roles"
+  },
+  {
+    "name": "SCALE5b-cfg-client-version",
+    "file": "src/net/online.js",
+    "old": "      if (primary) this.relayCfgOk = relayCfgSupported(relayV);   // SCALE5b",
+    "new": "      if (primary) this.relayCfgOk = true;   // SCALE5b",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a setting sent to a relay that does not know it"
+  },
+  {
+    "name": "SCALE5b-cfg-world-dev-unasked",
+    "file": "src/scenes/world.js",
+    "old": "      if (!mayRelayCfg(staffGlyphs())) { say('Only a developer may change the relay\\'s settings.'); return; }\n",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the world host sends anyone's /relay"
+  },
+  {
+    "name": "SCALE5b-cfg-staff-unparsed",
+    "file": "src/net/staffCommands.js",
+    "old": "  if (name === 'relay') return parseRelayCfgCommand(rest);   // SCALE5b\n",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "/relay takes nothing after it"
+  },
+  {
+    "name": "SCALE5b-halo-never-thinned",
+    "file": "src/net/online.js",
+    "old": "if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
+    "new": "if (false) continue;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "every pose to every halo, as before"
+  },
+  {
+    "name": "SCALE5b-halo-rf-unread",
+    "file": "src/net/online.js",
+    "old": "if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
+    "new": "if (this._thinOk.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a judging cell's halo thinned - its referee misses the fighter"
+  },
+  {
+    "name": "SCALE5b-halo-old-relay-thinned",
+    "file": "src/net/online.js",
+    "old": "if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
+    "new": "if (!this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a relay that cannot say thinned"
+  },
+  {
+    "name": "SCALE5b-halo-swing-held",
+    "file": "src/net/online.js",
+    "old": "if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
+    "new": "if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS) continue;",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a swing held for the halo's slot"
+  },
+  {
+    "name": "SCALE5b-halo-rf-frame-unread",
+    "file": "src/net/online.js",
+    "old": "      if (ws && (m.on === 1 || m.on === 0)) this._rfOn.set(ws, m.on === 1);",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the cell's later word unread"
+  },
+  {
+    "name": "SCALE5b-says-more-ts",
+    "file": "src/net/wire.js",
+    "old": "const POSE_PLACE = Object.freeze({ x: 1, y: 1, z: 1, yaw: 1, pitch: 1, ts: 1 });",
+    "new": "const POSE_PLACE = Object.freeze({ x: 1, y: 1, z: 1, yaw: 1, pitch: 1 });",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "every pose says more - its send time moved"
+  },
+  {
+    "name": "SCALE5b-says-more-removal",
+    "file": "src/net/wire.js",
+    "old": "  for (const k of Object.keys(a)) if (!POSE_PLACE[k] && !(k in b)) return true;\n",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a field taken away says nothing"
+  },
+  {
+    "name": "SCALE5b-rf-welcome-unsaid",
+    "file": "server/src/index.js",
+    "old": "      const rf = isCellRoom(a.key) && this._refereesPoses() ? ',\"rf\":1' : '';",
+    "new": "      const rf = '';",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a newcomer never told its cell judges"
+  },
+  {
+    "name": "SCALE5b-rf-change-unsaid",
+    "file": "server/src/index.js",
+    "old": "    if (posed && isCellRoom(a.key) && this._refereesPoses() !== this._rfSaid) this._rfSay();",
+    "new": "",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a referee begun never said"
+  },
+  {
+    "name": "SCALE5b-rf-every-pose",
+    "file": "server/src/index.js",
+    "old": "    if (posed && isCellRoom(a.key) && this._refereesPoses() !== this._rfSaid) this._rfSay();",
+    "new": "    if (posed && isCellRoom(a.key)) this._rfSay();",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the word said every pose"
+  },
+  {
+    "name": "SCALE5b-rf-to-first-wire",
+    "file": "server/src/index.js",
+    "old": "    for (const [ws, b] of this._all()) if (b.id && b.w2) this._send(ws, out);\n  }\n  /** SCALE5b: A BEAT'S",
+    "new": "    for (const [ws, b] of this._all()) if (b.id) this._send(ws, out);\n  }\n  /** SCALE5b: A BEAT'S",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the word to an old tab that cannot read it"
+  },
+  {
+    "name": "SCALE5b-rf-serpent-unread",
+    "file": "server/src/index.js",
+    "old": "  _refereesPoses() { return !!(this._duelRef?.bouts?.size || this._wildRef?.fighters?.size || this._serpents?.size); }",
+    "new": "  _refereesPoses() { return !!(this._duelRef?.bouts?.size || this._wildRef?.fighters?.size); }",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "a serpent's fight not a referee"
+  },
+  {
+    "name": "SCALE5b-rf-wild-unread",
+    "file": "server/src/index.js",
+    "old": "  _refereesPoses() { return !!(this._duelRef?.bouts?.size || this._wildRef?.fighters?.size || this._serpents?.size); }",
+    "new": "  _refereesPoses() { return !!(this._duelRef?.bouts?.size || this._serpents?.size); }",
+    "tests": [
+      "test/scale5b.test.js"
+    ],
+    "note": "the Wild zone not a referee"
   }
 ]
