@@ -68,7 +68,7 @@
 //          harness and its driver's seat, where the camera sits - where the player is drawn, or a display faster than the
 //          step saw the bench shake under the eye }
 import { GLOBAL_SCALE, RAY_DISTANCE, pickActivatableHit } from '../player/activate.js';
-import { localAabb, transformedAabb } from '../render/frustum.js';
+import { localAabb, transformedAabb, sphereAabb } from '../render/frustum.js';
 import { multiply, transformPoint } from '../world/mat4.js';
 import { mat4FromQuatPos, mat4FromQuatPosScale, quatAngleAxis, quatLookRotation, quatSlerp, quatForward, quatRotate, UNITY_QUAT_IDENTITY } from '../world/quat.js';
 import { buildWagonParts, usableBounds, CARGO_DEFINITIONS, cargoPiecesShown } from '../systems/wagon41214.js';
@@ -95,6 +95,7 @@ import { caravanRoomModel } from '../world/caravanRoomModel.js';   // WAGONS2: t
 import { readWagonLook, wagonLookOfCode, WAGON_OUTSIDE_LOOKS, CARAVAN_INSIDE_LOOKS, CARAVAN_INSIDE_PARTS } from '../systems/wagonLooks.js';
 import { validWagonKind, wagonHitchOf, WAGON_KINDS, wagonHorsesOf } from '../systems/wagonKinds.js';
 import { CARAVAN_TEXT } from '../systems/caravanRoom.js';
+import { DECOR_DRAW, DECOR_SHADOW, DECOR_SKIP, castOnly } from './decorRoom.js';   // PERF-TEAMS: the host's view verdict (world.js yardCull), as the merchant yards' wagons take it; PERF-WAGON: and the one maps-alone renderer
 
 /** The horse art's archive key and record names on the renderer's texture map: `hcc_h<view>` a standing view,
  *  `hcc_w<view>#<frame>` a walk frame (the foes' own `record#frame` folding, scenes/exteriorFoes.js). */
@@ -149,6 +150,38 @@ export const OUTSIDE_SKIP_REACH = 1.5;
  *  contact was taken down by every body leaning on it - it stood again only once I had walked through the wagon, and
  *  feet on the caravan's roof dropped me into it. Only a body the wagon was laid round reaches in past this. */
 export const CAPSULE_BOX_SKIN = 0.05;
+/** PERF-TEAMS (2026-10-10, the owner: 40 fps by a populated town, 165 forty pixels out): HOW FAR ANOTHER PLAYER'S TEAM
+ *  IS DRAWN AND STEPPED (m, from the eye). HCC-PARK keeps up to PARK_CELL_MAX parked teams a cell for PARK_TTL_MS, owner
+ *  online or not, and every one of them - wagon, bogie, wheels, cargo, a caravan's room, its horses and harness - was
+ *  stepped and drawn every frame across the whole sixteen-pixel cell (~13 km), behind the eye and past the 6 km far
+ *  plane alike. A town's parking lot is a few hundred draws and their shadow casts. Past this a team keeps only its
+ *  word and its cheap ease (so it does not leap when it comes back), and draws nothing. */
+export const PEER_TEAM_DRAW_M = 400;
+/** PERF-TEAMS: the hysteresis - a team drawn stays drawn until PEER_TEAM_DRAW_M plus this, so one at the edge of the
+ *  reach does not drop its horses' billboards and its harness on alternate frames. */
+export const PEER_TEAM_DRAW_SLACK_M = 25;
+/** PERF-TEAMS: the half-width of the box a team's wagon is tested in against the view (m, either horizontal axis) and
+ *  how far it rises above the wagon's point and sinks below it - every kind's body, its wheels and a hitched pair
+ *  inside it (the Caravan is the longest, its team at the pole's end ahead of it). Generous by design: a box too big
+ *  costs a draw, one too small loses a wagon at the screen's edge. */
+export const PEER_TEAM_BOX_HALF_M = 10;
+export const PEER_TEAM_BOX_UP_M = 8;
+export const PEER_TEAM_BOX_DOWN_M = 2;
+/** PERF-TEAMS: is a team at `at` (scene metres) past the draw reach of `eye`, given whether it was past it last frame
+ *  (`wasFar` - the hysteresis)? No eye, or no point: drawn (nothing to measure, nothing to cut). Pure. */
+export function peerTeamFar(at, eye, wasFar = false) {
+  if (!at || !eye) return false;
+  const reach = PEER_TEAM_DRAW_M + (wasFar ? 0 : PEER_TEAM_DRAW_SLACK_M);
+  const dx = at[0] - eye[0], dz = at[2] - eye[2];
+  return dx * dx + dz * dz > reach * reach;
+}
+/** PERF-TEAMS: the scene box a wagon drawn at `at` is tested in (frustum.js's [minX, minY, minZ, maxX, maxY, maxZ]),
+ *  written into `out`. Pure. */
+export function peerTeamBox(at, out = [0, 0, 0, 0, 0, 0]) {
+  out[0] = at[0] - PEER_TEAM_BOX_HALF_M; out[1] = at[1] - PEER_TEAM_BOX_DOWN_M; out[2] = at[2] - PEER_TEAM_BOX_HALF_M;
+  out[3] = at[0] + PEER_TEAM_BOX_HALF_M; out[4] = at[1] + PEER_TEAM_BOX_UP_M; out[5] = at[2] + PEER_TEAM_BOX_HALF_M;
+  return out;
+}
 const ZERO3 = Object.freeze([0, 0, 0]);
 const HORSE_LOCAL_BOX = Object.freeze([
   HORSE_BOX_CENTER[0] - HORSE_BOX_SIZE[0] / 2, HORSE_BOX_CENTER[1] - HORSE_BOX_SIZE[1] / 2, HORSE_BOX_CENTER[2] - HORSE_BOX_SIZE[2] / 2,
@@ -580,7 +613,15 @@ export function createHorseCartPool({
    *  is paused, scaled with the world's time (AUDIT HCC, the branch audit - a following horse walked on under an open
    *  inventory, and a Travel Options journey left the trailing wagon 15 m behind the cart). */
   let peerLook = null;   // AUDIT (pre-merge) I-B: setPeerLook's
+  /** PERF-TEAMS: the eye the last frame() was handed (the draw measures its reach from it); null before any. */
+  let _eye = null;
+  /** PERF-TEAMS: whether the reach is measured at all - not under the travel view, whose eye stands hundreds of metres
+   *  back over a grown world (OW-BIG: `grows.grow`, last pass's), where a cut by the eye's distance would empty it. */
+  const reachCuts = () => !!_eye && !_lastGrows?.grow;
+  /** PERF-TEAMS: where a peer's team stands this frame for the reach - its wagon's word, else its horse's (scene). */
+  const peerTeamAt = (p) => p.wagon?.position ?? p.horse?.position ?? null;
   function frame(dt, cameraPos, gameDt = dt) {
+    _eye = cameraPos ? [cameraPos[0], cameraPos[1], cameraPos[2]] : null;
     if (!enabled) { if (_horseBatches.size || _peers.size || _bucketKey || _harness.size) destroyAll(); return; }
     runtime?.lateUpdate(gameDt);
     const s = shown();
@@ -594,6 +635,18 @@ export function createHorseCartPool({
       p.hidden = look === 'hidden'; p.look = p.hidden ? null : look;
       groundPeer(p);   // DISC20-C: a parked wagon and a standing horse, on MY ground
       retarget(p);   // AUDIT HCC O1: the wire frame, converted THIS frame - a rebase or a re-anchor of mine moves nothing of theirs
+      // PERF-TEAMS: PAST THE REACH, THE WORD AND ITS EASE ALONE - no shafts' raycast, no stride, no wheels, no billboards
+      // and no harness (a team gone from `_teams` lays none: harnessEnds). The ease keeps the drawn point following the
+      // word, so a team walked back into the reach stands where it is, not where it was. The ground probe above stays:
+      // it is once a word (and a retry a second while the ground is not there), never a frame's cost, and a team that
+      // comes into the reach then stands on my ground from its first drawn frame.
+      p.far = reachCuts() && peerTeamFar(peerTeamAt(p), _eye, !!p.far);
+      if (p.far) {
+        if (p.horse) p.shownHorse = easeToward(p.shownHorse, p.horse.position, dt);
+        if (p.wagon) { p.hitch = null; p.shownWagon = easeToward(p.shownWagon, p.wagon.position, dt); }
+        if (_teams.has(owner)) { dropTeamBatches(owner); _teams.delete(owner); }
+        continue;
+      }
       if (p.horse) {
         const was = p.shownHorse;
         p.shownHorse = easeToward(p.shownHorse, p.horse.position, dt);
@@ -658,24 +711,44 @@ export function createHorseCartPool({
    *  grown axle's reach, so a hill the length of a grown wagon does not swallow the ray's origin). */
   const groundYAt = (q, rise = 0) => pickGround(phys.raycastAll([q[0], q[1] + GROUND_RAY_HEIGHT + rise, q[2]], [0, -1, 0], GROUND_RAY_DISTANCE + 2 * rise), q[1])?.point?.[1] ?? null;
   const batches = () => [..._horseBatches.values()];
+  const _teamBox = [0, 0, 0, 0, 0, 0];
+  /** PERF-TEAMS: the view's verdict on a wagon drawn at frame `f` - `cull` the host's (world.js yardCull: in view drawn,
+   *  off screen in a shadow's reach cast alone, else neither), none: drawn. A grown rig under the travel view is drawn
+   *  whole (its box is not this one). */
+  const teamVerdict = (f, cull) => (!cull || f.g > 1 ? DECOR_DRAW : cull(peerTeamBox(f.at, _teamBox)));
+  /** PERF-WAGON (2026-10-10, Mac: "For carts, wagons, etc, we need culling"): ANY OTHER WAGON THIS POOL DRAWS - the road's
+   *  teams (world/roadTeams.js, LW10) - by the same verdict over the same box (teamVerdict): in view drawn, off screen in
+   *  a shadow's reach cast into the maps alone, else nothing; no test, or grown, drawn whole. drawWagon's own arguments
+   *  after the test. Answers whether it was drawn on screen. */
+  function drawWagonSeen(r, cull, texRemap, position, rotation, tier, turn, scale = 1, kind = myKind(), hitched = false, look = null) {
+    const v = teamVerdict({ at: position, g: scale }, cull);
+    if (v === DECOR_SKIP) return false;
+    return drawWagon(v === DECOR_SHADOW ? castOnly(r) : r, texRemap, position, rotation, tier, turn, scale, kind, hitched, look) && v === DECOR_DRAW;
+  }
   /** The world pass. WAGON-HITCH x OW-BIG: under the travel view the host says how far the traveller is grown
    *  (`selfGrow`, the view's own step) and how far another player is at a point (`grow`, OW-PEERS' peerGrow); a cart's
    *  trailing wagon - mine and theirs - is drawn grown with its rider about the hitch. A parked wagon and a following
    *  team are world objects beside a horse billboard drawn at its own size, and stay at theirs. */
-  function draw(r = renderer, texRemap = null, grows = {}) {
+  function draw(r = renderer, texRemap = null, grows = {}, cull = null) {
     _lastGrows = grows ?? {};   // WAGONS2: the seats as drawn read the grow this pass drew at
     let n = 0;
     const s = shown();
     const mine = drawnFrameOf('', grows, s);
     if (mine) {
-      if (drawWagon(r, texRemap, mine.at, mine.rotation, s.wagon.tier, grownTurn('', s.wagon.turn ?? { angle: s.wagon.angle }, mine.g), mine.g, s.wagon.model, s.wagon.hitched, s.wagon.look)) n++;
+      // PERF-TEAMS: mine too - a wagon I parked in town and walked a league from is a wagon in the town's street
+      const v = s.wagon.kind === HCC_WIRE_KIND.Deployed && reachCuts() && peerTeamFar(mine.at, _eye) ? DECOR_SKIP : teamVerdict(mine, cull);
+      const to = v === DECOR_SHADOW ? castOnly(r) : r;
+      if (v !== DECOR_SKIP && drawWagon(to, texRemap, mine.at, mine.rotation, s.wagon.tier, grownTurn('', s.wagon.turn ?? { angle: s.wagon.angle }, mine.g), mine.g, s.wagon.model, s.wagon.hitched, s.wagon.look) && v === DECOR_DRAW) n++;
     } else _grownWheels.delete('');
     for (const [owner, p] of _peers) {
+      if (p.far) continue;   // PERF-TEAMS: past the reach (frame), nothing
       const f = drawnFrameOf(owner, grows);
       if (!f) continue;
-      if (drawWagon(r, texRemap, f.at, f.rotation, p.wagon.tier, grownTurn(owner, p.turn ?? { angle: p.wagon.angle }, f.g), f.g, p.wagon.model, f.hitched, p.wagon.look)) n++;
+      const v = teamVerdict(f, cull);
+      if (v === DECOR_SKIP) continue;
+      if (drawWagon(v === DECOR_SHADOW ? castOnly(r) : r, texRemap, f.at, f.rotation, p.wagon.tier, grownTurn(owner, p.turn ?? { angle: p.wagon.angle }, f.g), f.g, p.wagon.model, f.hitched, p.wagon.look) && v === DECOR_DRAW) n++;
     }
-    drawHarness(r);   // WAGONS3: the traces and the reins
+    drawHarness(r, cull);   // WAGONS3: the traces and the reins; PERF-WAGON: by the same test
     return n;
   }
   /** RW1 x WAGONS2: THE WAGONS IN THE STREET A WINDOW LOOKS OUT ON (render/renderer.js outsideViewDraws - the view out's
@@ -686,7 +759,7 @@ export function createHorseCartPool({
     let n = 0;
     const s = shown();
     const frames = [['', drawnFrameOf('', {}, s), s?.wagon ?? null, s?.wagon?.turn ?? (s?.wagon ? { angle: s.wagon.angle } : null)]];
-    for (const [owner, p] of _peers) frames.push([owner, drawnFrameOf(owner, {}), p.wagon, p.turn ?? { angle: p.wagon?.angle ?? 0 }]);
+    for (const [owner, p] of _peers) if (!p.far) frames.push([owner, drawnFrameOf(owner, {}), p.wagon, p.turn ?? { angle: p.wagon?.angle ?? 0 }]);   // PERF-TEAMS: a window looks out on the street, not past the reach
     for (const [, f, w, turn] of frames) {
       if (!f || !w || (skipAt && Math.hypot(f.at[0] - skipAt[0], f.at[2] - skipAt[2]) < OUTSIDE_SKIP_REACH)) continue;
       if (drawWagon(r, null, f.at, f.rotation, w.tier, turn, 1, w.model, f.hitched, w.look)) n++;
@@ -985,9 +1058,17 @@ export function createHorseCartPool({
     }
   }
   /** WAGONS3: the harnesses in the world pass - world-space meshes, casting no shadow (a strap's would be a speckle). */
-  function drawHarness(r) {
+  const _harnessBox = [0, 0, 0, 0, 0, 0];
+  function drawHarness(r, cull = null) {
     let n = 0;
-    for (const h of _harness.values()) if (h.gpu && r?.drawMesh) { r.drawMesh(h.gpu, WORLD_MATRIX, null, NO_SHADOW); n++; }
+    for (const h of _harness.values()) {
+      if (!h.gpu || !r?.drawMesh) continue;
+      // PERF-WAGON: by the host's test over its ropes' own sphere (renderer.updateMeshVertices keeps it with them) -
+      // drawn in view alone: a strap casts nothing, so off screen there is nothing to record. No sphere: drawn.
+      const box = cull ? sphereAabb(h.gpu.bounds, WORLD_MATRIX, _harnessBox) : null;
+      if (box && cull(box) !== DECOR_DRAW) continue;
+      r.drawMesh(h.gpu, WORLD_MATRIX, null, NO_SHADOW); n++;
+    }
     return n;
   }
   /** BENCH-CAM: my driven bench wagon's `shell` (wagonModels.js wagonGeometry - the body's box) and the matrix it stands
@@ -1522,7 +1603,7 @@ export function createHorseCartPool({
     // LW10 (bible/06-Systems/Living-World-II.md): the living world's teams draw with the pool's own pieces - its wagon's
     // draw and its horse's pose, one home for both (ONE MEMBER, ONE EXPORT; world/roadTeams.js); WAGONS1 x LW10: a
     // wagon of a KIND - its parts (`partsOf`) and its hitch (`hitchOfKind`) - never the player's driven one (`hitchOf`)
-    presentation: { wagonParts, horseArt, hitchOf: () => hitchOf(myKind()), onChanged: () => onChanged?.(), drawWagon, poseHorse: poseHorseBatch, partsOf, hitchOfKind: hitchOf },
+    presentation: { wagonParts, horseArt, hitchOf: () => hitchOf(myKind()), onChanged: () => onChanged?.(), drawWagon, drawWagonSeen, poseHorse: poseHorseBatch, partsOf, hitchOfKind: hitchOf },   // PERF-WAGON: the road's teams by the one verdict
     phys,
     frame, batches, draw, targets, hoverName, tooltipText, activate, offsetAll, destroyAll, clearPeers, shown, groundMoved,
     wireRecord, applyOwner, sweepOwners, applyKept, replaceKept, pruneKept, parkWord, parkedDoor, mySeat, peerSeat, peerRide, mySeatCount, mySeatsKnown,

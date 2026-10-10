@@ -31,6 +31,7 @@ import { FlatAnim } from '../render/flatAnimation.js';
 import { trs, multiply, wrapAngle } from '../world/mat4.js';
 import { intoDeck, outOfDeck } from '../systems/naval/navalDeck.js';   // DECK-CAMP: a camp on a boat's deck rides her frame
 import { localAabb, transformedAabb } from '../render/frustum.js';
+import { drawSeen } from './decorRoom.js';   // PERF-WAGON: a tent by the street's view test
 import { ListPickerWindow } from '../ui/listPicker.js';
 import { survivalOn } from '../systems/survival/switch.js';   // AUDIT SURV-TIERS: Off keeps what stands and uses none of it (shown, below); SURV-OFFSIGHT: it sees another's (seen)
 import {
@@ -431,11 +432,16 @@ export function createCamps({
     const p = tentPos(rec);
     return trs(p[0], p[1], p[2], 0, rec.yaw * 180 / Math.PI, 0);
   };
-  /** The tents, in the host's world pass. */
-  function draw(r = renderer, texRemap = null) {
+  /** The tents, in the host's world pass. PERF-WAGON: `cull` the host's view test over each tent's box where it
+   *  stands - the model's own, its target's (decorRoom.js drawSeen: drawn, cast alone or neither); none, or no box,
+   *  every tent drawn as before. Answers how many were drawn on screen. */
+  function draw(r = renderer, texRemap = null, cull = null) {
     if (!_tent?.gpu || !r?.drawMesh) return 0;
     let n = 0;
-    for (const c of seen()) if (c.rec.kind === CAMP_KIND.Tent) { r.drawMesh(_tent.gpu, tentMatrix(c), texRemap); n++; }
+    for (const c of seen()) if (c.rec.kind === CAMP_KIND.Tent) {
+      const m = tentMatrix(c);
+      if (drawSeen(r, cull, cull && _tent.box ? transformedAabb(_tent.box, m) : null, _tent.gpu, m, texRemap)) n++;
+    }
     return n;
   }
 

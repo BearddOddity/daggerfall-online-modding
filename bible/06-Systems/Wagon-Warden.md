@@ -113,6 +113,16 @@ The thrower keeps its sprite, DECLARED there: the ask was the wagon "on top of t
 under the wagon, and a body has no lift to stand it in - with the bodies on, the watch that patrols is in bodies and the
 one that throws is the guards' picture. Standing the thrower in a body (a carry and a throw clip) is its own work.
 
+## Beside PERF-TEAMS and PERF-WAGON (the merge of #763, 2026-10-10)
+
+PERF-TEAMS cuts another player's team past `PEER_TEAM_DRAW_M` (400 m) from the eye (`p.far` - stepped by its word
+alone) and asks every wagon the pool draws the street's view test (`07-Rendering/Performance-Priority.md`). The watch
+meets it at two seams, both left as they stand. A throw is played within `WARDEN_SHOW_REACH` (200 m) of the eye, inside
+that reach, so a team the reach cuts is never played - its record simply moves to the landing. A HELD team is out of the
+pool's draw before the cut asks (`drawnFrameOf` answers none for it), and the carried wagon is the show's
+(`drawShowWagon`), drawn whole like the cart's pass's landmarks: one team for the seconds of its throw, near the eye,
+its box tumbling through the air rather than standing round its wheels (PERF-TEAMS' `peerTeamBox`).
+
 ## The four hosts
 
 - `scenes/world.js` - WIRED: each town pixel's build keeps its watch's town (`wardenTown`); the warden and its shows are
