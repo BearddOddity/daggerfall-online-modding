@@ -94,7 +94,7 @@ import { decorOwnEntry, decorItemName, decorMountDye, decorMountDyeTarget } from
 import { decorFurnishingEntry, isFurnishing } from '../systems/decorFurnish.js';
 import { itemLongName } from '../systems/itemInfo.js';
 import { decorMatrix, decorKeyOf, loadMountPicture, decorMountQuad, decorMountFloats, DECOR_MODEL_RETRY_MS, MW_STAND_ARCHIVE } from './decorRoom.js';
-import { decorIsMount, decorFlatMirrored } from '../net/decorLaw.js';
+import { decorIsMount, decorFlatMirrored, decorIsFigure, decorDrawnScale } from '../net/decorLaw.js';   // AUDIT DECOR-FIGURE C1, C2: a figure's change and its ground
 import { SEAT_HALL_TEXT } from '../net/townSeatLaw.js';   // SEAT-HALL: the Charter Room's rule, in its words
 import { forgeOffered, PROF_STATIONS, stationColdLine } from '../ui/profPages.js';   // AUDIT 29 B2; PROF4: the workbench too
 import { VENDOR_STATION, VENDOR_COLD_LINE } from '../net/vendorLaw.js';   // HOME-VENDOR: a trader, sold only where it trades
@@ -163,10 +163,14 @@ export const DECOR_LOT_MARKS = 64;
 export const DECOR_DEFAULT_LIGHT = Object.freeze({ color: Object.freeze([1, 0.85, 0.6]), range: 6, intensity: 1 });
 
 /** DECOR1e: A PLACED PIECE'S CHANGE, priced - moved or turned it is free; resized, the law's difference (decorRescale:
- *  grown, paid; shrunk, half back). DECOR2a: the player's own item is free whatever is done to it. */
+ *  grown, paid; shrunk, half back). DECOR2a: the player's own item is free whatever is done to it. AUDIT DECOR-FIGURE
+ *  C1: a figure shrunk before DECOR-FIGURE, brought back to its own size by a move, pays nothing - it stands at that size
+ *  for everyone already, and a figure whose size nobody can change is no growth bought (its cost stays as it was paid);
+ *  one grown before gives its half back, as any shrink does. */
 export function decorEditPrice(radius, was, scale) {
   if (was?.item) return { pay: 0, refund: 0, paid: 0 };
-  return decorRescale(radius, was.paid, scale);
+  const priced = decorRescale(radius, was.paid, scale);
+  return decorIsFigure(was) && priced.pay > 0 ? { pay: 0, refund: 0, paid: was.paid } : priced;
 }
 /** What a placed piece's change says on the bar: free, what it costs, or what comes back. */
 export const decorEditText = ({ pay, refund }) => (pay > 0 ? `${pay} gold` : refund > 0 ? `${refund} gold back` : 'free');
@@ -566,7 +570,7 @@ export function createDecorTool(deps) {
   function footprintOf(p) {
     const piece = p?.piece;
     if (!piece) return [];
-    const s = piece.scale ?? 1;
+    const s = decorDrawnScale(piece);   // AUDIT DECOR-FIGURE C2: the ground it stands on as drawn - a figure at its own size
     const m = piece.model != null ? modelFor(piece.model) : null;
     if (m?.box) {
       const [x0, , z0, x1, , z1] = m.box;

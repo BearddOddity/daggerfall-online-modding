@@ -53,7 +53,7 @@ import { layoutStampOfMapId, CLASSIC_LAYOUT } from './layoutPins.js';   // WD3: 
 import { goldSum as gold, EMPIRE_ACCOUNT_WORDS } from './homeWords.js';   // HOME-PRICE: every sum with its thousands; online, the Empire's account (EMPIRE-ACCOUNT)
 import { walletReserve } from '../net/realmGoldLaw.js';   // MARKET-AUDIT: a refusal gives back exactly what the payment took
 import {
-  HOME_VOTE_UP, HOME_VOTE_DOWN, homeScoreOf, homeMyVoteOf, homeShunned, homeScoreText, homeVotesLine, HOME_SHUNNED_LINE,
+  HOME_VOTE_UP, HOME_VOTE_DOWN, homeScoreOf, homeMyVoteOf, homeShunned, homeShunnedInsiderLine, homeVotesLine, HOME_SHUNNED_LINE,
 } from '../net/homeVoteLaw.js';   // HOME-VOTE: a town's word on a player's house
 
 /** How long a town's answer is believed before a door asks again. */
@@ -196,8 +196,10 @@ export const homeShortLine = (price) => `You need ${gold(price)} gold, in your p
  */
 export const HOME_BUY_ARM_MS = 5_000;
 export const HOME_VERB = Object.freeze({ enter: 'home-enter', buy: 'home-buy', entry: 'home-entry', sell: 'home-sell', rent: RENT_VERB });   // HOME-RENT: a room rented at the door
-/** HOME-VOTE: the town's word on another's home - the vote's own verbs beside a home's, as a hall's are. */
-export const HOME_VOTE_VERB = Object.freeze({ up: 'home-vote-up', down: 'home-vote-down' });
+/** HOME-VOTE: the town's word on another's home - the vote's own verbs beside a home's, as a hall's are. AUDIT B3: taking
+ *  one's vote back is a verb of its own, so a press sends what the row it pressed says - two quick presses on Vote up are
+ *  two votes up, never a vote and its taking back. */
+export const HOME_VOTE_VERB = Object.freeze({ up: 'home-vote-up', down: 'home-vote-down', clear: 'home-vote-clear' });
 /** GUILD1d: a house bought as its guild's hall, and who may walk into a hall - the hall's own verbs beside a home's. */
 export const HALL_VERB = Object.freeze({ buy: 'home-hall', entry: 'home-hall-entry' });
 /** The rows over a house anyone may buy, at `price`; `armed` after its first press. */
@@ -233,25 +235,28 @@ export function homeVisitorRows(home, door, nowS = Math.floor(Date.now() / 1000)
 // and where the plaque draws no rows an Info press asks (openHomeVoteMenu).
 
 /** HOME-VOTE: whether the player looking may vote on this home (`homeAt`'s view) - anybody's but their own account's
- *  (`mine`: any of its characters'), and never a hall of their own guild (`member`). The service holds the same line
- *  (server-account/src/homeVotes.js VOTABLE). */
-export const homeVotable = (home) => !!home && !home.own && home.mine !== true && !(home.hall && home.member === true);
-/** HOME-VOTE: the vote a press on the up (or down) row sends - that vote, or 0 to take back the one standing. */
-export const homeVoteOfPress = (home, up) => {
-  const v = up ? HOME_VOTE_UP : HOME_VOTE_DOWN;
-  return homeMyVoteOf(home?.myVote) === v ? 0 : v;
-};
-/** HOME-VOTE: the door's two vote rows, to a player who may vote on it - each saying what its press does. */
+ *  (`mine`: any of its characters'), and never a hall of their own guild - any character of their account's in it
+ *  (`insider`, AUDIT A5; `member`, the playing character's). The service holds the same line (server-account/src/
+ *  homeVotes.js INSIDER). */
+export const homeVotable = (home) => !!home && !home.own && home.mine !== true && !(home.hall && (home.member === true || home.insider === true));
+/** HOME-VOTE: the vote a row's verb sends - up, down, or (its own verb, AUDIT B3) the one standing taken back; null for a
+ *  verb that is no vote's. */
+export const homeVoteOfVerb = (id) => (id === HOME_VOTE_VERB.up ? HOME_VOTE_UP : id === HOME_VOTE_VERB.down ? HOME_VOTE_DOWN : id === HOME_VOTE_VERB.clear ? 0 : null);
+/** HOME-VOTE: the door's two vote rows, to a player who may vote on it - each saying what its press does: the vote
+ *  standing is taken back by its own row. */
 export function homeVoteRows(home) {
   if (!homeVotable(home)) return [];
   const mine = homeMyVoteOf(home.myVote);
   return [
-    { id: HOME_VOTE_VERB.up, label: mine === HOME_VOTE_UP ? 'Take back your vote up' : 'Vote up' },
-    { id: HOME_VOTE_VERB.down, label: mine === HOME_VOTE_DOWN ? 'Take back your vote down' : 'Vote down' },
+    mine === HOME_VOTE_UP ? { id: HOME_VOTE_VERB.clear, label: 'Take back your vote up' } : { id: HOME_VOTE_VERB.up, label: 'Vote up' },
+    mine === HOME_VOTE_DOWN ? { id: HOME_VOTE_VERB.clear, label: 'Take back your vote down' } : { id: HOME_VOTE_VERB.down, label: 'Vote down' },
   ];
 }
 /** HOME-VOTE: whether a door row is a vote's. */
-export const isHomeVoteVerb = (id) => id === HOME_VOTE_VERB.up || id === HOME_VOTE_VERB.down;
+export const isHomeVoteVerb = (id) => homeVoteOfVerb(id) !== null;
+/** HOME-VOTE: the Info press's box's two choices at a home I may vote on (where no plaque is drawn - worldModes.js
+ *  openHomeVoteMenu): U and D, each the door's own row - its label and the vote it sends. */
+export const homeVoteChoices = (home) => homeVoteRows(home).map((row, i) => ({ code: i ? 'KeyD' : 'KeyU', label: `${i ? 'D' : 'U'} - ${row.label}`, vote: homeVoteOfVerb(row.id) }));
 /** HOME-VOTE: the lines under a home's door - to a voter its score and their own vote (once there is either) and, shunned,
  *  that its decorations are hidden; to its insiders (its owner's account, a hall's members) its score once it has one,
  *  and, shunned, that the town no longer sees them. */
@@ -259,7 +264,7 @@ export function homeVoteLines(home) {
   if (!home) return [];
   const score = homeScoreOf(home.score);
   if (!homeVotable(home)) {
-    if (homeShunned(score)) return [`Votes: ${homeScoreText(score)} - ${home.hall ? "your hall's" : "your home's"} decorations are hidden from other players.`];
+    if (homeShunned(score)) return [homeShunnedInsiderLine(score, !!home.hall)];
     return score !== 0 ? [homeVotesLine(score)] : [];
   }
   const lines = score !== 0 || homeMyVoteOf(home.myVote) ? [homeVotesLine(score, homeMyVoteOf(home.myVote))] : [];
@@ -408,6 +413,7 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
             hallEntry: h.hallEntry === true,   // AUDIT PROF-541 G2: may say who walks in - the rank's, no realm record asked
             deed: h.deed === true,   // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: a deed the service holds for its knight, never bought
             score: homeScoreOf(h.score), myVote: homeMyVoteOf(h.vote),   // HOME-VOTE: its votes summed, and this account's own
+            insider: h.insider === true,   // AUDIT HOME-VOTE A5: a hall of a guild this account has any character in
           });
         }
         towns.set(id, { at: now(), homes });

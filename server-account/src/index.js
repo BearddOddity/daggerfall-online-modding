@@ -1244,7 +1244,7 @@ const service = {
         if (path === '/v1/homes/vote') {   // HOME-VOTE: a registered account's word on a home it is no insider of
           const r = await voteHome(ctx, who.player, body);
           if (!('error' in r)) return json(r, 200, origin);
-          return no(r.error, r.error === 'no-home' ? 404 : r.error === 'vote-rate' ? 429 : r.error === 'vote-own' ? 403 : 400, origin);
+          return no(r.error, r.error === 'no-home' ? 404 : r.error === 'vote-rate' ? 429 : r.error === 'vote-own' || r.error === 'vote-young' ? 403 : 400, origin);
         }
         if (path === '/v1/homes/look') {   // HOME-LOOK: how a home looks outside - its owner's character's (GUILD-YARD: a hall's, its keepers')
           const r = await setHomeLook(hctx, who.player, body);

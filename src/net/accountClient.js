@@ -237,6 +237,7 @@ export const REFUSALS = Object.freeze({
   // HOME-VOTE: a town's word on a player's house (server-account/src/homeVotes.js) - met at its door
   'vote-own': 'You cannot vote on your own home, or on the hall of your own guild.',
   'vote-rate': 'You have voted on a great many homes this hour. Try again later.',
+  'vote-young': 'An account must be a week old to vote on homes.',   // AUDIT HOME-VOTE A1: HOME_VOTE_AGE_S
   'bad-vote': 'The account service could not read that vote. The game may need updating.',
   // HOME-LOOK: an online home's outside (server-account/src/homes.js setHomeLook)
   'bad-look': 'The account service could not read that look. The game may need updating.',

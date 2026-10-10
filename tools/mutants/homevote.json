@@ -12,8 +12,8 @@
   {
     "name": "HOME-VOTE-owner-hidden",
     "file": "src/net/homeVoteLaw.js",
-    "old": "  if (home.mine === true || home.member === true) return true;",
-    "new": "  if (home.member === true) return true;",
+    "old": "  if (home.mine === true || home.member === true || home.insider === true) return true;",
+    "new": "  if (home.member === true || home.insider === true) return true;",
     "tests": [
       "test/homevote.test.js"
     ],
@@ -22,12 +22,22 @@
   {
     "name": "HOME-VOTE-member-hidden",
     "file": "src/net/homeVoteLaw.js",
-    "old": "  if (home.mine === true || home.member === true) return true;",
-    "new": "  if (home.mine === true) return true;",
+    "old": "  if (home.mine === true || home.member === true || home.insider === true) return true;",
+    "new": "  if (home.mine === true || home.insider === true) return true;",
     "tests": [
       "test/homevote.test.js"
     ],
-    "note": "a hall's members lose theirs"
+    "note": "a hall's member loses its decor"
+  },
+  {
+    "name": "HOME-VOTE-kin-hidden",
+    "file": "src/net/homeVoteLaw.js",
+    "old": "  if (home.mine === true || home.member === true || home.insider === true) return true;",
+    "new": "  if (home.mine === true || home.member === true) return true;",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A5: a member account's other character loses its hall's decor"
   },
   {
     "name": "HOME-VOTE-visitor-shown",
@@ -40,10 +50,30 @@
     "note": "the vote hides nothing"
   },
   {
+    "name": "HOME-VOTE-trader-hidden",
+    "file": "src/net/homeVoteLaw.js",
+    "old": "export const decorStaysShunned = (piece) => piece?.station === 'vendor';",
+    "new": "export const decorStaysShunned = (piece) => false;",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT B2: a shunned home's shop gone with its decor"
+  },
+  {
+    "name": "HOME-VOTE-cap-moved",
+    "file": "src/net/homeVoteLaw.js",
+    "old": "export const HOME_VOTES_MAX = 30;",
+    "new": "export const HOME_VOTES_MAX = 31;",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D7: the hour's bar is said, not only looped to"
+  },
+  {
     "name": "HOME-VOTE-owner-votes",
     "file": "src/systems/onlineHomes.js",
-    "old": "export const homeVotable = (home) => !!home && !home.own && home.mine !== true && !(home.hall && home.member === true);",
-    "new": "export const homeVotable = (home) => !!home && !home.own && !(home.hall && home.member === true);",
+    "old": "export const homeVotable = (home) => !!home && !home.own && home.mine !== true && !(home.hall && (home.member === true || home.insider === true));",
+    "new": "export const homeVotable = (home) => !!home && !home.own && !(home.hall && (home.member === true || home.insider === true));",
     "tests": [
       "test/homevote.test.js"
     ],
@@ -52,22 +82,72 @@
   {
     "name": "HOME-VOTE-member-votes",
     "file": "src/systems/onlineHomes.js",
-    "old": "export const homeVotable = (home) => !!home && !home.own && home.mine !== true && !(home.hall && home.member === true);",
-    "new": "export const homeVotable = (home) => !!home && !home.own && home.mine !== true;",
+    "old": "!(home.hall && (home.member === true || home.insider === true));",
+    "new": "!(home.hall && home.insider === true);",
     "tests": [
       "test/homevote.test.js"
     ],
     "note": "a member offered a vote on its own hall"
   },
   {
-    "name": "HOME-VOTE-take-back-never-sent",
+    "name": "HOME-VOTE-kin-votes",
     "file": "src/systems/onlineHomes.js",
-    "old": "  return homeMyVoteOf(home?.myVote) === v ? 0 : v;",
-    "new": "  return v;",
+    "old": "!(home.hall && (home.member === true || home.insider === true));",
+    "new": "!(home.hall && home.member === true);",
     "tests": [
       "test/homevote.test.js"
     ],
-    "note": "a vote can never be taken back"
+    "note": "AUDIT A5: a member account's other character offered votes the service refuses"
+  },
+  {
+    "name": "HOME-VOTE-take-back-re-sent",
+    "file": "src/systems/onlineHomes.js",
+    "old": "    mine === HOME_VOTE_UP ? { id: HOME_VOTE_VERB.clear, label: 'Take back your vote up' }",
+    "new": "    mine === HOME_VOTE_UP ? { id: HOME_VOTE_VERB.up, label: 'Take back your vote up' }",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT B3/D2: the take-back row sends the vote again"
+  },
+  {
+    "name": "HOME-VOTE-clear-a-vote",
+    "file": "src/systems/onlineHomes.js",
+    "old": "id === HOME_VOTE_VERB.clear ? 0 : null",
+    "new": "id === HOME_VOTE_VERB.clear ? 1 : null",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT B3: taking back sends a vote up"
+  },
+  {
+    "name": "HOME-VOTE-choices-inverted",
+    "file": "src/systems/onlineHomes.js",
+    "old": "vote: homeVoteOfVerb(row.id) }));",
+    "new": "vote: -homeVoteOfVerb(row.id) }));",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D2: the Info box's U votes down"
+  },
+  {
+    "name": "HOME-VOTE-zero-vote-unsaid",
+    "file": "src/systems/onlineHomes.js",
+    "old": "  const lines = score !== 0 || homeMyVoteOf(home.myVote) ?",
+    "new": "  const lines = score !== 0 ?",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D5: a vote netting the score to zero is never shown"
+  },
+  {
+    "name": "HOME-VOTE-owner-told-zero",
+    "file": "src/systems/onlineHomes.js",
+    "old": "    return score !== 0 ? [homeVotesLine(score)] : [];",
+    "new": "    return [homeVotesLine(score)];",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D5: an unvoted home's owner reads 'Votes: 0'"
   },
   {
     "name": "HOME-VOTE-score-unread",
@@ -78,6 +158,16 @@
       "test/homevote.test.js"
     ],
     "note": "the client never hears the score"
+  },
+  {
+    "name": "HOME-VOTE-insider-unread",
+    "file": "src/systems/onlineHomes.js",
+    "old": "            insider: h.insider === true,",
+    "new": "            insider: false,",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A5/D8: the registry drops the hall's insider"
   },
   {
     "name": "HOME-VOTE-vote-unshown",
@@ -100,6 +190,46 @@
     "note": "a vote told as a home of the line's changed"
   },
   {
+    "name": "HOME-VOTE-unknown-home-unread",
+    "file": "src/systems/onlineHomes.js",
+    "old": "      else ensure(id, { force: true });\n",
+    "new": "",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D4: a vote on a home the page never read asks nothing"
+  },
+  {
+    "name": "HOME-VOTE-gone-never-re-asked",
+    "file": "src/systems/onlineHomes.js",
+    "old": "    if (r?.error === 'no-home' || r?.error === 'vote-own') ensure(id, { force: true });",
+    "new": "    if (r?.error === 'vote-own') ensure(id, { force: true });",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D4: a home gone stays on the door"
+  },
+  {
+    "name": "HOME-VOTE-route-misnamed",
+    "file": "src/net/accountClient.js",
+    "old": "post('/v1/homes/vote', { mapId, buildingKey, vote })",
+    "new": "post('/v1/homes/votes', { mapId, buildingKey, vote })",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D3: every vote a 404"
+  },
+  {
+    "name": "HOME-VOTE-own-words-lost",
+    "file": "src/net/accountClient.js",
+    "old": "  'vote-own': 'You cannot vote on your own home, or on the hall of your own guild.',",
+    "new": "  'vote-own': 'x',",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D6: the words themselves"
+  },
+  {
     "name": "HOME-VOTE-change-dropped",
     "file": "server-account/src/homeVotes.js",
     "old": "      ON CONFLICT (map_id, building_key, player) DO UPDATE SET vote = excluded.vote, voted_at = excluded.voted_at`)",
@@ -112,8 +242,8 @@
   {
     "name": "HOME-VOTE-owner-votes-service",
     "file": "server-account/src/homeVotes.js",
-    "old": "  AND NOT ((h.guild_id IS NULL AND h.player = ?)",
-    "new": "  AND NOT ((h.guild_id IS NULL AND h.player = ? AND 0)",
+    "old": "((h.guild_id IS NULL AND h.player = ?)",
+    "new": "((h.guild_id IS NULL AND h.player = ? AND 0)",
     "tests": [
       "test/homevote.test.js"
     ],
@@ -122,12 +252,42 @@
   {
     "name": "HOME-VOTE-member-votes-service",
     "file": "server-account/src/homeVotes.js",
-    "old": "g.guild_id = h.guild_id AND g.player = ?))))",
-    "new": "g.guild_id = h.guild_id AND g.player = ? AND 0))))",
+    "old": "g.guild_id = h.guild_id AND g.player = ?)))`;",
+    "new": "g.guild_id = h.guild_id AND g.player = ? AND 0)))`;",
     "tests": [
       "test/homevote.test.js"
     ],
     "note": "a guild votes its own hall up"
+  },
+  {
+    "name": "HOME-VOTE-no-age-bar",
+    "file": "server-account/src/homeVotes.js",
+    "old": "  if (vote !== 0 && !(Number.isSafeInteger(player.registered_at) && player.registered_at <= nowS - HOME_VOTE_AGE_S)) return { error: 'vote-young' };   // AUDIT A1\n",
+    "new": "",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A1: an account a minute old hides a home"
+  },
+  {
+    "name": "HOME-VOTE-take-back-aged",
+    "file": "server-account/src/homeVotes.js",
+    "old": "  if (vote !== 0 && !(Number.isSafeInteger",
+    "new": "  if (!(Number.isSafeInteger",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A1: a young account cannot take back"
+  },
+  {
+    "name": "HOME-VOTE-withdrawal-guarded",
+    "file": "server-account/src/homeVotes.js",
+    "old": "    ? db.prepare('DELETE FROM home_votes WHERE map_id = ? AND building_key = ? AND player = ?').bind(mapId, buildingKey, player.id)",
+    "new": "    ? db.prepare(`DELETE FROM home_votes WHERE map_id = ? AND building_key = ? AND player = ? AND ${VOTABLE}`).bind(mapId, buildingKey, player.id, mapId, buildingKey, player.id, player.id)",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A4/D9: a vote cast before joining a guild held on its hall for good"
   },
   {
     "name": "HOME-VOTE-rate-uncounted",
@@ -160,6 +320,26 @@
     "note": "a vote taken back written as a vote of 0"
   },
   {
+    "name": "HOME-VOTE-room-handed-out",
+    "file": "server-account/src/decor.js",
+    "old": "  if (!S.seat && !(await homeShownTo(db, mapId, buildingKey, player?.id))) return",
+    "new": "  if (false && !(await homeShownTo(db, mapId, buildingKey, player?.id))) return",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A3: an old build shows a shunned room"
+  },
+  {
+    "name": "HOME-VOTE-trader-withheld",
+    "file": "server-account/src/decor.js",
+    "old": "pieces: pieces.filter(decorStaysShunned), hidden: [] };",
+    "new": "pieces: [], hidden: [] };",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT B2: the service withholds a shunned home's shop"
+  },
+  {
     "name": "HOME-VOTE-score-unsaid",
     "file": "server-account/src/homes.js",
     "old": "        ...votesOf(h),   // HOME-VOTE\n      };",
@@ -168,6 +348,16 @@
       "test/homevote.test.js"
     ],
     "note": "the town never says a home's score"
+  },
+  {
+    "name": "HOME-VOTE-score-unselected",
+    "file": "server-account/src/homes.js",
+    "old": "h.look, h.guild_id, h.deed, h.score,",
+    "new": "h.look, h.guild_id, h.deed, 0 AS score,",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A2: the kept score never read"
   },
   {
     "name": "HOME-VOTE-vote-unsaid",
@@ -180,6 +370,36 @@
     "note": "the reader never hears its own vote"
   },
   {
+    "name": "HOME-VOTE-insider-unsaid",
+    "file": "server-account/src/homes.js",
+    "old": "          ...(h.kin === 1 ? { insider: true } : {}),",
+    "new": "          ...({}),",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A5: a hall's account-level insider unsaid"
+  },
+  {
+    "name": "HOME-VOTE-look-said",
+    "file": "server-account/src/homes.js",
+    "old": "(insider || !homeShunned(Number(h.score)) ? lookOfRow(h) : {})",
+    "new": "lookOfRow(h)",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A3: a shunned home's paint said to everyone"
+  },
+  {
+    "name": "HOME-VOTE-vote-404",
+    "file": "server-account/src/index.js",
+    "old": "return no(r.error, r.error === 'no-home' ? 404 : r.error === 'vote-rate'",
+    "new": "return no(r.error, r.error === 'no-home' ? 400 : r.error === 'vote-rate'",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D7: the status said"
+  },
+  {
     "name": "HOME-VOTE-votes-kept",
     "file": "server-account/migrations/0107_home_votes.sql",
     "old": "  FOREIGN KEY (map_id, building_key) REFERENCES homes(map_id, building_key) ON DELETE CASCADE,",
@@ -188,6 +408,36 @@
       "test/homevote.test.js"
     ],
     "note": "a sold home's votes kept for its next owner (the delete refused)"
+  },
+  {
+    "name": "HOME-VOTE-cast-unkept",
+    "file": "server-account/migrations/0107_home_votes.sql",
+    "old": "  UPDATE homes SET score = score + NEW.vote WHERE",
+    "new": "  UPDATE homes SET score = score WHERE",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A2: a vote cast never counted"
+  },
+  {
+    "name": "HOME-VOTE-turned-unkept",
+    "file": "server-account/migrations/0107_home_votes.sql",
+    "old": "score = score - OLD.vote + NEW.vote WHERE",
+    "new": "score = score + NEW.vote WHERE",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A2: a change of mind counted twice"
+  },
+  {
+    "name": "HOME-VOTE-gone-unkept",
+    "file": "server-account/migrations/0107_home_votes.sql",
+    "old": "  UPDATE homes SET score = score - OLD.vote WHERE",
+    "new": "  UPDATE homes SET score = score WHERE",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT A2: a vote taken back still counted"
   },
   {
     "name": "HOME-VOTE-yard-unasked",
@@ -202,8 +452,8 @@
   {
     "name": "HOME-VOTE-room-stood",
     "file": "src/scenes/worldModes.js",
-    "old": "        const pieces = shown ? r.data.pieces.map(decorPieceOf).filter(Boolean) : [];",
-    "new": "        const pieces = r.data.pieces.map(decorPieceOf).filter(Boolean);",
+    "old": "(p) => p && (shown || decorStaysShunned(p))",
+    "new": "(p) => p && true",
     "tests": [
       "test/homevote.test.js"
     ],
@@ -230,14 +480,14 @@
     "note": "a shunned home's paint stands for everyone"
   },
   {
-    "name": "HOME-VOTE-press-unread",
+    "name": "HOME-VOTE-rows-lit",
     "file": "src/scenes/worldModes.js",
-    "old": "            if (isHomeVoteVerb(verb)) { if (homeVotable(home)) pressHomeVote(bd, verb === HOME_VOTE_VERB.up); return true; }\n",
-    "new": "",
+    "old": "    const voteOnly = isHomeVoteVerb(verbs?.[0]?.id);",
+    "new": "    const voteOnly = false;",
     "tests": [
       "test/homevote.test.js"
     ],
-    "note": "a vote row pressed answers \"Locked\""
+    "note": "AUDIT D1: a plain click on a stranger's door votes"
   },
   {
     "name": "HOME-VOTE-lit-click-votes",
@@ -248,5 +498,65 @@
       "test/homevote.test.js"
     ],
     "note": "a plain click on a stranger's door casts a vote"
+  },
+  {
+    "name": "HOME-VOTE-press-unread",
+    "file": "src/scenes/worldModes.js",
+    "old": "            if (isHomeVoteVerb(verb)) { if (homeVotable(home)) pressHomeVote(bd, homeVoteOfVerb(verb)); else if (!home) townTalk?.say?.(HOME_VOTE_GONE_LINE); return true; }\n",
+    "new": "",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a vote row pressed answers \"Locked\""
+  },
+  {
+    "name": "HOME-VOTE-box-over-plaque",
+    "file": "src/scenes/worldModes.js",
+    "old": " && homeVotable(home) && !plaqueListing()) { openHomeVoteMenu",
+    "new": " && homeVotable(home)) { openHomeVoteMenu",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT B1: an Info click on a friend's open home asks instead of going in"
+  },
+  {
+    "name": "HOME-VOTE-box-lock-unsaid",
+    "file": "src/scenes/worldModes.js",
+    "old": "...(door === 'locked' ? [homeLockedLine(home)] : []), ...(homeVoteLines(home)",
+    "new": "...(homeVoteLines(home)",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT B1: the box hides that the door is locked"
+  },
+  {
+    "name": "HOME-VOTE-box-way-in-dropped",
+    "file": "src/scenes/worldModes.js",
+    "old": "openHomeVoteMenu(bd, home, door, door === 'enter' ? homeOnward(hit, entries) : null)",
+    "new": "openHomeVoteMenu(bd, home, door, null)",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D2: G - go in lost"
+  },
+  {
+    "name": "HOME-VOTE-order-dropped",
+    "file": "src/scenes/worldModes.js",
+    "old": "    _homeVoting = _homeVoting.then(async () => {",
+    "new": "    _homeVoting = Promise.resolve().then(async () => {",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D2: ASYNC NEVER DROPS - presses race"
+  },
+  {
+    "name": "HOME-VOTE-own-words-skipped",
+    "file": "src/scenes/worldModes.js",
+    "old": "homeVoteRefusalLine(r.error) ?? accountRefusalText(r.error)",
+    "new": "accountRefusalText(r.error)",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "AUDIT D6: a guest told about owning a home"
   }
 ]

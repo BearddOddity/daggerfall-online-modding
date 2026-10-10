@@ -36,6 +36,8 @@ import { payFromSave, creditSave } from '../../src/net/realmGoldLaw.js';   // RE
 import { GUILD_TREASURY_MAX } from '../../src/net/guildLaw.js';   // GUILD1d: a hall's treasury's cap
 import { HALL_POWERS } from '../../src/net/hallLaw.js';   // GUILD1d: a hall's keepers
 import { SEAT_HALL_DECOR_CAP } from '../../src/net/townSeatLaw.js';   // SEAT-HALL: the Charter Room's pieces
+import { homeShownTo } from './homeVotes.js';   // AUDIT HOME-VOTE A3: a shunned home's room, its insiders' alone
+import { decorStaysShunned } from '../../src/net/homeVoteLaw.js';   // AUDIT HOME-VOTE B2: its hired trader stands
 
 /**
  * REALM P2.2b: WHAT A PIECE'S CHANGE COSTS, as the client's wallet pays it - placed: what it cost (`paid`); grown: the
@@ -220,12 +222,17 @@ export async function vendorStocked(db, mapId, id) {
   return Number(r?.n ?? 0) > 0;
 }
 
-export async function decorOf({ db }, _player, { mapId, buildingKey, seat = false } = {}) {
+export async function decorOf({ db }, player, { mapId, buildingKey, seat = false } = {}) {
   if (!homeMapIdOk(mapId) || !homeBuildingKeyOk(buildingKey)) return { error: 'bad-home' };
   const S = storeOf(seat);   // SEAT-HALL: a palace's Charter Room, its own table - nothing taken out of a palace
   const { results = [] } = await db.prepare(`SELECT * FROM ${S.table} WHERE map_id = ? AND building_key = ? AND yard = 0
     ORDER BY placed_at, id LIMIT ?`).bind(mapId, buildingKey, S.cap).all();   // HOME-YARD: the room's alone
-  return { mapId, buildingKey, pieces: results.map(pieceOfRow).filter(Boolean), hidden: S.seat ? [] : await hiddenOf(db, mapId, buildingKey) };
+  const pieces = results.map(pieceOfRow).filter(Boolean);
+  // AUDIT HOME-VOTE A3: a home the town voted below zero is handed to anyone but its insiders as Daggerfall furnished it
+  // - no placed piece but its hired trader (a shop, never a decoration: B2), nothing taken out - by the service, so a
+  // build from before HOME-VOTE shows no more than the law (homeVotes.js homeShownTo)
+  if (!S.seat && !(await homeShownTo(db, mapId, buildingKey, player?.id))) return { mapId, buildingKey, pieces: pieces.filter(decorStaysShunned), hidden: [] };
+  return { mapId, buildingKey, pieces, hidden: S.seat ? [] : await hiddenOf(db, mapId, buildingKey) };
 }
 
 /**

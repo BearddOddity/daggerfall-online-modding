@@ -59,10 +59,12 @@ const snapTo = (v, step) => round(Math.round(v / step) * step, 3);
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const DEG = 180 / Math.PI;
 
-/** DECOR-FIGURE: whether a catalogue entry takes a size step - never one of Daggerfall's people (the catalogue's Vendors,
- *  or a person's flat however it was reached: a piece moved before the catalogue is read). The placer's law and the
- *  bar's buttons (scenes/decorTool.js) ask this one. */
-export const decorEntrySized = (entry) => !(entry?.kind === 'people' || decorIsFigure(entry));
+/** DECOR-FIGURE: whether a catalogue entry takes a size step - never one of Daggerfall's people (net/decorLaw.js
+ *  decorIsFigure: a flat of a person's archive - the catalogue's Vendors, every one of them (BLOCKS.BSA's people records
+ *  stand in those archives alone - test/people.test.js), or a person's flat however it was reached). AUDIT DECOR-FIGURE
+ *  C3: by the archive alone, as the room draws one and the service writes one - the catalogue's kind, which neither of
+ *  them reads, was a second law. The placer's and the bar's buttons' (scenes/decorTool.js) one question. */
+export const decorEntrySized = (entry) => !decorIsFigure(entry);
 
 /**
  * THE TOOL for one catalogue `entry`. `radius` its measured radius in metres (null: unmeasured), `box` a model's local
@@ -122,8 +124,6 @@ export function createDecorPlacer(entry, { radius = null, box = null, from = nul
     turn(deg) { s.yaw = wrapTurn(round(s.yaw + deg, 1)); },
     /** Lift or lower by `d` metres, within the tool's own bound. */
     raise(d) { s.raise = round(Math.min(DECOR_RAISE_MAX, Math.max(DECOR_RAISE_MIN, s.raise + d)), 3); },
-    /** DECOR-FIGURE: whether the piece takes a size step at all - a figure takes none. */
-    sized: !figure,
     /** A size step up or down, within the law's (DECOR-FIGURE: none for a figure). */
     rescale(up) {
       if (figure) return;

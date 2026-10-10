@@ -13,9 +13,11 @@ import { decorIsFigure, decorDrawnScale, decorScaleOk } from '../src/net/decorLa
 import { NPC_FLAT_ARCHIVES, isNpcFlat } from '../src/world/rdbLayout.js';
 import * as leaf from '../src/world/npcFlatArchives.js';
 import { createDecorPlacer, decorEntrySized } from '../src/systems/decorPlacer.js';
+import { decorCatalogue, collectDecor } from '../src/systems/decorCatalogue.js';
+import { decorEditPrice } from '../src/scenes/decorTool.js';
 import { createDecorBar } from '../src/ui/decorPanel.js';
 import { standService, T0 } from './accountDb.mjs';
-import { fakeDoc, all, settle, toolRig, placeFrom, yardWorld, live, sized } from './decorFakes.mjs';
+import { fakeDoc, all, settle, toolRig, placeFrom, yardWorld, live, sized, rmb, rows } from './decorFakes.mjs';
 
 const figure = (over = {}) => ({ id: 'fig1', model: null, flat: [184, 17], pos: [1, 0, 1], rot: [0, 0, 0], scale: 1, light: null, storage: false, paid: 40, ...over });
 
@@ -36,14 +38,15 @@ test('DECOR-FIGURE the law: a figure is a flat of a person\'s archive, never a m
   assert.equal(isNpcFlat, leaf.isNpcFlat);
 });
 
-test('DECOR-FIGURE the placer: a Vendors entry (or a person\'s flat moved before the catalogue is read) takes no size step and starts at 1 - a figure grown before brought back to its own size - while any other piece steps as before (mutants: the step taken, the old size kept, the kind unread)', () => {
-  const vendor = { key: 'f184.17', model: null, flat: [184, 17], kind: 'people', name: 'Vendor' };
-  assert.equal(decorEntrySized(vendor), false);
+test('DECOR-FIGURE the placer: every Vendors entry the catalogue mints (and a person\'s flat moved before the catalogue is read) takes no size step and starts at 1 - a figure grown before brought back to its own size - while any other piece steps as before; one law, the archive (AUDIT C3: the room and the service read no kind) (mutants: the step taken, the old size kept, no figure)', () => {
+  const entries = decorCatalogue(collectDecor([rmb([], [[209, 0]], [], [[184, 17], [176, 4], [182, 33]])]));
+  const vendors = entries.filter((e) => e.kind === 'people');
+  assert.equal(vendors.length, 3, 'the catalogue\'s own Vendors');
+  for (const e of vendors) assert.equal(decorEntrySized(e), false, e.key);
+  const vendor = vendors.find((e) => e.key === 'f184.17');
   assert.equal(decorEntrySized({ ...vendor, kind: 'decor' }), false, 'its flat alone says it');
-  assert.equal(decorEntrySized({ key: 'f200.1', model: null, flat: [200, 1], kind: 'people' }), false, 'its kind alone says it - a person Daggerfall stands in a room, whatever archive its picture is in');
-  assert.equal(decorEntrySized({ key: 'f209.0', model: null, flat: [209, 0], kind: 'books' }), true);
+  assert.equal(decorEntrySized(entries.find((e) => e.key === 'f209.0')), true, 'a book');
   const p = createDecorPlacer(vendor, { radius: 0.4 });
-  assert.equal(p.sized, false);
   p.rescale(true); p.rescale(true); p.rescale(false);
   assert.equal(p.state().scale, 1, 'no step');
   assert.equal(p.pieceAt([2, 0, 2], [0, 0, 0], 'v1').scale, 1);
@@ -51,7 +54,6 @@ test('DECOR-FIGURE the placer: a Vendors entry (or a person\'s flat moved before
   assert.equal(moved.state().scale, 1, 'grown before: its own size again');
   assert.equal(moved.state().yaw, 30, 'its turn kept');
   const book = createDecorPlacer({ key: 'f209.0', model: null, flat: [209, 0], kind: 'books' }, { radius: 0.4, from: figure({ flat: [209, 0], scale: 2 }) });
-  assert.equal(book.sized, true);
   assert.equal(book.state().scale, 2, 'any other piece keeps its size');
   book.rescale(true);
   assert.equal(book.state().scale, 2.2);
@@ -131,4 +133,30 @@ test('DECOR-FIGURE the service: a figure placed at any size but its own is refus
   assert.equal((await move('fig1', placeOf(figure({ scale: 3 })))).body.error, 'bad-decor', 'grown further: refused');
   assert.equal((await move('fig1', placeOf(figure()))).status, 200, 'brought to its own size');
   assert.equal(JSON.parse(svc.env.DB._raw.prepare('SELECT place FROM home_decor WHERE id = ?').get('fig1').place).scale, 1);
+});
+
+test('DECOR-FIGURE AUDIT C1: a figure brought back to its own size by a move pays nothing where it was shrunk before (it stands at that size for everyone already) and gives its half back where it was grown, as any shrink; any other piece grown pays as ever (mutants: the shrunk figure charged, the grown one\'s refund kept)', () => {
+  assert.deepEqual(decorEditPrice(0.2, figure({ scale: 0.25, paid: 20 }), 1), { pay: 0, refund: 0, paid: 20 }, 'shrunk before: free, its cost as paid');
+  assert.deepEqual(decorEditPrice(0.2, figure({ scale: 2, paid: 60 }), 1), { pay: 0, refund: 15, paid: 30 }, 'grown before: half back');
+  assert.ok(decorEditPrice(0.2, figure({ flat: [209, 0], scale: 0.25, paid: 20 }), 1).pay > 0, 'a book grown: paid');
+});
+
+test('DECOR-FIGURE AUDIT C2: a figure grown before is turned where it stands on the ground it is drawn on - its own size - never refused for a footprint it no longer has (mutant: the record\'s scale read)', async () => {
+  const asked = [];
+  const rig = toolRig({ extraPeople: [[184, 17]], placeOk: (piece, foot) => { asked.push(foot); return null; } });
+  await placeFrom(rig, 'f184.17');
+  rig.frame();
+  assert.equal(await rig.tool.commit(), true);
+  rig.tool.back();
+  rig.standing[rig.standing.length - 1] = { ...rig.standing.at(-1), scale: 2 };   // as one grown before DECOR-FIGURE stands
+  const root = rig.doc.body.children.find((c) => c.className === 'dfdecor');
+  const roomTab = all(root, 'dfdecor-chip').find((c) => /^In this (room|yard)/.test(c.textContent));
+  if (all(root, 'dfdecor-card')[0].dataset.mode !== 'room') roomTab.fire('click');
+  rows(root).find((r) => r.dataset.key === rig.standing.at(-1).id).fire('click');
+  rig.frame();
+  asked.length = 0;
+  all(root, 'dfdecor-btn').find((b) => b.textContent === 'Turn right').fire('click');
+  const foot = asked.at(-1);
+  assert.ok(foot?.length === 4, 'the turn asked the lot');
+  assert.ok(Math.abs(Math.max(...foot.map(([x]) => Math.abs(x))) - 0.2) < 1e-9, `its own size's ground (${JSON.stringify(foot)})`);
 });

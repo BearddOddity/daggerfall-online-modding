@@ -51,7 +51,7 @@ import { hallMay } from '../../src/net/hallLaw.js';   // GUILD1d: a hall's keepe
 import { heraldryOfRow } from './halls.js';   // GUILD1d: a hall's heraldry, on its door
 import { openGatesAt } from './seatHolding.js';   // SEAT1d: Open Gates, where the town's holder proclaims it
 import { OWNS } from './decor.js';   // GUILD-YARD: a home's character, or a hall's keeper - as its decor asks
-import { homeMyVoteOf } from '../../src/net/homeVoteLaw.js';   // HOME-VOTE: the caller's own vote, as the law reads one
+import { homeMyVoteOf, homeShunned } from '../../src/net/homeVoteLaw.js';   // HOME-VOTE: the caller's own vote, as the law reads one; AUDIT A3: a shunned home
 import { LAYOUT_MATCH_SQL, layoutMatchBinds, TOWN_LAYOUT_SQL, townLayoutRefusal } from './townLayout.js';   // WD3: a town's homes in one layout (AUDIT PRE-MERGE 1003 WD1: a hall's too)
 
 const homeOf = (row) => ({
@@ -417,7 +417,7 @@ export async function homesInTown({ db, nowS = Math.floor(Date.now() / 1000) }, 
   const me = typeof character === 'string' && CHAR_ID_RE.test(character) ? character : '';
   // GUILD1d: a hall's guild (its name, tag and heraldry) and the named character's rank in it; a home whose owner opened
   // it to their guild, whether the named character is in that guild with them
-  const { results = [] } = await db.prepare(`SELECT h.building_key, h.player, h.char_id, h.owner_name, h.entry, h.paid, h.rent_due, h.look, h.guild_id, h.deed,
+  const { results = [] } = await db.prepare(`SELECT h.building_key, h.player, h.char_id, h.owner_name, h.entry, h.paid, h.rent_due, h.look, h.guild_id, h.deed, h.score,
       g.name AS guild_name, g.tag AS guild_tag, g.heraldry AS guild_heraldry,
       (SELECT COUNT(*) FROM home_rooms r WHERE r.map_id = h.map_id AND r.building_key = h.building_key AND r.listed = 1 AND (r.tenant IS NULL OR r.until <= ?1)) AS vacant,
       (SELECT MIN(r.price) FROM home_rooms r WHERE r.map_id = h.map_id AND r.building_key = h.building_key AND r.listed = 1 AND (r.tenant IS NULL OR r.until <= ?1)) AS rent_from,
@@ -426,11 +426,14 @@ export async function homesInTown({ db, nowS = Math.floor(Date.now() / 1000) }, 
       (h.guild_id IS NULL AND h.entry = 'guild' AND EXISTS (SELECT 1 FROM guild_members a JOIN guild_members b ON b.guild_id = a.guild_id
         WHERE a.player = h.player AND a.char_id = h.char_id AND b.player = ?2 AND b.char_id = ?3)) AS guildmate,
       EXISTS (SELECT 1 FROM realm_characters rc WHERE rc.id = ?3 AND rc.player = ?2) AS me_realm,
-      (SELECT COALESCE(SUM(v.vote), 0) FROM home_votes v WHERE v.map_id = h.map_id AND v.building_key = h.building_key) AS score,
-      (SELECT v.vote FROM home_votes v WHERE v.map_id = h.map_id AND v.building_key = h.building_key AND v.player = ?2) AS my_vote
+      (SELECT v.vote FROM home_votes v WHERE v.map_id = h.map_id AND v.building_key = h.building_key AND v.player = ?2) AS my_vote,
+      (h.guild_id IS NOT NULL AND EXISTS (SELECT 1 FROM guild_members k WHERE k.guild_id = h.guild_id AND k.player = ?2)) AS kin
     FROM homes h LEFT JOIN guilds g ON g.id = h.guild_id WHERE h.map_id = ?4 ORDER BY h.building_key LIMIT ?5`).bind(nowS, player.id, me, mapId, HOME_TOWN_MAX).all();
-  // HOME-VOTE (homeVotes.js): each home's score - its votes summed - and the caller's own vote, said where there is one
+  // HOME-VOTE (homeVotes.js): each home's score - its votes summed, kept on its row (AUDIT A2) - and the caller's own vote,
+  // said where there is one
   const votesOf = (h) => ({ ...(Number(h.score) ? { score: Number(h.score) } : {}), ...(homeMyVoteOf(h.my_vote) ? { vote: homeMyVoteOf(h.my_vote) } : {}) });
+  // AUDIT HOME-VOTE A3: a shunned home's paint is its insiders' alone - said to nobody else (homeVotes.js homeShownTo's law)
+  const lookFor = (h, insider) => (insider || !homeShunned(Number(h.score)) ? lookOfRow(h) : {});
   return {
     mapId, ...(open ? { openGates: true } : {}),
     // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: a deed held for the named character is no online home to it - its door, storage
@@ -449,7 +452,8 @@ export async function homesInTown({ db, nowS = Math.floor(Date.now() / 1000) }, 
           // AUDIT PROF-541 G2: who may say who walks in, as setHallEntry asks it (halls.js) - the rank alone, any character;
           // `keeper`'s realm clause took the door's "Who may enter" from a local Officer the service would have answered
           ...(rank != null && hallMay(rank, 'hallEntry') ? { hallEntry: true } : {}),
-          ...lookOfRow(h),   // GUILD-YARD: how its keepers painted it, to everyone
+          ...(h.kin === 1 ? { insider: true } : {}),   // AUDIT HOME-VOTE A5: the account has a character in its guild - no vote, its decor always
+          ...lookFor(h, h.kin === 1),   // GUILD-YARD: how its keepers painted it, to everyone (AUDIT HOME-VOTE A3: but a shunned hall's)
           ...votesOf(h),   // HOME-VOTE
         };
       }
@@ -465,7 +469,7 @@ export async function homesInTown({ db, nowS = Math.floor(Date.now() / 1000) }, 
         ...sale,
         ...(Number(h.vacant) > 0 ? { rent: { vacant: Number(h.vacant), from: Number(h.rent_from) } } : {}),
         ...(Number.isSafeInteger(h.tenancy) && h.tenancy > nowS ? { tenant: h.tenancy } : {}),
-        ...lookOfRow(h),   // HOME-LOOK: how its owner painted it
+        ...lookFor(h, mine),   // HOME-LOOK: how its owner painted it (AUDIT HOME-VOTE A3: a shunned home's to its owner alone)
         ...(h.guildmate === 1 ? { guildmate: true } : {}),   // GUILD1d: the named character is in the owner's character's guild
         ...(h.deed === 1 ? { deed: true } : {}),   // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: a deed held, never bought
         ...votesOf(h),   // HOME-VOTE

@@ -60,24 +60,14 @@
     "note": "a figure grown before keeps its size when moved"
   },
   {
-    "name": "DECOR-FIGURE-kind-unread",
+    "name": "DECOR-FIGURE-kind-for-archive",
     "file": "src/systems/decorPlacer.js",
-    "old": "export const decorEntrySized = (entry) => !(entry?.kind === 'people' || decorIsFigure(entry));",
-    "new": "export const decorEntrySized = (entry) => !decorIsFigure(entry);",
+    "old": "export const decorEntrySized = (entry) => !decorIsFigure(entry);",
+    "new": "export const decorEntrySized = (entry) => entry?.kind !== 'people';",
     "tests": [
       "test/decorfigure.test.js"
     ],
-    "note": "a Vendor in another archive scales"
-  },
-  {
-    "name": "DECOR-FIGURE-flat-unread",
-    "file": "src/systems/decorPlacer.js",
-    "old": "export const decorEntrySized = (entry) => !(entry?.kind === 'people' || decorIsFigure(entry));",
-    "new": "export const decorEntrySized = (entry) => !(entry?.kind === 'people');",
-    "tests": [
-      "test/decorfigure.test.js"
-    ],
-    "note": "a figure moved before the catalogue is read scales"
+    "note": "AUDIT C3: the catalogue's kind for the law - a figure moved before the catalogue is read scales"
   },
   {
     "name": "DECOR-FIGURE-buttons-kept",
@@ -98,6 +88,36 @@
       "test/decorfigure.test.js"
     ],
     "note": "the tool never tells the bar"
+  },
+  {
+    "name": "DECOR-FIGURE-shrunk-charged",
+    "file": "src/scenes/decorTool.js",
+    "old": "  return decorIsFigure(was) && priced.pay > 0 ? { pay: 0, refund: 0, paid: was.paid } : priced;",
+    "new": "  return priced;",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "AUDIT C1: a figure shrunk before charged to stand as it already stands"
+  },
+  {
+    "name": "DECOR-FIGURE-grown-refund-kept",
+    "file": "src/scenes/decorTool.js",
+    "old": "decorIsFigure(was) && priced.pay > 0 ?",
+    "new": "decorIsFigure(was) ?",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "AUDIT C1: a figure grown before gives nothing back"
+  },
+  {
+    "name": "DECOR-FIGURE-footprint-recorded",
+    "file": "src/scenes/decorTool.js",
+    "old": "    const s = decorDrawnScale(piece);   // AUDIT DECOR-FIGURE C2",
+    "new": "    const s = piece.scale ?? 1;   // AUDIT DECOR-FIGURE C2",
+    "tests": [
+      "test/decorfigure.test.js"
+    ],
+    "note": "AUDIT C2: a grown figure's turn refused for a footprint it no longer has"
   },
   {
     "name": "DECOR-FIGURE-room-draws-record",
