@@ -202,12 +202,22 @@
   {
     "name": "HOME-VOTE-room-stood",
     "file": "src/scenes/worldModes.js",
-    "old": "        const r = shown ? answer : { ...answer, data: { ...answer.data, pieces: [], hidden: [] } };",
-    "new": "        const r = answer;",
+    "old": "        const pieces = shown ? r.data.pieces.map(decorPieceOf).filter(Boolean) : [];",
+    "new": "        const pieces = r.data.pieces.map(decorPieceOf).filter(Boolean);",
     "tests": [
       "test/homevote.test.js"
     ],
     "note": "a shunned home's room stands for everyone"
+  },
+  {
+    "name": "HOME-VOTE-room-uncleared",
+    "file": "src/scenes/worldModes.js",
+    "old": "        if (!shown) { interiorCtx?.base?.setHidden([]); return; }   // HOME-VOTE: the room as Daggerfall furnished it\n",
+    "new": "",
+    "tests": [
+      "test/homevote.test.js"
+    ],
+    "note": "a shunned home's taken-out furniture stays out for everyone"
   },
   {
     "name": "HOME-VOTE-look-painted",

@@ -5056,15 +5056,15 @@ export function createWorldModes(host) {
     askDecorList({
       ask: () => host.homeDecor.list(homeTownOf(b), b.buildingKey, seat),
       live: () => visit === _decorVisit && interiorBuilding === b && _decorListed !== visit,
-      stand: (answer) => {
+      stand: (r) => {
         _decorListed = visit;   // DECOR-SHELL: stood - nothing later will stand the room over a placement
         // HOME-VOTE: a home the town voted below zero stands as Daggerfall furnished it for everyone but its insiders - no
         // placed piece, nothing taken out (net/homeVoteLaw.js homeDecorShown; the owner, and a hall's members, see theirs)
         const shown = homeDecorShown(interiorHome);
-        const r = shown ? answer : { ...answer, data: { ...answer.data, pieces: [], hidden: [] } };
-        const pieces = r.data.pieces.map(decorPieceOf).filter(Boolean);
+        const pieces = shown ? r.data.pieces.map(decorPieceOf).filter(Boolean) : [];
         interiorDecor.set(pieces);
         if (interiorHome?.own) decorReturnStrays(pieces);   // DECOR2a: the owner's own things the room no longer stands
+        if (!shown) { interiorCtx?.base?.setHidden([]); return; }   // HOME-VOTE: the room as Daggerfall furnished it
         interiorCtx?.base?.setHidden(Array.isArray(r.data.hidden) ? r.data.hidden : []);   // BASE-HIDE: the room its owner cleared, for everyone
       },
     });

@@ -176,7 +176,8 @@ test('HOME-VOTE the yard: a home voted below zero stands no yard for a visitor -
 
 test('HOME-VOTE the hosts: the interior stands a shunned home as Daggerfall furnished it for anyone but its insiders - no placed piece, nothing taken out; the world paints a shunned home in its town\'s own look and keeps it in the merge; the door lists the votes under its rows, unlit where they are all it lists, says "Locked" still, presses them before its lock, and asks in Info where no plaque is drawn (mutants: the room stood, the look painted, the votes pressed after the lock)', () => {
   const m = src('src/scenes/worldModes.js');
-  assert.match(m, /const shown = homeDecorShown\(interiorHome\);\n\s*const r = shown \? answer : \{ \.\.\.answer, data: \{ \.\.\.answer\.data, pieces: \[\], hidden: \[\] \} \};/);
+  assert.match(m, /const shown = homeDecorShown\(interiorHome\);\n\s*const pieces = shown \? r\.data\.pieces\.map\(decorPieceOf\)\.filter\(Boolean\) : \[\];/);
+  assert.match(m, /if \(!shown\) \{ interiorCtx\?\.base\?\.setHidden\(\[\]\); return; \}   \/\/ HOME-VOTE: the room as Daggerfall furnished it\n\s*interiorCtx\?\.base\?\.setHidden\(Array\.isArray\(r\.data\.hidden\)/);
   assert.match(m, /const rows = \[\.\.\.\(homeVisitorRows\(home, homeDoorFor\(bd, home\)\) \?\? \[\]\), \.\.\.homeVoteRows\(home\)\];/);
   assert.match(m, /if \(voteOnly\) _doorText = \{ \.\.\._doorText, actionsUnlit: true \};/);
   assert.match(m, /const voteLines = home \? \[\.\.\.\(voteOnly && homeDoorFor\(bd, home\) === 'locked' \? \['Locked'\] : \[\]\), \.\.\.homeVoteLines\(home\)\] : \[\];/);
