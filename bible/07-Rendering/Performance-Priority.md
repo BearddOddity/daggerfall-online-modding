@@ -8,7 +8,8 @@ PERF-V8 (the world host's frame, a function V8 never optimized), PERF-YARD (the 
 and the merchants'), PERF-INST (the shadow pass's memory of a model's copies), PERF-COL2 (the collider's streamed
 pixels), PERF-FACE (a lantern's six faces copied for one mover) and PERF-NAMES (the crowd's names laid out at every
 move). Then what is left, ranked - the levers that do move
-the picture are the owner's.
+the picture are the owner's. Later the same day: PERF-TEAMS (another player's team, cut by its distance and the view)
+and PERF-WAGON (the rest of the carts, wagons and tents, and the fixed city's host).
 
 AUDITED the same day (the owner: "Lets do an audit on this"): five cold lanes over a frozen snapshot, every finding
 fixed, pinned and mutated or recorded - `01-Overview/Audit-Perf-Priority.md`. What the audit changed is written into
@@ -251,6 +252,68 @@ Pins: `test/name1_bubbles.test.js` reads the place from the transform (and never
 `tools/mutants/name1.json`'s gap and stack mutants re-aimed at the transform (the sheet's own translate is now the
 place's until the first write); 67 dead, 3 equivalent as recorded.
 
+## PERF-TEAMS — another player's team is culled
+
+**Found** (the owner: online, 40 fps by a populated town, 165 once forty map pixels out). Not the peers - their poses
+reach only RANGE_PIXELS (3) - but what a CELL room holds whatever its players' distance: HCC-PARK keeps up to
+`PARK_CELL_MAX` (32) parked teams a sixteen-pixel cell for `PARK_TTL_MS` (72 h), owner online or not, and the client
+holds every one of its cell's and its halo's. `horseCartPool.js` stepped each one every frame (the stride, the shafts'
+raycast, the wheels, the billboards, the harness) and drew each one whole - wagon, bogie, wheels, cargo, a caravan's
+room, every part a shadow caster - with no distance and no view test: a team twelve kilometres off, past the 6 km far
+plane, cost what one in the street did. A town's parking lot is a few hundred draws a frame and their casts; leaving the
+cell (forty pixels out, here) dropped them all at once.
+
+**The fix.** Past `PEER_TEAM_DRAW_M` (400 m, horizontal, `PEER_TEAM_DRAW_SLACK_M` 25 m of hysteresis) a peer's team
+keeps its word and its ease alone (`p.far`): no stride, no shafts, no wheels, no billboards, no harness, no draw - the
+ease goes on, so a team walked back into the reach stands where it is. The ground probe (DISC20-C) stays: it is once a
+word, never a frame's cost. My own parked wagon past the reach is not drawn either. Within the reach each wagon is asked
+the yards' verdict (`yardCull`, PERF-YARD's law) over a box round it (`peerTeamBox`): in view drawn, in a shadow's reach
+cast alone (a caravan's no-shadow room casting nothing), else nothing. The travel view is never cut by the eye's
+distance (its eye stands hundreds of metres back over a grown world) and a grown rig is drawn whole; the window's view
+out takes no far team.
+
+Pins: `test/perf_teams.test.js` (5), over the real wagon parts. Mutants: `tools/mutants/perf_teams.json`, 12, all dead;
+`wagons2.json`'s RW1xWAGONS2-the-peers-left-out re-aimed at the guarded line.
+
+## PERF-WAGON — the rest of the carts, wagons and tents are culled
+
+*Mac: "For carts, wagons, etc, we need culling".*
+
+**Found.** PERF-TEAMS culled another player's team, and the pool's own wagons, in the world host. The same pass still
+drew the rest whole every frame, behind the eye or not: the living world's road teams (LW10: up to `WAGONS_DRAWN` (6)
+wagons, each its body, its wheels and a load of up to twelve pieces, every part a shadow caster), a team's harness (a
+tube mesh an owner), Eye of the Beholder's cart (model 41239), every camp's tent (SURV3, the other players' among them)
+and a stood hideout's tents (LW12). And the fixed city's host (`exterior.js`) handed a test to none of them - PERF-TEAMS
+wired the world host alone (THE FOUR HOSTS RULE).
+
+**The fix.** PERF-YARD's law, each by a box it already had:
+- the road's teams by PERF-TEAMS' own verdict over PERF-TEAMS' own box (`horseCartPool.js drawWagonSeen` over
+  `teamVerdict` and `peerTeamBox`, handed out on the pool's `presentation`; `roadTeams.js draw(r, texRemap, cull)`;
+  `livingRoads.js drawTeams(r, cull)`) - a grown team under the Overworld drawn whole, as PERF-TEAMS draws a grown rig;
+- the harness by its ropes' own sphere (`renderer.createMesh`'s `bounds`, which `updateMeshVertices` keeps with them;
+  `frustum.js sphereAabb`), drawn in view alone - a strap casts nothing, so off screen there is nothing to record;
+- the cart by its mesh's own box (the one its target already used), a camp's tent by its model's box (its target's), a
+  hideout's tent by its mesh's sphere - one mesh each, through `decorRoom.js drawSeen`;
+- the maps-alone renderer is one (`decorRoom.js castOnly`, one a renderer): the merchant yards' copy and PERF-TEAMS'
+  are retired into it.
+
+The world host hands each the street's test (`yardCull`). The fixed city makes its own over its frame's planes
+(`exterior.js streetCull`, the planes made before the pass, `?cull=off` honoured) and hands it to the cart, the tents
+and the pool's wagons. `worldModes.js` and `dungeonContext.js` draw none of them, and the view out of a window takes no
+test (its eye is not the street's). A thing whose box is not in hand - a mesh with no sphere, the cart before its
+triangles - is drawn as before and never asked.
+
+Not changed: the Sigil Broker's cage, the Oblivion Gate's stone, the rite's circle, a bounty farm, the quays and the
+LeFay monument draw whole in the same pass - one landmark each, not a crowd (What is left, 9).
+
+Pins: `test/perfwagon.test.js` (6), by execution over the real producers - the measures, the road's teams over a real
+pool and its baked Small Cart, a real driven harness, the real cart, a real camp's tent and a real hideout's over the
+synthetic map's bands - and the four hosts' wiring. Mutants: `tools/mutants/perfwagon.json`, 25, all dead.
+`perfyard.json`'s PERF-YARD-n and `perf_teams.json`'s PERF-TEAMS-the-room-cast are re-aimed at the one `castOnly`, and
+`lw12.json`'s LW12-wire-draw at the hideouts' line that now hands the test. Pins moved (PIN MOVED): `hcc_hosts` (both
+hosts' tents-and-wagons lines), `lw10_wagons` (the host's teams line, the pool's presentation), `lw12_outlaws` (the
+hideouts' line). Every existing record within three lines of a changed line was run again: 25, all dead.
+
 ## What is left, ranked
 
 Each with what was found and whether it moves the picture (those are the owner's).
@@ -296,6 +359,9 @@ Each with what was found and whether it moves the picture (those are the owner's
    fresh slots shows a light's shadow a frame or two late.
 8. **The yards' sync** stringifies every home's pieces every half second and puts a whole yard again on any change.
    Nothing a player sees.
+9. **The cart's pass's landmarks** (PERF-WAGON) - the Sigil Broker's cage, the Oblivion Gate's stone, the rite's
+   circle, a bounty farm, the quays and the LeFay monument are each drawn whole wherever they stand streamed. One each:
+   a box apiece and the street's test would save a few draws a frame. Nothing a player sees.
 
 **The GPU** (unchanged from PERF-NEXT): the cloud march, Steady shadows' every-frame lantern faces, an automatic quality
 governor - each the owner's.

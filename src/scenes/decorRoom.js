@@ -65,6 +65,23 @@ export function decorCullVerdict(planes, box, reaches) {
   if (!aabbOutside(planes, box)) return DECOR_DRAW;
   return reaches(box) ? DECOR_SHADOW : DECOR_SKIP;
 }
+/** PERF-YARD (AUDIT 15); PERF-WAGON: `r` as the shadow maps alone take it - every draw a caster's record, none on
+ *  screen (a draw that casts nothing casts nothing here either) - for a draw whose verdict is DECOR_SHADOW. One a
+ *  renderer, kept. */
+const _castOnly = new WeakMap();
+export function castOnly(r) {
+  let cast = _castOnly.get(r);
+  if (!cast) { cast = { drawMesh: (mesh, m, remap, o) => { if (!o?.noShadow) r.recordShadowMesh?.(mesh, m, remap); } }; _castOnly.set(r, cast); }
+  return cast;
+}
+/** PERF-WAGON: one mesh by its host's view test over its `box` in the scene - drawn, cast into the maps alone, or
+ *  neither; no test or no box, drawn as before and never asked. Answers whether it was drawn on screen. */
+export function drawSeen(r, cull, box, mesh, m, remap = null, o = undefined) {
+  const seen = cull && box ? cull(box) : DECOR_DRAW;
+  if (seen === DECOR_SKIP) return false;
+  (seen === DECOR_SHADOW ? castOnly(r) : r).drawMesh(mesh, m, remap, o);
+  return seen === DECOR_DRAW;
+}
 
 /** Where a lit piece's light hangs above its base: a TEXTURE.210 light where the room's own light of that record hangs
  *  (interiorLights.js - the flame, not the foot), any other flat at its middle, a model at its origin. */
