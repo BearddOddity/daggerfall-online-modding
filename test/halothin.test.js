@@ -145,7 +145,7 @@ test('HALO-THIN a new socket has heard nothing: a halo\'s reconnect - a new sock
 
 test('HALO-THIN the host: the halos whole while a duel stands (it is refereed in the room my opponent is heard through), in the open zone and in a serpent\'s fight - said before the frame\'s pose leaves; the serpent\'s fight is this frame\'s (mutants: the duel unasked; the zone unasked; the serpent unasked; the word after the pose; the fight never put down)', () => {
   const w = read('src/scenes/world.js');
-  const line = /\n\s*online\.haloWhole = !!duelMgr\.duel \|\| wildHere\(\) \|\| _serpentFight;[^\n]*\n\s*if \(!key\) \{ if \(online\.room\) online\.leave\(\); \}/;
+  const line = /\n\s*online\.haloWhole = !!duelMgr\.duel \|\| wildHere\(\) \|\| _serpentFight;[^\n]*\n\s*if \(!modes\?\.caravanVisit\) caravanVisitLink\.close\(\);[^\n]*\n\s*if \(!key\) \{ if \(online\.room\) online\.leave\(\); \}/;   // above the caravan's close, which WAGONS2-VISIT holds against the join (test/wagons2_visit.test.js)
   assert.match(w, line, 'the word, just before the frame\'s join or pose');
   assert.ok(w.indexOf('online.haloWhole = ') < w.indexOf('    else online.sendPose({ ...pose, ...arm, ...poseFx() });'));
   assert.match(w, /\n\s*_serpentFight = false;\n\s*if \(!serpentHost\) return;/, 'put down each frame first');
