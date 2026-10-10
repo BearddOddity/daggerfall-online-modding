@@ -114,7 +114,7 @@
   },
   {
     "name": "PERF-YARD-n-a-no-shadow-part-cast",
-    "file": "src/scenes/merchantYardsHost.js",
+    "file": "src/scenes/decorRoom.js",
     "old": "{ if (!o?.noShadow) r.recordShadowMesh?.(mesh, m, remap); }",
     "new": "{ r.recordShadowMesh?.(mesh, m, remap); }",
     "tests": ["test/perfyard.test.js"]

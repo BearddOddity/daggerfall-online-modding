@@ -10158,7 +10158,7 @@ decorations/interior decorations should not be shown to other players". As it st
 - **The four hosts.** `scenes/world.js` WIRED (the paint; the yards through `scenes/homeYards.js`).
   `scenes/worldModes.js` WIRED (the door, the room). `scenes/exterior.js` (the bench) stands no online homes - HOME1's
   own - so nothing to vote or hide; `scenes/dungeonContext.js` stands no homes.
-- **Deploy.** The account service first: migration 0107 applied, acct109 (acct107, then acct108, on its branch - renumbered past LW15's and TECH1's at the merges; DECOR-FIGURE's refusal rides the same deploy);
+- **Deploy.** The account service first: migration 0107 applied, acct110 (acct107, acct108 and then acct109 on its branch - renumbered past LW15's, TECH1's and PATRON-LOAD's at the merges; DECOR-FIGURE's refusal rides the same deploy);
   then the page. A build from before HOME-VOTE reads the town's answer as before (the fields are new) and is handed no
   more of a shunned home's room and paint than a new one (AUDIT A3); its yards are the client's to hide. No relay
   change.
@@ -10167,7 +10167,7 @@ decorations/interior decorations should not be shown to other players". As it st
   counts where it is shown - never lookOfHome, which would rebuild the owner's street under the painter's preview;
   `tools/mutants/guild_yard.json` and `housing.json` re-aimed); home2's, homerent's and guild1d_client's door rows (the
   visitor's rows and the votes under them); decor1's room list (the vote's gate between the list stood and its
-  pieces); arena4b's carried columns (the score); acct109 across the service's version pins; accountworker's tables
+  pieces); arena4b's carried columns (the score); acct110 across the service's version pins; accountworker's tables
   (`home_votes`); `test/decorFakes.mjs` yardWorld takes a home row's `home`.
 
 ### AUDIT HOME-VOTE (2026-10-10, the owner: "audit this") - DECOR-FIGURE and HOME-VOTE read again, before their merge
