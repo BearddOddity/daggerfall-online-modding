@@ -88,7 +88,7 @@ import { lookAt, multiply, perspective, mirrorProjectionX, trs, identity, UP_Y, 
 import { aabbOutside, localAabb, transformedAabb, flatBatchAabb, cullDisabled } from '../render/frustum.js';   // GHOST1: the plane extraction comes through bounds.js's `spherePlanes` now - `_planes` serves the sphere test too
 import { spherePlanes, batchVisible, setFlatLean, batchSphere } from '../render/bounds.js';   // PERF-CROWD: the batch's own bounding sphere, the test the shadow replay already uses   // GHOST1: through its ONE home, on the NORMALISED planes it needs   // EV3: the frustum
 import { withMoonAmbient } from '../render/enhancedSky.js';   // EV5: secunda rides the ambient
-import { FarRingRenderer, ringDisabled, ringHeight } from '../render/farRing.js';   // EV8: the province's mountains on the horizon
+import { FarRingRenderer, ringDisabled, ringHeight, RING_HAZE_HOLD, RING_RIM_START, RING_RIM_END } from '../render/farRing.js';   // EV8: the province's mountains on the horizon; FAR-SEA1: its haze, the sea's too
 import { syncLightingLane, lanternColor } from '../render/enhancedLighting.js';   // EL1: the Enhanced Lighting lane, installed at mount
 import { collectBlockFlats, billboardSize, mobileBillboardSize, centredBase, classicBillboardSize, isNatureArchive, NATURE_FLATS_Y } from '../world/rmbFlats.js'; import { blockHillSeat, seatNatureFlat } from '../world/townStandIns.js';   // TREES-SEATED: a block's trees on the hills drawn under them
 import { blockSolids, flatFieldFor } from '../world/flatFields.js';   // FIELD BUGS 2026-10-04d CROPS: a crop field keeps a metre off the block's solids; AUDIT MERCHANT-YARDS G1: and a yard off the field
@@ -33580,6 +33580,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // the air (rain, snow, heavy fog); its light state is the frame's
     // own, already installed by setLighting/beginFrame above. It
     // shares the EV6 seam mark below - one foreign span, two passes.
+    const waterSkyNow = (farRing || waterOn) ? sky.waterSky() : null;   // FAR-SEA1: the sky the water reflects, once a frame - the ring's sea and the water's
+    const seaYNow = farRing ? tvSeaY() : 0;   // FAR-SEA1: the sea's surface in the scene this frame
     const frameRing = () => {   // PERF-V8
     if (farRing && fogNow.mode === 'linear') {
       if (farRing.needsRebuild(state.current.x, state.current.y)) {
@@ -33606,7 +33608,13 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         // that pass's aspect - a horizon built on the full-canvas ratio
         // would step against the terrain in front of it under a docked bar.
         fovY: fieldOfView() + climbFeel.fovRad(), aspect: worldAspect,   // CLIMB4: the lens the world took
+        // FAR-SEA1: the ring's sea under the water's sky, and the sea inside the hole (past the world's far plane) only
+        // with the eye above the sea - a swimmer under it looks up at the surface
+        skyZenith: waterSkyNow?.zenith, skyHorizon: waterSkyNow?.horizon, seaFill: renderer._camPos[1] > seaYNow,
       });
+      // FAR-SEA1: and the streamed sea meets it at the ring's haze - with a sky to reflect: under the classic panorama
+      // the water reflects WATER1's default day, which the fog had hidden past its end and the hold would show at night
+      if (waterSkyNow) renderer.setSeaHaze(RING_HAZE_HOLD, RING_RIM_START, RING_RIM_END, seaYNow);
     }
     };
     frameRing();
@@ -33621,7 +33629,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     const frameWater = () => {   // PERF-V8
     if (waterOn) {
       stirRipples(dt, now);   // WATER-NEXT 4
-      const wu = _waterU = waterUniforms({ seconds: now / 1000, wind: windNow, rain: precipMode === 'rain' || precipMode === 'storm' ? fx.intensity : 0, sky: sky.waterSky() });   // WATER-NEXT 2: the sea's draw takes the frame's too
+      const wu = _waterU = waterUniforms({ seconds: now / 1000, wind: windNow, rain: precipMode === 'rain' || precipMode === 'storm' ? fx.intensity : 0, sky: waterSkyNow });   // WATER-NEXT 2: the sea's draw takes the frame's too; FAR-SEA1: the sky read once
       let n = 0;   // PERF-EXT13: collected, then ONE call - the frame's block once, not once a pixel (renderer.js)
       for (const p of built.values()) {
         if (!p._visible || !p.water || p.deepWaters?.hide) continue;   // DW-C: a hidden cap takes its water with it

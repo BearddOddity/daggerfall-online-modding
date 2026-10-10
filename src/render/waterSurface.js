@@ -38,6 +38,7 @@ import { WIND_ROW_CALM, WIND_ROW_SPAN } from '../systems/wind.js';
 import { getPref } from '../systems/uiPrefs.js';   // FT6: the switch, read here alone
 import { isEnhanced } from '../systems/uiSkin.js';
 import { FOG_GLSL } from './fogGlsl.js';   // AUDIT 68 S17-fog-glsl-dup: the fog every world pass takes, one home
+import { HORIZON_HAZE_GLSL, SEA_HAZE_BAND } from './horizonHaze.js';   // FAR-SEA1: the sea takes the far ring's haze, one text
 import { pageParam } from '../systems/pageQuery.js';
 import { RIPPLE_CELLS, RIPPLE_SCALE } from '../world/waterRipples.js';
 import { NO_BED_DEPTH } from '../world/waterCorners.js';   // AUDIT WATER-NEXT H2: its one home, the water's leaf (the kernel's worker writes it)   // WATER-NEXT 4: the ripple field the shader reads   // PERF-URL: the page's query, parsed once a search
@@ -400,10 +401,12 @@ uniform vec3 uFogColor;
 uniform int uFogMode;
 uniform float uFogDensity;
 uniform vec2 uFogRange;
+uniform vec4 uSeaHaze;         // FAR-SEA1: the far ring's haze hold (0: off - the world's fog alone), its rim's start and end, the sea's height
 uniform vec3 uCamPos;
 ${shadowGlsl}
 out vec4 outColor;
 ${FOG_GLSL}
+${HORIZON_HAZE_GLSL}
 ${SWELL_GLSL}
 uint waterCorners(uint data) {
   // the component by comparison, not by a dynamic index: a dynamic
@@ -590,6 +593,13 @@ void main() {
   // them (an affine fog of x is x * m + c; at a share s, x * m + c * s): the copy's share is left as it was drawn
   vec3 ownShare = uSceneOn == 1 ? vec3(1.0) - trans : vec3(cover);
   float fw = fogFactorAt(vWorldPos);
+  // FAR-SEA1: THE SEA REACHES THE HORIZON. On a frame the far ring is drawn (the host sets uSeaHaze), the water at the
+  // sea's own level takes the ring's haze - the world's linear ramp capped at the hold - so it no longer closes into a
+  // band of solid fog in front of the ring's sea: the two meet at one haze at the streamed grid's edge. Nearer than the
+  // hold the cap is the world's fog exactly; a lake or a river above the coast keeps the world's fog whole.
+  if (uSeaHaze.x > 0.0 && uFogMode == 1 && abs(vWorldPos.y - uSeaHaze.w) < ${SEA_HAZE_BAND.toFixed(2)}) {
+    fw = 1.0 - horizonHaze(length(vWorldPos - focusOrigin()), uFogRange.x, uFogRange.y, uSeaHaze.y, uSeaHaze.z, uSeaHaze.x);
+  }
   vec3 fogged = own * fw + uFogColor * (1.0 - fw) * ownShare;
   fogged = dwWaterFogAdd(fogged, vWorldPos) + dwWaterFog(vec3(0.0), vWorldPos) * ownShare;
   outColor = uSceneOn == 1 ? vec4(under * trans + fogged, edge) : vec4(fogged / max(cover, 1e-3), edge * cover);

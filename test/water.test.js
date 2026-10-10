@@ -242,8 +242,9 @@ test('WATER1: both exterior hosts - the gate, the has-water skip, and the slot a
   assert.ok(slot > w.indexOf('renderer.drawTerrain(p.terrain, pixelMatrix,'), 'after the ground');
   assert.ok(slot > w.lastIndexOf('renderer.drawMesh(millParts.rotor, mountRotor(multiply(pixelMatrix, w.local)'), 'after the last opaque model of the pixel loop');
   assert.ok(slot < w.indexOf('renderer.drawBillboards(allBatches, camRight, bbUp);'), 'before the first flat');   // TV1: the flats lean to the travel view's eye (bbUp)
-  assert.match(w, /const wu = _waterU = waterUniforms\(\{ seconds: now \/ 1000, wind: windNow, rain: precipMode === 'rain' \|\| precipMode === 'storm' \? fx\.intensity : 0, sky: sky\.waterSky\(\) \}\);/,
-    'the clock, the eased wind the mills take, the front\'s rain, the dome\'s colours');
+  assert.match(w, /const wu = _waterU = waterUniforms\(\{ seconds: now \/ 1000, wind: windNow, rain: precipMode === 'rain' \|\| precipMode === 'storm' \? fx\.intensity : 0, sky: waterSkyNow \}\);/,
+    'the clock, the eased wind the mills take, the front\'s rain, the dome\'s colours');   // PIN MOVED (FAR-SEA1): the dome's colours read once a frame, the far ring's sea takes them too
+  assert.match(w, /const waterSkyNow = \(farRing \|\| waterOn\) \? sky\.waterSky\(\) : null;/, 'FAR-SEA1: ...read from the dome, once');
   // PERF-EXT13: the visible water pixels are collected - each pixel's water, its matrix, its ground array and its
   // tilemap - and drawn in ONE call after the walk
   assert.match(w, /if \(!p\._visible \|\| !p\.water \|\| p\.deepWaters\?\.hide\) continue;[^\n]*\n\s*const row = _waterRows\[n\+\+\] \?\?= \[null, null, null, null\];\s*\n\s*row\[0\] = p\.water; row\[1\] = p\._pixelMatrix; row\[2\] = renderer\.tileArrays\.get\(p\.groundArchive\); row\[3\] = p\.tilemapTex;\s*\n\s*\}\s*\n\s*renderer\.drawWaterSurfaces\(_waterRows, n, 6\.4, wu\);/);

@@ -1749,6 +1749,7 @@ export class Renderer {
     // (world/deepWaterLook.js distanceFogUniforms). A FRAME's, as the cloud
     // deck is: beginFrame clears it and the exterior host sets it after.
     this._dwFog = new Float32Array(20);
+    this._seaHaze = new Float32Array(4);   // FAR-SEA1: hold, rim start, rim end, the sea's height (setSeaHaze)
     this._dwColumn = null;   // DW-F: the water column's frame for the flats (setWaterColumn), a frame's like the fog
     this._bbColumnOn = 0;   // LA-COST1 x DW-F: the billboard program's uColumnOn as last sent (the frame block resets it)
     this._bbTipOn = false;   // PROF4: the billboard program's uTip as last sent - a falling tree's (the frame block resets it)
@@ -5037,6 +5038,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     // VC6c: `_deckOwed` keeps it one moment longer, for an image the air pass still owes this frame (airPass.setCloudShadow); `_beginLane` drops it the instant that resolve is done.
     if (this._cloudShadow) { this._deckOwed = this._cloudShadow; this._cloudShadow = null; this._csStamp++; }
     this._dwFog[0] = 0;   // DW-C: the sea's distance fog is a frame's too - no interior, dungeon or panel inherits it
+    this._seaHaze[0] = 0;   // FAR-SEA1: and so is the far ring's haze on the sea - set by the host on a frame it draws the ring
     this._underWater = undefined;   // WATER-NEXT 2: a new copy
     if (!this._focusArmed && this._focus[3] !== 0) this._focus.fill(0);   // AUDIT TV B1: the travel view's focus too, unless set since the last beginFrame (setFocus)
     this._focusArmed = false;
@@ -5790,6 +5792,14 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     this._frameStamp++;   // LA-COST1
     const loc = this._solidFog?.dwFog;   // LA-COST6: null where the mesh program never reads it; a bare prototype has no table
     if (loc) { this._use(this.program); this.gl.uniform4fv(loc, this._dwFog); }
+  }
+
+  /** FAR-SEA1: the far ring's haze on the sea, for this frame's water - `hold` (render/farRing.js RING_HAZE_HOLD), the
+   *  ring's rim (RING_RIM_START, RING_RIM_END) and the sea's height in the scene; null for none (the world's fog alone,
+   *  every water). After beginFrame, which clears it: the host sets it on a frame it draws the ring. */
+  setSeaHaze(hold, rimStart = 0, rimEnd = 0, seaY = 0) {
+    if (hold == null) { this._seaHaze[0] = 0; return; }
+    this._seaHaze[0] = hold; this._seaHaze[1] = rimStart; this._seaHaze[2] = rimEnd; this._seaHaze[3] = seaY;
   }
 
   /** DW-F: the water column's share for this frame's flats - COLUMN_GLSL's
@@ -7009,6 +7019,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
       sceneOn: u('uSceneOn'), scene: u('uScene'), sceneDepth: u('uSceneDepth'), sceneSize: u('uSceneSize'),
       rippleOn: u('uRippleOn'), ripple: u('uRipple'), rippleRect: u('uRippleRect'),   // WATER-NEXT 4
       fog: { fogColor: u('uFogColor'), fogMode: u('uFogMode'), fogDensity: u('uFogDensity'), fogRange: u('uFogRange'), camPos: u('uCamPos'), focus: u('uFocus'), dwFog: u('uDwFog') },   // DW-C: and the sea's; TV1: the focus
+      seaHaze: u('uSeaHaze'),   // FAR-SEA1: the far ring's haze on the sea
       // VC4 recorded that the deck's shadow reached neither the grass nor the water; WATER1 closes the water half
       cloud: [u('uCloudShadowMap'), u('uCloudShadowRect')],
       maskUploaded: false,
@@ -7101,6 +7112,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     // frame the land beside it is lit in
     this._uploadCloudShadow('water');
     this._uploadFog(this._waterSurfaceFog);
+    gl.uniform4fv(L.seaHaze, this._seaHaze);   // FAR-SEA1: off ([0] 0) unless the host drew the far ring this frame
     if (L === this._wsLane && this._shadows) this._shadows.upload(L.shadow);   // EL7: the maps and the receiver's uniforms - the lane's program
     gl.uniform3fv(L.lightDir, this._lightDir);
     gl.uniform3fv(L.ambient, this._ambient);

@@ -456,9 +456,11 @@ panels". Two causes, both the port's own, both closed:
   cap's TileMap now (the clip's byte is no water to it), and the original
   again when the patch goes.
 - **Past the streamed grid** the far ring (EV8) holds its haze at 85%
-  through the middle distance, so its sea reads a shade darker than the
-  fully fogged edge of the streamed world: the ring's own design, over land
-  and sea alike, and not the mod's.
+  through the middle distance - the ring's own design, not the mod's. Its
+  sea no longer reads a shade darker than the fully fogged edge of the
+  streamed world: the streamed sea holds the same haze (FAR-SEA1,
+  `07-Rendering/Water-Arc.md` - the mod's top drawn by the water's program
+  from above takes it too), and over land the step stands.
 
 ## The close (DW-F)
 

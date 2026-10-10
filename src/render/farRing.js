@@ -37,7 +37,21 @@
 // fog's own ramp but CAPS at RING_HAZE_HOLD through the middle
 // distance (peaks read through haze - the point of the feature) and
 // only closes to 1 at the mesh rim, where the ring must dissolve into
-// the sky it sits against.
+// the sky it sits against. FAR-SEA1: the law is render/horizonHaze.js's
+// now, the one the streamed sea takes too - min(ramp, hold), not
+// hold * ramp - so the ocean runs from the streamed grid onto the ring
+// at one haze, and the ring's sea is lit as the water is (the sky it
+// reflects by Fresnel, seaSky) rather than as flat ground.
+//
+// FAR-SEA1: THE SEA INSIDE THE HOLE. The streamed world is drawn
+// through a 6000-unit far plane, and a grid of radius 5 or 6 reaches
+// past it toward its corners - there the sky showed between the clipped
+// sea and the ring. The cells inside the hole whose four corners are all
+// sea, flat at the sea's own height, are kept as a SECOND range of the
+// index buffer: at the far plane (gl_FragDepth 1.0, LEQUAL) they paint
+// only where nothing streamed was drawn, and a flat sea cannot stand
+// above anything. The host draws that range only with the eye above the
+// sea (a swimmer under it looks up at the surface, not at the ring).
 //
 // GL DISCIPLINE: drawn between sky.draw and the host's existing
 // markForeignPass, so the renderer's EV6 state shadows are already
@@ -47,10 +61,12 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { SCALED_OCEAN_ELEVATION, STREAMING_TERRAIN_SCALE, TERRAIN_SIZE } from '../world/terrainSampler.js';
-import { overworldTint, BASE_HEIGHT_SCALE } from '../ui/overworldModel.js';
+import { overworldTint, isWaterPixel, BASE_HEIGHT_SCALE } from '../ui/overworldModel.js';   // FAR-SEA1: and the overworld's own water rule, for the ring's sea
 import { reliefByteHeight, cliffFadeAt } from '../world/landforms.js';   // LANDFORM1: the landforms' lift on a pixel's byte; AUDIT LANDFORMS II I1: faded beside the sea
 import { perspective, mirrorProjectionX } from '../world/mat4.js';
 import { buildProgram } from './glProgram.js';   // AUDIT 68 S17-gl-program-dup: the one compile and link
+import { RING_SEA_GLSL } from './horizonHaze.js';   // FAR-SEA1: the horizon's haze and the sea's own look, one text for the ring (both lanes) and the sea
+import { WATER_F0 } from './waterSurface.js';   // FAR-SEA1: the water's own Fresnel
 
 /** Ring radius in map pixels around the base - ~39 km of horizon. */
 export const RING_RADIUS = 48;
@@ -60,6 +76,10 @@ export const RING_REBUILD_DRIFT = 12;
 /** The haze mix held through the middle distance - the last 15% is
  *  silhouette, and only the rim closes fully into the sky. */
 export const RING_HAZE_HOLD = 0.85;
+/** AUDIT EV F-R3: the rim close keys on the NEAREST rim the square mesh can present - an edge midpoint with the base
+ *  drifted RING_REBUILD_DRIFT toward it. FAR-SEA1: exported, because the streamed sea closes over the same rim. */
+export const RING_RIM_END = (RING_RADIUS - RING_REBUILD_DRIFT) * TERRAIN_SIZE * 0.95;
+export const RING_RIM_START = RING_RIM_END * 0.6;
 
 /** The streamed law's own macro height for one map-pixel byte. LANDFORM1: with `relief` (the Landforms row), the
  *  landforms' lift on it - world/landforms.js reliefByteHeight, the same lift the streamed kernel puts on the byte's own
@@ -67,6 +87,8 @@ export const RING_HAZE_HOLD = 0.85;
  *  own cliffFadeAt beside the sea (AUDIT LANDFORMS II I1), as the kernel fades it. */
 export const ringHeight = (byte, relief = false, fade = 1) =>
   (relief ? reliefByteHeight(byte, fade) : Math.max(byte * BASE_HEIGHT_SCALE, SCALED_OCEAN_ELEVATION)) * STREAMING_TERRAIN_SCALE;
+/** FAR-SEA1: the ring's sea level - a vertex standing here over a water pixel is the sea (after ringHeight: a const). */
+const RING_SEA_Y = ringHeight(0);
 
 /**
  * The ring's vertex grid: (2R+1)^2 vertices at map-pixel centres,
@@ -92,6 +114,7 @@ export function buildFarRingGrid({ heightBytes, mapWidth, mapHeight, climateAt, 
   const positions = new Float32Array(side * side * 3);
   const normals = new Float32Array(side * side * 3);
   const colors = new Uint8Array(side * side * 3);
+  const sea = new Uint8Array(side * side);   // FAR-SEA1: 255 where the vertex is the sea - a water pixel at the sea's own height
   const clampX = (x) => Math.max(0, Math.min(mapWidth - 1, x));
   const clampY = (y) => Math.max(0, Math.min(mapHeight - 1, y));
   // TAMRIEL2: past the map the host may hand the continent's own bytes (world/tamrielGround.js groundWoods); the map's
@@ -118,12 +141,14 @@ export function buildFarRingGrid({ heightBytes, mapWidth, mapHeight, climateAt, 
       normals[o] = nx / l;
       normals[o + 1] = ny / l;
       normals[o + 2] = nz / l;
-      const tint = overworldTint(climateAt(clampX(px), clampY(py)), byte);
+      const climate = climateAt(clampX(px), clampY(py));
+      const tint = overworldTint(climate, byte);
       colors[o] = tint[0]; colors[o + 1] = tint[1]; colors[o + 2] = tint[2];
+      if (isWaterPixel(climate, byte) && Math.abs(positions[o + 1] - RING_SEA_Y) < 1e-3) sea[o / 3] = 255;
       o += 3;
     }
   }
-  return { positions, normals, colors, side };
+  return { positions, normals, colors, sea, side };
 }
 
 /**
@@ -166,22 +191,55 @@ export function buildFarRingIndices({ baseX, baseY, radius = RING_RADIUS, holeX,
   return out.subarray(0, o);
 }
 
+/**
+ * FAR-SEA1: THE SEA INSIDE THE HOLE - the cells buildFarRingIndices skips (fully inside the streamed footprint) whose
+ * four corners are all the sea (`sea`, buildFarRingGrid's), in the same winding. Flat at the sea's own height, a cell
+ * here can never stand above the streamed silhouette (the case the hole exists for): drawn at the far plane, it shows
+ * only where the streamed world drew nothing - past the world's 6000-unit far plane, in the grid's corners.
+ */
+export function buildSeaFillIndices({ baseX, baseY, radius = RING_RADIUS, holeX, holeY, holeRadius, sea }) {
+  const side = radius * 2 + 1;
+  const out = [];
+  for (let j = 0; j < side - 1; j++) {
+    const py = baseY - radius + j;
+    if (py < holeY - holeRadius || py > holeY + holeRadius - 1) continue;
+    for (let i = 0; i < side - 1; i++) {
+      const px = baseX - radius + i;
+      if (px < holeX - holeRadius || px > holeX + holeRadius - 1) continue;
+      const i0 = j * side + i;
+      const i1 = i0 + 1;
+      const i2 = i0 + side;
+      const i3 = i2 + 1;
+      if (!(sea[i0] && sea[i1] && sea[i2] && sea[i3])) continue;
+      out.push(i0, i2, i3, i0, i3, i1);
+    }
+  }
+  return Uint32Array.from(out);
+}
+
 const VS = `#version 300 es
 layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aNormal;
 layout(location=2) in vec3 aColor;
+layout(location=3) in float aSea;   // FAR-SEA1: 1 at the sea's vertices
 uniform mat4 uProj;
 uniform mat4 uView;
 uniform vec3 uOrigin;
 out vec3 vNormal;
 out vec3 vColor;
 out float vDist;
+out float vSea;
+out vec3 vView;   // FAR-SEA1: the eye-space point and the world's up in eye space - the sea's facing, per fragment
+out vec3 vUp;
 void main() {
   vec3 world = aPos + uOrigin;
   vNormal = aNormal;
   vColor = aColor;
+  vSea = aSea;
   vec4 view = uView * vec4(world, 1.0);
   vDist = length(view.xyz);
+  vView = view.xyz;
+  vUp = mat3(uView) * vec3(0.0, 1.0, 0.0);
   gl_Position = uProj * view;
 }`;
 
@@ -203,6 +261,7 @@ uniform float uFogEnd;   // the WORLD fog's end - the ramp the seam must match
 uniform float uRimStart; // where the hold starts closing into the sky
 uniform float uRimEnd;   // the mesh rim - fully sky by here
 uniform float uHazeHold;
+${RING_SEA_GLSL}
 out vec4 outColor;
 void main() {
   gl_FragDepth = 1.0;   // PERF2: at the far plane - under LEQUAL it draws only where the streamed world did not, and over the sky
@@ -210,14 +269,15 @@ void main() {
   float diff = max(dot(n, uLightDir), 0.0);
   float mdiff = max(dot(n, uMoonDir), 0.0);
   vec3 lit = vColor * (uAmbient + uSunColor * (uSunScale * diff) + uMoonColor * (uMoonScale * mdiff));
+  // FAR-SEA1: the sea is lit as the water is - its body under the sky it reflects
+  lit = mix(lit, seaSky(lit, ringSeaFacing(), uSkyZenith, uSkyHorizon, uSeaF0), vSea * uSeaLook);
   // the world fog's own ramp, capped at the hold - silhouettes read
-  // through the haze - then closed to 1 at the rim
-  float base = uHazeHold * clamp((vDist - uFogStart) / max(uFogEnd - uFogStart, 1.0), 0.0, 1.0);
-  float rim = (1.0 - uHazeHold) * smoothstep(uRimStart, uRimEnd, vDist);
-  outColor = vec4(mix(lit, uFogColor, min(base + rim, 1.0)), 1.0);
+  // through the haze - then closed to 1 at the rim (FAR-SEA1: the horizon's one law)
+  outColor = vec4(mix(lit, uFogColor, horizonHaze(vDist, uFogStart, uFogEnd, uRimStart, uRimEnd, uHazeHold)), 1.0);
 }`;
 
 const FLAT_UP = new Float32Array([0, 1, 0]);
+const NO_SKY = new Float32Array(3);   // FAR-SEA1: a frame with no sky to reflect (uSeaLook 0 reads none)
 const FLAT_WHITE = new Float32Array([1, 1, 1]);
 
 /** ?ring=off - the escape hatch, read once at scene build. */
@@ -239,12 +299,16 @@ export class FarRingRenderer {
     this.u = {};
     for (const name of ['uProj', 'uView', 'uOrigin', 'uLightDir', 'uAmbient', 'uSunScale', 'uSunColor',
       'uMoonDir', 'uMoonScale', 'uMoonColor',
-      'uFogColor', 'uFogStart', 'uFogEnd', 'uRimStart', 'uRimEnd', 'uHazeHold', 'uELExposure', 'uAdapt']) {
+      'uFogColor', 'uFogStart', 'uFogEnd', 'uRimStart', 'uRimEnd', 'uHazeHold',
+      'uSkyZenith', 'uSkyHorizon', 'uSeaF0', 'uSeaLook',   // FAR-SEA1: the sea's sky, its Fresnel, and whether it has one
+      'uELExposure', 'uAdapt']) {
       this.u[name] = gl.getUniformLocation(p, name);
     }
     this.vao = null;
     this.buffers = [];
     this.indexCount = 0;
+    this.ringCount = 0;   // FAR-SEA1: the indices outside the hole; indexCount adds the sea inside it
+    this._sea = null;
     this.baseX = 0; this.baseY = 0;
     this._holeKey = '';
     this._proj = null;
@@ -255,22 +319,24 @@ export class FarRingRenderer {
   /** (Re)build the vertex grid around `base` and punch the hole. */
   build(gridInputs, holeX, holeY, holeRadius) {
     const gl = this.gl;
-    const { positions, normals, colors } = buildFarRingGrid(gridInputs);
+    const { positions, normals, colors, sea } = buildFarRingGrid(gridInputs);
     this.baseX = gridInputs.baseX; this.baseY = gridInputs.baseY;
     this.dispose(false);
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
-    const buf = (data, loc, type, normalized) => {
+    const buf = (data, loc, type, normalized, size = 3) => {
       const b = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, b);
       gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
       gl.enableVertexAttribArray(loc);
-      gl.vertexAttribPointer(loc, 3, type, normalized, 0, 0);
+      gl.vertexAttribPointer(loc, size, type, normalized, 0, 0);
       this.buffers.push(b);
     };
     buf(positions, 0, gl.FLOAT, false);
     buf(normals, 1, gl.FLOAT, false);
     buf(colors, 2, gl.UNSIGNED_BYTE, true);
+    buf(sea, 3, gl.UNSIGNED_BYTE, true, 1);   // FAR-SEA1
+    this._sea = sea;
     this._indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer);
     this.buffers.push(this._indexBuffer);
@@ -286,13 +352,16 @@ export class FarRingRenderer {
     const key = `${holeX},${holeY},${holeRadius}`;
     if (!this._built || key === this._holeKey) return;
     const gl = this.gl;
-    const indices = buildFarRingIndices({
-      baseX: this.baseX, baseY: this.baseY, holeX, holeY, holeRadius,
-    });
+    const hole = { baseX: this.baseX, baseY: this.baseY, holeX, holeY, holeRadius };
+    const ring = buildFarRingIndices(hole);
+    const fill = buildSeaFillIndices({ ...hole, sea: this._sea });   // FAR-SEA1: the sea inside the hole, after the ring
+    const indices = new Uint32Array(ring.length + fill.length);
+    indices.set(ring); indices.set(fill, ring.length);
     gl.bindVertexArray(this.vao);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.DYNAMIC_DRAW);
     gl.bindVertexArray(null);
+    this.ringCount = ring.length;
     this.indexCount = indices.length;
     this._holeKey = key;
   }
@@ -321,7 +390,8 @@ export class FarRingRenderer {
    * the streamed world paints over it); its OWN projection, because
    * the world's 6000-unit far plane is 7.3 map pixels.
    */
-  draw(view, { origin, lightDir, ambient, sunScale, sunColor, moonDir, moonScale = 0, moonColor, fogColor, fogStart = 0, fogEnd, fovY, aspect, exposure = 1, adaptTex = null }) {
+  draw(view, { origin, lightDir, ambient, sunScale, sunColor, moonDir, moonScale = 0, moonColor, fogColor, fogStart = 0, fogEnd, fovY, aspect, exposure = 1, adaptTex = null,
+    skyZenith = null, skyHorizon = null, seaFill = true }) {   // FAR-SEA1: the sky the sea reflects (the water's), and the sea inside the hole
     if (!this._built || !this.indexCount) return;
     const gl = this.gl;
     const far = (RING_RADIUS + 1) * TERRAIN_SIZE * 1.5;
@@ -360,10 +430,16 @@ export class FarRingRenderer {
     // topped out at ~0.885 and tall ring terrain terminated against
     // the sky as a faint unblended straight edge at the four cardinal
     // directions; only the corners actually dissolved.
-    const rimEnd = (RING_RADIUS - RING_REBUILD_DRIFT) * TERRAIN_SIZE * 0.95;
-    gl.uniform1f(this.u.uRimStart, rimEnd * 0.6);
-    gl.uniform1f(this.u.uRimEnd, rimEnd);
+    gl.uniform1f(this.u.uRimStart, RING_RIM_START);
+    gl.uniform1f(this.u.uRimEnd, RING_RIM_END);
     gl.uniform1f(this.u.uHazeHold, RING_HAZE_HOLD);
+    // FAR-SEA1: the sky the water reflects this frame and the water's own Fresnel - and without a sky (the classic
+    // panorama publishes none: sky.waterSky() is null) the sea lit as ground, as it was, never a day sky at night
+    const look = !!(skyZenith && skyHorizon);
+    gl.uniform3fv(this.u.uSkyZenith, skyZenith ?? NO_SKY);
+    gl.uniform3fv(this.u.uSkyHorizon, skyHorizon ?? NO_SKY);
+    gl.uniform1f(this.u.uSeaF0, WATER_F0);
+    gl.uniform1f(this.u.uSeaLook, look ? 1 : 0);
     // depth off whole: like the sky it extends, and the streamed world
     // repaints everything nearer; culling off under the mirrored
     // projection (the handedness law every fullscreen pass learned).
@@ -371,7 +447,7 @@ export class FarRingRenderer {
     gl.depthMask(false);
     gl.disable(gl.CULL_FACE);
     gl.bindVertexArray(this.vao);
-    gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
+    gl.drawElements(gl.TRIANGLES, seaFill ? this.indexCount : this.ringCount, gl.UNSIGNED_INT, 0);   // FAR-SEA1: the sea inside the hole is the range's tail
     gl.bindVertexArray(null);
     gl.enable(gl.CULL_FACE);
     gl.depthMask(true);
@@ -390,6 +466,7 @@ export class FarRingRenderer {
     this.vao = null;
     this._built = false;
     this.indexCount = 0;
+    this.ringCount = 0;
     if (whole && this.program) { gl.deleteProgram(this.program); this.program = null; }
   }
 }
