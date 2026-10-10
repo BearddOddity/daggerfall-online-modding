@@ -23600,6 +23600,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** The frame the renderer draws this render frame (the body's pass reads it, the sea's pass after it). */
   let _serpentDraw = null;
   let _serpentBarUp = false;
+  let _serpentFight = false;   // HALO-THIN: this frame's serpent fight - its trail reads my pose in the room it is fought in, a halo's too
   /** The serpent's frame (the online frame's, after the gate's): its omen's line, its receipts offered, and - on the
    *  street, alive - the fight on this screen and its bar. */
   const serpentFrame = () => {
@@ -23610,10 +23611,12 @@ export async function bootWorld(canvas, renderer, params, status) {
     serpentClaims?.tick();
     sdClaims?.tick();   // SD9b: what the account service has not counted yet, offered again on its own clock
     iliacClaims?.tick();   // CARDS10: and the ranked Iliac games', on theirs
+    _serpentFight = false;
     if (!serpentHost) return;
     const street = (modes?.mode ?? 'exterior') === 'exterior' && playerSpawned && playerEntity.health > 0 && !modes?.deathUp?.();
     let fight = false;
     try { fight = street && serpentHost.frame(); } catch (e) { console.warn('[serpent] frame', e?.message ?? e); }
+    _serpentFight = !!fight;
     const bar = fight ? serpentHost.bar() : null;
     if (bar || _serpentBarUp) {
       drawGateBossBar(bar ? serpentBarModel(bar) : null, { hidden: gamePaused() || !!townTalk.hudHidden });
@@ -27538,6 +27541,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     };   // the wire's move bit: 1 walking, 2 running (the peers' bodies pick the clip off it)
     if (seated) arm.st = seated.st;   // CARDS2b: seated, and the table's top above the feet - absent standing, the wire's omission law
     if (!modes?.caravanVisit) caravanVisitLink.close();   // WAGONS2-VISIT: no visit, no listener - closed before my primary joins the cell it heard (never replaced by my own id)
+    online.haloWhole = !!duelMgr.duel || wildHere() || _serpentFight;   // HALO-THIN (net/online.js haloPoseDue): a halo hears my pose when it is due - every pose while a referee may stand in one (a duel's bout is refereed in the room my opponent is heard through, the open zone's fights and a serpent's trail in theirs)
     if (!key) { if (online.room) online.leave(); }   // AUDIT ONLINE D4: a place the host cannot name is no room, not the old one in the wrong frame
     // AUDIT WORLD2 C8: a world room's edge is never a churn - the hold delayed every handover and let one dungeon's stream land in another
     // AUDIT WORLD6b-iii(b) B1/B8: a cell crossing is joined the moment the cell is HELD (the halo's socket promotes in
