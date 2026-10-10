@@ -1808,9 +1808,9 @@ street guards' and the rosters' watch (the city watch wears what it
 rolled).
 
 THE WIRE. `ls` and `lw` change wire.js, so the relay's bundle: RELAY_VERSION
-world189 (world188 on the branch, renumbered past main's INT11-INT14
-world188 at the merge - it may deploy first). The relay
-forwards foe frames unread; no frame changes shape.
+world190 (world188, then world189, on the branch, renumbered past main's
+INT11-INT14 world188 and SCALE5a world189 at the merges - either may deploy
+first). The relay forwards foe frames unread; no frame changes shape.
 
 PROVEN. `test/mwnpc_audit2.test.js` (17) - each finding executed where it
 can be (the encounter pool's own puppet path for K2 and K4, a recording
