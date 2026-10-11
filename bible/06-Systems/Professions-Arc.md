@@ -1277,14 +1277,19 @@ THE FOUR HOSTS: the gathering host is one (`scenes/gatherHost.js`, built online 
 press): `world.js` and `worldModes.js` WIRED through it; `exterior.js` and `dungeonContext.js` hold no gathering of their
 own (a dungeon's veins are the same host's). Port-Ledger: nothing of DFU's - Daggerfall has no service.
 
-Version: `acct118` (no migration). Code: the files above. Pins: `test/gatherspeed.test.js` (10) - the round trips
+Version: `acct119` (no migration; acct118 on its branch, renumbered past SEAT-LEASE at the merge). Code: the files above. Pins: `test/gatherspeed.test.js` (10) - the round trips
 counted, a statement's own call one and a batch one; the answers held to their shape (a harvest's answer and its repeat
 say the same); the seats' rows read once for six asks; the node down as its act ends, up again on a refusal and a
 lapse; the parse and the pump's idle; the cache's minute and the tab's one draw. PIN MOVED: `seat1d_client` (the Levy
 asked beside the ground), `craft3_five` (the track's read a statement), `audit29_host` C4 and `audit30_host` A5 (the
-node and its fall the act's end's). Mutants: `tools/mutants/gatherspeed.json`, 24, all dead; MUTANTS_MOVED records
-re-aimed by content and judged again - MUTANTS_MOVED_RESULT; and the MUTANTS_NEAR records within thirty lines of a
-changed line judged whole - MUTANTS_NEAR_RESULT.
+node and its fall the act's end's). Mutants: `tools/mutants/gatherspeed.json`, 24, all dead; 40 records
+re-aimed by content and judged again - 38 dead, two equivalent as recorded (PROF5-svc-reports-to-all, as it was; and
+AUDIT29-C4-the-node-stood-as-it-was, marked here: a kept harvest's node went with its act, so the pump's answer stands
+again what already shows - the lapse's and the refusal's stand-again are this slice's own, killed); and the 343 records
+within thirty lines of a changed line judged whole - 335 dead, seven equivalent as recorded, and one survivor,
+AUDIT30-A5-the-act-s-node-fallen (the fall the act's end's, the A5 pin no longer told the node as its pixel stands from
+the act's own): `audit30_host` A5 now stands the wood again under the act with every flat one place on, and the node's
+own tree must fall - dead.
 
 ## 11. Writs - the Work tab
 

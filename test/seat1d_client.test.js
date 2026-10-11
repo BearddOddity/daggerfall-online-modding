@@ -264,7 +264,8 @@ test('SEAT1d THE HOSTS BY SOURCE: the service\'s routes and the Turning\'s write
   // PIN MOVED (SEASON1): the plan reckoned, then Season 0's end stripping what it sets up for the next
   assert.match(tu, /const reckonedPlan = turningPlan\(\{ week, seats, treasuries: new Map\(purses\.map\(\(p\) => \[p\.guild_id, Number\(p\.balance\)\]\)\), active: await activeIn\(db, week\) \}\);/);
   const mk = rd('server-account/src/market.js');
-  assert.match(mk, /const tt = await titheAt\(db, nowS, from, rowBoard\(l\)\);/);
+  assert.match(mk, /at \? null : titheAt\(db, nowS, from, rowBoard\(l\)\),/);   // PIN MOVED (MARKET-SPEED): a buy asks its Tithes beside its hubs
+  assert.match(mk, /at \|\| from === region \? null : titheAt\(db, nowS, region, boardOf\(board\)\),/);
   assert.match(mk, /const ct = road\.courier > 0 \? await titheAt\(db, nowS, region, boardOf\(board\)\) : null;/);
   assert.match(mk, /const tt = high == null \? null : await titheAt\(db, nowS, Number\(a\.region\), rowBoard\(a\)\);/);
   const pr = rd('server-account/src/professions.js');
