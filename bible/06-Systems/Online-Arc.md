@@ -10094,7 +10094,8 @@ home's alone - they are about other players.
 
 The owner: "1. remove the scaling option for npc sprites with house decoration interior/exterior 2. I want to implement a
 house voting system within vicinity of player houses. If the house votes run negative, the exterior
-decorations/interior decorations should not be shown to other players". As it stands after AUDIT HOME-VOTE (below).
+decorations/interior decorations should not be shown to other players". As it stands after AUDIT HOME-VOTE and AUDIT
+HOME-VOTE II (below).
 
 - **DECOR-FIGURE - one of Daggerfall's people stands at its own size.** A FIGURE is a piece that is a flat of a person's
   archive (RDBLayout.NPCFlatArchives - its one home now the leaf `world/npcFlatArchives.js`, re-exported by
@@ -10109,8 +10110,11 @@ decorations/interior decorations should not be shown to other players". As it st
   do nothing. Every client draws a figure at its own size whatever its record says (decorDrawnScale -
   `scenes/decorRoom.js`, the room's pool and every yard's), and a turn asks the lot for the ground it is drawn on
   (decorTool.js footprintOf). The service refuses a figure placed at another size, or moved to one (decorScaleOk -
-  `server-account/src/decor.js` placeDecor and moveDecor, `bad-decor`); one grown before keeps its record's scale on a
-  turn or a station's change (its scale unchanged), as YARD-HEIGHT keeps a piece standing from before it.
+  `server-account/src/decor.js` placeDecor, `bad-decor`, and moveDecor, `decor-figure` - II C2: its own words, for a
+  stale copy's turn of a figure brought back to 1 on another device), and never takes an own item said beside a
+  person's flat (`net/decorLaw.js` decorWhatOf - II C1: an item made the flat no figure); one grown before keeps its
+  record's scale on a turn or a station's change (its scale unchanged), as YARD-HEIGHT keeps a piece standing from
+  before it. A build from before DECOR-FIGURE draws that record's scale (II C3).
 - **HOME-VOTE - the vote.** A registered account a week old votes an online home - a guild's hall among them - up (+1)
   or down (-1), changes its mind, or takes its vote back (0): one vote an account a home
   (`server-account/src/homeVotes.js` voteHome over `migrations/0107_home_votes.sql`, POST /v1/homes/vote; the law
@@ -10118,15 +10122,20 @@ decorations/interior decorations should not be shown to other players". As it st
   homeVoteRefusalLine); never an account registered less than HOME_VOTE_AGE_S ago (a week, a witness's bar -
   `vote-young`, which may still take back what it has); never on a home it is inside of - a home of its own account's
   characters, a hall of a guild it has any character in (`vote-own` - the one statement's own clause, INSIDER, so a
-  home sold or a guild joined between the read and the write takes no vote); never a home nobody holds (`no-home`,
-  404); HOME_VOTES_MAX (30) an hour (`vote-rate`). Taking one's own vote back is never refused. A home's SCORE is its
+  home sold or a guild joined between the read and the write takes no vote, and a write that found none is answered
+  as it found it - II A5); never a home nobody holds, nor a knight's deed house (`no-home`, 404 - II B5: its room,
+  yard and paint are its save's); a vote cast names the house's OWNER as its door read it (a home's owner, a hall's
+  guild - II A4: `owner`, homeVoteOwnerOk), and lands only while that is who holds it - never on the next owner's after
+  a sale the door had not heard of; HOME_VOTES_MAX (30) cast an hour (`vote-rate`). Taking one's own vote back is
+  never refused - past the hour's bar too (II A2). A home's SCORE is its
   votes summed, kept on its own row by the database (`homes.score`, the migration's three triggers); the town's homes
   carry it, the reader's own vote, and a hall's `insider` - the account has another character in its guild (the one playing is a `member`)
   (`server-account/src/homes.js` homesInTown - each said only where it is not nothing). The votes go with the home (the
   cascade through `homes`): a home sold, released or moved by the arena starts again from none (an arena move writes
   its new row without the score - homes.js HOME_MOVE_CARRIED), and a home taken up by its line's heir keeps its own.
 - **HOME-VOTE - where it is cast: at the house.** A home's door's plaque lists the votes under whatever else the door
-  does, to anyone who may vote on it (`systems/onlineHomes.js` homeVoteRows, homeVotable - the service's own line, read
+  does, where the plaque draws its list (II D1: `ui/worldPlaque.js` worldPlaqueOn - the classic face folds a door's rows
+  it never draws), to anyone who may vote on it (`systems/onlineHomes.js` homeVoteRows, homeVotable - the service's own line, read
   off the town's answer: `mine`, a hall's `member` or `insider`): "Vote up" and "Vote down", the vote standing taken
   back by a row of its own ("Take back your vote up" - HOME_VOTE_VERB.clear), each row's verb the vote it sends
   (homeVoteOfVerb); the score and the reader's own vote are among the door's lines (homeVoteLines). Where those rows
@@ -10134,27 +10143,40 @@ decorations/interior decorations should not be shown to other players". As it st
   `actionsUnlit`, a player's own list's law) - and the door still says "Locked" (`scenes/worldModes.js`
   homeVoteDoorText). A vote row is pressed before the lock answers (`scenes/worldModes.js` pressHomeVote - presses sent
   in the order made, each the vote its row said; a home gone since is said so), and where no plaque is drawn (a touch
-  screen, World Tooltips off - `systems/quickLoot.js` plaqueListing) an Info press on such a door asks
-  (openHomeVoteMenu: the door's two rows, whether it is locked to the reader, and Go in where it opens). The vote is
-  shown at once and read back (the registry's `vote`), never told as a home of mine changed (LEGACY7's listener).
+  screen, World Tooltips off, the classic face - `systems/quickLoot.js` plaqueListing, and worldPlaqueOn) an Info press
+  on such a door asks
+  (openHomeVoteMenu: the door's two rows, whether it is locked to the reader, and Go in where it opens - whether the
+  plaque listed rows read as the press lands, never after the town's wait: II B4); a locked home with a room to rent
+  asks its rooms and its votes in one box (II B1). A hall's member with a vote standing from before they joined is
+  offered its take-back alone (II A3: homeVoteRows, homeVotePressable). The vote is shown at once and read back (the
+  registry's `vote`; a house the page holds no owner of is asked again, and no vote sent), never told as a home of
+  mine changed (LEGACY7's listener).
 - **HOME-VOTE - what a negative score hides, and from whom.** While a home's score runs below zero it is SHUNNED
   (homeShunned), and what its owner chose to show stands for its INSIDERS alone - the owner's own account (any of its
   characters: `mine`) and, for a hall, an account with any character in its guild (`member`, `insider` -
-  homeDecorShown). Everyone else walks into the room Daggerfall furnished - no placed piece but its hired trader (a
-  shop, never a decoration: decorStaysShunned), nothing its owner took out (`scenes/worldModes.js` loadHomeDecor; the
-  service hands out no more - `server-account/src/decor.js` decorOf, homeVotes.js homeShownTo) - past a lot with
+  homeDecorShown). Everyone else walks into the room Daggerfall furnished - no placed piece but a hired trader with
+  goods on sale at it (a shop, never a decoration: decorStaysShunned; II A1: any piece may be made a trader, so the
+  service keeps only one with an open listing - decor.js shopOf), nothing its owner took out (`scenes/worldModes.js`
+  loadHomeDecor stands what it is handed; the service hands out no more - `server-account/src/decor.js` decorOf,
+  homeVotes.js homeShownTo) - past a lot with
   nothing on it (`scenes/homeYards.js` sync takes the yard down) and a house in its town's own paint (`scenes/world.js`
   lookOfHome; homesInTown says no look of it; a shunned home's look keeps it in the pixel's merge). Nothing is deleted
   or refunded: the pieces stay the owner's, and a vote turned round shows them all again - to the voter at once, to
-  everyone else at their next read of the town (HOME_TOWN_TTL_MS, a minute) and their next visit inside. The owner
-  reads the score at their own door and, shunned, that the house's decorations are hidden from other players.
+  everyone else at their next read of the town and their next visit inside. A town is read again only when asked
+  once its answer is a minute old (HOME_TOWN_TTL_MS) - a residence's door looked at or pressed, a town entered, its
+  map opened (II B6: nothing re-reads it on a clock; a viewer standing at a yard keeps what they read). The owner
+  reads the score at their own door - on its plaque, or in their Info box where none is drawn (II B2) - and,
+  shunned, that the house's decorations are hidden from other players.
 - **The calls made here, each the owner's to change.** NEGATIVE means a score below zero, as asked - one vote down on a
   home nobody has voted up hides it until somebody does; there is no minimum count (the week's age and the hour's 30
   are what stand between a throwaway account and every home). A hall is a player's house and is voted as one.
   "Exterior decorations" is read as the yard AND the painted outside (HOME-LOOK's Exterior tab); a hall's banners are
   its guild's heraldry, not its decor, and stand. A hired trader stands. A tenant renting a room, and a party member
   let in, are visitors: a shunned home is bare to them. The vicinity is the door: the service cannot see where a voter
-  stands, so the client offers the vote at the house and nowhere else.
+  stands, so the client offers the vote at the house and nowhere else. A vote stands until its voter takes it back -
+  none expires, an abandoned account's included (II A7). "NPC sprites" are Daggerfall's PEOPLE (its NPC archives):
+  its animals - the street's horses, dogs and cows (TEXTURE.201), a mod's rats and chickens - still take a size (II
+  C4).
 - **The four hosts.** `scenes/world.js` WIRED (the paint; the yards through `scenes/homeYards.js`).
   `scenes/worldModes.js` WIRED (the door, the room). `scenes/exterior.js` (the bench) stands no online homes - HOME1's
   own - so nothing to vote or hide; `scenes/dungeonContext.js` stands no homes.
@@ -10162,13 +10184,17 @@ decorations/interior decorations should not be shown to other players". As it st
   then the page. A build from before HOME-VOTE reads the town's answer as before (the fields are new) and is handed no
   more of a shunned home's room and paint than a new one (AUDIT A3); its yards are the client's to hide. No relay
   change.
-- Pinned in `test/decorfigure.test.js` (8) and `test/homevote.test.js` (8); `tools/mutants/decorfigure.json` 16 of 16
-  dead, `tools/mutants/homevote.json` 56 of 56 dead. PIN MOVED: guild_yard's and homelook's look-merge pin (a look
+- Pinned in `test/decorfigure.test.js` (8) and `test/homevote.test.js` (12); `tools/mutants/decorfigure.json` 19 dead
+  and 1 equivalent as recorded, `tools/mutants/homevote.json` 92 dead and 1 equivalent as recorded (AUDIT HOME-VOTE
+  II's among them). PIN MOVED: guild_yard's and homelook's look-merge pin (a look
   counts where it is shown - never lookOfHome, which would rebuild the owner's street under the painter's preview;
   `tools/mutants/guild_yard.json` and `housing.json` re-aimed); home2's, homerent's and guild1d_client's door rows (the
   visitor's rows and the votes under them); decor1's room list (the vote's gate between the list stood and its
   pieces); arena4b's carried columns (the score); acct110 across the service's version pins; accountworker's tables
-  (`home_votes`); `test/decorFakes.mjs` yardWorld takes a home row's `home`.
+  (`home_votes`); `test/decorFakes.mjs` yardWorld takes a home row's `home`; AUDIT HOME-VOTE II: home2's and roadb's
+  activateStaticDoor signature (`listed`, read at the press - B4, D1), home2's, homerent's and guild1d_client's door
+  rows again (the votes where a plaque draws them - D1), decorfigure's move refusal (`decor-figure` - C2), homevote's
+  own refusal words (A7) and host pins (A3, B4).
 
 ### AUDIT HOME-VOTE (2026-10-10, the owner: "audit this") - DECOR-FIGURE and HOME-VOTE read again, before their merge
 
@@ -10213,7 +10239,8 @@ lines moved into homeVoteDoorText). FOUND, each fixed and pinned unless DOCUMENT
 - **LOW - C2: a figure grown before was refused a turn for a footprint it no longer has.** FIXED: footprintOf asks the
   drawn size.
 - **LOW - C3, D13: two laws of a figure** - the placer read the catalogue's kind, the room and the service the archive.
-  FIXED: one law, the archive; the corpus pins every interior person in those archives.
+  FIXED: one law, the archive; the corpus pins every interior person in those archives (`test/people.test.js`, where
+  ARENA2 stands - II D15: it is skipped in CI, which holds no game data).
 - **LOW - D7: the hour's bar and `no-home`'s status unpinned.** FIXED: 30 and 404 said.
 - **DOCUMENT - D10, D12, B6, B7: the record.** The counts, the PIN MOVED list, the merge's wording and when another
   viewer sees a vote turn round are corrected above; a tenant and a party member are visitors; a hall's banners stand.
@@ -10221,6 +10248,65 @@ lines moved into homeVoteDoorText). FOUND, each fixed and pinned unless DOCUMENT
   the line both say, and the bar asks decorEntrySized.
 - Pinned in `test/homevote.test.js` and `test/decorfigure.test.js` (above); `tools/mutants/homevote.json` and
   `decorfigure.json` (above), every new mutant dead.
+
+### AUDIT HOME-VOTE II (2026-10-11, the owner: "Audit this") - DECOR-FIGURE and HOME-VOTE read a second time
+
+Four cold lanes over a frozen snapshot of the PR's head, 44ed2dfa (A the account service; B the client's vote and what a
+shunned home hides; C the figure, end to end; D the pins, the mutants, the record and the patch notes), each with
+repros against the snapshot; every finding read again against the live tree before a line changed. No lane found a
+shunned home's decor reaching anyone outside it, nor an owner or a hall's guild seeing their own home bare. FOUND, each
+fixed and pinned unless DOCUMENTED:
+
+- **HIGH - D1: on the classic face a stranger's door folded vote rows it never drew.** Quick Loot's classic panel draws
+  a pile's items alone, but the fold took a door's rows too (DISC22-C): the Info box never asked (the plaque "listed"),
+  and a wheel notch lit a vote the next click cast unseen. FIXED: the votes ride the plaque only where it draws its
+  list (worldPlaqueOn), and the Info box asks wherever no list is drawn (`listed` = folded AND drawn). The fold of a
+  door's other rows on the classic face is DISC22-C's own, untouched.
+- **MEDIUM - A1: any piece made a hired trader stood in a shunned home.** A trader's licence (25,000 gold) is offered on
+  any piece, and a hall's trader is never stocked (market.js lists a hall's goods nowhere). FIXED: the service keeps a
+  trader with goods on sale at it alone (decor.js shopOf over vendorStocked); the client stands what it is handed.
+- **MEDIUM - A2, B3, D3: a vote taken back was refused past the hour's bar** - the record said "never refused". FIXED:
+  the bar is on votes cast.
+- **MEDIUM - D4, D5, D6: the triggers, a hall's score and paint, and the hour were unpinned** - a trigger town-wide, a
+  hall's score unsaid, a shunned hall's paint kept from its own guild and a minute's window all survived. FIXED:
+  pinned (a second home's score through a vote, a turn and a take-back; a hall read by a stranger and by its guild;
+  3600).
+- **MEDIUM - B2, D2: where no plaque is drawn an owner was never told its home was hidden.** FIXED: the owner's Info box
+  carries the vote lines.
+- **LOW - A3: a hall's member could not take back a vote cast before they joined** - the service took it (AUDIT A4),
+  the door offered nothing. FIXED: the take-back alone is offered and pressable (homeVoteRows, homeVotePressable).
+- **LOW - A4: a vote pressed at a door read before a sale landed on the next owner's house** - one vote hid it. FIXED: a
+  vote cast names the owner its door read (`owner`, homeVoteOwnerOk; a hall's guild), and lands only on that owner's
+  house; the registry sends none for a house it holds no owner of.
+- **LOW - A5: a write that found nothing answered `ok` once a second look found the house votable** (a guild left in
+  between). FIXED: answered as the write found it.
+- **LOW - A6: a restore put a home back with its score and none of its votes** (`tools/realmRestore.mjs`, a snapshot
+  after 0107). FIXED: homeRowOf leaves the score out.
+- **LOW - B1: on a touch screen a locked home with a room to rent asked its rooms alone.** FIXED: the rent box carries
+  its votes and its vote lines.
+- **LOW - B4: whether the plaque listed rows was read after the town's wait.** FIXED: read as the press lands.
+- **LOW - B5: a knight's deed house took votes that hid nothing** (its room, yard and paint are its save's), and told its
+  knight's other characters it was hidden. FIXED: no deed house is voted, at the door or the service.
+- **LOW - C1: an own item said beside a person's flat stood it at any size** (decorIsFigure reads no item as a figure).
+  FIXED: decorWhatOf takes no item whose flat is a person's - no item's picture is in their archives.
+- **LOW - C2: a stale copy's turn of a figure brought back to 1 elsewhere was told the service could not read it.**
+  FIXED: `decor-figure`, in its own words.
+- **LOW - D7: a figure shrunk was taken by a hand-made place.** It was refused; unpinned. FIXED: pinned.
+- **LOW - D8, D9: the words a player reads, a week to the second, the vote's own guest guard, `bad-vote`'s 400, a
+  take-back of nothing, the voter's own cascade, the Info box's "Votes: 0" and the vote queue's catch were unpinned.**
+  FIXED: pinned, each mutant dead.
+- **LOW - A7, D13, D14: the words.** "An account must be a week old" - it is a week REGISTERED (a guest played a year is
+  no older for it). FIXED in the refusal and the patch notes, which also said a single "Take back your vote" and a vote
+  total every door shows (it shows once there is one).
+- **DOCUMENT - B6: a town is read again only when asked** - a door looked at or pressed, a town entered, its map opened -
+  never on a clock; corrected above. **C3:** a build from before DECOR-FIGURE draws a figure's record's scale.
+  **C4:** animals take a size - "npc sprites" read as people. **A7:** a vote stands until taken back; none expires.
+  **D10, D11, D12, D15:** Active-Arcs' version, Testing.md's name for homeVoteOfVerb, the ledger's and Active-Arcs'
+  "withheld by the service" (the room and paint - never the yard), the law's header and the corpus's CI skip -
+  corrected. Two mutants are EQUIVALENT, recorded so: the turn trigger on `voted_at` (the upsert sets both columns)
+  and the placer's figure by kind (every catalogue person is in the archives).
+- Pinned in `test/homevote.test.js` (four AUDIT II tests) and `test/decorfigure.test.js`; `tools/mutants/homevote.json`
+  and `decorfigure.json` - every AUDIT II mutant dead but the two equivalents.
 
 ### YARD-LIGHT - a yard's lamp lights as the town's (2026-10-07)
 

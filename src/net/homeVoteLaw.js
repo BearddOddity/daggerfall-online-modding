@@ -11,8 +11,9 @@
 // will, never more than one standing an account. A home's SCORE is its
 // votes summed; while it runs NEGATIVE the home is SHUNNED, and what its
 // owner chose to show stands for its insiders alone - every other player
-// walks into the room Daggerfall furnished (no placed piece, nothing
-// taken out), past a yard with nothing in it and a house in its town's own
+// walks into the room Daggerfall furnished (no placed piece but a hired
+// trader with goods on sale, nothing taken out - AUDIT HOME-VOTE B2, II
+// A1), past a yard with nothing in it and a house in its town's own
 // paint (homeDecorShown). Nothing is deleted: a vote turned round shows it
 // all again, and the owner never stops seeing their own.
 //
@@ -36,6 +37,11 @@ export const HOME_VOTES_WINDOW_S = 3600;
  *  market's witness's own bar). A registered account is two calls from a fresh browser, and one down-vote hides a home
  *  nobody has voted up: sixty accounts an address a quarter-hour, each with its votes, hid every home in every town. */
 export const HOME_VOTE_AGE_S = WITNESS.ageS;
+/** AUDIT HOME-VOTE II A4: WHOSE HOUSE A VOTE MEANT - the door's `owner` as the town answered it (a home's owner, a hall's
+ *  guild), sent with every vote cast: it lands only while that is who holds the house, never on the next owner's after a
+ *  sale the reader's door had not heard of yet. */
+export const HOME_VOTE_OWNER_MAX = 64;
+export const homeVoteOwnerOk = (o) => typeof o === 'string' && o.length > 0 && o.length <= HOME_VOTE_OWNER_MAX;
 
 /** A home's score as the service answers it (its votes summed), 0 for none or a word that is no number. */
 export const homeScoreOf = (raw) => (Number.isSafeInteger(raw) ? raw : 0);
@@ -61,7 +67,8 @@ export function homeDecorShown(home) {
 /** AUDIT HOME-VOTE B2: WHAT OF A SHUNNED HOME STILL STANDS for everyone - its hired trader (HOME-VENDOR's `vendor`
  *  station): a shop, never a decoration. Hidden, its goods stood listed on the town's Vendors board, a Waypoint led to an
  *  empty room, and the town's patrons (LW15) bought at a trader nobody could see. The service hands it out (decor.js
- *  decorOf) and the room stands it (worldModes.js loadHomeDecor) by this one law. */
+ *  decorOf - AUDIT HOME-VOTE II A1: only a trader with goods on sale at it; any piece may be made one, and a licence
+ *  bought for a statue kept it standing) and the room stands what it is handed (worldModes.js loadHomeDecor). */
 export const decorStaysShunned = (piece) => piece?.station === 'vendor';
 
 /** The score as the plaque says it: +3, 0, -2. */

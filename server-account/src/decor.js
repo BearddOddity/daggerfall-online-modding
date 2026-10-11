@@ -222,6 +222,15 @@ export async function vendorStocked(db, mapId, id) {
   return Number(r?.n ?? 0) > 0;
 }
 
+/** AUDIT HOME-VOTE II A1: WHAT OF A SHUNNED HOME STANDS FOR A STRANGER - its hired traders (decorStaysShunned) with goods
+ *  on sale at them (vendorStocked): a shop. A trader with nothing on sale is a decoration like any other - any piece may
+ *  be made one, and a statue's licence kept it standing in a home the town voted down; a hall's is never stocked. */
+async function shopOf(db, mapId, pieces) {
+  const kept = [];
+  for (const p of pieces.filter(decorStaysShunned)) if (await vendorStocked(db, mapId, p.id)) kept.push(p);
+  return kept;
+}
+
 export async function decorOf({ db }, player, { mapId, buildingKey, seat = false } = {}) {
   if (!homeMapIdOk(mapId) || !homeBuildingKeyOk(buildingKey)) return { error: 'bad-home' };
   const S = storeOf(seat);   // SEAT-HALL: a palace's Charter Room, its own table - nothing taken out of a palace
@@ -229,9 +238,9 @@ export async function decorOf({ db }, player, { mapId, buildingKey, seat = false
     ORDER BY placed_at, id LIMIT ?`).bind(mapId, buildingKey, S.cap).all();   // HOME-YARD: the room's alone
   const pieces = results.map(pieceOfRow).filter(Boolean);
   // AUDIT HOME-VOTE A3: a home the town voted below zero is handed to anyone but its insiders as Daggerfall furnished it
-  // - no placed piece but its hired trader (a shop, never a decoration: B2), nothing taken out - by the service, so a
-  // build from before HOME-VOTE shows no more than the law (homeVotes.js homeShownTo)
-  if (!S.seat && !(await homeShownTo(db, mapId, buildingKey, player?.id))) return { mapId, buildingKey, pieces: pieces.filter(decorStaysShunned), hidden: [] };
+  // - no placed piece but its hired trader with goods on sale (a shop, never a decoration: B2, II A1), nothing taken out
+  // - by the service, so a build from before HOME-VOTE shows no more than the law (homeVotes.js homeShownTo)
+  if (!S.seat && !(await homeShownTo(db, mapId, buildingKey, player?.id))) return { mapId, buildingKey, pieces: await shopOf(db, mapId, pieces), hidden: [] };
   return { mapId, buildingKey, pieces, hidden: S.seat ? [] : await hiddenOf(db, mapId, buildingKey) };
 }
 
@@ -446,7 +455,7 @@ export async function moveDecor(ctx, player, { mapId, buildingKey, character, id
   if (!was || !decorPieceOf({ ...was, ...pl })) return { error: 'bad-decor' };
   // DECOR-FIGURE: a figure moved to any size but its own is refused - one grown before this keeps its record's scale on a
   // turn or a station (it is drawn at its own size all the same), and is brought back to it by any move of the placer's
-  if (!decorScaleOk({ ...was, ...pl }) && pl.scale !== was.scale) return { error: 'bad-decor' };
+  if (!decorScaleOk({ ...was, ...pl }) && pl.scale !== was.scale) return { error: 'decor-figure' };   // AUDIT HOME-VOTE II C2: its own word - a stale copy's turn of a figure brought back to 1 on another device
   // HOME-VENDOR: a trader with goods for sale stays one - its stock is bought at it alone (market.js)
   if (was.station === 'vendor' && (pl.station ?? null) !== 'vendor' && await vendorStocked(db, mapId, id)) return { error: 'vendor-stocked' };
   if (row.yard === 1 && !decorYardPlaceOf(pl)) return { error: 'bad-decor' };   // HOME-YARD: a yard's piece stays a yard's

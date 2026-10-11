@@ -236,17 +236,19 @@ export function homeVisitorRows(home, door, nowS = Math.floor(Date.now() / 1000)
 
 /** HOME-VOTE: whether the player looking may vote on this home (`homeAt`'s view) - anybody's but their own account's
  *  (`mine`: any of its characters'), and never a hall of their own guild - any character of their account's in it
- *  (`insider`, AUDIT A5; `member`, the playing character's). The service holds the same line (server-account/src/
- *  homeVotes.js INSIDER). */
-export const homeVotable = (home) => !!home && !home.own && home.mine !== true && !(home.hall && (home.member === true || home.insider === true));
+ *  (`insider`, AUDIT A5; `member`, the playing character's); never a knight's deed house (AUDIT HOME-VOTE II B5: its
+ *  room, yard and paint are its save's - a vote hid nothing). The service holds the same line (server-account/src/
+ *  homeVotes.js VOTABLE). */
+export const homeVotable = (home) => !!home && !home.own && home.mine !== true && home.deed !== true && !(home.hall && (home.member === true || home.insider === true));
 /** HOME-VOTE: the vote a row's verb sends - up, down, or (its own verb, AUDIT B3) the one standing taken back; null for a
  *  verb that is no vote's. */
 export const homeVoteOfVerb = (id) => (id === HOME_VOTE_VERB.up ? HOME_VOTE_UP : id === HOME_VOTE_VERB.down ? HOME_VOTE_DOWN : id === HOME_VOTE_VERB.clear ? 0 : null);
 /** HOME-VOTE: the door's two vote rows, to a player who may vote on it - each saying what its press does: the vote
- *  standing is taken back by its own row. */
+ *  standing is taken back by its own row. AUDIT HOME-VOTE II A3: to one who may not (a hall's member now) but has a
+ *  vote standing on it - cast before they joined - the take-back alone, which the service never refuses. */
 export function homeVoteRows(home) {
-  if (!homeVotable(home)) return [];
-  const mine = homeMyVoteOf(home.myVote);
+  const mine = homeMyVoteOf(home?.myVote);
+  if (!homeVotable(home)) return mine ? [{ id: HOME_VOTE_VERB.clear, label: `Take back your vote ${mine === HOME_VOTE_UP ? 'up' : 'down'}` }] : [];
   return [
     mine === HOME_VOTE_UP ? { id: HOME_VOTE_VERB.clear, label: 'Take back your vote up' } : { id: HOME_VOTE_VERB.up, label: 'Vote up' },
     mine === HOME_VOTE_DOWN ? { id: HOME_VOTE_VERB.clear, label: 'Take back your vote down' } : { id: HOME_VOTE_VERB.down, label: 'Vote down' },
@@ -254,9 +256,16 @@ export function homeVoteRows(home) {
 }
 /** HOME-VOTE: whether a door row is a vote's. */
 export const isHomeVoteVerb = (id) => homeVoteOfVerb(id) !== null;
+/** AUDIT HOME-VOTE II A3: whether `vote` may be pressed at this home - any, where I may vote on it; the take-back (0) of
+ *  a vote I have standing, where I may not (a hall whose guild I joined since). */
+export const homeVotePressable = (home, vote) => homeVotable(home) || (vote === 0 && !!homeMyVoteOf(home?.myVote));
 /** HOME-VOTE: the Info press's box's two choices at a home I may vote on (where no plaque is drawn - worldModes.js
  *  openHomeVoteMenu): U and D, each the door's own row - its label and the vote it sends. */
-export const homeVoteChoices = (home) => homeVoteRows(home).map((row, i) => ({ code: i ? 'KeyD' : 'KeyU', label: `${i ? 'D' : 'U'} - ${row.label}`, vote: homeVoteOfVerb(row.id) }));
+export const homeVoteChoices = (home) => homeVoteRows(home).map((row) => {
+  // AUDIT HOME-VOTE II A3: D the row of the vote down - the down row, or the take-back of one - U the other's, whichever rows stand
+  const down = row.id === HOME_VOTE_VERB.down || (row.id === HOME_VOTE_VERB.clear && homeMyVoteOf(home.myVote) === HOME_VOTE_DOWN);
+  return { code: down ? 'KeyD' : 'KeyU', label: `${down ? 'D' : 'U'} - ${row.label}`, vote: homeVoteOfVerb(row.id) };
+});
 /** HOME-VOTE: the lines under a home's door - to a voter its score and their own vote (once there is either) and, shunned,
  *  that its decorations are hidden; to its insiders (its owner's account, a hall's members) its score once it has one,
  *  and, shunned, that the town no longer sees them. */
@@ -565,7 +574,11 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
    *  rows, and whether its decor stands) and read back. `{ ok, vote, score }` or a refusal. */
   async function vote(mapId, buildingKey, v) {
     const id = idOf(mapId);
-    const r = await api.vote?.({ mapId: id, buildingKey, vote: v });
+    // AUDIT HOME-VOTE II A4: a vote cast names the owner this door read - it lands on their house, never the next owner's;
+    // a house this page holds no owner of is asked again, and no vote sent (a take-back names nobody: its row is mine)
+    const owner = v !== 0 ? towns.get(id)?.homes.get(buildingKey)?.owner : undefined;
+    if (v !== 0 && !owner) { ensure(id, { force: true }); return { ok: false, error: 'no-home' }; }
+    const r = await api.vote?.({ mapId: id, buildingKey, vote: v, ...(owner ? { owner } : {}) });
     if (r?.ok) {
       const score = homeScoreOf(r.data?.score);
       const mine = homeMyVoteOf(r.data?.vote);

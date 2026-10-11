@@ -195,6 +195,9 @@ export function decorWhatOf(raw) {
     && Number.isSafeInteger(flat[0]) && flat[0] >= 0 && flat[0] <= DECOR_ARCHIVE_MAX
     && Number.isSafeInteger(flat[1]) && flat[1] >= 0 && flat[1] <= DECOR_RECORD_MAX) {
     if (item === null) return { model: null, flat: [flat[0], flat[1]] };
+    // AUDIT HOME-VOTE II C1: an own item is never one of Daggerfall's people - an item said beside a person's flat made it
+    // no figure (decorIsFigure), and stood one at any size past the figure's law; no item's picture is in their archives
+    if (isNpcFlat(flat[0])) return null;
     const own = decorItemOf(item);
     return own ? { model: null, flat: [flat[0], flat[1]], item: own } : null;
   }

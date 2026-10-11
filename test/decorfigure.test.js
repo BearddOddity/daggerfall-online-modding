@@ -9,7 +9,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { decorIsFigure, decorDrawnScale, decorScaleOk } from '../src/net/decorLaw.js';
+import { decorIsFigure, decorDrawnScale, decorScaleOk, decorWhatOf } from '../src/net/decorLaw.js';
+import { REFUSALS } from '../src/net/accountClient.js';
 import { NPC_FLAT_ARCHIVES, isNpcFlat } from '../src/world/rdbLayout.js';
 import * as leaf from '../src/world/npcFlatArchives.js';
 import { createDecorPlacer, decorEntrySized } from '../src/systems/decorPlacer.js';
@@ -113,7 +114,7 @@ test('DECOR-FIGURE the room: a figure whose record says 2 stands at its own size
   assert.deepEqual(book.size, sized(16, 32, 2), 'twice its own');
 });
 
-test('DECOR-FIGURE the service: a figure placed at any size but its own is refused (`bad-decor`) and at 1 it stands; moved to another size it is refused; one grown before keeps its record on a turn, and is brought to its own size by a move (mutants: the place unguarded, the move unguarded, a turn of the old refused)', async (t) => {
+test('DECOR-FIGURE the service: a figure placed at any size but its own is refused (`bad-decor`) and at 1 it stands; moved to another size it is refused; one grown before keeps its record on a turn, and is brought to its own size by a move; AUDIT HOME-VOTE II: an own item said beside a person\'s flat is refused (C1), and a move off its size is refused in its own word (C2) (mutants: the place unguarded, the move unguarded, a turn of the old refused, the item a way past, the word unsaid, a shrunk figure taken)', async (t) => {
   t.mock.method(Date, 'now', () => T0 * 1000);
   const svc = await standService();
   const owner = await svc.registered('Olga');
@@ -123,16 +124,25 @@ test('DECOR-FIGURE the service: a figure placed at any size but its own is refus
   const move = (id, pl) => svc.call('/v1/homes/decor/move', { mapId: 7, buildingKey: 300, character: o.character, id, place: pl }, owner.secret);
   const placeOf = (p) => ({ pos: p.pos, rot: p.rot, scale: p.scale, light: p.light, storage: p.storage, paid: p.paid });
   assert.equal((await place(figure({ scale: 2 }))).body.error, 'bad-decor', 'grown: refused');
+  assert.equal((await place(figure({ scale: 0.5 }))).body.error, 'bad-decor', 'AUDIT HOME-VOTE II D7: shrunk: refused - a build from before still has Smaller');
   assert.equal((await place(figure({ id: 'book', flat: [209, 0], scale: 2 }))).status, 200, 'a book grown: stands');
   assert.equal((await place(figure())).status, 200, 'at its own size: stands');
-  assert.equal((await move('fig1', placeOf(figure({ scale: 1.5 })))).body.error, 'bad-decor', 'moved to another size: refused');
+  assert.equal((await move('fig1', placeOf(figure({ scale: 1.5 })))).body.error, 'decor-figure', 'moved to another size: refused');   // PIN MOVED (AUDIT HOME-VOTE II C2): in its own word
   // one grown before DECOR-FIGURE, as its row stands
   svc.env.DB._raw.prepare('UPDATE home_decor SET place = ? WHERE id = ?').run(JSON.stringify(placeOf(figure({ scale: 2 }))), 'fig1');
   const turned = await move('fig1', placeOf(figure({ scale: 2, rot: [45, 0, 0] })));
   assert.equal(turned.status, 200, `a turn of the old: kept (${JSON.stringify(turned.body)})`);
-  assert.equal((await move('fig1', placeOf(figure({ scale: 3 })))).body.error, 'bad-decor', 'grown further: refused');
+  assert.equal((await move('fig1', placeOf(figure({ scale: 3 })))).body.error, 'decor-figure', 'grown further: refused');   // PIN MOVED (AUDIT HOME-VOTE II C2)
   assert.equal((await move('fig1', placeOf(figure()))).status, 200, 'brought to its own size');
   assert.equal(JSON.parse(svc.env.DB._raw.prepare('SELECT place FROM home_decor WHERE id = ?').get('fig1').place).scale, 1);
+  // AUDIT HOME-VOTE II C1: an own item said beside a person's flat is no item - refused, never stood at any size
+  assert.equal(decorWhatOf({ flat: [184, 17], item: { t: 1 } }), null);
+  assert.deepEqual(decorWhatOf({ flat: [209, 0], item: null }), { model: null, flat: [209, 0] }, 'a book stands as ever');
+  const giant = await place(figure({ id: 'giant', item: { t: 1 }, scale: 4 }));
+  assert.deepEqual([giant.status, giant.body.error], [400, 'bad-decor'], 'C1: the item no way past the figure\'s law');
+  assert.equal(svc.env.DB._raw.prepare('SELECT COUNT(*) AS n FROM home_decor WHERE id = ?').get('giant').n, 0);
+  // AUDIT HOME-VOTE II C2: the stale copy's refusal said in words that send the player to look again
+  assert.match(REFUSALS['decor-figure'], /own size from another game/);
 });
 
 test('DECOR-FIGURE AUDIT C1: a figure brought back to its own size by a move pays nothing where it was shrunk before (it stands at that size for everyone already) and gives its half back where it was grown, as any shrink; any other piece grown pays as ever (mutants: the shrunk figure charged, the grown one\'s refund kept)', () => {
