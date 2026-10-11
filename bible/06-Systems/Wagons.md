@@ -861,6 +861,53 @@ new one).
 Not seen in a browser: this container has no ARENA2 data. How high the pivot
 sits is for the owner's eyes - SHELL_CLEAR_M is one constant.
 
+## WAGON-UV (2026-10-10, from play)
+
+The owner: "For the wagon and especially the cart model we need to adjust the
+texture mapping. The small cart is really off angle. Also, the windows on the
+wagon arent centered properly".
+
+**The cart.** Mac drew the Wagon Cart as it stands unhitched, tipped 10.1
+degrees forward on its axle (`CART_REST_PITCH_DEG`). Its faces were laid on
+their pictures as drawn, so planarUv ran the sideboards level with the
+ground rather than with the box: on the box they stood 10 degrees off its
+rail and its stakes leaned. That is how the cart is seen whenever a horse is
+in its shafts and bears it level. Every face of the cart but its wheels is
+now laid on its points turned level about the axle (`src/world/wagonModels.js`
+cartLevel, inside wagonFaceSkin). Turned back, the box is square to the axes
+to the millimetre (x ±1.159, y 0.534 to 1.667, z -0.491 to 2.214), so the
+sideboards run along the rail, the stakes stand upright and the floorboards
+run fore and aft. The pictures tip with the faces, so this holds parked or
+hitched. The wheels keep their own law (wheelUv, on their hub): they roll.
+
+**The caravan's windows.** Two faults:
+
+- Along the side, planarUv ran the livery from the rear axle (z 0), one window
+  to its 2.9 m tile: the front window stood 0.3 m from the body's front end
+  and the rear one 1.7 m from its rear. caravanSideU lays the side from the
+  body's middle, half a tile past a window's middle (`CARAVAN_SIDE_WINDOW_U`:
+  the window's 21 texels' own middle, half a texel past the picture's). Each
+  window stands in the middle of its half, 0.99 m from its end, on both
+  sides. The room's walls (`src/world/caravanRoomModel.js` sideUv) are laid
+  by the same law, so the glass still meets.
+- Up the side, the window stood at 1.78 to 2.62 m: six rows under the cornice
+  and thirteen over the skirt. It is centred between the two gilt lines now
+  (`CARAVAN_SKIRT_Y`, `CARAVAN_CORNICE_Y`), 1.67 to 2.51 m - nine rows over it
+  and ten under (45 rows, 26 of them window). Inside, its sill stands 0.73 m
+  over the floor (it was 0.84).
+
+Pins: `test/wagonuv1.test.js`, read off the built geometry - borne level,
+every square face of the cart wears its picture as planarUv lays it on a
+level face, and each wheel's picture stands upright on its hub; the windows'
+glass stands the same each way from the body's middle, each window in the
+middle of its half, and centred between the trims in the picture.
+`test/wagons2.test.js`'s windows-meet pin holds the room to the side.
+Mutants: `tools/mutants/wagonuv1.json` (7, all dead).
+
+Seen through the port's own CPU rasteriser (`src/ui/modelIcon.js`
+bakeModelIcon, at 420 px), not in a browser: this container has no ARENA2
+data.
+
 ## The relay
 
 A parked team's record (HCC-PARK) now keeps the wagon's kind and whether a
@@ -902,6 +949,8 @@ comes back as the Small Cart, as built.
 - `test/wagons2_final.test.js` - the final audit (and its riders' and
   windows' pins beside their own, in `wagons2.test.js` and
   `windows1_view.test.js`).
+- `test/wagonuv1.test.js` - WAGON-UV: the cart laid level, the caravan's
+  windows centred (its mutants `tools/mutants/wagonuv1.json`).
 
 The mutants are in `tools/mutants/wagons1.json`, `wagons2.json`, `wagons2_wheels.json`, `wagons2_visit.json` and `wagons2_final.json`. Records re-aimed:
 `audit29.json`, `companionweight.json`, `disc8.json`, `disc24.json`,
