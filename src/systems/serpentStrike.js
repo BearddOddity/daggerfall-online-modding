@@ -73,10 +73,19 @@ function shared(x, k, carry, key) {
   carry[key] = v - n;
   return n;
 }
-/** WHAT A BLOW DOES TO HER: `hull` of her whole hull and `base` more, `sail` of her canvas, `crew` men - her whole her
- *  refits' (`whole` - {maxHull, maxSail}), times the fleet's share `k` (fleetShare), carried on `carry` (shared). The
- *  damage model's own hurt shape (navalDamage.js apply). */
-export const shipHurt = (A, whole, k = 1, carry = null) => ({ hull: shared(A.hull * whole.maxHull + A.base, k, carry, 'hull'), sail: shared(A.sail * whole.maxSail, k, carry, 'sail'), crew: shared(A.crew | 0, k, carry, 'crew') });
+/**
+ * SERPENT4 (2026-10-11, the players: "the game just pushed me away from the snake and no matter what I did it was like
+ * sailing through molasse I couldn't catch up"): THE THROW AND THE CANVAS, HALVED - a blow throws her SERPENT_THROW_X of
+ * its attack's `shove` (shoveOf) and tears SERPENT_CANVAS_X of its `sail` (shipHurt - the crush's too). The ship it hates
+ * most is the first to strike it, and its blows threw her off downwind (a ram's 9 m/s, a Maw's 6) with her canvas torn,
+ * so she sailed back at half her way into the wind while the fight went on without her.
+ */
+export const SERPENT_THROW_X = 0.5;
+export const SERPENT_CANVAS_X = 0.5;
+/** WHAT A BLOW DOES TO HER: `hull` of her whole hull and `base` more, `sail` of her canvas (SERPENT_CANVAS_X of it), `crew`
+ *  men - her whole her refits' (`whole` - {maxHull, maxSail}), times the fleet's share `k` (fleetShare), carried on
+ *  `carry` (shared). The damage model's own hurt shape (navalDamage.js apply). */
+export const shipHurt = (A, whole, k = 1, carry = null) => ({ hull: shared(A.hull * whole.maxHull + A.base, k, carry, 'hull'), sail: shared(A.sail * SERPENT_CANVAS_X * whole.maxSail, k, carry, 'sail'), crew: shared(A.crew | 0, k, carry, 'crew') });
 /** The coil's crush at its end, and its grip for `dtS` seconds (whole points carried on the ship's own fraction -
  *  `carry`, the grip's remainder - so a grip of 3.4 a second is 3.4 a second, not 3); each times the fleet's share `k`. */
 export const crushHurt = (whole, k = 1, carry = null) => shipHurt(CRUSH, whole, k, carry);
@@ -111,8 +120,8 @@ export function shoveOf(atk, boat) {
     const side = Math.sign(dx * (lz / l) - dz * (lx / l)) || 1;
     dx = (lz / l) * side; dz = (-lx / l) * side;
   }
-  const d = Math.hypot(dx, dz) || 1;
-  return [(dx / d) * A.shove, (dz / d) * A.shove];
+  const d = Math.hypot(dx, dz) || 1, v = A.shove * SERPENT_THROW_X;   // SERPENT4: half the throw
+  return [(dx / d) * v, (dz / d) * v];
 }
 /** A throw's way left `ageS` seconds after it was given: it dies away over SHOVE_S. */
 export const SHOVE_S = 2.5;

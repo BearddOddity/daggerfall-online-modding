@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import {
   newSerpentFight, joinSerpentFight, applySerpentHit, stepSerpentBrain, serpentStateOf, serpentEarned, serpentEarnedBy, coilWord, coilHolds,
   pickSerpentTarget, serpentWreck, serpentShareWanted, serpentAtkFrame, SHIP_REF, SERPENT_TTK_S, SERPENT_ATTACK_TABLE, SERPENT_ATTACK_BY_ID, ZONES,
-  ENGAGE_R, SERPENT_STAND_R, SERPENT_TARGET_R, SERPENT_IDLE_RETIRE_MS, SERPENT_ABSENT_RETIRE_MS, SERPENT_RECEIPT_SHARE, SERPENT_STOOD_SHARE,
+  ENGAGE_R, SERPENT_STAND_R, SERPENT_TARGET_R, SERPENT_IDLE_RETIRE_MS, SERPENT_ABSENT_RETIRE_MS, SERPENT_RECEIPT_SHARE, SERPENT_PART_SHARE, SERPENT_STOOD_SHARE,
   SERPENT_PHASE_AT, SERPENT_TICK_MS, ORBIT_R, CRUISE_V, SERPENT_SLEEP_MS, COIL_ESC_MS, SERPENT_COIL_PASS,
   SERPENT_SAY_AHEAD_MS, DEEP_V,   // AUDIT SHIPS B5: an end's swim said ahead
 } from '../src/net/serpentBrain.js';
@@ -275,7 +275,7 @@ test('AUDIT SERPENT S8/E2/T2: a share stays in its health only while its ship is
 });
 
 test('AUDIT SERPENT E1/E2: standing counts only within SERPENT_STAND_R of its body, the serpent goes only at what it can reach, and dealing means SERPENT_RECEIPT_SHARE of one\'s share (mutants: a boat parked at 900 m standing; a target past its reach; one volley a dealer)', () => {
-  assert.ok(SERPENT_STAND_R < ENGAGE_R && SERPENT_TARGET_R < ENGAGE_R && SERPENT_RECEIPT_SHARE >= 0.1);
+  assert.ok(SERPENT_STAND_R < ENGAGE_R && SERPENT_TARGET_R < ENGAGE_R && SERPENT_PART_SHARE >= 0.02 && SERPENT_RECEIPT_SHARE > SERPENT_PART_SHARE);   // PIN MOVED: SERPENT4 - a part dealt earns a stander's, never one volley
   const f = surfaced(fightOf([HULL.Carrack, -1, -1]));
   const rng = seeded(8);
   const bodies = [body('s1', 100, 0), body('s2', 120, 10), body('s3', 0, 880)];   // s3: a rowboat parked out at 880 m
@@ -287,9 +287,12 @@ test('AUDIT SERPENT E1/E2: standing counts only within SERPENT_STAND_R of its bo
   f.liveMs = 60_000;
   assert.equal(serpentEarned(f, 's3'), false);
   assert.equal(serpentEarned(f, 's2'), f.players.s2.stoodMs >= SERPENT_STOOD_SHARE * 60_000);
-  f.players.s1.dealt = 0.05 * f.players.s1.share;
+  f.players.s1.dealt = 0.01 * f.players.s1.share;
   f.players.s1.stoodMs = 0;   // dealing alone
   assert.equal(serpentEarned(f, 's1'), false, 'a volley is not a share');
+  f.players.s1.dealt = SERPENT_PART_SHARE * f.players.s1.share;   // SERPENT4: a part dealt - a stander's hoard
+  assert.equal(serpentEarned(f, 's1'), true, 'a part dealt earns');
+  assert.equal(serpentEarnedBy(f, 's1'), 'stood');
   f.players.s1.dealt = SERPENT_RECEIPT_SHARE * f.players.s1.share;
   assert.equal(serpentEarnedBy(f, 's1'), 'dealt');
 });

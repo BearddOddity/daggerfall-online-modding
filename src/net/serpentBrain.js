@@ -35,7 +35,7 @@ import { poseTsDiff } from './wire.js';   // AUDIT SHIPS A1: a ship's way off he
 import { SERPENT_BRAIN_V } from './serpentLaw.js';   // AUDIT SHIPS B7: the law a fight was stepped by
 
 // ── the waters ─────────────────────────────────────────────────────────
-/** The serpent's head keeps within this of its site (m) - its waters, the ring the storm closes round at the seal. */
+/** The serpent's head keeps within this of its site (m) - its waters. */
 export const ARENA_R = 420;
 /** A player within this of the site is AT the fight - chosen, struck at, standing their time (m). */
 export const ENGAGE_R = 900;
@@ -190,8 +190,14 @@ export const clampHull = (hl) => (Number.isInteger(hl) && hl >= 0 && hl < HULLS 
  *  Carrack's long guns and chasers, the galley's long guns and great guns. */
 export const SHIP_REF = Object.freeze([0, 3.6, 10, 13, 12]);   // AUDIT SERPENT T6: the Large Boat has no crew to its guns (reload x1.4) - 5 overstated what she can deal by two fifths
 export const refOf = (hl) => SHIP_REF[clampHull(hl)] ?? 0;
-/** Seconds of reference broadside the health a ship brings stands for. */
-export const SERPENT_TTK_S = 180;
+/** Seconds of reference broadside the health a ship brings stands for. SERPENT4 (2026-10-11, the players: "the fight is
+ *  too slow and boring atm, and the snake is way too strong for the small amount of people who do it"): 180 held a pair
+ *  to ten minutes at the measured gunnery and lost a quarter of its fights, three galleons ten and a half - a sixth off
+ *  it, where a third off let a lone galleon win eight fights in twelve in a storm's way (tools/serpentFleetSim.mjs; Mac's
+ *  call stands: one ship alone can't). */
+export const SERPENT_TTK_S = 150;
+/** SERPENT4: the share a hand's part is measured against (serpentEarned) - a galleon's, the Small Ship's reference. */
+export const SERPENT_HAND_SHARE = SERPENT_TTK_S * SHIP_REF[2];
 /** A fighter's damage bucket: refilled at SERPENT_BUCKET_RATE_X their reference a second, SERPENT_BUCKET_DEPTH_X deep (a broadside's
  *  whole weight on the head lands), no one blow over SERPENT_HIT_CAP_X of it. */
 export const SERPENT_BUCKET_RATE_X = 1.5;   // AUDIT SERPENT T5: honest fire measures 0.25-0.4 of the reference; 3 gave a forged claim a 12-20x ceiling
@@ -199,6 +205,20 @@ export const SERPENT_BUCKET_DEPTH_X = 20;
 export const SERPENT_HIT_CAP_X = 14;
 /** The words of blows an account says a second (its machine gathers a volley's balls into one). */
 export const SERPENT_HIT_HZ_MAX = 6;
+/**
+ * SERPENT4 (2026-10-11, the players: "also let players on the ship be able to hurt it"): A HAND'S OWN WEAPONS - a player
+ * aboard no ship of her own (serpentOnShip: a hand on a friend's deck, or one in the sea) strikes it with her shafts and
+ * her harmful missiles (scenes/serpentHost.js handStruck - the `hit` word's `r` 1), judged on a HAND'S PURSE: refilled at
+ * SERPENT_BUCKET_RATE_X times SERPENT_HAND_REF a second, as deep and capped a blow as a ship's purse is of hers, from
+ * within SERPENT_HAND_REACH_M of something of it above the sea (a shaft's or a missile's flight - spellcast.js
+ * MISSILE_SPEED x MISSILE_LIFESPAN_S). A captain's purse is her guns: on her own ship a hand's blow is not heard. Her part
+ * is measured against SERPENT_HAND_SHARE (a galleon's - a hand earns as a galleon's guns would for the same fire landed).
+ * A DEPARTURE from the gate's law that what a fighter brings it may deal: a hand brings no health, so a crew aboard makes
+ * the kill sooner - bounded, at most a Large Boat's swivels each, and only where her pose stands at the fight. A hand's
+ * whole part before this was standing on a deck while her captain fought.
+ */
+export const SERPENT_HAND_REF = 1.5;
+export const SERPENT_HAND_REACH_M = 200;
 /** The weak place: a ball on the head while it is thrown up lands this many times, and a stunned serpent takes every
  *  blow this much heavier. */
 export const HEAD_X = 2;
@@ -295,10 +315,18 @@ export const MAEL_REAR_MS = 6000;
 // ── the receipt ────────────────────────────────────────────────────────
 /** Who earns a receipt: dealt this share of the health their own ship brought, or stood alive at the fight - within
  *  SERPENT_STAND_R of its body - this share of it (a hand aboard another's ship earns so). AUDIT SERPENT E1/E2 (Mac:
- *  "Must be in the fight"): 2% was one volley, and a boat parked at 900 m - where nothing of it reaches - stood. */
-export const SERPENT_RECEIPT_SHARE = 0.1;
-export const SERPENT_STOOD_SHARE = 0.5;
-export const SERPENT_STAND_R = 450;
+ *  "Must be in the fight"): 2% was one volley, and a boat parked at 900 m - where nothing of it reaches - stood.
+ *  SERPENT4 (2026-10-11, the players: "it sucks doing damage to the serpent and getting nothing from it if your not near
+ *  the snake when it dies ... Rewards based on party or individual damage should be given on death"): the dealer's hoard
+ *  at SERPENT_RECEIPT_SHARE of her share (it was a tenth - 45 to 72 s of honest fire landing), a stander's for a real
+ *  part dealt (SERPENT_PART_SHARE - several volleys landed, never one) or a quarter of the fight stood, and the stand
+ *  reaching SERPENT_STAND_R of its greater body. A ship thrown off by its blows (the first to strike it is the one it hates)
+ *  dealt a tenth of nothing and stood half of nothing, and went home with nothing; her party's share is the hub's
+ *  (server/src/index.js _serpentFellInternal - the cell knows no party). */
+export const SERPENT_RECEIPT_SHARE = 0.06;
+export const SERPENT_PART_SHARE = 0.025;
+export const SERPENT_STOOD_SHARE = 0.25;
+export const SERPENT_STAND_R = 600;
 /** AUDIT SERPENT E2/E3: a ship whose guns have said nothing this long takes her share out of its health (back, at the
  *  fraction it stands at, with her next blow) - a claim never backed by fire no longer makes it tougher for everyone. */
 export const SERPENT_IDLE_RETIRE_MS = 90_000;
@@ -545,13 +573,15 @@ function spendBlow(p, now) {
   p.rate -= 1;
   return true;
 }
-/** The blow's purse: `d` capped a blow, by the bucket and by what is `left`; the clipping counted. */
-function spendPurse(p, d, left, now) {
-  const ref = p.ref;
-  p.bucket = Math.min(SERPENT_BUCKET_DEPTH_X * ref, p.bucket + (Math.max(0, now - p.bucketAt) / 1000) * SERPENT_BUCKET_RATE_X * ref);
-  p.bucketAt = now;
-  const got = Math.max(0, Math.min(d, SERPENT_HIT_CAP_X * ref, p.bucket, left));
-  p.bucket -= got;
+/** The blow's purse: `d` capped a blow, by the bucket and by what is `left`; the clipping counted. SERPENT4: a hand's
+ *  (`hand`) is her own - SERPENT_HAND_REF's, its bucket `hb` (filling from her join, empty then - the late ship's law),
+ *  what it dealt counted in `hd` too. */
+function spendPurse(p, d, left, now, hand = false) {
+  const ref = hand ? SERPENT_HAND_REF : p.ref;
+  const was = hand ? (Number.isFinite(p.hb) ? p.hb : 0) : p.bucket, at = hand ? (Number.isFinite(p.hbAt) ? p.hbAt : p.joinedAt ?? now) : p.bucketAt;
+  const bucket = Math.min(SERPENT_BUCKET_DEPTH_X * ref, was + (Math.max(0, now - at) / 1000) * SERPENT_BUCKET_RATE_X * ref);
+  const got = Math.max(0, Math.min(d, SERPENT_HIT_CAP_X * ref, bucket, left));
+  if (hand) { p.hb = bucket - got; p.hbAt = now; p.hd = (p.hd ?? 0) + got; } else { p.bucket = bucket - got; p.bucketAt = now; }
   p.clipped += Math.max(0, d - got);
   p.dealt += got;
   return got;
@@ -568,19 +598,23 @@ export const stunned = (f, now) => now < (f.stunUntil ?? 0);
  * above the sea, the body beyond a gun's reach. Clipped (and counted): past the one-blow cap, past the bucket.
  * SERPENT3: the body, its head and its stun are judged at the latest of SERPENT_HIT_LOOKBACK_MS back from the word at
  * which some of it stood above the sea within her guns' reach - when the ball struck, not when its word came.
+ * SERPENT4: `hand` - a hand's own weapons, on her hand's purse (SERPENT_HAND_REF), from within SERPENT_HAND_REACH_M; never
+ * heard from one on her own ship.
  */
-export function applySerpentHit(f, sub, d, z, pose, now) {
+export function applySerpentHit(f, sub, d, z, pose, now, hand = false) {
   const out = [];
   const p = f.players[sub];
   if (!p || f.fell || f.gone || !Number.isFinite(d) || !(d > 0) || now >= f.soundAt) return out;
+  if (hand && serpentOnShip(p)) return out;   // SERPENT4: a captain's purse is her guns
   if (now < f.shieldUntil) return out;
   if (!spendBlow(p, now)) return out;
   if (!pose || !Number.isFinite(pose.x) || !Number.isFinite(pose.z) || Math.hypot(pose.x, pose.z) > ENGAGE_R + SERPENT_POSE_SLACK) return out;
+  const reach = (hand ? SERPENT_HAND_REACH_M : GUN_REACH_M) + SERPENT_POSE_SLACK;
   let pts = null, at = now;
   for (const back of SERPENT_HIT_LOOKBACK_MS) {
     const seen = bodyAt(f, now - back);
     const near = nearestExposed(seen, pose.x, pose.z);
-    if (near && near.d <= GUN_REACH_M + SERPENT_POSE_SLACK) { pts = seen; at = now - back; break; }
+    if (near && near.d <= reach) { pts = seen; at = now - back; break; }
   }
   if (!pts) return out;
   // AUDIT SERPENT E2: her guns speak - a share retired for their silence comes back at the fraction it stands at
@@ -588,7 +622,7 @@ export function applySerpentHit(f, sub, d, z, pose, now) {
   if (p.retired && serpentShareWanted(p, now)) restoreSerpentShare(f, p);
   const stun = stunned(f, at);
   if (z === ZONES.coil && coilHolds(f, now)) {
-    const got = spendPurse(p, d * (stun ? STUN_X : 1), f.coil.h, now);
+    const got = spendPurse(p, d * (stun ? STUN_X : 1), f.coil.h, now, hand);
     p.cd += got;
     if (got > 0) { p.hits++; p.best = Math.max(p.best, got); f.threat[sub] = (f.threat[sub] ?? 0) + got; }
     f.coil.h -= got;
@@ -599,7 +633,7 @@ export function applySerpentHit(f, sub, d, z, pose, now) {
     return out;
   }
   const x = (z === ZONES.head && headExposed(f, pts, at, stun) ? HEAD_X : 1) * (stun ? STUN_X : 1);
-  const got = spendPurse(p, d * x, f.hp, now);
+  const got = spendPurse(p, d * x, f.hp, now, hand);
   if (got > 0) { p.hits++; p.best = Math.max(p.best, got); f.threat[sub] = (f.threat[sub] ?? 0) + got; }
   f.hp -= got;
   if (f.hp <= 1e-6 && f.max > 0) fall(f, now, out);
@@ -649,16 +683,29 @@ export function serpentDamageChart(f) {
     .sort((a, b) => b.dealt - a.dealt || a.joinedAt - b.joinedAt).slice(0, SERPENT_DAMAGE_CHART_MAX)
     .map((q) => ({ n: q.name, h: q.hl, d: Math.round(q.dealt), c: Math.min(Math.round(q.dealt), Math.round(q.cd ?? 0)), x: q.hits ?? 0, b: Math.round(q.best ?? 0) }));
 }
-/** Did `sub` earn a receipt? Only a slain serpent pays: dealt SERPENT_RECEIPT_SHARE of the health their ship brought, or stood
- *  alive within SERPENT_STAND_R of its body SERPENT_STOOD_SHARE of the fight. */
+/** Did `sub` earn a receipt? Only a slain serpent pays: dealt SERPENT_PART_SHARE of the health their ship brought (SERPENT4 -
+ *  a stander's; SERPENT_RECEIPT_SHARE is a dealer's, serpentEarnedBy), or stood alive within SERPENT_STAND_R of its body
+ *  SERPENT_STOOD_SHARE of the fight. Where she was at the kill is nothing to it. */
 export function serpentEarned(f, sub) {
   const p = f.players[sub];
   if (!p || !f.fell) return false;
   const fight = Math.max(1, Number.isFinite(f.liveMs) ? f.liveMs : f.fell.at - f.startedAt);
-  return (p.share > 0 && p.dealt >= SERPENT_RECEIPT_SHARE * p.share) || p.stoodMs >= SERPENT_STOOD_SHARE * fight;
+  const share = partOf(p);
+  return (share > 0 && p.dealt >= SERPENT_PART_SHARE * share) || p.stoodMs >= SERPENT_STOOD_SHARE * fight;
+}
+/** SERPENT4: the share a fighter's part is measured against - her ship's, else a hand's that struck it (SERPENT_HAND_SHARE),
+ *  else none. */
+const partOf = (p) => (p.share > 0 ? p.share : p.hd > 0 ? SERPENT_HAND_SHARE : 0);
+/** SERPENT4: THE KIN OF THE FIGHT - every fighter who came to it (stood a beat within SERPENT_STAND_R of its body, or dealt
+ *  a blow) and earned nothing of their own: `[sub, hull, level]`, said to the hub with the kill, which gives a stander's
+ *  receipt to each whose party holds a dealer's (the cell knows no party). */
+export function serpentKinOf(f) {
+  if (!f.fell) return [];
+  return Object.entries(f.players).filter(([sub, p]) => (p.stoodMs > 0 || p.dealt > 0) && !serpentEarned(f, sub))
+    .slice(0, SERPENT_FIGHTERS_MAX).map(([sub, p]) => [sub, p.hl, p.lv]);
 }
 /** How it was serpentEarned, for the receipt: 'dealt' first, else 'stood'. */
-export const serpentEarnedBy = (f, sub) => { const p = f.players[sub]; return p && p.share > 0 && p.dealt >= SERPENT_RECEIPT_SHARE * p.share ? 'dealt' : 'stood'; };
+export const serpentEarnedBy = (f, sub) => { const p = f.players[sub]; return p && partOf(p) > 0 && p.dealt >= SERPENT_RECEIPT_SHARE * partOf(p) ? 'dealt' : 'stood'; };
 
 /** Who it goes at: SERPENT_THREAT_PICK of the time the ship (or, with none at the fight, the body) with the most threat, else a
  *  random one. Ships first - a hand aboard another's ship stands where that ship does. AUDIT SERPENT E1/T2: only what it

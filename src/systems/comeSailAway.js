@@ -139,6 +139,9 @@
 //   brake() -> m/s^2 | 0                          a heave-to's brake: her way comes off at this, whatever her own rate
 //   drift(boat) -> [x, 0, z] | null               SERPENT1: a world m/s carried on the sea's current under her (the sea
 //                                                serpent's maelstrom pulling her in, a blow's throw) - the port's own
+//   gale(boat) -> { wind, turn } | null           SERPENT4: a gale about her (the sea serpent's waters): under the
+//                                                responsive helm her canvas draws as on her quarter on every heading,
+//                                                in `wind` of the rated wind at least, her helm `turn` times quicker
 //   HELM-WAY (the port's; optional - none handed is the mod to the letter):
 //   handling() -> 'responsive' | 'classic'        the Features row's Ship handling (systems/helmWay.js) - taken once a
 //                                                 helm, at StartSailing (AUDIT NAV2 F14)
@@ -154,7 +157,7 @@ import { NO_WATER_LEVEL } from '../world/deepWaterSwim.js';
 import { invertAffine } from '../world/prefabColliders.js';
 import { buildWaveMesh, stepWaveFrame, waveFrameTimeOf, isDayHour, WAVE_FRAME_COUNT, WAVE_SCALE } from './comeSailAwayWaves.js';
 import { MONTH_NAMES } from './gameDate.js';   // CSA-I: WorldTime.Now.MonthName, a marker's label
-import { HELM_WAY, CARGO_HOLD_MISSING, steerage, isResponsive, pointOfSail, seaWind, SAIL_FREE, sailFreeGain } from './helmWay.js';   // HELM-WAY: the responsive helm; SAIL-FREE: her way under sail
+import { HELM_WAY, CARGO_HOLD_MISSING, steerage, isResponsive, pointOfSail, seaWind, SAIL_FREE, sailFreeGain, WIND_RATED } from './helmWay.js';   // HELM-WAY: the responsive helm; SAIL-FREE: her way under sail
 import { MAP_MARKER_MODE_COLORS, mapRect, guiMouse, mapPixelUnder, guiRectContains, vector2IntDistance, markerLabel, dayOfMonthWithSuffix, mapOverlayDraws, csFloatString, COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_BLACK, DAGGERFALL_DEFAULT_SHADOW_POS } from './comeSailAwayMap.js';   // CSA-I: the position reading
 import { noteFirstUse } from './tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
@@ -595,6 +598,8 @@ export function createComeSailAwayRuntime(deps) {
     /** @type {Boat|null} */ variantBoatTarget: null,
     /** timeScaleIndex (380): the step of currentTimeScale the helm's time keys stand at (CSA-G). */
     timeScaleIndex: 0,
+    /** SERPENT4 (the port's): the gale about her this frame (`deps.gale` - the sea serpent's waters), or null. */
+    gale: null,
     // CSA-G: Travel Options' answer to isTravelActive, asked every LateUpdate (438-442), and its latch (read nowhere)
     isTravelling: false,
     wasTravelling: false,
@@ -720,7 +725,7 @@ export function createComeSailAwayRuntime(deps) {
     }
     if (state.sailPosition === 1) {
       // SAIL-FREE: under the responsive helm her way comes on in the sea's bounded wind, the wind her way is reckoned in
-      const wind = responsive() ? f(seaWind(vMagnitude(state.windVectorCurrent))) : vMagnitude(state.windVectorCurrent);
+      const wind = responsive() ? f(galeWind(seaWind(vMagnitude(state.windVectorCurrent)))) : vMagnitude(state.windVectorCurrent);   // SERPENT4: in a gale's
       const rate = f(f(f(f(f(f(HANDLING.moveAccelSail * handlingMod('SailMoveAcceleration')) * wind) * state.boatCargoMod) * f(b.modifierMoveAccelerationSail)) * (responsive() ? HELM_WAY.sailAccel : 1)) * rigOf(b));   // HOLDINGS: her Rigging
       return responsive() ? f(rate * f(sailFreeGain(b))) : rate;   // SAIL-FREE: her way's gain - the same handling at her new way (AUDIT SHIPS A5: her rig's)
     }
@@ -739,15 +744,23 @@ export function createComeSailAwayRuntime(deps) {
   function turnSpeed() {
     const b = cur();
     if (state.sailPosition === 0) return f(f(f(HANDLING.turnSpeedOar * handlingMod('OarTurnSpeed')) * state.boatCargoMod) * f(b.modifierTurnSpeedOar));
-    return f(f(f(HANDLING.turnSpeedSail * handlingMod('SailTurnSpeed')) * state.boatCargoMod) * f(b.modifierTurnSpeedSail));
+    return f(f(f(f(HANDLING.turnSpeedSail * handlingMod('SailTurnSpeed')) * state.boatCargoMod) * f(b.modifierTurnSpeedSail)) * galeTurn());   // SERPENT4: a gale's helm
   }
+  /** SERPENT4 (the port's, DECLARED; 2026-10-11, the players: "make the wind go crazy where the serpent stands so we can
+   *  sail faster an turn faster aswell"): A GALE ABOUT HER (`state.gale` - deps.gale, the sea serpent's waters): the wind
+   *  she sails in is `wind` of the rated at the least (seaWind's own, where a storm's is stronger), its eye going round with
+   *  her so her canvas draws as on her quarter on every heading (freeDrive), and her helm comes over `turn` times quicker
+   *  under sail (turnSpeed, turnAccel). Under the responsive helm alone (updateSailing asks it) - the mod's own is the
+   *  mod's. A ship thrown downwind of the fight sailed back at half her way into the wind. */
+  const galeWind = (wind) => (state.gale ? Math.max(wind, WIND_RATED * state.gale.wind) : wind);
+  const galeTurn = () => (state.gale ? state.gale.turn : 1);
   /** turnAccel (566-576). HELM-WAY: under the responsive helm a sail's helm comes over HELM_WAY.turnAccelSail times it. */
   function turnAccel() {
     const b = cur();
     if (state.sailPosition === 0 && (has('MoveRight') || has('MoveLeft'))) {
       return f(f(f(HANDLING.turnAccelOar * handlingMod('OarTurnAcceleration')) * state.boatCargoMod) * f(b.modifierTurnAccelerationOar));
     }
-    return f(f(f(f(HANDLING.turnAccelSail * handlingMod('SailTurnAcceleration')) * state.boatCargoMod) * f(b.modifierTurnAccelerationSail)) * (responsive() ? HELM_WAY.turnAccelSail : 1));
+    return f(f(f(f(f(HANDLING.turnAccelSail * handlingMod('SailTurnAcceleration')) * state.boatCargoMod) * f(b.modifierTurnAccelerationSail)) * (responsive() ? HELM_WAY.turnAccelSail : 1)) * galeTurn());   // SERPENT4: a gale's helm
   }
   /** wakeThreshold (504): moveSpeedSail * 0.25. */
   const wakeThreshold = () => f(HANDLING.moveSpeedSail * f(0.25));
@@ -1013,6 +1026,7 @@ export function createComeSailAwayRuntime(deps) {
   /** StopSailing past its head: the player set down at the helm, the freeze lifted, OnUpdateSailing(false). */
   function stopSailingTail(currentBoat) {
     state.CurrentBoat = null;
+    state.gale = null;   // SERPENT4: off her helm, no gale is hers
     state.oarThrottle = 0;   // HELM-LADDER: the oars shipped with the helm left
     unparentPlayer();
     deps.helm.setPlayerPosition(currentBoat.DrivePosition.position);
@@ -1033,6 +1047,7 @@ export function createComeSailAwayRuntime(deps) {
     if (state.disembarking !== co) return false;   // AUDIT PRE-MERGE 0928 S1: ended already - a load's start ended it (EndDisembark)
     if (co.phase === 'unparent') {
       state.CurrentBoat = null;
+      state.gale = null;   // SERPENT4
       unparentPlayer();
       co.phase = 'hold';
     }
@@ -1150,7 +1165,8 @@ export function createComeSailAwayRuntime(deps) {
   /** SAIL-FREE: `canvas` drawing by the point of sail at her heading, in the sea's wind, at her pace (sailDrive's law). */
   function freeDrive(canvas, boat) {
     const offRun = Math.abs(vSignedAngle(flat(forwardOf(boat.GameObject)), flat(state.windVectorCurrent), V_UP));
-    return f(f(f(canvas * f(pointOfSail(offRun))) * f(seaWind(vMagnitude(state.windVectorCurrent)))) * f(SAIL_FREE.pace));
+    // SERPENT4: in a gale on her quarter whatever her heading, at its wind (galeWind)
+    return f(f(f(canvas * f(state.gale ? 1 : pointOfSail(offRun))) * f(galeWind(seaWind(vMagnitude(state.windVectorCurrent))))) * f(SAIL_FREE.pace));
   }
   /** AUDIT SHIPS A4 (2026-10-06): HER WAY UNDER SAIL as she lies (m/s) - every sail she has drawing, at her heading in this
    *  wind, at her pace under sail, whether they are set or not: SAIL-FREE's drive under the responsive helm (freeDrive),
@@ -1440,6 +1456,7 @@ export function createComeSailAwayRuntime(deps) {
   /** Update's sailing arm (4301-4768) - what this slice owns of it; the rest is named where the C# runs it. */
   function updateSailing() {
     const boat = state.CurrentBoat;
+    state.gale = responsive() ? deps.gale?.(boat) ?? null : null;   // SERPENT4: asked once a frame - the responsive helm's alone
     deps.helm.stopRunning?.();   // SpeedChanger.isRunning = false
     if (!deps.transport?.isFoot?.()) deps.transport?.setFoot?.();
     if (IsBeached(boat) && vSqrMagnitude(state.MoveVectorCurrent) > 0) {
@@ -1601,7 +1618,12 @@ export function createComeSailAwayRuntime(deps) {
     }
   }
 
-  /** CSA-E: every boat's Animators, one step on Time.deltaTime (zero while paused - Unity's scale is nought then). */
+  /** CSA-E: every boat's Animators, one step on Time.deltaTime (zero while paused - Unity's scale is nought then).
+   *  SEA-TOWN (FIELD BUGS 2026-10-11c): AllBoats is every boat the player has placed, wherever it lies, and each one's
+   *  tree was walked here every frame to find its Animators - a fleet moored in three ports, on every frame of a town
+   *  far inland. The list is kept (boatAnimators). A boat standing nowhere is still asked: an Animator asked while its
+   *  object is inactive notes it (world/unityAnimator.js animatorUpdate - its first test, and all it costs), so it
+   *  starts over from its default state when she stands again (Port-Ledger, Come Sail Away row, (18)). */
   function animate() {
     const d = dt();
     for (const boat of state.AllBoats) for (const a of boatAnimators(boat)) a.update(d);

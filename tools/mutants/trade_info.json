@@ -86,7 +86,8 @@
     "tests": [
       "test/tradeinfo.test.js"
     ],
-    "old": "? `Worth ${num(Math.max(0, Math.trunc(Number(item.value) || 0)))} gold` : null);",
-    "new": "? `Worth ${num(0)} gold` : null);"
+    "old": "? `${num(Math.max(0, Math.trunc(Number(item.value) || 0)))} gold` : null);",
+    "new": "? `${num(0)} gold` : null);",
+    "note": "TRADE-LOC II (PIN MOVED): re-aimed by content - the figure is letterWorthGold's now, and letterWorthLine says it after its word"
   }
 ]

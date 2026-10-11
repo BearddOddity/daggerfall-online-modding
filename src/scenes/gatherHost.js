@@ -191,7 +191,7 @@ export function aimAt(eyePos, at, view) {
  * @property {readonly string[]} professions the professions its nodes are worked under
  * @property {(ctx: any) => any[]} nodesOf a pixel's nodes today: `{ key, local: [x,y,z], lift?, ... }`
  * @property {(ctx: any) => any[]} [dungeonNodesOf] a dungeon's nodes today (PROF2's veins), in the dungeon's own space
- * @property {(node: any) => Array<{ archive: number, record: number, scale: number, centers: number[][] }>} flatsOf
+ * @property {(node: any) => Array<{ archive: number, record: number, scale: number, centers: number[][], tint?: ReadonlyArray<number>|null }>} flatsOf
  * @property {(node: any) => boolean} gone whether every harvest of the node is taken today
  * @property {(node: any, ctx: any) => any} plan what E does: `{ harvest, verb, rest, ready, both?, alt? }` - TOOL-USE:
  *   `ctx.tool` the template of a tool whose Use asks (the Sickle the herbs, the Basket the food), null for E
@@ -206,7 +206,7 @@ export function aimAt(eyePos, at, view) {
  * @property {(report: any) => string} [actNote] AUDIT 32 P10: what the act's report says in the XP toast, clean or not (a
  *   torn pelt, a true line drawn too quick) - the kind's own word, where cleanNote says only a clean act
  * @property {(profession: string) => string} title a rank's banner word ('Herbalist', 'Miner')
- * @property {(node: any, entry: any) => Array<{ archive: number, record: number, scale: number, centers: number[][] }>} [goneFlatsOf]
+ * @property {(node: any, entry: any) => Array<{ archive: number, record: number, scale: number, centers: number[][], tint?: ReadonlyArray<number>|null }>} [goneFlatsOf]
  *   PROF4: what a node gone for the day leaves standing (a felled tree's stump)
  * @property {(entry: any, nodes: any[]) => void} [stood] PROF4: a pixel's nodes of this kind stood (the felled trees sunk)
  * @property {(node: any, at: { entry: any, from: number[], tr: number[] }) => void} [felled] PROF4: a node taken on the
@@ -367,7 +367,8 @@ export function createGatherHost(deps) {
       rec.nodes = rec.nodes.filter((n) => !kindOf(n)?.where || !deps.settled([n.local[0] + tr[0], n.local[1] + tr[1], n.local[2] + tr[2]]));
     }
     for (const k of kinds) k.stood?.(entry, rec.nodes.filter((n) => n.kind === k.id));   // PROF4: the felled trees sunk
-    /** archive -> `${record}:${scale}` -> centres */
+    /** archive -> `${record}:${scale}:${tint}` -> centres (VEIN-WASH: a wash is its own batch - two ores on one picture
+     *  are two) */
     const groups = new Map();
     for (const n of rec.nodes) {
       const k = kindOf(n);
@@ -376,20 +377,21 @@ export function createGatherHost(deps) {
       for (const f of k.gone(n) ? (k.goneFlatsOf?.(n, entry) ?? []) : k.flatsOf(n)) {
         if (!groups.has(f.archive)) groups.set(f.archive, new Map());
         const g = groups.get(f.archive);
-        const gk = `${f.record}:${f.scale}`;
-        if (!g.has(gk)) g.set(gk, { record: f.record, scale: f.scale, centers: [] });
+        const gk = `${f.record}:${f.scale}:${f.tint ?? ''}`;
+        if (!g.has(gk)) g.set(gk, { record: f.record, scale: f.scale, tint: f.tint ?? null, centers: [] });
         g.get(gk).centers.push(...f.centers);
       }
     }
     for (const [archive, byRecord] of groups) {
       const t = await deps.getTexture(archive);
       if (deps.built().get(key) !== entry || stood.get(key) !== rec) return;   // torn down, or stood again, during the await
-      for (const { record, scale, centers } of byRecord.values()) {
+      for (const { record, scale, tint, centers } of byRecord.values()) {
         if (!t || record >= t.recordCount) continue;
         deps.uploadRecord(archive, record);
         const base = deps.billboardSize(t, record);
         const size = { w: base.w * scale, h: base.h * scale };
         const batch = deps.renderer.createBillboardBatch(archive, record, size, centers);
+        if (tint) batch.tint = tint;   // VEIN-WASH: an ore's own wash (scenes/mineHost.js ORE_WASH)
         batch._box = deps.flatBatchAabb(centers, size);
         entry.batches.push(batch);
         rec.batches.push(batch);
@@ -418,6 +420,7 @@ export function createGatherHost(deps) {
       if (!k || k.gone(n)) continue;
       for (const f of k.flatsOf(n)) {
         const b = await d.stand(f.archive, f.record, f.scale, f.centers);
+        if (b && f.tint) b.tint = f.tint;   // VEIN-WASH: a deep vein wears its ore's wash too (the dungeon's own batch)
         if (dungeon !== d || d.gen !== gen) { if (b) d.drop(b); return; }   // left, entered another, or stood again, during the await
         if (b) d.batches.push(b);
       }
@@ -979,6 +982,12 @@ export function createGatherHost(deps) {
     /** For the pins and the compass: what stands, and the target. */
     get target() { return target; },
     nodesOf: (px, py) => stood.get(pixelKey(px, py))?.nodes ?? [],
+    /** ORE-MAP: the witnesses asked after pixels another reader wants (the held map's ore card - ui/oreMapTip.js) through
+     *  the one book, and any of them this host stands stood again on the answer, as its own ask in tick() does - a pixel
+     *  the book heard first for the map would otherwise never be wanted by that ask, and stand on yesterday's word. */
+    askPixels(list) {
+      return book.askPixels(list).then((changed) => { for (const c of changed ?? []) restandAt(c.x, c.y); return changed; });
+    },
     /** Every stood node of a kind, with its world place (the Prospector's compass - PROF0 3.3).
      *  @param {string} kindId @param {(n: any) => boolean} [pred] */
     stoodOf(kindId, pred = () => true, near = null) {
