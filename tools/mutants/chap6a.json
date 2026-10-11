@@ -47,17 +47,8 @@
   {
     "name": "CHAP6A-W-ASC-SUCC",
     "file": "src/net/npcChapterLaw.js",
-    "old": "{ w.succession += E.successionAscendant; w.ascendancy += E.ascendancyAscendant; }",
-    "new": "{ w.ascendancy += E.ascendancyAscendant; }",
-    "tests": [
-      "test/chap6a_events.test.js"
-    ]
-  },
-  {
-    "name": "CHAP6A-W-ASC-ASC",
-    "file": "src/net/npcChapterLaw.js",
-    "old": "{ w.succession += E.successionAscendant; w.ascendancy += E.ascendancyAscendant; }",
-    "new": "{ w.succession += E.successionAscendant; }",
+    "old": "  if (band === 'ascendant') w.succession += E.successionAscendant;\n",
+    "new": "",
     "tests": [
       "test/chap6a_events.test.js"
     ]
@@ -121,15 +112,6 @@
     "file": "src/net/npcChapterLaw.js",
     "old": "rivalBand === 'thriving' || rivalBand === 'ascendant'",
     "new": "rivalBand === 'thriving'",
-    "tests": [
-      "test/chap6a_events.test.js"
-    ]
-  },
-  {
-    "name": "CHAP6A-W-FAILING",
-    "file": "src/net/npcChapterLaw.js",
-    "old": "  if (band === 'failing') w.decline += E.declineFailing;\n",
-    "new": "",
     "tests": [
       "test/chap6a_events.test.js"
     ]
@@ -230,33 +212,6 @@
     "file": "src/net/npcChapterLaw.js",
     "old": "(b.strength > a.strength || (b.strength === a.strength && b.faction < a.faction) ? b : a)",
     "new": "(b.strength > a.strength || (b.strength === a.strength && b.faction > a.faction) ? b : a)",
-    "tests": [
-      "test/chap6a_events.test.js"
-    ]
-  },
-  {
-    "name": "CHAP6A-DECLINE-MEETS",
-    "file": "src/net/npcChapterLaw.js",
-    "old": "return Number(merit) >= E.declineMeets * Math.max(1, Number(target) || 0) ? s",
-    "new": "return Number(merit) > E.declineMeets * Math.max(1, Number(target) || 0) ? s",
-    "tests": [
-      "test/chap6a_events.test.js"
-    ]
-  },
-  {
-    "name": "CHAP6A-DECLINE-TWICE",
-    "file": "src/net/npcChapterLaw.js",
-    "old": "return Number(merit) >= E.declineMeets * Math.max(1, Number(target) || 0) ? s",
-    "new": "return Number(merit) >= Math.max(1, Number(target) || 0) ? s",
-    "tests": [
-      "test/chap6a_events.test.js"
-    ]
-  },
-  {
-    "name": "CHAP6A-DECLINE-FLOOR",
-    "file": "src/net/npcChapterLaw.js",
-    "old": ": Math.max(STRENGTH_MIN, s - E.declineFall);",
-    "new": ": s - E.declineFall;",
     "tests": [
       "test/chap6a_events.test.js"
     ]
@@ -414,25 +369,8 @@
     "old": "(season && c.eventSeason === season.n ? c.event : null)",
     "new": "(c.event)",
     "tests": [
-      "test/chap6a_events.test.js"
-    ]
-  },
-  {
-    "name": "CHAP6A-SVC-DECLINE",
-    "file": "server-account/src/npcChapters.js",
-    "old": "    if (live(c) === 'decline') {",
-    "new": "    if (false) {",
-    "tests": [
-      "test/chap6a_events.test.js"
-    ]
-  },
-  {
-    "name": "CHAP6A-SVC-FELL",
-    "file": "server-account/src/npcChapters.js",
-    "old": "fell: Number(c.data.fell ?? 0) + (c.s - d)",
-    "new": "fell: c.s - d",
-    "tests": [
-      "test/chap6a_events.test.js"
+      "test/chap6a_events.test.js",
+      "test/audit_guild3.test.js"
     ]
   },
   {

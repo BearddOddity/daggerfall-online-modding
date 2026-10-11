@@ -136,13 +136,13 @@ Stores, the rank names and leaving, every section under the one before. It is pa
 
 | Page | What it holds |
 |---|---|
-| Overview | the arms in words, where the reader stands at the vault, the hall |
-| Members | the roster - each member's rank and when they were last online (GUILD-SEEN, below) - and what the reader's rank may do to each; the guildmaster's grants; invitations |
-| Treasury | the gold and its ledger, the silver and its lines |
+| Overview | the arms in words, where the reader stands at the vault, the hall (GUILD3c: and where the rest of the guild is run, "Elsewhere") |
+| Members | the roster - each member's rank and when they were last online (GUILD-SEEN, below) - and what the reader's rank may do to each; the guildmaster's grants; invitations (GUILD3c: and, folded, what each rank may do) |
+| Treasury | the gold and its ledger, the silver and its lines (GUILD3c: which of the gold buys a hall or a new name; GUILD3b: each silver line by its kind and way) |
 | Vault | the pieces, Take and Take one, Put in from the pack, the lines |
 | Stores | the guild Stores and the writ budget - where the professions are this account's |
 | Arms | the arms, and the guildmaster's choosing |
-| Settings | a new name, the rank names, leaving and disbanding |
+| Settings | a new name, the rank names, leaving and disbanding (GUILD3c: and, before the press, everything that still holds the guild) |
 
 Each page keeps every control and sentence the section it took over had, so a refusal still says its reason beside its
 button. `openGuild(page)` opens the tab at a page (the hall's chest: the Vault). A page turned keeps the keyboard's
@@ -195,6 +195,15 @@ Pins: `test/guildseen.test.js` (the service through the real Worker, the law, th
 | A take lands on a slot filled again under it | The take holds the very record it read |
 | A name that reads as a slur or as the server's | The name filter, word by word, at a founding and a rename |
 | A name changed to dodge a siege's record | Refused in a week the guild fights for a seat; a fortnight between renames |
+
+**GUILD3 (2026-10-11, `Guilds-Made-Plain.md`) grew the pages, each said there:** the Members page folds what each rank
+may do (the four power tables in words); the Treasury page says which of its gold buys a hall or a new name, and its
+silver lines say which way they went (a Tribute, an upkeep, a patron's bid never "put in"); the Settings page lists
+everything that holds a guild that would go before the press, the guildmaster's view carrying it (one read); the Overview says where the
+rest is run; a character in no guild is told what a guild is for. AUDIT GUILD3 (`01-Overview/Audit-Guild3.md`) made each
+truer: the rank list says what a rank may not do and every act the service gates by rank; a silver line the service made
+is the guild's; the list of holds is the gate's own (one list), an open writ no "treasury full", the silver's room said
+before the press, and a refusal's word the page cannot read again never a lock.
 
 ## Pins
 

@@ -84,8 +84,8 @@
   {
     "name": "BOARD-UI-the-day-at-the-foot",
     "file": "src/ui/noticeWindow.js",
-    "old": "    body.append(el('p', 'notice-worktoday', `Writs today: ${today.filled} of ${today.max}${writsStale ? ' - the list may be out of date' : ''}`));\n    for (const m of writs?.merit ?? [])",
-    "new": "    for (const m of writs?.merit ?? [])",
+    "old": "    body.append(el('p', 'notice-worktoday', `Writs today: ${today.filled} of ${today.max}${writsStale ? ' - the list may be out of date' : ''}`));\n    // CHAP3a: the account's Merit here",
+    "new": "    // CHAP3a: the account's Merit here",
     "tests": [
       "test/board_ui.test.js"
     ],

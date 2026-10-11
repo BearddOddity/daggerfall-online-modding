@@ -425,7 +425,7 @@
   {
     "name": "GUILD1-the-leaving-refusal-misnamed",
     "file": "server-account/src/guilds.js",
-    "old": "    if ((n?.n ?? 0) > 1) return 'guild-master-leaves';\n",
+    "old": "    if ((n?.n ?? 0) > 1) keeps.push('guild-master-leaves');\n",
     "new": "",
     "tests": [
       "test/guild1.test.js"

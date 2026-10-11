@@ -233,9 +233,9 @@
   },
   {
     "name": "A3-C8-EARNS",
-    "file": "src/ui/noticeWindow.js",
-    "old": "const earns = !!m && m.from == null && !m.elsewhere && m.merit < m.max;",
-    "new": "const earns = !!m;",
+    "file": "src/net/npcChapterLaw.js",
+    "old": "export const meritEarnsOf = (/** @type {any} */ m) => !!m && m.from == null && !m.elsewhere && Number(m.merit) < Number(m.max);",
+    "new": "export const meritEarnsOf = (/** @type {any} */ m) => !!m;",
     "tests": [
       "test/audit_chap3.test.js"
     ]
