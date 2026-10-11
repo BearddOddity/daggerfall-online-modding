@@ -8340,7 +8340,8 @@ view, "Station: Alchemy >" cycles the craft offered, free, and follows a newly c
 **THE PRESS** (`scenes/worldModes.js` useDecorStation). A station pressed by its owner opens its craft's maker
 through the guild service's own door (openServiceFlow, no guild), so the maker's own laws stand: the potion maker's
 ingredients, the spell maker's spellbook, and what each charges. A visitor is told whose home it is, as a storage
-piece's visitor is.
+piece's visitor is. STATION-DOOR (`01-Overview/Field-Bugs-2026-10-11f.md`): online, an alchemy or enchanting station
+asks first - its maker, or its profession's act on the Stores page (the brew, Disenchanting).
 
 **THE SERVICE** (`server-account/src/decor.js` placeJson). The craft is written with the place. ACCOUNT_VERSION
 acct16 (acct15 on its branch; main's FOUNDER3 took acct15 first) - the account Worker deploys from CI on a change to its bundle.
