@@ -24,13 +24,13 @@ import { readFileSync } from 'node:fs';
 
 import {
   resolveHover, frameSignature, hoverLines, keyItemises, ITEMISED_KEYS, HOVER_MAX,
-  composeActivationTargets,
+  composeActivationTargets, plaqueWindow,
 } from '../src/systems/worldHover.js';
 import {
   showWorldPlaque, destroyWorldPlaque, hideWorldPlaque, plaqueAnchor, worldPlaqueOn, worldHoverFrame,
   worldHoverFaults, PLAQUE_GAP, PLAQUE_WATCHDOG_MS, _plaqueSignatureForTests, _setPlaqueClockForTests,
 } from '../src/ui/worldPlaque.js';
-import { foldQuickLoot, quickLootWheel, resetQuickLoot } from '../src/systems/quickLoot.js';   // QUICK-LOOT B3: the two draw pins at the foot of this file drive the highlight through its own module
+import { foldQuickLoot, quickLootWheel, resetQuickLoot, quickLootRow, quickLootStats, quickLootTake } from '../src/systems/quickLoot.js';   // QUICK-LOOT B3: the two draw pins at the foot of this file drive the highlight through its own module
 import { PREF_DEFAULTS, setPref } from '../src/systems/uiPrefs.js';
 import { CROSSHAIR_ARM, crosshairCentreY } from '../src/ui/hudCrosshair.js';
 import { hudScale } from '../src/ui/hud.js';
@@ -175,8 +175,13 @@ test('WORLD-HOVER: an itemised frame carries the rows, the tail and the empty fl
   const f = resolveHover(hit('loot:1'), { contents: () => many, name: () => ({ title: 'Loot Pile' }) });
   assert.equal(f.kind, 'items');
   assert.equal(f.title, 'Loot Pile', 'the namer\'s title, not a kind label');
-  assert.equal(f.rows.length, HOVER_MAX);
-  assert.equal(f.rest, 3);
+  // PIN MOVED (FIELD BUGS 2026-10-11g LOOT-SCROLL): the frame carries EVERY row - the wheel and the take reach them all -
+  // and the plaque draws HOVER_MAX of them, the rest its tail
+  assert.equal(f.rows.length, HOVER_MAX + 3);
+  assert.equal(f.rest, 0);
+  const drawn = plaqueWindow(f).frame;
+  assert.equal(drawn.rows.length, HOVER_MAX);
+  assert.equal(drawn.rest, 3);
   assert.equal(f.empty, false);
   const e = resolveHover(hit('corpse:1'), { contents: () => [], name: PILE });
   assert.equal(e.empty, true);
@@ -241,8 +246,9 @@ test('WORLD-HOVER: the signature changes when the LIST does, under a constant ke
   }));
   const six = resolveHover(hit('loot:1'), { contents: () => Array.from({ length: HOVER_MAX + 1 }, (_, i) => ({ name: `Item${i}` })), name: PILE });
   const seven = resolveHover(hit('loot:1'), { contents: () => Array.from({ length: HOVER_MAX + 2 }, (_, i) => ({ name: `Item${i}` })), name: PILE });
-  assert.deepEqual(six.rows.map((r) => r.name), seven.rows.map((r) => r.name), 'the same six rows are visible');
-  assert.notEqual(six.rest, seven.rest, '...and the tails differ');
+  // PIN MOVED (LOOT-SCROLL): the visible rows are the plaque's window over the frame
+  assert.deepEqual(plaqueWindow(six).frame.rows.map((r) => r.name), plaqueWindow(seven).frame.rows.map((r) => r.name), 'the same six rows are visible');
+  assert.notEqual(plaqueWindow(six).frame.rest, plaqueWindow(seven).frame.rest, '...and the tails differ');
   assert.notEqual(many(HOVER_MAX + 1), many(HOVER_MAX + 2), 'a changed TAIL under the same visible rows repaints');
 });
 
@@ -2290,5 +2296,35 @@ test('QUICK-LOOT B3: a moved highlight REPAINTS, though the frame is identical',
     assert.notEqual(_plaqueSignatureForTests(), first, 'the signature carries the lit row');
     assert.deepEqual(find(root(), 'wplaque-row').map((r) => r.classList.contains('sel')), [false, true],
       'and the paint followed the highlight');
+  } finally { resetQuickLoot(); setPref('quickLoot', PREF_DEFAULTS.quickLoot); }
+}));
+
+test('FIELD BUGS 2026-10-11g LOOT-SCROLL ("Can\'t scroll loot pile / corpse": "I can\'t scroll the item list with mouse wheel ... I can still take items from list one by one to get to the bottom of it"): the wheel walks a nine-item body past the old sixth row, the plaque\'s six rows follow it with what they leave above and below, the lit row drawn is the lit item, and the take takes it; back up, a notch inside the window moves the light and not the list (mutants: the frame capped again; the window still; the take bounded by the window; the light counted from the pile\'s top)', () => withPlaque((root) => {
+  setPref('quickLoot', true);
+  resetQuickLoot();
+  try {
+    const items = Array.from({ length: HOVER_MAX + 3 }, (_, i) => ({ name: `Thing ${i}`, group: 'Weapons', templateIndex: 121, material: 3, maxCondition: 200, currentCondition: 150 }));
+    const res = () => resolveHover(hit('corpse:1'), { contents: () => items, name: PILE });
+    const step = (d) => { if (d) quickLootWheel(d); const f = res(); foldQuickLoot(f); showWorldPlaque(f); return f; };
+    let f = step(0);
+    assert.deepEqual(textsOf(root(), 'wplaque-more'), ['and 3 more'], 'the first page: six rows and the tail');
+    assert.equal(find(root(), 'wplaque-row').length, HOVER_MAX + 1);
+    for (let i = 0; i < 20; i++) f = step(1);
+    assert.equal(quickLootRow(f), HOVER_MAX + 2, 'the light reaches the last item, not the sixth');
+    assert.deepEqual(textsOf(root(), 'wplaque-more'), ['3 more above'], 'the window moved down with it');
+    const lit = find(root(), 'sel');
+    assert.equal(lit.length, 1);
+    assert.equal(lit[0].textContent, `Thing ${HOVER_MAX + 2}`, 'the lit row drawn is the lit item');
+    assert.ok(quickLootStats(f).length > 0, 'and it describes itself');
+    const moved = quickLootTake('corpse:1', { items: () => items }, { items: [], goldPieces: 0, stats: { strength: 50 } });
+    assert.equal(moved?.name, `Thing ${HOVER_MAX + 2}`, 'the take takes the lit item past the old tail');
+    f = step(0);
+    assert.equal(quickLootRow(f), HOVER_MAX + 1, 'the shrunk pile pulls the light back to its new last row');
+    f = step(-1); f = step(-1);
+    assert.equal(quickLootRow(f), HOVER_MAX - 1);
+    assert.deepEqual(textsOf(root(), 'wplaque-more'), ['2 more above'], 'the window held while the light moved inside it');
+    for (let i = 0; i < 20; i++) f = step(-1);
+    assert.equal(quickLootRow(f), 0);
+    assert.deepEqual(textsOf(root(), 'wplaque-more'), ['and 2 more'], 'back at the top');
   } finally { resetQuickLoot(); setPref('quickLoot', PREF_DEFAULTS.quickLoot); }
 }));
