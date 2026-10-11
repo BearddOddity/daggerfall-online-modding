@@ -615,7 +615,7 @@ import { watersOf } from '../systems/naval/navalDirector.js';   // CAPT-WATERS: 
 import { draftOf as navalDraftOf } from '../systems/naval/shipLife.js';   // AUDIT GN2-PF6: a hull's draft, hull 2's off her keel as she stands
 import { createNavalFlames } from './navalFlames.js';   // NAV-B: a burning ship's deck fires
 import { NavalRenderer } from '../render/navalRender.js';   // NAV-B: the smoke, the spray, the balls in flight and the aim
-import { drawSpyglass, easeLens, glassFov, glassLookScale, spyglassTaps, nextGlassZoom, GLASS_FIELD } from '../ui/spyglassView.js';   // SPYGLASS: the glass's window, its lens - AUDIT CAPTAIN'S SEA S3/S16: a finger's two presses, the presses' round of magnifications, its field
+import { drawSpyglass, easeLens, glassFov, glassLookScale, spyglassTaps, nextGlassZoom, GLASS_FIELD, glassNear, glassEyeOverSea, glassClearDepth, GLASS_NEAR_MIN } from '../ui/spyglassView.js';   // SPYGLASS: the glass's window, its lens - AUDIT CAPTAIN'S SEA S3/S16: a finger's two presses, the presses' round of magnifications, its field; GLASS-CLEAR: its focus
 import { plusDpadMap, DPAD_CODES } from '../ui/plusPad.js';   // AUDIT CAPTAIN'S SEA S3: a d-pad press the player gave the glass
 import { GLASS_ZOOM, GLASS_ZOOM_MIN, GLASS_ZOOM_MAX } from '../systems/naval/shipKnowledge.js';   // SPYGLASS: its magnification
 import { drawNavalHud, navalTouchBrace, navalTouchGlass, navalPadPrompts, drawNavalTags, drawCrewBars, CREW_BAR_RANGE, crewBarPoint, drawCrewLines, CREW_SAY_RANGE } from '../ui/navalHud.js';   // AUDIT NAV1 (#14): and the ships' tags - SHIPMATES: and the crew's bars (CEIL-GHOST: where they stand) - LIVING CREW: and their lines
@@ -10798,7 +10798,10 @@ export async function bootWorld(canvas, renderer, params, status) {
   // spyglassView.js GLASS_EASE_S), the look slowed by it, and the naval host makes out the ship it holds (navalHost.js
   // glass) - her card under the reticle. Down at once ashore, under a window or a pause, under the travel view, with a
   // broadside laid, and with the ships switched off. Its magnification is kept between raises (the session's).
-  const spyglass = { up: false, zoom: GLASS_ZOOM, lens: 1 };
+  const spyglass = { up: false, zoom: GLASS_ZOOM, lens: 1, near: GLASS_NEAR_MIN };   // GLASS-CLEAR: `near` the glass's focus, the frame's lens takes it
+  /** GLASS-CLEAR: whether a point projected (player/tapRay.js projectToScreen) stands nearer than the glass's focus - cut
+   *  from its view, and the tag, bar, line or name over it with it (her own hands', on my deck). */
+  const glassCuts = (at) => at.front && at.depth < spyglass.near;
   /** AUDIT CAPTAIN'S SEA S2: a press of the glass by the host's own door (the pad's d-pad, the touch corner's Glass:
    *  inputHooks.padAction) - never its key, K, which is the road's follow too. Read once. */
   let glassDoorPress = false;
@@ -10813,6 +10816,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   function lowerGlass() {
     spyglass.up = false;
     spyglass.lens = 1;
+    spyglass.near = GLASS_NEAR_MIN;   // GLASS-CLEAR
     glassDoorPress = false;
     mwViewHoldFirst(false);
     naval?.glass?.(0, { up: false, zoom: spyglass.zoom });
@@ -10844,9 +10848,18 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (taps.zoom && spyglass.up) spyglass.zoom = nextGlassZoom(spyglass.zoom);   // AUDIT CAPTAIN'S SEA S3: a finger's Magnify
     mwViewHoldFirst(spyglass.up);
     spyglass.lens = easeLens(spyglass.lens, spyglass.up ? spyglass.zoom : 1, dt);
+    const fovY = glassFov(fieldOfView() + climbFeel.fovRad(), spyglass.lens);
     // AUDIT CAPTAIN'S SEA S19: the glass holds no ship outside its own circle - the tube's radius, at the lens drawn
-    const field = Math.atan(Math.tan(glassFov(fieldOfView() + climbFeel.fovRad(), spyglass.lens) / 2) * GLASS_FIELD * Math.min(1, largeHudWorldAspect(canvas.clientWidth, canvas.clientHeight) || 1));
-    const card = navalOn() && naval ? naval.glass(dt, { up: spyglass.up, zoom: spyglass.zoom, field }) : null;
+    const field = Math.atan(Math.tan(fovY / 2) * GLASS_FIELD * Math.min(1, largeHudWorldAspect(canvas.clientWidth, canvas.clientHeight) || 1));
+    // GLASS-CLEAR (the owner: "the ship blocks your view most of the time when using your spyglass"): the glass's focus -
+    // just past the ship I stand aboard as its lens comes on (the frame's lens below takes it: her own masts, sails and
+    // hands out of the view, every ship beyond her in it), never so far that the sea at the view's foot is cut
+    // (ui/spyglassView.js glassNear); last frame's eye
+    const pitch = cam.pitch + climbFeel.pitch();
+    spyglass.near = spyglass.lens > 1 && navalOn() && naval ? glassNear({ lens: spyglass.lens, zoom: spyglass.zoom, fovY, pitch,
+      own: glassClearDepth({ box: naval.ownExtent(), eye: cam.pos, yaw: cam.yaw, pitch, field }),
+      eyeOverSea: glassEyeOverSea({ eyeX: cam.pos[0], eyeZ: cam.pos[2], yaw: cam.yaw, eyeY: cam.pos[1], seaY: tvSeaY(), fovY, pitch, groundAt: heightAt }) }) : GLASS_NEAR_MIN;
+    const card = navalOn() && naval ? naval.glass(dt, { up: spyglass.up, zoom: spyglass.zoom, field, near: spyglass.near }) : null;   // GLASS-CLEAR: and none it is not focused on
     const padHand = controllerLook() ? padFamily() : null;   // the pad in hand: its button named, not the key
     const w = canvas.clientWidth, h = canvas.clientHeight;
     drawSpyglass(spyglass.up ? { card, zoom: spyglass.zoom } : null, {
@@ -10895,6 +10908,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     for (const t of covered ? [] : naval.tags()) {
       const at = projectToScreen(t.point, w, h, proj, view, rect);
       if (!at.front || at.x < -60 || at.x > w + 60 || at.y < -40 || at.y > h + 40) continue;
+      if (glassCuts(at)) continue;   // GLASS-CLEAR: nearer than the glass is focused
       if (shipSight.blocked(player.collider, eye, t.id, t.point)) continue;
       points.push({ ...t, x: at.x, y: at.y });
     }
@@ -10923,6 +10937,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         const head = crewBarPoint(feet, f.ai.height ?? CAPSULE_HEIGHT, player.collider);   // CEIL-GHOST: under the ceiling
         const at = projectToScreen(head, w, h, proj, view, rect);
         if (!at.front || at.x < -40 || at.x > w + 40 || at.y < -20 || at.y > h + 20) continue;
+        if (glassCuts(at)) continue;   // GLASS-CLEAR: a hand the glass's focus cut from its view wears no bar over it
         let key = _crewKeys.get(f);
         if (key == null) { key = `crew:${++_crewKey}`; _crewKeys.set(f, key); }
         if (crewSight.blocked(player.collider, eye, key, head)) continue;
@@ -11034,6 +11049,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         if (d > CREW_SAY_RANGE) continue;
         const at = projectToScreen(l.head, w, h, proj, view, rect);
         if (!at.front || at.x < -80 || at.x > w + 80 || at.y < -40 || at.y > h + 40) continue;
+        if (glassCuts(at)) continue;   // GLASS-CLEAR: nor a line
         let key = _sayKeys.get(l.member);
         if (key == null) { key = `say:${++_sayKey}`; _sayKeys.set(l.member, key); }
         if (crewSight.blocked(player.collider, eye, key, l.head)) continue;
@@ -29421,7 +29437,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // AUDIT NAME1 F2/F5: through the session's cache - one ray a peer every NAME_SIGHT_MS, and a name taken away
     // only once the ray has said "blocked" for NAME_SIGHT_HOLD_MS, so a railing crossing the line for a frame
     // does not strobe the name (and rebuild its element) on the way past.
-    const blocked = (head, id) => nameSight.blocked(player.collider, eye, id, head);
+    const blocked = (head, id) => glassCuts(projectToScreen(head, 1, 1, proj, view)) || nameSight.blocked(player.collider, eye, id, head);   // GLASS-CLEAR: a player the glass's focus cut from its view, nameless in it
     // the docked HUD's viewport rect (E5), so the name lands over the head the world pass drew (AUDIT ONLINE C6/D3)
     // SOC4 (Mac: "the players name who are in a party together should turn green"): `colorOf` is the party's colour
     // for a peer - net/social.js colorOf answers PARTY_GREEN for my party's other tabs and null for everyone else,
@@ -34163,7 +34179,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // into the same rect, takes the same number.
     const worldAspect = largeHudWorldAspect(canvas.clientWidth, canvas.clientHeight);
     spyglassStep(dt);   // SPYGLASS: the glass raised or lowered, its lens eased - before the lens is taken
-    const proj = mirrorProjectionX(perspective(glassFov(fieldOfView() + climbFeel.fovRad(), spyglass.lens), worldAspect, 0.2, 6000));   // HANDEDNESS (mat4's law)   // CLIMB4: a leap's kick   // SPYGLASS: the glass's lens
+    const proj = mirrorProjectionX(perspective(glassFov(fieldOfView() + climbFeel.fovRad(), spyglass.lens), worldAspect, spyglass.near, 6000));   // HANDEDNESS (mat4's law)   // CLIMB4: a leap's kick   // SPYGLASS: the glass's lens   // GLASS-CLEAR: and its focus (GLASS_NEAR_MIN, the eye's own 0.2, while it is down)
     // MW-D25: the eye goes through the Morrowind camera machine - in
     // first person it comes back untouched (camera.cpp:165-169), in
     // third it is the reference's focal-and-pull-back with this host's
