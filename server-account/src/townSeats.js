@@ -167,7 +167,10 @@ export async function listSeats({ db, nowS }, player, env) {
  * SEAT1b: THE SEATS A PLEDGE, A TICK OR A TRIBUTE MAY NAME - every confirmed seat (a disputed one too: it keeps every
  * effect it had), by key: `Map<key, { key, name, region, tier, pixel, state }>`. The ignored accounts left out, as the
  * list leaves them. STORM-SHED: `kept` reads the isolate's kept rows (seatRowsOf) - the Watch's claims, which a client
- * asks every few minutes; a pledge, a battle, a Turning and every other act read the table as it stands.
+ * asks every few minutes; GATHER-SPEED and MARKET-SPEED: and the asks on a harvest's or a market read's way - a Levy's
+ * seat (seatHolding.js levyAt), a Tithe's (titheAt) and a board's Market Hall (seatForts.js listingsCapAt), each of which
+ * read every seat row on every harvest, read and buy. A pledge, a battle, a Turning and every other act read the table
+ * as it stands.
  * @param {any} db
  * @param {number} nowS
  * @param {{ kept?: boolean }} [opts]
