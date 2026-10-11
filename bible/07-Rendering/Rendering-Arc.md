@@ -1110,7 +1110,12 @@ did. `0.9999` would not have done: at near 0.2 and far 6000 that depth
 is 1,500 m out, and the streamed terrain runs past it. The far ring
 kept its law - "the streamed world repaints everything nearer" - by
 DEPTH instead of by ORDER: `gl_FragDepth = 1.0` under the same test,
-so it loses to any streamed pixel and paints over the sky. The three
+so it loses to any streamed pixel and paints over the sky. (AUDIT
+FAR-SEA1 P1, 2026-10-11: the depth is the pass's `depthRange(1, 1)` now -
+a shader that writes its depth runs before its depth test, so "shade
+only the pixels nothing nearer has claimed" was never true of the ring,
+which shaded every fragment the streamed world covered. Same law, same
+picture, the test before the shader; `07-Rendering/Water-Arc.md`.) The three
 `markForeignPass` seams moved with the block; glstate's count holds.
 
 **The grass field went to the GPU whole, every frame.** One instanced

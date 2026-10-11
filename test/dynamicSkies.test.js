@@ -697,7 +697,9 @@ test('DS1 seam: the controller stands the mod beside the dome on the one lane, a
   assert.match(world, /fogStart: fogNow\.start \?\? 0, fogEnd: fogNow\.end,/);
   const ring = read('src/render/farRing.js');
   assert.match(ring, /uniform float uFogStart;/);
-  assert.match(ring, /clamp\(\(vDist - uFogStart\) \/ max\(uFogEnd - uFogStart, 1\.0\), 0\.0, 1\.0\)/);
+  // PIN MOVED (FAR-SEA1): the ramp is the horizon's one law (render/horizonHaze.js), the ring hands it the fog's start
+  assert.match(ring, /horizonHaze\(vDist, uFogStart, uFogEnd, uRimStart, uRimEnd, uHazeHold\)/);
+  assert.match(read('src/render/horizonHaze.js'), /float ramp = clamp\(\(d - fogStart\) \/ max\(fogEnd - fogStart, 1\.0\), 0\.0, 1\.0\);/);
   // the classic pass knows nothing of it
   assert.doesNotMatch(read('src/render/skyRenderer.js'), /dynamic/i);
   // the lab has the door
