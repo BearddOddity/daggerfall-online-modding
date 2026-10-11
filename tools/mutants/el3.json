@@ -191,8 +191,8 @@
   {
     "name": "emit-flat-without-map",
     "file": "src/render/airPass.js",
-    "old": "          if (!emis || !tex) continue;\n",
-    "new": "          if (!tex) continue;\n",
+    "old": "          if (!emis) continue;\n          if (!batchVisible(planes, b)) continue;   // EL5\n",
+    "new": "          if (!batchVisible(planes, b)) continue;   // EL5\n",
     "tests": [
       "test/el3_air.test.js"
     ]

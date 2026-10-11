@@ -260,7 +260,12 @@ test('AUDIT 637 B2: UNDER THE STATIC CACHE TOO, a wood is asked of its quads onc
     }
     return { out, walks, faces };
   });
-  const base = run(false), now = run(true);
+  // PIN MOVED (PERF-VOL): the base asks every face afresh, as it did before the planes were named - with the answers
+  // kept (bounds.js placementsInVolumeOf) a still lantern's faces walk the woods once, on the frame they are named
+  SHADOW_TUNING.volumeMemo = false;
+  let base;
+  try { base = run(false); } finally { SHADOW_TUNING.volumeMemo = true; }
+  const now = run(true);
   assert.deepEqual(now.out, base.out, 'the same draws');
   assert.ok(base.faces >= 4 * 6 * 5, `the lanterns drew their static faces and then their dynamic ones every frame (${base.faces})`);
   assert.ok(base.walks >= 4 * 6 * 5, `the base walked the woods' placements from the faces (${base.walks})`);

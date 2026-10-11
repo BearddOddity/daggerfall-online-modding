@@ -336,7 +336,7 @@ export function placementGrid(centers) {
     for (let i = a; i < e; i += 3) { const dx = byCell[i] - cx, dy = byCell[i + 1] - cy, dz = byCell[i + 2] - cz; if (dx * dx + dy * dy + dz * dz > r2) r2 = dx * dx + dy * dy + dz * dz; }
     cs[k * 4] = cx; cs[k * 4 + 1] = cy; cs[k * 4 + 2] = cz; cs[k * 4 + 3] = Math.sqrt(r2) * (1 + 1e-6) + 1e-4;
   }
-  return { G, x0, z0, x1, z1, sx, sz, start, pts: byCell, cs, hw: NaN, hh: NaN, half: 0 };   // the review: the half-diagonal's memo (placedHalfDiagonal), born empty
+  return { G, x0, z0, x1, z1, sx, sz, start, pts: byCell, cs, hw: NaN, hh: NaN, half: 0, vol: null };   // the review: the half-diagonal's memo (placedHalfDiagonal), born empty; PERF-VOL: the volume answers' (placementsInVolumeOf)
 }
 /** PERF-EXT1: the radius that bounds one quad of a batch - its half-diagonal `half` plus WIND3's `lean` at the crown -
  *  a hair wide, so the float32 the GPU places a corner in can never land outside the double this is compared in. */
@@ -413,4 +413,63 @@ export function placementsInVolume(b, rad, planes) {
     }
   }
   return false;
+}
+
+/** PERF-VOL: how many plane sets the table holds, and how many answers a grid keeps, before either starts over. */
+export const VOLUME_TABLE_MAX = 512;
+export const VOLUME_MEMO_MAX = 128;
+let _volTable = new Map(), _volCount = 0, _volNext = 1;
+const _volBits = new WeakMap();
+/**
+ * PERF-VOL (2026-10-11, Mac: "Lets do the biggest remaining lever"): the NAME of a replay's six planes, so the answers
+ * of placementsInVolume can be kept across frames. Measured in the real game (Knightstale by night, the freeware
+ * ARENA2, its inputs captured over three frames): 542 asks a frame and every one the frame before's to the bit - the
+ * town's eleven swaying placed batches, each asked by the twelve lanterns' six faces again every frame under Steady
+ * shadows (FLICKER-FIX: every map is redrawn every frame). The answer is a pure function of the planes, the grid, the
+ * batch's origin and height and the quad's radius; this names the planes by their BITS (the float32 words), so two
+ * sets with one name are the same numbers and give the same arithmetic.
+ *
+ * 0 - no name, ask afresh - for a set seen for the FIRST time, and for anything but a Float32Array(24): a lantern
+ * carried (its faces move every frame) or a cascade following a walking camera never repeats, and naming them would
+ * only make garbage. A set seen again is given a name, and names are never reused: the table starts over past
+ * VOLUME_TABLE_MAX sets with the count going on, so an old name a grid still holds can never match a new set.
+ * @param {ArrayLike<number>} planes
+ */
+export function volumeName(planes) {
+  if (!(planes instanceof Float32Array) || planes.length !== 24) return 0;
+  let u = _volBits.get(planes);
+  if (u === undefined) { u = new Uint32Array(planes.buffer, planes.byteOffset, 24); _volBits.set(planes, u); }
+  let h = 2166136261;
+  for (let i = 0; i < 24; i++) h = Math.imul(h ^ u[i], 16777619);
+  let list = _volTable.get(h);
+  if (list !== undefined) {
+    find: for (let j = 0; j < list.length; j++) {
+      const e = list[j];
+      for (let i = 0; i < 24; i++) if (e.bits[i] !== u[i]) continue find;
+      if (e.id === 0) e.id = _volNext++;   // the second sight: named from now on
+      return e.id;
+    }
+  }
+  if (_volCount >= VOLUME_TABLE_MAX) { _volTable = new Map(); _volCount = 0; list = undefined; }
+  if (list === undefined) { list = []; _volTable.set(h, list); }
+  list.push({ bits: Uint32Array.from(u), id: 0 });
+  _volCount++;
+  return 0;
+}
+/** PERF-VOL: placementsInVolume through the grid's kept answers. `name` is volumeName(planes) - 0 asks afresh. An answer
+ *  is kept on the batch's own grid (a move mints a new grid, so the old answers go with the old placements) against
+ *  every other number the test reads: the radius, the origin's three and the height its lift is half of. Any one
+ *  different - or NaN, which equals nothing - and it is asked afresh and kept again. */
+export function placementsInVolumeOf(b, rad, planes, name) {
+  if (name === 0) return placementsInVolume(b, rad, planes);
+  const q = b._place, o = b.origin || ZERO_ORIGIN, h = b.size?.h ?? 0;
+  let m = q.vol;
+  if (m === null || m === undefined) m = q.vol = new Map();
+  const e = m.get(name);
+  if (e !== undefined && e.rad === rad && e.ox === o[0] && e.oy === o[1] && e.oz === o[2] && e.h === h) return e.ans;
+  const ans = placementsInVolume(b, rad, planes);
+  if (e !== undefined) { e.rad = rad; e.ox = o[0]; e.oy = o[1]; e.oz = o[2]; e.h = h; e.ans = ans; return ans; }
+  if (m.size >= VOLUME_MEMO_MAX) m.clear();
+  m.set(name, { rad, ox: o[0], oy: o[1], oz: o[2], h, ans });
+  return ans;
 }

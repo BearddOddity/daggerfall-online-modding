@@ -1,4 +1,4 @@
-# PERF-ARENA + PERF-ARENA2 + PERF-ALLOC1/2 — the exterior's frame in the real game (2026-10-10)
+# PERF-ARENA + PERF-ARENA2 + PERF-ALLOC1/2 + PERF-VOL + PERF-ORDER — the exterior's frame in the real game (2026-10-10)
 
 *The owner: "Exterior performance is really bad" - "Interior is fine. It's exterior that's the issue" - "If you need
 to, pull the freeware online and do it yourself".*
@@ -153,6 +153,54 @@ which reads the same doubles back exactly; `placementsInCube` is that with a scr
 both doors, and the walk's call by its source. Mutants: `tools/mutants/perfalloc1.json` (its last 2, dead); three older
 records re-aimed by content onto the moved expression (AUDIT637-B2b, PERF-SHADOW1-d, PERF-SHADOW1-f).
 
+## PERF-VOL — the placed batches' volume answers, kept (2026-10-11)
+
+*The owner: "Lets do the biggest remaining lever".* Under Steady shadows (FLICKER-FIX: every map redrawn every frame)
+each lantern's six dynamic faces replay every swaying placed batch of its reach, and each asks
+`placementsInVolume` (bounds.js) whether any of the batch's quads stands in the face - a walk of the grid's cells and
+their placements. Its inputs were captured in the real game (Knightstale by night, a hook on bounds.js over three
+frames): 542 asks a frame, eleven batches against the twelve lanterns' 72 faces, and **every ask the frame before's to
+the bit** (542 distinct inputs of 1,626). The answer is a pure function of the planes, the grid, the batch's origin and
+height and the quad's radius, so it is kept:
+
+- `volumeName(planes)` names a replay's six planes by their BITS (the Float32Array's words, FNV-hashed, the words
+  compared on a hit - two sets with one hash get two names). A set seen for the FIRST time gets 0 - ask afresh - so a
+  carried lantern's faces and a walking camera's cascades, which never repeat, make no garbage; a set seen again is
+  named. Names are never reused: past `VOLUME_TABLE_MAX` (512) sets the table starts over and the count goes on.
+- `placementsInVolumeOf(b, rad, planes, name)` keeps the answer on the batch's own grid (`_place.vol`, born null - a
+  move mints a new grid, a free drops it) under the name, against every other number the test reads: the radius, the
+  origin's three (compared, not the array - a pixel's translation is written in place) and the height the lift is half
+  of. Any one different, or NaN, and it asks afresh and keeps that. A grid keeps `VOLUME_MEMO_MAX` (128) answers and
+  starts over past them. A signed zero is the same number to the test (no term can tell -0 from +0 once added to
+  anything, and the compare cannot), so `===` is exact.
+- The replay (shadowPass.js) asks the name at its first placed batch, lazily, through `SHADOW_TUNING.volumeMemo` (false:
+  every ask afresh - the pins' oracle and an A/B's off arm, `window.__DF_SHADOW_TUNING.volumeMemo`).
+
+It decides nothing the pass did not: no cache, signature or cadence of SC1/FLICKER-FIX is read or written, and every
+draw of every face is the same - the replay's cull asks the same question and gets the same answer, kept instead of
+walked. On the captured inputs, replayed in Node: 0.41 -> 0.08 ms a frame.
+
+## PERF-ORDER — the cheapest skip first (2026-10-11)
+
+Counted in the real game (the same scene, a hook on the two loops over three frames): the pixel walk (world.js) asked
+every batch of a visible pixel its box (`aabbOutside`) and, off screen, the shadows' reach before MAC1's far-flat rule -
+which then dropped 655 of the 1,361 a frame; the air pass's emitter replay (airPass.js `_replayEmission`) asked every
+flat its sphere before its emission map - 636 a frame, 3 with a map. Each loop's tests only skip, and none has a side
+effect a later one reads (`shadowReach` memoises its sun planes once a frame; `billboardKey` caches a key on the batch
+and interns it, and the cutout sort orders keys by their strings, not their ids), so the cheapest goes first: the far
+rule's three compares, the emission map's one lookup. The batches kept and the flats drawn are the same.
+
+Pins (both slices): `test/perfvol.test.js` (6) - the kept answer against `placementsInVolume` and a walk of every
+placement over random woods, lantern faces and cascades, frame after frame through one reused Float32Array with the
+radius, each origin axis, the height, a lantern and the grid each moved alone (each flipped answers) and a still frame
+reading no placement; `volumeName`'s rules (first sight, the same bits in another view, one word changed, two sets of
+one hash, never reused past a start-over); the grid's bound; the replay's every draw of every frame of a night town
+against `volumeMemo` false through frames that each move one thing, and its walks by count (none on a still frame);
+the replay's call by source; the air pass's emitters against the oracle with the sphere asked of the lit flats alone.
+Mutants `tools/mutants/perfvol.json` (20, all dead). Moved: AUDIT 637 B2's and PERF-SHADOW1's base arms ask every face
+afresh (`volumeMemo` false: they count the walks the base made), SHADOW-REACH's and MAC1 D's source pins take the far rule first;
+PERF-EXT1-5, EL3's emit-flat-without-map and PERF-SUN3-the-walk-shipped-off re-aimed by content.
+
 ## Measured, and left
 
 - **The shadow pass** is the frame's largest part (5.2-5.4 ms): by day the sun's three cascades replay ~200 draws a
@@ -160,8 +208,23 @@ records re-aimed by content onto the moved expression (AUDIT637-B2b, PERF-SHADOW
   only the faces a mover is in; the rest is FLICKER-FIX's trade (Performance-Next.md "For Mac").
 - **The snow** (winter, which is where the game starts): the near pixels sorted every frame for the blanket's ring,
   with a stamp string a pixel; small, and its own slice.
-- **The meshes' vertex arrays**: 508 binds a frame remain, the models' and the terrain's - a mesh arena (indices offset
-  by their base corner at upload; WebGL2 draws no base vertex) is the next lever.
+- **The meshes' vertex arrays - measured, and NOT the lever** (2026-10-11, after PERF-ARENA2): `bindVertexArray`
+  wrapped in the real game (Knightstale by night, ten frames, by its caller) reads 220 binds a frame - the billboards'
+  main pass 125 (one about each texture key whose batches sit in another arena than the key before), the terrain 41
+  (a map pixel's own), the shadow pass's cache blits and replays 24, the meshes 11, the rest one each (the skies, the
+  clouds, the grass, the rain, the water, the air pass). A mesh arena would take the 11; a bind costs under a
+  microsecond of the main thread now (0.25 ms for all 278 in the probe's profile). Not built.
+- **What the frame is now** (the same run, ms of this container's CPU): the shadow pass 3.7 (its replays 1.7; its
+  walks - `placementsInVolume` 0.61, `_candidateQuads` 0.46, `_staticSignatures` 0.37, `_casterCandidates` 0.36 - each
+  made again every frame over records that are mostly the last frame's), the pixel walk 1.5, the billboards 1.4, the
+  air pass's resolve 0.9, and some twenty pieces of 0.25-0.6. PERF-VOL keeps the first of those walks' answers - a pure
+  function's, so nothing the pass decides moves. Carrying the OTHERS from frame to frame (the candidate lists, the
+  signatures) needs a test of what changed, and that is the static shadow cache's own machinery (SC1, FLICKER-FIX) -
+  Dudey's word on the pass (`Performance-Crowd.md`): "make sure to not touch enhanced lighting we finally fixed the
+  flickering based on shadowcache". Left for the owner. A finer placement grid (PLACEMENT_GRID 8) was measured: the
+  lanterns' faces 0.34 -> 0.19 ms, the sun's cascades 0.11 -> 0.15 - about a tenth of a millisecond in all; not taken;
+  nor a plane-coherent test (the last plane that culled asked first) or each cell's box before its placements: on the
+  captured asks 0.35 -> 0.42 and 0.35 -> 0.34 ms.
 - **The online crowd** (`tools/onlineFrameProbe.mjs`, PEERS=0,20,60, the same head): online with no one there the
   world host's frame was 24.3 ms (the HUD 1.7, the motor 1.3, `onlineFrame` 1.0 of it); at 20 peers the allocation rose
   1.79 -> 4.40 MB a frame and the frame 24.3 -> 34.0. READ AT THE PROBE'S RATE (0.27 frames a second, 3.7 s a frame)

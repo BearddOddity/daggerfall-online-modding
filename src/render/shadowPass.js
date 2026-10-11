@@ -56,7 +56,7 @@
 //     the culling above is what makes 24 face replays cheap.
 
 import { lookAt, multiply, ortho, perspective } from '../world/mat4.js';
-import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInCubeOf, placementsInVolume } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements
+import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInCubeOf, placementsInVolumeOf, volumeName } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements; PERF-VOL: their answers kept by the planes' name
 import { billboardKey } from './billboardKey.js';   // AUDIT 68 S16-bbkey-stale-shadow-reach: re-keyed here, however the batch reached the records
 import { aabbOutside } from './frustum.js';   // SHADOW-REACH: a host's box against the cascades
 import { getPref } from '../systems/uiPrefs.js';
@@ -346,11 +346,13 @@ export const SHADOW_SWAY_EVERY = 4;
  *  shadow map (with dynamic shadows) for the lo map (static only) from one frame to the next, and (b) lifts the lo
  *  tier's rebuild budget. Costs GPU time; turn off Settings > Features > Steady shadows (or from the console,
  *  window.__DF_SHADOW_TUNING.override = false; null hands it back to the row) to get EL8's schedule back. */
-export const SHADOW_TUNING = { steady: true, override: null, debug: false, debugForce: null, selfLamps: null, calmForce: null, facePrepass: true, sunPrepass: true };
+export const SHADOW_TUNING = { steady: true, override: null, debug: false, debugForce: null, selfLamps: null, calmForce: null, facePrepass: true, sunPrepass: true, volumeMemo: true };
 // PERF-SHADOW1: `facePrepass` false walks every lantern face and dynamic scan over every record, as before the pre-pass
 // (_casterCandidates) - the pins' oracle and an A/B's off arm (console: window.__DF_SHADOW_TUNING.facePrepass = false).
 // PERF-SUN3: `sunPrepass` false walks every sun cascade over every record, as before its own pre-pass (_sunCandidates) -
 // the same oracle and off arm for the sun (window.__DF_SHADOW_TUNING.sunPrepass = false).
+// PERF-VOL: `volumeMemo` false asks every placed batch of every replay afresh, as before the planes were named (bounds.js
+// volumeName) - the pins' oracle and an A/B's off arm (window.__DF_SHADOW_TUNING.volumeMemo = false).
 // AUDIT 637 B8: declared here, where the console finds it.
 /** STEADY-BALANCE (2026-10-04, Discord: "shadows too dark and too light where they should be normal ... light of candles too
  *  bright ... it fixed the flickering tho"): THE PLAYER'S OWN CARD CASTS INTO THE TWO LAMPS NEAREST IT AGAIN, steady or not.
@@ -2307,6 +2309,7 @@ export class ShadowPass {
     const gl = this.gl;
     const P = this.programs;
     const planes = spherePlanes(vp, this._planes);   // EL5: this replay's frustum - a record outside it is not drawn
+    let vname = -1;   // PERF-VOL: the planes' name (bounds.js volumeName), asked at the first placed batch
     let draws = 0;
     let bound = null;
     const use = (prog) => { if (bound !== prog) { gl.useProgram(prog.p); gl.uniformMatrix4fv(prog.proj, false, vp); gl.uniformMatrix4fv(prog.view, false, this._identityView); bound = prog; } };
@@ -2426,7 +2429,7 @@ export class ShadowPass {
           // PERF-EXT1: a pixel-wide batch passes the sphere test in every cascade and face of its pixel; asked of its
           // quads it is drawn only where one of them stands (the census's noon city: cascade 0 drew 123 flat batches a
           // frame for 7 with a tree in it, cascade 1 144 for 79). A skip here is a batch that rasterises nothing.
-          if (b._place && !placementsInVolume(b, quadRadius(r, wl, law, b), planes)) { this.stats.culled++; continue; }
+          if (b._place && !placementsInVolumeOf(b, quadRadius(r, wl, law, b), planes, vname < 0 ? (vname = SHADOW_TUNING.volumeMemo === false ? 0 : volumeName(planes)) : vname)) { this.stats.culled++; continue; }   // PERF-VOL: the answer kept from the last frame's same planes
           // WEEDS1: F5's sphere test used to sit here and is GONE, because
           // it can no longer decide anything. A single-flat batch's radius
           // is hypot(w, h) / 2, so F5 fired only when hypot(w, h) < 4 texels
