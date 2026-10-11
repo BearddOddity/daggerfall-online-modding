@@ -191,8 +191,8 @@
   {
     "name": "BOARD-take-term",
     "file": "src/systems/naval/harbourBoard.js",
-    "old": "until: Math.floor(now) + offer.days * DAY_MIN,",
-    "new": "until: Math.floor(now) + DAY_MIN,",
+    "old": "until: Math.floor(now) + offer.days * MINUTES_PER_DAY,",
+    "new": "until: Math.floor(now) + MINUTES_PER_DAY,",
     "tests": [
       "test/captboard.test.js"
     ]
@@ -299,7 +299,7 @@
   {
     "name": "BOARD-line-hours",
     "file": "src/systems/naval/harbourBoard.js",
-    "old": "hours = Math.floor((left % DAY_MIN) / 60);",
+    "old": "hours = Math.floor((left % MINUTES_PER_DAY) / 60);",
     "new": "hours = 0;",
     "tests": [
       "test/captboard.test.js"
@@ -317,7 +317,7 @@
   {
     "name": "BOARD-restore-kind",
     "file": "src/systems/naval/harbourBoard.js",
-    "old": "  if (!c || typeof c !== 'object' || !CONTRACT_KINDS.includes(c.kind) || typeof c.id !== 'string' || typeof c.crown !== 'string') return null;",
+    "old": "  if (!c || typeof c !== 'object' || !HARBOUR_CONTRACT_KINDS.includes(c.kind) || typeof c.id !== 'string' || typeof c.crown !== 'string') return null;",
     "new": "  if (!c || typeof c !== 'object' || typeof c.id !== 'string' || typeof c.crown !== 'string') return null;",
     "tests": [
       "test/captboard.test.js"
@@ -461,8 +461,8 @@
   {
     "name": "OFFICE-marque-free",
     "file": "src/scenes/harbourOffice.js",
-    "old": "    deps.pay?.(o.price);\n    L.setMarque(port.crown, now() + o.days * DAY_MIN);",
-    "new": "    L.setMarque(port.crown, now() + o.days * DAY_MIN);",
+    "old": "    deps.pay?.(o.price);\n    L.setMarque(port.crown, now() + o.days * MINUTES_PER_DAY);",
+    "new": "    L.setMarque(port.crown, now() + o.days * MINUTES_PER_DAY);",
     "tests": [
       "test/captboard.test.js"
     ]
@@ -623,8 +623,8 @@
   {
     "name": "WORLD-office-unhanded",
     "file": "src/scenes/world.js",
-    "old": "    model.office = () => harbourOffice.model({ uid: model.uid ?? null });   // CAPT-BOARD: the harbourmaster's tab\n",
-    "new": "",
+    "old": "      return harbourOffice.model({ uid: model.uid ?? null });",
+    "new": "      return null;",
     "tests": [
       "test/captboard.test.js"
     ]

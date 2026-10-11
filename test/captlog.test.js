@@ -8,8 +8,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  createCaptainLedger, rankOf, nextRankOf, RANKS, RANK_PERKS, perksOf, PERKS_REFUSED_AT, standingFor, DEED_STANDING, PIRACY_STANDING, MARQUE_STANDING,
-  LEGEND_STANDING, STANDING_MAX, STANDING_MIN, LEAGUE_M, logLines, leagueWords, CAPTAIN_SAVE_VENDOR, CAPTAIN_SAVE_VERSION, newLog,
+  createCaptainLedger, crownRankOf, nextRankOf, CROWN_RANKS, RANK_PERKS, perksOf, PERKS_REFUSED_AT, standingFor, DEED_STANDING, PIRACY_STANDING, MARQUE_STANDING,
+  LEGEND_STANDING, CROWN_STANDING_MAX, CROWN_STANDING_MIN, LEAGUE_M, logLines, leagueWords, CAPTAIN_SAVE_VENDOR, CAPTAIN_SAVE_VERSION, newLog,
 } from '../src/systems/naval/captainLedger.js';
 import { lawOf, PIRATE_REWARD, crownRegion } from '../src/systems/naval/navalLaw.js';
 import { classById, flagOf, FLAG_HOME_SHARE, CROWNS } from '../src/systems/naval/navalShips.js';
@@ -23,8 +23,8 @@ const sloop = classById('pirateSloop'), brig = classById('pirateBrig'), flag = c
 const coaster = classById('merchantCoaster'), cutter = classById('navyCutter');
 
 test('CAPT-LOG the ranks: a crown names a captain Sworn Captain at 15, Privateer at 50, Commodore at 120, Admiral at 250 - and the next rank\'s want (mutants: each threshold, the ladder\'s order)', () => {
-  assert.deepEqual(RANKS.map((r) => [r.rank, r.at, r.title]), [[0, -Infinity, 'Unsworn'], [1, 15, 'Sworn Captain'], [2, 50, 'Privateer'], [3, 120, 'Commodore'], [4, 250, 'Admiral']]);
-  assert.deepEqual([-40, 0, 14, 15, 49, 50, 119, 120, 249, 250, 999].map((s) => rankOf(s).title),
+  assert.deepEqual(CROWN_RANKS.map((r) => [r.rank, r.at, r.title]), [[0, -Infinity, 'Unsworn'], [1, 15, 'Sworn Captain'], [2, 50, 'Privateer'], [3, 120, 'Commodore'], [4, 250, 'Admiral']]);
+  assert.deepEqual([-40, 0, 14, 15, 49, 50, 119, 120, 249, 250, 999].map((s) => crownRankOf(s).title),
     ['Unsworn', 'Unsworn', 'Unsworn', 'Sworn Captain', 'Sworn Captain', 'Privateer', 'Privateer', 'Commodore', 'Commodore', 'Admiral', 'Admiral']);
   assert.deepEqual([nextRankOf(10).rank.title, nextRankOf(10).wanting], ['Sworn Captain', 5]);
   assert.deepEqual([nextRankOf(-20).wanting], [35], 'a captain in disgrace climbs from where they stand');
@@ -88,9 +88,9 @@ test('CAPT-LOG the ledger: a deed logged by her trade and her crown\'s regard mo
   assert.equal(l.takeRankChanges().length, 2, 'read once');
   assert.equal(l.takeRankChanges().length, 0);
   l.regard('Sentinel', 5000);
-  assert.equal(l.standing('Sentinel'), STANDING_MAX);
+  assert.equal(l.standing('Sentinel'), CROWN_STANDING_MAX);
   l.regard('Sentinel', -9000);
-  assert.equal(l.standing('Sentinel'), STANDING_MIN);
+  assert.equal(l.standing('Sentinel'), CROWN_STANDING_MIN);
   assert.equal(l.regard('Morrowind', 10), null, 'no such crown');
 });
 
@@ -124,12 +124,12 @@ test('CAPT-LOG the save: its own slot (Captain, v1) - the log, the crowns\' rega
   const b = createCaptainLedger();
   b.restoreSaveData(JSON.parse(JSON.stringify(a.getSaveData())));
   assert.deepEqual(b.getSaveData(), a.getSaveData());
-  assert.deepEqual(b.newSaveData(), { v: 1, log: newLog(), standing: { Daggerfall: 0, Wayrest: 0, Sentinel: 0 }, marque: null, contracts: [], taken: [], dealt: null, charts: [] });   // CAPT-BOARD: and the contracts held, the board's taken; CAPT-TRADE: the day's dealing
+  assert.deepEqual(b.newSaveData(), { v: 1, log: newLog(), standing: { Daggerfall: 0, Wayrest: 0, Sentinel: 0 }, marque: null, contracts: [], taken: [], dealt: null, charts: [], ether: { charted: [], legends: {}, harvested: {}, from: null, crossings: 0, heard: [] } });   // CAPT-BOARD: and the contracts held, the board's taken; CAPT-TRADE: the day's dealing; ETHER-SEA: the captain's Etheric Sea
   const c = createCaptainLedger();
   c.restoreSaveData({ log: { sunk: { pirate: -4, merchant: 'x' }, plunder: 1e20, legends: [5, 'Ok'], best: { name: 3 } }, standing: { Wayrest: 5000, Daggerfall: 'q', Morrowind: 9 }, marque: { crown: 'Morrowind', until: 10 } });
   assert.deepEqual([c.log.sunk.pirate, c.log.sunk.merchant, c.log.legends, c.log.best], [0, 0, ['Ok'], null]);
   assert.ok(Number.isSafeInteger(c.log.plunder));
-  assert.deepEqual([c.standing('Wayrest'), c.standing('Daggerfall'), c.standing('Morrowind')], [STANDING_MAX, 0, 0]);
+  assert.deepEqual([c.standing('Wayrest'), c.standing('Daggerfall'), c.standing('Morrowind')], [CROWN_STANDING_MAX, 0, 0]);
   assert.equal(c.marque(0), null);
   c.restoreSaveData(null);
   assert.deepEqual(c.getSaveData(), c.newSaveData());
@@ -144,9 +144,9 @@ test('CAPT-LOG the log in words, and the page\'s meter: the counts that stand (t
   assert.equal(lines['Ships taken'], '1 - 1 crown\'s ships');
   assert.equal(lines['Contracts done'], '1 - 1 hunt');
   assert.equal(lines['Contract purses'], '1,200 gold');
-  assert.deepEqual(standingMeter(30, rankOf(30)), { now: 15, max: 35, label: '20 to Privateer' });
-  assert.deepEqual(standingMeter(-10, rankOf(-10)), { now: 0, max: 15, label: '15 to Sworn Captain' });
-  assert.deepEqual(standingMeter(400, rankOf(400)), { now: 1, max: 1, label: 'The highest rank' });
+  assert.deepEqual(standingMeter(30, crownRankOf(30)), { now: 15, max: 35, label: '20 to Privateer' });
+  assert.deepEqual(standingMeter(-10, crownRankOf(-10)), { now: 0, max: 15, label: '15 to Sworn Captain' });
+  assert.deepEqual(standingMeter(400, crownRankOf(400)), { now: 1, max: 1, label: 'The highest rank' });
 });
 
 test('CAPT-MARQUE a ship\'s colours: a crown\'s ship flies her crown\'s; a merchantman her home port\'s crown about FLAG_HOME_SHARE of the time where her region is a crown\'s, else one of the three by her seed; a pirate none - the same on every client (mutants: the navy\'s, the home share, the pirate\'s none)', () => {
@@ -225,7 +225,7 @@ test('CAPT-MARQUE at sea: under a letter a RIVAL\'s lawful ship struck is the ri
   assert.deepEqual(s.law.crimes.at(-1), [crownRegion('Wayrest'), CRIMES.Piracy]);
   const host = rd('src/scenes/navalHost.js');
   assert.match(host, /for \(const w of sea\.values\(\)\) if \(w\.ship\.cls\.faction === 'navy' && w\.ship\.flag !== signed && dist2d\(w\.ship\.pos, s\.pos\) < WITNESS_RANGE\) provoke\(w\.ship, by, clock\);/, 'the signing crown\'s navy looks on');
-  assert.match(host, /ship\.flag = flagOf\(cls, spec\.seed, region\);/, 'every ship launched with her colours');
+  assert.match(host, /ship\.flag = ether \? etherFlagOf\(cls\) : flagOf\(cls, spec\.seed, region\);/, 'every ship launched with her colours (ETHER-SEA: a trader of the Etheric Sea the Isles\')');
 });
 
 test('CAPT-LOG the world\'s wiring: one ledger a world host, in its own save slot whether the sea runs or not; the deeds\' rank changes said on the screen\'s middle; the letter read on the captain\'s own clock; plunder\'s worth handed in; the leagues at the helm; the Captain page on the Holdings rail after the Fleet (mutants: the slot, the clock, the say)', () => {

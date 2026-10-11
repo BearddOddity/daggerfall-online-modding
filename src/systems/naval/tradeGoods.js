@@ -6,9 +6,9 @@
 //
 // THE GOODS: the Bay's eight - each crown MAKES some (`CROWN_TRADE` - MADE_K of a good's base) and WANTS others (WANT_K);
 // every port twists its crown's trade by one good of its own (`portTrade`, off its key); and the Etheric Sea's three,
-// made on its isles alone (the Etheric Sea's exchanges - CAPT-ETHER) and wanted in every port of the Bay. A day's price
-// drifts DRIFT about it, the same for every client on the world's day; the exchange sells at SPREAD over it and buys at
-// SPREAD under it, and a port sells and buys only so much of a good a day (`STOCK`): it never runs dry of what it makes,
+// made on its isles alone (the Etheric Sea's freeports - ETHER-PORTS) and wanted in every port of the Bay. A day's price
+// drifts PRICE_DRIFT about it, the same for every client on the world's day; the exchange sells at SPREAD over it and buys at
+// SPREAD under it, and a port sells and buys only so much of a good a day (`DAY_STOCK`): it never runs dry of what it makes,
 // and is glutted soon with what it makes itself.
 //
 // Each good is an item of the port's own (DECLARED - itemLaw.js imports this module, as navalStores.js), a custom
@@ -34,7 +34,7 @@ export const GOODS = Object.freeze([
   Object.freeze({ id: 'silk', name: 'Silk', unit: 'bolt', units: 'bolts', base: 75, kg: 4, icon: Object.freeze([205, 21]) }),
   Object.freeze({ id: 'silver', name: 'Silver', unit: 'bar', units: 'bars', base: 90, kg: 6, icon: Object.freeze([254, 65]) }),
   Object.freeze({ id: 'ivory', name: 'Ivory', unit: 'tusk', units: 'tusks', base: 110, kg: 8, icon: Object.freeze([254, 70]) }),
-  // CAPT-ETHER: the Etheric Sea's, made on its isles alone
+  // ETHER-PORTS: the Etheric Sea's, made on its isles alone
   Object.freeze({ id: 'etheramber', name: 'Ether-amber', unit: 'lump', units: 'lumps', base: 240, kg: 2, icon: Object.freeze([254, 8]), ether: true }),
   Object.freeze({ id: 'starglass', name: 'Starglass', unit: 'shard', units: 'shards', base: 320, kg: 1, icon: Object.freeze([254, 4]), ether: true }),
   Object.freeze({ id: 'voidsilk', name: 'Voidsilk', unit: 'bolt', units: 'bolts', base: 280, kg: 2, icon: Object.freeze([254, 6]), ether: true }),
@@ -76,7 +76,7 @@ export const goodsWeight = (items) => (items ?? []).reduce((kg, it) => { const g
 /** A good made where it is made at this share of its base, wanted where it is wanted at this; a day's drift about it. */
 export const MADE_K = 0.6;
 export const WANT_K = 1.55;
-export const DRIFT = 0.12;
+export const PRICE_DRIFT = 0.12;
 /** The exchange sells over the price by this share and buys under it by this. */
 export const SPREAD = 0.08;
 /** The Etheric Sea's goods in a port of the Bay, and the Bay's in an Etheric isle's exchange: wanted at this. */
@@ -89,7 +89,7 @@ export const CROWN_TRADE = Object.freeze({
 });
 /** A day's dealing a port does in one good: it sells up to `sell` and buys up to `buy` - by whether it makes it, wants
  *  it, or neither. */
-export const STOCK = Object.freeze({ makes: Object.freeze({ sell: 30, buy: 4 }), wants: Object.freeze({ sell: 2, buy: 30 }), neither: Object.freeze({ sell: 10, buy: 12 }) });
+export const DAY_STOCK = Object.freeze({ makes: Object.freeze({ sell: 30, buy: 4 }), wants: Object.freeze({ sell: 2, buy: 30 }), neither: Object.freeze({ sell: 10, buy: 12 }) });
 const BAY = GOODS.filter((g) => !g.ether).map((g) => g.id);
 
 /**
@@ -119,7 +119,7 @@ export function standOf(port, id) {
 
 /**
  * A GOOD'S PRICE AT A PORT ON A DAY: its base, times MADE_K where made, WANT_K where wanted (EXOTIC_K for the other sea's
- * goods), times the day's drift (within DRIFT, off the port, the good and the day - every client's the same) - and the
+ * goods), times the day's drift (within PRICE_DRIFT, off the port, the good and the day - every client's the same) - and the
  * exchange's two: `sell` (what the captain pays) SPREAD over it, `buy` (what the captain is paid) SPREAD under it.
  * @param {{ key: string, crown?: string|null, ether?: boolean }} port @param {string} id @param {number} day
  */
@@ -130,7 +130,7 @@ export function priceOf(port, id, day) {
   const exotic = !!g.ether !== !!port?.ether;
   const mood = stand === 'makes' ? MADE_K : stand === 'wants' ? (exotic ? EXOTIC_K : WANT_K) : 1;
   const r = mulberry32((hashKey(`${port?.key ?? ''}:${id}`) ^ Math.imul((day | 0) + 1, 0x85ebca6b)) >>> 0);
-  const mid = g.base * mood * (1 - DRIFT + 2 * DRIFT * r());
+  const mid = g.base * mood * (1 - PRICE_DRIFT + 2 * PRICE_DRIFT * r());
   return { id, stand, mid, sell: Math.max(1, Math.round(mid * (1 + SPREAD))), buy: Math.max(1, Math.round(mid * (1 - SPREAD))) };
 }
 
@@ -146,7 +146,7 @@ export function exchangeOf(port, day, dealt = {}) {
     const stand = standOf(port, g.id);
     if (!!g.ether !== !!port?.ether && stand !== 'wants') continue;   // the other sea's goods: only where they are wanted
     const p = priceOf(port, g.id, day);
-    const stock = STOCK[stand];
+    const stock = DAY_STOCK[stand];
     const exotic = !!g.ether !== !!port?.ether;
     rows.push({
       id: g.id, name: g.name, unit: g.unit, units: g.units, kg: g.kg, stand, sell: p.sell, buy: p.buy,

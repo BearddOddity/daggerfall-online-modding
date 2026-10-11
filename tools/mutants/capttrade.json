@@ -101,8 +101,8 @@
   {
     "name": "TRADE-drift-wide",
     "file": "src/systems/naval/tradeGoods.js",
-    "old": "  const mid = g.base * mood * (1 - DRIFT + 2 * DRIFT * r());",
-    "new": "  const mid = g.base * mood * (1 - 2 * DRIFT + 4 * DRIFT * r());",
+    "old": "  const mid = g.base * mood * (1 - PRICE_DRIFT + 2 * PRICE_DRIFT * r());",
+    "new": "  const mid = g.base * mood * (1 - 2 * PRICE_DRIFT + 4 * PRICE_DRIFT * r());",
     "tests": [
       "test/capttrade.test.js"
     ]
@@ -344,8 +344,8 @@
   {
     "name": "HOST-cache-unstood",
     "file": "src/scenes/navalHost.js",
-    "old": "      } else if ((site.kind === 'salvage' || site.kind === 'cache') && site.n > 0) {",
-    "new": "      } else if (site.kind === 'salvage' && site.n > 0) {",
+    "old": "      } else if ((site.kind === 'salvage' || site.kind === 'cache' || site.kind === 'strand') && site.n > 0) {",
+    "new": "      } else if ((site.kind === 'salvage' || site.kind === 'strand') && site.n > 0) {",
     "tests": [
       "test/capttrade.test.js"
     ]

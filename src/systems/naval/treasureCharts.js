@@ -13,7 +13,7 @@
 
 import { mulberry32 } from '../../combat/bloodArt.js';
 import { registerCustomTemplates, setItemFields, mintCondition } from '../itemTemplates.js';
-import { siteFor, bearingWords, leaguesWords } from './harbourBoard.js';
+import { siteFor, compassWords, leaguesWords } from './harbourBoard.js';
 
 /** The chart's template index - after the exchange's goods (tradeGoods.js GOODS_TEMPLATE 1331..1341). */
 export const CHART_TEMPLATE = 1342;
@@ -65,7 +65,7 @@ export function chartSite(seed, ports, seaAt) {
   const port = list[Math.floor(r() * list.length) % list.length];
   const site = siteFor(port, r, seaAt, CHART_PX);
   if (!site) return null;
-  const words = `${leaguesWords(site.d)} ${bearingWords(site.px - port.px, site.py - port.py)} of ${port.name}`;
+  const words = `${leaguesWords(site.d)} ${compassWords(site.px - port.px, site.py - port.py)} of ${port.name}`;
   return { id: `${CHART_SITE}${seed >>> 0}`, seed: seed >>> 0, px: site.px, py: site.py, near: port.name, words };
 }
 

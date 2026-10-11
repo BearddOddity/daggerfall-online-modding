@@ -11,13 +11,13 @@
 //   bounty    a named pirate preying on the crown's shipping, last seen SITE_PX map pixels off the port: she is stood
 //             when the captain sails within SITE_REACH_PX of her waters (scenes/navalHost.js THE SITES); sunk or
 //             taken by the captain's hand, the bounty is paid
-//   hunt      NEED.hunt pirate ships ended - sunk or taken - in the crown's waters
+//   hunt      CONTRACT_NEED.hunt pirate ships ended - sunk or taken - in the crown's waters
 //   delivery  a cargo carried to another port's harbourmaster by her term (a day for every DELIVERY_PX_DAY map pixels
 //             and DELIVERY_DAYS_BASE more), in the hold of the boat that took it on: she lies to that port's quay and
 //             it is delivered; she is wrecked and it is lost
-//   salvage   a merchantman gone down off the port: NEED.salvage casks of her cargo hauled out of the sea where she
+//   salvage   a merchantman gone down off the port: CONTRACT_NEED.salvage casks of her cargo hauled out of the sea where she
 //             went down (her casks float there once the captain is near)
-//   survey    the Admiralty's measure of the shipping in the crown's waters: NEED.survey ships studied through the
+//   survey    the Admiralty's measure of the shipping in the crown's waters: CONTRACT_NEED.survey ships studied through the
 //             captain's glass (shipKnowledge.js KNOW.studied - the glass held close, never a ship struck)
 //
 // A contract runs on the captain's own clock (playerTicker ownMinutes, as the letter of marque does - a session closed
@@ -33,16 +33,17 @@
 import { mulberry32 } from '../../combat/bloodArt.js';
 import { classById, shipNames, SHIP_CLASSES } from './navalShips.js';
 import { HULL_PRICES } from '../comeSailAwayHulls.js';
+import { MINUTES_PER_DAY } from '../gameDate.js';   // a day of the captain's clock (minutes)
+import { hashKey } from '../../net/wire.js';   // FNV-1a over a string: a port's key on the board's stream (SLAM10's one home)
+export { hashKey };
 
-export const CONTRACT_KINDS = Object.freeze(['bounty', 'hunt', 'delivery', 'salvage', 'survey']);
+export const HARBOUR_CONTRACT_KINDS = Object.freeze(['bounty', 'hunt', 'delivery', 'salvage', 'survey']);
 /** The contracts a port's board posts a day, before a rank's more. */
 export const BOARD_OFFERS = 3;
 /** The contracts a captain holds at once. */
 export const CONTRACTS_MAX = 3;
 /** The board's own stream's salt. */
 export const BOARD_SALT = 0xb0a2d5;
-/** A day of the captain's clock (minutes). */
-export const DAY_MIN = 1440;
 /** Each kind's term (days); a delivery's is DELIVERY_DAYS_BASE and a day for every DELIVERY_PX_DAY map pixels. */
 export const TERM_DAYS = Object.freeze({ bounty: 4, hunt: 3, salvage: 3, survey: 2 });
 export const DELIVERY_DAYS_BASE = 2;
@@ -62,7 +63,7 @@ export const STANDING_DONE = Object.freeze({ bounty: 3, hunt: 1, delivery: 4, sa
 export const STANDING_FAILED = -3;
 export const STANDING_ABANDONED = -1;
 /** How many a hunt, a salvage and a survey want - the least and the most. */
-export const NEED = Object.freeze({ hunt: Object.freeze([2, 4]), salvage: Object.freeze([3, 5]), survey: Object.freeze([3, 5]) });
+export const CONTRACT_NEED = Object.freeze({ hunt: Object.freeze([2, 4]), salvage: Object.freeze([3, 5]), survey: Object.freeze([3, 5]) });
 /** A bounty's or a wreck's waters lie this many map pixels off her port; the captain within SITE_REACH_PX is there. */
 export const SITE_PX = Object.freeze({ near: 3, far: 8 });
 export const SITE_REACH_PX = 1;
@@ -79,16 +80,10 @@ export const CARGOES = Object.freeze(['casks of Wayrest wine', 'bales of High Ro
 /** The eight ways, east first, counter-clockwise (map y runs south). */
 export const COMPASS = Object.freeze(['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east']);
 /** The way from one map pixel to another, in words. */
-export const bearingWords = (dx, dy) => COMPASS[((Math.round(Math.atan2(-dy, dx) / (Math.PI / 4)) % 8) + 8) % 8];
+export const compassWords = (dx, dy) => COMPASS[((Math.round(Math.atan2(-dy, dx) / (Math.PI / 4)) % 8) + 8) % 8];
 /** Map pixels as leagues, in words. */
 export const leaguesWords = (px) => { const l = Math.max(0.1, Math.round(px * PX_LEAGUES * 10) / 10); return `${l} ${l === 1 ? 'league' : 'leagues'}`; };
 const gold = (n) => `${Math.round(n).toLocaleString('en-US')} gold`;
-/** FNV-1a over a string: a port's key on the board's stream. */
-export function hashKey(s) {
-  let h = 0x811c9dc5;
-  for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
-  return h >>> 0;
-}
 const cheb = (a, b) => Math.max(Math.abs(a.px - b.px), Math.abs(a.py - b.py));
 
 /**
@@ -152,7 +147,7 @@ export function boardFor({ port, crown, day, level = 1, perks = null, ports = []
   if (!port || !crown) return [];
   const r = mulberry32(((hashKey(port.key) ^ Math.imul((day | 0) + 1, 0x9e3779b1) ^ BOARD_SALT) >>> 0));
   const want = BOARD_OFFERS + Math.max(0, perks?.offers | 0);
-  const kinds = [...CONTRACT_KINDS];
+  const kinds = [...HARBOUR_CONTRACT_KINDS];
   for (let i = kinds.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
   const gone = new Set(taken);
   const out = [];
@@ -178,7 +173,7 @@ function offerOf(kind, { id, port, crown, level, pay, ports, seaAt, regionIndex,
     const cls = bountyClass(level, r);
     if (!site) return null;
     const names = shipNames(cls, seed, { regionIndex });
-    const where = `${leaguesWords(site.d)} ${bearingWords(site.px - port.px, site.py - port.py)} of ${port.name}`;
+    const where = `${leaguesWords(site.d)} ${compassWords(site.px - port.px, site.py - port.py)} of ${port.name}`;
     return {
       ...base, title: `Wanted: ${names.captain ? `Captain ${names.captain} of ` : ''}${names.name}`,
       words: `A ${cls.title.toLowerCase()} preying on ${crown}'s shipping, last seen ${where}. Sink her or take her.`,
@@ -187,7 +182,7 @@ function offerOf(kind, { id, port, crown, level, pay, ports, seaAt, regionIndex,
     };
   }
   if (kind === 'hunt') {
-    const need = between(NEED.hunt, r);
+    const need = between(CONTRACT_NEED.hunt, r);
     return { ...base, title: `Clear ${crown}'s waters`, words: `End ${need} pirate ships in ${crown}'s waters - sunk or taken - within ${TERM_DAYS.hunt} days.`,
       pay: payOf('hunt', { level, need, pay }), standing: STANDING_DONE.hunt * need, days: TERM_DAYS.hunt, need };
   }
@@ -204,14 +199,14 @@ function offerOf(kind, { id, port, crown, level, pay, ports, seaAt, regionIndex,
   if (kind === 'salvage') {
     const site = siteFor(port, r, seaAt);
     if (!site) return null;
-    const need = between(NEED.salvage, r);
+    const need = between(CONTRACT_NEED.salvage, r);
     const wreck = shipNames(classById('merchantGalleon'), seed, { regionIndex }).name;
-    const where = `${leaguesWords(site.d)} ${bearingWords(site.px - port.px, site.py - port.py)} of ${port.name}`;
+    const where = `${leaguesWords(site.d)} ${compassWords(site.px - port.px, site.py - port.py)} of ${port.name}`;
     return { ...base, title: `Salvage: ${wreck}`, words: `${wreck} went down ${where}. Raise ${need} casks of her cargo before the sea takes them.`,
       pay: payOf('salvage', { level, need, px: site.d, pay }), standing: STANDING_DONE.salvage, days: TERM_DAYS.salvage, need, target: { px: site.px, py: site.py, seed, name: wreck }, where };
   }
   if (kind === 'survey') {
-    const need = between(NEED.survey, r);
+    const need = between(CONTRACT_NEED.survey, r);
     return { ...base, title: 'The Admiralty\'s survey', words: `Take the measure of ${need} ships in ${crown}'s waters through your glass - their guns, hands and holds - within ${TERM_DAYS.survey} days.`,
       pay: payOf('survey', { level, need, pay }), standing: STANDING_DONE.survey * need, days: TERM_DAYS.survey, need };
   }
@@ -224,7 +219,7 @@ function offerOf(kind, { id, port, crown, level, pay, ports, seaAt, regionIndex,
  * @param {any} offer @param {{ now: number, boat?: any }} o
  */
 export function takeContract(offer, { now, boat = null }) {
-  return { ...JSON.parse(JSON.stringify(offer)), taken: Math.floor(now), until: Math.floor(now) + offer.days * DAY_MIN, done: 0, boat: offer.kind === 'delivery' ? boat ?? null : null };
+  return { ...JSON.parse(JSON.stringify(offer)), taken: Math.floor(now), until: Math.floor(now) + offer.days * MINUTES_PER_DAY, done: 0, boat: offer.kind === 'delivery' ? boat ?? null : null };
 }
 
 /**
@@ -260,7 +255,7 @@ export const expired = (c, now) => Number.isFinite(now) && now >= c.until;
  */
 export function contractLine(c, now) {
   const left = Math.max(0, c.until - now);
-  const days = Math.floor(left / DAY_MIN), hours = Math.floor((left % DAY_MIN) / 60);
+  const days = Math.floor(left / MINUTES_PER_DAY), hours = Math.floor((left % MINUTES_PER_DAY) / 60);
   const term = left <= 0 ? 'Her term is out' : days > 0 ? `${days} ${days === 1 ? 'day' : 'days'}${hours ? `, ${hours} ${hours === 1 ? 'hour' : 'hours'}` : ''} left` : `${Math.max(1, hours)} ${hours === 1 ? 'hour' : 'hours'} left`;
   const progress = c.kind === 'hunt' ? `${c.done | 0} of ${c.need} ended`
     : c.kind === 'survey' ? `${c.done | 0} of ${c.need} studied`
@@ -282,7 +277,7 @@ export function contractSites(list) {
 
 /** A contract from a save, or null for one that cannot be one. */
 export function restoreContract(c) {
-  if (!c || typeof c !== 'object' || !CONTRACT_KINDS.includes(c.kind) || typeof c.id !== 'string' || typeof c.crown !== 'string') return null;
+  if (!c || typeof c !== 'object' || !HARBOUR_CONTRACT_KINDS.includes(c.kind) || typeof c.id !== 'string' || typeof c.crown !== 'string') return null;
   if (!Number.isFinite(c.until) || !Number.isFinite(c.pay) || !Number.isFinite(c.days)) return null;
   if ((c.kind === 'bounty' || c.kind === 'salvage') && !(c.target && Number.isFinite(c.target.px) && Number.isFinite(c.target.py))) return null;
   if (c.kind === 'delivery' && !(c.to && typeof c.to.key === 'string')) return null;

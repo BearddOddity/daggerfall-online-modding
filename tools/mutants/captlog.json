@@ -38,8 +38,8 @@
   {
     "name": "CL-rank-strict",
     "file": "src/systems/naval/captainLedger.js",
-    "old": "for (const x of RANKS) if (s >= x.at) r = x;",
-    "new": "for (const x of RANKS) if (s > x.at) r = x;",
+    "old": "for (const x of CROWN_RANKS) if (s >= x.at) r = x;",
+    "new": "for (const x of CROWN_RANKS) if (s > x.at) r = x;",
     "tests": [
       "test/captlog.test.js"
     ]
@@ -218,8 +218,8 @@
   {
     "name": "CL-band-max",
     "file": "src/systems/naval/captainLedger.js",
-    "old": "standing[crown] = Math.max(STANDING_MIN, Math.min(STANDING_MAX, Math.round(standing[crown] + n)));",
-    "new": "standing[crown] = Math.max(STANDING_MIN, Math.round(standing[crown] + n));",
+    "old": "standing[crown] = Math.max(CROWN_STANDING_MIN, Math.min(CROWN_STANDING_MAX, Math.round(standing[crown] + n)));",
+    "new": "standing[crown] = Math.max(CROWN_STANDING_MIN, Math.round(standing[crown] + n));",
     "tests": [
       "test/captlog.test.js"
     ]
@@ -299,7 +299,7 @@
   {
     "name": "CL-restore-band",
     "file": "src/systems/naval/captainLedger.js",
-    "old": "standing[c] = Number.isFinite(v) ? Math.max(STANDING_MIN, Math.min(STANDING_MAX, Math.round(v))) : 0;",
+    "old": "standing[c] = Number.isFinite(v) ? Math.max(CROWN_STANDING_MIN, Math.min(CROWN_STANDING_MAX, Math.round(v))) : 0;",
     "new": "standing[c] = Number.isFinite(v) ? Math.round(v) : 0;",
     "tests": [
       "test/captlog.test.js"
@@ -452,7 +452,7 @@
   {
     "name": "CL-host-flag",
     "file": "src/scenes/navalHost.js",
-    "old": "    ship.flag = flagOf(cls, spec.seed, region);",
+    "old": "    ship.flag = ether ? etherFlagOf(cls) : flagOf(cls, spec.seed, region);",
     "new": "    ship.flag = null;",
     "tests": [
       "test/captlog.test.js"

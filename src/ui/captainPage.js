@@ -7,7 +7,7 @@
 // dressed by the kit's roles as the Fleet's cards are.
 
 import { holdingsProvider, ensureHoldingsStyle, holdingMeter } from './holdingsPages.js';
-import { RANKS } from '../systems/naval/captainLedger.js';
+import { CROWN_RANKS } from '../systems/naval/captainLedger.js';
 
 export const CAPTAIN_PAGE_SECTIONS = Object.freeze([Object.freeze(['captain', 'Captain'])]);
 /** The page stands while the host gives the captain's model (the world host, whose ledger it is). */
@@ -29,7 +29,7 @@ export function perkWords(p) {
 /** The standing's meter: from the rank's floor (none below Sworn) to the next rank's, or full at the top. Pure. */
 export function standingMeter(standing, rank) {
   const floor = Number.isFinite(rank.at) ? rank.at : 0;
-  const next = RANKS[rank.rank + 1];
+  const next = CROWN_RANKS[rank.rank + 1];
   return next ? { now: Math.max(0, standing - floor), max: next.at - floor, label: `${next.at - Math.max(floor, Math.min(next.at, standing))} to ${next.title}` } : { now: 1, max: 1, label: 'The highest rank' };
 }
 

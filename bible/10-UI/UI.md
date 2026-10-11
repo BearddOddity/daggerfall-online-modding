@@ -20,7 +20,8 @@ ESCORTING FACES - the quest escorts' portrait column, FE1 - and the CREDITS TABL
 - and THE WROTHGARIAN ZONE's maps (`wildZoneMap.js`: the zone map, its tiers' wash and its legend; `wildMapInk.js`: the fog, the red line, the crows, the giants' skulls, the locks and the border alight; `11-Multiplayer/Wild-Zone.md`) and REST-WARN2's DECISION BOX (`decisionBox.js`: a Yes / No as DFU's message box, the Plus dialog under the enhanced skin) - and ILIAC HAND'S PANEL at the tavern table (`iliacTableHud.js`, CARDS10: the deck and the regular, a turn staged and committed, the relay's table and the season board online - `11-Multiplayer/Tavern-Cards.md` section 33) - and THE LOOT BANNER (`lootBanner.js`, LOOT-BANNER: a banner at the right edge for every Rare-or-better piece that arrives, `10-UI/Loot-Banner.md`) - and CHAP5a's HALL ROLL (`chapterRoll.js`: a chapter's seats' holders as its hall shelf's first book; `11-Multiplayer/Chapters-Arc.md` 9) - and GEM3's WELLS (`socketWells.js`: a piece's sockets as round wells on the card, the gem chooser and the tile's pips; `06-Systems/Gem-Sockets.md` section 5)
 - and GRIM1's DFO GRIMOIRE DRESS (`grimoireDress.js`: the face, the kit, the ink and the rosters; `grimoireArt.js`: the pack's own pictures cut at run time; `10-UI/Overhauls.md`)
 - and the CAPTAIN'S SEA's two (`captainPage.js`: the Holdings window's Captain tab - a crown's standing, its rank and perks, the letter, the log; `spyglassView.js`: the spyglass's window - its tube, reticle and card - and its lens; `03-World/Captains-Sea.md`)
-341 modules
+- and the ETHERIC SEA's one (`etherChartWindow.js`: the chart of the Etheric Sea - its isles, depths, Veil and haunts - the travel map's door past the Veil; `03-World/Etheric-Sea.md`)
+342 modules
 live under `src/ui/`. Items still routed here are
 collected in `01-Overview/Port-Ledger.md` section C; scope in
 `01-Overview/Port-Doctrine.md` phase plan.

@@ -486,6 +486,8 @@ body:has(.hud-foe.on.blade) .dfnaval-hud { --nc-top: ${NAVAL_CARD_TOP_BLADE}; }
 
 /** A share as a whole percent, bounded. */
 const pct = (v) => Math.max(0, Math.min(100, Math.round((Number(v) || 0) * 100)));
+/** ETHER-SEA: the Etheric Sea's waters on the plate - "The Reaches, 23 leagues past the Veil". */
+export const etherWatersWords = (e) => `${String(e.bandName ?? '').replace(/^./, (c) => c.toUpperCase())}, ${Math.max(0, Math.round(Number(e.depth) || 0))} ${Math.round(Number(e.depth) || 0) === 1 ? 'league' : 'leagues'} past the Veil`;
 const SIDE_WORDS = Object.freeze({ bow: 'Bow', port: 'Port', starboard: 'Starboard', stern: 'Stern' });
 const GUN_WORDS = Object.freeze({ long: 'long guns', swivel: 'swivels', heavy: 'great guns', chain: 'chain shot', barrel: 'fire barrels' });
 
@@ -589,7 +591,8 @@ export function navalHudText(model, keys = {}, { touch = false } = {}) {
   const plate = ship ? {
     // SHIP-CREW: her crew's spirits and standing order beside her waters
     // CAPT-WATERS: the deep waters said beside the crown's - richer prizes, bolder pirates
-    name: ship.name, waters: [`${model.notoriety.crown} waters${model.waters === 'deep' ? ', deep' : ''}`, ship.spirits ? `crew ${ship.spirits.toLowerCase()}` : null, ship.order ?? null].filter(Boolean).join(' - '), anchors: model.notoriety.level,
+    // ETHER-SEA: past the Veil, the band and the leagues from it - no crown's waters, no crown's anchors
+    name: ship.name, waters: [model.ether ? etherWatersWords(model.ether) : `${model.notoriety.crown} waters${model.waters === 'deep' ? ', deep' : ''}`, ship.spirits ? `crew ${ship.spirits.toLowerCase()}` : null, ship.order ?? null].filter(Boolean).join(' - '), anchors: model.ether ? 0 : model.notoriety.level,
     hull: pct(ship.hull), sail: ship.sail == null ? null : pct(ship.sail), crew: ship.crew == null ? null : pct(ship.crew),
     chips: [ship.wrecked ? 'wreck' : null, ship.fire ? 'fire' : null, ship.braced ? 'brace' : null, ship.repairing ? 'repair' : ship.mending ? 'mend' : null].filter(Boolean),   // SEA-REPAIR: her repairs over the free mending
     batteries,

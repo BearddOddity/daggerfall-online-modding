@@ -13,7 +13,8 @@
 // through `onClose(reason)` before its slot drops the overlay. One stands at a time.
 //
 // AUDIT NAV1 (the helm): THE SHIPWRIGHT'S WINDOW (ui/navalYardWindow.js) opens through the same door - one shape for the
-// sea fight's two windows (`openNavalWindow`), each its own host, chunk and slot.
+// sea fight's two windows (`openNavalWindow`), each its own host, chunk and slot. ETHER-CHART: and the chart of the
+// Etheric Sea (ui/etherChartWindow.js), the travel map's door past the Veil.
 import { mountEnhancedChunk } from './enhancedChunk.js';
 import { registerOverlay } from './enhancedOverlays.js';
 
@@ -33,6 +34,13 @@ const YARD = {
   id: 'naval-yard-host', label: 'naval-yard', open: null,
   load: () => import('./navalYardWindow.js'),
   mount: ({ mountNavalYardWindow }, host, deps) => mountNavalYardWindow(host, deps),
+};
+/** ETHER-CHART: the chart of the Etheric Sea (ui/etherChartWindow.js) - the travel map's door past the Veil. */
+/** @type {NavalWindowSlot} */
+const ETHER_CHART = {
+  id: 'ether-chart-host', label: 'ether-chart', open: null,
+  load: () => import('./etherChartWindow.js'),
+  mount: ({ mountEtherChartWindow }, host, deps) => mountEtherChartWindow(host, deps),
 };
 /** @param {NavalWindowSlot} slot */
 const isOpen = (slot) => !!slot.open && !slot.open.done;
@@ -113,3 +121,11 @@ export const closeNavalYard = () => shut(YARD);
 /** The shipwright's window (ui/navalYardWindow.js), as an overlay for the host's slot; `deps` as that window's, plus
  *  `onClose(reason)`. */
 export const createNavalYardOverlay = (deps) => openNavalWindow(YARD, deps);
+
+/** ETHER-CHART: is the chart of the Etheric Sea up. */
+export const etherChartOpen = () => isOpen(ETHER_CHART);
+/** ETHER-CHART: shut it, if it is up - and say whether it was. */
+export const closeEtherChart = () => shut(ETHER_CHART);
+/** ETHER-CHART: the chart (ui/etherChartWindow.js), as an overlay for the host's slot; `deps` as that window's, plus
+ *  `onClose(reason)`. */
+export const createEtherChartOverlay = (deps) => openNavalWindow(ETHER_CHART, deps);

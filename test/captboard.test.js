@@ -10,12 +10,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  CONTRACT_KINDS, BOARD_OFFERS, CONTRACTS_MAX, TERM_DAYS, DELIVERY_DAYS_BASE, DELIVERY_PX_DAY, DELIVERY_PX_MIN, PAY_BASE, PAY_LEVEL, PAY_SITE_PX, PAY_DELIVERY_BASE,
-  STANDING_DONE, STANDING_FAILED, STANDING_ABANDONED, NEED, SITE_PX, SITE_REACH_PX, MARQUE_PRICE, MARQUE_DAYS, ADMIRALTY_OFF, DAY_MIN,
+  HARBOUR_CONTRACT_KINDS, BOARD_OFFERS, CONTRACTS_MAX, TERM_DAYS, DELIVERY_DAYS_BASE, DELIVERY_PX_DAY, DELIVERY_PX_MIN, PAY_BASE, PAY_LEVEL, PAY_SITE_PX, PAY_DELIVERY_BASE,
+  STANDING_DONE, STANDING_FAILED, STANDING_ABANDONED, CONTRACT_NEED, SITE_PX, SITE_REACH_PX, MARQUE_PRICE, MARQUE_DAYS, ADMIRALTY_OFF,
   payOf, siteFor, bountyClass, boardFor, takeContract, advance, expired, contractLine, contractSites, restoreContract, marqueOffer, admiraltyOffer,
-  bearingWords, leaguesWords, hashKey,
+  compassWords, leaguesWords, hashKey,
 } from '../src/systems/naval/harbourBoard.js';
 import { createCaptainLedger, LOG_CONTRACTS, RANK_PERKS } from '../src/systems/naval/captainLedger.js';
+import { MINUTES_PER_DAY } from '../src/systems/gameDate.js';
+import { hashKey as wireHashKey } from '../src/net/wire.js';
 import { createHarbourOffice } from '../src/scenes/harbourOffice.js';
 import { yardOffer, yardAll, YARD_PRICE, YARD_DISCOUNT_MAX } from '../src/systems/naval/navalYard.js';
 import { createNavalDirector } from '../src/systems/naval/navalDirector.js';
@@ -73,7 +75,7 @@ test('CAPT-BOARD a bounty\'s quarry: the strongest pirates within two levels of 
 });
 
 test('CAPT-BOARD the board: BOARD_OFFERS a day and a rank\'s more, the same for every client off the port and the day, a new one tomorrow; each kind in turn, a kind the port cannot post passed over; an offer taken off it for the day (mutants: the count, the day, the port, the taken, the kinds)', () => {
-  assert.deepEqual(CONTRACT_KINDS, ['bounty', 'hunt', 'delivery', 'salvage', 'survey']);
+  assert.deepEqual(HARBOUR_CONTRACT_KINDS, ['bounty', 'hunt', 'delivery', 'salvage', 'survey']);
   assert.equal(BOARD_OFFERS, 3);
   const a = board();
   assert.equal(a.length, 3);
@@ -82,7 +84,7 @@ test('CAPT-BOARD the board: BOARD_OFFERS a day and a rank\'s more, the same for 
   assert.notDeepEqual(board({ port: { ...WAYREST, key: '101,100' } }).map((o) => o.title), a.map((o) => o.title), 'another port\'s');
   const ranked = board({ perks: { offers: 2, pay: 0 } });
   assert.equal(ranked.length, 5);
-  assert.deepEqual(new Set(ranked.map((o) => o.kind)), new Set(CONTRACT_KINDS), 'each kind in turn');
+  assert.deepEqual(new Set(ranked.map((o) => o.kind)), new Set(HARBOUR_CONTRACT_KINDS), 'each kind in turn');
   assert.deepEqual(ranked.map((o) => o.id), ['100,100:3:0', '100,100:3:1', '100,100:3:2', '100,100:3:3', '100,100:3:4']);
   const taken = board({ perks: { offers: 2 }, taken: ['100,100:3:1'] });
   assert.ok(!taken.some((o) => o.id === '100,100:3:1') && taken.length === 4, 'taken: off the board');
@@ -93,11 +95,12 @@ test('CAPT-BOARD the board: BOARD_OFFERS a day and a rank\'s more, the same for 
   const nearOnly = board({ ports: [WAYREST, PORTS[2]], perks: { offers: 2 } });
   assert.ok(!nearOnly.some((o) => o.kind === 'delivery'), 'a port nearer than DELIVERY_PX_MIN: no cargo for it');
   assert.deepEqual(boardFor({ port: null, crown: 'Wayrest', day: 1 }), []);
+  assert.equal(hashKey, wireHashKey, 'the board hashes with the wire\'s FNV-1a - one home');
   assert.equal(hashKey('100,100'), hashKey('100,100'));
   assert.notEqual(hashKey('100,100'), hashKey('100,101'));
 });
 
-test('CAPT-BOARD the offers\' words and terms: a bounty names her captain and ship and where she was last seen; a hunt, a salvage and a survey their need within NEED; a delivery her port DELIVERY_PX_MIN or more off and a term of DELIVERY_DAYS_BASE and a day a DELIVERY_PX_DAY pixels; each its crown\'s regard (mutants: the words, the terms, the regard)', () => {
+test('CAPT-BOARD the offers\' words and terms: a bounty names her captain and ship and where she was last seen; a hunt, a salvage and a survey their need within CONTRACT_NEED; a delivery her port DELIVERY_PX_MIN or more off and a term of DELIVERY_DAYS_BASE and a day a DELIVERY_PX_DAY pixels; each its crown\'s regard (mutants: the words, the terms, the regard)', () => {
   assert.deepEqual(TERM_DAYS, { bounty: 4, hunt: 3, salvage: 3, survey: 2 });
   assert.deepEqual([DELIVERY_DAYS_BASE, DELIVERY_PX_DAY, DELIVERY_PX_MIN], [2, 6, 6]);
   assert.deepEqual(STANDING_DONE, { bounty: 3, hunt: 1, delivery: 4, salvage: 3, survey: 2 });
@@ -109,7 +112,7 @@ test('CAPT-BOARD the offers\' words and terms: a bounty names her captain and sh
   assert.equal(b.standing, STANDING_DONE.bounty * classById(b.target.classId).cargo, 'her size');
   assert.ok(Number.isFinite(b.target.px) && Number.isFinite(b.target.seed) && b.target.region === 23);
   assert.equal(b.days, 4);
-  for (const k of ['hunt', 'salvage', 'survey']) assert.ok(by[k].need >= NEED[k][0] && by[k].need <= NEED[k][1], k);
+  for (const k of ['hunt', 'salvage', 'survey']) assert.ok(by[k].need >= CONTRACT_NEED[k][0] && by[k].need <= CONTRACT_NEED[k][1], k);
   assert.equal(by.hunt.standing, by.hunt.need);
   assert.equal(by.survey.standing, 2 * by.survey.need);
   const d = by.delivery;
@@ -117,14 +120,14 @@ test('CAPT-BOARD the offers\' words and terms: a bounty names her captain and sh
   assert.equal(d.days, 2 + Math.ceil(20 / 6));
   assert.match(d.words, /to Sentinel's harbourmaster within 6 days\. It goes in your hold - lose your ship and it is lost\.$/);
   assert.equal(by.salvage.target.px != null && /^Salvage: /.test(by.salvage.title), true);
-  assert.deepEqual(['east', 'north', 'south-west'], [bearingWords(1, 0), bearingWords(0, -1), bearingWords(-1, 1)]);
+  assert.deepEqual(['east', 'north', 'south-west'], [compassWords(1, 0), compassWords(0, -1), compassWords(-1, 1)]);
   assert.deepEqual([leaguesWords(6), leaguesWords(1)], ['1 league', '0.2 leagues']);
 });
 
 test('CAPT-BOARD a contract held: taken on its term of the captain\'s clock (a delivery in the boat that took it); what happens at sea moves it - a bounty\'s quarry ended, pirates ended in the crown\'s waters, ships studied there, a wreck\'s casks hauled, a cargo berthed at its port or lost with her ship; past its term it is out (mutants: each kind\'s event, the crown, the boat, the term)', () => {
   const all = board({ perks: { offers: 2 } });
   const by = Object.fromEntries(all.map((o) => [o.kind, takeContract(o, { now: 1000, boat: 42 })]));
-  assert.equal(by.hunt.until, 1000 + 3 * DAY_MIN);
+  assert.equal(by.hunt.until, 1000 + 3 * MINUTES_PER_DAY);
   assert.deepEqual([by.hunt.boat, by.delivery.boat, by.hunt.done], [null, 42, 0], 'only a cargo rides a boat');
   assert.equal(advance(by.bounty, { type: 'end', act: 'sink', faction: 'pirate', crown: 'Wayrest', bounty: 'other' }), null);
   assert.equal(advance(by.bounty, { type: 'end', act: 'board', faction: 'pirate', crown: 'Daggerfall', bounty: by.bounty.id }), 'done', 'her own, anywhere');
@@ -156,7 +159,7 @@ test('CAPT-BOARD the board\'s words for a held contract, its sites, a save\'s ju
   const all = board({ perks: { offers: 2 } });
   const by = Object.fromEntries(all.map((o) => [o.kind, takeContract(o, { now: 0, boat: 42 })]));
   by.hunt.done = 1;
-  const l = contractLine(by.hunt, by.hunt.until - (DAY_MIN + 120));
+  const l = contractLine(by.hunt, by.hunt.until - (MINUTES_PER_DAY + 120));
   assert.deepEqual([l.progress, l.left], [`1 of ${by.hunt.need} ended`, '1 day, 2 hours left']);
   assert.equal(contractLine(by.hunt, by.hunt.until).left, 'Her term is out');
   assert.equal(contractLine(by.survey, 0).progress, `0 of ${by.survey.need} studied`);
@@ -179,7 +182,7 @@ test('CAPT-BOARD the board\'s words for a held contract, its sites, a save\'s ju
 
 test('CAPT-BOARD the ledger keeps them: CONTRACTS_MAX at once, never one twice; done - its crown\'s regard, its kind and its purse in the log - failed STANDING_FAILED, given up STANDING_ABANDONED; a term out failed; the board\'s taken remembered; the save (mutants: the cap, the regard, the log, the failure, the save)', () => {
   assert.deepEqual([CONTRACTS_MAX, STANDING_FAILED, STANDING_ABANDONED], [3, -3, -1]);
-  assert.deepEqual(LOG_CONTRACTS, CONTRACT_KINDS);
+  assert.deepEqual(LOG_CONTRACTS, HARBOUR_CONTRACT_KINDS);
   const L = createCaptainLedger();
   const all = board({ perks: { offers: 2 } });
   const by = Object.fromEntries(all.map((o) => [o.kind, takeContract(o, { now: 0, boat: 42 })]));
@@ -281,7 +284,7 @@ test('CAPT-BOARD the harbour office: the board of the port lain at, an offer tak
   L.regard('Wayrest', 130);   // a Commodore
   const p = officeOf({ ledger: L, gold: 200000 });
   assert.equal(p.office.buyMarque().ok, true);
-  assert.deepEqual(L.marque(0), { crown: 'Wayrest', until: MARQUE_DAYS * DAY_MIN });
+  assert.deepEqual(L.marque(0), { crown: 'Wayrest', until: MARQUE_DAYS * MINUTES_PER_DAY });
   assert.equal(p.office.buyMarque().ok, false, 'one at a time');
   assert.equal(p.office.buyCarrack().ok, true);
   assert.deepEqual(p.log.carrack, [[Math.round(HULL_PRICES[4] * 0.8), 'Wayrest']]);
@@ -395,7 +398,7 @@ test('CAPT-BOARD the shipwright\'s Harbourmaster tab: the port and the rank, the
   assert.equal(byClass(bare, 'dfnaval-tabs')[0].style.display, 'none', 'no office: no tabs');
   w2.unmount();
   const world = rd('src/scenes/world.js');
-  assert.match(world, /model\.office = \(\) => harbourOffice\.model\(\{ uid: model\.uid \?\? null \}\);/);
-  assert.match(world, /if \(_officeTickT <= 0 && !gamePaused\(\) && !_loading\) \{ _officeTickT = 2; harbourOffice\.tick\(\); captainSay\(\); \}/);
+  assert.match(world, /return harbourOffice\.model\(\{ uid: model\.uid \?\? null \}\);/);
+  assert.match(world, /if \(_officeTickT <= 0 && !gamePaused\(\) && !_loading\) \{\n      _officeTickT = 2; harbourOffice\.tick\(\); captainSay\(\);/);
   assert.match(world, /carrack: \(price, port\) => \{ const deed = mintDeed\(4, 0, csaNewItemUid\(\), price\); return !!titleDeed\(deed, \{ port: \{ name: port\.name \} \}\); \},/);
 });

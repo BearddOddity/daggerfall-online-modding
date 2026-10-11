@@ -83,8 +83,8 @@
   {
     "name": "CW-level-unread",
     "file": "src/systems/naval/navalDirector.js",
-    "old": "classFor(faction, (ctx.level ?? 1) + (deep ? DEEP_LEVEL : 0), rng());",
-    "new": "classFor(faction, ctx.level ?? 1, rng());",
+    "old": "classFor(faction, (ctx.level ?? 1) + (deep ? DEEP_LEVEL : 0) + (ether?.band?.level ?? 0), rng());",
+    "new": "classFor(faction, (ctx.level ?? 1) + (ether?.band?.level ?? 0), rng());",
     "tests": [
       "test/captwaters.test.js"
     ]
@@ -92,8 +92,8 @@
   {
     "name": "CW-flag-unsaid",
     "file": "src/systems/naval/navalDirector.js",
-    "old": "...(deep ? { deep: true } : {}) };",
-    "new": "};",
+    "old": "hunter, ...(deep ? { deep: true } : {}), ...(ether",
+    "new": "hunter, ...(ether",
     "tests": [
       "test/captwaters.test.js"
     ]
@@ -137,8 +137,8 @@
   {
     "name": "CW-host-entry",
     "file": "src/scenes/navalHost.js",
-    "old": "region, deep: !!spec.deep, orphan: null,",
-    "new": "region, deep: false, orphan: null,",
+    "old": "region, deep: !!spec.deep, ether,",
+    "new": "region, deep: false, ether,",
     "tests": [
       "test/captwaters.test.js"
     ]
@@ -146,8 +146,8 @@
   {
     "name": "CW-host-hold",
     "file": "src/scenes/navalHost.js",
-    "old": "deps.hold?.(key, tier + (entry.deep ? DEEP_TIER : 0))",
-    "new": "deps.hold?.(key, tier)",
+    "old": "deps.hold?.(key, tier + (entry.deep ? DEEP_TIER : 0) + etherTier(entry))",
+    "new": "deps.hold?.(key, tier + etherTier(entry))",
     "tests": [
       "test/captwaters.test.js"
     ]
@@ -173,8 +173,8 @@
   {
     "name": "CW-host-casks-marked",
     "file": "src/scenes/navalHost.js",
-    "old": "lot, from: s.cls.id, deep: !!entry.deep });",
-    "new": "lot, from: s.cls.id });",
+    "old": "lot, from: s.cls.id, deep: !!entry.deep || !!entry.ether });",
+    "new": "lot, from: s.cls.id, deep: !!entry.ether });",
     "tests": [
       "test/captwaters.test.js"
     ]
@@ -227,8 +227,8 @@
   {
     "name": "CW-world-waters",
     "file": "src/scenes/world.js",
-    "old": "waters: watersOf({ nearPort, portPx: navalPortPx() }),",
-    "new": "waters: 'open',",
+    "old": "waters: ether ? 'ether' : watersOf({ nearPort, portPx: navalPortPx() }),",
+    "new": "waters: ether ? 'ether' : 'open',",
     "tests": [
       "test/captwaters.test.js"
     ]

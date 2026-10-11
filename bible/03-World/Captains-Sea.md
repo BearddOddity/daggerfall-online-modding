@@ -82,10 +82,10 @@ and the Etheric Sea's two), the best prize and every prize's worth, the plunder 
 navalLootWorth` - gold pieces at their count, the rest at its value), the contracts done by kind (`LOG_CONTRACTS`).
 `logLines` says it in a captain's words.
 
-STANDING: a number with each of the three crowns, STANDING_MIN to STANDING_MAX. A DEED (`deed(act, cls, { crown,
+STANDING: a number with each of the three crowns, CROWN_STANDING_MIN to CROWN_STANDING_MAX. A DEED (`deed(act, cls, { crown,
 marque })`) is the law's own act on the Bay's ships - `DEED_STANDING` for a pirate sunk, taken or beaten off, times
 her class's cargo size, with the crown whose waters it was in; PIRACY (`PIRACY_STANDING`: firing on, sinking or
-boarding a lawful ship) costs it; a LEGEND sunk is LEGEND_STANDING with every crown. `RANKS`: Unsworn, Sworn Captain
+boarding a lawful ship) costs it; a LEGEND sunk is LEGEND_STANDING with every crown. `CROWN_RANKS`: Unsworn, Sworn Captain
 (15), Privateer (50), Commodore (120), Admiral (250); a rank won or lost is said mid-screen once (`takeRankChanges`).
 
 THE PERKS (`RANK_PERKS`, `perksOf(rank, notoriety)`): the yard's discount, the contracts' pay, the harbour's contract
@@ -182,10 +182,10 @@ the day (its place never refilled). The kinds, each ending in something the sea 
 | kind | what | done when | purse |
 |---|---|---|---|
 | bounty | a named pirate - her class the strongest within two levels of the captain's (`bountyClass`; the flagship from level 12), her name her seed's - last seen SITE_PX map pixels off the port in open water (`siteFor`: every neighbour of her pixel sea, on the square ring, eight ways round) | she is sunk or taken by the captain's hand (`advance`'s `end` with her `bounty` id) | PAY_BASE.bounty times her size, and her waters' distance |
-| hunt | NEED.hunt pirate ships ended in the crown's waters | sunk or taken there, any of them (a boarding beaten off is no end) | PAY_BASE.hunt each |
+| hunt | CONTRACT_NEED.hunt pirate ships ended in the crown's waters | sunk or taken there, any of them (a boarding beaten off is no end) | PAY_BASE.hunt each |
 | delivery | a cargo to another port DELIVERY_PX_MIN or more off, its term DELIVERY_DAYS_BASE and a day a DELIVERY_PX_DAY pixels | the boat that took it on lies to that port's quay; wrecked, it is lost | PAY_BASE.delivery a pixel and its start |
-| salvage | a merchantman gone down SITE_PX off the port - NEED.salvage casks of her cargo | each cask hauled out of the sea where she went down | PAY_BASE.salvage a cask, and the distance |
-| survey | the Admiralty's measure of the crown's shipping - NEED.survey ships studied through the glass in its waters | each ship the glass studies (`KNOW.studied` by the glass, never a ship struck) | PAY_BASE.survey each |
+| salvage | a merchantman gone down SITE_PX off the port - CONTRACT_NEED.salvage casks of her cargo | each cask hauled out of the sea where she went down | PAY_BASE.salvage a cask, and the distance |
+| survey | the Admiralty's measure of the crown's shipping - CONTRACT_NEED.survey ships studied through the glass in its waters | each ship the glass studies (`KNOW.studied` by the glass, never a ship struck) | PAY_BASE.survey each |
 
 Every purse is times the captain's level (PAY_LEVEL a level) and the rank's `pay`, to the nearest five. A contract runs
 on the captain's own clock (CONTRACTS_MAX at once - `captainLedger.js holdContract`); done, it pays and its crown's
@@ -216,15 +216,17 @@ grain, wool, iron, spices, silk, silver, ivory) and the Etheric Sea's three (eth
 crown's ports MAKE some and WANT others (`CROWN_TRADE`), every port twisting its crown's trade by one good of its own
 off its key (`portTrade`); the Etheric Sea's goods are wanted in every port of the Bay and made only on its isles. A
 good's price is its base times MADE_K where made, WANT_K where wanted (EXOTIC_K for the other sea's), drifting within
-DRIFT a day - the same for every client on the world's day (`priceOf`); the exchange sells SPREAD over it and buys SPREAD
-under it, and deals only so much of a good a day (`STOCK`: plenty of what it makes, little of what it wants - and it is
+PRICE_DRIFT a day - the same for every client on the world's day (`priceOf`); the exchange sells SPREAD over it and buys SPREAD
+under it, and deals only so much of a good a day (`DAY_STOCK`: plenty of what it makes, little of what it wants - and it is
 glutted soon with what it makes itself). The captain's dealing at the last exchange is kept for the day
 (`captainLedger.js dealtAt`, `deal`). Bought goods go into the hold of the boat at the quay (Come Sail Away's cargo:
 their weight is on her way); sold, out of it; a sale's gold in the log.
 
 The goods are ITEMS of the port's own (DECLARED): custom templates from GOODS_TEMPLATE (1331), stackable, the row's
 weight and base - sold at any shop at their base like any item; `systems/itemLaw.js` imports the module, as the
-carpenter's stores'.
+carpenter's stores' - and the chart's - so the account service's Worker bundles them and what they read (the board,
+the ships' table, the hash), and its deploy's path filter names each (`.github/workflows/account-deploy.yml`, ACC4's
+walk). A port's key hashes on the wire's FNV-1a (net/wire.js `hashKey`, the board's re-export - one home).
 
 ## CAPT-CHARTS - treasure charts
 
@@ -244,4 +246,5 @@ Captain page lists the charts marked.
 `test/captboard.test.js` (`tools/mutants/captboard.json`), `test/capttrade.test.js` (`tools/mutants/capttrade.json`) -
 every mutant dead. The suites whose pins moved with them say so where they moved (PIN MOVED): the crew card's line,
 the Holdings tabs, the tags and the hails now knowing a ship first (`test/navalSea.mjs knowAll`), the action tables,
-the lens.
+the lens, the sky's and the far ring's lens narrowed with the world's (`test/climb4.test.js`), the wheel's rung for the
+glass (`test/audit24_wave37.test.js`).

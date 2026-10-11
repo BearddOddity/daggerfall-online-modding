@@ -112,9 +112,11 @@ export const glassHolds = (angle, dist, halfLength, zoom) => angle <= Math.max(M
 /** Her colours in words, as the card says them - the flag seen, false or true. */
 export function coloursWords(faction, flag) {
   if (faction === 'pirate' && !flag) return 'the black flag';
-  if (faction === 'navy') return `${flag ?? 'a crown'}'s royal ensign`;
-  return `${flag ?? 'a trader'}'s merchant colours`;
+  if (faction === 'navy') return `${own(flag ?? 'a crown')} royal ensign`;
+  return `${own(flag ?? 'a trader')} merchant colours`;   // ETHER-SEA: "the Isles' merchant colours"
 }
+/** A name's possessive: "Wayrest's", "the Isles'". */
+const own = (name) => (/s$/.test(name) ? `${name}'` : `${name}'s`);
 /** How she rides, by her hold's worth (her class's cargo, 1-4). */
 export function cargoWords(cargo) {
   const c = Math.max(1, Math.min(4, cargo | 0));

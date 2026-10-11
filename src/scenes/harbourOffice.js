@@ -27,7 +27,8 @@
 // CAPT-CHARTS: TREASURE CHARTS (systems/naval/treasureCharts.js) - one among a pirate's papers (`chartFor`), read and
 // marked (`readChart`), its cache a site of the naval host's, raised and paid (`raiseCache`).
 
-import { boardFor, takeContract, contractLine, contractSites, marqueOffer, admiraltyOffer, DAY_MIN, CONTRACTS_MAX, STANDING_ABANDONED } from '../systems/naval/harbourBoard.js';
+import { boardFor, takeContract, contractLine, contractSites, marqueOffer, admiraltyOffer, CONTRACTS_MAX, STANDING_ABANDONED } from '../systems/naval/harbourBoard.js';
+import { MINUTES_PER_DAY } from '../systems/gameDate.js';
 import { perksOf, PERKS_REFUSED_AT } from '../systems/naval/captainLedger.js';
 import { exchangeOf, goodById, goodIn, takeGood, mintGood, goodsWeight } from '../systems/naval/tradeGoods.js';
 import { chartAboard, chartSite, mintChart, cacheGold, CHART_SITE } from '../systems/naval/treasureCharts.js';
@@ -88,7 +89,7 @@ export function createHarbourOffice(deps) {
     const o = marqueOffer({ crown: port.crown, perks: perksAt(port.crown), gold: deps.gold?.() ?? 0, held: L.marque(now()) });
     if (!o.can) return { ok: false, text: o.why };
     deps.pay?.(o.price);
-    L.setMarque(port.crown, now() + o.days * DAY_MIN);
+    L.setMarque(port.crown, now() + o.days * MINUTES_PER_DAY);
     return { ok: true, text: `${port.crown}'s letter of marque is yours for ${days(o.days)}: its rivals' merchantmen are your lawful prey.` };
   }
   /** The Admiralty's carrack bought of this port's crown - her title to the Fleet's book. */

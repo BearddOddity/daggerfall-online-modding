@@ -47,11 +47,20 @@
 // bold DEEP_BOLD of the time where the coast's are bold BOLD_SHARE, and every hold rolled DEEP_TIER rarity tiers richer
 // (navalHost.js launch, drawHold). The plate says the waters (ui/navalHud.js).
 
+//
+// ETHER-SEA (2026-10-11, the owner: "deadly legendary ships"; bible/03-World/Etheric-Sea.md ETHER-SHIPS) - PAST THE VEIL
+// (`ctx.ether`: the waters' band, and the legend whose haunt they are when she sails): no crown's navy - corsairs and
+// the isles' traders by the band's weights (systems/naval/etherShips.js etherFactionWeights), every class drawn the band's
+// `level` levels up, a pair at it only a corsair on a trader, and no relief to call. A LEGEND in her haunt, while none of
+// hers is at sea, comes on LEGEND_CHANCE of a roll (her own LEGEND_SALT stream - the roll's other draws unmoved), on the
+// ring and her bow on the captain. Every spec there carries `ether` (the band's id), a legend's `legend` too.
+
 import { hash32 } from '../../world/spawnedDungeons.js';
 import { mulberry32 } from '../../combat/bloodArt.js';
 import { classFor, HULL, SHIP_CLASSES } from './navalShips.js';
 import { HULL_VARIANT_COUNTS } from '../comeSailAwayBoat.js';
 import { classPower, odds, WARY_ODDS } from './navalAI.js';   // SEA-PEACE: a plunder's merchantman is one her pirate outguns
+import { etherFactionWeights, LEGEND_CHANCE, LEGEND_SALT } from './etherShips.js';   // ETHER-SEA: the Etheric Sea's traffic and its legends
 
 /** How many ships the density keeps at sea near a player. SEA-EASE: one, two or four (they were two, three and five). */
 export const DENSITY = Object.freeze({ off: 0, few: 1, some: 2, many: 4 });
@@ -142,7 +151,7 @@ export function factionWeights({ nearPort = false, notoriety = 0, deep = false }
  * The director. `step(dt, ctx)` answers `{ spawn: spec | null, despawn: id[] }`:
  *   ctx = { density, player: [x, y, z], players: [x, y, z][] (every player the host places - itself included),
  *           level, ships: [{ id, pos, classId, engaged, afloat, theirs, berthed }], isOpenWater(x, z, hull), nearPort, notoriety,
- *           seedBase, seaY, distress: [x, y, z] | null, relieving }
+ *           seedBase, seaY, distress: [x, y, z] | null, relieving, ether: { band, legend: { id, classId } | null } | null }
  * SEA-EASE: `distress` where a lawful player is under a pirate's guns with no crown's ship by them, `relieving` a relief
  * already at sea - a relief's spec carries `relief: true`.
  * AUDIT NAV1 (online): a ship `theirs` - another player's, near me - counts against the density and is never mine to
@@ -159,8 +168,9 @@ export function createNavalDirector({ random = Math.random } = {}) {
   function encounterSpawn(seed, ctx, nearest) {
     const r = encounterRng(seed);
     if (!(r() < ENCOUNTER_CHANCE)) return null;
-    const kind = /** @type {'plunder'|'patrol'} */ (weightedPick(ENCOUNTERS, r()));
-    const pair = encounterClasses(kind, ctx.level ?? 1, r);
+    const drawn = /** @type {'plunder'|'patrol'} */ (weightedPick(ENCOUNTERS, r()));
+    const kind = ctx.ether ? 'plunder' : drawn;   // ETHER-SEA: no crown's ship past the Veil - a corsair on a trader
+    const pair = encounterClasses(kind, (ctx.level ?? 1) + (ctx.ether?.band?.level ?? 0), r);
     if (!pair) return null;
     for (let i = 0; i < SPAWN_TRIES; i++) {
       const a = r() * Math.PI * 2;
@@ -174,8 +184,9 @@ export function createNavalDirector({ random = Math.random } = {}) {
       if (nearest(hunterPos) < SPAWN_CLEAR || nearest(quarryPos) < SPAWN_CLEAR) continue;
       if (!ctx.isOpenWater(hunterPos[0], hunterPos[2], pair.hunter.hull) || !ctx.isOpenWater(quarryPos[0], quarryPos[2], pair.quarry.hull)) continue;
       const variantOf = (cls) => { const n = HULL_VARIANT_COUNTS[cls.hull] ?? 0; return cls.hull === HULL.LargeBoat && n > 0 ? Math.floor(r() * n) : 0; };
-      const company = { seed: hash32(ctx.seedBase >>> 0, count++), classId: pair.quarry.id, variant: variantOf(pair.quarry), pos: quarryPos, yaw, hunter: false };
-      return { seed, classId: pair.hunter.id, variant: variantOf(pair.hunter), pos: hunterPos, yaw, hunter: false, encounter: kind, company };
+      const etherOf = ctx.ether ? { ether: ctx.ether.band.id } : {};   // ETHER-SEA: launched of the Etheric Sea
+      const company = { seed: hash32(ctx.seedBase >>> 0, count++), classId: pair.quarry.id, variant: variantOf(pair.quarry), pos: quarryPos, yaw, hunter: false, ...etherOf };
+      return { seed, classId: pair.hunter.id, variant: variantOf(pair.hunter), pos: hunterPos, yaw, hunter: false, encounter: kind, company, ...etherOf };
     }
     return null;
   }
@@ -198,6 +209,24 @@ export function createNavalDirector({ random = Math.random } = {}) {
     }
     return null;
   }
+  /** ETHER-LEGENDS: the legend whose haunt the captain sails (`ctx.ether.legend`: her class), on LEGEND_CHANCE of her
+   *  own LEGEND_SALT stream - on the ring about the captain, her bow on them - or null. */
+  function legendSpawn(seed, ctx, nearest) {
+    const want = ctx.ether?.legend;
+    if (!want?.classId || (ctx.ships ?? []).some((s) => s.classId === want.classId)) return null;
+    const r = mulberry32(((seed >>> 0) ^ LEGEND_SALT) >>> 0);
+    if (!(r() < LEGEND_CHANCE)) return null;
+    const cls = SHIP_CLASSES.find((c) => c.id === want.classId);
+    if (!cls) return null;
+    for (let i = 0; i < SPAWN_TRIES; i++) {
+      const a = r() * Math.PI * 2;
+      const d = SPAWN_RING[0] + r() * (SPAWN_RING[1] - SPAWN_RING[0]);
+      const pos = [ctx.player[0] + Math.sin(a) * d, ctx.seaY ?? ctx.player[1], ctx.player[2] + Math.cos(a) * d];
+      if (nearest(pos) < SPAWN_CLEAR || !ctx.isOpenWater(pos[0], pos[2], cls.hull)) continue;
+      return { seed, classId: cls.id, variant: 0, pos, yaw: Math.atan2(ctx.player[0] - pos[0], ctx.player[2] - pos[2]), hunter: false, ether: ctx.ether.band.id, legend: want.id };
+    }
+    return null;
+  }
   const director = {
     step(dt, ctx) {
       const out = { spawn: null, despawn: [] };
@@ -207,7 +236,7 @@ export function createNavalDirector({ random = Math.random } = {}) {
       if (!((ctx.density ?? 0) > 0)) return out;   // AUDIT NAV1 (online): letting go only - no roll, no draw on the stream
       // SEA-EASE: a lawful player under a pirate's guns with no crown's ship by them - help is rolled for soon, in a
       // berth of its own, one relief at a time
-      const distress = Array.isArray(ctx.distress) && !ctx.relieving ? ctx.distress : null;
+      const distress = Array.isArray(ctx.distress) && !ctx.relieving && !ctx.ether ? ctx.distress : null;   // ETHER-SEA: no navy to answer past the Veil
       if (distress) wait = Math.min(wait, RELIEF_WAIT_S);
       wait -= Math.max(0, dt);
       if (wait > 0) return out;
@@ -221,15 +250,19 @@ export function createNavalDirector({ random = Math.random } = {}) {
         out.spawn = reliefSpawn(seed, ctx, nearest, distress);
         return out;
       }
+      // ETHER-LEGENDS: a legend in her haunt, before anything else the roll would launch
+      const legend = ctx.ether ? legendSpawn(seed, ctx, nearest) : null;
+      if (legend) { out.spawn = legend; return out; }
       // SEA-PEACE: a pair already at it, where the density has room for two
       if (alive + 2 <= (ctx.density ?? 0)) {
         const pair = encounterSpawn(seed, ctx, nearest);
         if (pair) { out.spawn = pair; return out; }
       }
       const rng = mulberry32(seed);
-      const deep = !ctx.nearPort && !!ctx.deep;   // CAPT-WATERS
-      const faction = weightedPick(factionWeights({ nearPort: !!ctx.nearPort, notoriety: ctx.notoriety ?? 0, deep }), rng());
-      let cls = classFor(faction, (ctx.level ?? 1) + (deep ? DEEP_LEVEL : 0), rng());
+      const ether = ctx.ether ?? null;   // ETHER-SEA: the band's weights and levels past the Veil
+      const deep = !ether && !ctx.nearPort && !!ctx.deep;   // CAPT-WATERS
+      const faction = weightedPick(ether ? etherFactionWeights(ether.band, { nearPort: !!ctx.nearPort }) : factionWeights({ nearPort: !!ctx.nearPort, notoriety: ctx.notoriety ?? 0, deep }), rng());
+      let cls = classFor(faction, (ctx.level ?? 1) + (deep ? DEEP_LEVEL : 0) + (ether?.band?.level ?? 0), rng());
       if (cls?.flagship && (ctx.ships ?? []).some((s) => s.classId === cls.id)) cls = classFor(faction, 1, rng());   // one flagship at a time
       if (!cls) return out;
       for (let i = 0; i < SPAWN_TRIES; i++) {
@@ -238,13 +271,13 @@ export function createNavalDirector({ random = Math.random } = {}) {
         const pos = [ctx.player[0] + Math.sin(a) * d, ctx.seaY ?? ctx.player[1], ctx.player[2] + Math.cos(a) * d];
         if (nearest(pos) < SPAWN_CLEAR) continue;
         if (!ctx.isOpenWater(pos[0], pos[2], cls.hull)) continue;
-        const hunter = faction === 'navy' && (ctx.notoriety ?? 0) >= HUNTER_AT;
+        const hunter = !ether && faction === 'navy' && (ctx.notoriety ?? 0) >= HUNTER_AT;
         // a hunter comes for the player; anyone else crosses the player's waters on a slant
         const toPlayer = Math.atan2(ctx.player[0] - pos[0], ctx.player[2] - pos[2]);
         const yaw = hunter ? toPlayer : toPlayer + (rng() < 0.5 ? 1 : -1) * (0.6 + rng() * 0.9);
         const variants = HULL_VARIANT_COUNTS[cls.hull] ?? 0;
         const variant = cls.hull === HULL.LargeBoat && variants > 0 ? Math.floor(rng() * variants) : 0;
-        out.spawn = { seed, classId: cls.id, variant, pos, yaw, hunter, ...(deep ? { deep: true } : {}) };   // CAPT-WATERS: launched of the deep
+        out.spawn = { seed, classId: cls.id, variant, pos, yaw, hunter, ...(deep ? { deep: true } : {}), ...(ether ? { ether: ether.band.id } : {}) };   // CAPT-WATERS: launched of the deep; ETHER-SEA: of the Etheric Sea
         break;
       }
       return out;

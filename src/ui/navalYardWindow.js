@@ -119,6 +119,7 @@ export function yardText(model) {
  */
 export function officeText(o) {
   if (!o) return null;
+  if (o.ether) return etherOfficeText(o);   // ETHER-SEA: a freeport past the Veil
   const lede = o.hunted ? `${o.port} - ${o.crown}'s navy hunts you: its harbourmaster grants no favours until your notoriety falls.`
     : `${o.port} - ${o.crown}'s harbourmaster. You are ${o.rank === 'Unsworn' ? 'Unsworn' : `a ${o.rank}`} of ${o.crown} (standing ${o.standing}).`;
   const board = (o.board ?? []).map((b) => ({ id: b.id, title: b.title, words: b.words, terms: `${b.pay} - ${b.term} - ${b.standing}`, press: 'Take', can: !!b.can, why: b.why ?? '' }));
@@ -130,6 +131,21 @@ export function officeText(o) {
   if (o.admiralty?.open || o.admiralty?.can) letters.push({ id: 'admiralty', title: 'The Admiralty\'s carrack', words: o.admiralty.can ? 'The only carrack the Bay sells - her title to your Fleet.' : o.admiralty.why, press: `Buy - ${o.admiralty.price}`, can: !!o.admiralty.can });
   else if (o.admiralty) letters.push({ id: 'admiralty', title: 'The Admiralty\'s carrack', words: o.admiralty.why, press: 'Commodores only', can: false });
   return { lede, board, held, letters };
+}
+
+/**
+ * ETHER-SEA: AN ETHERIC HARBOURMASTER'S TAB's words (scenes/etherHost.js office) - no crown, no contracts: the port's
+ * waters, the legends' rumours as the board, and a chart of these waters among the letters. The same shape as
+ * officeText's, `ether` set and `heads` the board's own words.
+ * @param {any} o
+ */
+export function etherOfficeText(o) {
+  const g = (n) => `${Math.round(n).toLocaleString('en-US')} gold`;
+  const lede = `${o.port} - a freeport of the Etheric Sea, in ${o.waters}. No crown's writ runs past the Veil, and no crown's favours. Your charts hold ${o.charted} ${o.charted === 1 ? 'isle' : 'isles'}.`;
+  const board = (o.rumours ?? []).map((r, i) => ({ id: `rumour:${i}`, title: 'Talk on the quay', words: r, terms: '', press: '', can: false, why: '' }));
+  const c = o.chart;
+  const letters = c ? [{ id: 'chart', title: 'A chart of these waters', words: c.fresh > 0 ? `${c.fresh} ${c.fresh === 1 ? 'isle' : 'isles'} your charts do not hold, marked on them.${c.can ? '' : ` ${c.why}`}` : c.why, press: `Buy - ${g(c.price)}`, can: !!c.can }] : [];
+  return { lede, board, held: [], letters, ether: true, heads: { board: ['The quay\'s talk', 'the legends of these waters'], letters: ['Charts', 'the harbourmaster\'s'] } };
 }
 
 /**
@@ -261,11 +277,16 @@ export function mountNavalYardWindow(host, deps) {
     const text = el('div');
     text.append(el('b', null, title), el('span', null, words));
     if (extra) text.append(el('i', null, extra));
-    const b = button(press, 'dfnaval-btn dfnaval-officebuy', onPress);
-    able(b, can);
-    li.append(text, b);
+    li.append(text);
+    if (press) {   // ETHER-SEA: a rumour is read, never pressed
+      const b = button(press, 'dfnaval-btn dfnaval-officebuy', onPress);
+      able(b, can);
+      li.append(b);
+    }
     return li;
   };
+  /** A section's head words: the Bay's own, or an Etheric harbourmaster's (`heads`). */
+  const headWords = (headEl, words) => { const [a, b] = headEl.children; if (a && b && words) { a.textContent = words[0]; b.textContent = words[1]; } };
   body.append(tabs, lede, sec, pSec, oLede, boardSec, heldSec, lettersSec, tLede, tradeSec);
   win.append(head, body);
 
@@ -274,16 +295,18 @@ export function mountNavalYardWindow(host, deps) {
     const ot = officeText(o);
     h2.textContent = 'The harbourmaster';
     oLede.textContent = ot.lede;
+    headWords(boardHead, ot.heads?.board ?? ['The board', 'today\'s contracts']);   // ETHER-SEA: the quay's talk past the Veil
+    headWords(lettersHead, ot.heads?.letters ?? ['Letters', 'a rank\'s favours']);
     for (const c of [...boardList.children]) c.remove();
     for (const b of ot.board) {
       boardList.append(officeRow(b.title, b.words, b.can ? b.terms : `${b.terms} - ${b.why}`, b.press, b.can, () => { const r = o.take(b.id); note = r?.text ? { text: r.text, warn: !r.ok } : null; render(); }));
     }
-    if (!ot.board.length) boardList.append(el('li', 'dfnaval-item more', 'Nothing more on the board today.'));
+    if (!ot.board.length) boardList.append(el('li', 'dfnaval-item more', ot.ether ? 'Nobody on the quay has a tale today.' : 'Nothing more on the board today.'));
     for (const c of [...heldList.children]) c.remove();
     for (const h of ot.held) heldList.append(officeRow(h.title, h.words, h.state, 'Give up', true, () => { const r = o.abandon(h.id); note = r?.text ? { text: r.text, warn: true } : null; render(); }));
     heldSec.style.display = ot.held.length ? '' : 'none';
     for (const c of [...lettersList.children]) c.remove();
-    for (const x of ot.letters) lettersList.append(officeRow(x.title, x.words, null, x.press, x.can, () => { const r = x.id === 'marque' ? o.buyMarque() : o.buyCarrack(); note = r?.text ? { text: r.text, warn: !r.ok } : null; render(); }));
+    for (const x of ot.letters) lettersList.append(officeRow(x.title, x.words, null, x.press, x.can, () => { const r = x.id === 'marque' ? o.buyMarque() : x.id === 'chart' ? o.buyChart() : o.buyCarrack(); note = r?.text ? { text: r.text, warn: !r.ok } : null; render(); }));   // ETHER-SEA: a chart of these waters
     lettersSec.style.display = ot.letters.length ? '' : 'none';
   };
   const renderTrade = (x) => {

@@ -9,8 +9,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  GOODS, GOODS_TEMPLATE, GOODS_ROWS, goodById, goodTemplate, goodOfTemplate, mintGood, goodIn, takeGood, goodsWeight, MADE_K, WANT_K, DRIFT, SPREAD, EXOTIC_K,
-  CROWN_TRADE, STOCK, portTrade, standOf, priceOf, exchangeOf,
+  GOODS, GOODS_TEMPLATE, GOODS_ROWS, goodById, goodTemplate, goodOfTemplate, mintGood, goodIn, takeGood, goodsWeight, MADE_K, WANT_K, PRICE_DRIFT, SPREAD, EXOTIC_K,
+  CROWN_TRADE, DAY_STOCK, portTrade, standOf, priceOf, exchangeOf,
 } from '../src/systems/naval/tradeGoods.js';
 import { CHART_TEMPLATE, CHART_ROW, CHART_CHANCE, CHART_PX, CACHE_GOLD, CHART_SITE, mintChart, isChart, chartAboard, chartSite, cacheGold } from '../src/systems/naval/treasureCharts.js';
 import { templateByIndex } from '../src/systems/itemTemplates.js';
@@ -68,8 +68,8 @@ test('CAPT-TRADE a port\'s trade: its crown\'s makes and wants, twisted by one g
   assert.equal(standOf(WAYREST, 'nope'), 'neither');
 });
 
-test('CAPT-TRADE the price: a good\'s base at MADE_K where made, WANT_K where wanted (EXOTIC_K for the other sea\'s), drifting within DRIFT a day, the same for every client; the exchange sells SPREAD over it and buys SPREAD under it (mutants: each mood, the drift, the day, the spread)', () => {
-  assert.deepEqual([MADE_K, WANT_K, DRIFT, SPREAD, EXOTIC_K], [0.6, 1.55, 0.12, 0.08, 1.4]);
+test('CAPT-TRADE the price: a good\'s base at MADE_K where made, WANT_K where wanted (EXOTIC_K for the other sea\'s), drifting within PRICE_DRIFT a day, the same for every client; the exchange sells SPREAD over it and buys SPREAD under it (mutants: each mood, the drift, the day, the spread)', () => {
+  assert.deepEqual([MADE_K, WANT_K, PRICE_DRIFT, SPREAD, EXOTIC_K], [0.6, 1.55, 0.12, 0.08, 1.4]);
   for (let day = 0; day < 40; day++) {
     const made = priceOf(WAYREST, 'wine', day), wanted = priceOf(SENTINEL, 'wine', day) ?? null;
     assert.ok(made.mid >= 30 * 0.6 * 0.88 - 1e-9 && made.mid <= 30 * 0.6 * 1.12 + 1e-9, `${made.mid}`);
@@ -89,8 +89,8 @@ test('CAPT-TRADE the price: a good\'s base at MADE_K where made, WANT_K where wa
   if (standOf(SENTINEL, 'wine') === 'wants') assert.ok(s.buy > w.sell * 1.5, 'carried to where it is wanted: half again and more');
 });
 
-test('CAPT-TRADE the exchange\'s board: every good of its sea, the other sea\'s it wants; how many more it sells and buys today by STOCK and the captain\'s dealing here; the other sea\'s never sold (mutants: the stock, the dealing\'s sides, the exotic rows)', () => {
-  assert.deepEqual(STOCK, { makes: { sell: 30, buy: 4 }, wants: { sell: 2, buy: 30 }, neither: { sell: 10, buy: 12 } });
+test('CAPT-TRADE the exchange\'s board: every good of its sea, the other sea\'s it wants; how many more it sells and buys today by DAY_STOCK and the captain\'s dealing here; the other sea\'s never sold (mutants: the stock, the dealing\'s sides, the exotic rows)', () => {
+  assert.deepEqual(DAY_STOCK, { makes: { sell: 30, buy: 4 }, wants: { sell: 2, buy: 30 }, neither: { sell: 10, buy: 12 } });
   const rows = exchangeOf(WAYREST, 3);
   assert.deepEqual(rows.map((r) => r.id), GOODS.map((g) => g.id), 'the Bay\'s and the Etheric goods it wants');
   const wine = rows.find((r) => r.id === 'wine');
@@ -136,7 +136,7 @@ test('CAPT-TRADE the exchange dealt with: goods bought into the hold - as many a
   many.office.exchange({ cargo: big }).buy('wine', 99);
   assert.equal(goodIn(big, 'wine'), 30, 'no more than it sells today');
   assert.equal(many.office.exchange({ cargo: big }).buy('wine', 1).ok, false);
-  // sold where it is wanted is not here - sold here, what Wayrest buys of what it makes: STOCK.makes.buy
+  // sold where it is wanted is not here - sold here, what Wayrest buys of what it makes: DAY_STOCK.makes.buy
   const s1 = h.office.exchange({ cargo: hold }).sell('wine', Infinity);
   assert.equal(s1.ok, true);
   assert.equal(goodIn(hold, 'wine'), 10 - 4, 'Wayrest takes four of its own wine a day');

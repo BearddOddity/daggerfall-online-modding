@@ -864,6 +864,15 @@ export function tamrielLandOn(search) {
   return !!getPref('tamrielLand') && (isOnlinePage(search) || isEnhanced(search));
 }
 
+/** ETHER-SEA (bible/03-World/Etheric-Sea.md): THE ETHERIC SEA'S SWITCH - its ground streamed in the world's far box
+ *  (world/ethericSea.js) and the crossing offered on the open Abecean - on the enhanced skin and online; the classic
+ *  skin keeps DFU's own sea. `?ether=off` the kill door. No Features row: the crossing is the player's own choice each
+ *  time it is offered. The world host reads it once, at its mount. */
+export function etherSeaOn(search) {
+  if (pageParam('ether', search) === 'off') return false;
+  return isOnlinePage(search) || isEnhanced(search);
+}
+
 /** TAMRIEL3: THE TRACE'S KILL DOOR - `?tamrieltrace=off` keeps the authored shape (the continent as TAMRIEL1 drew it)
  *  where the picture's own trace would stand; no row, a door for a day the trace reads a picture wrong. */
 export function tamrielTraceOn(search) {

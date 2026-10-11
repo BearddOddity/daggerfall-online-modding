@@ -279,10 +279,12 @@ import { treeKind, isTreeRecord, FOREST_STAMP } from './treeHost.js';   // PROF4
 import { createLowPolyTrees } from '../systems/lowPolyTreesAssets.js';   // LPT1: Low Poly Trees - the host's one door
 import { LPT_SCALE_MAX, lptVariety, buildTreeSet } from '../world/lowPolyTrees.js'; import { naturePicture } from '../world/naturePicture.js';   // LPT1: each tree's own draw, and a near pixel's set; AUDIT 05b A12: which picture a nature flat stands as, every host's one choice
 import { realForestsOn, FOREST_HIDDEN_LOCATION_TYPES, roadVergesOn, climateBlendOn } from './shared.js';   // FOREST1: the Real forests switch, and the places the woods hide; VERGE1: the clear roadsides' switch; ECOTONE1: the blended climates'
-import { landformsOn, tamrielLandOn, tamrielTraceOn } from './shared.js';   // LANDFORM1-3: the Landforms switch; TAMRIEL2: the land beyond the Bay's; TAMRIEL3: the trace's door
+import { landformsOn, tamrielLandOn, tamrielTraceOn, etherSeaOn } from './shared.js';   // LANDFORM1-3: the Landforms switch; TAMRIEL2: the land beyond the Bay's; TAMRIEL3: the trace's door; ETHER-SEA: the Etheric Sea's
 import { preloadTamrielTrace } from '../ui/tamrielTrace.js';   // TAMRIEL3: Daggerfall's own map of Tamriel, off the player's two files
 import { fitBayToPicture } from '../world/tamrielLand.js';   // TAMRIEL3: where the Bay stands on it
 import { groundWoods, groundClimateIndex } from '../world/tamrielGround.js';   // TAMRIEL2: the continent's ground round the Bay, for the kernels and the far ring
+import { etherWoods, etherClimateIndex, etherPoliticIndex, etherFrame, inEther, inEtherLaw, isleAt, veilhaven, ETHER_SEA_NAME, CROSS_X, CROSS_LAND_PX, etherLight, ETHER_KEY_TINT } from '../world/ethericSea.js';   // ETHER-SEA: the Etheric Sea's ground and its box
+import { etherTemplates, etherTemplateOf, synthesizeEtherLocation, ETHER_REGION, ETHER_REGION_NAME } from '../world/etherPlaces.js';   // ETHER-PLACES: the isles' towns and ruins
 import { tamrielFrameInBay, inBay as onTheBay } from '../world/tamrielFrame.js';   // TAMRIEL2: the frame the world streams over, and the Bay's own ground
 import { createLandforms, landformLiftField, landformSites, landformClimates, cliffFadeAt } from '../world/landforms.js';   // LANDFORM1-3: the shaped ground, and what it lifts a point by; AUDIT LANDFORMS II I1: the lift's fade beside the sea
 import { vergeClear, natureReach, pathTileMask, lptFitCap } from '../world/roadVerge.js';   // VERGE1: a wild flat's footprint off the roads; LPT-FIT: every Low Poly tree's crown off them
@@ -595,6 +597,8 @@ import { ComeSailAwayRenderer, softParticleTexture as csaSoftParticleTexture } f
 import { createNavalHost, hullBoxOf as navalHullBoxOf, NAVAL_SAVE_VENDOR, NAVAL_TAG_RANGE } from './navalHost.js';   // NAV-H: the sea fight - the Iliac Bay's ships, the guns, boarding, the law and the word
 import { createCaptainLedger, CAPTAIN_SAVE_VENDOR, perksOf, PERKS_REFUSED_AT, logLines } from '../systems/naval/captainLedger.js';
 import { createHarbourOffice } from './harbourOffice.js';
+import { createEtherHost } from './etherHost.js';   // ETHER-SEA: the Etheric Sea's waters, charts, strands and legends
+import { createCrossingGate, crossingWayAt, crossingTarget, crossingRows, crossingWords, CROSS_DAYS, CROSS_CHECK_S, CROSS_REFUSED } from '../systems/naval/etherCrossing.js';   // ETHER-CROSSING: the voyage across
 import { mulberry32 } from '../combat/bloodArt.js';   // CAPT-BOARD: a site's point off its seed
 import { CHART_TEMPLATE } from '../systems/naval/treasureCharts.js';   // CAPT-CHARTS: a treasure chart read   // CAPT-BOARD: the harbourmaster's board, the contracts, the letters
 import { mintDeed } from '../systems/comeSailAwayItems.js';   // CAPT-BOARD: the Admiralty's carrack's deed, the shelf's own mint   // CAPT-LOG: the captain's ledger - the log, the crowns' regard, the ranks, the letter of marque
@@ -617,7 +621,7 @@ import { hullBuild } from '../systems/naval/navalShips.js';   // LIVING CREW: a 
 import { sparedByPlayer, isShipmate } from '../combat/friendlyFire.js';   // SHIPMATES: the player's own crew, spared his blows and wearing their bars
 import { padFamily } from '../ui/padGlyphs.js';   // AUDIT NAV1 (the presentation): the pad in hand's family - the readout names its buttons
 import { hdGlyphName } from '../ui/padGlyphsHD.js';   // NAV-F: the helm's readout; AUDIT NAV1: its Brace under a finger
-import { createNavalPlunderOverlay, closeNavalPlunder, createNavalYardOverlay, closeNavalYard } from '../ui/navalPlunderDoor.js';   // NAV-F: a taken ship's window, behind its door; AUDIT NAV1: the shipwright's
+import { createNavalPlunderOverlay, closeNavalPlunder, createNavalYardOverlay, closeNavalYard, createEtherChartOverlay } from '../ui/navalPlunderDoor.js';   // NAV-F: a taken ship's window, behind its door; AUDIT NAV1: the shipwright's
 import { installNavalSounds } from '../systems/naval/navalSounds.js';   // NAV-E: the guns' own sounds
 import { navalRecordKey } from '../systems/naval/navalWire.js';   // NAV-G: my sea's word, said when it changed
 import { CROWNS as NAVAL_CROWNS, crownOf as navalCrownOf } from '../systems/naval/navalShips.js';   // NAV-C: the three crowns, whose capitals name the waters; AUDIT NAV1 (B2): a raid at sea parsed in theirs
@@ -1307,6 +1311,18 @@ export async function bootWorld(canvas, renderer, params, status) {
     maps.getClimateIndex = groundClimateIndex(maps.getClimateIndex.bind(maps));
   }
   StreamingWorldState.frame = tamrielLand ? tamrielFrameInBay() : null;
+  // ETHER-SEA (bible/03-World/Etheric-Sea.md): THE ETHERIC SEA'S GROUND - its isles and its open water, composed over
+  // whatever the world grows past the Bay (world/ethericSea.js: its own box, far north of the continent's frame; the
+  // worker composes its copy the same way), its climate read beside it, and its box a frame the world streams over
+  // (the crossing's landfall and a save made there build from it).
+  const etherSea = etherSeaOn();
+  let _etherCrossing = false;   // ETHER-CROSSING: a voyage under way (etherCross, far below) - declared with the switch, before any frame reads it (BOOT-TDZ2's law)
+  if (etherSea) {
+    woods = etherWoods(woods);
+    maps.getClimateIndex = etherClimateIndex(maps.getClimateIndex.bind(maps));
+    maps.getPoliticIndex = etherPoliticIndex(maps.getPoliticIndex.bind(maps), ETHER_REGION);   // its region the isles' (getRegionIndexAt reads it) - never the Alik'r's clamp
+  }
+  StreamingWorldState.frames = etherSea ? [etherFrame()] : [];
   // EV7: the pixel kernel's off-thread home - a COPY of the WOODS
   // bytes crosses once; this thread's `woods` stays the fallback law.
   const terrainGen = new TerrainGenClient({ woods, woodsBytes });
@@ -1615,6 +1631,10 @@ export async function bootWorld(canvas, renderer, params, status) {
   // a region's cities apart: its Hollow stood by another city, on another pixel, in another room.
   const _sdCityRows = params.has('online') ? _classicRows.filter((loc) => !!hubClaim(loc, maps.getRegionName(loc.regionIndex))) : [];
   const _sdTemplateRows = params.has('online') ? sdTemplates(_classicRows, isMainStoryDungeon) : [];
+  // ETHER-PLACES (world/etherPlaces.js): THE ISLES' TEMPLATES - the towns and the ruins an Etheric isle's place may
+  // clone, off the SAME rows (the game's own, as MAPS.BSA holds them: every client clones the same place), kept before
+  // the rows go
+  const _etherTemplates = etherSea ? etherTemplates(_classicRows ?? _hubRows.map(classicRow).filter(Boolean), isMainStoryDungeon) : null;
   _classicRows = null;   // read, let go
   // HUB1: every region's main city, one answer on every client (systems/regionHubs.js) - read online alone
   const regionHubs = pickRegionHubs(_hubRows, { regionNameOf: (r) => maps.getRegionName(r) });
@@ -2346,6 +2366,7 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  build took the index's word for a spawn it held, so one stood again at every rebuild whatever its clocks said, while
    *  the Overworld (tvSpawnGone) had it gone. */
   function _locationToBuild(px, py) {
+    if (etherSea && inEther(px, py)) return etherPlaceAt(px, py);   // ETHER-PLACES: an isle's place, or the open sea's none
     const key = `${px},${py}`;
     const loc = locationIndex.get(key);
     if (loc?.spawned && _spawnLedger.expired(key, _spawnClock()) && !_insideSpawn(key)) {
@@ -2354,6 +2375,23 @@ export async function bootWorld(canvas, renderer, params, status) {
       return null;
     }
     return loc || spawnedDungeonAt(px, py);
+  }
+  /** ETHER-PLACES (world/etherPlaces.js): THE PLACE AN ISLE'S CENTRE PIXEL STANDS - a port's town or a ruin's dungeon,
+   *  cloned off the game's own rows under the isle's own id, name and index, the region it answers for the Etheric Isles'
+   *  (etherPlaces.js ETHER_REGION) and its climate the isle's - stood in the index once (a building's door, a quest's
+   *  site and a save's records read it there), or null: the open sea, an isle's other pixels, a wild isle, a rock. */
+  function etherPlaceAt(px, py) {
+    const key = `${px},${py}`;
+    const had = locationIndex.get(key);
+    if (had?.ether) return had;
+    const isle = isleAt(px, py);
+    if (!isle || isle.px !== px || isle.py !== py) return null;
+    const template = etherTemplateOf(_etherTemplates, isle);
+    if (!template) return null;
+    const loc = synthesizeEtherLocation(template, isle, { regionIndex: ETHER_REGION, regionName: ETHER_REGION_NAME, politic: 128 + ETHER_REGION, climate: getWorldClimateSettings(isle.climate) });
+    _locIndexGen += 1;
+    locationIndex.set(key, loc);
+    return loc;
   }
   /** AUDIT OW4 D4: THE CLONE a pixel's spawn IS - the template its hash picks, dressed as where it stands (region, politic,
    *  climate, elite). Pure in the salt, the pixel and the map files, so the one answer serves spawnedDungeonAt (which stands
@@ -2387,7 +2425,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** AUDIT OW5b D3: WHAT STANDS ON A PIXEL, built or not - the index's place, else the spawn its roll would stand (online,
    *  side-effect free: tvSpawnAt). A member walking to the leader's spawn read the index alone, and a far spawn their own
    *  pixels had never built was a bare spot to them. */
-  const tvLocationAt = (x, y) => locationIndex.get(`${x},${y}`) ?? (params.has('online') && spawnsDungeon(_spawnSalt, x, y) ? tvSpawnAt(x, y) : null);
+  const tvLocationAt = (x, y) => locationIndex.get(`${x},${y}`) ?? (params.has('online') && !inEtherLaw(x, y) && spawnsDungeon(_spawnSalt, x, y) ? tvSpawnAt(x, y) : null);   // ETHER-PLACES: no spawn past the Veil - the isles stand their own
   /** AUDIT LANDFORMS B1: landformLiftAt's pixels not built yet - what the build will stand there: the index's place, else
    *  online the spawn its roll stands; one past its time with nobody in it is built empty (_locationToBuild), read here
    *  without taking it out of the index. AUDIT LANDFORMS II F1: declared here, beside the build's own answer, so it is the
@@ -9182,7 +9220,24 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** SEAT2b part two (Seats-Arc 7.5: "Harbour (coastal seats only)"): a map pixel of sea - the port's one water law
    *  (ui/overworldModel.js isWaterPixel over CLIMATE.PAK and WOODS.WLD's height), for a town's coast (fortLaw.js coastalAt). */
   const seaPixel = (x, y) => isWaterPixel(maps.getClimateIndex(x, y), woods.getHeightMapValue(x, y));
+  /** ETHER-PORTS (bible/03-World/Etheric-Sea.md): the Etheric isle whose town stands on a map pixel - a port isle's
+   *  centre - or null (the Bay's world, the open sea, any other isle). */
+  const etherPortAt = (x, y) => {
+    if (!etherSea || !inEther(x, y)) return null;
+    const i = isleAt(x, y);
+    return i && i.kind === 'port' && i.px === x && i.py === y ? i : null;
+  };
+  /** ETHER-PORTS: the port isle within a pixel of a map pixel (the nearest), or null. */
+  const etherPortNear = (x, y) => {
+    let best = null, bd = Infinity;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const i = etherPortAt(x + dx, y + dy); const d = Math.abs(dx) + Math.abs(dy); if (i && d < bd) { bd = d; best = i; } }
+    return best;
+  };
+  /** ETHER-PORTS: a port isle as the harbour office and the naval host read a port - `{ key, name, px, py, region,
+   *  crown: null, ether: true }`: no crown's writ runs past the Veil. */
+  const etherPortOf = (i) => ({ key: `${i.px},${i.py}`, name: i.name, px: i.px, py: i.py, region: ETHER_REGION, crown: null, ether: true });
   const csaIsPortTown = (x, y) => {
+    if (etherSea && inEther(x, y)) return !!etherPortAt(x, y);   // ETHER-PORTS: an isle's port, past the Veil
     const summary = travelLocationSummaryAt(mapDict, x, y);
     if (!summary) return false;
     if (hasPortFor(summary.id)) return true;   // SEAT2b part two: or a members' Harbour at a seat ("ships dock at the seat")
@@ -9437,7 +9492,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // the window left by (every mode runs this; the hide is a no-op on a layer already down)
     if (!_csaMapWindow) hideEnhancedTextLayer(CSA_MAP_TEXT_LAYER);
     if (!csaRuntime) return;
-    const paused = gamePaused() || _loading || _partyArrivalPending;   // CSA-J (the audit): Update, LateUpdate and FixedUpdate return while SaveLoadManager.LoadInProgress too (4291/4917/5087), the pause's arm
+    const paused = gamePaused() || _loading || _partyArrivalPending || _etherCrossing;   // ETHER-CROSSING: the ship held while she is carried across   // CSA-J (the audit): Update, LateUpdate and FixedUpdate return while SaveLoadManager.LoadInProgress too (4291/4917/5087), the pause's arm
     _csaDt = paused ? 0 : dt * worldTimeScale();
     if (!paused) _csaTime += _csaDt;
     _csaMovedPlayer = false;
@@ -9774,6 +9829,11 @@ export async function bootWorld(canvas, renderer, params, status) {
     const p = playerTravelPixel(), key = `${p.x},${p.y}`;
     if (_navalPortHereAt?.key === key) return _navalPortHereAt.port;
     let port = null, best = Infinity;
+    if (etherSea && inEther(p.x, p.y)) {   // ETHER-PORTS: an isle's port past the Veil
+      const isle = etherPortNear(p.x, p.y);
+      _navalPortHereAt = { key, port: isle ? etherPortOf(isle) : null };
+      return _navalPortHereAt.port;
+    }
     for (const q of navalPortList()) { const d = Math.max(Math.abs(q.px - p.x), Math.abs(q.py - p.y)); if (d <= 1 && d < best) { best = d; port = q; } }
     _navalPortHereAt = { key, port };
     return port;
@@ -9798,7 +9858,10 @@ export async function bootWorld(canvas, renderer, params, status) {
     const key = `${p.x},${p.y}`;
     if (_navalHarbourAt?.key !== key) {
       let town = null;
-      for (let dy = -1; dy <= 1 && !town; dy++) for (let dx = -1; dx <= 1 && !town; dx++) {
+      const isle = etherSea && inEther(p.x, p.y) ? etherPortNear(p.x, p.y) : null;   // ETHER-PORTS: an isle's town, its harbour sounded as any port's
+      const loc = isle ? etherPlaceAt(isle.px, isle.py) : null;
+      if (loc?.exterior?.exteriorData) town = { id: `ether:${isle.key}`, loc, x: isle.px, y: isle.py, name: isle.name };
+      for (let dy = -1; dy <= 1 && !town && !isle; dy++) for (let dx = -1; dx <= 1 && !town; dx++) {
         if (!csaIsPortTown(p.x + dx, p.y + dy)) continue;
         const summary = travelLocationSummaryAt(mapDict, p.x + dx, p.y + dy);
         const loc = summary ? maps.getLocation(summary.regionIndex, summary.locationIndex ?? summary.mapIndex) : null;
@@ -10022,9 +10085,22 @@ export async function bootWorld(canvas, renderer, params, status) {
     townTalk.showOverlay(win, () => { if (why === 'hold') navalOpenHold(model, hold); });
     return true;
   }
+  /** ETHER-CHART: the chart of the Etheric Sea over the world (navalPlunderDoor.js's chart door) - the ship's pixel and
+   *  heading, the isles charted, the legends heard of (etherHost.js chart). Answers whether it opened. */
+  function openEtherChart() {
+    const word = () => { const p = playerTravelPixel(); return etherHost.chart(p.x, p.y, cam.yaw); };
+    const win = createEtherChartOverlay({ word });
+    if (!win) return false;
+    townTalk.showOverlay(win);
+    return true;
+  }
   /** AUDIT NAV1 (the helm): the shipwright's window over the world (navalPlunderDoor.js's yard door). */
   function navalOpenYard(model) {
-    model.office = () => harbourOffice.model({ uid: model.uid ?? null });   // CAPT-BOARD: the harbourmaster's tab
+    model.office = () => {   // CAPT-BOARD: the harbourmaster's tab - ETHER-SEA: past the Veil a freeport's (etherHost.js office)
+      const port = navalPortHere();
+      if (port?.ether) { const o = etherHost.office(port); return o ? { ...o, buyChart: () => { const r = etherHost.buyChart(port); captainSay(); return r; } } : null; }
+      return harbourOffice.model({ uid: model.uid ?? null });
+    };
     model.exchange = () => harbourOffice.exchange({ uid: model.uid ?? null, cargo: model.cargo?.() ?? null });   // CAPT-TRADE: the exchange's tab
     const win = createNavalYardOverlay({ model });
     if (!win) return false;
@@ -10062,10 +10138,24 @@ export async function bootWorld(canvas, renderer, params, status) {
     port: () => navalPortHere(),
     ports: () => navalPortList(),
     seaAt: (x, y) => seaPixel(x, y),
-    waters: () => { const p = playerTravelPixel(); return navalCrownOf(p.x, p.y, navalCapitals(), _questRegionIndex()).name; },
+    waters: () => { const p = playerTravelPixel(); return etherSea && inEther(p.x, p.y) ? null : navalCrownOf(p.x, p.y, navalCapitals(), _questRegionIndex()).name; },   // ETHER-SEA: no crown's waters past the Veil
     carrack: (price, port) => { const deed = mintDeed(4, 0, csaNewItemUid(), price); return !!titleDeed(deed, { port: { name: port.name } }); },
     stow: (hold, item) => addItem(hold, item),   // CAPT-TRADE: goods into her hold
   });
+  // ETHER-SEA (bible/03-World/Etheric-Sea.md): THE ETHERIC SEA'S HOST - its waters (the naval host's `where`), the isles
+  // charted as they are sighted, the wild isles' strands (sites of the naval host's), its legends' coming and their ends,
+  // and its harbourmasters' rumours and charts - over the same ledger
+  const etherHost = createEtherHost({
+    ledger: captainLedger,
+    day: () => Math.floor(worldMinutes() / 1440),
+    gold: () => totalGoldAmount(playerEntity),
+    pay: (n) => { deductGold(playerEntity, n); surfacePlayer(); },
+    credit: (n) => { addGold(playerEntity, n); surfacePlayer(); },
+    say: (text, s) => townTalk.say(text, s),
+    mid: (text, s) => setMidScreenText(text, s),
+  });
+  /** ETHER-SEA: the Etheric Sea's waters at the player's pixel (etherHost.js `waters`), or null in the Bay's world. */
+  const etherWatersHere = () => { if (!etherSea) return null; const p = playerTravelPixel(); return etherHost.waters(p.x, p.y); };
   // CAPT-CHARTS: a treasure chart USED is read - its cache marked on the captain's charts and the chart spent (its words
   // on the pack's line either way)
   registerItemUseHandler(CHART_TEMPLATE, (item, collection) => {
@@ -10084,7 +10174,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     tearMarque: () => captainLedger.tearMarque(),
     // CAPT-BOARD: what the sea did to the contracts held, their waters, and a rank's favours at sea
     event: (ev) => { const r = harbourOffice.event(ev); captainSay(); return r; },
-    sites: () => harbourOffice.sites(),
+    sites: () => { const p = playerTravelPixel(); return etherSea && inEther(p.x, p.y) ? [...harbourOffice.sites(), ...etherHost.sites(p.x, p.y)] : harbourOffice.sites(); },   // ETHER-SEA: and a wild isle's strand within reach
     yardDiscount: () => harbourOffice.perksHere().yard,
     seasonedHires: () => harbourOffice.perksHere().seasoned,
     reliefSure: (crown) => harbourOffice.perksAt(crown).relief,
@@ -10093,6 +10183,12 @@ export async function bootWorld(canvas, renderer, params, status) {
   };
   naval = createNavalHost({
     captain: captainDeps,   // CAPT-LOG: the ledger's door
+    ether: etherSea ? {   // ETHER-SEA: the Etheric Sea's door - its legends, a corsair's papers, a strand's good
+      legendHere: (px, py, o) => etherHost.legendHere(px, py, o),
+      legendEnded: (id, act) => { const r = etherHost.legendEnded(id, act); captainSay(); return r; },
+      papers: (cls, seed, px, py) => etherHost.papers(cls, seed, px, py),
+      gather: (siteId) => etherHost.gather(siteId),
+    } : null,
     bountyOf: (e) => (e?.bounty ? harbourOffice.bountyWords(e.bounty) : null),   // CAPT-BOARD: a bounty's purse on the glass's card
     sitePoint: (px, py, seed) => navalSitePoint(px, py, seed),   // CAPT-BOARD: a held contract's waters in the scene
     worth: (items) => navalLootWorth(items),   // CAPT-LOG: plunder's worth to the log
@@ -10112,7 +10208,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       dir: [Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)],
     }),
     level: () => playerEntity.level ?? 1,
-    where: () => { const p = playerTravelPixel(); const nearPort = navalNearPort(); return { px: p.x, py: p.y, region: _questRegionIndex(), day: Math.floor(worldMinutes() / 1440), nearPort, port: nearPort ? navalPortHere() : null, waters: watersOf({ nearPort, portPx: navalPortPx() }), capitals: navalCapitals(), cityLights: isCityLightsOn(minuteNow()), night: isNight(minuteNow()) }; },   // CAPT-BOARD: the port lain at   // AUDIT WK-N5: the lanterns' hours and the dark's, apart - CAPT-WATERS: the deep waters
+    where: () => { const p = playerTravelPixel(); const nearPort = navalNearPort(); const ether = etherWatersHere(); return { px: p.x, py: p.y, region: _questRegionIndex(), day: Math.floor(worldMinutes() / 1440), nearPort, port: nearPort ? navalPortHere() : null, waters: ether ? 'ether' : watersOf({ nearPort, portPx: navalPortPx() }), ether, capitals: navalCapitals(), cityLights: isCityLightsOn(minuteNow()), night: isNight(minuteNow()) }; },   // ETHER-SEA: the Etheric Sea's band and depth, its legend's haunt   // CAPT-BOARD: the port lain at   // AUDIT WK-N5: the lanterns' hours and the dark's, apart - CAPT-WATERS: the deep waters
     say: (text, seconds) => townTalk.say(text, seconds),
     mid: (text, seconds) => setMidScreenText(text, seconds),
     shake: (amount) => betterAmbience.weaponKick(amount),   // FIELD-GUN6's door: a shake that is not a wound, under the player's own maxShake
@@ -10256,12 +10352,90 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  stowPlunder) - ahead of Come Sail Away's own transition, while my boats still stand. Never on a load: the loaded
    *  save's hold is the one that stands. */
   const navalStow = () => { if (!_loading) naval?.stowPlunder?.(); };
+  // ETHER-CROSSING (systems/naval/etherCrossing.js; bible/03-World/Etheric-Sea.md): THE CROSSING - asked at a helm in the
+  // crossing waters (out) and in the Veil (home), once each time the ship comes into them, and sailed: the helm let go,
+  // the jump to the landfall, the ship at whose helm the captain stood brought round where she floats there (her crew and
+  // her hold aboard her) and her helm taken again, the voyage's days on the clock.
+  const crossGate = createCrossingGate();
+  let _crossCheckT = 0;
+  /** A map pixel's distance to the nearest land (Chebyshev, map pixels), out to CROSS_LAND_PX (Infinity past it) - the
+   *  map's one water law (seaPixel), asked once a pixel. */
+  let _crossLandAt = null;
+  const crossLandPx = (px, py) => {
+    const key = `${px},${py}`;
+    if (_crossLandAt?.key === key) return _crossLandAt.d;
+    let d = Infinity;
+    ring: for (let r = 0; r <= CROSS_LAND_PX; r++) {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) === r && !seaPixel(px + dx, py + dy)) { d = r; break ring; }
+      }
+    }
+    _crossLandAt = { key, d };
+    return d;
+  };
+  /** The helm's waters asked every CROSS_CHECK_S: a way they offer, not asked since the ship came into them, asked - or
+   *  said refused (an enemy near, another player aboard). */
+  function etherCrossStep(dt) {
+    if (!etherSea || _etherCrossing || !csaRuntime?.isSailing?.()) return;
+    _crossCheckT -= dt;
+    if (_crossCheckT > 0) return;
+    _crossCheckT = CROSS_CHECK_S;
+    if (gamePaused() || _loading || townTalk.overlayActive || modes?.transitioning || _mode() !== 'exterior') return;
+    const p = playerTravelPixel();
+    const way = crossingWayAt(p.x, p.y, p.x < CROSS_X && !inEther(p.x, p.y) ? crossLandPx(p.x, p.y) : 0);
+    if (!crossGate.offer(way)) return;
+    crossGate.asked(way);
+    if (navalHostileNear()) { townTalk.say(CROSS_REFUSED.hostile, 4); return; }
+    if (csaPassengersOn(csaRuntime.state.CurrentBoat) > 0) { townTalk.say(CROSS_REFUSED.passengers, 4); return; }
+    townTalk.showOverlay(new YesNoBoxWindow({ rows: crossingRows(way), onYes: () => { etherCross(way).catch((e) => console.warn('[ether] the crossing:', e?.message ?? e)); }, onNo: () => {} }));
+  }
+  /** THE VOYAGE: the captain and the ship at whose helm they stand carried across (out to Veilhaven's waters; home to the
+   *  Bay's the last crossing out set sail from), CROSS_DAYS on the clock. Answers whether she crossed. */
+  async function etherCross(way) {
+    const boat = csaRuntime?.state?.CurrentBoat ?? null;
+    if (_etherCrossing || !boat || !csaRuntime.isSailing()) return false;
+    _etherCrossing = true;
+    try {
+      const here = playerTravelPixel();
+      const to = crossingTarget(way, captainLedger.crossedFrom());
+      if (way === 'out') captainLedger.setCrossedFrom({ px: here.x, py: here.y });
+      const minutes = CROSS_DAYS * 1440;
+      const dir = way === 'out' ? [-1, 0, 0] : [1, 0, 0];   // her bow on Veilhaven's quay, west - or on the Bay, east
+      hudFade.smashHUDToBlack();
+      csaCall(() => csaRuntime.StopSailing());   // the helm let go: she lies where she is until she is brought across
+      await _teleportToPixel(to.px, to.py, null, {
+        arriveMinutes: sharedClockOn() ? skyMinutes() : worldMinutes() + minutes,
+        modEvent: 'travel',
+        // the landfall's pixel built: the ship brought round onto its middle, where she floats, and the captain on her deck
+        resolveArrival: () => {
+          const [x, z] = state.localFromWorld((to.px + 0.5) * RAID_NATIVE_PIXEL, (499 - to.py + 0.5) * RAID_NATIVE_PIXEL);
+          csaCall(() => csaRuntime.RepositionBoat(boat, [x, tvSeaY(), z], dir, csaTerrainOf(csaPixelAt(x, z))));
+          return { pos: [x, tvSeaY() + 1, z], yaw: Math.atan2(dir[0], dir[2]) };
+        },
+      });
+      setSyntheticTimeIncrease(true); playerTicker.advance(minutes);
+      csaCall(() => csaRuntime.StartSailing(boat));
+      captainLedger.crossed();
+      if (way === 'out') captainLedger.chartIsle(veilhaven().key);   // the landfall's port, on the charts from the first
+      else crossGate.asked('out');   // home in the crossing waters: not asked out again until she has left them
+      setMidScreenText(crossingWords(way), 7);
+      captainSay();
+      return true;
+    } finally {
+      _etherCrossing = false;
+      hudFade.fadeHUDFromBlack();
+    }
+  }
   let _navalWasOn = null;
   /** The frame: the switch read, the sounds loaded at the first sea, the host's step, the flames' clock. */
   let _officeTickT = 0;   // CAPT-BOARD: the contracts' terms asked after every OFFICE_TICK_S
   function navalFrame(dt) {
     _officeTickT -= dt;
-    if (_officeTickT <= 0 && !gamePaused() && !_loading) { _officeTickT = 2; harbourOffice.tick(); captainSay(); }   // CAPT-BOARD: a term run out
+    if (_officeTickT <= 0 && !gamePaused() && !_loading) {
+      _officeTickT = 2; harbourOffice.tick(); captainSay();   // CAPT-BOARD: a term run out
+      if (etherSea && _mode() === 'exterior') { const p = playerTravelPixel(); if (inEther(p.x, p.y)) { etherHost.sight(p.x, p.y); captainSay(); } }   // ETHER-SEA: the isles in sight charted, the depth kept
+    }
+    if (!gamePaused() && !_loading) etherCrossStep(dt);   // ETHER-CROSSING: the helm's waters asked
     const on = navalOn();
     if (on !== _navalWasOn) { _navalWasOn = on; naval.setEnabled(on); if (!on) { navalFlames.clear(); closeNavalPlunder(); closeNavalYard(); drawNavalHud(null); drawNavalTags([]); } }
     if (!on) return;
@@ -16011,7 +16185,7 @@ export async function bootWorld(canvas, renderer, params, status) {
           // AUDIT OH-F B5: a save in the drowned dungeon wakes nearest ITS door, the pit - not the borrowed template's
           const ohSaved = extras.modData?.[OCEAN_HOLES_VENDOR];
           const from = ohSaved?.Active && Number.isFinite(ohSaved.PitMapX) && Number.isFinite(ohSaved.PitMapY) ? { x: ohSaved.PitMapX, y: ohSaved.PitMapY } : pixel;
-          const wake = undergroundWakeSpot(maps.getRegion(maps.getRegionIndexAt(from.x, from.y))?.mapTable ?? [], from);
+          const wake = inEther(from.x, from.y) ? { kind: 'dungeon', mapPixel: { x: from.x, y: from.y } } : undergroundWakeSpot(maps.getRegion(maps.getRegionIndexAt(from.x, from.y))?.mapTable ?? [], from);   // ETHER-PLACES: an isle's ruin wakes at its own door - the region's search would read the Alik'r's past the map
           await _teleportToPixel(wake.mapPixel.x, wake.mapPixel.y, null, { modEvent: 'load', reposition: REPOSITION.RandomStartMarker });
           // WOD6 (audit): a load all the same - SaveLoadManager.OnLoad, last, at the landed player
           { const s = walkMode && playerSpawned; const f = s ? player.pos : cam.pos; wodOnLoad([f[0], f[1] + (s ? player.height / 2 : 0), f[2]]); }
@@ -16274,6 +16448,9 @@ export async function bootWorld(canvas, renderer, params, status) {
     // here is townTalk.say. It was silent: a Find Place taken in a
     // building closed the journal on nothing.
     if ((modes?.mode ?? 'exterior') !== 'exterior') { townTalk.say(CANNOT_TRAVEL_INDOORS_TEXT); return false; }
+    // ETHER-CHART (ui/etherChartWindow.js): past the Veil the map is the captain's chart of the Etheric Sea - the Bay's has
+    // no sea there to show, and nothing on it is travelled to
+    { const p = playerTravelPixel(); if (etherSea && inEther(p.x, p.y)) return openEtherChart(); }
     // W1/U61: the DOOR decides which map this skin wears. The classic
     // window needs its art - without it there is no map to click, so
     // the door says so rather than opening a blank one (the HUD/pause
@@ -18848,7 +19025,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   function placeAtPixel(px, py) {
     const key = `${px},${py}`;
     if (_ohGpsName?.key === key && _ohGpsName.name) return _ohGpsName.name;   // AUDIT LOAD1 4: the abyss wears its own name over the pixel it borrows (_questLoc's law)
-    return locationIndex.get(key)?.name || REGION_NAMES[maps.getRegionIndexAt(px, py)] || '';
+    return locationIndex.get(key)?.name || (etherSea && inEther(px, py) ? ETHER_SEA_NAME : REGION_NAMES[maps.getRegionIndexAt(px, py)]) || '';   // ETHER-SEA: the sea's own name past the Veil
   }
   function placeHere() {
     const px = playerTravelPixel();
@@ -29899,7 +30076,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   };
   const travelViewWhere = () => {
     const px = playerTravelPixel();
-    const region = maps.getRegionName(maps.getRegionIndexAt(px.x, px.y)) || '';
+    const region = (etherSea && inEther(px.x, px.y) ? ETHER_SEA_NAME : maps.getRegionName(maps.getRegionIndexAt(px.x, px.y))) || '';   // ETHER-SEA: the sea's own name past the Veil
     const loc = locationIndex.get(`${px.x},${px.y}`);
     const inside = loc?.name && _inAnyLocationRect(walkMode ? player.pos : cam.pos);
     return travelViewLine({ place: inside ? loc.name : null, near: !inside && loc?.name ? loc.name : null, region });
@@ -33468,9 +33645,12 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     const moonNow = sky.moonlight();
     renderer.setMoonlight(moonNow);
     // SD19: the land's light leaning to brass near a standing Hollow (sdBrassLight, both lights)
+    // ETHER-LIGHT (world/ethericSea.js etherLight): and cold and violet past the Veil, both lights
+    const etherPx = etherSea ? playerTravelPixel() : null;
+    const etherAirW = etherPx && inEther(etherPx.x, etherPx.y) ? 1 : 0;
     renderer.setLighting(
-      sdBrassLight(sunbabyLight(dreadLight(withMoonAmbient(exteriorAmbient(minute, getFloat('Enhancements', 'NightAmbientLightScale', 0, 1), wxNow.sun), moonNow), skyDreadW), sunbabyW, sunbabyFace.evil), sdAirW), sunScale(minute) * wxNow.sun * flash * sky.sunFactor() * (1 - DREAD_KEY_DIM * skyDreadW),   // EVENT1: the land under the dread's light; SUNBABY1: lifted toward noon's under the sun baby (SUNBABY2: reddened under its wrath)   // ES1d: the cloud in front of the sun takes the KEY light (never the ambient - the sky still lights the ground); WX2: the scale is the front's
-      sdBrassLight(sunbabyKey(dreadLight(SUN_RIG_COLOR, skyDreadW), sunbabyW, sunbabyFace.evil), sdAirW));   // SUNBABY2: the key reddened under the wrath; SD19: brass near a Hollow
+      etherLight(sdBrassLight(sunbabyLight(dreadLight(withMoonAmbient(exteriorAmbient(minute, getFloat('Enhancements', 'NightAmbientLightScale', 0, 1), wxNow.sun), moonNow), skyDreadW), sunbabyW, sunbabyFace.evil), sdAirW), etherAirW), sunScale(minute) * wxNow.sun * flash * sky.sunFactor() * (1 - DREAD_KEY_DIM * skyDreadW),   // EVENT1: the land under the dread's light; SUNBABY1: lifted toward noon's under the sun baby (SUNBABY2: reddened under its wrath)   // ES1d: the cloud in front of the sun takes the KEY light (never the ambient - the sky still lights the ground); WX2: the scale is the front's
+      etherLight(sdBrassLight(sunbabyKey(dreadLight(SUN_RIG_COLOR, skyDreadW), sunbabyW, sunbabyFace.evil), sdAirW), etherAirW, ETHER_KEY_TINT));   // SUNBABY2: the key reddened under the wrath; SD19: brass near a Hollow
     // DW-C: the distance fog's own "under" (UnderwaterDistanceFog.TryGetUnderwaterPresentation) - the surfaces'
     // _DeepWatersUnderwater and UnderwaterPresentationEffects' light suppression read it too, so it is taken
     // here, before the lights, from this frame's camera and capsule
@@ -33917,7 +34097,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
           climateAt: (x, y) => maps.getClimateIndex(x, y),
           baseX: state.current.x, baseY: state.current.y,
           relief: !!landform,   // LANDFORM1: the ring stands the massifs the streamed ground raises
-          byteAt: tamrielLand ? (x, y) => woods.getHeightMapValue(x, y) : null,   // TAMRIEL2: the continent past the map's edge, as the stream grows it
+          byteAt: tamrielLand || etherSea ? (x, y) => woods.getHeightMapValue(x, y) : null,   // TAMRIEL2: the continent past the map's edge, as the stream grows it (ETHER-SEA: and the Etheric Sea's isles)
+          climatePast: etherSea ? (x, y) => maps.getClimateIndex(x, y) : null,   // ETHER-SEA: the isles' own climates past the map
         }, state.current.x, state.current.y, state.terrainDistance);
       } else {
         farRing.punchHole(state.current.x, state.current.y, state.terrainDistance);

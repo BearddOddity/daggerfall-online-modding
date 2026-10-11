@@ -75,6 +75,9 @@ import { lawOf, createNotoriety, crownRegion, notorietyLevel, WITNESS_RANGE, KNI
 import { standingFor } from '../systems/naval/captainLedger.js';   // CAPT-MARQUE: a rival's regard lost to a letter's prize
 import { SITE_REACH_PX } from '../systems/naval/harbourBoard.js';   // CAPT-BOARD: a held contract's waters within this of me
 import { CHART_SITE } from '../systems/naval/treasureCharts.js';   // CAPT-CHARTS: a chart's cache's site
+import { etherShipNames, etherFlagOf, legendOfClass, LEGEND_MEND_PER_S, LEGEND_MEND_QUIET_S, LEGEND_VEIL_K } from '../systems/naval/etherShips.js';   // ETHER-SEA: the Etheric Sea's ships and its legends
+import { BANDS } from '../world/ethericSea.js';   // ETHER-SEA: the waters' bands
+import { STRAND_SITE } from './etherHost.js';   // ETHER-SEA: a wild isle's strand's site
 import { KNOW, falseFlagOf, glassReach, knowledgeOf, glassHolds, glassCard, coloursWords, unknownName, hullWord, GLASS_ZOOM, GLASS_ZOOM_MIN, GLASS_ZOOM_MAX, GLASS_STUDY_S, GLASS_STUDY_NEAR_S } from '../systems/naval/shipKnowledge.js';   // SPYGLASS: what I know of a ship, and the glass
 import { drawHold, flotsamKeys, choiceEffect, choiceOffer, holdTier, CHOICES, prizeDeedValue, SALVAGE_LOT, isSalvage, salvageOf, STRONGBOX_KEY, STRONGBOX_RARITY_TIER } from '../systems/naval/navalPlunder.js';
 import { mintStores } from '../systems/naval/navalStores.js';   // SALVAGE: a wreck's stores, minted as the yard's are
@@ -1102,6 +1105,9 @@ export function createNavalHost(deps) {
   const engagedOf = (s) => s.damage.state === SHIP_STATES.afloat && (s.mode === 'engage' || s.mode === 'board');
   /** SPYGLASS: what a frame teaches me of each ship - the eye, my Lookout, the glass held on her, her acts - and the
    *  words a lesson says: my Lookout's call of her colours, false colours seen through, a black flag run up. */
+  /** ETHER-LEGENDS: a `veiled` legend made out at LEGEND_VEIL_K of every reach (the eye's, the lookout's, the glass's). */
+  const reachOf = (e, reach) => (e.legend && legendOfClass(e.ship.cls.id)?.trait === 'veiled'
+    ? { far: reach.far * LEGEND_VEIL_K, near: reach.near * LEGEND_VEIL_K, eye: reach.eye * LEGEND_VEIL_K, lookout: reach.lookout * LEGEND_VEIL_K } : reach);
   function knowStep() {
     const eye = deps.look?.()?.origin ?? deps.feet();
     const { deck, sight, lookout } = deckEye();
@@ -1111,7 +1117,7 @@ export function createNavalHost(deps) {
       if (!e.boat) continue;
       const s = e.ship;
       const dist = dist2d(s.pos, eye);
-      const reach = glassReach({ night, lit: showsLight(e), sight, lookout });
+      const reach = reachOf(e, glassReach({ night, lit: showsLight(e), sight, lookout }));
       const engaged = engagedOf(s);
       // her guns out on me - run out at my side, or her flashes - tell her colours at any range; a crown's ship come to my
       // aid hails me with hers
@@ -1179,7 +1185,7 @@ export function createNavalHost(deps) {
   const siteStood = new Map();   // site id -> her entry's id (a quarry), or 'casks'
   let lastSiteCheck = -Infinity;
   /** The crown of the waters I sail (the survey's and the hunt's). */
-  const watersCrown = () => { const w = where(); return crownOf(w.px ?? 0, w.py ?? 0, w.capitals ?? null, w.region ?? -1).name; };
+  const watersCrown = () => { const w = where(); return w.ether ? null : crownOf(w.px ?? 0, w.py ?? 0, w.capitals ?? null, w.region ?? -1).name; };   // ETHER-SEA: no crown's waters past the Veil
   /** A site's point in the scene: the world's water within her map pixel (`sitePoint`) where it is at least `minM` off,
    *  else SITE_AHEAD_M off me toward it - the first open water of thirteen ways round. */
   function sitePos(site, minM) {
@@ -1215,6 +1221,12 @@ export function createNavalHost(deps) {
     }
     return true;
   }
+  /** What a site's casks are said as when they float out. */
+  const SITE_WORDS = Object.freeze({
+    cache: 'Your lookout spies a chest bobbing where the chart said - the cache!',
+    salvage: 'Wreckage, and her casks afloat - the wreck the harbourmaster wants raised.',
+    strand: 'Your boat pulls in to the strand and back out with its haul - casks afloat alongside.',   // ETHER-SEA: a wild isle's good
+  });
   /** THE SITES' STEP, SITE_CHECK_S apart: the berth said, then each held site within reach stood if it is not. */
   function siteStep(boat) {
     if (clock - lastSiteCheck < SITE_CHECK_S) return;
@@ -1232,9 +1244,9 @@ export function createNavalHost(deps) {
         if (was && sea.has(was)) continue;
         const e = standQuarry(site);
         if (e) { siteStood.set(site.id, e.id); deps.say?.('Sails where the board said she would be!', 4); }
-      } else if ((site.kind === 'salvage' || site.kind === 'cache') && site.n > 0) {
+      } else if ((site.kind === 'salvage' || site.kind === 'cache' || site.kind === 'strand') && site.n > 0) {
         if (was && shots.floaters().some((x) => x.lot === SITE_LOT + site.id)) continue;
-        if (dropSiteCasks(site)) { siteStood.set(site.id, 'casks'); deps.say?.(site.kind === 'cache' ? 'Your lookout spies a chest bobbing where the chart said - the cache!' : 'Wreckage, and her casks afloat - the wreck the harbourmaster wants raised.', 4); }
+        if (dropSiteCasks(site)) { siteStood.set(site.id, 'casks'); deps.say?.(SITE_WORDS[site.kind], 4); }
       }
     }
   }
@@ -1247,7 +1259,7 @@ export function createNavalHost(deps) {
     const v = velocityOf(s);
     const known = knownOf(e);
     const { sight, lookout } = deckEye();
-    const reach = glassReach({ night: !!where().night, lit: showsLight(e), sight, lookout });
+    const reach = reachOf(e, glassReach({ night: !!where().night, lit: showsLight(e), sight, lookout }));   // ETHER-LEGENDS: a veiled one's
     // the study under way: her colours within the glass's far reach, the rest within its near - past it, how close
     const [needS, needM] = known < KNOW.colours ? [GLASS_STUDY_S, reach.far] : [GLASS_STUDY_NEAR_S, reach.near];
     const short = known < KNOW.studied && dist > needM;
@@ -1255,7 +1267,7 @@ export function createNavalHost(deps) {
       hull: s.hull, name: s.names?.name ?? classLine(s.cls, s.names?.crown), classLine: classLine(s.cls, s.names?.crown), faction: s.cls.faction,
       flag: s.flag, falseFlag: e.blackFlag ? null : falseFlagFor(e), temper: s.temper, mode: s.mode, hostile: engaged, friendly: stance.friendly, bound: boundOf(e),
       distance: dist, speed: Math.hypot(v[0], v[2]), crew: s.damage.crew, hullShare: s.damage.hullShare(), sailShare: s.damage.maxSail > 0 ? s.damage.sailShare() : null,
-      fire: s.damage.fire > 0, cargo: s.cls.cargo, bounty: deps.bountyOf?.(e) ?? null, lore: deps.loreOf?.(e) ?? null,
+      fire: s.damage.fire > 0, cargo: s.cls.cargo, bounty: deps.bountyOf?.(e) ?? null, lore: (e.legend ? legendOfClass(s.cls.id)?.lore : null) ?? deps.loreOf?.(e) ?? null,   // ETHER-LEGENDS: what the Etheric Sea tells of her
     }, known, { study: short ? 0 : Math.min(1, glassHeld / needS), within: short ? needM : null });
   }
   /** The volleys heard at sea, HEAR_S each (navalAI.js heardGuns) - the newest GUNFIRE_KEEP. */
@@ -1390,7 +1402,7 @@ export function createNavalHost(deps) {
     const drop = (lot, near, far) => {
       const a = random() * Math.PI * 2, r = near + random() * (far - near);
       const id = String(u32());
-      shots.dropFlotsam({ id, pos: [s.pos[0] + Math.sin(a) * r, deps.seaY(), s.pos[2] + Math.cos(a) * r], lot, from: s.cls.id, deep: !!entry.deep });   // CAPT-WATERS: her casks the deep's
+      shots.dropFlotsam({ id, pos: [s.pos[0] + Math.sin(a) * r, deps.seaY(), s.pos[2] + Math.cos(a) * r], lot, from: s.cls.id, deep: !!entry.deep || !!entry.ether });   // CAPT-WATERS: her casks the deep's (ETHER-SEA: the Etheric Sea's as rich)
       if (by === myId()) myCasks.add(id);   // KEEP-PLUNDER: a ship I sank - her casks are mine to stow if the sea goes first
     };
     // her lots that float free
@@ -1408,6 +1420,7 @@ export function createNavalHost(deps) {
     entry.charged ??= new Set();
     if (entry.charged.has(act)) return;
     entry.charged.add(act);
+    if (entry.ether) { chargeEther(act, entry); return; }   // ETHER-SEA: past the Veil no crown's writ runs
     const lawful = !!NAVAL_FACTIONS[s.cls.faction]?.lawful;
     const held = lawful ? deps.captain?.marque?.() ?? null : null;
     const under = held && s.flag && s.flag !== held.crown ? held.crown : null;   // a rival's ship, under the letter
@@ -1436,6 +1449,19 @@ export function createNavalHost(deps) {
     }
   }
 
+  /** ETHER-SEA - A SHIP OF THE ETHERIC SEA ENDED: no crime, no notoriety, no crown's regard (the ledger logs her by her
+   *  trade, 'ether' - a legend's 'legend', her name kept and every crown hearing of it); a legend's purse paid and her end
+   *  remembered (the world's `ether.legendEnded`); a corsair's papers read for a chart of her waters. */
+  function chargeEther(act, entry) {
+    const s = entry.ship, cap = deps.captain;
+    if (!cap) return;
+    const legend = entry.legend ? legendOfClass(s.cls.id) : null;
+    cap.deed?.(act, s.cls, { trade: legend ? 'legend' : 'ether', legend: legend?.name ?? null });
+    if (act !== 'sink' && act !== 'board') return;
+    cap.event?.({ type: 'end', act, faction: s.cls.faction, crown: null, bounty: entry.bounty ?? null });
+    if (legend) deps.ether?.legendEnded?.(legend.id, act);
+    else if (s.cls.faction === 'pirate') { const w = where(); deps.ether?.papers?.(s.cls, s.seed, w.px, w.py); }   // a corsair's papers
+  }
   /** The crown whose law a ship answers to: a navy's her own, else the crown of the waters she sails. */
   function crownOfShip(s) {
     const w = where();
@@ -1463,6 +1489,7 @@ export function createNavalHost(deps) {
     const boat = swim ? null : myBoats().find((b) => myBoatId(b) === e.collector) ?? myBoat();
     if (isSalvage(e.lot)) { pickSalvage(e, boat, swim); return; }   // SALVAGE: her wreckage, no hold's lot
     if (isSiteLot(e.lot) && e.lot.startsWith(SITE_LOT + CHART_SITE)) { pickCache(e, boat, swim); return; }   // CAPT-CHARTS: a chart's cache
+    if (isSiteLot(e.lot) && e.lot.startsWith(SITE_LOT + STRAND_SITE)) { pickStrand(e, boat, swim); return; }   // ETHER-SEA: a wild isle's good
     if (isSiteLot(e.lot)) {   // CAPT-BOARD: a cask of a contract's wreck - the contract's to count
       deps.say?.(swim ? 'You pull a cask of the wreck\'s cargo out of the sea.' : 'You haul a cask of the wreck\'s cargo aboard.', 3);
       deps.captain?.event?.({ type: 'haul', site: e.lot.slice(SITE_LOT.length) });
@@ -1477,6 +1504,14 @@ export function createNavalHost(deps) {
     sound(NAVAL_CLASSIC.splashSmall, e.point, 0.6);
   }
 
+  /** ETHER-SEA: a cask of a wild isle's strand hauled - its good (the world's `ether.gather`) into the hold of the boat
+   *  that sailed through it (a swimmer's pack), said. */
+  function pickStrand(e, boat, swim) {
+    const r = deps.ether?.gather?.(e.lot.slice(SITE_LOT.length)) ?? { items: [], text: '' };
+    if (r.items.length) { deps.board?.giveItems?.(r.items, swim ? null : boat ?? null); crewEvent(boat, 'plunder'); }
+    deps.say?.(r.text ? `You ${swim ? 'drag' : 'haul'} a cask aboard: ${r.text}` : 'You haul a cask aboard. It is empty.', 4);
+    if (e.point) sound(NAVAL_CLASSIC.splashSmall, e.point, 0.6);
+  }
   /** CAPT-CHARTS: a chart's cache hauled up - two of a strongbox's lots and its gold, said; the chart off the captain's. */
   function pickCache(e, boat, swim) {
     const items = [];
@@ -1601,16 +1636,43 @@ export function createNavalHost(deps) {
     const region = Number.isInteger(spec.region) && spec.region >= 0 ? spec.region
       : cls.faction === 'navy' ? crownOf(w.px ?? 0, w.py ?? 0, w.capitals ?? null, w.region ?? -1).region : (w.region ?? 17);
     const crown = cls.faction === 'navy' ? crownOf(0, 0, null, region) : null;
-    const names = shipNames(cls, spec.seed, { regionIndex: region, crown });
+    // ETHER-SEA: a ship of the Etheric Sea - launched there (the spec's band), or another's met there - its names and
+    // colours the sea's own (systems/naval/etherShips.js), a legend's her own
+    const legend = legendOfClass(cls.id);
+    const ether = spec.ether ?? (legend || w.ether ? w.ether?.band ?? 'shallows' : null);
+    const names = ether ? etherShipNames(cls, spec.seed) : shipNames(cls, spec.seed, { regionIndex: region, crown });
     const num = n ?? nextNumber();
     const id = owner ? `${owner}:${num}` : `${myId()}:${num}`;
     const ship = createSeaShip({ id, seed: spec.seed, classId: spec.classId, variant: spec.variant ?? 0, pos: spec.pos, yaw: spec.yaw ?? 0, names, owner, errand: spec.errand ?? null });
-    ship.flag = flagOf(cls, spec.seed, region);   // CAPT-MARQUE: her colours - a crown's ship her crown's, a merchantman her home port's, a pirate none
+    ship.flag = ether ? etherFlagOf(cls) : flagOf(cls, spec.seed, region);   // CAPT-MARQUE: her colours - a crown's ship her crown's, a merchantman her home port's, a pirate none; ETHER-SEA: a trader the Isles'
     if (spec.deep) ship.temper = temperOf(cls, spec.seed, { bold: DEEP_BOLD });   // CAPT-WATERS: the deep waters' pirates bolder
-    const entry = { id, n: num, owner, gen: Math.max(0, Math.min(NAVAL_GEN_MAX, spec.gen | 0)), region, deep: !!spec.deep, orphan: null, ship, boat: null, fires: null, fireLoop: null, sinkLoop: null, target: null, seen: clock, charged: null, ramAt: -Infinity, myBlowAt: -Infinity, grappleAt: -Infinity, hunter: !!spec.hunter, phase: random() * 6.28, lifeDt: 0, lifeN: num % FAR_LIFE_EVERY, list: null, wake: false, deck: null, prize: null, lost: false, sinkUnder: null, colours: null, fade: 0, retiring: false };   // SHIP-FADE: she comes into the world
+    else if (ether && cls.faction === 'pirate') ship.temper = temperOf(cls, spec.seed, { bold: etherBold(ether) });   // ETHER-SEA: the deeper the band, the bolder its corsairs
+    if (legend) ship.temper = TEMPERS.bold;   // ETHER-LEGENDS: a legend fears nothing that sails
+    const entry = { id, n: num, owner, gen: Math.max(0, Math.min(NAVAL_GEN_MAX, spec.gen | 0)), region, deep: !!spec.deep, ether, legend: legend?.id ?? null, orphan: null, ship, boat: null, fires: null, fireLoop: null, sinkLoop: null, target: null, seen: clock, charged: null, ramAt: -Infinity, myBlowAt: -Infinity, grappleAt: -Infinity, hunter: !!spec.hunter, phase: random() * 6.28, lifeDt: 0, lifeN: num % FAR_LIFE_EVERY, list: null, wake: false, deck: null, prize: null, lost: false, sinkUnder: null, colours: null, fade: 0, retiring: false };   // SHIP-FADE: she comes into the world
     sea.set(id, entry);
+    if (legend && !owner) deps.mid?.(`The sea goes still. A sail on the horizon: ${legend.name}. ${legend.lore}`, 6);   // ETHER-LEGENDS: she comes
     return entry;
   }
+  /** ETHER-SEA: the director's word of the Etheric Sea - its band's row, and the legend whose haunt the captain sails
+   *  when she sails now (the world's `ether.legendHere`) - or null in the Bay. */
+  function etherCtx(w) {
+    if (!w.ether) return null;
+    const band = BANDS.find((b) => b.id === w.ether.band) ?? BANDS[0];
+    const l = deps.ether?.legendHere?.(w.px, w.py, { night: !!w.night }) ?? null;
+    return { band, legend: l ? { id: l.id, classId: l.classId } : null };
+  }
+  /** ETHER-LEGENDS: a `mends` legend afloat, no ball in her these LEGEND_MEND_QUIET_S, knits LEGEND_MEND_PER_S of her
+   *  hull a second (her fires out first - the aether does not mend a burning ship). */
+  function legendMend(e, d) {
+    const s = e.ship;
+    if (legendOfClass(s.cls.id)?.trait !== 'mends' || s.damage.state !== SHIP_STATES.afloat || s.damage.fire > 0) return;
+    if (clock - s.damage.lastHitAt < LEGEND_MEND_QUIET_S || s.damage.hull >= s.damage.maxHull) return;
+    s.damage.repair({ hull: s.damage.maxHull * LEGEND_MEND_PER_S * d, sail: 0, crew: 0 });
+  }
+  /** ETHER-SEA: a ship of the Etheric Sea's hold, its band's tiers richer (world/ethericSea.js BANDS `tier`). */
+  const etherTier = (entry) => (entry.ether ? BANDS.find((b) => b.id === entry.ether)?.tier ?? 0 : 0);
+  /** ETHER-SEA: a band's corsairs bold on this share - the Shallows' as the coast's, the Abyss's nearly all. */
+  const etherBold = (band) => [0.3, 0.45, 0.6, 0.8][Math.max(0, BANDS.findIndex((b) => b.id === band))];
   /** A ship gone: its hull out of the pool, its fires out, and whoever fell on her deck with her. */
   function drop(entry) {
     douse(entry);
@@ -3190,7 +3252,7 @@ export function createNavalHost(deps) {
     deps.mid?.(`${entry.ship.names?.name ?? 'The ship'} is yours!`, 3);
     if (yielded) deps.say?.('The rest of her crew throw down their arms.', 3);
     // the prize: her hold drawn once (whoever opens it again finds what is left), the boat that took her
-    entry.prize = { hold: drawHold(entry.ship.cls, entry.ship.seed, (key, tier) => deps.hold?.(key, tier + (entry.deep ? DEEP_TIER : 0)) ?? []), boat: b.boat ?? nearestBoat(entry.ship.pos), peerOrigin: b.peerOrigin ?? null, chosen: null, fate: null };   // CAPT-WATERS: a deep ship's hold the richer
+    entry.prize = { hold: drawHold(entry.ship.cls, entry.ship.seed, (key, tier) => deps.hold?.(key, tier + (entry.deep ? DEEP_TIER : 0) + etherTier(entry)) ?? []), boat: b.boat ?? nearestBoat(entry.ship.pos), peerOrigin: b.peerOrigin ?? null, chosen: null, fate: null };   // CAPT-WATERS: a deep ship's hold the richer
     deps.captain?.prize?.(entry.ship.names?.name ?? classLine(entry.ship.cls, entry.ship.names?.crown), deps.worth?.(entry.prize.hold) ?? 0);   // CAPT-LOG: the richest prize
     endBoarding();   // the hands go home over the rail; her dead lie on her deck (entry.deck)
     openPrize(entry);
@@ -4042,7 +4104,7 @@ export function createNavalHost(deps) {
       const chased = new Set(ships.filter((y) => y.engaged && !y.theirs).map((y) => sea.get(y.id)?.ship.target));
       for (const x of ships) if (!x.theirs && chased.has(x.id)) x.engaged = true;
       const relieving = [...sea.values()].some((e) => e.relief && !e.owner && e.ship.damage.state === SHIP_STATES.afloat);   // SEA-EASE
-      const distress = relieving ? null : distressAt(crown.name);
+      const distress = relieving || w.ether ? null : distressAt(crown.name);   // ETHER-SEA: no navy past the Veil
       const out = director.step(d, {
         density: launchesTraffic() ? trafficDensity(feet) : 0, player: feet, players, level: deps.level?.() ?? 1, seaY, ships,   // SEA-TRAFFIC
         // AUDIT NAV1 (online #6): the waters draw the navy after the most notorious player in them, not the stander alone
@@ -4050,6 +4112,7 @@ export function createNavalHost(deps) {
         seedBase: seedBaseOf(w.px ?? 0, w.py ?? 0, w.day ?? 0, SEED_SALT ^ idSalt(myId())),
         distress, relieving,   // SEA-EASE: THE RELIEF
         reliefSure: !!distress && !!deps.captain?.reliefSure?.(crown.name),   // CAPT-BOARD: an Admiral's crown always answers
+        ether: etherCtx(w),   // ETHER-SEA: the Etheric Sea's band, and the legend whose haunt it is
       });
       for (const id of out.despawn) { const e = sea.get(id); if (e) retire(e); }   // SHIP-FADE: she sails out of the world
       if (out.spawn) {
@@ -4086,6 +4149,7 @@ export function createNavalHost(deps) {
       if (!e.aidSaid && s.cls.faction === 'navy' && s.mode === 'engage' && sea.get(s.target)?.ship.target === myId()) { e.aidSaid = true; deps.say?.(`${calledName(e)} comes to your aid!`, 4); }
       const change = s.damage.step(d, clock);
       if (change) stateChanged(e, was, change, e.fireBy ?? null);   // AUDIT NAV1 (B4): her fires' own, announced and charged
+      if (e.legend) legendMend(e, d);   // ETHER-LEGENDS: the Drowned Queen's timbers knit
       for (const side of out.runOuts) runOutTell(e, side);
       const pose = { position: s.pos, rotation: quatOfYaw(s.yaw), velocity: velocityOf(s), hull: s.hull };
       for (const v of out.volleys) { fire({ shooter: e.id, wireShooter: e.n, hull: s.hull, pose, solution: v.solution, skill: s.cls.skill }); noteInbound(e, v.side); }
@@ -4581,6 +4645,7 @@ export function createNavalHost(deps) {
     const yard = !nb && !pr && !hv && !boarding && yardHere(boat);
     return {
       waters: w.waters ?? null,   // CAPT-WATERS: the plate says the deep waters
+      ether: w.ether ? { bandName: w.ether.bandName, depth: w.ether.depth } : null,   // ETHER-SEA: ...and the Etheric Sea's band and depth
       ship: { name: HULL_NAMES[boat.hull], hull: st.damage.hullShare(), sail: st.damage.maxSail > 0 ? st.damage.sailShare() : null, crew: st.damage.maxCrew > 0 ? st.damage.crewShare() : null, fire: st.damage.fire > 0, wrecked: st.damage.state === SHIP_STATES.wrecked, braced: st.guns.braced, repair: repairCost(st.damage), mending,
         // SHIP-CREW, SEA-REPAIR: her crew's spirits and standing order, her repairs under way, her stores
         spirits: boat.crewed ? spiritsOf(st.crew.morale).label : null, order: boat.crewed && st.crew.order !== CREW_ORDERS.stand ? ORDER_TEXT[st.crew.order].label : null, repairing: !!st.repairing, repairOrdered: st.crew.order === CREW_ORDERS.repair, stores: deps.stores?.count?.(boat) ?? 0 },   // AUDIT CC-D8: her order standing (the hint says so in the quiet before the work)
