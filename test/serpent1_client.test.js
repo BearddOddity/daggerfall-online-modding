@@ -18,7 +18,7 @@ import { MODES_KEPT, SEG_N, MODE } from '../src/net/serpentBody.js';
 import {
   newSerpentFight, joinSerpentFight, serpentStateOf, SERPENT_ATTACK_TABLE, CRUSH, GRIP, MAEL_R, MAEL_EYE_R, MAEL_GRIND, SPIT_FLIGHT_MS, RAM_V, ZONES, ADMIT_R,
 } from '../src/net/serpentBrain.js';
-import { shapeMeets, shipHurt, crushHurt, gripHurt, grindHurt, shoveOf, shoveLeft, maelPull, globAt, poolOf, poolBites, ramHead, shipPoints, SHOVE_S, MAEL_GROW_MS } from '../src/systems/serpentStrike.js';
+import { shapeMeets, shipHurt, crushHurt, gripHurt, grindHurt, shoveOf, shoveLeft, maelPull, globAt, poolOf, poolBites, ramHead, shipPoints, SHOVE_S, MAEL_GROW_MS, SERPENT_THROW_X, SERPENT_CANVAS_X } from '../src/systems/serpentStrike.js';
 import { createSerpentOmen, SERPENT_OMEN_SETTLE_MS, SITE_RETRY_MS, insideSerpentRing } from '../src/systems/serpentOmen.js';
 import { createSerpentHost, segmentOfTarget, IN_RETRY_MS, IN_RESEND_MS, HIT_GATHER_MS, COIL_LOST_MS, COIL_WORD_WAIT_MS, SERPENT_TARGET } from '../src/scenes/serpentHost.js';
 import { bodyMesh, marksMesh, MESH_STRIDE, FLAT_STRIDE, MESH_MAX_VERTS, FLAT_MAX_VERTS } from '../src/render/serpentRender.js';
@@ -177,7 +177,7 @@ test('SERPENT1 strike: each shape meets a ship by her bow, her middle or her ste
   assert.equal(shipPoints(CARRACK).length, 3);
   // the hurt: her whole's share and points on top - alike for a rowboat and a carrack
   const h = shipHurt(SERPENT_ATTACK_TABLE.breach, CARRACK);
-  assert.deepEqual(h, { hull: Math.round(0.07 * 1200 + 8), sail: Math.round(0.1 * 600), crew: 2 });   // AUDIT SERPENT T1's numbers
+  assert.deepEqual(h, { hull: Math.round(0.07 * 1200 + 8), sail: Math.round(0.1 * SERPENT_CANVAS_X * 600), crew: 2 });   // AUDIT SERPENT T1's numbers (PIN MOVED: SERPENT4 - its canvas halved)
   assert.ok(close(shipHurt(SERPENT_ATTACK_TABLE.breach, ROWBOAT).hull / ROWBOAT.maxHull, (0.07 * 120 + 8) / 120, 0.01));
   assert.deepEqual(crushHurt(CARRACK), shipHurt(CRUSH, CARRACK));
 });
@@ -192,9 +192,9 @@ test('SERPENT1 strike: the grip and the eye grind by the second with their fract
   for (let i = 0; i < 4; i++) { const g = grindHurt(CARRACK, 0.25, gc); gc = g.carry; gh += g.hurt.hull; }
   assert.ok(Math.abs(gh + gc - (MAEL_GRIND.hull * 1200 + MAEL_GRIND.base)) < 1e-9);
   const v = shoveOf({ a: SERPENT_ATTACK_TABLE.breach.id, tg: [[0, -10]] }, CARRACK);
-  assert.ok(close(v[0], 0) && close(v[1], SERPENT_ATTACK_TABLE.breach.shove), 'away from it');
+  assert.ok(close(v[0], 0) && close(v[1], SERPENT_ATTACK_TABLE.breach.shove * SERPENT_THROW_X), 'away from it');   // PIN MOVED: SERPENT4 - half the throw
   const lane = shoveOf({ a: SERPENT_ATTACK_TABLE.ram.id, tg: [[0, -100], [0, 100]] }, { ...CARRACK, x: 5 });
-  assert.ok(close(lane[0], SERPENT_ATTACK_TABLE.ram.shove) && close(lane[1], 0), 'across the ram\'s lane, to her side');
+  assert.ok(close(lane[0], SERPENT_ATTACK_TABLE.ram.shove * SERPENT_THROW_X) && close(lane[1], 0), 'across the ram\'s lane, to her side');
   assert.deepEqual(shoveOf({ a: SERPENT_ATTACK_TABLE.spit.id, tg: [[0, 0]] }, CARRACK), [0, 0], 'no throw in venom');
   assert.deepEqual(shoveLeft([4, 0], SHOVE_S), [0, 0]);
   assert.ok(close(shoveLeft([4, 0], SHOVE_S / 2)[0], 2));
@@ -615,7 +615,9 @@ test('SERPENT1 hosts: THE WORLD HOST wires it whole - the naval host\'s seam rea
   assert.ok(/THE FOUR HOSTS RULE: THIS host \(scenes\/world\.js\) wires it whole\. scenes\/exterior\.js[\s\S]{0,200}scenes\/worldModes\.js[\s\S]{0,200}scenes\/dungeonContext\.js[\s\S]{0,200}named and left without it/.test(world), 'all four named');
   for (const other of ['exterior.js', 'worldModes.js', 'dungeonContext.js']) assert.ok(!/serpent/i.test(src(other)), `${other} carries no serpent`);
   const naval2 = src('navalHost.js');
-  assert.ok(naval2.includes('drift: (boat) => (enabled ? deps.serpent?.drift?.(boat) ?? null : null)'));
+  assert.ok(naval2.includes('drift: (boat) => (enabled ? withBumpers(boat, deps.serpent?.drift?.(boat) ?? null) : null)'));   // PIN MOVED: SERPENT4 - and the ships' bumpers
+  assert.ok(naval2.includes('gale: (boat) => (enabled ? deps.serpent?.gale?.(boat) ?? null : null)'), 'SERPENT4: the gale through the naval host');
+  assert.ok(world.includes('gale: (boat) => naval?.gale?.(boat) ?? null,'), 'SERPENT4: Come Sail Away\'s gale beside its drift');
   assert.ok(naval2.includes('for (const t of deps.serpent?.targets?.() ?? []) out.push(t);'));
   const csaSrc = readFileSync(new URL('../src/systems/comeSailAway.js', import.meta.url), 'utf8');
   assert.ok(csaSrc.includes('drift ? vAdd(state.currentVector, drift) : state.currentVector'));

@@ -369,8 +369,8 @@
   {
     "name": "SERPENT3-old-law-kept",
     "file": "src/net/serpentLaw.js",
-    "old": "export const SERPENT_BRAIN_MIN = 2;",
-    "new": "export const SERPENT_BRAIN_MIN = 1;",
+    "old": "export const SERPENT_BRAIN_MIN = 3;",
+    "new": "export const SERPENT_BRAIN_MIN = 2;",
     "tests": [
       "test/serpent3.test.js"
     ]
