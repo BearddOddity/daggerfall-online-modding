@@ -22,6 +22,28 @@ export const cardFace = (c) => (isCard(c)
 export const PANEL_CARD_W = 32;
 export const PANEL_CARD_H = 45;
 
+/** CARDS-PANEL (Tavern-Cards section 36): the buy-in's quick stakes - its floor and its ceiling, a press setting the
+ *  slider (never dealing); none when the two are one. */
+export const buyInPicks = (b) => (b && b.max > b.min ? [{ label: 'Min', value: b.min }, { label: 'Max', value: b.max }] : []);
+/**
+ * CARDS-PANEL: a raise's quick sizes - half the pot and the pot, as a raise TO (the street's total): the bet faced, then
+ * the pot once called, or its half. Each on the slider's step from its floor, strictly inside the law's range (the floor
+ * is where the slider starts, the ceiling is All in), one per amount. A press sets the slider; the raise is still pressed.
+ * @param {{min: number, max: number}} raise  legal().raise
+ * @param {number} currentBet  the street's bet faced
+ * @param {number} call  what calling it costs this seat
+ * @param {number} pot  every chip in the hand, this street's bets too
+ * @param {number} step  the slider's step
+ */
+export function raisePicks(raise, currentBet, call, pot, step) {
+  const s = Math.max(1, step | 0), out = [];
+  for (const [label, add] of /** @type {[string, number][]} */ ([['½ pot', Math.floor((pot + call) / 2)], ['Pot', pot + call]])) {
+    const to = Math.min(raise.max, raise.min + Math.round((currentBet + add - raise.min) / s) * s);
+    if (to > raise.min && to < raise.max && !out.some((p) => p.to === to)) out.push({ label, to });
+  }
+  return out;
+}
+
 /**
  * The panel's model.
  * @param {{phase: 'buyin'|'playing'|'over', view?: any, legal?: any, buyIn?: {min: number, max: number}|null, stakes: {sb: number, bb: number}, friendly?: boolean, log?: string[], why?: string|null, refused?: string|null, online?: {waiting: boolean, clock: number, error: string|null, regulars?: boolean, gold?: boolean}|null, gold?: boolean, staking?: boolean, topUp?: number|null, iliac?: boolean, packPrice?: number|null}} p
@@ -34,8 +56,10 @@ export function cardHudModel({ phase, view = null, legal = null, buyIn = null, s
     : online ? 'A friendly game with the room: the relay deals, and no gold changes hands.' : friendly ? 'A friendly game: online, no gold changes hands at a patrons\' table.' : null;
   if (phase === 'buyin') {
     return {
-      phase, title, note,
-      buyIn: buyIn ? { min: buyIn.min, max: buyIn.max, value: Math.min(buyIn.max, Math.max(buyIn.min, BUY_IN_START_BB * stakes.bb)) } : null,
+      phase, title, note, unit,
+      // CARDS-PANEL: what the line is - a refusal or a purse too thin to sit is a warning, a stake being asked a wait
+      tone: staking ? 'wait' : refused || !buyIn ? 'warn' : null,
+      buyIn: buyIn ? { min: buyIn.min, max: buyIn.max, value: Math.min(buyIn.max, Math.max(buyIn.min, BUY_IN_START_BB * stakes.bb)), picks: buyInPicks(buyIn) } : null,
       // CARDS-SAID (Tavern-Cards section 31): a stake the realm refused, said here until the next press - never the panel
       // as it was, as though the press did nothing
       message: staking ? 'The realm is holding your stake...' : refused ? `${refused}${buyIn ? ` (Buy in for ${buyIn.min}-${buyIn.max} ${unit}.)` : ''}` : buyIn ? `Buy in for ${buyIn.min}-${buyIn.max} ${unit}.` : `You need ${BUY_IN_MIN_BB * stakes.bb} ${unit} to sit in at these stakes.`,
@@ -73,7 +97,8 @@ export function cardHudModel({ phase, view = null, legal = null, buyIn = null, s
     actions.push(legal.check ? { id: 'check', label: 'Check', enabled: true } : { id: 'call', label: `Call ${legal.call}`, enabled: legal.call > 0 });
     if (legal.raise) {
       const bet = hand.currentBet === 0;
-      actions.push({ id: 'raise', label: bet ? 'Bet' : 'Raise to', enabled: true, min: legal.raise.min, max: legal.raise.max, step: Math.max(1, stakes.sb) });
+      const step = Math.max(1, stakes.sb);
+      actions.push({ id: 'raise', label: bet ? 'Bet' : 'Raise to', enabled: true, min: legal.raise.min, max: legal.raise.max, step, picks: raisePicks(legal.raise, hand.currentBet, legal.call, pot, step) });
       actions.push({ id: 'allin', label: `All in (${legal.raise.max})`, enabled: true, to: legal.raise.max });
     }
   }
@@ -95,9 +120,11 @@ export function cardHudModel({ phase, view = null, legal = null, buyIn = null, s
       : online?.waiting ? 'Waiting for another player to sit down.'
       : !hand ? 'The next hand is being dealt...' : legal ? (online?.clock ? `Your turn - ${online.clock} s.` : 'Your turn.') : `Waiting on ${seats.find((s) => s.state === 'to act')?.name ?? 'the table'}...`;
   return {
-    phase, title, note, seats: present, pot,
+    phase, title, note, unit, seats: present, pot,
     board: hand ? hand.board.map(cardFace) : sd ? sd.board.map(cardFace) : [],
     street: hand?.street ?? (sd ? 'showdown' : null),
+    // CARDS-PANEL: the relay's refusal is a warning, your turn the line to look at
+    tone: online?.error && !legal ? 'warn' : phase === 'playing' && legal ? 'turn' : null,
     actions, message: online?.error && !legal ? `${message} (${HOLDEM_REFUSALS[online.error] ?? 'The table refused that.'})` : message, log: log.slice(-6),
   };
 }
@@ -169,7 +196,11 @@ const CSS = `
   background:rgba(18,14,10,.92);border:1px solid #8a6a2c;border-radius:6px;color:#e8dcc0;font:14px/1.35 Georgia,serif;padding:10px 14px;
   box-shadow:0 6px 24px rgba(0,0,0,.6)}
 @media (min-width:1000px){.dfcards{left:auto;right:16px;transform:none;min-width:0;width:430px}}
-.dfcards h3{margin:0 0 4px;font-size:15px;color:#e2b85a;font-weight:normal;letter-spacing:.04em}
+.dfcards h3{margin:0 0 4px;font-size:15px;color:#e2b85a;font-weight:normal;letter-spacing:.04em;display:flex;align-items:center;gap:8px}
+.dfcards h3 .ttl{flex:1 1 auto;min-width:0}
+.dfcards h3 .fold{flex:none;width:22px;height:22px;line-height:20px;text-align:center;border:1px solid #6a5222;border-radius:3px;color:#c8b48a;cursor:pointer;user-select:none;font-size:15px}
+.dfcards h3 .fold:hover,.dfcards h3 .fold:focus-visible{color:#f0dfb0;border-color:#e2b85a;outline:none}
+.dfcards.collapsed .note,.dfcards.collapsed .seats,.dfcards.collapsed .board,.dfcards.collapsed .log{display:none}
 .dfcards .note{font-size:12px;color:#b9a77f;margin-bottom:6px}
 .dfcards .seats{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .dfcards .seat{flex:1 1 90px;min-width:0;border:1px solid #4a3a1c;border-radius:4px;padding:4px 6px;background:rgba(40,30,18,.7)}
@@ -180,14 +211,28 @@ const CSS = `
 .dfcards .card{display:inline-block;min-width:26px;padding:3px 4px;border-radius:3px;background:#f4ecd8;color:#1a1a1a;text-align:center;font:bold 14px Georgia,serif}
 .dfcards .card.painted{padding:0;min-width:0;width:32px;height:45px;background:none;line-height:0}.dfcards .card.painted canvas{width:32px;height:45px;border-radius:3px}.dfcards .card.back{background:repeating-linear-gradient(45deg,#5a1e1e,#5a1e1e 4px,#7a2a2a 4px,#7a2a2a 8px)}
 .dfcards .board{display:flex;gap:8px;align-items:center;margin:6px 0}
-.dfcards .msg{margin:4px 0;color:#efe3c4}
-.dfcards .log{font-size:12px;color:#a8977a;max-height:64px;overflow:hidden}
+.dfcards .board .pot{margin-left:auto;color:#e2b85a}
+.dfcards .msg{margin:4px 0;color:#efe3c4;padding:3px 0 3px 8px;border-left:3px solid transparent}
+.dfcards .msg.warn{color:#f3c7a8;border-left-color:#c0502a;background:rgba(120,40,20,.25)}
+.dfcards .msg.wait{color:#d8cba8;border-left-color:#8a6a2c;font-style:italic}
+.dfcards .msg.turn{color:#f6e6b4;border-left-color:#e2b85a}
+.dfcards .log{font-size:12px;color:#a8977a;max-height:64px;overflow-y:auto;border-top:1px solid #3a2c14;margin-top:6px;padding-top:4px}
+.dfcards .log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dfcards .acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.dfcards .slide{display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex:1 1 100%}
+.dfcards .slide .amt{min-width:72px;color:#f0dfb0;font-variant-numeric:tabular-nums}
 .dfcards button{background:#3a2c14;color:#f0dfb0;border:1px solid #8a6a2c;border-radius:3px;padding:4px 10px;font:14px Georgia,serif;cursor:pointer}
+.dfcards button:hover:not(:disabled),.dfcards button:focus-visible{border-color:#e2b85a;outline:none}
+.dfcards button[data-kind=primary]{background:#5a4214;border-color:#e2b85a;color:#fff2cc}
+.dfcards button[data-kind=quiet]{background:transparent;margin-left:auto}
+.dfcards button.pick{padding:2px 8px;font-size:12px;background:rgba(40,30,18,.7)}
 .dfcards button:disabled{opacity:.4;cursor:default}
-.dfcards input[type=range]{width:min(160px,40vw)}
+.dfcards input[type=range]{width:min(160px,40vw);flex:1 1 120px;accent-color:#e2b85a}
 .dfcards .seat.won{border-color:#e2b85a;background:rgba(80,60,20,.7)}
 `;
+/** CARDS-PANEL: the action buttons drawn heavier - the press that moves the game on - and the one that leaves, lighter. */
+const PRIMARY_ACTS = new Set(['deal', 'check', 'call']);
+const QUIET_ACTS = new Set(['stand']);
 
 /** A press on the panel is the panel's - never a swing or a look (decorPanel.js's own law). */
 const swallowPresses = (node) => {
@@ -234,7 +279,28 @@ export function createCardTableHud({ onPress, doc = document }) {
     }
     return box;
   };
-  let alive = true, sliderValue = null, shownKey = null, msgEl = null;
+  let alive = true, sliderValue = null, shownKey = null, msgEl = null, collapsed = false;
+  /** CARDS-PANEL: a slider's amount as it reads beside it - the table's unit after it. */
+  const amount = (v, m) => `${v}${m.unit ? ` ${m.unit}` : ''}`;
+  /** CARDS-PANEL: quick stakes beside a slider - a press moves the slider (and what it says), never deals or raises. */
+  const picksFor = (list, range, onPick) => list.map((p) => {
+    const b = el('button', 'pick', p.label);
+    b.title = String(p.value ?? p.to);
+    b.addEventListener('click', () => { range.value = String(p.value ?? p.to); sliderValue = Number(range.value); onPick(); });
+    return b;
+  });
+  /** CARDS-PANEL: the header's fold - the seats, the board, the note and the log put away so the cloth shows; the line
+   *  and the buttons stay. The panel's own choice, kept across its repaints. */
+  const foldToggle = () => {
+    const t = el('span', 'fold', collapsed ? '+' : '−');
+    t.setAttribute?.('role', 'button'); t.setAttribute?.('tabindex', '0');
+    t.setAttribute?.('aria-expanded', String(!collapsed));
+    t.title = collapsed ? 'Show the table' : 'Hide the table';
+    const flip = () => { collapsed = !collapsed; root.className = `dfcards${collapsed ? ' collapsed' : ''}`; t.textContent = collapsed ? '+' : '−'; t.title = collapsed ? 'Show the table' : 'Hide the table'; t.setAttribute?.('aria-expanded', String(!collapsed)); };
+    t.addEventListener('click', flip);
+    t.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault?.(); e.stopPropagation?.(); flip(); } });
+    return t;
+  };
   return {
     root,
     render(m) {
@@ -245,7 +311,9 @@ export function createCardTableHud({ onPress, doc = document }) {
       if (key === shownKey && msgEl) { msgEl.textContent = m.message; return; }
       shownKey = key;
       root.replaceChildren();
-      root.append(el('h3', '', m.title));
+      const head = el('h3', '');
+      head.append(el('span', 'ttl', m.title), foldToggle());
+      root.append(head);
       if (m.note) root.append(el('div', 'note', m.note));
       if (m.seats) {
         const seats = el('div', 'seats');
@@ -258,32 +326,38 @@ export function createCardTableHud({ onPress, doc = document }) {
         }
         root.append(seats);
         const board = el('div', 'board');
-        board.append(cardsOf(m.board), el('span', '', `${m.street && m.street !== 'preflop' ? `${m.street[0].toUpperCase()}${m.street.slice(1)} - ` : ''}Pot ${m.pot}`));   // AUDIT CARDS-2 L15: the street named
+        board.append(cardsOf(m.board), el('span', 'pot', `${m.street && m.street !== 'preflop' ? `${m.street[0].toUpperCase()}${m.street.slice(1)} - ` : ''}Pot ${m.pot}`));   // AUDIT CARDS-2 L15: the street named
         root.append(board);
       }
-      msgEl = el('div', 'msg', m.message);
+      msgEl = el('div', `msg${m.tone ? ` ${m.tone}` : ''}`, m.message);
       root.append(msgEl);
       const acts = el('div', 'acts');
       if (m.buyIn) {
+        const row = el('div', 'slide');
         const range = el('input');
         range.type = 'range'; range.min = String(m.buyIn.min); range.max = String(m.buyIn.max); range.step = '1';
         range.value = String(sliderValue ?? m.buyIn.value);
-        const label = el('span', '', `${range.value}`);
-        range.addEventListener('input', () => { sliderValue = Number(range.value); label.textContent = range.value; });
-        acts.append(range, label);
+        const label = el('span', 'amt', amount(range.value, m));
+        range.addEventListener('input', () => { sliderValue = Number(range.value); label.textContent = amount(range.value, m); });
+        row.append(range, label, ...picksFor(m.buyIn.picks ?? [], range, () => { label.textContent = amount(range.value, m); }));
+        acts.append(row);
       }
       for (const a of m.actions) {
         if (a.id === 'raise') {
+          const row = el('div', 'slide');
           const range = el('input');
           range.type = 'range'; range.min = String(a.min); range.max = String(a.max); range.step = String(a.step);
           range.value = String(Math.min(a.max, Math.max(a.min, sliderValue ?? a.min)));
           const b = el('button', '', `${a.label} ${range.value}`);
           range.addEventListener('input', () => { sliderValue = Number(range.value); b.textContent = `${a.label} ${range.value}`; });
           b.addEventListener('click', () => onPress('raise', Number(range.value)));
-          acts.append(range, b);
+          row.append(range, b, ...picksFor(a.picks ?? [], range, () => { b.textContent = `${a.label} ${range.value}`; }));
+          acts.append(row);
           continue;
         }
         const b = el('button', '', a.label);
+        if (PRIMARY_ACTS.has(a.id)) b.dataset.kind = 'primary';
+        else if (QUIET_ACTS.has(a.id)) b.dataset.kind = 'quiet';
         b.disabled = !a.enabled;
         b.addEventListener('click', () => {
           if (!a.enabled) return;
@@ -294,7 +368,13 @@ export function createCardTableHud({ onPress, doc = document }) {
         acts.append(b);
       }
       root.append(acts);
-      if (m.log?.length) root.append(el('div', 'log', m.log.join(' ')));
+      // CARDS-PANEL: a line a sentence, the newest last and in view - the run of sentences cut the newest off at the box
+      if (m.log?.length) {
+        const log = el('div', 'log');
+        log.append(...m.log.map((line) => el('div', '', line)));
+        root.append(log);
+        log.scrollTop = log.scrollHeight ?? 0;
+      }
     },
     /** A new hand forgets the last raise's slider. */
     resetSlider() { sliderValue = null; shownKey = null; },   // the next render rebuilds the slider at the law's own value
