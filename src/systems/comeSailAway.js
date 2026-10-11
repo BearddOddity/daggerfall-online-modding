@@ -2253,6 +2253,17 @@ export function createComeSailAwayRuntime(deps) {
       if (currentBoat.packable) PackBoat(currentBoat, true);
     } else ResetTimeScale(false);
   }
+  /** HELM-JUMP (FIELD BUGS 2026-10-11, "If you recall from the helm of a ship, you get sent to the void"): THE JUMPS
+   *  THAT ARE NEITHER A LOAD NOR A FAST TRAVEL - a Recall, a guild's teleport, an unstuck, a quest's respawn - raise
+   *  nothing the C# hears but OnTeleportToCoordinates (the waves), so the helm held: updateSailing stood the player back
+   *  at the drive position of a boat the teleport left at sea (and hid), frame after frame, on no deck. A departure, not
+   *  a C# member: such a jump leaves the helm as a fast travel leaves it (OnPreFastTravel - the sail stopped, a
+   *  packable boat packed), and a disembark in flight ends as a load's start ends it (EndDisembark), its hold no
+   *  longer pinning the player to the boat they jumped from. */
+  function OnPreJump() {
+    if (state.disembarking != null) EndDisembark();
+    OnPreFastTravel();
+  }
   /** OnPostFastTravel (1973-1976, CSA-J's audit): the arrival puts the scale back to one, saying nothing. */
   function OnPostFastTravel() {
     ResetTimeScale(false);
@@ -3190,7 +3201,7 @@ export function createComeSailAwayRuntime(deps) {
     sailWayOf, oarWayOf,   // AUDIT SHIPS A4: her way under sail as she lies, and under oars - the journey's hand weighs one against the other
     LaunchFromDeed,   // SHIP-CLAIM: a claimed prize's deed, her boat stood where she lies
     SummonBoat, LayUpBoat, laidUpHold,   // HOLDINGS: the Fleet page's summon and send away, and a laid-up hold
-    activate, OnStartLoad, OnPreFastTravel, OnPostFastTravel, OnPlayerDeath, OnNewMagicRound,
+    activate, OnStartLoad, OnPreFastTravel, OnPreJump, OnPostFastTravel, OnPlayerDeath, OnNewMagicRound,   // HELM-JUMP: OnPreJump
     UpdateWind, OnNewHour, OnWeatherChange,
     GetSailPower, ToggleSails, RaiseSails, LowerSails, ToggleSquareSails, HasLargeSquareSailWithGaff,
     windWidget, windWidgetFrameOf,

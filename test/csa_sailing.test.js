@@ -473,6 +473,55 @@ test('CSA-D: StopSailing at once (a death, a load, fast travel) - the player set
   assert.deepEqual(v.out.mid, []);
 });
 
+test('HELM-JUMP (FIELD BUGS 2026-10-11): a jump that is no load and no fast travel - OnPreJump - leaves the helm as a fast travel does, and ends a disembark in flight; without it the helm stands the jumper back at the boat', () => {
+  // the report's void: a Recall from the helm moved the player, and the next frame's sail stood them back at the drive
+  // position of the boat the jump left at sea
+  const stuck = scene();
+  const left = stuck.place(1, 0);
+  stuck.rt.StartSailing(left);
+  stuck.frame();
+  stuck.player.position = [5000, 40, -7000];   // the jump's landing
+  stuck.frame();
+  closeV(stuck.player.position, left.DrivePosition.position, 1e-6, 'unreleased, the helm pins the landing back');
+  // released first: the sail stopped, the skiff packed as a fast travel packs it, and the landing stands
+  const s = scene();
+  const skiff = s.place(1, 0);
+  s.rt.StartSailing(skiff);
+  s.frame();
+  s.rt.OnPreJump();
+  assert.equal(s.rt.isSailing(), false);
+  assert.equal(s.rt.playerParent, null);
+  assert.deepEqual(s.out.packed.map((it) => it.templateIndex), [1320], 'packed as its parts - never left hidden at sea');
+  assert.ok(!s.rt.AllBoats.includes(skiff));
+  s.player.position = [5000, 40, -7000];
+  s.frame();
+  s.frame();
+  assert.deepEqual(s.player.position, [5000, 40, -7000], 'the landing stands');
+  assert.equal(s.player.frozen, 0, 'the motor free');
+  // a disembark in flight: its hold pinned every frame's end while the freeze ran - ended, as a load's start ends it
+  const d = scene();
+  const boat = d.place(1, 0);
+  d.rt.StartSailing(boat);
+  d.frame();
+  d.frame({ press: [BOAT_ACTIONS.disembark] });
+  d.rt.endOfFrame();   // the un-parenting; now the hold
+  assert.ok(d.rt.state.disembarking, 'holding');
+  d.player.frozen = 1;
+  d.rt.OnPreJump();
+  assert.equal(d.rt.state.disembarking, null, 'the hold ended');
+  assert.equal(d.player.frozen, 0);
+  d.player.position = [5000, 40, -7000];
+  d.rt.endOfFrame();
+  assert.deepEqual(d.player.position, [5000, 40, -7000], 'no hold pins the landing back');
+  assert.ok(d.rt.AllBoats.includes(boat), 'a boat already left is left where she lies');
+  // standing on land: nothing but the time scale, as OnPreFastTravel
+  const v = scene();
+  v.setTimeScale(50);
+  v.rt.OnPreJump();
+  assert.deepEqual(v.out.timeScales, [1]);
+  assert.deepEqual(v.out.packed, []);
+});
+
 test('CSA-D: the lantern key toggles the boat\'s lights at the helm; the helm key is the registry\'s action', () => {
   const s = scene();
   const boat = s.place(1, 0);

@@ -81,7 +81,11 @@ export const ENCHANTMENT_COSTS = Object.freeze({
   LowDamageVs: { costs: [-800, -900, -1000, -1200], labels: ['Undead', 'Daedra', 'Humanoid', 'Animals'] },
   PotentVs: { costs: [800, 900, 1000, 1200], labels: ['Undead', 'Daedra', 'Humanoid', 'Animals'] },
   RegensHealth: { costs: [4000, 3000, 3000], labels: ['all the time', 'in sunlight', 'in darkness'] },
-  SoulBound: { costs: [0, -10, -20, 0, 0, 0, 0, -10, -30, -90, -100, 0, -10, -30, -140, 0, -30, 0, -300, -100, 0, -30, -30, -300, -10, -500, -500, -100, -700, -1500, -1000, -8000, -1000, -2500, 0, -300, -300, -300, -300, 0, -5000, -100, -100] },
+  // DRAGON-SOUL (FIELD BUGS 2026-10-11, the owner: "Fuck matching DFU."): the Dragonling every encounter spawns (34)
+  // binds as the quest's (40) does, -5000 - DFU priced it at nothing, a soul the trap took and the picker named
+  // "Dragonling" beside the one worth five thousand. A departure (Port-Ledger A, DRAGON-SOUL); its SoulPts, the gold a
+  // soul adds to a shop's price, stay DFU's
+  SoulBound: { costs: [0, -10, -20, 0, 0, 0, 0, -10, -30, -90, -100, 0, -10, -30, -140, 0, -30, 0, -300, -100, 0, -30, -30, -300, -10, -500, -500, -100, -700, -1500, -1000, -8000, -1000, -2500, -5000, -300, -300, -300, -300, 0, -5000, -100, -100] },
   UserTakesDamage: { costs: [-6000, -1000], labels: ['in sunlight', 'in holy places'] },
   VampiricEffect: { costs: [2000, 1000], labels: ['at range', 'when strikes'] },
 
