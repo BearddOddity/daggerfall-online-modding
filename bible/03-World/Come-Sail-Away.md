@@ -1569,6 +1569,16 @@ subscribers at both of the shelf's doors (`worldModes.js`, the order the
 two mods subscribe in); DFU's house containers raise the same event but
 stock classic rows only, so a boat item never stands in one.
 
+SHIPYARDS (2026-10-11, Mac chose "Shipyard only - the shipyard sells
+every hull and buys them back; Come Sail Away's random shelf deeds and
+parts are retired"; `03-World/Shipyards.md`): RegisterCustomItem's group
+no longer stocks the two - no General Store or Pawn Shop shelves them,
+and no counter buys them back (`systems/shopStock.js` shopBuysItem). A
+port town's shipyard sells every hull at the mod's own prices (the
+Rowboat as her parts, every other as her deed) and buys them back. A
+DECLARED departure (Ledger A, SHIPYARDS). AssignVariantsToShopItems
+stands, ported: a shelf a save stocked before is still rewritten.
+
 ### Packing and the cargo
 
 The item a use hands the runtime is spent from the pack or the wagon AS IT

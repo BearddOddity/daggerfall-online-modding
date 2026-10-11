@@ -46,9 +46,10 @@ export function streetColor(lane) {
 }
 /** One exterior frame through world.js's composition: `town` the street's lanterns (pixel-local, one pixel at the
  *  origin), `lamps` what the yards hand (scene space - the lights a yard's pool keeps: x, y, z, range, slot), `night`
- *  the lanterns' hours, `ranges` the town's animator and `tick` what its tick does to them. Answers each light the
- *  renderer took - its place, range and uploaded colour. */
-export function exteriorFrame({ lane, night, town, lamps, eye, ranges, tick = () => {} }) {
+ *  the lanterns' hours, `ranges` the town's animator and `tick` what its tick does to them; SHIPYARDS: `ports` what a
+ *  port's pool hands (scenes/portHost.js lights - x, y, z, range), none by default. Answers each light the renderer
+ *  took - its place, range and uploaded colour. */
+export function exteriorFrame({ lane, night, town, lamps, eye, ranges, tick = () => {}, ports = null }) {
   const renderer = new Renderer(fakeCanvas());
   if (lane) renderer.setLightingLane(EL_LANE);
   const scope = {
@@ -60,6 +61,7 @@ export function exteriorFrame({ lane, night, town, lamps, eye, ranges, tick = ()
     magic: null, _dwFogP: null, playerTorchLight: () => null, thunderlockMuzzleLight: () => null, playerEntity: {}, player: { feetAt: () => [0, 0, 0] },
     peerTorchLights: () => [], gatePool: null, riteHost: null, camps: { lights: () => [] }, droppedTorches: { lights: () => [] },
     naval: null, festivalStage: null, quays: null,
+    portHost: ports ? { lights: () => ports } : null,   // SHIPYARDS: the lighthouses' lamps and the shipyards' lanterns, beside the quays'
     yards: { lamps: () => lamps }, yardLampRows,
     CITY_LIGHT_COLOR_F32: lanternColor(lane, new Float32Array(CITY_LIGHT_COLOR)),
     fillLanternPool, nearestLights, rangesFor, capFadeColors, capFadePairs, withPlayerLights, wodLightColors,

@@ -31,10 +31,12 @@
 // Deterministic (its own rng on fixed seeds): every client's port is the same timber and stone. Not a DFU member.
 // Ledger A (SHIPYARDS).
 import {
-  rng, noiseField, image, put, get, mix, IRON_DARK, IRON_LIGHT, board, paintWord, SIGN_EMBLEM, SIGN_ART_H,
+  YARD_ART_KIT, SIGN_EMBLEM, SIGN_ART_H,
   yardWoodArt, yardPlankArt, yardShingleArt, yardHayArt, yardDirtArt, yardGravelArt, yardWaterArt, yardIronArt, YARD_REC, YARD_ART_SIZE,
 } from './merchantYardArt.js';
 import { PORT_PLACES } from '../systems/portPlaces.js';
+
+const { rng, noiseField, image, put, get, mix, IRON_DARK, IRON_LIGHT, board, paintWord } = YARD_ART_KIT;   // the yards' painting tools
 
 /** The pseudo-archive the port's pictures stand under (the yards' neighbour, world/merchantYardArt.js YARD_ARCHIVE). */
 export const PORT_ARCHIVE = 38231;

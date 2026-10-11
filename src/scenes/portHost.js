@@ -38,8 +38,8 @@
 // bodies, its lamp in the lights and its beams in the added pass, taken down at a re-anchor and a load; the Overworld's
 // marks, the town map and the talk directory are handed its sites). scenes/worldModes.js - WIRED for the press both
 // exterior hosts share (`portTargets` in the street's one ray, the `port:` arm with the too-far refusal and the
-// plaque's lit row); its interiors stand no port. scenes/exterior.js - FLAGGED: the single-town bench stands no port; the
-// streaming host is where its towns are played. scenes/dungeonContext.js - stands no street: nothing here reaches it.
+// plaque's lit row); its interiors stand no port. scenes/dungeonContext.js - stands no street: nothing here reaches it.
+// scenes/exterior.js - FLAGGED: the single-town bench stands no port; the streaming host is where its towns are played.
 //
 // Not a DFU member. Ledger A (SHIPYARDS).
 import { PORT_PLACES } from '../systems/portPlaces.js';
@@ -88,7 +88,7 @@ export const BEAM_SEEN_M = 2600;
 export const GLOW_NEAR_M = 4;
 export const GLOW_ANGLE = 0.012;
 /** The lamp's light, in added light and in the scene's. */
-export const LAMP_COLOR = Object.freeze([1, 0.85, 0.55]);
+export const LIGHTHOUSE_LAMP_COLOR = Object.freeze([1, 0.85, 0.55]);
 
 /** The plaque's rows: the shipmaster's four pages, the crewmaster's one, the climb up and down. */
 export const SHIPYARD_ROWS = Object.freeze([
@@ -105,6 +105,7 @@ export const PORT_TEXT = Object.freeze({
   steal: SHIPYARD_TEXT.steal,
   lightSteal: 'The lightkeeper keeps the lamp and its oil under lock.',
   shut: 'The shipmaster\'s window will not open here.',
+  noSail: SHIPYARD_TEXT.noSail,
   sailor: 'Looking for a berth - ask the crewmaster to sign hands on.',
   worker: 'At work on the hull on the stocks.',
   lampLit: 'The lamp burns from dusk to dawn - it is lit.',
@@ -446,10 +447,10 @@ export function createPortHost({
         if (!pl.at || pl.site.kind !== 'lighthouse') continue;
         const l = lampOf(pl), d = Math.hypot(l[0] - eyeAt[0], l[1] - eyeAt[1], l[2] - eyeAt[2]);
         if (d > BEAM_SEEN_M) continue;
-        out.push({ pos: l, size: Math.max(GLOW_NEAR_M, d * GLOW_ANGLE), color: [LAMP_COLOR[0], LAMP_COLOR[1], LAMP_COLOR[2], 0.85], rot: 0, blend: 'add', flat: false, solid: false, kind: 'lamp', aspect: 1 });
+        out.push({ pos: l, size: Math.max(GLOW_NEAR_M, d * GLOW_ANGLE), color: [LIGHTHOUSE_LAMP_COLOR[0], LIGHTHOUSE_LAMP_COLOR[1], LIGHTHOUSE_LAMP_COLOR[2], 0.85], rot: 0, blend: 'add', flat: false, solid: false, kind: 'lamp', aspect: 1 });
         const theta = pl.phase + (2 * Math.PI * t) / BEAM_PERIOD_S;
         for (const th of [theta, theta + Math.PI]) {
-          for (const b of beamPuffs(l, th)) out.push({ pos: b.pos, size: b.size, color: [LAMP_COLOR[0], LAMP_COLOR[1], LAMP_COLOR[2], b.alpha], rot: 0, blend: 'add', flat: false, solid: false, kind: 'lamp', aspect: 1 });
+          for (const b of beamPuffs(l, th)) out.push({ pos: b.pos, size: b.size, color: [LIGHTHOUSE_LAMP_COLOR[0], LIGHTHOUSE_LAMP_COLOR[1], LIGHTHOUSE_LAMP_COLOR[2], b.alpha], rot: 0, blend: 'add', flat: false, solid: false, kind: 'lamp', aspect: 1 });
         }
       }
       return out;

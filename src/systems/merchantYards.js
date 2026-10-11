@@ -80,7 +80,7 @@ export function yardBuysItem(kind, item) {
 }
 
 /** SHIPYARDS (2026-10-11): a seed of the town and a salt - a yard's kind's own, or another of the town's places'
- *  (systems/shipyards.js: the shipmaster's, the recruiter's, the lightkeeper's). Pure. */
+ *  (systems/portPlaces.js portKeeper: the shipmaster's, the crewmaster's, the lightkeeper's). Pure. */
 export const townSeed = (mapId, salt) => (Math.imul((mapId >>> 0) ^ 0x9e3779b9, 0x85ebca6b) ^ (salt >>> 0)) >>> 0;
 /** A seed of the town and the kind. Pure. */
 export const yardSeed = (mapId, kind) => townSeed(mapId, YARD_KINDS[validYardKind(kind) ?? 'stable'].seed);
@@ -88,7 +88,7 @@ export const yardSeed = (mapId, kind) => townSeed(mapId, YARD_KINDS[validYardKin
 /**
  * SHIPYARDS: A KEEPER OF THE TOWN'S, off a seed of theirs (townSeed's) - their name (FullName on the region's bank,
  * DFU's stream put back as it stood), their gender, and `variant` which of the race's four outfits they wear. The one
- * home of a keeper's draw: a yard's (`yardKeeper`) and the port's (systems/shipyards.js). Pure.
+ * home of a keeper's draw: a yard's (`yardKeeper`) and a port's (systems/portPlaces.js portKeeper). Pure.
  * @param {number} seed @param {number} regionIndex
  */
 export function townKeeper(seed, regionIndex) {

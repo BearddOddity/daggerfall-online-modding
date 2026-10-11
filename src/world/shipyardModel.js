@@ -25,9 +25,11 @@
 // The people are the host's (scenes/portHost.js: `SHIPYARD.points`).
 //
 // Pure: no renderer, no GL, no clock. Not a DFU member. Ledger A (SHIPYARDS).
-import { faces, hexa, box, post, fenceRun, floor, drum, signboard, assemble, uvOf, YARD_SINK, YARD_TILE_M, SIGN_BOARD } from './merchantYardModels.js';
+import { YARD_MESH_KIT, YARD_SINK, YARD_TILE_M, SIGN_BOARD } from './merchantYardModels.js';
 import { PORT_ARCHIVE, PORT_REC } from './portArt.js';
 import { PORT_FOOT } from './portSites.js';
+
+const { faces, hexa, box, post, fenceRun, floor, drum, signboard, assemble, uvOf } = YARD_MESH_KIT;   // the yards' face kit
 
 const F = PORT_FOOT.shipyard;
 /** The shipyard's layout, metres in its frame. */
@@ -303,7 +305,7 @@ function timberYard(f) {
   for (const s of [-1, 1]) beam(f, R.iron, [ax + 0.2, 0.15, az], [ax + 0.25, 0.75, az + s * 0.75], 0.11, 0.11);
 }
 function sheerlegs(f) {
-  const H2 = SHIPYARD.hull, top = [H2.x - 2.9, 7.4, -8.2];
+  const H2 = SHIPYARD.hull, top = [H2.x - 2.9, 7.4, -7.75];   // its head over the slipway's end, inside the yard's ground
   beam(f, R.wood, [H2.x - 4.4, -YARD_SINK, -6.4], top, 0.22, 0.22);
   beam(f, R.wood, [H2.x - 1.4, -YARD_SINK, -6.4], top, 0.22, 0.22);
   beam(f, R.rope, top, [H2.x - 3.4, -YARD_SINK, 0.4], 0.04, 0.04);   // its backstay to a stake

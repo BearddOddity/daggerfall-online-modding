@@ -19,10 +19,12 @@
 // the door at the tower's foot and the hatch at its head (`LIGHTHOUSE.points`).
 //
 // Pure: no renderer, no GL, no clock. Not a DFU member. Ledger A (SHIPYARDS).
-import { faces, hexa, box, floor, drum, assemble, uvOf, YARD_SINK, YARD_TILE_M } from './merchantYardModels.js';
+import { YARD_MESH_KIT, YARD_SINK, YARD_TILE_M } from './merchantYardModels.js';
 import { PORT_ARCHIVE, PORT_REC } from './portArt.js';
 import { PORT_FOOT } from './portSites.js';
 import { beam } from './shipyardModel.js';
+
+const { faces, hexa, box, floor, drum, assemble, uvOf } = YARD_MESH_KIT;   // the yards' face kit
 
 const R = PORT_REC;
 const F = PORT_FOOT.lighthouse;

@@ -237,3 +237,12 @@ talk window reads the same directory, so a yard is asked after indoors too (the 
 building). `scenes/dungeonContext.js` - no town.
 
 Pins: `test/yardsfound1.test.js`. Mutants: `tools/mutants/yardsfound1.json`. Not seen in a real town (no ARENA2 here).
+
+## Beside the port's places (SHIPYARDS, 2026-10-11)
+
+A port town's shipyard and lighthouse (`03-World/Shipyards.md`) stand on the ground the yards leave: the yards are
+placed by their own two steps, as they always were (`world/merchantYardSites.js` `townGroundOf`, then `yardSitesOn` -
+`yardSitesOf` is the two), and the port's places on what is left (`scenes/world.js` `townPlacesFor`, one memo a town).
+The keeper's draw and the name's are one home for both (`systems/merchantYards.js` `townKeeper`, `namedAfter`), and the
+found places' one order is `systems/portPlaces.js` `FOUND_KIND_ORDER` - the yards' two first, so the Stable and the
+Wagon Yard keep the keys they had.

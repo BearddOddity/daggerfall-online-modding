@@ -307,10 +307,10 @@ import { createWardenShows } from './wagonWardenShow.js';   // WARDEN1: the town
 import { createWagonWarden, wardenTownIn } from './wagonWardenHost.js';   // WARDEN1: the town watch - my wagon's stamp, the cell's words, the offline clock; AUDIT WARDEN1 D3: the town under a point, one pure home
 import { WARDEN_VENDOR, isWardenTown } from '../systems/wagonWarden.js';   // WARDEN1: the stamp's save slot, and the towns a watch keeps
 import { townGroundOf, yardSitesOn, carveYards, MONUMENT_KEEP_M, yardMeasuresOf, placedModelBox } from '../world/merchantYardSites.js';   // MERCHANT-YARDS: where they stand off the town's layout, and the people's navgrid carved round them
-import { isYardTown, yardKeeper, YARD_KIND_ORDER } from '../systems/merchantYards.js';
+import { isYardTown, yardKeeper, YARD_KIND_ORDER } from '../systems/merchantYards.js';   // MERCHANT-YARDS: the towns that stand them, who keeps them, the town's people
 import { isPortTown, portKeeper, portPlaceName, PORT_SITE_ORDER } from '../systems/portPlaces.js';   // SHIPYARDS: the port towns, their keepers and their places' names
 import { townSeaOf, seaBearing, seaField, portSitesOn, siteToLocation } from '../world/portSites.js';   // SHIPYARDS: where a port town's shipyard and lighthouse stand - its seaward ground
-import { SHIPYARD as SHIPYARD_LAYOUT } from '../world/shipyardModel.js';   // SHIPYARDS: the crew hall's table, for the talk directory's row   // MERCHANT-YARDS: the towns that stand them, who keeps them, the town's people
+import { SHIPYARD as SHIPYARD_LAYOUT } from '../world/shipyardModel.js';   // SHIPYARDS: the crew hall's table, for the talk directory's row
 import { HARBOUR_REACH } from '../systems/naval/shipLife.js';   // AUDIT HOLDINGS O1: the harbour's scan reach, its pixels built before it is sounded
 import { createHarbourBook } from '../systems/naval/harbourBook.js';   // HARBOUR-BOOK: the harbours near the player, the quays' and the sea's
 import { withdrawIntoPack, materialLabel, materialCountLabel } from '../systems/profItems.js';   // PROF1: a Stores material as DFU's own item
@@ -9321,7 +9321,7 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  port list of the travel map's anchors and its passage (28e measured every one of the byte's 343 among them) - so the
    *  deed, the variant box and the shipwright answer to the port the player was shown. */
   // SHIPYARDS (BOOT-TDZ): `seaPixel` - the port's one water law - is declared above the stream now, beside the towns' places
-  // (merchantYardSitesFor reads it in the boot's own first build).
+  // (townPlacesFor reads it in the boot's own first build).
   const csaIsPortTown = (x, y) => {
     const summary = travelLocationSummaryAt(mapDict, x, y);
     if (!summary) return false;
@@ -10285,7 +10285,8 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  (the Holdings page's hand-off - ui/enhancedMenu.js `door`), and where it would not start, the window comes back on
    *  the Fleet page. Answers whether it opened. */
   function openShipyard(site, page) {
-    if (!shipyardHost || !site) return false;
+    if (!site) return false;
+    if (!shipyardHost) { setMidScreenText(PORT_TEXT.noSail); return true; }   // Come Sail Away off for this game: no ship to deal in
     let door = null;
     const win = createShipyardOverlay({
       page,
@@ -15983,6 +15984,9 @@ export async function bootWorld(canvas, renderer, params, status) {
         lefay?.destroyAll();   // LEFAY1: and the monument - its collider down, stood again off the loaded world (a flower in the air lands nowhere: thrown before the restore - AUDIT LEFAY1 B1)
         merchantYards?.destroyAll();   // MERCHANT-YARDS: and the yards, their colliders down, stood again off the loaded world
         portHost?.destroyAll(); closeShipyard();   // SHIPYARDS: and the shipyards and lighthouses, and the shipmaster's window over a world gone
+        // SHIPYARDS: stood again at once off the loaded world, the player already where the save stood them - the frame
+        // steps the player before its pools stand, so a save made on a lighthouse's gallery found no floor for a frame
+        try { portHost?.frame(); } catch (e) { console.warn('[port] the port', e?.message ?? e); }
         wardenShows?.destroyAll();   // WARDEN1: and a throw in flight
         camps.dropOwn();   // AUDIT SURV-TIERS (the third pass): the save says which camps are mine - the pitch after it is undone, not kept beside the gear it gave back
         camps.restore(restandAt('pos')(w.camps), campFromNatives);   // SURV3
@@ -25345,7 +25349,8 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** SHIPYARDS: THE LIGHTHOUSE'S STAIR (Mac chose "Climbable, with keeper") - the lightkeeper lets me up: my feet set on
    *  the gallery's floor facing the sea, or coming down at the tower's foot facing the town (`at`, scenes/portHost.js), as
    *  a boarding places a body (the sea fight's `placePlayer`). Up on foot alone and never with a foe about; down always (a
-   *  gallery is never a trap). Answers true, or the refusal's words. */
+   *  gallery is never a trap), onto the drawn ground at the door where it stands higher than the tower's middle (a slope).
+   *  Answers true, or the refusal's words. */
   function climbLighthouse(way, at) {
     if (!walkMode || !playerSpawned || _mode() !== 'exterior' || !at?.feet) return PORT_TEXT.shutStair;
     if (way === 'up') {
@@ -25353,7 +25358,8 @@ export async function bootWorld(canvas, renderer, params, status) {
       if (csaRuntime?.isSailing?.()) return PORT_TEXT.shutStair;
       if (livingTravelEnemies()) return PORT_TEXT.foes;
     }
-    player.spawn(at.feet[0], at.feet[1], at.feet[2]);
+    const ground = way === 'down' ? surfaceAt(at.feet[0], at.feet[2]) : NaN;
+    player.spawn(at.feet[0], Number.isFinite(ground) ? Math.max(at.feet[1], ground + 0.02) : at.feet[1], at.feet[2]);
     cam.yaw = at.yaw; cam.pitch = 0; lookFilter.settle();
     cam.pos = player.eyeAt();
     return true;
@@ -33713,7 +33719,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     if (lightsOnAt(minute)) for (const l of quays?.lights() ?? []) csaLit.push({ x: l.x, y: l.y, z: l.z, range: l.range, color: CITY_LIGHT_COLOR_F32 });
     // SHIPYARDS: the lighthouses' lamps and the shipyards' office lanterns, in the lanterns' hours (the pool's own `lit`) -
     // scene lights beside the quays', in the town lanterns' colour
-    for (const l of portHost?.lights() ?? []) csaLit.push({ x: l.x, y: l.y, z: l.z, range: l.range, color: CITY_LIGHT_COLOR_F32 });
+    if (lightsOnAt(minute)) for (const l of portHost?.lights() ?? []) csaLit.push({ x: l.x, y: l.y, z: l.z, range: l.range, color: CITY_LIGHT_COLOR_F32 });
     const frameLanterns = () => {   // PERF-V8
     if (lightsOnAt(minute)) {
       worldLightAnimator.tick(dt);

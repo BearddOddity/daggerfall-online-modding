@@ -229,7 +229,8 @@ test('YARDS-FOUND THE HOSTS: the streaming host hands its yards to the town map 
   assert.match(door, /if \(deps\.yards\?\.length\) deps = \{ \.\.\.deps, blocks: yardTownBlocks\(deps\.blocks \?\? \[\], deps\.yards\) \};\n\s+if \(heldMapWorn\(\)\) \{/, 'laid before either map is built');
   const tt = read('src/scenes/townTalk.js');
   assert.match(tt, /directory = buildBuildingDirectory\(topics\.exteriorBuildings, topics\.blocks, opts\);\n(?:\s+\/\/[^\n]*\n)*\s+directory\.push\(\.\.\.yardDirectoryRows\(topics\.yards\)\);/, 'joined to the directory');
-  assert.match(tt, /\.\.\.YARD_KIND_ORDER\.map\(\(k\) => \(\{ label: YARD_TALK_GROUPS\[k\], buildings: directory\.filter\(\(b\) => b\.yard === k\) \}\)\),/, 'the fallback\'s groups');
+  // PIN MOVED (SHIPYARDS-FOUND, 2026-10-11): the found places' one order - the yards' two, then a port's four
+  assert.match(tt, /\.\.\.FOUND_KIND_ORDER\.map\(\(k\) => \(\{ label: FOUND_TALK_GROUPS\[k\], buildings: directory\.filter\(\(b\) => b\.yard === k\) \}\)\),/, 'the fallback\'s groups');
   assert.doesNotMatch(read('src/scenes/exterior.js'), /merchantYards|yardTownBlocks/, 'the bench stands no yard');
   for (const host of ['src/scenes/worldModes.js', 'src/scenes/dungeonContext.js']) assert.doesNotMatch(read(host), /createTownMapWindow/, `${host} opens no town map`);
   assert.match(read('src/ui/travelViewHud.js'), /if \(k === 'yard'\) return k;/, 'the HUD\'s look');

@@ -106,10 +106,16 @@ export function shipWorth(rec, hullShare = 1) {
 
 /** What the shipyard asks for a ship worth `value` - the counter's buying law at its quality and index, `skills` the
  *  buyer's live Mercantile and Personality. Pure. */
-export const shipBuyPrice = (value, skills) => getTradePrice('Buy', calculateCost(Math.max(0, value), SHIPYARD_QUALITY, SHIPYARD_PRICE_INDEX), SHIPYARD_QUALITY, skills, 1);
+export function shipBuyPrice(value, skills) {
+  const pieces = 1;   // a ship is one piece (FB0929's floor: a gold a piece)
+  return getTradePrice('Buy', calculateCost(Math.max(0, value), SHIPYARD_QUALITY, SHIPYARD_PRICE_INDEX), SHIPYARD_QUALITY, skills, pieces);
+}
 /** What the shipyard pays for a ship of `worth` (shipWorth's) - the counter's selling law (online, half the least ask
  *  at most). Pure. */
-export const shipSalePrice = (worth, skills) => getTradePrice('Sell', calculateCost(Math.max(0, worth), SHIPYARD_QUALITY, SHIPYARD_PRICE_INDEX), SHIPYARD_QUALITY, skills);
+export function shipSalePrice(worth, skills) {
+  const pieces = 1;
+  return getTradePrice('Sell', calculateCost(Math.max(0, worth), SHIPYARD_QUALITY, SHIPYARD_PRICE_INDEX), SHIPYARD_QUALITY, skills, pieces);
+}
 
 /**
  * WHY A SHIP CANNOT BE SOLD HERE, or null: `where` where she is (scenes/fleetHost.js whereIs - 'sailing', 'here',
