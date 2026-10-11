@@ -19,6 +19,10 @@ PEER-RANGE (the same day; the owner: "So for online performance, I believe the r
 contributing to poor performance") pulled the crowds' lever 5 below, and it DOES move the picture: past a distance the
 player chooses (300 m by default) another player is not drawn. Its section is after PERF-NAMES.
 
+PEER-HULL-RANGE (2026-10-11, a player's report from a profile of the live game) does the same for the sea: another
+player's ship far off stands no hull on my client. It does not move the picture - every ship it holds back is kilometres
+past the fog. Its section is after PERF-WAGON.
+
 ## How the pass was run
 
 NOT IN THE REAL GAME. The frame probe (`tools/frameProbe.mjs`, PERF-NEXT's recipe) needs the freeware ARENA2, and its
@@ -397,6 +401,26 @@ synthetic map's bands - and the four hosts' wiring. Mutants: `tools/mutants/perf
 `lw12.json`'s LW12-wire-draw at the hideouts' line that now hands the test. Pins moved (PIN MOVED): `hcc_hosts` (both
 hosts' tents-and-wagons lines), `lw10_wagons` (the host's teams line, the pool's presentation), `lw12_outlaws` (the
 hideouts' line). Every existing record within three lines of a changed line was run again: 25, all dead.
+
+## PEER-HULL-RANGE — another's ship far off stands no hull here
+
+*A player's report (2026-10-11): under 50 FPS on a Radeon RX 6700 XT and an i5-13600K at 1080p; a profile of the live
+game, the main thread busy every frame and the GPU idle.*
+
+**Found.** Every peer in the room says their sea in their word (`navalHost.js applyWord`), and the host stood a hull in
+Come Sail Away's pool for every ship it was told of (`buildOne`), wherever she sailed. The pool walks and bakes each
+drawn boat every frame (`comeSailAwayPool.js frame`: her active objects' walk and her sails' `FixDeformations`), so a
+busy room's 30-40 ships - most of them 80-700 km off, round the other players - were a third of the main thread. Held
+back past 1.5-2 km on the live client: 38-45 FPS became 103-150.
+
+**The fix.** Her record is kept as ever (her stander's word, her course between words, her fires, the claims and the
+handover); only her hull waits. Another's ship is built within `PEER_HULL_NEAR_M` (3,000 m) of the eye, and past
+`PEER_HULL_FAR_M` (3,500 m) her hull goes back to the pool (`shedFarHulls`) - never one being boarded or with bodies on
+her deck - and is built again as she comes within reach. Both edges stand past where a peer's own sea reaches me
+(`NAVAL_SHARE_RADIUS` + `LINER_DROP_M`) and past the fog. My own ships are untouched.
+
+Pins: `test/peerhullrange.test.js` (1), over the real pool through a peer's word. Mutants:
+`tools/mutants/peerhullrange.json`, 3, all dead.
 
 ## What is left, ranked
 
