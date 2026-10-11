@@ -101,5 +101,5 @@ At the owner's standing word ("These are all of your decisions"), each his to ov
 - `tools/mutants/guild3.json` - 52, all dead (`GUILD3c-a-disband-asked-a-hand-over` re-aimed at the known map once
   the `leave` option went). The seventeen older records the audit moved, all dead (`CHAP7B-SHEET-TAG` re-aimed again
   when its first re-aim would not parse); `CHAP6A-SVC-LIVE` dies on the new pin too.
-- The service is `acct113` - GUILD3's `acct112` renumbered past SCALE4f + SCALE4g + SCALE4h at the merge of main, the audit's service changes riding it (none of GUILD3 has shipped); no migration; no relay change.
+- The service is `acct114` - GUILD3's `acct112` renumbered past SCALE4f + SCALE4g + SCALE4h, then GUILD-SEEN's `acct113`, at the merges of main, the audit's service changes riding it (none of GUILD3 has shipped); no migration; no relay change.
 - Not verified here: a live account service; the real game with ARENA2 data.

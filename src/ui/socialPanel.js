@@ -57,7 +57,7 @@ import {
 import { VAULT_RANK_DEFAULTS, VAULT_LIMIT_CHOICES, GUILD_VAULT_SLOTS, vaultStandingText, vaultMayTake, vaultMayPut } from '../net/guildVaultLaw.js';   // GUILD2b: the vault
 import { tradeRefusal } from '../systems/tradePack.js';   // GUILD2b: what may leave a pack, for the vault as for a trade
 import { isLocked } from '../systems/itemLock.js';   // AUDIT2 GUILD2 U4: a locked piece stays in the pack
-import { GUILD_DEPOSIT_UNSURE } from '../net/guildBook.js';
+import { GUILD_DEPOSIT_UNSURE, guildMemberOnline, guildSeenText } from '../net/guildBook.js';   // GUILD-SEEN: a member's "last online"
 import { LETTER_OF_CREDIT_TEXT } from '../systems/tradeModes.js';   // GUILD-LETTER: the trade window's own line for a letter of credit
 import { writMay, guildMoveOk, writBudgetOk, GUILD_STORES_MAX, WRIT_BUDGET_MAX } from '../net/writLaw.js';   // PROF6: the guild Stores' and the writ budget's ranks and bounds
 import { guildRankLines, GUILD_RANK_ACTS_NOTE } from '../net/guildPowers.js';   // GUILD3c: what each rank may do, in words
@@ -556,6 +556,8 @@ export function createSocialPanel({ social, send = null, mail = null, guild = nu
   let ticking = [];                            // [{ el, expires }] - the countdowns drawn right now
   let liveSubs = [];                           // [{ el, of() }] - the sub-texts that go stale on the CLOCK alone (B8)
   let liveBtns = [];                           // [{ b, of() }] - GUILD-LIVE: the buttons whose state is read off a draft
+  let liveDots = [];                           // [{ el, of() }] - GUILD-SEEN: the presence dots that go out on the CLOCK alone
+  const dotClass = (online) => `dfsocial-dot${online ? ' on' : ''}`;
   let toasted = null;                          // the invitation the toast is showing, or null
   // MAIL1: the Letters tab's own state. `mode` is the view (the box, one letter, the form); `draft` is the form's words,
   // kept HERE and written on every keystroke, so a repaint - or a close and a reopen - never loses a letter half
@@ -627,14 +629,16 @@ export function createSocialPanel({ social, send = null, mail = null, guild = nu
   /** A person's row: the presence dot, the name (in the colour their standing earns), what they are doing under it.
    *  The sub-text node is left ON the row (`subNode`) because some of those sentences go stale where nothing in the
    *  picture changed - see `liveSubs` and AUDIT SOC B8. */
-  const personRow = ({ name, sub = '', online = null, colour = null, lead = false }) => {
+  const personRow = ({ name, sub = '', online = null, colour = null, lead = false, seen = '' }) => {
     const r = el('div', 'dfsocial-row');
-    if (online !== null) r.append(el('div', `dfsocial-dot${online ? ' on' : ''}`));
+    if (online !== null) { r.dotNode = el('div', dotClass(online)); r.append(r.dotNode); }
     const who = el('div', 'dfsocial-who');
     const nameEl = el('div', 'dfsocial-name', String(name ?? ''));
     if (colour) nameEl.style.color = colour;
     who.append(nameEl);
     if (sub) { const s = el('div', 'dfsocial-sub', String(sub)); who.append(s); r.subNode = s; }
+    // GUILD-SEEN: a line of its own under the first - a guild member's "last online" beneath their rank
+    if (seen) { const s = el('div', 'dfsocial-sub', String(seen)); who.append(s); r.seenNode = s; }
     r.append(who);
     if (lead) r.append(el('span', 'dfsocial-lead', 'Leader'));
     return r;
@@ -1272,7 +1276,14 @@ export function createSocialPanel({ social, send = null, mail = null, guild = nu
     const mayGrant = guildMay(me, 'vaultGrant');
     for (const m of v.members) {
       const standing = m.vault ? ` - ${vaultStandingText(m.vault)}${m.vault.granted ? ' (granted)' : ''}` : '';
-      const r = personRow({ name: m.you ? `${m.name} (you)` : m.name, sub: `${rankName(v, m.rank)}${standing}` });
+      // GUILD-SEEN: when they were last online, as a friend's row says it - the dot and the line read again on the live
+      // pass, off the book's freshest roster (a look that moved a stamp alone repaints nothing): "Last online 5 min ago"
+      // moves on the clock alone, and a sitting that lapses puts the dot out without a look
+      const fresh = () => g.guild?.members?.find((x) => x?.member === m.member) ?? m;
+      const online = guildMemberOnline(m, g.now());
+      const r = personRow({ name: m.you ? `${m.name} (you)` : m.name, sub: `${rankName(v, m.rank)}${standing}`, online, seen: guildSeenText(m, g.now()) });
+      if (r.seenNode) liveSubs.push({ el: r.seenNode, of: () => guildSeenText(fresh(), g.now()) });
+      if (r.dotNode) liveDots.push({ el: r.dotNode, of: () => guildMemberOnline(fresh(), g.now()) === true });
       const mayMove = [guildMayMove(me, m.rank, m.rank - 1), guildMayMove(me, m.rank, m.rank + 1)];
       const mayRemove = guildMay(me, 'remove') && guildOutranks(me, m.rank);
       const mayHand = guildMay(me, 'handOver');
@@ -1732,7 +1743,7 @@ export function createSocialPanel({ social, send = null, mail = null, guild = nu
     painted = social.version; paintedUi = ui; paintedMail = mail?.version ?? 0; paintedGuild = guild?.version ?? 0; paintedWho = guildWho();
     paintedJourney = journeyKey();   // PARTY-UI
     paintedLead = !!canLead();   // PARTY-LEAD
-    ticking = []; liveSubs = []; liveBtns = [];
+    ticking = []; liveSubs = []; liveBtns = []; liveDots = [];
     for (const [id, t] of tabBtns) {
       t.b.className = `dfsocial-tab${id === tab ? ' active' : ''}`;
       t.b.setAttribute('aria-selected', id === tab ? 'true' : 'false');   // C21
@@ -1768,6 +1779,7 @@ export function createSocialPanel({ social, send = null, mail = null, guild = nu
     // AUDIT SOC B8: the sentences that go stale on the clock alone ("Last online 5 min ago"), written only when the
     // words changed - so the pins that count writes still hold and a quiet minute costs a string compare a row.
     for (const s of liveSubs) { const t = s.of(); if (s.el.textContent !== t) s.el.textContent = t; }
+    for (const d of liveDots) { const c = dotClass(d.of()); if (d.el.className !== c) d.el.className = c; }   // GUILD-SEEN
     paintLiveBtns();   // GUILD-LIVE
     let lapsed = false;
     for (const c of ticking) {

@@ -103,11 +103,12 @@
   {
     "name": "GUILD1b-a-look-always-moving-the-version",
     "file": "src/net/guildBook.js",
-    "old": "    if (JSON.stringify([this.state, this.guild, this.invites]) !== was) this._changed();",
+    "old": "    if (pictureOf(this.state, this.guild, this.invites) !== was) this._changed();",
     "new": "    this._changed();",
     "tests": [
       "test/guild1b.test.js"
-    ]
+    ],
+    "note": "GUILD-SEEN (PIN MOVED): re-aimed by content - a look compares pictureOf, the picture less each member's seenAt."
   },
   {
     "name": "GUILD1b-any-truthy-answer-accepting",

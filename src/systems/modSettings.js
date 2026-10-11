@@ -72,6 +72,19 @@ export const MOD_SETTINGS = Object.freeze({
       }),
     }),
   }),
+  // RSH1: READIED SPELLCASTING HANDS 1.3 (jefetienne, the World Tooltips author). The mod ships no modsettings - it is
+  // on when it is listed - so `Enabled` is the port's alone (MO1: on by default), and its description is written here.
+  'readied-spellcasting-hands': Object.freeze({
+    title: 'Readied Spellcasting Hands',
+    author: 'jefetienne',
+    keys: Object.freeze({
+      Enabled: Object.freeze({
+        default: true,
+        description: 'Your casting hands come up and hold while a readied spell waits for your click, where the screen '
+          + 'stood empty until the cast. Spells on yourself go at once and raise nothing.',
+      }),
+    }),
+  }),
   'seasons-iliac-bay': Object.freeze({
     title: 'Seasons of the Iliac Bay',
     author: 'RosyTheRascal',

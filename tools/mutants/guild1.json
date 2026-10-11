@@ -660,11 +660,12 @@
   {
     "name": "GUILD1-the-roster-unranked",
     "file": "server-account/src/guilds.js",
-    "old": "FROM guild_members WHERE guild_id = ? ORDER BY rank, joined_at, rowid')",
-    "new": "FROM guild_members WHERE guild_id = ? ORDER BY rowid')",
+    "old": "WHERE m.guild_id = ? ORDER BY m.rank, m.joined_at, m.rowid`)",
+    "new": "WHERE m.guild_id = ? ORDER BY m.rowid`)",
     "tests": [
       "test/guild1.test.js"
-    ]
+    ],
+    "note": "GUILD-SEEN (PIN MOVED): re-aimed by content - the roster's statement reads each member's players row beside it now, its columns named by the roster's alias."
   },
   {
     "name": "GUILD1-a-stale-invitation-read",

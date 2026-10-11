@@ -574,6 +574,15 @@ function longBody(doc, side) {
  *  so a long bar is the HUD's vial drawn out - its own head, its glass, its own foot - never a run of tube that simply
  *  stops (Dudey: "the vial bars are toooshort in the stat screen"). */
 export const VIAL_CUT = Object.freeze({ cork: 6, tubeFrom: 28, tubeLen: 32, footFrom: 76, bodyLen: 240 });
+/** A piece turned half round - the lying vial's piece as the UPRIGHT vial's track holds it (cork at the right, so the
+ *  dress's quarter turn stands it on top). */
+function halfTurn(doc, src) {
+  const c = canvas(doc, src.width, src.height), g = ctx(c);
+  g.imageSmoothingEnabled = false;
+  g.translate(src.width, src.height); g.rotate(Math.PI);
+  g.drawImage(src, 0, 0);
+  return c;
+}
 function vial(doc, src) {
   const cork = Math.max(2, Math.round(src.height * 0.05));
   const side = turn(doc, src, false), up = turn(doc, src, true);
@@ -581,13 +590,19 @@ function vial(doc, src) {
   const corkPiece = strip(doc, side, 0, VIAL_CUT.cork);
   const empty = drain(doc, side, cork, true);
   const footLen = side.width - VIAL_CUT.footFrom;
-  return {
+  const v = {
     full: side, empty, up, upEmpty: drain(doc, up, cork, false),
     tube, tubeEmpty: drain(doc, tube, 0, true), cork: corkPiece,
     head: strip(doc, side, 0, VIAL_CUT.tubeFrom), headEmpty: strip(doc, empty, 0, VIAL_CUT.tubeFrom),
     body: longBody(doc, side), bodyEmpty: longBody(doc, empty),
     foot: strip(doc, side, VIAL_CUT.footFrom, footLen), footEmpty: strip(doc, empty, VIAL_CUT.footFrom, footLen),
   };
+  // VIAL-LONG (2026-10-11: "when i use alt + u and try to make the bar ... longer it bugs out"): the UPRIGHT vial drawn out
+  // too - its head, its glass and its foot, each the lying one's turned half round, so a taller vial stands as the HUD's
+  // own does: the cork on top, the foot on the floor, the glass drawn out between
+  return Object.assign(v, {
+    upHead: halfTurn(doc, v.head), upHeadEmpty: halfTurn(doc, v.headEmpty), upFoot: halfTurn(doc, v.foot), upFootEmpty: halfTurn(doc, v.footEmpty),
+    upBody: halfTurn(doc, v.body), upBodyEmpty: halfTurn(doc, v.bodyEmpty) });
 }
 
 /** THE TAB PLATE with its lettering lifted off: inside its outline, a pixel much darker than its row's own wood is a
@@ -648,7 +663,9 @@ export function buildGrimoireArt(doc = globalThis.document) {
         Object.assign(out, { [name]: v.full, [`${name}Empty`]: v.empty, [`${name}Up`]: v.up, [`${name}UpEmpty`]: v.upEmpty,
           [`${name}Tube`]: v.tube, [`${name}TubeEmpty`]: v.tubeEmpty,
           [`${name}Head`]: v.head, [`${name}HeadEmpty`]: v.headEmpty, [`${name}Foot`]: v.foot, [`${name}FootEmpty`]: v.footEmpty,
-          [`${name}Body`]: v.body, [`${name}BodyEmpty`]: v.bodyEmpty });
+          [`${name}Body`]: v.body, [`${name}BodyEmpty`]: v.bodyEmpty,
+          [`${name}UpHead`]: v.upHead, [`${name}UpHeadEmpty`]: v.upHeadEmpty, [`${name}UpFoot`]: v.upFoot, [`${name}UpFootEmpty`]: v.upFootEmpty,
+          [`${name}UpBody`]: v.upBody, [`${name}UpBodyEmpty`]: v.upBodyEmpty });
         out.vialCork ??= v.cork;
       }
       else out[name] = piece;

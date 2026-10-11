@@ -14,6 +14,7 @@
 //   /wave /bow ... [name]   a GESTURE, to those near you (Local) - "Bran waves at Ann." (EMOTE1, EMOTES; /emotes lists them)
 //   :smile: :sword: ...     a shortcode is its emoji in anything said (EMOTE1, SHORTCODES)
 //   /find /who <name>       who is online by that name, anywhere in the world - the hub's answer (SCALE5c)
+//   /search <name>          the panel's own search of every tab's lines and the roster - never sent (CHAT-FIND)
 //   /help /?                the list, as lines only you see
 //   //text                  a line that starts with a slash, said as it stands on the active tab
 //
@@ -182,6 +183,7 @@ export const HELP_LINES = Object.freeze([
   '/mentor - whether you are mentoring your party (automatic when they are well below your level)',
   '/mail - your mailbox: the developers\' messages, and any item they hold to claim',
   '/find or /who <name> - who is online by that name, anywhere in the world',   // SCALE5c
+  '/search <name> - every tab\'s lines from or about a player, and who here is online by that name (/search alone clears)',   // CHAT-FIND
   '//text - a line that starts with a slash',
 ]);
 
@@ -226,6 +228,16 @@ export function parseChatLine(text, extra = []) {
     if (r) return r;
   }
   return { kind: 'unknown', name };
+}
+
+/** CHAT-FIND: `/search <name>` - the panel's own command, answered before the host is asked (it sends nothing and
+ *  says nothing: it fills the panel's search). `{ query }` ('' to clear), or null for any other line. `/find` and `/who`
+ *  stay the hub's search of everyone online (SCALE5c), so a line the panel takes is never one the host answers. Pure. */
+export const FIND_COMMANDS = Object.freeze(['search']);
+export function findCommandOf(text) {
+  const m = /^\/([A-Za-z]+)(?:\s+([\s\S]*))?$/.exec(String(text ?? '').trim());
+  if (!m || !FIND_COMMANDS.includes(m[1].toLowerCase())) return null;
+  return { query: (m[2] ?? '').trim() };
 }
 
 /** The line a refused command leaves in the log - said to the one who typed it, and nobody else. */
