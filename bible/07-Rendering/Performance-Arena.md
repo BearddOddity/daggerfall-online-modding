@@ -178,7 +178,8 @@ height and the quad's radius, so it is kept:
 
 It decides nothing the pass did not: no cache, signature or cadence of SC1/FLICKER-FIX is read or written, and every
 draw of every face is the same - the replay's cull asks the same question and gets the same answer, kept instead of
-walked. On the captured inputs, replayed in Node: 0.41 -> 0.08 ms a frame.
+walked. On the captured inputs, replayed in Node: 0.41 -> 0.08 ms a frame; in the game (the hook below, eight
+frames) 4,336 asks of 4,336 were kept answers, under 72 names a frame.
 
 ## PERF-ORDER — the cheapest skip first (2026-10-11)
 
@@ -189,6 +190,27 @@ flat its sphere before its emission map - 636 a frame, 3 with a map. Each loop's
 effect a later one reads (`shadowReach` memoises its sun planes once a frame; `billboardKey` caches a key on the batch
 and interns it, and the cutout sort orders keys by their strings, not their ids), so the cheapest goes first: the far
 rule's three compares, the emission map's one lookup. The batches kept and the flats drawn are the same.
+
+### Measured (both slices, the real game)
+
+Knightstale by night (`frameProbe.mjs night`, 40 frames, `INSTR=shadow`), main's head (#760) and this branch's, run back
+to back with nothing else on the machine (a first after-run made beside a mutation campaign read high in code neither
+slice touches, and is not used). Milliseconds of this container's CPU a frame, by sample count - and a component moves
+some tenths between two runs of one tree (the billboards' 1.85 -> 1.65 below is such a move: neither slice is in it),
+so the functions' own lines are the slices' measure and the frame's total is not claimed to the tenth.
+
+| | main | this branch |
+|---|---|---|
+| the world host's frame (its JavaScript) | 20.8 | 19.4 |
+| - the pixel walk (`framePixelWalk`; its `aabbOutside` 0.52 -> 0.25) | 2.05 | 1.67 |
+| - the air pass's resolve (its `_replayEmission` 0.67 -> 0.40) | 1.20 | 0.84 |
+| - the volume asks (`placementsInVolume` -> `placementsInVolumeOf` 0.20 + `volumeName` 0.11) | 0.41 | 0.31 |
+| the shadow pass (`shadowPass.render`) | 3.75 | 3.69 |
+| allocated a frame | 1.05 MB | 1.05 MB |
+
+The kept answers cost more here than in Node (a kept answer about 0.4 us on this starved main thread, the 72 names
+1.5 us apiece), so PERF-VOL is the smaller of the two in the game: a tenth of a millisecond at twelve lamps, growing
+with the lamps and the swaying woods by them. PERF-ORDER is the half a millisecond.
 
 Pins (both slices): `test/perfvol.test.js` (6) - the kept answer against `placementsInVolume` and a walk of every
 placement over random woods, lantern faces and cascades, frame after frame through one reused Float32Array with the
