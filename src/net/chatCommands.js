@@ -248,6 +248,9 @@ export function foundText({ q, l, busy } = {}) {
 }
 /** SCALE5c: `/find` with no hub to ask. */
 export const FIND_OFFLINE_TEXT = 'Searching needs the World channel online.';
+/** AUDIT SCALE II C-1: `/find` on a hub whose relay answers no search (one before the shards, world192) - said here and
+ *  never sent, since that relay closes the hub link on it. */
+export const FIND_RELAY_TEXT = 'Searching needs a newer relay than the one online now.';
 
 /** EMOTE1: the gestures, as the lines `/emotes` shows. */
 export const EMOTE_LINES = Object.freeze(['Gestures, to those near you - add a name to make one AT someone:', Object.keys(EMOTES).map((n) => `/${n}`).join(' ')]);

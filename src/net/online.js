@@ -72,7 +72,7 @@ import { relaySupportsFoeInventory } from './wire.js';
 // Not a DFU member: Daggerfall Unity has no multiplayer. Ledger A row.
 import { validStaffTeleportIn, validStaffTeleportOut, staffTeleportSupported } from './staffTeleport.js';
 import { validRelayCfgIn, validRelayCfgOut, relayCfgSupported } from './relayCfg.js';   // SCALE5b: the relay's settings, a developer's
-import { hubHopOf, isChannelShard, channelOf, HUB_FIND_MAX, HUB_FIND_Q_MAX, HUB_GUILD_WHO_MS, HUB_GUILD_WHO_MAX, HUB_WHO_MS } from './hubShards.js';   // SCALE5c: the hub, sixteen ways
+import { hubHopOf, isChannelShard, channelOf, hubShardsSupported, HUB_FIND_MAX, HUB_FIND_Q_MAX, HUB_GUILD_WHO_MS, HUB_GUILD_WHO_MAX, HUB_WHO_MS } from './hubShards.js';   // SCALE5c: the hub, sixteen ways
 import { CHAT_ROSTER_MAX } from './wire.js';   // SCALE5c: the World tab's list while the hub is small
 import { isLayered, LAYERS_MAX } from './wire.js';   // SCALE5d: a crowded place's layers
 import { layoutRoomKey } from '../world/interiorShared.js';   // WD3 (AUDIT WD3 B3): an interior's room is its layout's
@@ -518,12 +518,15 @@ export class OnlineSession {
     this.hubOnline = new Map();   // SCALE5c: id -> everyone online on every shard, as the bus last said (`sendHubWho`) - the World tab's list while the hub is small
     this._hubWhoAt = -Infinity;
     this._shardMiss = 0;          // SCALE5c: a shard's socket that never opened, in a row (a relay before the shards refuses its key)
+    this._opened = new WeakSet(); // AUDIT SCALE II C-2: every socket that fired `open` - a shard's that never did is the miss above
+    this._statusAtError = new WeakMap();   // AUDIT SCALE II C-2: my room's socket -> its status when the browser's `error` overwrote it (the `close` after reads it)
     this._hubBus = false;         // SCALE5c: the hub link fell back to the bus - it offers the shards no more this session
     this.layer = 0;               // SCALE5d: the layer of the place my room is (its welcome's `ly`; 0 the place itself)
     this.layerHint = 0;           // SCALE5d: the layer my next room is asked for first (my party's - the host sets it); the Worker walks on past a full one
     this._layerRoom = null;       // SCALE5d: the room `layer` was said in - a reconnect to it asks for its own layer again
     this.onRelayCfg = null;       // SCALE5b: ({k, v}|{k, error}) => void - the hub's answer to a relay setting
     this.relayCfgOk = false;      // SCALE5b: the hub's relay takes a setting (its welcome says, relayCfgSupported)
+    this.findOk = false;          // AUDIT SCALE II C-1: the hub's relay answers `find` - a search, the World tab's list, the Guild tab's (its welcome says, hubShardsSupported)
     this.onTraveller = null;      // TV3: (frame) => void - a traveller's mark in my region (p null: they went in, or hid)
     this.onTravellerRoom = null;  // TV3: (frames) => void - the region room's marks, whole, on its welcome
     this.onTravellerLeft = null;  // TV3: (id) => void - a traveller left my region's room
@@ -790,6 +793,10 @@ export class OnlineSession {
   get claim() { return this._claimAt != null && this._now() - this._claimAt <= CLAIM_TTL_MS; }
   set claim(v) { this._claimAt = v ? this._now() : null; }
 
+  /** AUDIT SCALE II C-1: my room's socket is open and its relay has answered the hello - so its word on what it keeps
+   *  (`findOk` and the rest) is this relay's, not a default waiting for the welcome. */
+  get welcomed() { return this.status === 'open' && !!this._ws && this._welcomed.has(this._ws); }
+
   /** Enter a room (leaving the last). The pose is the hello's. AUDIT WORLD34 D5: said out loud, with whether the
    *  wire keeps a world for it - until now nothing on screen or in the console told a player whether the dungeon
    *  they stood in was shared or merely peopled. */
@@ -878,6 +885,7 @@ export class OnlineSession {
     this._fallen.clear();
     this._fallenIn.clear();   // WILD1
     this._who.clear();   // AUDIT WORLD6b-iii(e) B4: the asked list goes with the room - a stranger asked here is asked at once in the next
+    this._forgetHubLists();   // AUDIT SCALE II C-6: and the hub's lists of everyone and my guild online - a leave, a hop, another region
     this.status = 'closed';
     this._setHost(null);   // AUDIT WORLD2 C2: through the one door, so the world host hears the seat go with the room
     this._setEvent(null, false);   // EVENT1: a player who leaves the server leaves its event - it is online's alone
@@ -1014,6 +1022,7 @@ export class OnlineSession {
     const s = this._rooms.get(room);
     this._rooms.delete(room);
     if (room === this.room) this.roomCount = null;   // AUDIT SCALE5a (lens C, pre-existing): a room let go takes its count with it - a superseded World tab said 'Online - 600' over an empty list
+    if (room === this.room) this._forgetHubLists();   // AUDIT SCALE II C-6: and its lists of everyone online - a terminal close (the seat taken, a refusal) lets the room go here
     this._inChat.delete(room);   // CHAT-G: a room let go takes its bucket with it, or a long session accumulates one per cell it ever walked through
     this._inSocial.delete(room); this._inNote.delete(room); this._inParty.delete(room);   // AUDIT SOC B3: and the hub's three
     for (const k of [...this._inQuest.keys()]) if (k.startsWith(`${room}|`)) this._inQuest.delete(k);   // AUDIT DROPS C2: keyed room|acct
@@ -1022,6 +1031,15 @@ export class OnlineSession {
     this._inAmapRoom.delete(room);
     if (s) for (const id of s) if (!this._held(id)) this.peers.delete(id);
     for (const p of this.peers.values()) if (p.src === room) p.src = null;   // NET-SMOOTH 2: nor is it anyone's source
+  }
+  /** AUDIT SCALE II C-6: THE HUB'S LISTS GO WITH THE ROOM THEY WERE ASKED IN. `hubOnline` (the World and Region tabs'
+   *  everyone, while the channel is small) and `guildOnline` (the Guild tab's) were replaced only by the next answer, and
+   *  that is asked only from a welcomed shard - so a link superseded, refused, left, or moved to another region's
+   *  channel listed the people of the room it was in, as online, for the life of the page. Each floor goes too, so the
+   *  next room's welcome is asked at once. */
+  _forgetHubLists() {
+    this.hubOnline = new Map(); this._hubWhoAt = -Infinity;
+    this.guildOnline = new Map(); this._guildWhoAt = -Infinity;
   }
   _openHalo(room, backoff = BACKOFF_MIN_MS) {
     if (!this.url || !this._WS) return;
@@ -1189,7 +1207,12 @@ export class OnlineSession {
     this._rehelloAt = now;
     for (const [room, old] of open) {
       let ws;
-      try { ws = new this._WS(`${this.url}/room/${room}`); } catch { continue; }   // the old socket stands; the next change asks again
+      // AUDIT SCALE II R3-10: THE SAME LAYER, the object the old socket stands in. A replacement takes the old socket's
+      // place only in ITS object (the relay's reconnect is a room's own), and was opened at the place itself: the Worker's
+      // walk landed it wherever there was room, its welcome said that layer, and the player left their party's layer by
+      // changing an aura. The primary asks what `_open` asks; a halo the layer its welcome said (`ly`)
+      const ly = room === this.room ? (this.room === this._layerRoom && this.layer > 0 ? this.layer : this.layerHint) : (this._halo.get(room)?.ly ?? 0);
+      try { ws = new this._WS(`${this.url}/room/${room}${isLayered(room) && ly > 0 ? `?ly=${ly}` : ''}`); } catch { continue; }   // the old socket stands; the next change asks again
       this._swap.set(room, { ws, old, since: now });
       this._bind(ws);
     }
@@ -1809,6 +1832,9 @@ export class OnlineSession {
   /** The one handler set for a socket, the primary's or a halo's - the role is read at event time (_roomOf). */
   _bind(ws) {
     ws.onopen = async () => {
+      // AUDIT SCALE II C-2: THIS SOCKET OPENED - remembered before anything else, the role's question included. A shard's
+      // socket that closes without it is a relay that refused the key (onclose's fallback reads it, not `status`)
+      this._opened.add(ws);
       const room = this._roomOf(ws) ?? this._swapRoom(ws);   // AURA-LIVE: or a socket opening to replace one (rehello)
       if (room == null) return;
       const live = () => this._roomOf(ws) != null || this._swapRoom(ws) != null;
@@ -1848,6 +1874,7 @@ export class OnlineSession {
         this.amapOk = false;   // PARTY-MAP: likewise, the welcome says
         this.staffTeleportOk = false;
         this.relayCfgOk = false;   // SCALE5b: likewise
+        this.findOk = false;   // AUDIT SCALE II C-1: likewise - a relay rolled back behind the shards closes the hub link on `find`
         this.travOk = false;   // AUDIT DEEP T3-5: this socket's relay says whether it knows `trav` on ITS welcome (a rollback to world121 closes on one)
         this._send(frame);
         if (!this.presence) this._lastSentAt = this._now();   // the heartbeat clock starts at the hello
@@ -1888,7 +1915,11 @@ export class OnlineSession {
       }
       // SCALE5c: A SHARD THAT NEVER OPENED, twice in a row, is a relay before the shards (it refuses the key) - the hub link
       // goes to the hub itself, and offers the shards no more this session (or the bus would send it straight back)
-      if (isChannelShard(room) && this.status === 'connecting' && !this._closedByUs && ++this._shardMiss >= 2) { this._shardMiss = 0; this._hubBus = true; this._ws = null; this.join(channelOf(room)); return; }
+      // AUDIT SCALE II C-2: "never opened" is the SOCKET's own word (`_opened`), not `status`. A browser fails a refused
+      // upgrade by firing `error` and THEN `close` (the WebSocket standard's "fail the WebSocket connection"), and
+      // `onerror` below writes status 'error' first - so `status === 'connecting'` never held in a browser, and a page that
+      // remembered the shards tried its shard for ever after a relay rolled back. Only the pins' close-alone reached it
+      if (isChannelShard(room) && !this._opened.has(ws) && !this._closedByUs && ++this._shardMiss >= 2) { this._shardMiss = 0; this._hubBus = true; this._ws = null; this.join(channelOf(room)); return; }
       this._ws = null;
       this._setHost(null);   // AUDIT WORLD2 A2/C2: a dead socket holds no seat - the host is unknown until the next welcome, and the world host hears it (onHost)
       // SLAM12 (AUDIT SLAM): a TERMINAL close forgets the room's peers - no reconnect is coming, and 199 stale records
@@ -1903,11 +1934,15 @@ export class OnlineSession {
       if (code === CLOSE_POLICY && tokenRetryable(this._tokenless.get(ws))) { this.status = 'closed'; this.error = 'waiting for the account service'; this._backoff = Math.max(this._backoff, BACKOFF_MAX_MS / 2); this._scheduleRetry(); this._retryAt = this._afterMintHold(this._retryAt); return; }   // STORM-SHED: not before the page's next mint may be asked
       if (code === CLOSE_POLICY) { this.terminal = true; this.terminalAt = this._now(); this.status = 'error'; this.error = this.error ?? 'the relay refused a frame'; this._endHalo(); this._forgetRoom(this.room); return; }
       if (code === CLOSE_BUSY) { this._tokenUnread(ws, room, ev); this.status = 'closed'; this.error = 'the room is busy'; this._backoff = Math.max(this._backoff, BACKOFF_MAX_MS / 2); this._scheduleRetry(); return; }   // full or gated: back off hard, then try again   // SCALE5a: its token handed back when the relay never read it
-      if (!this._closedByUs) this._dropAt = this.status === 'open' ? this._wave.dropped(this._now()) : null;   // SCALE2c: an open socket's drop, weighed by the page as a wave
+      // SCALE2c: an open socket's drop, weighed by the page as a wave. AUDIT SCALE II C-2 (found on the way, the same
+      // cause): open as it stood BEFORE the browser's `error` - an unclean close (1006, a deploy's) fires `error` first,
+      // which wrote 'error' over 'open', and no socket of a page in a browser was ever weighed: no wave, no spread
+      const was = this._statusAtError.get(ws) ?? this.status;
+      if (!this._closedByUs) this._dropAt = was === 'open' ? this._wave.dropped(this._now()) : null;
       this.status = 'closed';
       if (!this._closedByUs) this._scheduleRetry();
     };
-    ws.onerror = () => { const room = this._roomOf(ws); if (room === this.room && room != null) { this.status = 'error'; this.error = 'socket error'; } };
+    ws.onerror = () => { const room = this._roomOf(ws); if (room === this.room && room != null) { if (!this._statusAtError.has(ws)) this._statusAtError.set(ws, this.status); this.status = 'error'; this.error = 'socket error'; } };   // AUDIT SCALE II C-2: what it stood at, kept for the `close` that follows
   }
 
   /** SLAM2 (2026-09-16, Mac: Daggerfall's 30th, a streamer's server slam): THE RETRY IS JITTERED.
@@ -2392,9 +2427,12 @@ export class OnlineSession {
   }
 
   /** SCALE5c (Mac's decision 2): a search of everyone online by name, down the hub link - its answer comes back through
-   *  `onFound`. False when this session is not the hub's, or the search is no search. */
+   *  `onFound`. False when this session is not the hub's, its relay answers no search, or the search is no search.
+   *  AUDIT SCALE II C-1: THE RELAY'S WORD FIRST (`findOk`, its welcome's). The site deploys before the relay, or hours
+   *  apart from it, or the relay rolls back: a relay before the shards parses `find` as an unknown message and closes the
+   *  hub link 1008, which is terminal - no friends, no party, no world chat until the rejoin's wait. */
   sendFind(q) {
-    if (!isSocialRoom(this.room) || typeof q !== 'string') return false;
+    if (!this.findOk || !isSocialRoom(this.room) || typeof q !== 'string') return false;
     const t = q.trim().slice(0, HUB_FIND_Q_MAX);
     return !!t && this._send({ t: 'find', q: t });
   }
@@ -2410,9 +2448,11 @@ export class OnlineSession {
     return this._send({ t: 'find', all: 1 });
   }
   /** SCALE5c: who of my guild is online on every shard - asked at most every HUB_GUILD_WHO_MS (the Guild tab asks while
-   *  it is drawn); the answer is `guildOnline`. False when not asked. */
+   *  it is drawn); the answer is `guildOnline`. False when not asked.
+   *  AUDIT SCALE II C-1: and only of a relay that answers it (`findOk`) - the Guild tab asks every frame it is drawn, so
+   *  on a relay before the shards the hub link was closed, rejoined and closed again for as long as the tab stood open. */
   sendGuildWho() {
-    if (!isSocialRoom(this.room) || !this._ws || !this._welcomed.has(this._ws)) return false;   // after the welcome: a frame before the hello's answer is junk
+    if (!this.findOk || !isSocialRoom(this.room) || !this._ws || !this._welcomed.has(this._ws)) return false;   // after the welcome: a frame before the hello's answer is junk
     const now = this._now();
     if (now - this._guildWhoAt < HUB_GUILD_WHO_MS) return false;
     this._guildWhoAt = now;
@@ -2758,6 +2798,7 @@ export class OnlineSession {
       else { const h = this._halo.get(room); if (h) h.lookOk = relaySupportsLook(relayV); }   // PROFILE2: a halo says for itself
       if (primary) this.staffTeleportOk = staffTeleportSupported(relayV);
       if (primary) this.relayCfgOk = relayCfgSupported(relayV);   // SCALE5b
+      if (primary) this.findOk = hubShardsSupported(relayV);   // AUDIT SCALE II C-1: `find` is the shards' relay's (world192) - one before it parses it as an unknown message and closes the hub link 1008, terminal
       { const ws = primary ? this._ws : this._halo.get(room)?.ws; if (ws) this._rfOn.set(ws, m.rf === 1); }   // SCALE5b: whether its cell judges poses - a halo there hears every one (HALO-THIN)
       if (primary) this.travOk = relaySupportsTravellers(relayV);   // TV3
       if (primary) this.amapOk = relaySupportsPartyMap(relayV);   // PARTY-MAP

@@ -122,8 +122,8 @@
   {
     "name": "SCALE5c-forward-ungated",
     "file": "server/src/index.js",
-    "old": "    if (!g.pass) { this._junk(ws); return; }\n    this._hubUpOwe(a.vid, 'f', message);",
-    "new": "    this._hubUpOwe(a.vid, 'f', message);",
+    "old": "    if (!g.pass) { this._junk(ws); return; }\n    // AUDIT SCALE II R2-11: a bus that takes nothing",
+    "new": "    // AUDIT SCALE II R2-11: a bus that takes nothing",
     "tests": [
       "test/scale5c.test.js"
     ],
@@ -152,7 +152,7 @@
   {
     "name": "SCALE5c-hello-not-handed-up",
     "file": "server/src/index.js",
-    "old": "          this._hubUpOwe(vid, 'h', { att: this._shardAtt(this._attach(ws)), m: { acct: m.acct ?? null, asecret: m.asecret ?? null, ps: m.ps === 1 ? 1 : 0, cl: m.cl ? 1 : 0 } });\n",
+    "old": "          this._hubUpOwe(vid, 'h', { att: this._shardAtt(this._attach(ws)), m: { acct: m.acct ?? null, asecret: m.asecret ?? null, ps: m.ps === 1 ? 1 : 0, cl: m.cl ? 1 : 0, secret: m.secret } });   // AUDIT SCALE II R2-1: the id's secret, the bus's to ask\n",
     "new": "",
     "tests": [
       "test/scale5c.test.js"
@@ -332,8 +332,8 @@
   {
     "name": "SCALE5c-rehello-unasked",
     "file": "server/src/index.js",
-    "old": "        for (const vid of Array.isArray(ans?.unknown) ? ans.unknown : []) this._hubRehello(vid);\n",
-    "new": "",
+    "old": "const h = this._hubRehelloEvents(vid); if (!h.length) continue;",
+    "new": "const h = []; if (!h.length) continue;",
     "tests": [
       "test/scale5c.test.js"
     ],
@@ -342,10 +342,11 @@
   {
     "name": "SCALE5c-unknown-unsaid",
     "file": "server/src/index.js",
-    "old": "{ if (kind === 'f' && !this._vshut.has(vid)) unknown.add(vid); continue; }",
+    "old": "{ if ((kind === 'f' || kind === 'p') && !this._vshut.has(vid)) unknown.add(vid); continue; }",
     "new": "{ continue; }",
     "tests": [
-      "test/scale5c.test.js"
+      "test/scale5c.test.js",
+      "test/auditscale2_bus.test.js"
     ],
     "note": "a frame for a socket the bus lost answered nothing SCALE5d part two (re-aimed by content): the court's copies beside it."
   },
@@ -362,8 +363,8 @@
   {
     "name": "SCALE5c-alarm-no-sync",
     "file": "server/src/index.js",
-    "old": "    if (this._hubKey) { this._hubSyncAt = 0; await this._hubUpFlush();",
-    "new": "    if (this._hubKey) { await this._hubUpFlush();",
+    "old": "if (await this._hubKeyOf()) { this._hubSyncAt = 0; await this._hubUpFlush();",
+    "new": "if (await this._hubKeyOf()) { await this._hubUpFlush();",
     "tests": [
       "test/scale5c.test.js"
     ],
@@ -372,7 +373,7 @@
   {
     "name": "SCALE5c-alarm-unarmed",
     "file": "server/src/index.js",
-    "old": "if (this.state.getWebSockets().length) await this.state.storage.setAlarm(Date.now() + HUB_SYNC_MS); return; }",
+    "old": "if (this.state.getWebSockets().length || this._up.length || this._upRetry) await this.state.storage.setAlarm(Date.now() + HUB_SYNC_MS); return; }",
     "new": "return; }",
     "tests": [
       "test/scale5c.test.js"
@@ -602,7 +603,7 @@
   {
     "name": "SCALE5c-find-unsent",
     "file": "src/scenes/world.js",
-    "old": "        if (cmd.kind === 'find') { findTab = tabId; if (!chatLinks?.get('world')?.sendFind(cmd.q)) note(FIND_OFFLINE_TEXT); return 'read'; }",
+    "old": "        if (cmd.kind === 'find') { findTab = tabId; const hub = chatLinks?.get('world'); if (!hub?.sendFind(cmd.q)) note(hub?.welcomed && !hub.findOk ? FIND_RELAY_TEXT : FIND_OFFLINE_TEXT); return 'read'; }",
     "new": "",
     "tests": [
       "test/scale5c.test.js"

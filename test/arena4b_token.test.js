@@ -1,5 +1,5 @@
 // ARENA4b (2026-10-03): THE `cl` CLAIM AT THE MINT - a realm character's own level (server-account/src/realm.js
-// realmLevelOf - INT7: the level its judge trusts, else its tile's summary), signed into the identity token beside `rc` by /v1/auth/token
+// realmLevelOf, folded since into realm.js realmMintFacts by SCALE4f - INT7: the level its judge trusts, else its tile's summary), signed into the identity token beside `rc` by /v1/auth/token
 // (server-account/src/index.js), for the relay to read. Driven through the real Worker over node:sqlite
 // (test/accountDb.mjs); the claim's own law in src/net/identityToken.js claimsValid.
 import { test } from 'node:test';

@@ -654,7 +654,8 @@ test('SCALE5b the hub keeps a developer\'s setting - in its storage, in force fo
       const relay = src('server/src/index.js');
       for (const tick of ['async _gateTick() {', 'async _sdFightTick() {', 'async _serpentTick() {']) {
         const body = relay.slice(relay.indexOf(tick), relay.indexOf('\n  }\n', relay.indexOf(tick)));
-        assert.match(body, /const now = Date\.now\(\);\n\s+await this\._relayCfgFresh\(now\);/, `${tick} asks the hub at its beat`);
+        // PIN MOVED (AUDIT SCALE II R1-2): asked, never awaited - a slow hub froze the beat (test/auditscale2_relay.test.js)
+        assert.match(body, /const now = Date\.now\(\);\n\s+void this\._relayCfgFresh\(now\);/, `${tick} asks the hub at its beat`);
       }
     });
   } finally { Date.now = realNow; }

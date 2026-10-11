@@ -76,12 +76,11 @@
     "file": "server-account/src/realm.js",
     "old": "  if (!row || row.dead_at != null || row.lease == null) return none;",
     "new": "  if (!row || row.lease == null) return none;",
-    "equivalent": true,
-    "why": "INT9's audit: the door asks for a lease too (realm.js realmCharacterHeld, `lease IS NOT NULL`), and a death clears it in the statement that marks it dead (legacy.js: `SET dead_at = ?, dead_why = ?, lease = NULL`) - no tombstone holds a lease; the dead's refusal is pinned by test/legacy7_service.test.js.",
     "tests": [
-      "test/legacy7_service.test.js"
+      "test/legacy7_service.test.js",
+      "test/scale4f.test.js"
     ],
-    "note": "SCALE4f (2026-10-10) re-aimed it by content: the four reads of the realm row are one (realm.js realmMintFacts); its tests its own again - test/scale4f.test.js's oracle stands a tombstone with a lease (a row no death writes) to hold the fold to the four, and kills it there."
+    "note": "SCALE4f (2026-10-10) re-aimed it by content: the four reads of the realm row are one (realm.js realmMintFacts); its tests its own again - test/scale4f.test.js's oracle stands a tombstone with a lease (a row no death writes) to hold the fold to the four, and kills it there. AUDIT SCALE II D-5: recorded equivalent until the audit found pins that kill it - test/scale4f.test.js; it said: INT9's audit: the door asks for a lease too (realm.js realmCharacterHeld, `lease IS NOT NULL`), and a death clears it in the statement that marks it dead (legacy.js: `SET dead_at = ?, dead_why = ?, lease = NULL`) - no tombstone holds a lease; the dead's refusal is pinned by test/legacy7_service.test.js."
   },
   {
     "name": "LEGACY7-dead-listed",

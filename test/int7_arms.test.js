@@ -3,7 +3,7 @@
 // striker's own word named (the arena) or its own look carried (a siege, a Royal Tourney) - a client's claim either way,
 // so a Daedric Dai-Katana struck as one from a pack that never held it. Now each checkpoint's judge reads the most reach
 // of the pack's LAWFUL weapons and whether a lawful bow is among them (net/siegeRef.js armsOf), the identity mint signs
-// them (`wa`) beside the level the judge trusts (`cl`, realm.js realmLevelOf), and every referee holds a blow to them.
+// them (`wa`) beside the level the judge trusts (`cl`, realm.js realmLevelOf - realmMintFacts since SCALE4f), and every referee holds a blow to them.
 // Driven through the real account Worker over node:sqlite (test/accountDb.mjs) and the real relay Room
 // (test/fakeRoom.mjs).
 import { test } from 'node:test';

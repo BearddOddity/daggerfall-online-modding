@@ -92,8 +92,8 @@
   {
     "name": "SCALE5d-header-the-page",
     "file": "server/src/relayScale.js",
-    "old": "    const headers = { ...Object.fromEntries(request.headers), [LAYER_HEADER]: String(ly) };",
-    "new": "    const headers = { ...Object.fromEntries(request.headers) };",
+    "old": "    const headers = { ...page, [LAYER_HEADER]: String(ly) };",
+    "new": "    const headers = { ...page };",
     "tests": [
       "test/scale5d.test.js"
     ],

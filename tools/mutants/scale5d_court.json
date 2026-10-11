@@ -30,16 +30,6 @@
     "note": "a copy hands up to nobody"
   },
   {
-    "name": "SCALE5d2-every-frame-handed",
-    "file": "src/net/hubShards.js",
-    "old": "export const courtHands = (s) => s.startsWith('{\"t\":\"gate\"');",
-    "new": "export const courtHands = (s) => s.startsWith('{');",
-    "tests": [
-      "test/scale5d_court.test.js"
-    ],
-    "note": "every frame the court's"
-  },
-  {
     "name": "SCALE5d2-court-unwalked",
     "file": "server/src/index.js",
     "old": "    if (isGateRoom(key)) return layerWalk(env.ROOMS, key, request, 0);\n",
@@ -92,8 +82,8 @@
   {
     "name": "SCALE5d2-gate-kept",
     "file": "server/src/index.js",
-    "old": "    if (a.vid && a.id && a.ly && typeof message === 'string' && courtHands(message) && isGateRoom(a.key)) {",
-    "new": "    if (false) {",
+    "old": "      if (a.ly) { if (a.vid && a.id) this._hubUpOwe(a.vid, 'f', JSON.stringify({ t: 'gate', ...m })); return; }",
+    "new": "      if (false) { if (a.vid && a.id) this._hubUpOwe(a.vid, 'f', JSON.stringify({ t: 'gate', ...m })); return; }",
     "tests": [
       "test/scale5d_court.test.js"
     ],
@@ -122,8 +112,8 @@
   {
     "name": "SCALE5d2-admission-skipped",
     "file": "server/src/index.js",
-    "old": "    const no = await this._gateAdmit(court, vws.att.sub, now);\n    if (no) { this._refuse(vws, no); return; }\n",
-    "new": "",
+    "old": "    if (no) { if (no === 'busy') this._refuse(vws, no, CLOSE_BUSY); else this._refuse(vws, no); return; }\n    this._vput(vws);",
+    "new": "    this._vput(vws);",
     "tests": [
       "test/scale5d_court.test.js"
     ],
@@ -262,7 +252,7 @@
   {
     "name": "SCALE5d2-refused-asked-again",
     "file": "server/src/index.js",
-    "old": "    this._vshut.set(vws.vid, 1);",
+    "old": "    this._vshut.set(vws.vid, { code: code | 0, reason: String(reason ?? '').slice(0, 120) });",
     "new": "    void 0;",
     "tests": [
       "test/scale5d_court.test.js"
@@ -272,8 +262,8 @@
   {
     "name": "SCALE5d2-copy-unwoken",
     "file": "server/src/index.js",
-    "old": "this._hubKey = isChannelShard(k) ? k : isGateRoom(k) && ly > 0 ? layerName(k, ly) : null; }",
-    "new": "this._hubKey = isChannelShard(k) ? k : null; }",
+    "old": "    let key = isChannelShard(k) ? k : isGateRoom(k) && ly > 0 ? layerName(k, ly) : null;\n    if (!key && this._hubKey === undefined) {",
+    "new": "    let key = isChannelShard(k) ? k : null;\n    if (false) {",
     "tests": [
       "test/scale5d_court.test.js"
     ],

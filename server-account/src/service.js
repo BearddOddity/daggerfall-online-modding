@@ -75,12 +75,6 @@ export const REPLICA_ROUTES = new Map([
  *  session - which the client takes as final - and a realm character created a moment ago would mint `rc` 0, which the
  *  relay refuses at its door. */
 export const REPLICA_CONSTRAINT = 'first-primary';
-/** SCALE4d: the binding as one D1 session (`withSession`) - every statement counted where the binding's are
- *  (metrics.js countedDb opens the session through itself), and DB_ROOT the binding the session came from, so what an
- *  isolate keeps beside its database stays one store for every request. A binding with no sessions (an older runtime, a
- *  harness's fake) is answered as it stands: the primary, as before. A write in a session goes to the primary - a
- *  replica takes none - and the session's later reads see it. Until the database's read replication is turned on
- *  (account-deploy.yml) every statement of a session is the primary's anyway. */
 /** SCALE4g: A D1 BOOKMARK, as D1 writes one (`0000007f-0018eec1-00005100-e64ff3f3...`: a position in the database's log)
  *  or as a client carries one back - anything else is no bookmark, and its request's session starts at the primary. */
 export const D1_BOOKMARK_RE = /^[0-9A-Za-z][0-9A-Za-z-]{0,159}$/;
@@ -90,16 +84,31 @@ export function d1BookmarkOf(/** @type {Request} */ request) {
   return typeof b === 'string' && D1_BOOKMARK_RE.test(b) ? b : null;
 }
 
+/** AUDIT SCALE II A-1 (2026-10-11, the audit of SCALE4d-SCALE5d; Mac: "Lets do an audit on everything. Ensure
+ *  perfection"): THE MINT STARTS AT THE PRIMARY, WHATEVER BOOKMARK IT CARRIES - SCALE4d's guarantee (REPLICA_CONSTRAINT),
+ *  which SCALE4g's bookmark had undone. A bookmark is a position the tab has SEEN, and no write route answers one: a
+ *  realm join, a create, a leave, another tab's join that took the lease (INT9) - none of them moves it. So a mint
+ *  started from it could read a replica from before the tab's own join and sign `rc` 0 (the relay's door word, which
+ *  the client takes as final), or a lease since moved still `rc` 1 for the character another tab now plays. The mint's
+ *  first statement, the session lookup, is the primary's, and every read after it at least that new. */
+export const PRIMARY_FIRST_ROUTES = new Set(['/v1/auth/token']);
+
 /** SCALE4g: THE DATABASE A REQUEST RUNS ON - a D1 session for a route and method REPLICA_ROUTES names, started from the
  *  bookmark the request carries (every read at least as new as that position: the caller's own last writes, read back)
  *  or at the primary for a request that carries none; the binding itself for every other route. A bookmark D1 will not
- *  take starts at the primary instead. */
+ *  take starts at the primary instead, and the mint's always does (PRIMARY_FIRST_ROUTES, AUDIT SCALE II A-1). */
 export function routeDb(/** @type {any} */ db, /** @type {string} */ path, /** @type {string} */ method, /** @type {string|null} */ bookmark = null) {
   if (REPLICA_ROUTES.get(path) !== method) return db;
-  if (bookmark) { try { return replicaDb(db, bookmark); } catch { /* a bookmark D1 refuses: the primary, below */ } }
+  if (bookmark && !PRIMARY_FIRST_ROUTES.has(path)) { try { return replicaDb(db, bookmark); } catch { /* a bookmark D1 refuses: the primary, below */ } }
   return replicaDb(db);
 }
 
+/** SCALE4d: the binding as one D1 session (`withSession`) - every statement counted where the binding's are
+ *  (metrics.js countedDb opens the session through itself), and DB_ROOT the binding the session came from, so what an
+ *  isolate keeps beside its database stays one store for every request. A binding with no sessions (an older runtime, a
+ *  harness's fake) is answered as it stands: the primary, as before. A write in a session goes to the primary - a
+ *  replica takes none - and the session's later reads see it. Until the database's read replication is turned on
+ *  (account-deploy.yml) every statement of a session is the primary's anyway. */
 export function replicaDb(/** @type {any} */ db, constraint = REPLICA_CONSTRAINT) {
   const open = db?.withSession;
   if (typeof open !== 'function') return db;

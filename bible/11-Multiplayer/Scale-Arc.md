@@ -57,7 +57,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE2b | The relay's own, ONE announced relay deploy: the O(1) socket index, the hello path in memory, bounded caches, cross-room timeouts, relay metrics, idle rooms allowed to sleep (foes and memory only when someone else is there) | Yes, once | **Shipped** (2026-10-04, in world162 beside PRIMARCH; one deploy) |
 | SCALE3 | The load harness: a Node bot fleet (guest → token → hello → poses, chat and checkpoints at real rates) against local workerd, then a staging pair; the deploy-storm scenario | No | **Local half built** (2026-10-08, this branch); the staging pair left |
 | SCALE4 | D1 discipline: sweeps moved to a `scheduled()` cron, retention for the tables that only grow, the witness tables redesigned, reads made write-free and served from read replicas (Sessions API), one heartbeat replacing the mail, beat and board polls, 304s | No | **4a-4c built** (2026-10-08, this branch): the joined session read, the cron and retention, reads write-free, the heartbeat. Left: the witness redesign, 304s (the replicas: SCALE4d, below) |
-| SCALE4d | The token's mint on a D1 session - its first statement the primary's, its reads after it a read replica's - and the deploy turns the database's read replication on | No | **Merged** (2026-10-10, #755); its deploy stopped on an overloaded database - SCALE4e |
+| SCALE4d | The token's mint on a D1 session - its first statement the primary's, its reads after it a read replica's - and the deploy turns the database's read replication on | No | **Merged** (2026-10-10, #755); its deploy stopped on an overloaded database - SCALE4e (AUDIT SCALE II D-10: and main's account deploys since carried it) |
 | SCALE4e | The account deploy outlasts an overloaded database: `migrations apply` asked again on D1's overload alone, for 5.5 minutes | No | **Built** (2026-10-10, this branch) |
 | SCALE5a | At 500 online: the hub's hello and leave without a walk of every socket, a busy refusal that mints nothing, the World tab's count past the roster's cut | Yes, once | **Deployed** (2026-10-10, #755; world189) |
 | HALO-THIN | A cell's halos hear my pose when it is due - its first, a new map pixel, 8 m on, standing at a new place, the heartbeat - not every pose; whole while my own cell's socket is down, while a halo reaches a player in range who does not hold my cell, or while a referee may stand in one (a duel, a serpent's fight); a halo pinged on its own clock | No | **Built** (2026-10-10, PR #761; client only) |
@@ -228,6 +228,13 @@ merge (AUDIT SCALE, `01-Overview/Audit-Scale.md`); what it found is written into
 figure here was measured again after it. The relay's could not be, on the boot that did (below).
 
 ### SCALE3: the load harness (the local half)
+
+(AUDIT SCALE II L2, L3, L5, 2026-10-11: since ADMIT-LINE (#766) the harness could not boot the account service - its
+entry exported no AdmitGate - nor set up a fleet past the line's burst; it exports every Durable Object class the
+service's entry does, and each bot's guest waits its place in the line. Its three sessions now share one reconnect wave
+and offer the second wire (`--wire 1` runs the first), and its tally reads `poses` and `fb` batches - every figure below
+was taken on the first wire with a wave a session, before SCALE5b and SCALE2c; the audit's own live storm is in
+`01-Overview/Audit-Scale-II.md`.)
 
 `tools/loadHarness.mjs` (`npm run load`; `--help` names every knob) runs a fleet of bots against the REAL relay and the
 REAL account service, both in local workerd (`wrangler dev`; the service behind `tools/loadAccountEntry.mjs`).
@@ -948,7 +955,9 @@ primary within half a minute.
   the database settles.
 - **What it does not fix.** The wave itself. That is SCALE2c and SCALE4f, below.
 - **Merging it deploys acct106.** The workflow deploys on a change to itself (`account-deploy.yml` lists its own path),
-  so this merge re-runs the deploy that stopped - with SCALE4d in it, since main already carries it.
+  so this merge re-runs the deploy that stopped - with SCALE4d in it, since main already carries it. (AUDIT SCALE II
+  D-10: written at acct106. Main's own account deploys since (acct107-111) each carried SCALE4d already; this merge's is
+  acct112.)
 
 **Pins.** `test/scale4e.test.js` (4) runs the step's own script under bash, as the runner does, over a fake wrangler
 that answers as D1 did and a fake `sleep`: an overload asked again after each wait and the deploy going on once the
@@ -973,7 +982,9 @@ follows: the primary overloaded 23 s in (SCALE4e).
 chat link):
 - **A wave** is two or more of the page's open sockets dropped within WAVE_WINDOW_MS (2 s) of each other while the
   browser says it is online. A deploy closes them all in one instant. One room's object restarting closes one, and a
-  lost network takes the browser offline first; neither is held.
+  lost network takes the browser offline first; neither is held. (AUDIT SCALE II C-2b: an unclean close fires `error`
+  before `close` in a browser, and the error overwrote the status the drop was read from - no page in a browser formed a
+  wave; the drop is read off the status as it stood before the error.)
 - **The spread** is as long as the hub takes to admit everyone online at its own gate: `n / CHAT_HELLO_HZ_MAX`
   seconds (WAVE_MINTS_PER_S), from the count the hub link already hears (`n`), capped at WAVE_SPREAD_MAX_MS (40 s) so
   it stays inside TOKEN_REUSE_MS and a page's sockets still share one token.
@@ -991,11 +1002,23 @@ seeds, the median), which now counts each page's mint and takes `SPREAD=1`:
 | 500 | 635 -> 32 | 500 -> 102 | 5.0 / 13.3 s -> 5.2 / 12.9 s |
 | 1,000 | 2,329 -> 81 | 1,000 -> 102 | 10.0 / 24.6 s -> 10.2 / 23.0 s |
 | 2,000 | 9,108 -> 163 | 2,000 -> 102 | 20.0 / 44.4 s -> 20.1 / 42.9 s |
-| 5,000 | 56,138 -> 35,256 | 5,000 -> 257 | the hub's own gate and cap (SCALE5c) |
+| 5,000 | 56,119 -> 35,256 | 5,000 -> 254 | the hub's own gate and cap (SCALE5c) |
 
 The hub could not welcome them faster anyway, so nobody waits longer for the hub. **The cost** is the cell: a page
 that saw the wave comes back to its own cell at its slot, not in a second or two - at 500 online, five seconds later
-on average, ten at most. Before this, at 500, the mints overloaded the database, and a page whose mint failed waited
+on average, ten at most. (AUDIT SCALE II D-9: the slot is that late; the delay it adds to the retry before it averages
+3.6 s and peaks at 9.0 s. The 5,000 row said 56,138 and 257; the model, run again, says 56,119 and 254.)
+
+**AUDIT SCALE II D-4 and L4 - two doors this did not weigh.** SCALE5c (below) gives the hub sixteen gates, so after
+world192 the hub alone welcomes a wave far faster than `n / CHAT_HELLO_HZ_MAX` (a model of sixteen gates at 2,000: the
+last at 6 s with no spread, at 40 s with it). And main's ADMIT-LINE, merged into this branch, holds every token mint in
+one line let in ADMIT_RATE a second (5, a burst of 25, `server-account/src/admit.js`): a wave of N players is minted in
+about (N - 25) / 5 s whatever the spread - 95 s at 500, 395 s at 2,000, half an hour at the arc's 10,000. While the line
+is the slower door the spread costs nobody a token; it only spreads the line's arrivals and the cells' hellos. Live (60
+bots, the real relay and account service in local workerd, the relay restarted under them): 51 of 111 mints answered
+`queue`, every bot back in its cell in 13-17 s. The minter now waits the line's own `wait` (AUDIT SCALE II L4a). Which
+door sets a reconnect's pace - the line's rate for a mint, or the spread - is Mac's (`01-Overview/Audit-Scale-II.md`,
+L4). Before this, at 500, the mints overloaded the database, and a page whose mint failed waited
 out STORM-SHED's cooling instead.
 
 ### A full foes frame that says nothing, said once
@@ -1112,7 +1135,7 @@ A realm character's mint with the seats open:
 
 | | before | after |
 |---|---|---|
-| a character in no guild, where a Season stands | 8 | 6 |
+| a character in no guild, where a Season stands | 9 | 7 |
 | a character in no guild, with no Season | 8 | 7 |
 | a member | 9 | 8 |
 
@@ -1123,7 +1146,7 @@ A realm character's mint with the seats open:
   stays.
 - **The checkpoint's four writes.** They are one batch, one transaction, carrying the Integrity arc's verdict and its
   guards (a rev, `mustChange`). Folding them would rewrite the judge's own steps.
-- **Renown's report every minute.** Its answer draws the page's own bar, so its pace is the player's to notice, and a
+- **Renown's report every minute** (AUDIT SCALE II A-N4: SCALE4h, below, coalesced it after all - by what the answer would say, the bar's ghost drawing the rest). Its answer draws the page's own bar, so its pace is the player's to notice, and a
   slower report is a gameplay change.
 - **`TOKEN_REUSE_MS`**: as the plan says. A room would hear a level or a guild up to four minutes stale.
 
@@ -1179,12 +1202,18 @@ say how new a replica must be.
   list (GET), the professions' state (POST) and the day's motherlodes (POST).
 - `routeDb` runs such a request on a D1 session started from the bookmark it carries (`x-d1-bookmark`, d1BookmarkOf).
   Every read is then at least as new as everything that tab has seen and written. A request with no bookmark starts at
-  the primary, as does one whose bookmark D1 will not take.
+  the primary, as does one whose bookmark D1 will not take. (AUDIT SCALE II A-1: that held for what the tab READ - a
+  write on a route of the binding (a realm's join, a checkpoint, a sale) answers no bookmark, so a mint after the tab's
+  own join could read a replica from before it: `rc` 0, which the relay's door takes as final, or a lease since moved
+  still signed. The mint now always starts at the primary (PRIMARY_FIRST_ROUTES), SCALE4d's guarantee; the client keeps
+  the others in step, below.)
 - `fetch` wraps `route` and hands the session's newest bookmark back on the answer, exposed to the page. The preflight
   allows the header.
 - Each route's writes stay the primary's:
   - the beat is a single `UPDATE`, which a session sends to the primary;
-  - the motherlodes' pick is an `INSERT OR IGNORE` of a pure roll, read back on the session after it.
+  - the motherlodes' pick is an `INSERT OR IGNORE` of a pure roll, read back on the session after it. (AUDIT SCALE II
+    A-5: a roll over witnesses a stale replica read, kept for the day - the pick now asks the primary's day mark, then
+    reads, writes and reads back on the primary; a kept day is read on the session.)
 - The one read-then-store - the arena's and Iliac Hand's #1, counted again and STORED where stale - runs on the binding
   wherever a session route asks it, as AUDIT SCALE4d A1 put the mint's there: the letterbox's and the board's authors'
   honours through `ctx.primary` (letters.js, board.js).
@@ -1192,7 +1221,13 @@ say how new a replica must be.
   cache with rows older than the Turning that just emptied it.
 
 **The client** (`src/net/accountClient.js` `call`, the one door every account call goes through):
-- It keeps the newest bookmark any answer under its session secret has said, and sends it on every call.
+- It keeps the newest bookmark any answer under its session secret has said, and sends it on every call. (AUDIT SCALE
+  II A-2, A-6, C-7: on the service's bookmark reads alone (`D1_BOOKMARK_READS`, REPLICA_ROUTES twinned, the mint among
+  them). Any other call forgets it, as it goes and as it is answered, and a read sent before a forget keeps nothing; an
+  offline call, a body that never came and a bookmark read answered with none forget it too; the realm's and the cloud
+  saves' writes, which do not go through `call`, the same. A tab's reads ride a replica only between its own writes: a
+  Sigil Broker sale whose answer was lost read back off a replica from before it handed the stones back while the
+  service kept the sale, and a service rolled back to acct111, whose preflight refuses the header, failed every call.)
 - D1's bookmarks begin with fixed-width hex positions, so an answer that arrives out of order never replaces a newer
   one.
 - It belongs to its secret: a sign-in, a new guest or another account starts with none. A session made a moment ago is
@@ -1228,7 +1263,9 @@ They stand together again.
 ## SCALE5b: built (2026-10-10, this branch - relay world191 on it, folded into world192 past main's WARDEN1; NOT YET DEPLOYED: one announced drop)
 
 The plan's fifth slice: the relay's hygiene and the wire's second form, in the one relay deploy it costs. A socket that
-offers nothing hears every frame byte for byte as world190 said it, so an open tab from before it keeps playing.
+offers nothing hears every frame byte for byte as world190 said it, so an open tab from before it keeps playing. (AUDIT
+SCALE II R1-6 and D-11: but for a cell's welcome, which says `rf` to every socket, the second wire's or not; the relay
+before this is main's world191, WARDEN1; and the pins hold the frames parsed and in their order, not their bytes.)
 
 **The second wire** (`src/net/wire.js` POSE_BATCH_MS, ROSTER_BATCH_MS, WIRE2_BATCH_MAX, slimPose, wire2Batch):
 - **Offered by the hello.** A session asked for it (`wire2`, which the world host asks on every socket the page holds -
@@ -1283,10 +1320,10 @@ under half. The client parses the same frames either way.
 
 | Double | Holds |
 |---|---|
-| `double13` | sockets refused `room full` - the door that refused them counted nothing before |
+| `double13` | sockets refused `room full` - the door that refused them counted nothing before (AUDIT SCALE II R1-5: the Worker's walk's last refusal alone - a layer the walk passes, full, counts nothing) |
 | `double14` | frames the room's byte budgets dropped (foes and own) |
 | `double15` | the most sockets the room held in the window |
-| `double16` | foes frames |
+| `double16` | foes frames (and OWN1's own lane, AUDIT SCALE II R1-6) |
 | `double17` | blows |
 | `double18` | chat lines |
 | `double19` | items the second wire carried in batches |
@@ -1297,10 +1334,12 @@ the herald's three Discord roles were the Worker's vars alone, and a var changed
 online dropped, to move one number. A developer now sets each in game, `/relay <setting> <value>` (a staff command, the
 Developer's alone - a token whose glyphs say `dev`), and `/relay <setting> -` hands it back to the var:
 - the hub keeps it in its storage and answers what is now in force; anyone else is answered in words and struck for
-  nothing; outside the hub the frame is junk;
+  nothing; outside the hub the frame is junk. (AUDIT SCALE II R1-4: a value its consumers would not read - a role not
+  a role id, a bossBody not a body line - is refused in words and nothing kept);
 - the hub's herald reads it at once (the herald is rebuilt when the settings are read or move);
 - a boss's room - the gate's court, an Abyss realm, a serpent's cell - asks the hub at its beat at most every
-  RELAY_CFG_TTL_MS (a minute), and a hub that does not answer leaves the last answer standing;
+  RELAY_CFG_TTL_MS (a minute), and a hub that does not answer leaves the last answer standing (AUDIT SCALE II R1-2:
+  asked, never awaited - the answer is the next beat's; a slow hub froze a fight up to 5 s a minute);
 - the var is the setting while the hub holds none.
 
 **A halo told when its cell judges poses** (`server/src/index.js` _refereesPoses, `_rfSay`). SCALE2c moved a halo's
@@ -1356,7 +1395,9 @@ PIN MOVED, each a pin that read a line SCALE5b moved:
 before it shipped (`_hostOf` now asks `_all()` first, as its walk did).
 
 **The deploy.** One announced relay drop: SCALE2c spreads its reconnect wave, SCALE4e's deploy outlasts the database's
-overload, and the account service (acct108) ships first or with it. Nothing in it needs a database migration.
+overload, and the account service (acct108) ships first or with it. Nothing in it needs a database migration. (AUDIT
+SCALE II L1: not by hand - `.github/workflows/relay-deploy.yml` deploys on every push to main whose RELAY_VERSION is not
+the live relay's, a siege's blackout aside, so the MERGE is the drop. The account service is acct112.)
 
 ## SCALE5c part one: built (2026-10-11, this branch - relay world192, NOT YET DEPLOYED: one announced drop with SCALE5b's)
 
@@ -1384,7 +1425,9 @@ each shard's.
 - **The plan said fat hubs** (each fetching its accounts' records from the bus, and calling the others hub to hub).
   Built instead: thin shards and a fat bus. Nothing moves, the laws are where they were, and the bus's share of a
   hello and a world line is measured flat to 10,000 (below). Its steady load is the party poses; that is the number
-  to watch.
+  to watch. (AUDIT SCALE II D-6: "flat" said too much - the table's own world line is 1.31 ms at 2,000 and 2.39 ms at
+  10,000, and one sample of it swings 2.6 times between runs. What the shards take off the bus is SENDS - a world line
+  one entry a shard - which the bench counts and its fake socket makes free; read the sends, and the times as one run's.)
 - **The doors.** A hello on the wrong shard is told the right one (`{t:'hub', key}`) and closed (CLOSE_HUB, 4001),
   nothing written. A hello of this build to the bus itself (`hs: 1`) is told its shard the same way, before anything
   is held, so its close says no leave. A hello that offers nothing is the bus's to keep.
@@ -1400,7 +1443,10 @@ each shard's.
 **The client** (`src/net/online.js`, `src/scenes/world.js`): the hub link's hello offers the shards (`hs: 1`) and goes
 where the hub says (`hub`). The page keeps whether its relay has them (`dfjs.hubShards`, read off every welcome's
 version), so the next page goes straight to its own shard. A shard that never opens twice in a row is a relay before
-them: the link goes to the bus and offers the shards no more that session.
+them: the link goes to the bus and offers the shards no more that session. (AUDIT SCALE II C-2: the word is kept per
+relay URL (`dfjs.hubShards@<url>`); "never opens" is a socket that never fired `open` - a browser fires `error` before
+the `close`, and the status test never matched; and a relay without the shards moves every unwelcomed shard link to its
+channel at once.)
 
 **The World tab (Mac's decision 2).** The count is the hub's. The list:
 - its own shard's members, live;
@@ -1409,7 +1455,9 @@ them: the link goes to the bus and offers the shards no more that session.
   numbers the list is the whole hub, as it was;
 - friends, as the social panel already lists them, every shard's;
 - the Guild tab adds the guild online on every shard (`find` with `g`, every HUB_GUILD_WHO_MS);
-- a search of everyone online by name: `/find <name>` or `/who <name>`. The bus answers HUB_FIND_MAX names whose
+- a search of everyone online by name: `/find <name>` or `/who <name>`. (AUDIT SCALE II C-1: both on a relay with the
+  shards alone - `findOk`. A relay before them closes a hub link that says `find` (`unknown message`, for good); on one
+  the line says it needs a newer relay.) The bus answers HUB_FIND_MAX names whose
   folded name holds the search's (case, spaces and apostrophes dropped), on a socket's bucket and the hub's
   (HUB_FIND_ROOM_HZ_MAX, 10 a second). Past it the answer is "too many are searching", said.
 
@@ -1434,7 +1482,7 @@ timed apart, the doors between them stubbed and fed what the other handed it, th
 | Party poses, everyone in a four, one a second | - | 0.046 ms a pose on the bus: 92 ms of its second | 0.032 ms a pose: 317 ms of its second |
 
 At 10,000 everyone's reconnect costs the bus about one second of work spread over the wave. Its share of a world
-line does not grow with the hub. Party poses are its steady load: a third of a core if every player online is in a
+line does not grow with the hub (AUDIT SCALE II D-6: in sends; its time is one sample's, above). Party poses are its steady load: a third of a core if every player online is in a
 party, which nobody is. If the bus's metrics run hot, the next step is party poses shard to shard.
 
 **Pins.**
@@ -1465,7 +1513,8 @@ PIN MOVED, each a pin that read a line SCALE5c moved:
   re-aimed and still equivalent, as recorded.
 
 **The deploy.** One announced relay drop, world192, carrying SCALE5b (neither is deployed). The account service (acct112)
-ships first or with it. No database migration.
+ships first or with it. No database migration. (AUDIT SCALE II L1: the merge is the drop - relay-deploy.yml deploys
+world192 as main moves to it, a siege's blackout aside; the site and the account service deploy from the same merge.)
 
 **Left:** nothing of the slice - part two, below, is the region channels.
 
@@ -1492,7 +1541,8 @@ start region's whole reconnect wave through one hello gate. It is split the way 
   whichever of its shards (`channelOf`).
 
 **Measured** (`node tools/hubShardBench.mjs REGION_N=2000`): one region's channel, 2,000 arriving - the 2,000th hello
-3.78 ms and 2,000 sends, a region line 0.81 ms; the same region on its four shards - a hello 1.24 ms on its shard
+3.78 ms and 2,000 sends (AUDIT SCALE II D-6: ONE hello, the last - an average one is 1.0-1.4 ms; the 2,000 sends are
+the difference), a region line 0.81 ms; the same region on its four shards - a hello 1.24 ms on its shard
 (500 a shard) and 0.08 ms on the bus, the whole wave 156 ms of the bus's, a region line 0.56 ms on the bus and 0.7 KiB
 to the shards.
 
@@ -1513,29 +1563,35 @@ Mac's decision 3: a full city overflows into a layer rather than refusing `room 
 building or a dungeon held 256 sockets (everyone's halo socket counts), and the 257th was refused at the Worker's door
 and tried the same key again for as long as the crowd stood.
 
-**Measured first** (`node tools/wire2Bench.mjs CELL_N=256`): a full cell on the second wire sends 5,368 frames and
-37.5 MB a second out of one object, about 146 KB a second to each client; at 120 it was 10.8 MB. A room's cost grows with
+**Measured first** (`node tools/wire2Bench.mjs CELL_N=256`): a full cell on the second wire sends 5,219 frames (AUDIT SCALE II
+D-9: this said 5,368; the bench says 26,095 in its 5 s, deterministically) and 37.5 MB a second out of one object, about 146 KB a second to each client; at 120 it was 10.8 MB. A room's cost grows with
 the square of its crowd, so SOCKETS_MAX stays at 256 and a crowd past it goes to another object.
 
 **The layers** (`src/net/wire.js` isLayered, layerOf, layerName; `server/src/relayScale.js` layerWalk):
 - **A layer is another object for the same key.** A room is still its key everywhere - every law that reads, parses or
-  compares a key reads the one it always did (a raid's pixel, a park's anchor, a serpent's cell). The Worker picks the
+  compares a key reads the one it always did (a raid's pixel, a park's anchor, a serpent's cell). AUDIT SCALE II R3-3:
+  and an event is the place's alone - a layer stands no serpent's fight, keeps no raid ledger, rite, overworld ledger or
+  card table (a layer's own serpent was killed alone and its kill told the hub `fell` while the place's fought on). A
+  layer's void of a card stake is spent by its place (HOLDEM_INTERNAL_VOID): one memory of every spend. The Worker picks the
   object: `key` itself for the place, `key#n` for its layers, n up to LAYERS_MAX - 1 (7).
 - **The Worker walks them.** It forwards the upgrade to the asked layer (0 unless the page asks), and past a full one to
-  the next, round to LAYERS_MAX. A full room's refusal says it is full (LAYER_FULL_HEADER); any other answer, a refusal
+  the next, round to LAYERS_MAX. (AUDIT SCALE II R3-3: an asked layer nobody stands in answers empty, `x-df-empty`, and
+  the walk goes from the place - `?ly=k` handed anyone a private copy of any place.) A full room's refusal says it is full (LAYER_FULL_HEADER); any other answer, a refusal
   included, is the answer. Every layer full is `room full`, as one room's was. There is no hop back to the page, so no
   token is minted twice.
 - **The object knows its layer** from the Worker's header (LAYER_HEADER - set by the Worker whatever the page sent). It
   keeps it on each socket's attachment and says it in its welcome (`ly`).
 - **What layers:** an open-world cell, a building and a dungeon (isLayered). A channel has its shards, and a fight is one
   object's (part two). Every internal call addressed to a room by its key (a park's registry, a hub's word) reaches
-  the place itself.
+  the place itself. (AUDIT SCALE II R3-8, R3-9: but a park registry's drop reaches the layer its team stands in, and the
+  hub's wipe of a zone hall every layer.)
 - **The page.** A session asks for its party's layer first (`layerHint`, `?ly=`), and a reconnect asks for its own. Its
   welcome tells it the layer it holds (`layer`); a halo's is kept with it, and a crossing that promotes the halo carries
   it. A halo asks for the place itself, and the Worker walks it on if that is full.
 - **A party stays together.** The party pose carries the member's layer (`ly`, validPartyPose). The host asks for its
   leader's layer, else any mate's, when the mate stands in the open air within a cell of the place it joins
-  (`partyLayerAt`).
+  (`partyLayerAt`). (AUDIT SCALE II R3-4: IN the cell it joins - a neighbour's layer number is another place's. R3-10: a
+  badge said again asks the layer its old socket stands in, the primary's and a halo's.)
 
 **Pins.** `test/scale5d.test.js` (4): the law; the Worker's walk (the asked layer first, round past the last, only a
 full room's refusal walked past, each object told its layer whatever the page sent, every layer full `room full`); the
@@ -1669,6 +1725,9 @@ What the numbers ask is fewer writes at the source.
   - what is earned reaches the hour's room - the bound's word and the sigils' stop come as promptly as before;
   - what is earned completes the level - the rise, and its signed order to the rooms, come as promptly as before.
 
+  - (AUDIT SCALE II C-4) the hour has RENOWN_REPORT_MS or less left - what is held never crosses into the next hour's
+    window, where a player just under the bound lost it.
+
   Otherwise what is earned waits RENOWN_COALESCE_MS (5 minutes). The bar draws it all the while as its ghost
   (ui/hudRenown.js, RENOWN4), and a report's worth (5,000) still goes at once.
 - **The service says the room** (`server-account/src/renownTracks.js`): each answer carries `room`, what the account's
@@ -1680,7 +1739,8 @@ What the numbers ask is fewer writes at the source.
   ghost, each as the page last heard it. The tracker no longer earns there either, rather than reporting every minute
   to be credited nothing. One edge moves: XP earned in a spent hour's last minute and reported after the hour turned
   was credited by the next hour's window; the page's hour (the shared clock's, AUDIT SET D7) now says it was earned in
-  the spent one.
+  the spent one. (AUDIT SCALE II C-3: a capped answer counts for the hour its report was SENT in - one sent at 10:59:59
+  and answered at 11:00:00 marked hour 11 spent, and all of it went unearned.)
 - A tracker given no word reports at the minute's pace, as every one did.
 
 **The session, touched hourly** (`server-account/src/accounts.js` SESSION_TOUCH_S, 10 minutes to an hour). Nothing
@@ -1695,15 +1755,17 @@ reads `last_seen` finer: the idle bound is a year, and the device list orders by
   - `blob5`: every table written, "table:rows", most first;
   - `double8`-`double11`: the plan's hot rows, by table - `players`, `sessions`, `renown_tracks`, `realm_characters`.
 - **A heartbeat's parts** (`blob6`: "beat,board,mail,post", the ones its body asked), read off a copy of the request
-  before the service reads its own. The beat, the board and the box are apart at last.
+  before the service reads its own. (AUDIT SCALE II A-3: whole, unbounded and before any session - a 64 MiB stranger's
+  POST cost 325 MiB of the isolate, AUDIT 68 X8 undone. The parts are now the heartbeat route's word on the body it read,
+  capped and behind the session; a refused heartbeat says none.) The beat, the board and the box are apart at last.
 
 **After** (the same bench, the tree as built):
 
 | an hour of | statements | rows changed | Renown reports |
 |---|---|---|---|
 | a walker in a town | 166 -> 156 | 36 -> 26 (28 once its session is an hour old: one touch, not six) | - |
-| a fighter, 40 XP a minute at Renown 20 | 736 -> 444 (-40%) | 226 -> 122 (-46%) | 59 -> 12 |
-| at Renown 3 (a rise every few minutes) | 736 -> 456 | 226 -> 126 | 59 -> 14 |
+| a fighter, 40 XP a minute at Renown 20 | 736 -> 450 (-39%) | 226 -> 124 (-45%) | 59 -> 13 |
+| at Renown 3 (a rise every few minutes) | 736 -> 462 | 226 -> 128 | 59 -> 15 |
 | at 400 XP a minute (the hour spent at 37 minutes) | 736 -> 426 | 226 -> 116 | 59 -> 9 |
 | at 2,000 XP a minute (the hour spent at 8 minutes) | 736 -> 402 | 226 -> 108 | 59 -> 5 |
 
@@ -1721,11 +1783,15 @@ holds could be presented again until it expires, proven by a signature over the 
   token within the clock's skew, or the hello gains a round trip.
 - **Staleness.** A room sees a badge at most a minute old today (TOKEN_REUSE_MS) and a token at most five
   (MAX_TTL_S). A longer life leaves a title, glyphs, a house and arms stale for it, and those have no override order.
-- **Revocation.** A closed session stops new mints today, and its tokens die within five minutes. A longer token
+- **Revocation.** A closed session stops new mints today, and its tokens die within five minutes. (AUDIT SCALE II A-4:
+  SCALE4g had let a mint start from an old bookmark, served by a replica that had not heard the close; the mint starts at
+  the primary again. The bookmark reads - the heartbeat, the account and realm lists, the professions' state, the
+  motherlodes - may answer a closed session's secret carrying an old bookmark while a replica lags, seconds, then `auth`.) A longer token
   needs a way to revoke it.
 
 What it buys is a mint per reconnect. SCALE2c spreads those over the hub's own admission, ADMIT-LINE queues them, and
-SCALE4d/4f made each about 4 statements on a replica session. Decision 1 recommends it at 5,000, not before. It stays
+SCALE4d/4f made each about 4 statements on a replica session (AUDIT SCALE II D-9: 5 with the seats closed, 7-9 with them
+open, as production runs). Decision 1 recommends it at 5,000, not before. It stays
 the plan for that point, built when `/v1/auth/token`'s D1 wait (`double5`, SCALE4f) climbs in a deploy's wave.
 
 **Left, each with its reason:**
@@ -1736,7 +1802,9 @@ the plan for that point, built when `/v1/auth/token`'s D1 wait (`double5`, SCALE
 - **The play beat** stays every five minutes: the budget reads `played_s` at each checkpoint, and a coarser clock is
   a coarser allowance.
 - **A crash's loss.** A page that dies without `pagehide` loses what it earned since its last report: up to five
-  minutes of Renown, not one. The page's last word still goes by `keepalive` on every ordinary close.
+  minutes of Renown, not one. The page's last word still goes by `keepalive` on every ordinary close - (AUDIT SCALE II
+  C-5) every region's pending, a report each, the held report last (the service keeps one `last_rid`: a page the
+  back-forward cache restores sends that last one again, and it is answered as a repeat).
 
 **Pins.**
 - `test/scale4h.test.js` (8):
@@ -1817,7 +1885,7 @@ slice below measures again with a tool of its own in the tree.
    - Whether TOKEN_REUSE_MS rises toward the token's five minutes: about 10-30 mints a player-hour come from doors
      and room changes, not deploys, but a room would then hear a level or a guild up to four minutes stale (it is a
      minute today).
-4. **SCALE4g - replicas for the read routes, no drop** (built, below). The heartbeat, motherlodes, the seats list, professions and
+4. **SCALE4g - replicas for the read routes, no drop** (built, below; AUDIT SCALE II D-10: the seats list stayed on the binding). The heartbeat, motherlodes, the seats list, professions and
    the account view on a D1 session that starts from the bookmark the client carries back from its last request, so a
    player always reads their own writes. About 55-62% of reads leave the primary.
 5. **SCALE5b - the relay's hygiene and the wire's second form, ONE announced drop.**
@@ -1826,7 +1894,8 @@ slice below measures again with a tool of its own in the tree.
    - Metrics: `room full` (the Worker refuses it before any metric today), budget drops, peak sockets, frames by type.
    - The wire's second form, offered by the hello and gated on the welcome's version, so an old tab keeps the first:
      quantised poses without default fields, batched per listener a tick (88 sends a pose become about one a
-     listener a tick), channel joins and leaves as one roster delta a tick (the N^2/2 wave gone), looks by hash.
+     listener a tick), channel joins and leaves as one roster delta a tick (the N^2/2 wave gone), looks by hash (AUDIT SCALE II D-10: NOT
+built - left; a look rides each hello as it did, and nothing measured asks for it yet).
    - `BOSS_BODY` and the Discord settings read at run time, so changing one no longer drops every player.
    - A halo hearing a player's pose at a walking rate, with the referees that read halo poses (the serpent's fight,
      INT11's trails, duels, the Wild zone) kept at full rate.
@@ -1855,7 +1924,9 @@ slice below measures again with a tool of its own in the tree.
    by table.)
 
 **Deploys:** SCALE2c, 4f, 4g and 4h drop nobody. SCALE5b and 5c are one announced relay deploy each, and the
-account service ships before either (SCALE4e makes it survive the wave either way).
+account service ships before either (SCALE4e makes it survive the wave either way). (AUDIT SCALE II L1 and D-10: as
+built, SCALE5b, 5c and 5d are ONE relay deploy, world192, and it is not by hand: relay-deploy.yml runs it at the merge,
+with the site's and the account service's (acct112).)
 
 ### Mac's decisions
 

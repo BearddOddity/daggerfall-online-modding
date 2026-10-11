@@ -252,7 +252,7 @@ import { isGzip, gzipSizeOf, gunzipText, REALM_TEXT_MAX_BYTES } from '../../src/
 import { tradeRealm, REALM_TRADE_BODY_MAX } from './realmTrade.js';   // REALM P2.1: a trade, settled here
 import { wildFall } from './wild.js';   // INT9: a death in the open zone's drop, taken off the record
 import { listLineages, putLineage, realmDie, realmWed, listUnions, LINEAGE_BODY_MAX, isTombstone } from './legacy.js';   // LEGACY7: Project Legacy's lines and the tombstone
-import { measured } from './metrics.js';   // SCALE1: every request counted (Workers Analytics Engine)
+import { measured, heartbeatPartsOf } from './metrics.js';   // SCALE1: every request counted (Workers Analytics Engine); AUDIT SCALE II A-3: a heartbeat's parts, of the body the route read
 import { runCron } from './cron.js';   // SCALE4b: the service's own clock
 import { heartbeat } from './heartbeat.js';   // SCALE4c: one request for a tab's three clocks
 import { ADMIT_ROUTES, admitWait } from './admit.js';   // ADMIT-LINE: the sign-in line
@@ -544,9 +544,10 @@ async function readBody(request, max = MAX_BODY_BYTES) {
 // service is a plain object, not an export: this module still exports `default` and nothing else.
 const service = {
   /** SCALE4g: THE ANSWER CARRIES ITS SESSION'S NEWEST BOOKMARK (`x-d1-bookmark`, exposed to the page), so the tab's next
-   *  read starts no older than everything this one saw and wrote - the routes `route` answers are untouched. */
-  async fetch(request, env) {
-    const held = { session: null };
+   *  read starts no older than everything this one saw and wrote - the routes `route` answers are untouched.
+   *  AUDIT SCALE II A-3: `said` is what the route tells the metrics point (metrics.js measured) - a heartbeat's parts. */
+  async fetch(request, env, said = { parts: '' }) {
+    const held = { session: null, said };
     const res = await service.route(request, env, held);
     let mark = null;
     try { mark = held.session?.getBookmark?.() ?? null; } catch { mark = null; }
@@ -556,7 +557,7 @@ const service = {
     out.headers.append('access-control-expose-headers', 'x-d1-bookmark');
     return out;
   },
-  async route(request, env, held = { session: null }) {
+  async route(request, env, held = { session: null, said: { parts: '' } }) {
     const subtle = crypto.subtle;
     const rand = (b) => crypto.getRandomValues(b);
     const nowS = Math.floor(Date.now() / 1000);
@@ -892,18 +893,19 @@ const service = {
         // and its house, each exactly as its own read answered it
         const facts = await realmMintFacts(ctx, who.player.id, body.character);
         const rc = facts.rc;
-        // ARENA4b: AND THAT REALM CHARACTER'S LEVEL, `cl` - the level on its tile (realm.js realmLevelOf: INT7 - the level
+        // ARENA4b: AND THAT REALM CHARACTER'S LEVEL, `cl` - the level on its tile (realm.js realmMintFacts: INT7 - the level
         // its judge trusts, else its summary, 1..1000), which the relay reads (a bout's vitality) as it reads `lv`. Absent for any
         // other character, none named, or a level out of the claim's bounds - a token without it is a token as before.
         const cl = facts.cl;
         // INT7: AND THAT REALM CHARACTER'S ARMS, `wa` - the most reach of its judged pack's lawful weapons and its bow
-        // (realm.js realmArmsOf), every referee's clip of a blow between players. Absent before its first judged checkpoint.
+        // (realm.js realmMintFacts), every referee's clip of a blow between players. Absent before its first judged checkpoint.
         const wa = facts.wa;
         // ARENA4: AND THE ACCOUNT'S ARENA RATING this season, for a registered account - the hall queues by it (net/arenaLaw.js
         // pairQueue), off the signature, never a word of the client's. A guest's token carries none (a guest is not queued).
         const ar = who.player.handle ? (await arenaRatingOf(ctx, who.player.id, arenaSeasonOf(nowS))).rating : undefined;
-        // LEGACY7 part two: AND THAT REALM CHARACTER'S HOUSE (legacy.js realmHouseOf: its line's surname, its given name, a
-        // Bloodline's mark, the generation's numeral) - off the line the service holds, never a word of the client's
+        // LEGACY7 part two: AND THAT REALM CHARACTER'S HOUSE (realm.js realmMintFacts, by legacy.js houseOn: its line's
+        // surname, its given name, a Bloodline's mark, the generation's numeral) - off the line the service holds, never a
+        // word of the client's
         const house = facts.house;
         // AUDIT LEGACY III O1: AND WHICH REALM CHARACTER (`ci`, beside a 1 alone) - the relay stamps it on a wedding's frames,
         // so each half names the character its player saw. Kept when a house is left unsaid: the widest token without a
@@ -1648,6 +1650,7 @@ const service = {
       // as its own route answers it (heartbeat.js), under the one session this request resolved
       if (path === '/v1/heartbeat') {
         if (request.method !== 'POST') return no('method', 405, origin);
+        held.said.parts = heartbeatPartsOf(body);   // AUDIT SCALE II A-3: the parts of the body read above - capped, and behind the session
         return json(await heartbeat(ctx, who.player, env, body), 200, origin);
       }
       if (path === '/v1/account/played' && request.method === 'POST') {

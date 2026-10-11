@@ -211,7 +211,7 @@ test('SCALE5c the bus woken, or a hello lost: the shard\'s next frame is answere
     wa.sent.length = 0;
     await say(wa, ka, { t: 'chat', text: 'anyone?' });
     await settle();
-    assert.equal(bus.room._vsocks.size, 1, 'said again by its shard');
+    assert.equal(bus.room._vsocks.size, 2, 'said again by its shard - and the other shard\'s, which the woken bus asked for every socket it holds');   // PIN MOVED (AUDIT SCALE II R2-6): a woken bus asks every shard it has heard from - the one that spoke alone was 1
     assert.ok(ofT(wa, 'social', 'state').length >= 1, 'and greeted again');
     // a socket the bus holds that its shard does not: closed at the sync
     const kb = H.hubOfSubject(`acct-${b}`);
@@ -298,7 +298,9 @@ test('SCALE5c the session: a hub link offers the shards in its hello, goes where
   const world = src('src/scenes/world.js');
   assert.match(world, /if \(tab\.room\) link\.join\(channelLinkRoom\(tab\.room\)\);/);
   assert.match(world, /return seen === '1' \? \(shardOf\(room, storedSession\(appStorage\(\)\)\?\.id\) \?\? room\) : room;/);
-  assert.match(world, /const onRelayVersion = \(v\) => \{ try \{ appStorage\(\)\?\.setItem\?\.\(HUB_SHARDS_SEEN_KEY, hubShardsSupported\(v\) \? '1' : '0'\); \}/);
+  // PIN MOVED, AUDIT SCALE II C-2: the flag kept under the relay's own key (hubShardsSeenKey), and a relay without the
+  // shards takes the links off them (test/auditscale2_client.test.js runs the host's own closures)
+  assert.match(world, /const onRelayVersion = \(v\) => \{ const keeps = hubShardsSupported\(v\); try \{ appStorage\(\)\?\.setItem\?\.\(hubShardsSeenKey\(\), keeps \? '1' : '0'\); \}/);
 });
 
 test('SCALE5c the bus\'s fans: a world line is one entry a shard, never one a socket, in its batch\'s order; a guild\'s line reaches a guildmate on another shard and nobody else (off the guild\'s own sockets); my guild online from every shard, never me; a search past the hub\'s budget is answered busy (mutants: the line a socket each; the broadcast out of order; the guild a walk of nothing; the guild index unkept; the guild ask unanswered; the asker listed; the hub\'s budget unasked)', async () => {
@@ -389,7 +391,8 @@ test('SCALE5c the World tab\'s search and the Guild tab\'s list: `/find` and `/w
     assert.deepEqual(found, { q: 'x', l: [], busy: true });
   });
   const world = src('src/scenes/world.js');
-  assert.match(world, /if \(cmd\.kind === 'find'\) \{ findTab = tabId; if \(!chatLinks\?\.get\('world'\)\?\.sendFind\(cmd\.q\)\) note\(FIND_OFFLINE_TEXT\); return 'read'; \}/);
+  // PIN MOVED, AUDIT SCALE II C-1: a hub on a relay before the shards is never asked, and the line says it needs a newer one
+  assert.match(world, /if \(cmd\.kind === 'find'\) \{ findTab = tabId; const hub = chatLinks\?\.get\('world'\); if \(!hub\?\.sendFind\(cmd\.q\)\) note\(hub\?\.welcomed && !hub\.findOk \? FIND_RELAY_TEXT : FIND_OFFLINE_TEXT\); return 'read'; \}/);
   assert.match(world, /link\.onFound = \(f\) => chatLog\.push\(findTab \?\? tab\.id, \{ text: foundText\(f\), system: true \}\);/);
   assert.match(world, /if \(tabId === 'guild'\) \{ s\?\.sendGuildWho\?\.\(\); return guildRosterSource\(s, myGuildTag\(\)\); \}/);
 });

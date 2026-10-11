@@ -777,7 +777,7 @@ import { makeHitPend } from '../net/hitPend.js';   // AUDIT FOES FOE2: a blow th
 import { PeerBodies, peerIsWolf, BODY_BUILD_GATE } from '../net/peerBodies.js';   // MWBODY1: the others in the Morrowind body; WEREWOLF1: and in Bloodmoon's wolf
 import { ChatLog, CHAT_REJOIN_MS } from '../net/chat.js';   // CHAT1: the tabs and their lines
 import { oocText, localLineHeard, nextRegionRoom, regionJoinedText, CHAN_OLD_RELAY_TEXT, ROLL_OLD_RELAY_TEXT, EMOTE_OLD_RELAY_TEXT, GUILD_OLD_RELAY_TEXT, NO_GUILD_TEXT, SOLO_LOCAL_TEXT, partyNoteTab } from '../net/chat.js';   // CHAT-CHAN: the channels' own laws (a second chat import: CHAT1's pin holds the first as it stands)
-import { parseChatLine, HELP_LINES, CHAT_GREETING_TEXT, unknownCommandText, emptyCommandText, hostMisuseText, badRollText, expandShortcodes, EMOTE_LINES, foundText, FIND_OFFLINE_TEXT } from '../net/chatCommands.js';   // CHAT-CHAN: what a typed line IS; DICE1: and a roll; EMOTE1: an action, a gesture, a shortcode
+import { parseChatLine, HELP_LINES, CHAT_GREETING_TEXT, unknownCommandText, emptyCommandText, hostMisuseText, badRollText, expandShortcodes, EMOTE_LINES, foundText, FIND_OFFLINE_TEXT, FIND_RELAY_TEXT } from '../net/chatCommands.js';   // CHAT-CHAN: what a typed line IS; DICE1: and a roll; EMOTE1: an action, a gesture, a shortcode
 import { partyRosterSource, localRosterSource, guildRosterSource } from '../net/roster.js';   // CHAT-CHAN: the Party and Local tabs' composed lists
 import { partyCompassPoints } from '../ui/partyMapMarks.js';   // COMPASS-PARTY: the party's points on the compass
 import { SocialState, accountId, accountSecret } from '../net/social.js';   // SOC2: the friends and the party, as the hub says them; the account the hub's hello carries; SOC3: and the two colours a name wears in the DOM - my party's green, a friend's blue
@@ -947,7 +947,7 @@ const TEST_GODMODE = false;
 const isStaffT = (g) => TEST_GODMODE || isStaff(g);
 import { isStaff, parseStaffCommand, STAFF_HELP_LINES, findPlace } from '../net/staffCommands.js';   // STAFF1: the staff's own commands
 import { RELAY_CFG_KEYS, mayRelayCfg } from '../net/relayCfg.js';   // SCALE5b: the relay's settings, a developer's
-import { shardOf, isChannelBus, channelOf, hubShardsSupported } from '../net/hubShards.js';
+import { shardOf, isChannelBus, isChannelShard, channelOf, hubShardsSupported } from '../net/hubShards.js';
 import { cellOfRoom as layerCellOf, worldRoom as layerCellAt } from '../net/wire.js';   // SCALE5d: a crowded place's layer, my party's   // SCALE5c: the hub, sixteen ways; part two: a region's channel, four
 import { fieldFromNative, nativeFromField, fieldOfPixelLocal } from '../systems/weatherField.js';   // WEATHER2b: the field's metres from the streaming world's natives, and back
 import { cellOfField, VC_PROFILE } from '../render/volumetricClouds.js';   // WEATHER2c: the field's cells as the clouds' cells   // W1: the live weather state (the save halves ride save.js); SAV3: the classic import's zone array
@@ -7580,11 +7580,15 @@ export async function bootWorld(canvas, renderer, params, status) {
   // shardOf, by the session's account, which the token's subject is) once a relay has said it keeps them; else the
   // channel itself, which tells a link of this build its shard (`hub`) when it does. Remembered between pages, so a page
   // joins its shard at once rather than by way of the bus. Any other room is itself.
+  // AUDIT SCALE II C-2: REMEMBERED PER RELAY - the relay's own address beside the key. One flag for every relay let a
+  // `?server=` visit to a staging relay with the shards send the next page on production to a shard production's relay
+  // refuses (and a rolled-back staging relay pull production's page off its shards)
   const HUB_SHARDS_SEEN_KEY = 'dfjs.hubShards';
+  const hubShardsSeenKey = () => `${HUB_SHARDS_SEEN_KEY}@${online?.url ?? ''}`;
   const channelLinkRoom = (room) => {
     if (!isChannelBus(room)) return room;
     let seen = null;
-    try { seen = appStorage()?.getItem?.(HUB_SHARDS_SEEN_KEY) ?? null; } catch { seen = null; }
+    try { seen = appStorage()?.getItem?.(hubShardsSeenKey()) ?? null; } catch { seen = null; }
     return seen === '1' ? (shardOf(room, storedSession(appStorage())?.id) ?? room) : room;
   };
   let relayCfgLink = null, relayCfgTab = null;   // SCALE5b: the hub's link a relay setting goes down, and the tab that asked
@@ -20844,13 +20848,19 @@ export async function bootWorld(canvas, renderer, params, status) {
   // gate and the Broker read theirs; this machine's own clock, minutes off, ended the page's hour before or after the
   // service's, so the sigils drank in an hour that paid nothing or starved in one that paid again
   const renownHour = () => Math.floor((Date.now() + _sharedOffsetMs) / 3_600_000);
+  // AUDIT SCALE II C-4: what is left of that hour - in its last minute a report goes at the minute's pace, so what is
+  // earned in it is credited by its own hour's window, not held into the next (renownReportSoon `hourLeftMs`)
+  const renownHourLeftMs = () => (renownHour() + 1) * 3_600_000 - (Date.now() + _sharedOffsetMs);
+  // AUDIT SCALE II C-3: the hour the report in flight was SENT in (the tracker sends one at a time) - a `capped` answer
+  // speaks of that hour, whenever it arrives
+  let _renownSentHour = null;
   let renownSaid = null;   // AUDIT RENOWN1 UI-5: the highest level the page has announced - a rise is said against this, never against renownNow
   // SCALE4h: what the hour's bound still takes, as the last report's answer said it - with the hour and the total it was
   // said at, so another hour, or a total another door moved (a raid's, a serpent's, a writ's, a siege's), is a room not
   // known, and the next report goes at the minute's pace to learn it (net/renownTracker.js renownReportSoon)
   let _renownRoom = null;
   const renownTracker = onlineOn ? createRenownTracker({
-    report: (c, xp, name, rid, region) => renownAccount.report(c, xp, name, rid, region),
+    report: (c, xp, name, rid, region) => { _renownSentHour = renownHour(); return renownAccount.report(c, xp, name, rid, region); },   // AUDIT SCALE II C-3: the hour it goes in
     leave: (c, xp, name, rid, region) => renownAccount.leave(c, xp, name, rid, region),   // AUDIT RENOWN1 GAME-8: the page's last word, finished by the browser
     character: () => characterIdOf(playerEntity),
     region: () => { const px = playerTravelPixel(); const r = maps.getRegionIndexAt(px.x, px.y); return Number.isSafeInteger(r) ? r : null; },   // SEAT1b: where the XP was earned - a pledged seat's region counts it (Seats-Arc 4.2)
@@ -20863,16 +20873,19 @@ export async function bootWorld(canvas, renderer, params, status) {
       renownAdopt(a.level);
       if (a.order) online?.sendRenownOrder?.(a.order, a.level);   // the rooms I am in hear it now - and again until each answers
       if (a.announce !== null) { renownSaid = a.announce; townTalk.say(`Your Renown is now ${a.announce}.`); }
+      // AUDIT SCALE II C-3: THE CAP IS THE SENT HOUR'S. A report sent at 10:59:59.7 and answered capped at 11:00:00.3 spoke
+      // of hour 10 - stamped with the hour it ARRIVED in, it marked hour 11 spent, and `earning` then kept nothing for the
+      // whole of hour 11. A cap is kept only while the hour it was sent in is still the page's
       if (a.capped) {
         const hour = renownHour();
-        if (_renownCapHour !== hour) { _renownCapHour = hour; tradeSay('You have earned all the Renown XP one hour allows. Your fighting still counts toward your skills.'); }
+        if (_renownSentHour === hour && _renownCapHour !== hour) { _renownCapHour = hour; tradeSay('You have earned all the Renown XP one hour allows. Your fighting still counts toward your skills.'); }
       }
     },
     // AUDIT RENOWN1 UI-4: a refusal that ends reporting is SAID - the sentences were written and nothing ever showed them
     onStop: (error) => tradeSay(`${accountRefusalText(error)} This character is earning no Renown.`),
     // SCALE4h: at the minute's pace only while the answer says what the page cannot - a rise, the hour's bound, a total or
     // a room not known; else every RENOWN_COALESCE_MS, what waits drawn as the bar's ghost
-    soon: () => renownReportSoon({ xp: renownXp, pending: renownTracker?.pending() ?? 0, capped: _renownCapHour === renownHour(),
+    soon: () => renownReportSoon({ xp: renownXp, pending: renownTracker?.pending() ?? 0, capped: _renownCapHour === renownHour(), hourLeftMs: renownHourLeftMs(),
       room: _renownRoom && _renownRoom.hour === renownHour() && _renownRoom.xp === renownXp ? _renownRoom.room : null }),
   }) : null;
   // CHAP1 (bible/11-Multiplayer/Chapters-Arc.md 3; Mac: "Server-owned"): THE ROLL - online, this realm character's
@@ -21639,7 +21652,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         const note = (line) => chatLog.push(tabId, { text: line, system: true });
         if (cmd.kind === 'help') { for (const line of HELP_LINES) note(line); return 'read'; }
         if (cmd.kind === 'emotes') { for (const line of EMOTE_LINES) note(line); return 'read'; }
-        if (cmd.kind === 'find') { findTab = tabId; if (!chatLinks?.get('world')?.sendFind(cmd.q)) note(FIND_OFFLINE_TEXT); return 'read'; }   // SCALE5c: everyone online, by name - the hub's answer comes back to this tab
+        if (cmd.kind === 'find') { findTab = tabId; const hub = chatLinks?.get('world'); if (!hub?.sendFind(cmd.q)) note(hub?.welcomed && !hub.findOk ? FIND_RELAY_TEXT : FIND_OFFLINE_TEXT); return 'read'; }   // SCALE5c: everyone online, by name - the hub's answer comes back to this tab. AUDIT SCALE II C-1: a hub online on a relay before the shards answers no search, and is never asked one (it closes the link on it) - said as that, not as offline
         if (cmd.kind === 'me') return chatSend(tabId, cmd.text, tabId, { me: true });   // EMOTE1: an action, on this tab
         if (cmd.kind === 'emote') return chatSend('local', cmd.text, tabId, { me: true });   // EMOTE1: a gesture - the body's, so those near see it
         if (cmd.kind === 'unknown') { note(unknownCommandText(cmd.name)); return false; }
@@ -25269,12 +25282,15 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  the other two hosts' own window stacks through the `restState` getter each now exposes (worldModes.js's
    *  interior, dungeonContext.js's own) rather than each of them learning to speak the wire itself. */
   /** SCALE5d: THE LAYER MY PARTY STANDS IN at the cell `key` - my leader's, else any mate's, whose pose is in the open air
-   *  within a cell of it (wire.js validPartyPose `ly`) - asked first when I join it, so a crowd that overflows into
-   *  layers keeps a party together; 0 (the place itself) for anything else. The Worker walks on past a full one. */
+   *  in that cell (wire.js validPartyPose `ly`) - asked first when I join it, so a crowd that overflows into layers keeps
+   *  a party together; 0 (the place itself) for anything else. The Worker walks on past a full one.
+   *  AUDIT SCALE II R3-4: IN THAT CELL, not within one of it. A layer is a number of ONE place's objects (`key#n`): a mate
+   *  in layer 3 of the next cell asked `key#3` of mine, an empty copy of it away from its whole crowd (in the place
+   *  itself) and from the mate (whose halo of my cell is the place itself) - and a reconnect asked it again. */
   const partyLayerAt = (key) => {
     const at = layerCellOf(key), party = social?.party;
     if (!at || !party) return 0;
-    const near = (m) => m.acct !== social.acct && m.p?.in === 0 && Number.isInteger(m.p.ly) && (() => { const c = layerCellOf(layerCellAt(m.p.px, m.p.py)); return !!c && Math.max(Math.abs(c[0] - at[0]), Math.abs(c[1] - at[1])) <= 1; })();
+    const near = (m) => m.acct !== social.acct && m.p?.in === 0 && Number.isInteger(m.p.ly) && (() => { const c = layerCellOf(layerCellAt(m.p.px, m.p.py)); return !!c && c[0] === at[0] && c[1] === at[1]; })();
     const mate = party.members.find((m) => m.acct === party.leader && near(m)) ?? party.members.find(near);
     return mate?.p.ly ?? 0;
   };
@@ -27251,8 +27267,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   // chat line, including `ui/nameLayer.js`'s BUBBLE1 speech-bubble treatment over the sender's own character.
   // See `_partyRestVoteTrackTick`'s own doc comment (this file, above) for the replacement: every near
   // member's own client now watches the shared pose data and pushes its own local, bubble-free `chatNotice`.
-  // SCALE5c: and whether the relay keeps the hub's shards, remembered for the next page (`hubLinkRoom`)
-  const onRelayVersion = (v) => { try { appStorage()?.setItem?.(HUB_SHARDS_SEEN_KEY, hubShardsSupported(v) ? '1' : '0'); } catch { /* storage refused: the hub itself says it again */ } _relayKeepsRite = relaySupportsRite(v); _relayKeepsCage = relaySupportsCage(v); if (relayVersionSeen(v) === 'changed') chatNotice(RELAY_RESTART_TEXT); };   // AUDIT BROKER-CAGE C4, C6: and whether it keeps the rite and the cage
+  // AUDIT SCALE II C-2: A RELAY THAT KEEPS NO SHARDS (rolled back, or one before them) refuses a shard's key at its door, so
+  // every channel link standing on one - a page that remembered the shards, or a link whose relay just went back - goes
+  // to its channel now, which keeps it, rather than waiting out two misses (or, before the miss read the socket's own
+  // word, for ever in a browser). A link its own shard has welcomed stays: its own relay keeps them
+  const channelLinksOffShards = () => { for (const link of chatLinks?.values?.() ?? []) if (isChannelShard(link.room) && !link.welcomed) link.join(channelOf(link.room)); };
+  // SCALE5c: and whether the relay keeps the hub's shards, remembered for the next page (`channelLinkRoom`) - AUDIT SCALE II
+  // C-2: under this relay's own key, and a relay without them takes the links off their shards
+  const onRelayVersion = (v) => { const keeps = hubShardsSupported(v); try { appStorage()?.setItem?.(hubShardsSeenKey(), keeps ? '1' : '0'); } catch { /* storage refused: the hub itself says it again */ } if (!keeps) channelLinksOffShards(); _relayKeepsRite = relaySupportsRite(v); _relayKeepsCage = relaySupportsCage(v); if (relayVersionSeen(v) === 'changed') chatNotice(RELAY_RESTART_TEXT); };   // AUDIT BROKER-CAGE C4, C6: and whether it keeps the rite and the cage
   // SRV-N: THE BUILD POLL. The relay moves by hand and rarely; the client
   // moves on every merge, which is what "whenever we push" actually is
   // for this project. Nothing tells a tab held open across a deploy that

@@ -111,18 +111,24 @@ test('SCALE4h the host: the room kept with the hour and the total it was said at
   assert.match(w, /import \{ createRenownTracker, [^}]*renownReportSoon \} from '\.\.\/net\/renownTracker\.js';/);
   assert.match(w, /if \(a\.room !== null\) _renownRoom = \{ room: a\.room, hour: renownHour\(\), xp: renownXp \};/, 'kept as the answer said it, after the total is adopted');
   assert.match(w, /renownXpAdopt\(a\.xp\);[^\n]*\n\s*if \(a\.room !== null\) _renownRoom/, 'the total adopted first, so the room is kept against the total it belongs to');
-  assert.match(w, /soon: \(\) => renownReportSoon\(\{ xp: renownXp, pending: renownTracker\?\.pending\(\) \?\? 0, capped: _renownCapHour === renownHour\(\),\s*room: _renownRoom && _renownRoom\.hour === renownHour\(\) && _renownRoom\.xp === renownXp \? _renownRoom\.room : null \}\),/);
+  // PIN MOVED, AUDIT SCALE II C-4: the hour's last minute said beside the spent hour (renownHourLeftMs)
+  assert.match(w, /soon: \(\) => renownReportSoon\(\{ xp: renownXp, pending: renownTracker\?\.pending\(\) \?\? 0, capped: _renownCapHour === renownHour\(\), hourLeftMs: renownHourLeftMs\(\),\s*room: _renownRoom && _renownRoom\.hour === renownHour\(\) && _renownRoom\.xp === renownXp \? _renownRoom\.room : null \}\),/);
   assert.match(w, /earning: \(\) => !!online && !seatOut\(\) && _renownCapHour !== renownHour\(\),/, 'a spent hour earns nothing');
 });
 
 test('SCALE4h a fighter\'s hour, measured: Renown reported far less often at the SCALE4h law, the rise still reported at the minute\'s pace (tools/hotWritesBench.mjs over the real Worker; mutants: the law unwired)', async () => {
   const quiet = console.warn; console.warn = () => {};
   try {
+    // PIN MOVED, AUDIT SCALE II D-8: the counts exactly, and each rise's report within RENOWN_REPORT_MS of the minute that
+    // earned it - `<= 7`, `>= 5` and `level > 2` all held with the rise rule replaced by `return false` (bench's `rises`)
     const r = await playerHour({ role: 'fighter', minutes: 30, xp: 40, renown: 20 });
-    assert.ok(r.routes['/v1/renown/xp'].requests <= 7, `${r.routes['/v1/renown/xp'].requests} reports in half an hour (the minute's law made 29)`);
-    assert.ok(r.routes['/v1/renown/xp'].requests >= 5, 'and it still reports');
+    assert.equal(r.routes['/v1/renown/xp'].requests, 6, `${r.routes['/v1/renown/xp'].requests} reports in half an hour (the minute's law made 29): the first, then every RENOWN_COALESCE_MS`);
+    assert.deepEqual(r.reportsAt.map((at) => at - r.reportsAt[0]), [0, 1, 2, 3, 4, 5].map((i) => i * RENOWN_COALESCE_MS));
     const low = await playerHour({ role: 'fighter', minutes: 30, xp: 40, renown: 2 });
-    assert.ok(low.level > 2, `a rise reached at the minute's pace (Renown ${low.level})`);
+    assert.equal(low.routes['/v1/renown/xp'].requests, 8, 'the coalesced pace and each rise\'s');
+    assert.equal(low.level, 6, `a rise reached at the minute's pace (Renown ${low.level})`);
+    assert.deepEqual(low.rises.map((x) => x.level), [3, 4, 5, 6]);
+    for (const x of low.rises) assert.ok(x.earnedAt != null && x.reportedAt - x.earnedAt <= RENOWN_REPORT_MS, `Renown ${x.level}: earned at ${x.earnedAt}, reported at ${x.reportedAt}`);
   } finally { console.warn = quiet; }
 });
 
@@ -173,13 +179,14 @@ test('SCALE4h a first() is run as its own all(), so its rows are counted - answe
   assert.equal(tablesBlob(undefined), '');
 });
 
-test('SCALE4h the point says the tables written, the hot rows each as its own double, and a heartbeat\'s parts - read off a copy, the service still reading the body (mutants: the hot rows unwritten; the parts read after the service; the parts\' order; a part said false counted)', async () => {
+test('SCALE4h the point says the tables written, the hot rows each as its own double, and a heartbeat\'s parts - the service\'s word on the body it read (AUDIT SCALE II A-3), the service still reading the body (mutants: the hot rows unwritten; the parts unsaid; the parts\' order; a part said false counted)', async () => {
   assert.deepEqual([...HOT_TABLES], ['players', 'sessions', 'renown_tracks', 'realm_characters']);
   const raw = metaD1();
   const points = [];
   let heard = null;
-  const serve = async (req, env) => {
+  const serve = async (req, env, said) => {
     heard = await req.json();
+    said.parts = heartbeatPartsOf(heard);   // PIN MOVED (AUDIT SCALE II A-3): the service says the parts of the body it read
     await env.DB.batch([env.DB.prepare('UPDATE players SET a = 1'), env.DB.prepare('UPDATE sessions SET b = 1'), env.DB.prepare('UPDATE realm_characters SET c = 1')]);
     return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
   };
@@ -189,8 +196,8 @@ test('SCALE4h the point says the tables written, the hot rows each as its own do
   assert.equal(points[0].blobs[4], 'realm_characters:3 sessions:2 players:1');
   assert.equal(points[0].blobs[5], 'beat,board,post', 'the parts asked, in the heartbeat\'s order - a part said false is not one');
   assert.deepEqual(points[0].doubles.slice(7), [1, 2, 0, 3], 'players, sessions, renown_tracks, realm_characters');
-  assert.equal(await heartbeatPartsOf(new Request('https://accounts.invalid/v1/renown/xp', { method: 'POST', body: '{"beat":true}' })), '', 'another route says none');
-  assert.equal(await heartbeatPartsOf(new Request('https://accounts.invalid/v1/heartbeat', { method: 'POST', body: 'not json' })), '');
+  assert.equal(heartbeatPartsOf('not an object'), '');   // PIN MOVED (AUDIT SCALE II A-3): a body, not a request
+  assert.equal(heartbeatPartsOf(null), '');
   // over the real Worker: a heartbeat's beat - a first() write - is a row written on its point now
   const S = await standService();
   const g = await S.guest();
@@ -200,4 +207,6 @@ test('SCALE4h the point says the tables written, the hot rows each as its own do
   const p = live.at(-1);
   assert.equal(p.blobs[5], 'beat');
   assert.ok(p.doubles[3] >= 1 && p.doubles[7] >= 1, `the beat's row written, and the account's row its hot row (${p.doubles[3]}, ${p.doubles[7]})`);
+  assert.equal((await S.call('/v1/account/played', { beat: true }, g.secret)).status, 200);
+  assert.equal(live.at(-1).blobs[5], '', 'another route says none, whatever its body holds');   // PIN MOVED (AUDIT SCALE II A-3)
 });

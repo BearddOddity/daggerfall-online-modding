@@ -332,8 +332,8 @@
   {
     "name": "S37-picture-before-the-welcome",
     "file": "server/src/index.js",
-    "old": "        const said = JSON.stringify(badged({ t: 'join', id: m.id, name: who.name, sub: who.subject, n: shard ? this._hubN(others.length + 1) : others.length + 1 }, who));\n",
-    "new": "        const said = JSON.stringify(badged({ t: 'join', id: m.id, name: who.name, sub: who.subject, n: shard ? this._hubN(others.length + 1) : others.length + 1 }, who));\n        if (isSocialRoom(a.key) && m.acct) { try { await this._helloAccount(ws, m, now); } catch (e) { console.warn('[hub] account hello failed', e?.message ?? e); } }\n",
+    "old": "        const said = JSON.stringify(badged({ t: 'join', id: m.id, name: who.name, sub: who.subject, ...(jn != null ? { n: jn } : {}) }, who));\n",
+    "new": "        const said = JSON.stringify(badged({ t: 'join', id: m.id, name: who.name, sub: who.subject, ...(jn != null ? { n: jn } : {}) }, who));\n        if (isSocialRoom(a.key) && m.acct) { try { await this._helloAccount(ws, m, now); } catch (e) { console.warn('[hub] account hello failed', e?.message ?? e); } }\n",
     "tests": [
       "test/soc1_hub.test.js"
     ],

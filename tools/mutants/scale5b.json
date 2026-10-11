@@ -22,8 +22,8 @@
   {
     "name": "SCALE5b-place-unrounded",
     "file": "src/net/wire.js",
-    "old": "    out[k] = k === 'x' || k === 'y' || k === 'z' ? Math.round(v) : ",
-    "new": "    out[k] = k === 'x' || k === 'y' || k === 'z' ? v : ",
+    "old": "    const r = k === 'x' || k === 'y' || k === 'z' ? Math.round(v) : ",
+    "new": "    const r = k === 'x' || k === 'y' || k === 'z' ? v : ",
     "tests": [
       "test/scale5b.test.js"
     ],
@@ -556,7 +556,7 @@
   {
     "name": "SCALE5b-full-uncounted",
     "file": "server/src/index.js",
-    "old": "{ this._metrics.c.full++; this._metricsTick(); const full = json({ error: 'room full' }, 503);",
+    "old": "{ if (!walked || request.headers.get(LAYER_LAST_HEADER) === '1') this._metrics.c.full++; this._metricsTick(); const full = json({ error: 'room full' }, 503);",
     "new": "{ this._metricsTick(); const full = json({ error: 'room full' }, 503);",
     "tests": [
       "test/scale5b.test.js"
@@ -736,7 +736,7 @@
   {
     "name": "SCALE5b-cfg-gate-never-asks",
     "file": "server/src/index.js",
-    "old": "    await this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it\n    const end = gateTimes",
+    "old": "    void this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it - AUDIT SCALE II R1-2: asked ahead, never awaited by the beat\n    const end = gateTimes",
     "new": "    const end = gateTimes",
     "tests": [
       "test/scale5b.test.js"
@@ -746,7 +746,7 @@
   {
     "name": "SCALE5b-cfg-sd-never-asks",
     "file": "server/src/index.js",
-    "old": "    const now = Date.now();\n    await this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it\n    try {\n      // INT12",
+    "old": "    const now = Date.now();\n    void this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it - AUDIT SCALE II R1-2: asked ahead, never awaited by the beat\n    try {\n      // INT12",
     "new": "    const now = Date.now();\n    try {\n      // INT12",
     "tests": [
       "test/scale5b.test.js"
@@ -756,7 +756,7 @@
   {
     "name": "SCALE5b-cfg-serpent-never-asks",
     "file": "server/src/index.js",
-    "old": "    await this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it\n    let at = Infinity, live = false;",
+    "old": "    void this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it - AUDIT SCALE II R1-2: asked ahead, never awaited by the beat\n    let at = Infinity, live = false;",
     "new": "    let at = Infinity, live = false;",
     "tests": [
       "test/scale5b.test.js"

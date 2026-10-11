@@ -1,6 +1,6 @@
 // LEGACY7 part two (2026-10-06, bible/06-Systems/Legacy-Arc.md section 9): A HOUSE NAME ONLINE - the law both ends share
 // (src/net/houseLaw.js), the identity token's claims (identityToken.js), the relay's stamp (wire.js badged) and the
-// client's read, the account service's mint and roster (server-account/src/legacy.js realmHouseOf, realm.js listRealm) on
+// client's read, the account service's mint and roster (server-account/src/legacy.js realmHouseOf - realm.js realmMintFacts since SCALE4f - and realm.js listRealm) on
 // the real Worker over the real migrations, and the three faces: over the head, the inspect card, the roster's tile.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

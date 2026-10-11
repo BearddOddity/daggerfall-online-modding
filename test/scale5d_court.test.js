@@ -3,7 +3,7 @@
 // SCALE5d): A GATE'S COURT, COPIED. The court keeps its fight and its first SOCKETS_MAX sockets; a crowd past them goes
 // to its copies (`gate:<n>#<k>`), each a crowd of its own whose fight is the court's - its hellos, poses and gate words
 // handed up, the boss's beats, answers and closes handed back - over the shards' machinery (net/hubShards.js
-// isCourtCopy, courtOfCopy, upOf, courtHands; server/src/index.js _courtHello, _courtPose, _courtSockets). A copy's socket
+// isCourtCopy, courtOfCopy, upOf; server/src/index.js _courtHello, _courtPose, _courtSockets). A copy's socket
 // is never the court's index, so no crowd walk there reaches it. tools/mutants/scale5d_court.json.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -70,8 +70,8 @@ test('SCALE5d part two the law: a copy of a gate\'s court is `gate:<n>#<k>`, k 1
   assert.equal(H.isCourtCopy('gate:0#1'), true, 'day 0 is a day');
   assert.equal(H.upOf('chat:world.3'), 'chat:world');
   assert.equal(H.upOf(KEY), null);
-  assert.equal(H.courtHands('{"t":"gate","k":"in"}'), true);
-  for (const s of ['{"t":"pose","p":{}}', '{"t":"chat","text":"hi"}', '{"t":"hello"}', '{"t":"gates"}'.replace('gates', 'cast'), ' {"t":"gate"}']) assert.equal(H.courtHands(s), false, s);
+  // PIN MOVED (AUDIT SCALE II R3-1): a copy hands its court the frames PARSED as gate words, said again `t` first - never a frame
+  // read off its first bytes (`courtHands`, retired); test/auditscale2_bus.test.js holds it over a copy, a court and every key order
 });
 
 test('SCALE5d part two the Worker: a gate\'s court is walked from the court itself, whatever the page asks - past a full one to its copies, each told its layer; a Super dungeon\'s realm is never walked (mutants: the court unwalked; the page\'s layer asked first)', async () => {

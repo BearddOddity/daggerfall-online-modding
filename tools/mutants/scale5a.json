@@ -232,7 +232,7 @@
   {
     "name": "AUDIT-SCALE5a-n-off-the-join",
     "file": "server/src/index.js",
-    "old": "sub: who.subject, n: shard ? this._hubN(others.length + 1) : others.length + 1 }, who));",
+    "old": "sub: who.subject, ...(jn != null ? { n: jn } : {}) }, who));",
     "new": "sub: who.subject }, who));",
     "tests": [
       "test/scale5a.test.js",
@@ -243,7 +243,7 @@
   {
     "name": "AUDIT-SCALE5a-n-off-the-leave",
     "file": "server/src/index.js",
-    "old": "...(isChatRoom(a.key) ? { n: isChannelShard(a.key) ? this._hubN(this._namedCount()) : this._vsocks.size ? this._busCount() : this._namedCount() } : {})",
+    "old": "...(isChatRoom(a.key) && !(isChannelShard(a.key) && this._hubTotal == null) ? { n: isChannelShard(a.key) ? this._hubN(this._namedCount()) : this._vsocks.size ? this._busCount() : this._namedCount() } : {})",
     "new": "...({})",
     "tests": [
       "test/scale5a.test.js",

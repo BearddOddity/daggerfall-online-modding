@@ -51,6 +51,17 @@
 // which hot row a route writes, not only how many; and a heartbeat says
 // which parts it carried, so the beat, the board and the box are apart.
 //
+// AUDIT SCALE II A-3 (2026-10-11; Mac: "Lets do an audit on everything.
+// Ensure perfection"): THE PARTS ARE THE SERVICE'S WORD, NEVER A SECOND
+// READ. SCALE4h read them off a copy of the request (`clone().json()`),
+// whole and unbounded, before the service had looked at a header - every
+// heartbeat, a stranger's included. That undid AUDIT 68 X8 (index.js
+// readCapped): a 64 MiB unauthenticated POST to /v1/heartbeat cost the
+// isolate +325 MiB, and a body that never ended held the request before any
+// service code ran. The service now says the parts of the body it read
+// itself, within MAX_BODY_BYTES and behind the session (`said.parts`, set by
+// the heartbeat's route): a refused heartbeat says none.
+//
 // NOTHING IDENTIFIES A PLAYER. The route is a template, the word is one
 // of the service's own, and no header, id, handle or body is written.
 //
@@ -67,9 +78,6 @@
 
 import { ROUTES, savePathOf, realmPathOf, DB_ROOT } from './service.js';
 import { HEARTBEAT_PARTS } from './heartbeat.js';
-
-/** SCALE4h: the heartbeat's route, whose parts the point says. */
-const HEARTBEAT_PATH = '/v1/heartbeat';
 
 /** The route as a TEMPLATE: a served path as it stands, a save slot or a realm character's save by its shape - never
  *  the ids or the names they carry - and anything else one word, so the set of labels is bounded. */
@@ -197,18 +205,20 @@ async function refusalOf(/** @type {Response} */ res) {
 }
 
 /**
- * THE REQUEST, SERVED AND COUNTED. `serve(request, env)` is the service; with no METRICS binding it is simply called.
+ * THE REQUEST, SERVED AND COUNTED. `serve(request, env, said)` is the service; with no METRICS binding it is simply
+ * called. AUDIT SCALE II A-3: `said` is what the service tells its point of the request - `parts`, a heartbeat's.
  * @param {Request} request @param {any} env
- * @param {(request: Request, env: any) => Promise<Response>} serve
+ * @param {(request: Request, env: any, said: { parts: string }) => Promise<Response>} serve
  */
 export async function measured(request, env, serve) {
   const sink = env?.METRICS;
-  if (!sink || typeof sink.writeDataPoint !== 'function') return serve(request, env);
+  const said = { parts: '' };
+  if (!sink || typeof sink.writeDataPoint !== 'function') return serve(request, env, said);
   const started = Date.now();
   const tally = { n: 0, ms: 0, rr: 0, rw: 0, replica: 0, tables: /** @type {Record<string, number>} */ ({}) };
   const counted = env.DB ? { ...env, DB: countedDb(env.DB, tally) } : env;
-  const parts = await heartbeatPartsOf(request);   // SCALE4h: read off a copy before the service reads the body
-  const res = await serve(request, counted);
+  const res = await serve(request, counted, said);
+  const parts = typeof said.parts === 'string' ? said.parts : '';   // AUDIT SCALE II A-3: the service's own word on the body it read
   try {
     const route = routeLabel(new URL(request.url).pathname);
     sink.writeDataPoint({
@@ -221,12 +231,11 @@ export async function measured(request, env, serve) {
   return res;
 }
 
-/** SCALE4h: the parts a heartbeat's body asked (heartbeat.js HEARTBEAT_PARTS, in its order), comma-joined - "" for any
- *  other route, and for a body that is not JSON. A copy of the request is read; the service reads its own. */
-export async function heartbeatPartsOf(/** @type {Request} */ request) {
-  try {
-    if (request.method !== 'POST' || new URL(request.url).pathname !== HEARTBEAT_PATH) return '';
-    const body = await request.clone().json();
-    return HEARTBEAT_PARTS.filter((k) => body?.[k] !== undefined && body[k] !== false).join(',');
-  } catch { return ''; }
+/** SCALE4h: the parts a heartbeat's body asked (heartbeat.js HEARTBEAT_PARTS, in its order), comma-joined - "" for a
+ *  body that is not an object. AUDIT SCALE II A-3: of the body the heartbeat's route read (index.js, `said.parts`) -
+ *  never a copy of the request read here. */
+export function heartbeatPartsOf(/** @type {unknown} */ body) {
+  if (!body || typeof body !== 'object') return '';
+  const b = /** @type {Record<string, unknown>} */ (body);
+  return HEARTBEAT_PARTS.filter((k) => b[k] !== undefined && b[k] !== false).join(',');
 }

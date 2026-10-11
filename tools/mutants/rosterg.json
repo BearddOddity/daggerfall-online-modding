@@ -33,8 +33,8 @@
   {
     "name": "G4-channel-join-carries-the-look",
     "file": "server/src/index.js",
-    "old": "name: who.name, sub: who.subject, n: shard ? this._hubN(others.length + 1) : others.length + 1 }, who));",
-    "new": "name: who.name, sub: who.subject, look: m.look, n: shard ? this._hubN(others.length + 1) : others.length + 1 }, who));",
+    "old": "name: who.name, sub: who.subject, ...(jn != null ? { n: jn } : {}) }, who));",
+    "new": "name: who.name, sub: who.subject, look: m.look, ...(jn != null ? { n: jn } : {}) }, who));",
     "tests": [
       "test/rosterg.test.js",
       "test/chat1.test.js"

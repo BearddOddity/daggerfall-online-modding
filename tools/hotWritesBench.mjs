@@ -25,7 +25,7 @@ import { isMain } from './lib/isMain.mjs';
 import { standService } from '../test/accountDb.mjs';
 import { seatRealm, freshSave } from '../test/realmSeat.mjs';
 import * as renownTrackerModule from '../src/net/renownTracker.js';
-import { renownXpFor } from '../src/net/renown.js';
+import { renownXpFor, renownForXp } from '../src/net/renown.js';
 import { BOARD_CACHE_MS } from '../src/net/boardLaw.js';
 import { MAIL_POLL_MS } from '../src/net/mail.js';
 import { POST_POLL_MS } from '../src/net/postLaw.js';
@@ -100,10 +100,16 @@ export async function playerHour({ role = 'fighter', minutes = 60, xp = 40, reno
     };
     // the fighter's Renown, as the host keeps it (scenes/world.js): the track's total and level the service last said,
     // and (SCALE4h) the hour's room it said with them
-    let level = renown, total = renownXpFor(renown), room = null, roomHour = null, cappedHour = null;
+    let level = renown, total = renownXpFor(renown), room = null, roomHour = null, cappedHour = null, sentHour = null;
     const hourOf = () => Math.floor(simMs / 3_600_000);
+    // AUDIT SCALE II D-8: when each report went, and for each level risen, when what was earned first completed it and
+    // when the report that said so went - the rise's pace, which a count of reports cannot tell
+    const reportsAt = /** @type {number[]} */ ([]);
+    const earnedAt = /** @type {Map<number, number>} */ (new Map());
+    const rises = /** @type {{ level: number, earnedAt: number|null, reportedAt: number }[]} */ ([]);
     const tracker = role === 'fighter' ? createRenownTracker({
       report: async (c, n, name, rid, region) => {
+        sentHour = hourOf(); reportsAt.push(simMs);   // AUDIT SCALE II C-3: the hour it went in, as the host keeps it
         const r = await route('/v1/renown/xp', () => S.call('/v1/renown/xp', { character: c, xp: n, name, rid, region }, who.secret));
         return r.status === 200 ? { ok: true, data: r.body } : { ok: false, error: r.body?.error ?? 'server' };
       },
@@ -113,11 +119,12 @@ export async function playerHour({ role = 'fighter', minutes = 60, xp = 40, reno
       onAnswer: (data, sent) => {
         const a = renownAnswer(data, sent, level);
         if (a.xp !== null) total = a.xp;
-        if (a.level !== null && a.level > level) level = a.level;
+        if (a.level !== null && a.level > level) { for (let L = level + 1; L <= a.level; L++) rises.push({ level: L, earnedAt: earnedAt.get(L) ?? null, reportedAt: simMs }); level = a.level; }
         if (/** @type {any} */ (a).room != null) { room = /** @type {any} */ (a).room; roomHour = hourOf(); }
-        if (a.capped) cappedHour = hourOf();
+        if (a.capped && sentHour === hourOf()) cappedHour = hourOf();   // AUDIT SCALE II C-3: the sent hour's cap, as the host keeps it
       },
-      ...(renownReportSoon ? { soon: () => renownReportSoon({ xp: total, pending: tracker?.pending() ?? 0, room: roomHour === hourOf() ? room : null, capped: cappedHour === hourOf() }) } : {}),
+      // AUDIT SCALE II C-4: and the hour's last minute (`hourLeftMs`), as the host says it - a tree before it reads no such word
+      ...(renownReportSoon ? { soon: () => renownReportSoon({ xp: total, pending: tracker?.pending() ?? 0, room: roomHour === hourOf() ? room : null, capped: cappedHour === hourOf(), hourLeftMs: (hourOf() + 1) * 3_600_000 - simMs }) } : {}),
     }) : null;
     const town = 1;   // a town's Notice Board (boardLaw.js boardKeyOk)
     let seq = /** @type {number} */ (R.at().seq);
@@ -145,10 +152,14 @@ export async function playerHour({ role = 'fighter', minutes = 60, xp = 40, reno
         }));
         if (res.status === 200) seq++;
       }
-      if (tracker && t >= nextXp) { nextXp = t + 60_000; tracker.earn(xp); }
+      if (tracker && t >= nextXp) {
+        nextXp = t + 60_000; tracker.earn(xp);
+        const reach = renownForXp(total + tracker.pending());   // AUDIT SCALE II D-8: a level what is earned now completes
+        for (let L = level + 1; L <= reach; L++) if (!earnedAt.has(L)) earnedAt.set(L, t);
+      }
       if (tracker) await tracker.tick(t);
     }
-    return { role, minutes, xp, renown, routes: byRoute, rows: tally.rows, statements: tally.statements, level, total };
+    return { role, minutes, xp, renown, routes: byRoute, rows: tally.rows, statements: tally.statements, level, total, reportsAt, rises };
   } finally { Date.now = realNow; }
 }
 

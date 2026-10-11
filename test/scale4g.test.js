@@ -122,9 +122,11 @@ test('SCALE4g the client sends the newest bookmark its session has been answered
   assert.equal(seen.at(-1), null, 'another session starts with none - its row may not have reached a replica yet');
   assert.equal(d1BookmarkFor('secret-a'), null, 'and the first session\'s is let go');
   assert.equal(d1BookmarkFor('secret-b'), MARK(1));
-  await call({ fetch }, '/v1/health');
-  assert.equal(seen.at(-1), null, 'no secret: no bookmark');
   noteD1Bookmark(null, MARK(99));
   assert.equal(d1BookmarkFor('secret-b'), MARK(1), 'nothing kept without a session');
+  // PIN MOVED (AUDIT SCALE II A-2): asked before the call below, which is no bookmark read and forgets the page's
+  // bookmark now (test/auditscale2_acct.test.js)
+  await call({ fetch }, '/v1/health');
+  assert.equal(seen.at(-1), null, 'no secret: no bookmark');
   forgetD1Bookmark();
 });

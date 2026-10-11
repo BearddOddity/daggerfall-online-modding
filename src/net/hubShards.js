@@ -89,9 +89,12 @@ export const isCourtCopy = (name) => typeof name === 'string' && COURT_COPY_RE.t
 export const courtOfCopy = (name) => (typeof name === 'string' ? COURT_COPY_RE.exec(name)?.[1] ?? null : null);
 /** The object a shard or a copy hands up to - a channel shard's bus, a court copy's court - or null. */
 export const upOf = (name) => busOf(name) ?? courtOfCopy(name);
-/** The frames a court copy hands its court - the fight's words (`gate`), read off the frame's start as the client writes
- *  it; a copy keeps every other for its own crowd. */
-export const courtHands = (s) => s.startsWith('{"t":"gate"');
+// AUDIT SCALE II R3-1: a court copy hands its court the fight's words - a frame PARSED as `gate`, said again as one
+// (server/src/index.js, the gate arm), never a frame read off its first bytes. `courtHands` read `{"t":"gate"` off the
+// start, and a gate word in any other key order (`{"k":"in","t":"gate",...}`) fell through to the copy's own gate arm,
+// which stood a fight of its own - one fighter's share of the boss, never beating back - whose kill told the hub the
+// gate fell while the court's fight stood; and `{"t":"gate","t":"chat",...}` was handed up whole and run by the court
+// as a line to its own crowd (R3-7).
 
 /** A shard's hello, frames and closes, to the bus. */
 export const HUB_INTERNAL_UP = '/internal/hub/up';
@@ -102,10 +105,32 @@ export const HUB_INTERNAL_DOWN = '/internal/hub/down';
 export const HUB_BATCH_MS = 25;
 /** How often a shard tells the bus every socket it holds, so a hello or a close lost between them heals. */
 export const HUB_SYNC_MS = 60_000;
+/** AUDIT SCALE II R2-4: the storage key a shard (or a copy) keeps its own name under - a woken one, its sockets gone or
+ *  never read, still knows where its owed events go. */
+export const HUB_KEY_KEY = 'hubkey';
+/** AUDIT SCALE II R2-6: the storage key a bus (or a court) keeps the shards (or copies) it has heard from under. */
+export const VHUBS_KEY = 'vhubs';
 /** How often at most a shard tells its sockets the hub's count when it moved (`{t:'n'}`). */
 export const HUB_COUNT_MS = 1000;
-/** The most events one batch carries either way; past it, the rest wait for the next. */
+/** The most events one batch from a shard (or a copy) carries; past it, the rest wait for the next. AUDIT SCALE II R2-13:
+ *  this said "either way" - the bus's batch to a shard is what it said that shard in HUB_BATCH_MS, each frame once. */
 export const HUB_BATCH_MAX = 512;
+/** AUDIT SCALE II R2-11: and the most BYTES one carries (at least one event) - a count alone let one hand-up be 512
+ *  frames of HUB_FRAME_MAX, 32 MiB the one bus held and parsed. */
+export const HUB_BATCH_BYTES = 1024 * 1024;
+/** AUDIT SCALE II R2-11: the most a shard holds owed the bus, bytes - past it (a bus that does not answer) a socket's
+ *  frame is dropped and counted, never queued without end. */
+export const HUB_UP_QUEUE_BYTES = 8 * 1024 * 1024;
+/** AUDIT SCALE II R2-6: a woken bus asks every shard (and a woken court every copy) it has heard from to say again every
+ *  socket it holds - one call each, at the first thing the woken object does. */
+export const HUB_INTERNAL_RESYNC = '/internal/hub/resync';
+/** AUDIT SCALE II R2-9: a shard (or a copy) the bus has not heard from in this long has lost its sockets (an object
+ *  reset with no close said) - the bus lets go of every ShardSocket of its. Three of its syncs. */
+export const HUB_SILENT_MS = 3 * HUB_SYNC_MS;
+/** AUDIT SCALE II R2-5: the attachment's law the bus may change after a shard's hello - a mute, a guild worn or taken
+ *  off, its ribbon, its Renown - said back to the shard (a down batch's `att`), so the shard's own attachment, which every
+ *  hello it says again is made of, is the bus's word and never the token's alone. */
+export const SHARD_LAW_KEYS = Object.freeze(['mu', 'gi', 'gt', 'gm', 'gio', 'rb', 'lv']);
 /** The largest frame a shard hands the bus - the largest the hub takes (a shared quest, wire.js QUEST_FRAME_MAX). */
 export const HUB_FRAME_MAX = 64 * 1024;
 /** The frames a second a shard hands up for one socket, and the burst - a hub link says a few a second (its party's
@@ -113,7 +138,10 @@ export const HUB_FRAME_MAX = 64 * 1024;
 export const HUB_UP_HZ_MAX = 16;
 export const HUB_UP_BURST = 32;
 /** The frames a shard keeps for itself - a socket's hello, its ping, its pose - read off the frame's start, as the
- *  client writes it (`t` first); any other shape is the bus's to parse and refuse. */
+ *  client writes it (`t` first); any other shape is the bus's to parse and refuse. AUDIT SCALE II R1-7: the start is
+ *  the first sieve, never the verdict - JSON's last duplicate key wins, so a kept frame is parsed and, parsed as anything
+ *  but the three (`{"t":"pose","t":"chat",...}`), handed up as it came (server/src/index.js `_message`): a line is the
+ *  bus's to judge, a mute the bus applied with it. */
 export const shardKeeps = (s) => s.startsWith('{"t":"hello"') || s.startsWith('{"t":"ping"') || s.startsWith('{"t":"pose"');
 /** The close a shard gives a socket that came to the wrong one (its `hub` frame names the right one). */
 export const CLOSE_HUB = 4001;

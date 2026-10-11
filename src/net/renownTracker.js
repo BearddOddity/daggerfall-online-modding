@@ -160,12 +160,19 @@ export function renownAnswer(data, sent, said = null) {
  *   - the hour's bound is spent (`capped`): what is earned in it is said within it, credited nothing, as before;
  *   - the track's total (`xp`) or the hour's room (`room`) is not known - the next answer says them;
  *   - what is earned (`pending`) reaches the room: the bound's word, and the sigils' stop, come at the minute's pace;
- *   - what is earned completes the level: the rise, and its signed order to the rooms, come at the minute's pace.
+ *   - what is earned completes the level: the rise, and its signed order to the rooms, come at the minute's pace;
+ *   - AUDIT SCALE II C-4: the hour has no more than RENOWN_REPORT_MS left (`hourLeftMs`, on the host's clock of the
+ *     service's hour). The service charges a report to the hour it ARRIVES in, so what waited RENOWN_COALESCE_MS across
+ *     the hour's turn was charged to the next hour's window: up to five minutes of one hour spent in the next, and a
+ *     player just under the hourly bound lost what overflowed it. A report in the hour's last minute carries what was
+ *     earned in it, and no more than a minute's worth crosses - what the minute's pace always let cross. Unknown
+ *     (absent, not a number), the arm says nothing.
  * At the cap's total no rise is left to say. Pure.
- * @param {{ xp: number|null, pending: number, room: number|null, capped: boolean }} o
+ * @param {{ xp: number|null, pending: number, room: number|null, capped: boolean, hourLeftMs?: number|null }} o
  */
-export function renownReportSoon({ xp, pending, room, capped }) {
+export function renownReportSoon({ xp, pending, room, capped, hourLeftMs = null }) {
   if (capped) return true;
+  if (Number.isFinite(hourLeftMs) && /** @type {number} */ (hourLeftMs) <= RENOWN_REPORT_MS) return true;   // AUDIT SCALE II C-4
   if (!Number.isSafeInteger(xp) || !Number.isSafeInteger(room)) return true;
   const n = Number.isFinite(pending) && pending > 0 ? pending : 0;
   if (n >= /** @type {number} */ (room)) return true;
@@ -213,6 +220,7 @@ export function renownRid(rand = (b) => globalThis.crypto.getRandomValues(b)) {
  * THE PAGE'S LAST WORD (GAME-8). `leave()` on pagehide sends what is held - or forms it, from what was earned since
  * the last report - through `keepalive`, so the browser finishes it after the page. It clears nothing: a page the
  * back-forward cache brings back sends the same report again under the same id, and the service answers a repeat.
+ * AUDIT SCALE II C-5: every other region's pending goes ahead of it, a report each (see `leave`).
  *
  * SEAT1b (Seats-Arc 4.2): `region()` - the region the player stands in as XP is earned (0-61, or null) - rides each
  * report as its `region`, which the account service keeps for the character's guild where it pledged a seat there.
@@ -251,21 +259,27 @@ export function createRenownTracker({ report, leave = null, character, name = ()
     return n;
   };
 
-  /** The report to send: the one held, or one formed now from what is pending (up to a report's worth). */
-  const form = () => {
-    if (held) return held;
-    const first = [...pend].find(([, v]) => v > 0);
-    if (!first) return null;
+  /** A report formed from what is pending in region `k` (up to a report's worth) - its character, its XP and its own id,
+   *  the XP taken off what is pending; null when there is no character or no id to form it under. */
+  const mint = (k) => {
+    const v = pend.get(k) ?? 0;
+    if (!(v > 0)) return null;
     let c = null;
     try { c = character(); } catch { c = null; }
     if (typeof c !== 'string' || !c) return null;
-    const [k, v] = first;
     const xp = Math.min(v, RENOWN_XP_REPORT_MAX);
     let id = null;
     try { id = rid(); } catch { id = null; }
     if (typeof id !== 'string' || !id) return null;
     if (v - xp > 0) pend.set(k, v - xp); else pend.delete(k);
-    held = { character: c, xp, rid: id, region: k };
+    return { character: c, xp, rid: id, region: k };
+  };
+  /** The report to send: the one held, or one formed now from what is pending (up to a report's worth). */
+  const form = () => {
+    if (held) return held;
+    const first = [...pend].find(([, v]) => v > 0);
+    if (!first) return null;
+    held = mint(first[0]);
     return held;
   };
 
@@ -305,11 +319,23 @@ export function createRenownTracker({ report, leave = null, character, name = ()
     flush,
     /** The frame's knock: a report when one is due. */
     tick: (t = now()) => (due(t) ? flush(t) : null),
-    /** AUDIT RENOWN1 GAME-8: the page is going - the held report (or one formed now) by the page's last word. */
+    /** AUDIT RENOWN1 GAME-8: the page is going - the held report (or one formed now) by the page's last word.
+     *  AUDIT SCALE II C-5: AND EVERY REGION'S PENDING WITH IT. One report names one region, so the last word carried the
+     *  held report, or the first region's pending, and what else was pending died with the page - up to
+     *  RENOWN_COALESCE_MS of it once SCALE4h held reports that long, and a coast or a sea crossing alternates regions.
+     *  Each other region's pending goes as its own report (formed as `form` forms one: its own id, a report's worth),
+     *  sent FIRST and kept by nobody; the held report goes LAST and stays held. The service keeps the id of the last
+     *  report a track took (renownTracks.js `last_rid`), so the one a page the back-forward cache brings back sends again
+     *  must be the one it heard last - sent in any other order, the held report's second sending was credited twice. */
     leave: () => {
       if (stopped || typeof leave !== 'function') return false;
       const h = form();
       if (!h) return false;
+      for (const k of [...pend.keys()]) {
+        const r = mint(k);
+        if (!r) continue;
+        try { leave(r.character, r.xp, name?.() ?? null, r.rid, r.region); } catch { pend.set(k, (pend.get(k) ?? 0) + r.xp); }   // not sent: still pending
+      }
       try { leave(h.character, h.xp, name?.() ?? null, h.rid, h.region); return true; } catch { return false; }
     },
     pending: () => pendingXp() + (held?.xp ?? 0),
