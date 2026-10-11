@@ -233,6 +233,14 @@ test('MWNPC16d the rig: drawThird records its body for the maps where it is aske
   assert.equal(asked.length, 2);
   assert.equal(cast.length, 2);
   renderer.shadowReachSphere = () => reach;
+  // AUDIT MWNPC16-18 R2: A LARGER BODY CASTS AT ITS SIZE - the gate's boss stands larger (MWNPC10's scale), and out of
+  // the view his shadow is still his body's, at the grow he is drawn at
+  reach = true;
+  cast.length = 0;
+  assert.equal(arm.castThird({ feet: [2, 0, -1], yaw: 0.7, grow: 2 }), true);
+  const big = cast[0], scaleOfModel = (m) => Math.hypot(m[0], m[1], m[2]);
+  assert.ok(Math.abs(scaleOfModel(big.model) / scaleOfModel(c.model) - 2) < 1e-6, 'its model twice the size');
+  assert.ok(Math.abs(big.sphere[3] / c.sphere[3] - 2) < 1e-6, 'and its sphere');
   arm.setViewMode('first');
   assert.equal(arm.castThird({ feet: [2, 0, -1], yaw: 0.7 }), false, 'no third body standing: nothing');
 });
@@ -271,6 +279,17 @@ test('MWNPC16e PeerBodies asks the cast of a lane that casts: a seen body drawn 
   const peers = await run(false);
   assert.ok(peers[0].draws.every((c) => c === false), 'a peer\'s body: no cast asked');
   assert.equal(peers[1].casts.length, 0, 'nor out of the view');
+  // AUDIT MWNPC16-18 R2: a body larger by its own scale (MWNPC10's boss) casts, seen and unseen, at that size - only the
+  // travel view's grow takes the cast away
+  const scaledRun = async () => {
+    const rigs = [];
+    const pb = new PeerBodies({ renderer: {}, createRig: recording(rigs), buildOpts: () => ({}), now: () => 1000, casts: true });
+    for (let i = 0; i < 4; i++) { pb.sync([peer('front', -5), peer('back', 5)], toScene, 1 / 60, [0, 0, 0]); await settle(); pb.draw({}, { proj: PROJ, view: VIEW, eye: [0, 1.6, 0], scaleOf: () => 1.5 }); }
+    return rigs;
+  };
+  const [bossFront, bossBack] = await scaledRun();
+  assert.ok(bossFront.draws.length > 0 && bossFront.draws.every((c) => c === true), 'the boss, seen: drawn casting');
+  assert.ok(bossBack.casts.length > 0 && bossBack.casts.at(-1).grow === 1.5, 'unseen: cast at his own size');
   const grown = await run(true, () => 6);
   assert.ok(grown[0].draws.length > 0 && grown[0].draws.every((c) => c === false), 'the travel view\'s grown body casts no giant\'s shadow');
   assert.equal(grown[1].casts.length, 0);
@@ -469,4 +488,20 @@ test('MWNPC16j A BODY MORE BURNT AWAY THAN WHOLE CASTS NO SHADOW - the dissolve\
   assert.ok(f3.draws.every((c) => c === true), 'whole: cast');
   assert.equal(dissolveShadowless(null), false);
   assert.equal(DISSOLVE_SHADOWLESS, 0.5);
+});
+
+test('MWNPC16k A STANDING FLAT THAT TURNS CAST-ONLY LEAVES THE STATIC SIGNATURE - so the cache it was baked into is drawn again without it: a person\'s still flat sits in a lamp\'s static cache, and when their body stands the replay passes the flat over, but a signature that still folded it kept the sprite\'s shadow baked in the cache (the report this arc began from, "Old sprite shadows still show"); the STATIC-WHO log\'s set reads the same (AUDIT MWNPC16-18 R2: 16c counted the doors in the source, and either could read castOnly and do nothing. Mutants: the signature\'s door; the log\'s)', () => {
+  const { sp } = pass();
+  const still = { vao: { flat: 1 }, archive: 182, record: 1, size: { w: 1, h: 1.8 }, origin: [0, 0, 0], bounds: null, indexCount: 6, castOnly: false, _dyn: false };   // a standing person: built still
+  sp.recordBillboards([still], new Float32Array(4), new Float32Array([1, 0, 0]), new Float32Array([0, 1, 0]));
+  const before = [...sp._staticSignature([0, 1, 0], 20)];
+  assert.equal(before[1], 1, 'the still flat is in the lamp\'s static set');
+  sp._debugStaticDiff();
+  assert.equal(sp._dbgStatic.size, 1, 'and in the log\'s');
+  still.castOnly = true;   // its body stands (the lane's offer)
+  const after = [...sp._staticSignature([0, 1, 0], 20)];
+  assert.equal(after[1], 0, 'cast-only: out of the static set');
+  assert.notEqual(after[0], before[0], 'the signature moved: the cache is drawn again, without the sprite');
+  sp._debugStaticDiff();
+  assert.equal(sp._dbgStatic.size, 0, 'and out of the log\'s');
 });

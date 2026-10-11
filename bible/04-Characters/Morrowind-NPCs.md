@@ -1928,7 +1928,7 @@ body (`test/fixtures/mw/bodyRig.mjs`) recording its mesh, model and sphere only
 when asked, never veiled, castThird the same place and only in reach; PeerBodies
 asking the cast of a casting lane's seen, unseen, veiled and grown bodies and
 never of the peers', every NPC lane casting; the renderer's door by source.
-`tools/mutants/mwnpc16.json`: 18 mutants, 18 dead (46 after the audit,
+`tools/mutants/mwnpc16.json`: 18 mutants, 18 dead (51 after the audit,
 section 27). Pins moved: EL2's and
 LA-COST3's shadow-pass construction, MWNPC1g's and MWNPC1h's door (the sprite
 target still records nothing - drawCharacter's gate, now the law MWNPC1's
@@ -2039,7 +2039,7 @@ reached; and the 200-person street (196 or more distinct). Pins moved: MWNPC7a,
 MWNPC8a-1/-2, MWNPC8b-d (a coven's witch now a mage), MWNPC10c-2, MWNPC12-1 (a
 knightly person's plate one metal of his rank), AUDIT MW-NPC II K1's priest,
 MW-D27's thread (and `walk`). `tools/mutants/mwnpc17.json`: 16 mutants, 16
-dead (28 after the audit, section 27); mutant records re-aimed by content: MWNPC7's three, MWNPC8a's seven,
+dead (39 after the audit, section 27); mutant records re-aimed by content: MWNPC7's three, MWNPC8a's seven,
 MWNPC10c's, MWNPC12's, MWNPC14's three and MW-CROWD's.
 
 ## 26. MWNPC18 - THE FIGURES A PLAYER PLACED (SHIPPED 2026-10-11)
@@ -2279,7 +2279,7 @@ PROVEN.
   and PR-BOW1b's drawThird (its `anchored`), MWNPC1h's and MWNPC12-1's
   titles; every record those files kill judged again (43: 42 dead, one
   equivalent as recorded).
-- Mutant records: `tools/mutants/mwnpc16.json` 46 and `mwnpc17.json` 28,
+- Mutant records: `tools/mutants/mwnpc16.json` 51 and `mwnpc17.json` 39,
   all dead; `mwnpc18.json` 29, 28 dead and one equivalent as recorded (the
   figures' set let go at a take-down: memory, which no pin sees) - the
   second look's (below) among them.
@@ -2317,6 +2317,27 @@ was left was reproduced, fixed and pinned.
   - a row read in one case;
   - either host's figure context reading no FLATS.CFG (every figure its
     picture for good).
+- R3. THE CLAIMS READ BACK AGAINST THEMSELVES. The proof lens's own campaign
+  (26 one-line mutations over the slices) found more that survived, and 15
+  of them survived this audit's head too:
+  - STATIC-WHO's log's cast-only door, and beside it, found in following it,
+    the static signature's own. With the signature's door gone, a person's
+    still flat stays in a lamp's static set when their body stands, so the
+    cache keeps the sprite's shadow baked in: the very report this arc began
+    from. 16c only counted the doors in the source; 16k asks the signature
+    and the log.
+  - A body larger by its own scale (MWNPC10's boss): the cast was keyed to
+    the wrong grow, the unseen cast was at a man's size, and castThird was
+    ungrown.
+  - Eleven of the wardrobe's judgements, each of which the pins read back
+    from the same table: the underworld a rogue, a scholar a scholar, a
+    tradesman's sprite a tradesman's, the dark dyes, the knights' top rank
+    in dwarven, orcish and ebony, a merchant's station, the formal cloak,
+    the helm's odds, the lower half's match, a garment's stray, and the
+    record's pick.
+  17g pins them against literals: the role maps as judged, the four dark
+  dyes, the metals by rank, and the shares within bands about the tables'
+  own odds over 3,000 seeds. Each is a record now, and dead.
 - NOT TAKEN. A knight's Silver and Elven plate are drawn as Morrowind's steel
   (mwItemMap.js's map, older than these slices). As drawn, the knights wear
   five metals, not seven (steel about seven in ten), which the patch note's
@@ -2333,15 +2354,17 @@ was left was reproduced, fixed and pinned.
   scenes/dungeonContext.js and scenes/exterior.js are WIRED through
   createPopulationLane and createHostNpcBodies.
 - PROVEN. `test/mwnpc16_bodyshadow.test.js` 16j (the dissolve, seen and
-  unseen, off setBatchDissolve's own field) and 16a (the cut's palette,
-  built once, each hair under its own matrix); `test/mwnpc17_wardrobe.test.js`
-  17b (the rogue, and 400 priests at the door); and
+  unseen, off setBatchDissolve's own field), 16a (the cut's palette, built
+  once, each hair under its own matrix), 16k (the signature) and 16d/16e
+  (the boss's size); `test/mwnpc17_wardrobe.test.js` 17b (the rogue, and 400
+  priests at the door) and 17g (the claims against literals); and
   `test/mwnpc18_decorfigures.test.js` 18b (the rows' order and case) and 18d
-  (both contexts' FLATS.CFG). Records: 5 in `mwnpc16.json`, 2 in
+  (both contexts' FLATS.CFG). Records: 10 in `mwnpc16.json`, 13 in
   `mwnpc17.json`, 13 in `mwnpc18.json`. Five older records were re-aimed by
   content to the same laws (MWNPC16-grown-cast, MWNPC16-veiled-cast,
   OW-PEERS-a-body-unleaned, MWNPC5-lane-drops-fxof and
   AUDIT-E5-a-burnt-body-s-shadow). Pins moved: PR-BOW1's and PR-BOW1b's
   drawThird call (its tells read once a body, a line above). Every record a
   changed test file or a re-aimed site names was judged again: 136, 134 dead
-  and two equivalent as recorded.
+  and two equivalent as recorded; after R3, the 90 that the shadow's and the
+  wardrobe's test files name, all dead.

@@ -250,5 +250,104 @@
   "tests": [
    "test/mwnpc17_wardrobe.test.js"
   ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-underworld-commoner",
+  "file": "src/characters/peopleBodies.js",
+  "old": "underworld: 'rogue',",
+  "new": "underworld: 'commoner',",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-scholar-commoner",
+  "file": "src/characters/peopleBodies.js",
+  "old": "scholar: 'scholar', common:",
+  "new": "scholar: 'commoner', common:",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-dark-bright",
+  "file": "src/characters/wardrobe.js",
+  "old": "  dark: Object.freeze([3, 1, 4, 9]),",
+  "new": "  dark: Object.freeze([6, 8, 7, 2]),",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-lower-never-matches",
+  "file": "src/characters/wardrobe.js",
+  "old": "  const lowDye = chance(R.match, wmix(s ^ 0x3a7c)) ? topDye : dye(0xd2);",
+  "new": "  const lowDye = dye(0xd2);",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-formal-swapped",
+  "file": "src/characters/wardrobe.js",
+  "old": "    const cloak = female ? (formal ? W.formalCloak : W.casualCloak) : (formal ? M.formalCloak : M.casualCloak);",
+  "new": "    const cloak = female ? (formal ? W.casualCloak : W.formalCloak) : (formal ? M.casualCloak : M.formalCloak);",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-rung-step-off",
+  "file": "src/characters/wardrobe.js",
+  "old": "n.tier + (step < 2 ? -1 : step === 2 ? 1 : 0)",
+  "new": "n.tier + 0",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-helm-always",
+  "file": "src/characters/wardrobe.js",
+  "old": "['Head', A.Helm, 0.3]]",
+  "new": "['Head', A.Helm, 1]]",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-merchant-poor",
+  "file": "src/characters/wardrobe.js",
+  "old": "tiers: [45, 45, 9, 1]",
+  "new": "tiers: [100, 0, 0, 0]",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-knight-exq-iron",
+  "file": "src/characters/wardrobe.js",
+  "old": "[[MAT.Dwarven, 30], [MAT.Ebony, 30], [MAT.Orcish, 20], [MAT.Silver, 20]],",
+  "new": "[[MAT.Iron, 30], [MAT.Iron, 30], [MAT.Iron, 20], [MAT.Iron, 20]],",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-folk-tradesman-commoner",
+  "file": "src/characters/folkBodies.js",
+  "old": "    Object.freeze({ role: 'tradesman', cut: 'pants' }),   // a tunic and breeches - the tradesman",
+  "new": "    Object.freeze({ role: 'commoner', cut: 'pants' }),   // a tunic and breeches - the tradesman",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-pick-zero",
+  "file": "src/characters/wardrobe.js",
+  "old": "  return { pick: h >>> 8, tier };",
+  "new": "  return { pick: 0, tier };",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
  }
 ]

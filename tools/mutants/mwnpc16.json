@@ -412,5 +412,50 @@
   "tests": [
    "test/mwnpc16_bodyshadow.test.js"
   ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-signature-keeps-cast-only",
+  "file": "src/render/shadowPass.js",
+  "old": "(b._shDyn && !(anim && b._shAnim)) || b.noShadow || b.castOnly || b.conceal",
+  "new": "(b._shDyn && !(anim && b._shAnim)) || b.noShadow || b.castOnly && false || b.conceal",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-static-log-keeps-cast-only",
+  "file": "src/render/shadowPass.js",
+  "old": "b._shDyn || b.noShadow || b.castOnly || b.conceal",
+  "new": "b._shDyn || b.noShadow || b.castOnly && false || b.conceal",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-boss-casts-nothing",
+  "file": "src/net/peerBodies.js",
+  "old": "      const cast = this._casts && !veiled && !(ow > 1) && !dissolveShadowless(fx?.dissolve);",
+  "new": "      const cast = this._casts && !veiled && !(g > 1) && !dissolveShadowless(fx?.dissolve);",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-unseen-boss-at-man-size",
+  "file": "src/net/peerBodies.js",
+  "old": "b.rig.castThird?.({ feet: b.feet, yaw: b.yaw, grow: g, anchored })",
+  "new": "b.rig.castThird?.({ feet: b.feet, yaw: b.yaw, grow: ow, anchored })",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-castThird-ungrown",
+  "file": "src/combat/fpArm.js",
+  "old": "      const model = thirdModel(feet, yaw, grow);\n      const center = transformPoint(model, (minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2);\n      if (reach &&",
+  "new": "      const model = thirdModel(feet, yaw);\n      const center = transformPoint(model, (minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2);\n      if (reach &&",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
  }
 ]

@@ -13,9 +13,9 @@ import {
   wornByRole, weighted, MENS, WOMENS, beastWorn, WARDROBE_BEAST_RACES,
 } from '../src/characters/wardrobe.js';
 import { foeLook, rosterLook } from '../src/characters/foeBodies.js';
-import { folkLookOf } from '../src/characters/folkBodies.js';
+import { folkLookOf, FOLK_DRESS } from '../src/characters/folkBodies.js';
 import { residentLook } from '../src/characters/rosterBodies.js';
-import { personLook, figureLook } from '../src/characters/peopleBodies.js';
+import { personLook, figureLook, KIND_ROLE } from '../src/characters/peopleBodies.js';
 import { createEquipTable } from '../src/characters/equipTable.js';
 import { SOCIAL_GROUPS, GUILD_GROUPS, FACTION_TYPES } from '../src/formats/factionFile.js';
 import { mwClothingRecord, clothingTierOf, CLOTH_PICK_NEAREST, CLOTH_PICK_BAND, CLOTHING_NAME, MW_CLOTHING_TYPE, dfWornEquipment, composeWornArmor, ARMO_PART } from '../src/formats/mwItemMap.js';
@@ -247,4 +247,51 @@ test('MWNPC17f EVERY PRODUCER\'S LOOK CARRIES ITS HINT - a class foe\'s and a ro
   hinted(residentLook({}, { id: 'r1', sex: 'male', job: 'priest', race: 'Breton', archive: 182 }, { still: true }), 'a still picture');
   hinted(personLook({}, { race: 1, gender: 0, nameSeed: 3, hash: 4, factionID: 0, billboardArchiveIndex: 182, billboardRecordIndex: 1 }, { type: FACTION_TYPES.Generic, sgroup: SOCIAL_GROUPS.Commoners, ggroup: GUILD_GROUPS.None }), 'a standing person');
   hinted(figureLook({ piece: { id: 'f1', flat: [182, 3] } }, { flats: { getFlatData: () => ({ gender: '1', caption: 'merchant' }) } }), 'a placed figure');
+});
+
+test('MWNPC17g THE PATCH NOTES\' CLAIMS, AGAINST LITERALS - who is which role, the Dark Brotherhood\'s dark dyes, a knight\'s metals by his rank, a merchant\'s station on the ladder, the formal cloak of a court, the helm now and then, the lower half matching the top as often as its table says, a garment\'s rung one down in four and up in eight, and the record picked off the seed (AUDIT MWNPC16-18 R2: the pins read the wardrobe\'s own tables back - wornByRole, the hint against npcGarmentPick - so any of these could be turned and nothing failed. Mutants: the underworld a commoner; a scholar a commoner; a tradesman\'s sprite a commoner\'s; bright dyes for the dark; the top rank in iron; a merchant always common; the cloaks swapped; a helm always; the lower never matching; the stray gone; one record for all)', () => {
+  // who is which role: the standing people's kinds and the walkers' sprites, as judged
+  assert.deepEqual({ ...KIND_ROLE }, { priest: 'priest', mage: 'mage', knight: 'knight', fighter: 'fighter', noble: 'noble', merchant: 'merchant', underworld: 'rogue', scholar: 'scholar', common: 'commoner' });
+  assert.deepEqual(JSON.parse(JSON.stringify(FOLK_DRESS)), {
+    male: [{ role: 'commoner', cut: 'pants' }, { role: 'tradesman', cut: 'pants' }, { role: 'traveller', cut: 'pants' }, { role: 'scholar', cut: 'robe' }],
+    female: [{ role: 'commoner', cut: 'skirt' }, { role: 'tradesman', cut: 'pants' }, { role: 'scholar', cut: 'robe' }, { role: 'commoner', cut: 'skirt' }],
+  });
+  const n = 3000;
+  const crowd = (role, gender = 'male', salt = 0) => seeds(n, salt + role.length * 31).map((s) => dressPerson({ role, gender, seed: s }));
+  const share = (list, f) => list.filter(f).length / list.length;
+  // the Dark Brotherhood in dark clothes: grey, dark brown, purple and green (characters/dyes.js), never a bright one
+  const DARK = [1, 3, 4, 9];
+  for (const g of ['male', 'female']) for (const d of crowd('rogue', g)) for (const it of d.items) if (it.group !== 'Armor') assert.ok(DARK.includes(it.dye), `a rogue's ${it.templateIndex} in dye ${it.dye}`);
+  // a knight's whole plate of one metal by rank: iron and steel at the bottom, up to dwarven, orcish and ebony
+  const metalsAt = (t) => new Set(seeds(n, 5).flatMap((s) => { const k = armorKit('knight', t, s); assert.equal(new Set(k.map((it) => it.material)).size, 1, 'one metal'); return k.map((it) => it.material); }));
+  assert.deepEqual([...metalsAt(0)].sort(), [ARMOR_MATERIAL.Iron, ARMOR_MATERIAL.Steel].sort(), 'the lowest rank: iron and steel');
+  const top = metalsAt(3);
+  for (const m of [ARMOR_MATERIAL.Dwarven, ARMOR_MATERIAL.Orcish, ARMOR_MATERIAL.Ebony]) assert.ok(top.has(m), `the highest rank wears ${m}`);
+  assert.ok(!top.has(ARMOR_MATERIAL.Iron) && !top.has(ARMOR_MATERIAL.Steel), 'and no iron or steel');
+  // a merchant's station: common and expensive about evenly, extravagant or better about one in ten
+  const merchants = crowd('merchant');
+  const at = (t) => share(merchants, (d) => d.tier === t);
+  assert.ok(at(0) > 0.38 && at(0) < 0.52 && at(1) > 0.38 && at(1) < 0.52, `common ${at(0)}, expensive ${at(1)}`);
+  assert.ok(at(2) + at(3) > 0.06 && at(2) + at(3) < 0.15, `extravagant or exquisite ${at(2) + at(3)}`);
+  // a court's cloak is the formal one, the street's never
+  const cloakOf = (d) => d.items.find((it) => it.equipSlot === EQUIP_SLOTS.Cloak1);
+  const nobleCloaks = crowd('noble').map(cloakOf).filter(Boolean);
+  assert.ok(share(nobleCloaks, (c) => c.templateIndex === MENS.formalCloak) > 0.75, 'a noble\'s cloak, formal');
+  assert.ok(crowd('commoner').map(cloakOf).filter(Boolean).every((c) => c.templateIndex === MENS.casualCloak), 'the street\'s, casual');
+  // the helm now and then: about three knights in ten
+  const helms = share(seeds(n, 11).map((s) => armorKit('knight', 1, s)), (k) => k.some((it) => it.templateIndex === ARMOR_ENUM.Helm));
+  assert.ok(helms > 0.22 && helms < 0.38, `a helm on ${helms}`);
+  // the lower half takes the top's dye as often as the street's table says (a fifth, and one dye in ten by chance)
+  const legsMatch = share(crowd('commoner').filter((d) => d.cut === 'pants'), (d) => slotOf(d, EQUIP_SLOTS.LegsClothes)[0].dye === slotOf(d, EQUIP_SLOTS.ChestClothes)[0].dye);
+  assert.ok(legsMatch > 0.22 && legsMatch < 0.34, `the breeches the shirt's dye on ${legsMatch}`);
+  // a garment's rung: one down in four, one up in eight, the person's else
+  const rungs = [0, 0, 0, 0];
+  for (const s of seeds(n, 13)) for (const templateIndex of [MENS.breeches, MENS.formalTunic, MENS.boots]) rungs[npcGarmentPick(npcHint(s, 1, 0, 3), { templateIndex }).tier]++;
+  const all = rungs.reduce((a, b) => a + b, 0);
+  assert.ok(rungs[0] / all > 0.2 && rungs[0] / all < 0.3, `one down ${rungs[0] / all}`);
+  assert.ok(rungs[2] / all > 0.09 && rungs[2] / all < 0.16, `one up ${rungs[2] / all}`);
+  assert.equal(rungs[3], 0, 'never two');
+  // the record among its candidates, off the seed: three candidates, every one picked
+  const picks = new Set(seeds(200, 17).map((s) => npcGarmentPick(npcHint(s, 1, 0, 3), { templateIndex: MENS.breeches }).pick % 3));
+  assert.equal(picks.size, 3, 'every candidate picked by someone');
 });
