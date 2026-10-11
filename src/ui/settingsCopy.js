@@ -274,8 +274,8 @@ export const READOUT = Object.freeze({
 /** The sentence that says what you get INSTEAD - shown in the detail
  *  dialog. Every unavailable key has one. */
 export const INSTEAD = Object.freeze({
-  'Enhancements/EnhancedCombatAI': "You get Daggerfall's own enemy behaviour, exactly as it shipped.",
-  'Enhancements/AdvancedClimbing': "You get Daggerfall's own climbing, exactly as it shipped.",
+  'Enhancements/EnhancedCombatAI': "You get the original game's own enemy behaviour, exactly as it shipped.",
+  'Enhancements/AdvancedClimbing': "You get the original game's own climbing, exactly as it shipped.",
   'Enhancements/LypyL_ModSystem': 'Nothing to add yet - when add-ons arrive they will be listed on this page.',
   'Enhancements/CompressModdedTextures': 'Nothing to add yet - when add-ons arrive they will be listed on this page.',
   'Experimental/CustomBooksImport': 'Nothing to add yet - when add-ons arrive they will be listed on this page.',

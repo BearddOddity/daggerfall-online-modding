@@ -923,8 +923,8 @@ function paneNew(body) {
 // enhanced screen stands between the player and it.
 function paneBegin(body) {
   const c = el('div', 'card');
-  c.append(el('h3', null, 'Daggerfall'));
-  c.append(el('p', 'meta', 'The classic start: the title, the intro and Daggerfall\u2019s original menu (Load Game, Start New Game, Exit).'));
+  c.append(el('h3', null, 'Classic'));
+  c.append(el('p', 'meta', 'The classic start: the original game\u2019s own title, intro and menu (Load Game, Start New Game, Exit).'));
   c.append(acts([{ label: 'Begin', primary: true, onClick: () => onAction('begin') }]));
   body.append(c);
 }
@@ -2883,9 +2883,9 @@ function packsCard() {
   const later = ' It takes full effect the next time an area loads.';
   c.append(acts([
     { label: 'Attach music pack', onClick: async () => { const ds = await import('../scenes/dataSource.js'); await ds.pickMusicFolder(); render(); } },
-    ...(replacementCount() > 0 ? [remove('Remove music pack', 'Remove music pack', 'This clears your music files from this browser; Daggerfall\u2019s own songs play again. A sound pack stays.', (d) => d.clearStoredMusic())] : []),
+    ...(replacementCount() > 0 ? [remove('Remove music pack', 'Remove music pack', 'This clears your music files from this browser; the original game\u2019s own songs play again. A sound pack stays.', (d) => d.clearStoredMusic())] : []),
     { label: 'Attach sound pack', onClick: async () => { const ds = await import('../scenes/dataSource.js'); await ds.pickSoundFolder(); render(); } },   // SNDREP1
-    ...(soundReplacementCount() > 0 ? [remove('Remove sound pack', 'Remove sound pack', 'This clears your sound files from this browser; Daggerfall\u2019s own sounds play again. A music pack stays.', (d) => d.clearStoredSounds())] : []),
+    ...(soundReplacementCount() > 0 ? [remove('Remove sound pack', 'Remove sound pack', 'This clears your sound files from this browser; the original game\u2019s own sounds play again. A music pack stays.', (d) => d.clearStoredSounds())] : []),
     { label: 'Attach texture pack', onClick: async () => { const ds = await import('../scenes/dataSource.js'); await ds.pickTextureFolder(); render(); } },
     ...(textureReplacementCount() > 0 ? [remove('Remove texture pack', 'Remove texture pack', `This clears the loose texture files (a folder pick) from this browser. Attached .dfmod texture mods stay.${later}`, (d) => d.clearStoredTexturePack())] : []),
   ]));
@@ -3750,8 +3750,8 @@ function featureRow(f) {
 // ── ABOUT ────────────────────────────────────────────────────────
 function paneAbout(body) {
   const c = el('div', 'card');
-  c.append(el('h3', null, 'Daggerfall Online'));   // the public name (BR1, BR4); project-dagger is the repo
-  c.append(el('p', 'meta', 'An open-source reimplementation of The Elder Scrolls II: Daggerfall.'));
+  c.append(el('h3', null, 'DFO Online'));   // the public name (BR1, BR4, BR5); project-dagger is the repo
+  c.append(el('p', 'meta', 'An open-source reimplementation of a classic 1996 RPG.'));
   c.append(stats([
     ['Update', UPDATE ?? 'a development build'],   // REL8: the player's update number (scripts/updateNumber.mjs)
     ['Build', BUILD_TAG],
@@ -4442,7 +4442,7 @@ function statsMaster(detail, m) {
   back.classList.add('px-master-back');
   detail.append(back, pxDivider('Master Skills'));
   const lead = !ms.on
-    ? (ms.switchable ? 'Off \u2013 your skills stop at 100, as in Daggerfall.' : 'Off.')
+    ? (ms.switchable ? 'Off \u2013 your skills stop at 100, as in the original game.' : 'Off.')
     : 'Choose the skills that may climb past 100, up to 200. A choice is permanent.';
   detail.append(el('div', 'px-master-lead', lead));
   if (_masterNote) detail.append(el('div', 'px-master-note', _masterNote));
@@ -5121,7 +5121,7 @@ function renderInto() {
   // (onKey); this is the one a finger can see.
   const homeMark = el('button', 'brand-home');
   homeMark.type = 'button';
-  homeMark.setAttribute('aria-label', 'Daggerfall Online — main menu');
+  homeMark.setAttribute('aria-label', 'DFO Online — main menu');
   homeMark.append(brandMark());
   homeMark.onclick = () => go('home');
   h1.append(homeMark);

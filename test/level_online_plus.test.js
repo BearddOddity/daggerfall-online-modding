@@ -234,7 +234,7 @@ test('LEVEL-ONLINE-3: an Oblivion character already online is switched at its re
   assert.ok(at > world.indexOf('if (realmBoot) { bootSnapRead = realmBoot.snap; realmBoot.snap = null; }'), 'on the one parse');
   assert.ok(at < world.indexOf('const empireFolded = realmBoot ? foldEmpireAccounts(bootSnapRead) : null;'), 'beside the boot\'s other realm laws, before the restore');
   assert.match(world, /if \(releveled\) townTalk\.say\(LEVELING_CROSS_LINE\.switched\);/, 'and says it once the world stands');
-  assert.ok(LEVELING_CROSS_LINE.switched.includes('Daggerfall'));
+  assert.ok(LEVELING_CROSS_LINE.switched.includes('the classic way'));   // PIN MOVED: BR5, the classic, not the game's name
   // a second boot of the switched save changes nothing
   const snap = { levelingSystem: LEVELING_VIRTUE, level: 6, startingLevelUpSkillSum: 50, currentLevelUpSkillSum: 300, levelProgress: 70 };
   assert.equal(crossLeveling(snap), true);

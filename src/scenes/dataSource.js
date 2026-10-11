@@ -174,7 +174,7 @@ function openDb() {
     // and on the title bar the status convention already uses.
     req.onblocked = () => {
       console.warn('[dataSource] database upgrade blocked - close other tabs running this game');
-      try { document.title = 'Daggerfall Online - close other game tabs to continue'; } catch { /* no-DOM host */ }
+      try { document.title = 'DFO Online - close other game tabs to continue'; } catch { /* no-DOM host */ }
     };
   });
 }
@@ -1059,7 +1059,7 @@ export async function pickMusicFolder() {
   const { setMusicReplacements } = await import('../systems/musicReplacement.js');
   return pickAssetFolder({
     title: 'Your own music',
-    blurb: `<p>Pick a folder of audio to play instead of Daggerfall's
+    blurb: `<p>Pick a folder of audio to play instead of the original game's
       built-in songs. Nothing is uploaded - it is stored in this
       browser.</p>
       <p style="color:#999">A <b>Daggerfall Unity music pack works
@@ -1074,7 +1074,7 @@ export async function pickSoundFolder() {
   const { setSoundReplacements } = await import('../systems/soundReplacer.js');
   return pickAssetFolder({
     title: 'Your own sounds',
-    blurb: `<p>Pick a folder of WAVs to play instead of Daggerfall's
+    blurb: `<p>Pick a folder of WAVs to play instead of the original game's
       built-in sounds. Nothing is uploaded - it is stored in this
       browser.</p>
       <p style="color:#999">A <b>Daggerfall Unity sound mod works
@@ -1246,7 +1246,7 @@ export async function clearStoredTexturePack() {
 export async function pickTextureFolder() {
   return pickAssetFolder({
     title: 'Your own textures',
-    blurb: `<p>Pick a folder of PNGs to draw instead of Daggerfall's
+    blurb: `<p>Pick a folder of PNGs to draw instead of the original game's
       built-in textures. Nothing is uploaded - it is stored in this
       browser.</p>
       <p style="color:#999">A <b>Daggerfall Unity texture pack works
@@ -1486,7 +1486,7 @@ export async function ensureArena2() {
     ui.style.cssText = 'position:fixed;inset:0;background:#111;color:#ddd;font:14px monospace;-webkit-font-smoothing:antialiased;letter-spacing:normal;display:flex;align-items:center;justify-content:center;z-index:10';
     ui.innerHTML = `
       <div style="max-width:460px;text-align:center;border:1px solid #444;padding:24px" id="dz">
-        <h2 style="margin-top:0">Daggerfall Online</h2>
+        <h2 style="margin-top:0">DFO Online</h2>
         <p>Daggerfall's game data is freeware but can't be bundled.</p>
         <p>Select your <b>ARENA2</b> folder (or drop it here) - it's stored
         locally in your browser, picked once.</p>

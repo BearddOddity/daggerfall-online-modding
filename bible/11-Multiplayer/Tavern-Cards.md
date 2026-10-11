@@ -1245,3 +1245,12 @@ to be settled - visit the tables they were staked at first", at the first gold t
   window stands behind it (section 14).
 - **Pins:** `test/fb1011_cardskept.test.js` 5; PIN MOVED: `cards4_hud` - the buy-in's and the raise's models carry their
   picks. `tools/mutants/fb1011_cardskept.json` 11, all dead.
+
+## 37. ALL-IN (FIELD BUGS 2026-10-11g): a broke player's cloth is drawn with no table under it
+
+The Discord's "Crash at card game" - "went all in and got this": the relay stands a player up broke at the hand's end,
+`scenes/worldModes.js` cardRemoteFrame's `lost` lets the relay's table go and keeps the cloth to play the hand out, and
+the same frame's draw read `(g.remote ?? g.session).view()` - null online. The draw reads no table as no view now
+(CardScene.poses takes one). "stood" and AUDIT CARDS-6 E8's "other game" took the same branch.
+- **Pins:** `test/auditcards6_e.test.js` 11 (the eleventh). `tools/mutants/fb1011g_allin.json` 1, dead. The record:
+  `01-Overview/Field-Bugs-2026-10-11g.md` ALL-IN.

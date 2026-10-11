@@ -184,7 +184,7 @@ test('KB1 (Mac: "build 2") + AUDIT KB1: PrintScreen takes a screenshot - F8 by d
     assert.equal(shots.length, 1, 'rebound, F8 no longer shoots');
     routeKey(key('F12'), world);
     assert.equal(shots.length, 2, '...and the new key does');
-    assert.match(screenshotName(new Date(2026, 8, 23, 14, 5, 9)), /^daggerfall-20260923-140509\.png$/);
+    assert.match(screenshotName(new Date(2026, 8, 23, 14, 5, 9)), /^dfo-20260923-140509\.png$/);
     assert.match(rd('src/main.js'), /setScreenshotCanvas\(canvas\);/, 'the canvas handed in once, at boot');
   } finally {
     setScreenshotCanvas(null);
