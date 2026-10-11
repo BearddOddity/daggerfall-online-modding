@@ -311,13 +311,33 @@ instead of a pin (V1).
 
 ## What stands
 
-- The lists touching every file the fixes changed - 7,670 records - are run whole over the fixed tree merged with main.
-  The first pass, made over 3,893 of them while the fixes were under way, found sixteen survivors, every one surviving
-  on the base (118313d436) as well: ACC1d-14-the-chat-link-sends-no-token, AUDIT625-D3-a-range-the-tools-cannot-read,
-  AD28Q-J-host-no-party-word, AUDIT-GN2-RG4-a-root-bone-read-as-canvas, the two AUDITLIVED1B, AUDIT-NAV2-F25-the-low-hull-
-  unholed, the two AUDIT-REALM-L1F3, C8-builder-past-held, the four CLIMBDOWN-45-degree, NAV-A-the-far-ship-first and
-  NAV-B-her-colours-struck; and the re-aims' one,
-  AUDIT-GN2-GN1-sounded-in-the-berth-hulls-own-water, survives at 4aec81c85 and at the base alike. RECORDED: none of
-  this PR's to mend.
-- Not verified here: the glass, the chart and the isles in a real browser; a crossing end to end in a running world;
-  two captains online past the Veil.
+- THE TOUCHED RUN. Every mutation record of every list that names a file the fixes changed - 7,755 records across main's
+  four merges, run with the player's own data (ARENA2_PATH) so its pins run too. The six chunks ran over the heads as
+  the merges and lane V's fixes came (8cf4a1804, 91adbd916, 1c740918d, 589fce136, eb60441ad); at eb60441ad no touched
+  record is left without a verdict. In the chunks: 7,704 dead, 27 equivalent as recorded, 2 without a verdict and 22
+  survivors. The two without a verdict were V3 (CW-host-temper, re-aimed) and V5's record
+  (FIELD-CSA2-host-reads-the-drawn-ground, its test mended): both dead now. One survivor was this PR's, SEA-rim-unkept
+  (V4): mended, dead.
+- The other 21 survive without this PR. Twenty survive at the base (118313d436), and at 4aec81c85 and main wherever
+  their text stands: ACC1d-14-the-chat-link-sends-no-token, AD28Q-J-host-no-party-word, the four AUDIT-GN2-GN1 (the
+  berths sounded for the carrack alone, the shallowest keel sounding them, the galleon not among the berthers, sounded
+  in the berth hulls' own water), AUDIT-GN2-RG4-a-root-bone-read-as-canvas, AUDIT-LANDFORMS-III-A2-ridged-off-centre,
+  the two AUDITLIVED1B, AUDIT-NAV2-F25-the-low-hull-unholed, AUDIT-SHIPS-A5-the-gain-on-every-coast, CSAL-pad-bare-dpad,
+  NAV-B-her-colours-struck, four NAVP (the sink's lift dropped, skinned sails counted, the spars' lift, the sails lowest
+  first), ONESEAT-hidden-tab-lingers and PERF-ON2-the-peers-are-submitted-uncut-again. NAVP-animators-walked-every-frame
+  dies at the base and at 4aec81c85 and survives at main: main's SEA-TOWN CACHE keeps `boatAnimators`' list itself, so
+  the naval host's `??=` is belt and braces there. RECORDED: none of this PR's to mend - each is its own slice's to
+  answer.
+- The first pass, made while the fixes were under way over the lists naming the files the PR itself changed (3,913 of
+  6,784 records), found sixteen survivors, every one surviving at the base: the seven of those above it reached, and
+  AUDIT625-D3-a-range-the-tools-cannot-read, the two AUDIT-REALM-L1F3, C8-builder-past-held, the four
+  CLIMBDOWN-45-degree and NAV-A-the-far-ship-first, whose files the fixes never touched.
+- THE PLAYER'S DATA. Every test that reads ARENA2_PATH (149 files, which CI skips) was run with the player's own data:
+  1,651 tests - 1,642 pass, 7 skip for data past ARENA2 (the Arena mod's files, real classic saves, the distance bake,
+  Morrowind's), and two fail: the vendored-patch sha256 pins IT1 and WD1, which fail identically at main and at the base
+  with this copy of the data (its WALLAA08.RMB rebuilds to another hash than the author's) - the copy's, not this PR's.
+  The run found V5.
+- THE SUITE. The whole suite over the merged head - 26,271 tests, 10 failures: two pins, V1 and V2, mended. CI's
+  `verify` is green on eb60441ad; every red head before it was mended on the next push (V6 at the third merge).
+- Not verified here: the glass, the chart and the isles in a real browser; a crossing end to end in a running world; two
+  captains online past the Veil.
