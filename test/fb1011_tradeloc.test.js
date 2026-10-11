@@ -1,9 +1,9 @@
-// TRADE-LOC II (FIELD BUGS 2026-10-11 #2, the Discord's "letter of credit during trade": "Cant see how much a letter of
+// TRADE-LOC II (FIELD BUGS 2026-10-11b #2, the Discord's "letter of credit during trade": "Cant see how much a letter of
 // credit is worth when trading directly with players", a screenshot of two Letters of Credit in the pack's list, each
 // "0.10kg"). TRADE-LOC (2026-10-10) said a letter's worth in the trade window's detail strip and in the row's hover -
 // one a click away, the other a pointer's alone: a phone has no hover, and two letters in a list could not be told
 // apart without clicking each. The row says it now, under the letter's name, on either side of the trade; and the
-// pack's own card (every pack, shop and trade hover's) says it as its Worth. bible/01-Overview/Field-Bugs-2026-10-11.md.
+// pack's own card (every pack, shop and trade hover's) says it as its Worth. bible/01-Overview/Field-Bugs-2026-10-11b.md.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

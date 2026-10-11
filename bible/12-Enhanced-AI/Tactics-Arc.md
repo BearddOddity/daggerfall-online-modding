@@ -210,7 +210,7 @@ Every version of the door grief, fixed without asking further (Mac: "stop asking
   the fragment's own `inBlow` (pinned point for point), a dim rim at once, filling outward through the wind-up, a
   flash at the landing (since TELL2 the world boss's readable line - a keyline, a brighten "now", premultiplied over
   the floor, never lost near the player, `Feud-Arc.md` section 4.4); depth-tested, unwritten; drawn under the bodies beside the blood marks in the street,
-  the building, the dungeon and both standalone hosts. SNOW-TELL (`01-Overview/Field-Bugs-2026-10-11.md`): over the
+  the building, the dungeon and both standalone hosts. SNOW-TELL (`01-Overview/Field-Bugs-2026-10-11b.md`): over the
   frame's deep snow, where it drew any (`telegraphLift` - the snow stood up to 0.8 m over the ground the blow was
   fitted to, and buried every mark under it).
   `tools/foeTelegraphProbe.mjs` compiles, links and draws the three shapes in a real WebGL2 context (Chromium) and

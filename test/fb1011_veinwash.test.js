@@ -1,10 +1,10 @@
-// VEIN-WASH (FIELD BUGS 2026-10-11 #3, the Discord's "Many ore veins look the same.": "Copper/lodestone/moonstone/ebony
+// VEIN-WASH (FIELD BUGS 2026-10-11b #3, the Discord's "Many ore veins look the same.": "Copper/lodestone/moonstone/ebony
 // and others all have the same basic texture so its very hard to tell the difference when looking for them"). DFU gives
 // five metals a picture of their own and shares two among the rest - Lead, Silver and Platinum record 65; Copper and
 // Lodestone record 66, and every new ore borrowed 66 - and PROF2 drew each vein as its metal's picture alone, where
 // PROF0 4.8 had said "tinted per ore". Every ore that shares a picture now wears its own wash (scenes/mineHost.js
 // ORE_WASH, through ARENA5's batch wash - render/renderer.js uBatchTint), and the gathering host stands each wash as
-// its own batch, on the open ground and underground. bible/01-Overview/Field-Bugs-2026-10-11.md.
+// its own batch, on the open ground and underground. bible/01-Overview/Field-Bugs-2026-10-11b.md.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

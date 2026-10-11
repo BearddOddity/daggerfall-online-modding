@@ -1,109 +1,107 @@
-# FIELD BUGS 2026-10-11 - four Discord feedback threads
+# FIELD BUGS 2026-10-11 - four Discord threads, and the card table's panel
 
-Four threads from the Discord's feature feedback, handed over as screenshots with the owner's word: "Make the best
-decisions". All four are done.
+Four threads from the Discord's bug-reports, handed over as screenshots, and the owner's own ask beside them: "Also the
+card tables UI needs to be enhanced".
 
 | | Report | What it was | Done |
 |---|---|---|---|
-| 1 | "Can't see any boss ground attack overlays with heavy snow" - "I have been hit 5 times and died twice with zero warning or feedback while fighting revenants outdoors in heavy snow, all due to invisible attack indications (ranged AoE circle)"; then "I would have just turned off the deep snow in the options but nobody in any chat has been able to tell me how to do this or if it is even possible" (beardtonguev1) | a foe's telegraph lay 0.06 m over the bare ground, and Snowfall's deep snow - 0.4 to 0.8 m of it in the wild, drawn first and depth-written - buried it | fixed (SNOW-TELL); the switch was there all along (below) |
-| 2 | "letter of credit during trade" - "Cant see how much a letter of credit is worth when trading directly with players", a screenshot of two letters in the pack's list, each "0.10kg" (Khaz) | TRADE-LOC (2026-10-10) said the worth in the detail a click opens and the row's hover - a phone has no hover, and two letters in a list could not be told apart | done (TRADE-LOC II) |
-| 3 | "Many ore veins look the same." - "Copper/lodestone/moonstone/ebony and others all have the same basic texture so its very hard to tell the difference when looking for them" (SaberGGaming) | DFU shares two pictures among eight metals and PROF2 lent the new ores Lodestone's, untinted - PROF0 4.8 said "tinted per ore" and it never was | done (VEIN-WASH) |
-| 4 | "Arbitrary mining conditions to 'unlock' higher nodes." - "Why is this a thing? Also how are we supposed to tell if higher tier veins have been unlocked in an area?" and "add something to the overworld map like 'this area is known for X ore'" (SaberGGaming) | the witnessed world's law, said on the Mining page alone; no surface said what a place's veins hold or whether its ground is witnessed | done (ORE-MAP); the law kept (below) |
+| 1 | "I would love to Poker but..." - "You have too many stakes waiting to be settled - visit the tables they were staked at first", at the first gold table, "Tried on multiple characters Same Problem everywhere" (Shortstori) | the stakes book reads and writes JSON by `get`/`set`, and the host handed it the device's bare Storage (`getItem`/`setItem`): every write threw into the book's own catch, the stake read back unkept, and every first buy-in was refused as `cards-kept-full`. No gold moved | fixed (CARDS-KEPT) |
+| 2 | "Soul Trap Dragonling is not giving -5000 ep value" (Paofrenetico) | DFU's own law: Daggerfall has two Dragonlings. The one every encounter and dungeon spawns (34) has no soul and prices Soul Bound at 0; the one with a soul (40, Dragonling_Alternate) is the quest B0B70Y16's alone, and it is the -5000. Both are named "Dragonling" | fixed (DRAGON-SOUL), a departure - the owner: "Fuck matching DFU." |
+| 3 | "Hotkey Bug" - a key set for "Overworld (the travel view)" in the Windows group "shows that my selected key is set" but does nothing, and is gone from the page after (Woodland) | nothing in the Overworld's road was broken: the key pane STAGES until Confirm (FIX-F's law), and the player never saw a Confirm owed - a staged key drew exactly as a saved one, and the sticky head that carries Confirm stood under Settings' sticky toolbar (and, on a phone, over the row just bound) | fixed (UNSAVED-MARK) |
+| 4 | "If you recall from the helm of a ship, you get sent to the void" - "You can unstuck to get out but then you're trapped at sea with no boat" (Cruor) | a Recall is a jump DFU raises neither the travel nor the load event for, so the Come Sail Away helm never heard it: every frame its sail stood the player back at the drive position of the boat the jump had left - and hidden - at sea. An unstuck from the helm, the same | fixed (HELM-JUMP), a departure |
+| 5 | the owner: "the card tables UI needs to be enhanced" | the panel: a refusal said in the line's plain words, a slider with no unit and no quick stakes, the log a run of sentences cut off at its newest | done (CARDS-PANEL) |
 
-## SNOW-TELL: a foe's telegraph lies over the deep snow (1)
+## CARDS-KEPT: the stakes book kept on the device's own store (1)
 
-The report's revenant is a rank-2 caster's signature, the pyre (`ai/blowShapes.js` BLOW.pyre, `systems/revenantFeud.js`
-drawSignature): a 2.2 m disc at the player's feet, telegraphed by the foes' ground pass (`render/foeTelegraph.js`,
-TACT4) - one flat quad 0.06 m (BLOW_LIFT) over the ground its blow was fitted to (`ai/foeBlows.js` fitBlowToGround,
-the collider's ray), depth-tested and never depth-written. The colliders know no snow. Snowfall
-(`03-World/Snowfall.md`) stands a real displaced surface 0.4 to 0.8 m over that same ground in the wild (0.2 to 0.4 m in
-a town), drawn BEFORE the ground and writing depth, so outdoors in winter every foe's telegraph - every shape, not the
-pyre alone - and the player's own technique marks (TECH1, the same pass) lay under opaque snow. No dial saved it: the
-mod's depths stop at 0.1 m, still over 0.06.
+`net/cardStakes.js` keeps a realm character's stakes and receipts as JSON through `storage.get`/`storage.set` - the
+`{get, set}` store every suite built it over. `scenes/world.js` handed it `appStorage()`, the device's localStorage, which
+has `getItem`/`setItem` and neither of those: `read` threw and answered `[]`, `write` threw into its catch, and `stake`'s
+check that the request was KEPT before it is asked (AUDIT CARDS-4 C6 - a lost answer must have a record to void it by)
+found nothing, and refused as `cards-kept-full` - the panel's "too many stakes waiting to be settled". Every gold table,
+every character, every device, since CARDS6 (2026-10-08); the realm was never asked and no gold moved. CARDS-SAID's
+report the night after the gold tables opened ("Shes clicking deal me in but nothing happens") is this one's twin: that
+section left the refusal's words on the panel so "the next report names them", and this one did.
 
-The mark lies over the snow now. The renderer keeps the frame's snow height - `beginFrame` clears it, each tier
-`drawSnow` draws raises it to `render/snowfallGlsl.js` snowSurfaceRise of that tier's uniforms (snowResolve's highest
-answer: the deeper of the wild's and the settlement's depth, a road's berm over it, the 8 mm surface offset; the caps,
-the path, the slope's multiplier and the tracks only lessen it) - and `drawFoeTelegraphs` hands it to the pass, which
-lies its quads `telegraphLift(snowRise)` = BLOW_LIFT plus it over the fitted ground. Where the snow is shallower than
-its deepest - a trodden track, a road, a town's lesser depth - the mark stands that much over the snow, seen; it is
-never under it. A frame that draws no snow lifts nothing: the travel view, an interior, a dungeon, summer. THE FOUR
-HOSTS: `scenes/world.js` and `scenes/exterior.js` draw the snow (before their telegraphs, pinned) and are wired through
-the renderer; `scenes/worldModes.js` (interiors) and `scenes/dungeonContext.js` draw none, and their marks lie as they
-always lay. The world boss's court pass (`render/gateTelegraph.js`) is not touched: the court is the gate's own realm,
-where no snow falls.
+The book is handed AUDIT WB A6's one store now (`spoilsPool.js` `spoilsStore`, reached at stake time as the Marks book
+and the Iliac claims reach it), JSON over the device's Storage, its memory standing in for a storage that refuses writes.
+TEST THE SHAPE THE PRODUCER MINTS: the pin lifts the host's own expression out of world.js and runs the real book over it
+and a device Storage - a buy-in stakes, is kept as JSON, sits and is owed at its room - and a bare Storage handed to the
+book is the report, refused. `11-Multiplayer/Tavern-Cards.md` section 36. Pinned by `test/fb1011_cardskept.test.js`;
+`tools/mutants/fb1011_cardskept.json` (11, all dead).
 
-THE SWITCH THE PLAYER LOOKED FOR is there, and was: Settings > Graphics > "Sky, water & weather" > "Snowfall by
-demifiend000" (FT9's row; `ui/settingsMap.js`), and the settings' search finds it under "deep snow" - the row's note
-begins "Deep snow on the winter ground". The patch notes say where it is. A second "Snowfall" on the Overhauls card is
-the winter ground's TEXTURE pack (SNOWFALL1's sibling, ENVIRONMENT_PACK_MODS) and changes no depth - the likelier source
-of "nobody could tell me". Renaming either is the owner's call (Mac named the mods' rows by their authors, FT9).
+## CARDS-PANEL: the card table's panel (5)
 
-Pinned by `test/fb1011_snowtell.test.js` (4: the rise law over the runtime's own uniforms at the mod's defaults and its
-deepest dial; the pass's uLift with and without snow through a fake GL; the renderer's clear, record and hand-off; both
-snowy hosts' order and the other two hosts' absence of snow); `tools/mutants/fb1011_snowtell.json`.
-`test/audittact.test.js`'s AUDIT TACT D9 pin moved (PIN MOVED: the snow's height handed beside the fog).
+`ui/cardTableHud.js`, the port's own panel (no DFU window behind it). The model decides each new thing and the painter
+draws it: the line's TONE (a refusal or a purse too thin to sit is a warning, a stake being asked a wait, your turn the
+line to look at); the buy-in's quick stakes (its floor and its ceiling) and the raise's (half the pot and the pot, as a
+raise TO on the slider's step, strictly inside the law's range - the floor is where the slider starts, the ceiling is
+All in) - a pick moves the slider and its words and never deals or raises; the slider's amount with the table's unit;
+the deal and the call drawn heavier, the stand lighter; a fold in the header that puts the seats, the board, the note
+and the log away so the cloth shows, kept across repaints; and the log a line a sentence, the newest last and in view
+(the run of sentences in one box cut the newest off). `11-Multiplayer/Tavern-Cards.md` section 36. Pinned by
+`test/fb1011_cardskept.test.js`; PIN MOVED: `cards4_hud` - the buy-in's and the raise's models carry their picks.
 
-## TRADE-LOC II: a letter of credit says its worth on its row (2)
+## DRAGON-SOUL: the Dragonling the world spawns binds at -5000 (2)
 
-TRADE-LOC (`10-UI/Overhauls.md`, 2026-10-10) put a letter's worth in the trade window's detail strip and in its row's
-hover title. The report's screenshot is a build before it (its detail strip reads "0.10 kg" alone) - but its case
-stands on the build after: two letters in one list are told apart only by clicking each, and on a phone there is no
-hover. The row says it now: `ui/enhancedPlayerTrade.js` row's sub-line leads with `letterWorthLine` ("Worth 12,500
-gold"), on the pack's list, my offer and theirs - the one row builder all three draw through. And the pack's own card
-(`ui/enhancedInventory.js` infoCard - the pack's, every shop's and the trade's hover card) says it as its headline pair,
-Worth, under the damage and the armour a letter never has: `systems/walletItem.js` letterWorthGold, the figure
-letterWorthLine now says after its word (one law, one home). DFU's classic Info box already said it (TEXT.RSC 1007's
-`%wth`). The wire was never the fault: the letter's `value` survives the trade's clamp, pinned by TRADE-LOC.
+`systems/enchantmentCatalogue.js` SoulBound's costs were DFU's `classicParamCosts` verbatim: index 34 `0` ("Dragonling
+(no soul, general spawn)") and index 40 `-5000` ("Dragonling_Alternate (has soul, quest spawn only)"). The encounter
+tables (`characters/encounterTables.js`, DFU's RandomEncounters) draw 34 and never 40; 40 comes only as quest B0B70Y16's
+foe (`vendor/dfu-quests/Tables/Quests-Foes.txt`: 34 is `Dragonling_souless`, 40 `Dragonling`). The trap writes the foe's
+own mobile id and the item maker reads it, and both are named "Dragonling" (ENEMY_NAMES) - so the soul a player could
+actually trap was offered at nothing, beside a name worth five thousand. The owner, offered the choice of keeping DFU's
+law, renaming the soul, refusing the trap or pricing it: "Fuck matching DFU."
 
-Pinned by `test/fb1011_tradeloc.test.js` (2); `tools/mutants/fb1011_tradeloc.json`; `tools/mutants/trade_info.json`'s
-TRADE-LOC-read-off-template re-aimed by content (PIN MOVED: the figure is letterWorthGold's).
+A departure (Port-Ledger A, DRAGON-SOUL): index 34 binds at -5000, the quest Dragonling's own worth - one name, one
+worth. The binding alone moved. A soul's SoulPts (the gold it adds to a shop's soul gem and to a soul-bound item's
+price, `enchantments.js` `legacyEnchantmentValue`) stay DFU's - 0 for 34 - so a monster every encounter spawns is no
+500,000-gold gem; and the shops' filled traps still never draw 34 (`shopStock.js` `SOULLESS_DRAWS`, DFU's veto). Pinned
+by `test/fb1011_dragonsoul.test.js` (the service's empty trap filled by the soul trap's own roll with a general-spawn
+Dragonling, enumerated from the pack, offered by the picker at -5000; its SoulPts and the soulless cells untouched);
+PIN MOVED: `enchantmentcatalogue` - 34's cost, the table's sum (99680 -> 94680), SoulBound's (-23440 -> -28440) and the
+side effects' (-55160 -> -60160). `tools/mutants/fb1011_dragonsoul.json` (2, both dead).
 
-## VEIN-WASH: every ore on a shared picture wears its own wash (3)
+## UNSAVED-MARK: a key a Confirm still owes says so (3)
 
-DFU's metals (TEXTURE.254) are five pictures of their own - Mercury 61, Gold 62, Iron 63, Tin 64, Sulphur 67 - and two
-shared: Lead, Silver and Platinum on 65; Copper, Lodestone (and Brass, never mined) on 66. PROF2 lent all six new ores
-Lodestone's 66 and drew a vein as its metal's picture alone, so eight ores stood as one lump - PROF0 4.8's own table
-says "DFU Lodestone, tinted per ore", and the world flats never were (the Stores' icons were, by DFU's dye).
+The Overworld's action is `TravelView`; it is in every list it must be in, saves by name, loads, and is read by the world
+host's ladder (`worldKeyAction`) - driven in the real pane over a fake page, a key bound and Confirmed is in the live
+registry and survives `loadOrCreateBindings` (not driven in a live game: the Overworld needs ARENA2). Its row is
+the one in the Windows group that ships with no key, so it is the first a player sets from nothing. The pane stages until
+Confirm and drops what was staged on every walk away (FIX-F; the head says so) - kept. What the player could not see:
 
-`scenes/mineHost.js` ORE_WASH: each ore on a shared picture but its first wears a wash of its own, through ARENA5's
-batch wash (`render/renderer.js` uBatchTint, both lanes - a colour multiplied into the lit flat after both maps): Copper
-orange, Silver cold white, Platinum pale gold, Moonstone moonlit blue, Dwarven Scrap brass, Mithril sea-green,
-Adamantium violet, Ebony near-black, Orichalcum orc-green. Lead and Lodestone keep DFU's own colours, as do the five with
-pictures of their own; a boulder's loose stone is Lodestone's lump as it is. The colours are the port's own (the nodes
-are no DFU member). `mineWash` hands the flats their wash (a Motherlode its ore's); `scenes/gatherHost.js` stands each
-wash as its own batch (the group's key is record, scale and wash) on the open ground, and sets it on the dungeon's own
-batch underground. The glow and the compass keep mining's one colour - they say which profession, not which ore.
+- a staged key drew exactly as a saved one, on a Settings page whose every other row saves as it is set. A row whose
+  staged key the registry does not hold yet is marked now - `ctl-unsaved`, "Not saved yet - press Confirm." - and the
+  head counts what a Confirm owes ("1 change not saved yet - press Confirm to keep it.") and lights the Confirm
+  (`systems/controlsConfig.js` `unsavedEdits`, both dicts, against the live registry);
+- the head that carries Confirm is sticky (TORCH-BIND), and ORG2's Settings toolbar is sticky at the top of the same
+  scroll, above it: measured in Chromium at 1366 x 768 the head was 312 px, its top 131 px behind the bar; at 390 x 844
+  it was 462 px and covered the Overworld row itself. The head sticks UNDER the toolbar now, at its measured height
+  (`ui/enhancedMenu.js` `stickUnderToolbar`, `--opt-tools-h`), and is the law's line and its buttons alone - the how-to
+  is the page's first card (`ctl-intro`), read once: 138 px on the desktop, and on a phone (where the law's line is the
+  intro's to say) one row of buttons and the owed line, 90 px.
 
-Pinned by `test/fb1011_veinwash.test.js` (3: no two mined ores look alike over every picture; a confirmed Daggerfall
-woodland's Moonstone and Lodestone, one picture, stood as two batches each in its own colours; an unwitnessed
-dungeon's Silver in Silver's wash); `tools/mutants/fb1011_veinwash.json`.
+Pinned by `test/fb1011_unsavedmark.test.js`; `tools/mutants/fb1011_unsavedmark.json` (11, all dead). Not changed, and
+the owner's if it should be: leaving the page commits a staging with no clash, as DFU's own window does (OnPop applies on
+leave) - a reversal of FIX-F's "leaving discards".
 
-## ORE-MAP: the held map says what a place's ore is, and whether its ground is witnessed (4)
+## HELM-JUMP: a jump leaves the helm (4)
 
-THE LAW IS KEPT, and the card says it. A pixel's rarer veins - Gold, Platinum, Mithril, Ebony and a kingdom's own ore
-(UNWITNESSED-ORE, `Field-Bugs-2026-10-09e.md`) - stand only on ground three accounts a week old have gathered on
-(`06-Systems/Professions-Arc.md` section 6, the witnessed world). It is not arbitrary: the servers carry no game data
-(Port-Doctrine), so a client says what climate and region a pixel is and nothing checks it but other players' word
-(`11-Multiplayer/Seats-Arc.md` 3.2) - the rule is what keeps a modified client from naming every pixel a mountain of
-Ebony. What was missing is the reading of it: nothing but the Mining page's one paragraph said it, and nothing said it
-for a place.
+Come Sail Away's helm holds the player to the boat's drive position every frame (`systems/comeSailAway.js`
+`updateSailing`) and is let go by the events the mod hears: a load's start, a fast travel, a death. A Recall
+(`scenes/world.js` `recallToAnchor`), a guild's teleport, an unstuck, a quest's respawn and the staff's jumps raise none
+of those - the C# hears OnTeleportToCoordinates, which is its waves. So the jump landed the player, the re-anchor left the
+boat at its old place at sea (and hid it, its pixel no longer near), and the next frame's sail stood the player back at
+its drive position - on no deck, in a ring the streamer then rebuilt around the sea: the void. The unstuck from there
+went the same way, and its cooldown ran anyway. The Warm Ashes raid had met the same law and let go first (AUDIT OW5b S1).
 
-`ui/oreMapTip.js` oreMapTip is the card: "Ore here", then the pixel's veins (`net/nodeLaw.js` VEIN_TABLES by its
-climate), its dungeons' deep veins (dungeonVeinTable), its kingdom's own ore (regionSignature - "Daggerfall's own ore:
-Moonstone"; a Free Land's by its region's name), and its ground: "Witnessed ground: all its veins can stand here";
-"Not yet witnessed: no Gold or Ebony here yet" with the rule under it; where the state is not yet heard, what waits on
-the witnesses and the rule; on ground whose table holds nothing over Silver and no kingdom's ore, "No vein here waits
-on witnesses". The held map's bare ground answers with it (`ui/heldMap.js` _hoverLabel, under the province's name; a
-place keeps its own answer), online, the professions open (`scenes/world.js` oreMapAt, the map's `oreAt` - offline
-the map is DFU's and says nothing of ore). The ground's state is the book's (`net/profBook.js` pixel); one not heard
-today is asked ONCE a page, after the pointer has rested 400 ms on it, through the gathering host's new askPixels -
-which stands again any pixel of its own the answer moved, as its own ask does (the book would otherwise hear a streamed
-pixel first for the map and the ground's ask never want it: it would stand on the morning's word all day) - and the
-card is asked again when the word comes. The Mining page's ground line ends by pointing at the map. The classic DFU
-travel window is untouched (THE NATIVE-WINDOW RULE: DFU has no such card).
+A departure, the port's own event: `OnPreJump` - a disembark in flight ended as a load's start ends it, then the helm let
+go as a fast travel lets it go (`OnPreFastTravel`: the sail stopped, a packable boat packed, so the boat comes home in
+the pack rather than lying hidden at sea). The teleport core raises it (`_teleportToPixel`, `csaPreJump`) for every jump
+that names no event of its own - before anything the jump awaits; a load (OnStartLoad), the travel map (OnPreFastTravel)
+and a party's journey (its helm let go only once the arrival is certain) release it as they did. THE FOUR HOSTS: the
+helm is `world.js`'s (the streaming host runs Come Sail Away and owns every jump); `exterior.js`, `worldModes.js` and
+`dungeonContext.js` run no helm and no teleport core - an interior's or a dungeon's Recall jumps through world.js's.
 
-Pinned by `test/fb1011_oremap.test.js` (3: the report's case and its kin card for card; over every vein climate and
-every region the card is the law's own - its veins, its kingdom's ore, every card whole on the map, and an ore it holds
-back never standing on thirty unwitnessed days; the world host's wiring and the gathering host's ask standing a
-witnessed pixel's Moonstone at once); `test/heldmap.test.js`'s ORE-MAP window test (1); `tools/mutants/fb1011_oremap.json`.
+Not changed: an anchor set ON a deck is the deck's world point at that moment (DFU's anchor knows no boat), so a Recall to
+it lands where the boat was, in the water. Pinned by `test/csa_sailing.test.js` (the runtime: unreleased, the landing is
+pinned back; released, it stands, the skiff packed, a disembark's hold ended) and `test/fb1011_helmjump.test.js` (the
+host); `tools/mutants/fb1011_helmjump.json` (6, all dead).

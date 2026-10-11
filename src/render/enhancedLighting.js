@@ -1229,3 +1229,31 @@ export function lanternColor(on, classic) {
   const k = classic[1];
   return new Float32Array([EL_FLAME_COLOR[0] * k, EL_FLAME_COLOR[1] * k, EL_FLAME_COLOR[2] * k]);
 }
+
+/** INTERIOR-DIM (2026-10-11, Mac, of a player's screenshot of a guild hall - two hanging lanterns, warm pools on the
+ *  floor, dark walls between them: "I want to improve interior lighting to be more like this and less bright"). A
+ *  BUILDING'S OWN LAMPS ON THE LANE burn at this share of the intensity AddLight's second switch gives them. The lane
+ *  reads that intensity in linear: a lantern's 1.4 decodes to 2.16, about four times the street's flame (lanternColor
+ *  at the city's 1), and every lamp's range (15 for most) covers a tavern, so a room was lit flat from wall to wall.
+ *  Half the display intensity is about a fifth in linear - the falloff then shows as pools. The player's own lights
+ *  (the torch, the candle, the spells) and the others' keep theirs. */
+export const EL_INTERIOR_LIGHT_SCALE = 0.5;
+/** INTERIOR-DIM: THE ROOM'S GRADE (renderer.setSceneGrade, airPass.js setGrade). A dim room asks the eye to open
+ *  as far as it can, and AIR_ADAPT_MAX (1.8) raised the dark between the lamps toward grey. Indoors the eye aims at
+ *  a darker mean and stops at 1.2. Bloom, vignette and contrast keep the lane's defaults. */
+export const EL_INTERIOR_GRADE = Object.freeze({ adaptKey: 0.12, adaptMax: 1.2 });
+
+/** INTERIOR-DIM: a building's room light as the hosts upload it - colour x intensity. Under the lane, a white lamp
+ *  (the prefab's white, which the candles and AddLight's "todo" records keep) takes the flame, as the city's and the
+ *  dungeon's white lanterns do, and every lamp burns at EL_INTERIOR_LIGHT_SCALE. Off the lane, DFU's numbers as they
+ *  always were. A fresh array, as the hosts' colorOf always returned. */
+export function interiorLightColor(on, color, intensity) {
+  if (!on) return [color[0] * intensity, color[1] * intensity, color[2] * intensity];
+  const c = color[0] === 1 && color[1] === 1 && color[2] === 1 ? EL_FLAME_COLOR : color;
+  const k = intensity * EL_INTERIOR_LIGHT_SCALE;
+  return [c[0] * k, c[1] * k, c[2] * k];
+}
+/** INTERIOR-DIM: the room's grade under the lane; none otherwise (the classic set has no resolve to grade). */
+export function interiorGrade(on) {
+  return on ? EL_INTERIOR_GRADE : null;
+}
