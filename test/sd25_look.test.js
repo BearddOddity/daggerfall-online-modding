@@ -142,7 +142,12 @@ test('SD-LOOK THE GRADE: the Hour\'s on the lane holds the eye down (key 0.12, a
   assert.match(R, /if \(!this\._air\?\.pending\) return;[^]{0,900}this\._air\.setGrade\?\.\(this\._sceneGrade\); this\._sceneGrade = null;[^]{0,900}this\._air\.composite\(\);/, 'every resolve takes the frame\'s grade, and gives it up');
   assert.match(R, /setSceneGrade\(g\) \{ this\._sceneGrade = g \?\? null; \}/);
   const W = read('src/scenes/worldModes.js');
-  assert.equal((W.match(/setSceneGrade/g) ?? []).length, 1, 'the Hour alone asks a grade: the Hollow keeps the defaults');
+  // PIN MOVED (INTERIOR-DIM, 2026-10-11): a building's room asks a grade of its own now (the interior arm); in the
+  // dungeon arm the Hour is still the only one
+  assert.equal((W.match(/setSceneGrade/g) ?? []).length, 2, 'two grades: the Hour\'s and a room\'s');
+  assert.equal((W.match(/setSceneGrade\?\.\(SD_HOUR_GRADE\)/g) ?? []).length, 1);
+  assert.match(W, /if \(isSdRealm\(dungeonLoc\)\) \{ [^\n]*renderer\.setSceneGrade\?\.\(SD_HOUR_GRADE\); \}/, 'the Hour alone asks a grade in the dungeon arm: the Hollow keeps the defaults');
+  assert.match(W, /renderer\.setSceneGrade\?\.\(interiorGrade\(!!renderer\.lightingLane\)\);/, 'and a building\'s room its own');
 });
 
 test('SD-LOOK THE ISLANDS: the Threshold the Bay\'s cobbles and its compass rose (the long point at the Orrery, the tail at the way back); every rim toothed outside its disc and under its top (the motor never meets a tooth), a gold edge line along every rim and the walk\'s kerbs; the arena laid in rings (mutants: a tooth over the rim; the compass turned; the edge line gone)', () => {
