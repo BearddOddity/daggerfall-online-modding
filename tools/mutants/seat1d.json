@@ -615,12 +615,12 @@
  {
   "name": "SEAT1d-tithe-region-first",
   "file": "server-account/src/seatHolding.js",
-  "old": "  const seat = bailiwickOf((await confirmedSeats(db, nowS, { kept: true })).values(), region, pixel);\n  const h = seat",
-  "new": "  const seat = bailiwickOf((await confirmedSeats(db, nowS, { kept: true })).values(), region, null);\n  const h = seat",
+  "old": "  const seat = bailiwickOf((await confirmedSeats(db, nowS)).values(), region, pixel);\n  const h = seat",
+  "new": "  const seat = bailiwickOf((await confirmedSeats(db, nowS)).values(), region, null);\n  const h = seat",
   "tests": [
    "test/seat1d_service.test.js"
   ],
-  "note": "GATHER-SPEED/MARKET-SPEED (PIN MOVED): re-aimed by content - the reads batched."
+  "note": "GATHER-SPEED/MARKET-SPEED (PIN MOVED): re-aimed by content - the reads batched. D1-LOAD (PIN MOVED): kept the default, the option gone."
  },
  {
   "name": "SEAT1d-levy-any-bailiwick",
