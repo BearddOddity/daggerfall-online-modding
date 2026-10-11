@@ -12688,6 +12688,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     outside: () => _mode() === 'exterior' && playerSpawned && !player.riding,
     eye: () => cam.pos,
     cull: (box) => yardCull(box),   // PERF-YARD: the pieces culled as the town's own models are
+    range: () => getPref('yardRange'),   // YARD-RANGE: how far other players' yards are drawn (the Other players card)
     collider: () => collider, meshes: { getGpuMesh, cpuModels }, renderer, getTexture, uploadRecord, uploadRecordFrame,
     iconUrl: (a, r) => loadIcon(a, r, { scale: 1 }),
     scanDeps: () => decorScanDeps({ blocks, arch, getTexture }),   // DECOR-DUNGEON: the interior host's own constructor
