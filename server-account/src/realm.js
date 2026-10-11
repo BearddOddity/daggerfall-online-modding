@@ -504,6 +504,17 @@ export async function realmHoldOf(/** @type {any} */ db, /** @type {string} */ p
   return holdRefusal(await db.prepare('SELECT held, judged_seq FROM realm_characters WHERE id = ?1 AND player = ?2').bind(character, playerId).first());
 }
 
+/** CRAFT-HOLD (2026-10-11, the exploit audit): INT3's hold on a crafted piece follows THE PIECE - the hold of the
+ *  account's realm character its maker's record names (`products.char_id`), whatever character the act names. realmHoldOf
+ *  asks the acting character alone and answers null for an id that is no realm id, so a held character's craft listed,
+ *  auctioned, filled a commission or was disenchanted under `char-anything` (a raw request: the realm character held for
+ *  copies, its piece open on the boards for Drakes). Null for a piece no realm character of this account made. */
+export async function craftHoldOf(/** @type {any} */ db, /** @type {string} */ playerId, /** @type {unknown} */ provenance) {
+  if (typeof provenance !== 'string') return null;
+  return holdRefusal(await db.prepare(`SELECT r.held, r.judged_seq FROM products p JOIN realm_characters r ON r.id = p.char_id AND r.player = ?2
+    WHERE p.provenance = ?1`).bind(provenance, playerId).first());
+}
+
 /**
  * A CHECKPOINT: the save, under the current lease, at `seq + 1`. The row is asked first (a stale lease or sequence is
  * refused before a byte is written), the object lands at a key of its own, and the row moves to it only if the lease

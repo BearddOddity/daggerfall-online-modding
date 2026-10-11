@@ -1,0 +1,37 @@
+[
+  {
+    "name": "CRAFT-HOLD-list-asks-the-acting-character-alone",
+    "file": "server-account/src/market.js",
+    "old": "  const pieceHeld = kind === 'piece' ? await craftHoldOf(db, me, provenance) : null;",
+    "new": "  const pieceHeld = null;",
+    "tests": ["test/crafthold.test.js"]
+  },
+  {
+    "name": "CRAFT-HOLD-auction-asks-the-acting-character-alone",
+    "file": "server-account/src/market.js",
+    "old": "  const held = (await realmHoldOf(db, me, character)) ?? (await craftHoldOf(db, me, provenance));   // INT3 (AUDIT INT): a held character auctions nothing",
+    "new": "  const held = await realmHoldOf(db, me, character);   // INT3 (AUDIT INT): a held character auctions nothing",
+    "tests": ["test/crafthold.test.js"]
+  },
+  {
+    "name": "CRAFT-HOLD-fill-unheld",
+    "file": "server-account/src/writs.js",
+    "old": "  const held = (await realmHoldOf(db, me, character)) ?? (await craftHoldOf(db, me, provenance));\n  if (held) return held;\n  if (!commissionFilledBy(",
+    "new": "  if (!commissionFilledBy(",
+    "tests": ["test/crafthold.test.js"]
+  },
+  {
+    "name": "CRAFT-HOLD-disenchant-unheld",
+    "file": "server-account/src/alchemy.js",
+    "old": "  if (pieceHeld) return pieceHeld;\n  const r = recipeById(p.recipe);",
+    "new": "  const r = recipeById(p.recipe);",
+    "tests": ["test/crafthold.test.js"]
+  },
+  {
+    "name": "CRAFT-HOLD-the-hold-read-off-the-owner",
+    "file": "server-account/src/realm.js",
+    "old": "  return holdRefusal(await db.prepare(`SELECT r.held, r.judged_seq FROM products p JOIN realm_characters r ON r.id = p.char_id AND r.player = ?2",
+    "new": "  return holdRefusal(await db.prepare(`SELECT r.held, r.judged_seq FROM products p JOIN realm_characters r ON r.id = p.owner AND r.player = ?2",
+    "tests": ["test/crafthold.test.js"]
+  }
+]

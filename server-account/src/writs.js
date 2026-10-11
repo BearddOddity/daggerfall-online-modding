@@ -41,6 +41,7 @@ import { guildActorOf } from './guilds.js';
 import { marksOpenFor, balanceOf, guildBalanceOf } from './marks.js';
 import { profOpenFor, spendStatements, spendableSql, storeOf } from './professions.js';
 import { CHAR_ID_RE } from './service.js';
+import { realmHoldOf, craftHoldOf } from './realm.js';   // CRAFT-HOLD: a commission filled hands a crafted piece to another player
 import { MARKS_MAX, utcDay } from '../../src/net/marksLaw.js';
 import { STORES_MAX } from '../../src/net/professionLaw.js';
 import { material, regionOk } from '../../src/net/nodeLaw.js';
@@ -657,6 +658,10 @@ export async function fulfilCommission(ctx, player, env, { character, region, co
   const p = await db.prepare('SELECT * FROM products WHERE provenance = ?1').bind(provenance).first();
   if (!p) return { error: 'market-no-record' };   // AUDIT 31 H1: no record at all - never "another owner's"
   if (p.owner !== me) return { error: 'market-not-yours' };
+  // CRAFT-HOLD (the exploit audit): a commission filled hands the piece to its poster, as a sale does - and it asked no
+  // hold at all: a held character (INT3) filled for Drakes what it could neither list nor auction
+  const held = (await realmHoldOf(db, me, character)) ?? (await craftHoldOf(db, me, provenance));
+  if (held) return held;
   if (!commissionFilledBy({ recipe: c.recipe, quality: c.quality == null ? null : Number(c.quality) }, { recipe: p.recipe, quality: Number(p.quality) })) {
     return { error: 'commission-piece' };
   }

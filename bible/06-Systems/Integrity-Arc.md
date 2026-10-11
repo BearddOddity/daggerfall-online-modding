@@ -251,6 +251,25 @@ route's ids. Mutant records `tools/mutants/int_audit.json`; the arc's own record
 
 ### What lane 1 leaves open
 
+- **A crafted piece lists, auctions and fills a commission without its record (the exploit audit, 2026-10-11 - OPEN,
+  its plan below).** The piece route (`server-account/src/market.js` marketList `kind: 'piece'`, marketAuction,
+  `writs.js` fulfilCommission) decides on the `products` row alone - never the seller's lease, its record or the ledger -
+  and the client takes the piece out of its pack only locally (`net/marketBook.js` postPiece). So a tab that lost its
+  seat to a second device (it sends no checkpoint, so it never hears `lease`) lists a piece the live record still holds:
+  the gold is collected (witnessed, so no budget gain) and the piece sold to a shop inside `DUPE_GRACE_S` leaves nobody
+  charged; kept past it, one dupe is counted and nothing held (`DUPES_FOR_HOLD` 3). A piece realm-traded away moves the
+  piece but never `products.owner`, so its maker can still list it, and the honest holder is the one the ledger
+  charges. THE PLAN, the shape `alchemy.js` disenchantPiece already has ("the maker's record says where the piece is,
+  never the products row"): each crafted act asks `realmActFirst`, takes the piece out of the record by provenance
+  (`prepareRealmRecord(..., { outbound: true, escrow: true })`, `mustChange` in the decision's batch), and the client
+  routes it through `realmGoldAct` as `postGood` does; a cancelled, expired or unsold piece comes back as an `item`
+  delivery collected into the record (`collectGood`), never a client mint. CRAFT-HOLD (below) shipped the half that
+  needed no client.
+- **CRAFT-HOLD (2026-10-11, the exploit audit): the hold follows the piece.** `realm.js` craftHoldOf - the hold of the
+  account's realm character a crafted piece's maker record names (`products.char_id`), asked by the list, the auction, the
+  commission fill (which asked no hold at all) and the disenchant, whatever character the act names. A held character's
+  craft had listed for Drakes under `char-anything`. `test/crafthold.test.js` (3); `tools/mutants/crafthold.json` (5, all
+  dead). `ACCOUNT_VERSION` left at acct112: no migration, and main moves it.
 - Peer channels - a shared chest, a shop's shelf, a body's grant - still move lawful pieces between clients
   unwitnessed (the wild zone's remains are the account service's own records since INT9, section 5). What enters a realm character's record that way is charged to its budget, and the ledger
   catches a copy that keeps its key; a lawless piece no honest client takes (the wire's door drops it). Container locks
