@@ -269,11 +269,11 @@ test('AUDIT 68 S17-gl-program-dup: one compile and link - the order every pass w
   assert.ok(prog);
   assert.deepEqual(calls, [
     'createProgram',
-    'createShader:VERTEX_SHADER', 'shaderSource:vs-src', 'compileShader', 'getShaderParameter', 'attachShader',
-    'createShader:FRAGMENT_SHADER', 'shaderSource:fs-src', 'compileShader', 'getShaderParameter', 'attachShader',
+    'createShader:VERTEX_SHADER', 'shaderSource:vs-src', 'compileShader', 'attachShader',
+    'createShader:FRAGMENT_SHADER', 'shaderSource:fs-src', 'compileShader', 'attachShader',
     'linkProgram', 'getProgramParameter',
-  ]);
-  ok = { COMPILE_STATUS: false, LINK_STATUS: true };
+  ], 'PERF-COMPILE1: one sync point - the link status, asked once both stages and the link are in');
+  ok = { COMPILE_STATUS: false, LINK_STATUS: false };   // PERF-COMPILE1: a stage that fails fails the link, and its log is the one thrown
   assert.throws(() => buildProgram(gl, 'v', 'f'), { message: 'ERROR: 0:1: boom' }, 'the driver\'s log, as every pass threw it');
   assert.throws(() => buildProgram(gl, 'v', 'f', 'far ring'), { message: 'far ring shader: ERROR: 0:1: boom' });
   ok = { COMPILE_STATUS: true, LINK_STATUS: false };

@@ -282,8 +282,8 @@
   {
     "name": "AUDIT637-B2b-the-quads-asked-short-of-the-cubes-reach",
     "file": "src/render/shadowPass.js",
-    "old": "lim[o + 3] + cubeReach(rad) - rad + lim[o + 4])) continue;",
-    "new": "lim[o + 3] + lim[o + 4])) continue;",
+    "old": "cube[4] = lim[o + 3] + cubeReach(rad) - rad + lim[o + 4];",
+    "new": "cube[4] = lim[o + 3] + lim[o + 4];",
     "tests": [
       "test/audit637_shadow.test.js",
       "test/perfshadow1.test.js"

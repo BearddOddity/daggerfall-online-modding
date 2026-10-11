@@ -244,9 +244,9 @@ test('NAME1: the enhanced face - a DOM layer in PIXEL_STACK on bone, one element
   assert.equal(layer.root.style.display, '');
   const bran = layer.tagFor('bran');
   assert.equal(bran.name.textContent, 'BRAN');
-  // PERF-NAMES: the place is the tag's transform - the point, then the sheet's own translate(-50%, -100%) after it
+  // PERF-NAMES1: the anchor rides the transform - the same whole pixels `left`/`top` held, then the sheet's own lift
   assert.equal(bran.node.style.transform, `translate(100px, ${300 - NAME_GAP_PX}px) translate(-50%, -100%)`, 'the element sits the gap ABOVE the head point and grows upward from there');
-  assert.equal(bran.node.style.left, undefined, 'and never by left/top, which lay the tag out again at every move');
+  assert.equal(bran.node.style.left, undefined, 'PERF-NAMES1: and no box is moved - a move lays nothing out');
   assert.equal(bran.node.style.fontSize, `${NAME_BASE_PX.toFixed(1)}px`, 'the reference frame: the base size, exactly');
   // AUDIT NAME1 F3: half the scale is half the face until the legible floor takes over - 8 px is not a word.
   assert.equal(layer.tagFor('zed').node.style.fontSize, `${NAME_PX_MIN.toFixed(1)}px`, 'half the scale, held at the floor');
@@ -785,7 +785,7 @@ test('AUDIT NAME1 F13: the classic face\'s gap takes the HOST scale, like the gl
   const doc = fakeDocument();
   const layer = createNameLayer({ doc, now: () => 1000 });
   layer.render({ points: [p], viewport: H });
-  assert.ok(layer.tagFor('x').node.style.transform.endsWith(`, ${Math.round(p.y - NAME_GAP_PX)}px) translate(-50%, -100%)`), 'the two faces leave the same clearance in their own pixels');
+  assert.equal(/translate\(-?\d+px, (-?\d+)px\)/.exec(layer.tagFor('x').node.style.transform)?.[1], `${Math.round(p.y - NAME_GAP_PX)}`, 'the two faces leave the same clearance in their own pixels');   // PERF-NAMES1: the anchor's y, in the transform
   // ...and the gap is NOT the depth term: a far peer gets the same screen clearance as a near one
   const far = stand([{ id: 'x', at: [0, 0, -40], height: 1.8 }]);
   const [q] = far.namePoints(PROJ, VIEW, W, H, EYE, (v) => [v.x, v.y, v.z]);

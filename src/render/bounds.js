@@ -367,10 +367,21 @@ function cellRange(q, x0, z0, x1, z1) {
   _cells[3] = Math.max(0, Math.min(top, Math.floor((z1 - q.z0) / q.sz)));
   return true;
 }
+const _cubeArgs = new Float64Array(5);
 /** PERF-EXT1: does any quad of batch `b` (its `_place`, its origin and size, a quad radius `rad` from
  *  placementRadius) reach a lantern's CUBE [pos - far, pos + far]? The six faces' frusta tile that cube, so a quad
  *  outside it rasterises into none of them - the cube, not the far SPHERE, whose corners a face still draws. */
 export function placementsInCube(b, rad, px, py, pz, far) {
+  const c = _cubeArgs;
+  c[0] = rad; c[1] = px; c[2] = py; c[3] = pz; c[4] = far;
+  return placementsInCubeOf(b, c);
+}
+/** PERF-ALLOC2 (2026-10-10): placementsInCube with its cube in a Float64Array - [rad, px, py, pz, far] - the same test
+ *  from the same doubles (a Float64Array holds a double exactly). A double handed to a call V8 does not inline is a
+ *  heap number: the shadow pass's lantern walk (_candidateQuads) asks this once a placed batch a lantern a frame, and its
+ *  five numbers were 153 KB of the 1.4 MB the real game's night frame allocated at Knightstale. */
+export function placementsInCubeOf(b, c) {
+  const rad = c[0], px = c[1], py = c[2], pz = c[3], far = c[4];
   const q = b._place, o = b.origin || ZERO_ORIGIN, R = far + rad;
   const lx = px - o[0], ly = py - o[1] - batchLift(b), lz = pz - o[2];   // the light in the batch's frame, the lift folded in
   if (!cellRange(q, lx - R, lz - R, lx + R, lz + R)) return false;
