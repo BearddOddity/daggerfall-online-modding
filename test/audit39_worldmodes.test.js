@@ -196,7 +196,7 @@ test('AUDIT39 #64: the impact recovers the arrow whatever the damage, and never 
   const said = [];
   const dmg = playerArrowHitFoe(
     { weapon: { material: 0 }, pos: [0, 1, 0], dir: [0, 0, 1] }, foe,
-    { playerEntity: { isPlayer: true }, playerFeet: [0, 0, -1], dealDamage: (f, d) => dealt.push(d), say: (l) => said.push(l) });
+    { playerEntity: { isPlayer: true }, playerFeet: [0, 0, -1], dealDamage: (f, d) => dealt.push(d), say: (l) => said.push(l), rolls: () => 0 });   // PIN MOVED (ARROW-LODGE): the shaft survives its strike - under ARROW_LODGE_CHANCE
   assert.equal(dmg, 0);
   assert.deepEqual(dealt, [], 'no damage, no door - the pool owns the death chain');
   assert.equal(foe.entity.items.length, 1, 'the arrow is recoverable from the TARGET, damage or not');
@@ -277,9 +277,10 @@ test('AUDIT39 #64: all three non-dungeon hosts mark the shaft and resolve it', (
     // FIELD-GUN17 appended one key at all three - the muzzle offset,
     // null for every weapon but the Thunderlock. The claim this arm
     // makes is LastBowUsed, and it is still asserted whole.
-    ['src/scenes/world.js', 'arrows.fire(cam.pos, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()) })'],
-    ['src/scenes/exterior.js', 'arrows.fire(eye, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()) })'],
-    ['src/scenes/worldModes.js', 'interiorArrows.fire(player.eye, eyeDir(), { fromPlayer: true, weapon: interiorWeapon.playerWeapon.weapon, muzzle: interiorWeapon.thunderlockMuzzle(fieldOfView()) })'],
+    // PIN MOVED (STUCK-ARROWS): and one more - whether the round was conjured (DFU's isArrowSummoned)
+    ['src/scenes/world.js', 'arrows.fire(cam.pos, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()), summoned: shot.summoned })'],
+    ['src/scenes/exterior.js', 'arrows.fire(eye, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()), summoned: shot.summoned })'],
+    ['src/scenes/worldModes.js', 'interiorArrows.fire(player.eye, eyeDir(), { fromPlayer: true, weapon: interiorWeapon.playerWeapon.weapon, muzzle: interiorWeapon.thunderlockMuzzle(fieldOfView()), summoned: shot.summoned })'],
   ]) {
     const s = src(f);
     assert.ok(s.includes(fire), `${f} rides LastBowUsed on the shaft`);

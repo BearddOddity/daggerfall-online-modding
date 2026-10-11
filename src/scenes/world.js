@@ -12229,7 +12229,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // modes hand their own rigs their own doors (worldModes.js).
     technique: {
       motor: () => player,
-      fireArrow: (from, dir, o) => arrows.fire(from, dir, { fromPlayer: true, weapon: o?.weapon ?? weaponRig.playerWeapon.weapon, muzzle: o?.sky ? { world: [...from] } : weaponRig.thunderlockMuzzle(fieldOfView()), technique: o?.technique ?? null, ...(o?.speedScale ? { speedScale: o.speedScale } : {}) }),
+      fireArrow: (from, dir, o) => arrows.fire(from, dir, { fromPlayer: true, weapon: o?.weapon ?? weaponRig.playerWeapon.weapon, muzzle: o?.sky ? { world: [...from] } : weaponRig.thunderlockMuzzle(fieldOfView()), technique: o?.technique ?? null, ...(o?.speedScale ? { speedScale: o.speedScale } : {}), ...(o?.summoned ? { summoned: true } : {}) }),   // STUCK-ARROWS: a conjured round's shaft is never given back
       drainFatigue: (n) => drainExteriorFatigue(n),
       face: (p, from) => { if (!Array.isArray(p)) return; const o = Array.isArray(from) ? from : player.pos; cam.yaw = Math.atan2(p[0] - o[0], p[2] - o[2]); lookFilter.settle(); },   // AUDIT TECH1: from where the body lands
       blocked: () => gamePaused(),   // AUDIT TECH1: a window holds the world - and the technique's key (the mouse's side button reaches `keys` under any window)
@@ -14081,7 +14081,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (ail) { let yes = false; townTalk.showOverlay(new DecisionBoxWindow({ rows: ail, onYes: () => { yes = true; } }), () => { if (yes) restNow(); }); return; }
     restNow();
   };
-  const arrows = new ArrowFlight({ getGpuMesh, collider: () => collider, effects: hitEffects });   // C13   // FIELD-GUN14: the orb's flat rides the host's own one-shot pool, which this frame already draws
+  const arrows = new ArrowFlight({ getGpuMesh, collider: () => collider, effects: hitEffects, loot: droppedLoot, pixelKeyAt: () => `${playerTravelPixel().x},${playerTravelPixel().y}` });   // C13   // STUCK-ARROWS: a player's shaft that meets the world sticks into this host's pile pool, on the pixel it is loosed from (it dies with it)   // FIELD-GUN14: the orb's flat rides the host's own one-shot pool, which this frame already draws
   // F-slice: FAST TRAVEL. The window collects the popup's choices;
   // the LAWS live in systems/travel.js; arrival is
   // performFastTravel's order (DaggerfallTravelPopUp:324-385):
@@ -35214,13 +35214,14 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         // EVERY RANGED WEAPON, not only the bow: `isBowWeapon` is
         // "scored on Archery", which is what the Thunderlock is too.
         if (isBowWeapon(weaponRig.playerWeapon.weapon)) {
-          if (spendAmmoFor(playerEntity.items, weaponRig.playerWeapon.weapon)) {
+          const shot = { summoned: false };   // STUCK-ARROWS: DFU's isArrowSummoned, carried by the shaft
+          if (spendAmmoFor(playerEntity.items, weaponRig.playerWeapon.weapon, shot)) {
             // AUDIT 23 (C14): the swing fatigue + the FULL bow tally
             // arm (Archery AND CriticalStrike) - see exterior.js.
             drainExteriorFatigue(SWING_FATIGUE_COST);
             tallySwingSkills(playerEntity, weaponRig.playerWeapon.weapon);
             const fwd = [Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)];
-            arrows.fire(cam.pos, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()) }); weaponRig.noteShot?.(weaponRig.playerWeapon.weapon);   // SPELLFX1: the peers draw it   // FIELD-GUN17: the barrel's own offset when the hand holds the gun, null for every bow - the rig answers, the lane forks   // #64: LastBowUsed rides the shaft - the impact prices off it   // ROAD-H H1c: ArrowFlight.fire applies GetAimPosition's player arm (the bow hand), as DFU's missile does its own
+            arrows.fire(cam.pos, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()), summoned: shot.summoned }); weaponRig.noteShot?.(weaponRig.playerWeapon.weapon);   // SPELLFX1: the peers draw it   // FIELD-GUN17: the barrel's own offset when the hand holds the gun, null for every bow - the rig answers, the lane forks   // #64: LastBowUsed rides the shaft - the impact prices off it   // ROAD-H H1c: ArrowFlight.fire applies GetAimPosition's player arm (the bow hand), as DFU's missile does its own
           }
           continue;
         }
