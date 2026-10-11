@@ -190,7 +190,10 @@ test('audit24 wave30: OnMonsterHit rides EVERY monster melee door and no other',
       sites.push({ file: f, line: src.slice(0, m.index).split('\n').length, call });
     }
   }
-  assert.equal(sites.length, 7, 'seven damage doors in the port - classify any eighth');
+  // SERPENT4: an EIGHTH - a player's shaft in the sea serpent's hide (world.js serpentArrowOn, against its stand-in): the
+  // player's arrow, no rider (the sweep below holds it to none)
+  assert.equal(sites.length, 8, 'eight damage doors in the port - classify any ninth');
+  assert.equal(sites.filter((x) => x.call.startsWith('calculateAttackDamage(playerEntity, serpentStandIn(),')).length, 1, 'the eighth: a shaft of mine on the serpent');
 
   const monsterMelee = sites.filter((s) => /^calculateAttackDamage\(f\.entity, (foeDeps\.)?playerEntity,/.test(s.call));
   assert.equal(monsterMelee.length, 2, 'the dungeon host and the exterior pool');
