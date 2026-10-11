@@ -14700,6 +14700,13 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  building's, a dungeon's: modes.clearDeath), the fall's pitch handed back either way. The Resurrect's close and a
    *  respawn that threw share it: the respawn's catch knew townTalk's slot alone, so a death in a building or a
    *  dungeon whose rise threw before (or inside) forceExitToExterior kept its screen, its one reset spent. */
+  /** DUPE-LOAD: every window in the street's slot down through its own close, the top first and then each it was laid
+   *  over - never the death screen (closeDeathScreen's). Bounded: a close that keeps opening a successor stops at 16. */
+  function closeWindowsForLoad() {
+    for (let n = 0; n < 16 && townTalk.overlay && !(townTalk.overlay instanceof DeathScreen); n++) {
+      if (!townTalk.closeOverlay()) break;
+    }
+  }
   function closeDeathScreen() {
     const ov = townTalk.overlay;
     if (ov instanceof DeathScreen) { ov.restoreView(); townTalk.closeOverlay(ov); }
@@ -15725,6 +15732,13 @@ export async function bootWorld(canvas, renderer, params, status) {
       const snap = picked ?? (key != null || mostRecent ? pickedSaveSnap({ key, mostRecent })   // MW-EARLY: the pick the boot's early build read (AUDIT MW-EARLY F3: the boot hands its one parse in)
         : quickLoadSlot(playerEntity.name, undefined, playerEntity.characterId ?? null));   // CHARID1: my own QuickSave, never a namesake's
       if (!snap) { townTalk.say('No saved game.'); return; }
+      // DUPE-LOAD (2026-10-11): EVERY WINDOW DOWN BEFORE THE SAVE IS READ - and before the first await, where a window
+      // left up could still be played. A window holds what it took off the old game (the pack's drops, a counter's
+      // staged goods, a loot window's pile); its close hands that back, and a close AFTER the restore handed it to the
+      // loaded game - the pack the save restored plus the pile the close minted. Closed here, its close lands on the old
+      // game the restore overwrites (a pile it mints is swept with every other, droppedLoot.restoreWorld). The death
+      // screen stays: closeDeathScreen takes it down below, its view handed back.
+      closeWindowsForLoad();
       // MAC-L4: the table this save is READ WITH, before it is read. The
       // boot fires `loadMagicRegistries` and does not await it (every
       // other consumer is a later frame), so a quickload in the first
@@ -17501,7 +17515,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   let _worldKeysLive = false;
   addEventListener('keydown', (e) => {
     if (peerMenuReader && !isTextEntryTarget(e.target)) peerMenuReader.down(e.code, e.repeat);   // PEERMENU1: hears the key, never eats it (a tap of E still interacts)
-    // FIX-E: QUICKLOAD WORKS FROM UNDER ANY OVERLAY - the death screen's
+    // FIX-E: QUICKLOAD WORKS FROM UNDER THE DEATH SCREEN - its
     // own "F11 load" hint, and the one arm ui/input.js's routeKey lets
     // through its overlay gate (the dungeon and interior hosts). This
     // host runs its own ladder, and its QuickLoad arm stood BELOW the
@@ -17511,7 +17525,10 @@ export async function bootWorld(canvas, renderer, params, status) {
     // filled below the overlay gate (G3), and a key under a window
     // joins none - so no combo, as DFU's Update returns before PollInput.
     // AUDIT RETRO1 C1: but Shift-F11 - the retro toggle's chord on this key - is no load.
-    if (townTalk.overlayActive && !isTextEntryTarget(e.target) && (modes?.mode ?? 'exterior') === 'exterior' && codeMeans(bindings(), e.code, 'QuickLoad') && !retroToggleKey(e, keys)) {   // UXB1-S: its key, shared or not
+    // DUPE-LOAD (2026-10-11): and only from under the death screen (`loadsUnder`) - FIX-E's arm read any window, so F11
+    // under the pack restored the save while the window still held what it had dropped, and its close minted a pile of
+    // it beside the restored pack. Any other window keeps F11, as it keeps every key.
+    if (townTalk.overlayActive && townTalk.overlay?.loadsUnder === true && !isTextEntryTarget(e.target) && (modes?.mode ?? 'exterior') === 'exterior' && codeMeans(bindings(), e.code, 'QuickLoad') && !retroToggleKey(e, keys)) {   // UXB1-S: its key, shared or not
       e.preventDefault();
       if (e.repeat) return;   // AUDIT DISC28 UI-7: one press, one load (or one respawn) - a held F11 under a window repeats nothing
       // D-ONLINE1 (Mac, 2026-09-17: "you should just respawn in this case"): F11 on the death screen used to

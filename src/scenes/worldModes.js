@@ -11946,6 +11946,7 @@ export function createWorldModes(host) {
     // The interior arm used to re-do the mapping itself, which is the
     // duplication F3 was written about.
     get overlayIsNative() { return !!interiorOverlay?.isChoiceWindow; },
+    overlayWindow: () => interiorOverlay,   // DUPE-LOAD: routeKey asks whether it is the death screen, the one window F11 loads from under
     overlayInput(code, e) {
       const w = interiorOverlay;
       if (!w) return;

@@ -1,0 +1,51 @@
+[
+  {
+    "name": "DUPE-LOAD-routeKey-any-window",
+    "file": "src/ui/input.js",
+    "old": "    if (ctx.overlayWindow?.()?.loadsUnder === true && actionsOf(e, keys).includes('QuickLoad') && !retroToggleKey(e, keys)) { ctx.quickLoad?.(setPlayerPos); return true; }",
+    "new": "    if (actionsOf(e, keys).includes('QuickLoad') && !retroToggleKey(e, keys)) { ctx.quickLoad?.(setPlayerPos); return true; }",
+    "tests": ["test/dupeload.test.js"]
+  },
+  {
+    "name": "DUPE-LOAD-the-marker-off",
+    "file": "src/ui/deathScreen.js",
+    "old": "    this.loadsUnder = true;",
+    "new": "    this.loadsUnder = false;",
+    "tests": ["test/dupeload.test.js"]
+  },
+  {
+    "name": "DUPE-LOAD-world-arm-any-window",
+    "file": "src/scenes/world.js",
+    "old": "    if (townTalk.overlayActive && townTalk.overlay?.loadsUnder === true && !isTextEntryTarget(e.target)",
+    "new": "    if (townTalk.overlayActive && !isTextEntryTarget(e.target)",
+    "tests": ["test/dupeload.test.js"]
+  },
+  {
+    "name": "DUPE-LOAD-no-close-before-the-restore",
+    "file": "src/scenes/world.js",
+    "old": "      closeWindowsForLoad();\n",
+    "new": "\n",
+    "tests": ["test/dupeload.test.js"]
+  },
+  {
+    "name": "DUPE-LOAD-one-window-closed",
+    "file": "src/scenes/world.js",
+    "old": "    for (let n = 0; n < 16 && townTalk.overlay && !(townTalk.overlay instanceof DeathScreen); n++) {",
+    "new": "    for (let n = 0; n < 1 && townTalk.overlay && !(townTalk.overlay instanceof DeathScreen); n++) {",
+    "tests": ["test/dupeload.test.js"]
+  },
+  {
+    "name": "DUPE-LOAD-the-death-screen-closed-too",
+    "file": "src/scenes/world.js",
+    "old": "    for (let n = 0; n < 16 && townTalk.overlay && !(townTalk.overlay instanceof DeathScreen); n++) {",
+    "new": "    for (let n = 0; n < 16 && townTalk.overlay; n++) {",
+    "tests": ["test/dupeload.test.js"]
+  },
+  {
+    "name": "DUPE-LOAD-interior-names-no-window",
+    "file": "src/scenes/worldModes.js",
+    "old": "    overlayWindow: () => interiorOverlay,",
+    "new": "    overlayWindow: () => null,",
+    "tests": ["test/dupeload.test.js"]
+  }
+]
