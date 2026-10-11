@@ -355,12 +355,12 @@
   {
     "name": "BR5-account-version-unmoved",
     "file": "server-account/src/service.js",
-    "old": "export const ACCOUNT_VERSION = 'acct113';",
-    "new": "export const ACCOUNT_VERSION = 'acct112';",
+    "old": "export const ACCOUNT_VERSION = 'acct115';",
+    "new": "export const ACCOUNT_VERSION = 'acct114';",
     "tests": [
       "test/legacy7_service.test.js",
       "test/founder5.test.js"
     ],
-    "note": "BR5: the rebrand to DFO Online (2026-10-11)"
+    "note": "BR5: the rebrand to DFO Online (2026-10-11). acct113 on its branch, renumbered past GUILD-SEEN and GUILD3 at the merge (PIN MOVED): acct115, and the mutant is the version main left."
   }
 ]

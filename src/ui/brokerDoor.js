@@ -11,6 +11,7 @@
 // gate fell, the court was entered) through `closeBrokerDoor`.
 import { mountEnhancedChunk } from './enhancedChunk.js';
 import { registerOverlay } from './enhancedOverlays.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** The overlay standing now, or null. */
 let _open = null;
@@ -32,6 +33,7 @@ export const repaintBrokerDoor = () => { _open?.repaint(); };
  * @returns {any} the overlay, or null with no document
  */
 export function createBrokerOverlay(deps) {
+  noteFirstUse('sigil-sets');   // TUT1: the Sigil Broker is where the sets are traded
   if (typeof document === 'undefined') return null;
   _open?.dispose();
   let fired = false;

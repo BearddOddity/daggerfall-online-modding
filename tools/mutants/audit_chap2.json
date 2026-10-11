@@ -1355,7 +1355,7 @@
   {
     "name": "T-BOARD-KIND-TEXT",
     "file": "src/ui/noticeWindow.js",
-    "old": "poster ? 'Hall writ' : 'Court writ'",
+    "old": "poster ? 'Chapter writ' : 'Court writ'",
     "new": "poster ? 'Court writ' : 'Court writ'",
     "tests": [
       "test/audit_chap1.test.js",

@@ -2284,6 +2284,9 @@ ${badgeCss()}
 .px-foot .px-about { grid-column: 3; }
 /* LOAD1: the Screenshots plaque - About's box, beside it on the right. */
 .px-footright { grid-column: 3; justify-self: end; display: flex; align-items: flex-end; gap: 10px; }
+/* TUT1: the Tutorials plaque - About's box, over the build line at the left. */
+.px-footleft { grid-column: 1; justify-self: start; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.px-footleft .px-about { justify-self: auto; }
 /* The About box: the ONE box on the boxless face, which is what makes
    it read as a plaque rather than a menu row. 2px border in whole
    pixels, gold on hover by the same pair. */
@@ -2653,6 +2656,7 @@ ${SUPPORT_MARKS_CSS}
   .px-foot .px-about { grid-area: about; grid-column: auto; }
   /* LOAD1: on a phone the two plaques stack at the right - inside the 132px the stage keeps for the foot (PX8) */
   .px-footright { grid-area: about; grid-column: auto; flex-direction: column; gap: 8px; }
+  .px-footleft { grid-area: build; grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .px-ground { animation: none; } }
 /* PX8, caught by the tap probe TWICE: centering the list on a SHORT

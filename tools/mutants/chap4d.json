@@ -92,8 +92,8 @@
   {
     "name": "CHAP4D-CHRON-GAVE",
     "file": "src/net/npcChapterLaw.js",
-    "old": "else if (from === 'master' && to === 'officer') did = `gave the Master's seat of ${guild} up, and kept an officer's`;",
-    "new": "else if (from === 'master' && to === 'officer') did = `lost the Master's seat of ${guild}`;",
+    "old": "else if (from === 'master' && to === 'officer') did = `gave the Master's chair of ${guild} up, and kept a council chair`;",
+    "new": "else if (from === 'master' && to === 'officer') did = `lost the Master's chair of ${guild}`;",
     "tests": [
       "test/chap4d_focus.test.js"
     ]
@@ -374,7 +374,7 @@
   {
     "name": "CHAP4D-BOARD-LINE",
     "file": "src/ui/noticeWindow.js",
-    "old": "if (focusLine) body.append(el('p', 'notice-chapter notice-focus', focusLine));",
+    "old": "if (focusLine) card.append(el('p', 'notice-chapter notice-focus', focusLine));",
     "new": "/* gone */",
     "tests": [
       "test/chap4d_focus.test.js"

@@ -371,7 +371,8 @@ test('AUDIT CHAP4 T4, T9: the Work tab says a Focus press\'s answer - its line o
     writs: async () => ({ data: { writs: [], receipts: [], merit: [], chapters, today: { filled: 0, max: 3 } }, error: null, stale: false }),
     deliver: async () => ({ ok: false }) };
   const notices = { seenAt: () => null, read: async () => ({ board: { notes: [], notices: [], me: {} } }), markSeen() {}, cached: () => null, draft: () => ({ subject: '', body: '', days: 7, button: '' }), noticeDraft: () => ({ subject: '', body: '', days: 3 }) };
-  for (const [answer, want] of [[{ ok: true }, 'The Fighters Guild\'s Master asks for metals this week.'], [{ ok: false, error: 'not-master' }, 'Only the chapter\'s Master sets its Focus.']]) {
+  for (const [answer, want] of [[{ ok: true }, 'The Fighters Guild chapter\'s Master asks for metals this week.'],   // PIN MOVED: AUDIT GUILD3 W7
+    [{ ok: false, error: 'not-master' }, 'Only the chapter\'s Master sets its Focus.']]) {
     let sets = 0;
     const host = document.createElement('div');
     mountNoticeBoard(host, { town: { name: 'Anticlere', mapId: 5 }, book: notices,
@@ -409,7 +410,7 @@ test('AUDIT CHAP4 C (the lens\'s unproven, proven): a Focus answered after the b
   board.unmount();
   answer();
   for (let i = 0; i < 3; i++) await tick();
-  assert.deepEqual(late, ['The Fighters Guild\'s Master asks for metals this week.']);
+  assert.deepEqual(late, ['The Fighters Guild chapter\'s Master asks for metals this week.']);   // PIN MOVED: AUDIT GUILD3 W7
 });
 
 test('AUDIT CHAP4 T5: a failed read of the sheet is asked again at the next beat - never before (mutants: the read\'s stamp)', async () => {
@@ -504,7 +505,8 @@ test('AUDIT CHAP4 T10: the roll\'s and the Hall\'s chapters\' lines flush left u
   };
   assert.equal(lineFormat(chapterRollTokens({ title: 'The Roll', lines: ['Master of the chapter: Alda.'] }), 'Master of the chapter: Alda.'), RSC.JustifyLeft);
   const seat = { key: 3021, name: 'Anticlere', region: ANTICLERE, tier: 'palace' };
-  const line = 'In week 40, Alda took the Master\'s seat of the Fighters Guild.';
+  // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - the Master's chair; marked by AUDIT GUILD3 R4
+  const line = 'In week 40, Alda took the Master\'s chair of the Fighters Guild.';
   assert.equal(lineFormat(hallOfRecordsTokens(seat, [], null, null, { rows: [{ kind: 'seat', faction: FIGHTERS, week: 40, data: { from: null, to: 'master' }, name: 'Alda' }], zero: null }), line), RSC.JustifyLeft);
   const all = (band) => CHAPTER_NEWS[band].map((x) => x.join(' ')).join(' | ');
   assert.doesNotMatch(all('failing'), /Full to the door|doing well|strongest|never stood higher/);

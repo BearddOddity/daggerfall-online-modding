@@ -37,6 +37,7 @@ import { isOnlinePage } from '../systems/onlineLane.js';   // DEATH4: the online
 import { stateDeathLoss, deathGoldLoss, deathPenaltyLine } from '../systems/deathPenalty.js';   // DEATH-PENALTY: the screen says what the respawn is about to take
 import { goldPiecesOf } from '../systems/inventory.js';   // DEATH-PENALTY: the purse the loss is read off
 import { wildDeath, wildDeathLines, WILD_DEATH_HOLD_S } from '../systems/wildZone.js';   // WILD1: a death in the open zone holds two minutes, Enter or not
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** DEATH4 (Discord, 2026-09-23: "don't let it fade away automatically in
  *  offline mode, only in online mode - and give it 10 seconds"). On the
@@ -94,6 +95,7 @@ export const riseHint = (hint) => String(hint ?? '').replace(/ENTER end/, 'ENTER
  *  frame to sink its camera - one player, one death, one law. */
 export class DeathScreen {
   constructor({ eyeHeight, capsuleHeight, onReset = null, entity = playerEntity, hint = 'ENTER end   F11 load', online = undefined, rises = null } = {}) {
+    noteFirstUse('death');   // TUT1: the page waits beneath this screen (it keeps the top) and is read after it
     this.done = false;
     // RISE-STUCK: the screen keeps the top of its host's stack until it
     // goes - a box pushed while it is up waits beneath (ui/windowStack.js

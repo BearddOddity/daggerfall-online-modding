@@ -97,8 +97,8 @@
   {
     "name": "CAP-OFF-timers-the-old-limits",
     "file": "src/systems/eventTimers.js",
-    "old": "The day's nodes stand anew; rare hides, Marks and Court writs",
-    "new": "Gathering, hides, hauls, Marks and Court writs",
+    "old": "The day's nodes stand anew; rare hides, silver and Court writs",
+    "new": "Gathering, hides, hauls, silver and Court writs",
     "tests": [
       "test/cap_off.test.js"
     ]

@@ -43,6 +43,7 @@ import { NATIVE_SCREEN_HEIGHT } from '../systems/riding.js';   // RR2: the 200-l
 import { RR_RIDING, rrTerrainAngle, rrTerrainFollow, rrRidingYAdj, rrRidingNeckBand } from '../systems/rrRealism.js';   // RR2: EnhancedRiding's draw laws
 import { setPitchFloorProvider } from './lookFilter.js';   // RR2: PitchMaxLimit while riding
 import { uiCanvas, onUiScreen } from '../ui/uiScreen.js';   // RETRO-UI: the horse in the pillarbox (TransportManager's CustomScreenRect)
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /**
  * @param deps {
@@ -149,6 +150,7 @@ export function createMountRig({
      */
     open() {
       if (!player.grounded || !transportArtLoaded()) return;
+      noteFirstUse('horse');   // TUT1: the transport window
       // HCC: TrailingWagonTransportWindow.Setup [IL_b008] - with the mod on, the horse and cart rows are live only
       // when the runtime's CanMountHorseFromTransportWindow / CanUseCartFromTransportWindow say so (a horse waiting
       // across the map cannot be mounted from here), and a click goes through TryUseTransport rather than the

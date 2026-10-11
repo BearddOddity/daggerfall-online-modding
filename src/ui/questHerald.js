@@ -45,6 +45,7 @@ import { isEnhanced } from '../systems/uiSkin.js';
 import { getPref } from '../systems/uiPrefs.js';
 import { drawEnhancedToasts, releaseEnhancedToasts } from './enhancedNotice.js';
 import { entryOpening, timeLeftWords, QUEST_URGENT_SECONDS } from './questRail.js';   // the rail, never the lens: the HUD imports this face (entryOpening's own comment says why)
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** The switch's prefs key (systems/features.js row `quest-herald`). */
 export const HERALD_PREF = 'questHerald';
@@ -120,6 +121,7 @@ export class QuestHerald {
   /** A lens look (`{ quests, events }`, ui/questLens.js): each event is
    *  news for its quest's one notice. */
   hear(seen) {
+    if ((seen?.events ?? []).some((e) => Object.hasOwn(HERALD_WORDS, e?.type))) noteFirstUse('quests');   // TUT1: the first quest news
     const views = new Map((seen?.quests ?? []).map((q) => [q.id, q]));
     this._views = views;
     for (const event of seen?.events ?? []) {
