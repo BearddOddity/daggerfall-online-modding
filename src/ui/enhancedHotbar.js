@@ -56,6 +56,7 @@ import { setIdOf } from '../systems/sigilSets.js';
 import { padFamily } from './padGlyphs.js';
 import { hdGlyphSvg, hdGlyphName } from './padGlyphsHD.js';
 import { registerCrossbar, plusCrossbarMode, crossbarCodeOf, CROSSBAR_SET, CROSSBAR_HOLD } from './plusPad.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** The pref and its two words (systems/features.js 'quickbar-style'). */
 export const HOTBAR_PREF = 'quickbarStyle';
@@ -553,6 +554,7 @@ function slotPicture(img) {
  *  well as in words - a key that looks pressed and did nothing is the
  *  drawn door this UI does not draw. */
 export function pressHotbar(i) {
+  noteFirstUse('quickslots');   // TUT1
   if (!bar) return;
   const entity = liveEntity;
   const ok = hotbarReady(entity, i);

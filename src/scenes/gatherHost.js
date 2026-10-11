@@ -63,6 +63,7 @@ import { DEFAULT_ACTIVATION_DISTANCE } from '../player/activate.js';
 import { harvestHauls } from '../ui/haulCards.js';   // HAUL-CARDS: a harvest's goods and XP as one card, on the enhanced skin
 import { BAG_WORDS, goodsWhere } from '../net/bagLaw.js';   // BAG1: where the goods went
 import { nodeMarkCss } from '../ui/nodeMarks.js';   // GATHER-OW: a group's glyph in its profession's compass colour
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** A node answers E within DFU's activation distance, and within this many degrees of the look. */
 export const NODE_REACH = DEFAULT_ACTIVATION_DISTANCE;
@@ -782,6 +783,7 @@ export function createGatherHost(deps) {
       if (act) return !click;   // AUDIT 29 D3: E during an act is the act's - never a door's or a loot's behind it (a click is clickTaken's)
       if (!target || !live() || book.state.open !== true) return false;
       const t = target;
+      noteFirstUse('foraging'); noteFirstUse('professions');   // TUT1: the first gather, and the trades it feeds
       const rows = rowsFor(t);
       const lit = deps.lit?.(menuKey(t)) ?? null;
       const chosen = lit != null ? rows.find((r) => r.id === lit) ?? null : null;

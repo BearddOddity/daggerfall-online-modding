@@ -16,6 +16,7 @@
 // sea fight's two windows (`openNavalWindow`), each its own host, chunk and slot.
 import { mountEnhancedChunk } from './enhancedChunk.js';
 import { registerOverlay } from './enhancedOverlays.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /**
  * The sea fight's two window doors, one shape (AUDIT NAV1): each its host's id, its chunk and the chunk's mount, and
@@ -50,6 +51,7 @@ function shut(slot) {
  * @param {any} deps - the window's own, less `onExit` (the door's close is its way out), plus `onClose(reason)`
  */
 function openNavalWindow(slot, deps) {
+  noteFirstUse(slot === YARD ? 'shipyard' : 'naval-combat');   // TUT1: the yard, or a beaten ship's hold
   if (typeof document === 'undefined') return null;
   slot.open?.dispose();
   let fired = false;

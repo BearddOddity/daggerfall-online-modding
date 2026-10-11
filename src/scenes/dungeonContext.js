@@ -324,6 +324,9 @@ import { feudRevealWeak, feudWeakBlow } from '../systems/feudLedger.js';   // RV
 import { blowWire, blowWireKey, applyBlowRecord, puppetBlowTurn, blowClassOf } from '../ai/puppetBlows.js';   // TELL8: a wind-up on the wire - the host's word, the joiner's puppet, each judging its own feet, a blow's class
 import { ambushNight, bedInReach } from '../systems/restAct.js';   // AUDIT REST-PARTY A1: a resting encounter stood breaks the night that rolled it
 import { isBedModel } from '../systems/rrRealism.js';   // FIELD BUGS 2026-10-05 DUNGEON-BEDS: Roleplay Realism's three bed models, the buildings' own
+import { SCENE_CHANGE_TUTORIAL_MS } from '../ui/tutorialPopup.js';   // TUT1: the popups' handler, registered by this host (the four hosts' rule) - its doors' first touches pop their pages
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
+import { isStartDungeon } from '../systems/startDungeon.js';   // TUT1: the starting cave is the welcome tour's
 
 
 
@@ -1862,6 +1865,11 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
   const sdEndClock = () => opts.sdClock?.() ?? performance.now() / 1000;   // SD-LOOK: the realm's anchored seconds - every screen's gear ticks together
   const sdEnd = _superTier ? createSdEnd({ renderer, audio, onRift: () => sdRiftStep(), onReturn: () => sdReturnStep(), riftCount: () => sdEndWord()?.count ?? null, look: () => (opts.superRiftLook ? opts.superRiftLook(dfLocation?.sdSlot) : sdEndWord()?.look) ?? null, clock: sdEndClock })   // AUDIT SD II (L6 F5): its plaque counts its Hour; SD-LOOK: and its state is its look
     : _sdRealm ? createSdEnd({ renderer, audio, riftTo: SD_REALM_TEXT.wayBack, onRift: () => opts.sdWayBack?.(), onReturn: () => opts.sdWayHome?.(), retTitle: SD_HOME_TEXT.title, retTo: SD_HOME_TEXT.to, clock: sdEndClock }) : null;   // SD5a: the Shattered Hour's way back - the same Rift, at its Threshold's back; SD10: and its way home, the Return's light where the Remnant fell
+  // TUT1: the page of the place this build stands - read inside it, a beat after the step through: Dagon's Breach's
+  // court, the arena's sand, the Abyss Dungeon or its Shattered Hour, or the first dungeon past the starting cave (the
+  // welcome tour told that one). An Ocean Hole's flooded dungeon pops its own at its door (worldModes.js enterAbyss).
+  noteFirstUse(isGateArena(dfLocation) ? 'oblivion-gate' : isArenaFloor(dfLocation) ? 'arena' : _superTier || _sdRealm ? 'abyss'
+    : isStartDungeon(dfLocation) ? null : 'dungeons', { after: SCENE_CHANGE_TUTORIAL_MS });
   // SD6c (Super-Dungeons.md section 8): THE ORRERY'S HALL in the Shattered Hour (scenes/sdHall.js) - its stones,
   // plaques, dial and bridge, stood the first frame I stand here; a handle's turn sent through the outer host (the realm
   // judges it), the realm's word on the hall read from it every frame

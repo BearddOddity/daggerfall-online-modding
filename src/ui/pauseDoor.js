@@ -196,7 +196,18 @@ export const familyPageAt = (at) => at === 'family' || FAMILY_PAGE_SECTIONS.some
  * either skin, as DISC22-B's Controls button opens its Settings. With
  * no pages to show it says why and opens nothing.
  */
+/** TUT1: the pause window this door last opened, while it stands - a tutorial page waits for it to go down
+ *  (ui/tutorialPopup.js), rather than being pushed over the menu the player is reading. */
+let _pauseShown = null;
+export const pauseFlowShowing = () => !!_pauseShown && !_pauseShown.done;
+
 export function openPauseFlow(show, hooks = {}) {
+  const win = openPauseFlowNow(show, hooks);
+  if (win) _pauseShown = win;
+  return win;
+}
+
+function openPauseFlowNow(show, hooks) {
   if (profPageAt(hooks.at)) {
     if (!profPagesShown()) { hudText(PROF_PAGES_CLOSED_LINE); return null; }
     if (typeof document !== 'undefined') return enhancedPauseOverlay(show, hooks);

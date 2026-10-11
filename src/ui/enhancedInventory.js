@@ -162,6 +162,7 @@ import { createReforgeOverlay, reforgeDoorOpen, closeReforgeDoor } from './refor
 import { SOUND } from '../systems/soundClips.js';
 
 import { expandRowValues } from '../systems/quest/questMacros.js';   // MACROS1: a used item's record through its own context (%map)
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 /** Slot id -> where it sits on the body, and what to call it.
  *
  *  THE FIGURE FACES THE READER, so the character's RIGHT arm is drawn
@@ -601,6 +602,7 @@ export function useResultAction(r, { openBook = null, openSpellbook = null, plac
   }
   // PORTAL1: a Portal Stone - close, then hand it to the host's travel map (the camp's shape)
   if (r.kind === 'openPortal') {
+    if (openPortal) noteFirstUse('portal-stone');   // TUT1
     return openPortal
       ? { kind: 'openPortal', item: r.item, closeFirst: true }
       : { kind: 'message', text: USE_PENDING.openPortal };
@@ -3553,6 +3555,7 @@ function openInfo(item) {
  * (refreshFigure's, the fpArm's), and after the unmount none (JAN2).
  */
 function walletSheet(w) {
+  noteFirstUse('wallet');   // TUT1: the wallet's sheet read
   const box = el('div', 'walletsheet');
   // WALLET-UI: the ledger (systems/walletItem.js walletLedger) - each part under its name, a row a currency, its label
   // left and its figure right, in one column; a figure not counted here gives way to why, a letter's worth stands under

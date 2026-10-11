@@ -156,6 +156,7 @@ import { buildWaveMesh, stepWaveFrame, waveFrameTimeOf, isDayHour, WAVE_FRAME_CO
 import { MONTH_NAMES } from './gameDate.js';   // CSA-I: WorldTime.Now.MonthName, a marker's label
 import { HELM_WAY, CARGO_HOLD_MISSING, steerage, isResponsive, pointOfSail, seaWind, SAIL_FREE, sailFreeGain } from './helmWay.js';   // HELM-WAY: the responsive helm; SAIL-FREE: her way under sail
 import { MAP_MARKER_MODE_COLORS, mapRect, guiMouse, mapPixelUnder, guiRectContains, vector2IntDistance, markerLabel, dayOfMonthWithSuffix, mapOverlayDraws, csFloatString, COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_BLACK, DAGGERFALL_DEFAULT_SHADOW_POS } from './comeSailAwayMap.js';   // CSA-I: the position reading
+import { noteFirstUse } from './tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export const COME_SAIL_AWAY_VENDOR = 'come-sail-away';
 /**
@@ -1840,6 +1841,7 @@ export function createComeSailAwayRuntime(deps) {
   }
   /** PlayerActivate's custom activation for one of the seven: within 3.2 of the ray it runs, farther it does not. */
   function activate(modelId, hit, mode) {
+    if (hit?.distance <= ACTIVATION_DISTANCE) noteFirstUse('ships');   // TUT1: the first touch of a boat in reach
     if (!(hit.distance <= ACTIVATION_DISTANCE)) return false;
     switch (ACTIVATIONS[modelId]) {
       case 'ActivateRudder': ActivateRudder(hit, mode); break;

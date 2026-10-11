@@ -56,6 +56,7 @@ import { expandRowValues } from './quest/questMacros.js';   // MACROS1: a used i
 import { racialSuppressInventory, LYCANTHROPY_SPELL_TAG } from './lycanthropy.js';   // DISC10-E L3: the pack's refusal, at the two doors that reach into it; HB-LYCFREE: the curse's free spell
 import { BOOK_TEMPLATE } from './books.js';   // AUDIT CARDS-5 C3: a book keyed by its text
 import { hotbarInForce } from './uiSkin.js';   // AUDIT CONTRIB H1: the diamond put away while the hotbar is
+import { noteFirstUse } from './tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 /** The slots a player fills. The two consumables are what the diamond's
  *  top and bottom cells show; `swap` is the second weapon the off-hand
  *  cell offers when the off hand is empty. */
@@ -328,7 +329,7 @@ export function emptySlotLine({ weapon = null, sheathed = false, readyKey = null
   return weapon && sheathed && readyKey ? `${QUICKSLOT_TEXT.emptySlot} ${QUICKSLOT_TEXT.readyWeapon(readyKey)}` : QUICKSLOT_TEXT.emptySlot;
 }
 
-export function useQuickslot(slot, opts = {}) { return (_performed = useQuickslotNow(slot, opts)); }   // AUDIT CONTRIB H3: what the press did, for the hotbar's flash
+export function useQuickslot(slot, opts = {}) { noteFirstUse('quickslots'); return (_performed = useQuickslotNow(slot, opts)); }   // TUT1: the first slot pressed   // AUDIT CONTRIB H3: what the press did, for the hotbar's flash
 function useQuickslotNow(slot, { entity = null, items = null, hooks = {}, say = null } = {}) {
   if (!CONSUMABLE_SLOTS.includes(slot)) throw new Error(`quickslots: ${slot} is not a consumable slot`);
   // DISC10-E L3: a quickslot USE is the inventory window's Use arm

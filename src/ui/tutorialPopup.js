@@ -1,0 +1,210 @@
+// TUT1 (2026-10-11): THE TUTORIAL POPUP - a page of systems/tutorialCatalogue.js on the live host's slot, the first
+// time the player reaches the system it explains.
+//
+// THE DOOR IS THE MESSAGE BOX'S. A tutorial page is a DaggerfallUI.MessageBox in every way that matters: it is
+// modal, it lies over whatever the player just opened, and a click or any key puts it away. So it is an ActionTextBox
+// offered through systems/notify.js's ladder (mountWindow, pushed) - the one door every host already presents, on both
+// skins (the enhanced notice panel, the classic parchment). No host is handed a new seam, and the four hosts are the
+// four presenters notify already knows.
+//
+// THE PAGE IS READ WHEN IT IS DISMISSED, NOT WHEN IT IS RAISED. A box can be REPLACED before anyone reads it - the
+// window the player opened mounts a frame later, or its lazy chunk lands and the host's showOverlay disposes whatever
+// held the slot. A replaced box (dispose) goes back to the front of the line and is offered again; only the box's own
+// close (`onClose`, which a replacement never runs) marks the page read. A box no host takes waits and is offered
+// again. So a page is never lost to a race and never marked read unseen.
+//
+// ONE AT A TIME, A BEAT LATE. The first use of a system is usually a window opening; the page is offered a beat after
+// the trigger (SHOW_DELAY_MS) so that window holds the slot first and the page is pushed OVER it, never under it.
+// While one page stands, the next waits for its close.
+//
+// THE WELCOME TOUR is one box of several pages (addNext, DaggerfallMessageBox.AddNextMessageBox): each dismissal
+// turns the page, and the last closes it and marks every page of it read.
+
+import { ActionTextBox } from './actionText.js';
+import { mountWindow } from '../systems/notify.js';
+import { tutorialById, tutorialDue, tutorialRows, markTutorialsSeen, setTutorialHandler, TUTORIAL_TOUR } from '../systems/tutorials.js';
+import { bindings } from './input.js';
+import { codeForAction } from '../systems/inputActions.js';
+import { buttonText } from '../systems/controlsConfig.js';
+import { pauseFlowShowing } from './pauseDoor.js';   // a page waits while the menu stands
+
+/** The beat between the trigger and the offer. */
+export const SHOW_DELAY_MS = 350;
+/** A door that is a scene's change (a gate's fire, a rift, the arena's floor) holds its page this long, so it is read on
+ *  the far side and not over the step through. */
+export const SCENE_CHANGE_TUTORIAL_MS = 4000;
+/** How long a page no host would take waits before it is offered again, and how many times. */
+export const RETRY_MS = 1500;
+export const MAX_RETRIES = 40;
+/** The caption under the enhanced panel. */
+export const TUTORIAL_HINT = 'click or press a key to continue';
+
+export const TUTORIAL_STYLE_ID = 'dfo-tutorial-style';
+const TUTORIAL_CSS = `
+.notice-row.tut-title { color: rgb(243,239,44); font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
+  text-shadow: 2px 2px 0 rgb(93,77,12); }
+.notice-row.tut-foot { color: #9c937d; font-size: 12px; letter-spacing: 0.06em; }
+`;
+
+/** The key bound to an action now, as the Controls page names it; null when nothing a keyboard has is bound. */
+export function boundKeyName(action, store = null) {
+  try {
+    const code = codeForAction(store ?? bindings(), action);
+    if (!code || /^Joystick/.test(code)) return null;
+    return buttonText(code, true);
+  } catch { return null; }
+}
+
+/** A page's box: an ActionTextBox that tells its owner when it is REPLACED rather than read. */
+export class TutorialBox extends ActionTextBox {
+  constructor(rows, { onClose = null, onReplaced = null } = {}) {
+    super(rows, { onClose, noticeHint: TUTORIAL_HINT });
+    this.onReplaced = typeof onReplaced === 'function' ? onReplaced : null;
+    this.tutorial = true;
+  }
+  dispose() {
+    const cb = this.onReplaced;
+    this.onReplaced = null;
+    super.dispose();
+    if (cb && !this.done) cb();
+  }
+  input() {
+    super.input();
+    if (this.done) this.onReplaced = null;   // read: a later dispose is the host tidying a closed box, not a replacement
+  }
+}
+
+// ── THE LINE ───────────────────────────────────────────────────
+// Each entry is { ids: [...], forced, at } - one page, or a tour's pages in one box; `at` is the clock time before which
+// it is not offered.
+const line = [];
+let current = null;    // { entry, box } while a box stands
+let timer = null;
+let retries = 0;
+let deps = {
+  mount: (win) => mountWindow(win, { push: true }),
+  setTimeout: (fn, ms) => { const t = globalThis.setTimeout(fn, ms); /** @type {any} */ (t)?.unref?.(); return t; },
+  now: () => Date.now(),
+  clearTimeout: (t) => globalThis.clearTimeout(t),
+  keyName: (action) => boundKeyName(action),
+  doc: () => globalThis.document ?? null,
+  held: () => pauseFlowShowing(),   // the menu is up: a page is never pushed over it
+};
+
+const queued = (id) => line.some((e) => e.ids.includes(id)) || !!current?.entry.ids.includes(id);
+
+function ensureStyle() {
+  const d = deps.doc();
+  if (!d?.createElement || d.getElementById?.(TUTORIAL_STYLE_ID)) return;
+  const st = d.createElement('style');
+  st.id = TUTORIAL_STYLE_ID;
+  st.textContent = TUTORIAL_CSS;
+  (d.head ?? d.body)?.append?.(st);
+}
+
+let timerAt = Infinity;   // when the standing timer fires
+function schedule(ms) {
+  const at = deps.now() + ms;
+  if (timer != null) {
+    if (at >= timerAt) return;
+    deps.clearTimeout(timer);   // an earlier offer is owed than the one waiting
+  }
+  timerAt = at;
+  timer = deps.setTimeout(() => { timer = null; timerAt = Infinity; offer(); }, ms);
+}
+
+function rowsOf(entry) {
+  const pages = entry.ids.map(tutorialById).filter(Boolean);
+  return pages.map((t, i) => tutorialRows(t, { keyName: deps.keyName, page: i + 1, pages: pages.length }));
+}
+
+/** Offer the line's first entry to the live host. */
+function offer() {
+  if (current || !line.length) return;
+  const now = deps.now();
+  const i = line.findIndex((e) => e.at <= now);
+  if (i < 0) { schedule(Math.max(0, Math.min(...line.map((e) => e.at)) - now)); return; }
+  if (i > 0) line.unshift(...line.splice(i, 1));   // a page that is due goes before one still held back
+  if (deps.held()) { schedule(RETRY_MS); return; }   // the menu stands: the page waits for it, and costs no retry
+  const entry = line[0];
+  // a page read meanwhile (another tab, the menu's Mark all read) or the popups turned off: it does not show
+  entry.ids = entry.ids.filter((id) => entry.forced || tutorialDue(id));
+  if (!entry.ids.length) { line.shift(); offer(); return; }
+  const [first, ...rest] = rowsOf(entry);
+  const box = new TutorialBox(first, {
+    onClose: () => {
+      if (current?.box === box) current = null;
+      markTutorialsSeen(entry.ids);
+      retries = 0;
+      schedule(SHOW_DELAY_MS);
+    },
+    onReplaced: () => {
+      if (current?.box === box) current = null;
+      line.unshift(entry);
+      schedule(RETRY_MS);
+    },
+  });
+  for (const rows of rest) box.addNext(rows);
+  ensureStyle();
+  line.shift();
+  current = { entry, box };
+  let taken = false;
+  try { taken = !!deps.mount(box); } catch (e) { console.warn('[tutorial] a host refused the page', e); }
+  if (taken) return;
+  // no host would take it (none presenting yet, or a slot that does not push): it waits its turn again
+  current = null;
+  box.onReplaced = null;
+  line.unshift(entry);
+  if (++retries <= MAX_RETRIES) schedule(RETRY_MS);
+}
+
+/**
+ * THE TRIGGER: the player has just reached system `id`. The page pops if the popups are on and it has never been
+ * read; otherwise nothing. Safe from anywhere, any number of times. Answers whether a page was queued.
+ */
+export function tutorialFirstUse(id, { after = 0 } = {}) {
+  if (!tutorialDue(id) || queued(id)) return false;
+  const wait = Math.max(SHOW_DELAY_MS, Number.isFinite(after) ? after : 0);
+  line.push({ ids: [id], forced: false, at: deps.now() + wait });
+  schedule(wait);
+  return true;
+}
+
+// THE REGISTRATION: every seam's `noteFirstUse` (systems/tutorials.js) lands here once a host has loaded this module.
+// No unregister: the hosts live as long as the page (notify's presenters say the same of townTalk's).
+setTutorialHandler(tutorialFirstUse);
+
+/** The welcome tour, for a new character: the tour's unread pages in one box. Answers whether it was queued. */
+export function startTutorialTour() {
+  const ids = TUTORIAL_TOUR.filter((id) => tutorialDue(id) && !queued(id));
+  if (!ids.length) return false;
+  line.unshift({ ids, forced: false, at: deps.now() + SHOW_DELAY_MS });   // the tour goes first: it is the beginning
+  schedule(SHOW_DELAY_MS);
+  return true;
+}
+
+/** Show a page now whether or not it was read (a "show me in game" door). */
+export function showTutorialNow(id) {
+  if (!tutorialById(id) || queued(id)) return false;
+  line.push({ ids: [id], forced: true, at: deps.now() + SHOW_DELAY_MS });
+  schedule(SHOW_DELAY_MS);
+  return true;
+}
+
+/** The line as it stands, for a probe or a test: the ids waiting, and the ids on screen. */
+export const tutorialLine = () => ({ waiting: line.map((e) => [...e.ids]), showing: current ? [...current.entry.ids] : null });
+
+/** Drop everything waiting (the popups turned off, a new game). A box on screen stays until it is put away. */
+export function clearTutorialLine() {
+  line.length = 0;
+  if (timer != null) { deps.clearTimeout(timer); timer = null; }
+  timerAt = Infinity;
+  retries = 0;
+}
+
+/** Tests: swap the seams, and start from nothing. */
+export function _setTutorialDepsForTests(over = {}) {
+  clearTutorialLine();
+  current = null;
+  deps = { ...deps, ...over };
+}

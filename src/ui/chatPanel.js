@@ -162,6 +162,7 @@ import { PARTY_GREEN_CSS } from '../net/social.js';   // CHAT-CHAN: the Party ta
 import { SHORTCODE_LIST } from '../net/chatCommands.js';   // EMOTE1: the picker offers the shortcodes' own emoji, in their order, so a pick and a :code: say the same thing
 import { getPref, setPref } from '../systems/uiPrefs.js';   // CHAT-R2: the hidden state outlives the session
 import { PIXELIFY_FIVE_FACE, PIXEL_FONT_CSS, PIXEL_TEXT_SHADOW } from './pixelifyFive.js';   // FONT1: the enhanced skin's own face, unsmoothed, with Silkscreen's five
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** The action whose key opens the chat: DFU's own cursor key (Enter by default), since opening frees the cursor. */
 export const CHAT_OPEN_ACTION = 'ActivateCursor';
@@ -989,6 +990,7 @@ export function createChatPanel({ log, onSend, roster = null, canOpen = () => tr
 
   const open = () => {
     if (!alive || log.open || !canOpen()) return false;
+    noteFirstUse('chat');   // TUT1
     log.setOpen(true);
     paint(true);   // CHAT-SCROLL: an open lands on the newest line
     input.focus?.();

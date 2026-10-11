@@ -13,6 +13,7 @@
 // systems/lootRarity.js's and systems/reforge.js's; this file draws them, and owns its sheet (one style tag, both
 // skins), so no other dress has to know a socket exists.
 import { socketsOf, gemLine, affixLabel, GEM_NAMES, SOCKET_EMPTY, gemGrade, gemKindOf, lootRarityOn } from '../systems/lootRarity.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** @param {string} tag @param {string|null} [cls] @param {string|null} [text] */
 const el = (tag, cls = null, text = null) => {
@@ -114,6 +115,7 @@ export function socketWells(item, { picture = null, onWell = null, asking = null
  * @param {any} item @param {{ id: string, count: number }[]} choices @param {(id: string) => void} onPick
  */
 export function socketChooser(item, choices, onPick) {
+  noteFirstUse('gem-sockets');   // TUT1
   ensureStyle(globalThis.document);
   if (!choices.length) return el('p', 'sock-none', 'No gem in your pack to set - any grade of Ruby, Emerald, Sapphire, Diamond, Jade, Turquoise, Malachite or Amber.');
   const ul = el('ul', 'sock-choose');

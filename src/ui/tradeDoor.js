@@ -14,6 +14,7 @@ import { registerOverlay } from './enhancedOverlays.js';
 import { NativeTradeWindow, preloadTradeArt, tradeArtLoaded } from './nativeTrade.js';
 import { racialSuppressInventory } from '../systems/lycanthropy.js';   // DISC10-E L3: the trade window's inherited refusal
 import { messageBox } from '../systems/notify.js';   // DISC10-E L3: DaggerfallUI.MessageBox
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { preloadTradeArt };
 
@@ -32,6 +33,7 @@ export function tradeDoorReady() {
  * for the pack.
  */
 export function createTradeWindow(hooks = {}) {
+  noteFirstUse('shops');   // TUT1
   // DISC10-E L3: DaggerfallTradeWindow.OnPush/Update (:369-376, :355-366) -
   // the inventory window's own suppression, inherited: a transformed
   // lycanthrope opens no counter of any mode (Identify, Repair, the guild

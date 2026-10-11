@@ -442,6 +442,8 @@ import { deepWatersOn, deepWatersSwimSettings } from './deepWatersHost.js';
 import { loadGraceActive as dwLoadGraceActive } from '../world/deepWaterRuntime.js';
 import { livingWorldOn } from '../systems/livingWorld/livingSwitch.js';   // HALT-ONE: the living watch's lane, for a watch called into a building
 import { chapterHallFactor, chapterHallShelf, chapterHallShut, CHAPTER_HALL_SHUT_LINE, seatedBook } from '../net/npcChapterLaw.js';   // CHAP3c: a hall's chapter's band on its training, spells and shelf; CHAP4b: a seat's rank at its halls
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
+import { SCENE_CHANGE_TUTORIAL_MS } from '../ui/tutorialPopup.js';   // TUT1: and the popup's handler, registered by this host (the four hosts' rule)
 /** BOUNTY1: the plaque over a town's bounty board. */
 const BOUNTY_BOARD_TEXT = 'Bounty Board';
 const NOTICE_BOARD_TEXT = 'Notice Board';   // ONE-BOARD: a town's Notice Board, while it is open to this account
@@ -7726,6 +7728,7 @@ export function createWorldModes(host) {
   /** THE OFFER at a house anyone may buy, where the plaque lists no verbs (HOME2). Yes buys it; "just go in" goes on
    *  to the door, and this house does not ask again this session. */
   function openHomeOffer(bd, price, hit, entries) {
+    noteFirstUse('holdings');   // TUT1
     townTalk?.showOverlay?.(new ChoiceWindow({
       lines: homeOfferLines(price),
       options: [
@@ -7798,6 +7801,7 @@ export function createWorldModes(host) {
   }
   /** THE RENT WINDOW: the home's rooms free to rent (and my own, to renew), each at its price a day. */
   async function openHomeRent(bd, home) {
+    noteFirstUse('holdings');   // TUT1
     const api = host.homesApi;
     if (!api) return;
     const got = await homeRooms(api, homeTownOf(bd), bd.buildingKey, host.decorCharacter?.() ?? null);
@@ -9086,6 +9090,7 @@ export function createWorldModes(host) {
    *  host's word for the template pixel's climate and season. */
   async function enterAbyss(dfLocation, site) {
     if (mode !== 'exterior' || !dfLocation?.hasDungeon) return false;
+    noteFirstUse('ocean-holes', { after: SCENE_CHANGE_TUTORIAL_MS });   // TUT1: an Ocean Hole's flooded dungeon, read inside it
     const hit = { dfLocation, climateBase: site?.climateBase ?? 2, season: site?.season ?? 0, group: `abyss:${dfLocation.mapTableData?.mapId ?? 0}`, door: null, dfBlock: null, recordIndex: -1 };
     return tryEnterDungeon(hit, [], { preferEnterMarker: false });
   }

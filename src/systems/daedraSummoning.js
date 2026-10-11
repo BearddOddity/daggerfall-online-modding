@@ -42,6 +42,7 @@
 
 import { FACTION_FLAGS } from './factionRep.js';
 import { FACTION_TYPES, GUILD_GROUPS } from '../formats/factionFile.js';
+import { noteFirstUse } from './tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** The sixteen princes, in DFU's own array order - the order is
  *  load-bearing twice: index 0 is Hircine (Glenmoril's, and excluded
@@ -235,6 +236,7 @@ export function attemptSummoning({
   raining = false, storming = false, rolls = Math.random,
 } = {}) {
   const cost = summoningCost(summonerRep);
+  noteFirstUse('daedra-summoning');   // TUT1
   if (gold < cost) return { kind: 'poor', cost };
 
   // Sheogorath's 5% (15% storming) hijack, rolled BEFORE the summoning

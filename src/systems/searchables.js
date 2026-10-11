@@ -41,6 +41,7 @@ import { createRandomWeapon, createRandomArmor, createRandomJewellery, createRan
 import { createRandomBook } from './books.js';
 import { setItemFields, mintCondition, isAmmunition } from './itemTemplates.js';
 import { rollLootRarity, pileSource } from './lootRarity.js';
+import { noteFirstUse } from './tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 // ── reach and time ──────────────────────────────────────────────────
 /** Half a door's reach (DoorActivationDistance, 128 classic units): 64 units, 1.6 m. */
@@ -94,6 +95,7 @@ export const searchName = (kind, locked = false) => `${locked ? 'Locked ' : ''}$
 /** @typedef {'foe'|'loot'|'nothing'} SearchOutcome */
 /** A dungeon's object: a third each. A graveyard's headstone: two in three nothing, the last third split evenly. */
 export function rollSearchOutcome({ graveyard = false, rolls = Math.random } = {}) {
+  noteFirstUse('searchables');   // TUT1
   const r = rolls();
   if (graveyard) return r < 2 / 3 ? 'nothing' : (r < 5 / 6 ? 'loot' : 'foe');
   return r < 1 / 3 ? 'foe' : (r < 2 / 3 ? 'loot' : 'nothing');

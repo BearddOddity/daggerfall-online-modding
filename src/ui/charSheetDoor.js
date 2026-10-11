@@ -48,6 +48,7 @@ import { VirtueLevelUpScreen } from './virtueLevelUp.js';   // ORL1
 import { levelNotices } from './levelNotice.js';   // LV2: who already played the fanfare
 import { usesVirtueLeveling } from '../systems/oblivionLeveling.js';   // ORL1
 import { spendPoolLowest } from '../systems/chargen.js';   // LV1: the headless pool policy, for the font-less escape
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { charSheetArtLoaded };
 
@@ -105,6 +106,7 @@ export function charSheetDoorReady() {
  * button, on either skin.
  */
 export function createCharSheetWindow(deps = {}) {
+  noteFirstUse(deps.entity?.readyToLevelUp ? 'level-up' : 'character-sheet');   // TUT1
   // AUDIT 39: THE SHEET IS WHERE DFU LEVELS YOU UP. UpdatePlayerValues
   // (DaggerfallCharacterSheetWindow.cs:369-394) mounts the stats
   // rollout on the sheet itself whenever ReadyToLevelUp is set - there
