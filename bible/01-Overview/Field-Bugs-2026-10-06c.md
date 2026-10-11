@@ -103,8 +103,10 @@ online home, and whether its Built in list was ever cleared.
 
 **The Riddle (4).** A0C01Y03's first step is `toting _flowers_ and _spouse_ clicked saying 1011`: the spouse speaks only
 when clicked while the Yellow Flowers the questgiver handed over are carried. Without them the click is registered and
-rearmed and nothing is said - TotingItemAndClickedNpc.CheckTrigger, verbatim - and a quest person's stand shows no
-plaque at all (World Tooltips names a quest ITEM alone), so he reads as "not interactable" in Daggerfall Unity too.
+rearmed and nothing is said - TotingItemAndClickedNpc.CheckTrigger, verbatim - and a quest person's stand showed no
+plaque at all, so he read as "not interactable". (Corrected by FIELD BUGS 2026-10-11g QUEST-NAME: this said World
+Tooltips names a quest ITEM alone, reading only the mod's quest-resource arm. Its StaticNPC arm comes first and names a
+quest person, who carries a StaticNPC in DFU - the port names him now.)
 Checked, against DFU's own source: StaticNPCClick returns after DoClick for every quest person (no talk window), and the
 port's click (worldModes.js clickQuestFlat) does the same; the real script run through the machine gives the flowers as
 a quest item (its UID and symbol) and fires `_S.02_` on the click when they are carried, and the world host's

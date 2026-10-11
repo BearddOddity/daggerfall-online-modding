@@ -8864,8 +8864,11 @@ showing you the list of items that are available"): THE HOVER PLAQUE.
 Daggerfall tells you nothing about a pile until you open it, and
 opening it is a window. Look at a pile now and a small plaque names
 what is in it, so "is this worth stopping for" is answered in the
-world rather than through a door. Six lines then "and N more", counts
-only on stacks - a pile is a glance, not a list.
+world rather than through a door. Six lines at a time, counts only on
+stacks - a window over the pile that follows the wheel's light, the
+rows it leaves counted above and below (FIELD BUGS 2026-10-11g
+LOOT-SCROLL: six then a tail no wheel could reach, until an elite's
+grant stood past the sixth row).
 
   IT IS A READOUT, NOT A CONTROL: no clicks, no keys, nothing to
   dismiss, pointer-events off, aria-hidden (a crosshair is not a
@@ -18240,8 +18243,8 @@ nextSelection` - pure, and clamped at both ends rather than wrapping,
 because a highlight off the end points the take at nothing and a wrap
 makes a flick of a trackpad unpredictable. The row -> item walk is the
 DRAW's own (`hoverItemAt` over `hoverItems`), so a hole in a pack is not
-a row and is not an item either, and the "and N more" tail names nothing
-and takes nothing. The MOVE is `systems/inventory.js takeOneInto`,
+a row and is not an item either; every row is reachable (LOOT-SCROLL,
+FIELD BUGS 2026-10-11g), the plaque's six being only what is drawn. The MOVE is `systems/inventory.js takeOneInto`,
 which is DoTransferItem's first statement written ONCE: gold to the
 counter, never the item list. `corpseMarker.js`'s bulk take is that door
 applied to every row now rather than a second copy of the law.

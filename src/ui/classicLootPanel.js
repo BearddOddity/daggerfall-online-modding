@@ -73,10 +73,12 @@ function fit(fnt, text, w) {
   return `${t}…`;
 }
 
-/** The rows the panel lists: the frame's rows, their stacks, and "and N more". */
+/** The rows the panel lists: the frame's rows, their stacks, and "and N more" - LOOT-SCROLL: with the rows the plaque's
+ *  window leaves above it in the same foot line (`above`; the panel's layout keeps its one foot line). */
 export function lootPanelLines(frame) {
   const rows = (frame?.rows ?? []).map((r) => (r.stack > 1 ? `${r.name} (${r.stack})` : r.name));
-  const more = frame?.rest > 0 ? `and ${frame.rest} more` : null;
+  const above = frame?.above > 0 ? frame.above : 0;
+  const more = above ? (frame.rest > 0 ? `${above} above, ${frame.rest} more` : `${above} more above`) : frame?.rest > 0 ? `and ${frame.rest} more` : null;
   return { title: frame?.title ?? '', rows, more };
 }
 

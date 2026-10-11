@@ -877,7 +877,7 @@ export async function settleRealmTradeHalf({ session, half, wait = (ms) => new P
     for (;;) {
       const a = await realmTradeCall(at.io, { id: at.id, lease: at.lease, seq: at.seq, sid: h.sid, give: h.give, get: h.get, pick: h.pick });
       if (a.ok && a.data?.state === 'done') return { ok: true, seq: a.data.seq, items: Array.isArray(a.data.items) ? a.data.items : [], gold: a.data.gold ?? 0 };
-      if (a.ok && a.data?.state === 'refused') return { ok: false, why: a.data.why ?? 'refused' };
+      if (a.ok && a.data?.state === 'refused') return { ok: false, why: a.data.why ?? 'refused', ...(a.data.held === 'mine' || a.data.held === 'theirs' ? { held: a.data.held } : {}) };   // FIELD BUGS 2026-10-11g HELD-SIDE: whose hold it was
       if (!a.ok && REALM_LOST.includes(a.error)) return { ok: false, error: a.error, why: a.error };
       // AUDIT REALM L2-F1: a record off the half's sequence - the service answers a settled trade's outcome before it looks
       // at the sequence (server-account/src/realmTrade.js), so this is a move this tab never made: only a join reads it
@@ -889,7 +889,7 @@ export async function settleRealmTradeHalf({ session, half, wait = (ms) => new P
       await wait(REALM_TRADE_POLL_MS);
     }
   });
-  return r.ok || r.unknown ? r : { ...r, text: realmTradeRefusalText(r.why ?? r.error ?? 'refused') };
+  return r.ok || r.unknown ? r : { ...r, text: realmTradeRefusalText(r.why ?? r.error ?? 'refused', r.held ?? null, session.tradeHeld) };   // HELD-SIDE: mine, said with my hold's reason
 }
 
 /**

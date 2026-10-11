@@ -83,7 +83,7 @@
   {
     "name": "INT3-the-trade-unheld",
     "file": "server-account/src/realmTrade.js",
-    "old": "  if (heldBy) return refuse(db, sid, heldBy.error, playerId, asker, true);\n",
+    "old": "  if (heldBy) return refuse(db, sid, `${heldBy.error}:${heldA ? 'a' : 'b'}`, playerId, asker, true);\n",
     "new": "",
     "tests": [
       "test/int2_judge.test.js"
