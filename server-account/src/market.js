@@ -1851,6 +1851,11 @@ export async function marketVendors(ctx, player, env, { region, character = null
   // all of them on a deploy's reload - backed the database's writes up until D1 refused as overloaded and the deploy's own
   // guest mint answered 500. The hour's cron reckons the towns waiting longest; a trader opened (/vendor) and a seller's
   // own page (/myvendors) reckon their towns; this read tells what they sold.
+  // PATRON-LOAD II (2026-10-11, the owner: "I think the database is overloaded"; migration 0107): AND BY THE LISTING'S OWN
+  // REGION. Both statements walked every open listing in the market and, for each, every piece in its town (~720,000 rows
+  // a statement, 4.2 billion of the day's 5.66 billion). A trader's listing carries its home's region (listGood), so
+  // `l.region = ?2` asks what `h.region = ?2` asks, and idx_market_vendor_region answers it: the region's trader listings
+  // alone, newest first, each found its piece by idx_home_decor_piece.
   const me = typeof character === 'string' && CHAR_ID_RE.test(character) ? character : '';
   const columns = `l.*, d.map_id AS v_map, d.id AS v_id, h.building_key AS v_key, h.owner_name AS v_owner, h.player AS v_player,
       h.entry AS v_entry, (h.player = ?3 AND h.char_id = ?4) AS v_mine,
@@ -1860,7 +1865,7 @@ export async function marketVendors(ctx, player, env, { region, character = null
   const { results: newest = [] } = await db.prepare(`SELECT ${columns}
     FROM market_listings l JOIN home_decor d ON d.map_id = l.vendor_map AND d.id = l.vendor_id
     JOIN homes h ON h.map_id = d.map_id AND h.building_key = d.building_key
-    WHERE l.state = 'open' AND l.expires_at > ?1 AND l.vendor_id IS NOT NULL AND h.region = ?2 AND h.player = l.seller AND d.yard = 0
+    WHERE l.state = 'open' AND l.expires_at > ?1 AND l.vendor_id IS NOT NULL AND l.region = ?2 AND h.region = ?2 AND h.player = l.seller AND d.yard = 0
       AND h.guild_id IS NULL AND json_extract(d.place, '$.station') = '${VENDOR_STATION}'
     ORDER BY l.at DESC LIMIT ${VENDOR_BOARD_SHOWN}`).bind(nowS, region, player.id, me).all();
   // AUDIT LW-II-2 W6: AND EVERY PUBLIC TRADER OF THE REGION its patrons may buy of - each such house's newest piece, where
@@ -1869,7 +1874,7 @@ export async function marketVendors(ctx, player, env, { region, character = null
   // came, and its town's word was forgotten. Bounded as the board is: a house a row, VENDOR_BOARD_SHOWN of them
   const { results: houses = [] } = await db.prepare(`SELECT * FROM (SELECT ${columns},
       ROW_NUMBER() OVER (PARTITION BY d.map_id, d.building_key, d.id ORDER BY l.at DESC, l.id) AS v_rank
-    ${PATRON_FROM} WHERE ${PATRON_SQL} AND l.expires_at > ?1 AND h.region = ?2) WHERE v_rank = 1
+    ${PATRON_FROM} WHERE ${PATRON_SQL} AND l.expires_at > ?1 AND l.region = ?2 AND h.region = ?2) WHERE v_rank = 1
     ORDER BY at DESC LIMIT ${VENDOR_BOARD_SHOWN}`).bind(nowS, region, player.id, me).all();
   const traderOf = (/** @type {any} */ l) => `${l.v_map}:${l.v_key}:${l.v_id}`;
   const shown = new Set(newest.map(traderOf));

@@ -1027,6 +1027,56 @@ the hour it opens in, S4), `auditscale` D7 (the shut market's hours marked - twe
 re-aimed by content: `lw15.json`'s takes-keepsake, P2-floor, told, cron-job, P3-law, P3-refusal and P8-switch (its
 tests the service lane's file too - the reckoning asks the switch itself now).
 
+### 8.5 PATRON-LOAD and PATRON-LOAD II - the region's traders read, under load (2026-10-10, 2026-10-11)
+
+PATRON-LOAD (acct109, PRs #763 and #764; 2026-10-10, Mac: "the newest update account service keeps failing"): the
+account deploy failed three times on `D1 DB is overloaded [7429]` and a guest mint's 500. The region's read
+(`/v1/market/vendors`, `market.js marketVendors`) reckons no patrons any more - the hour's cron, a trader opened
+(`/vendor`) and a seller's own page (`/myvendors`) do; a failed region read backs off (60 s, doubling to PATRON_READ_S,
+`scenes/world.js`); the deploy asks D1 again on 7429, and its smoke checks' guest mints on a 5xx.
+
+PATRON-LOAD II (acct110, migration `0107_trader_reads.sql`; 2026-10-11, the owner: "I think the database is
+overloaded"). With acct109 live the next deploy's smoke checks still read 500 on four routes that share nothing
+(`/v1/auth/guest`, `/v1/mod/mute`, `/v1/renown/xp`, `/v1/homes/town`, each answered on a retry). Read off the database
+(a one-off read-only diagnostics workflow, removed once read - `wrangler d1 insights` over a day, D1's hourly totals):
+
+- Rows read an hour went from ~190 million (21:00 UTC, 10-10) to 1.0 billion at 22:00, 1.58 billion at 23:00 and 0.75
+  billion in the first 28 minutes of 00:00 - on fewer queries each hour. LW15 deployed at 21:47.
+- Two statements were 4.2 billion of the day's 5.66 billion rows: marketVendors' newest pieces (3,201 runs, ~718,000
+  rows and ~867 ms each) and each house's newest (2,573 runs, ~741,000 rows, ~858 ms) - about 83 minutes of the
+  database's time in the 2.5 hours after LW15, on a database that runs one statement at a time.
+- Why: each planned on `idx_market_open (state=?)` - every open listing in the market, every region - and found each
+  one's trader by `idx_home_decor_yard (map_id, yard)`, every piece inside every home of its town: `home_decor`'s key is
+  `(map_id, building_key, id)` and a listing names its trader by `(vendor_map, vendor_id)`. The region was asked last,
+  of the home. PATRON-LOAD had taken the reckoning out of this read; the read itself was the weight.
+
+The fix: `idx_home_decor_piece (map_id, id, yard)` finds a trader's piece by its town and id - `yard` third, so it
+outranks `idx_home_decor_yard` on a database with no ANALYZE statistics (with two columns the planner tied and kept the
+old index); `idx_market_vendor_region (region, at)`, partial over the open trader listings; and both statements ask
+`l.region = ?2` - a trader's listing takes its home's region when it is stocked (`listGood`) and nothing moves either
+after, so the answer is the same answer. On a seeded database (242,000 pieces, 54,400 open listings) the two went from
+588 and 659 ms to 2.2 and 1.6 ms, row for row the same. A stall's own read (`VENDOR_STANDS_SQL`) and the patrons'
+town reads find their piece by the new index too. No client or relay change: merging drops nobody.
+
+Pins: `test/patronload2.test.js` (2) - each statement's plan on the real migrations (the region's index, the piece's
+own, no walk of the market or of a town, the newest read in the index's order) and the stall's read;
+`tools/mutants/patronload2.json` 6 of 6 dead.
+
+Left, measured or read and not changed here:
+
+- The seats' witness rows read whole (`world_witness` kind 'seat'): 60,466 times a day at ~9,900 rows - 598 million
+  rows and ~22 minutes of the database's time. The minute's auctions (`seatHolding.js titheAt`, `confirmedSeats`
+  without the kept rows) and the Turning read past STORM-SHED's isolate cache.
+- A town's yards (`home_decor ... yard = 1`): 322,806 reads and 299 million rows a day, after YARD-SHED's cache.
+- The reckoning still runs on a trader opened, a seller's own page and a door left public (up to
+  PATRON_READ_STATEMENTS each), and the hour's cron spends ~54 statements on it.
+- The seat Turning (Sunday 18:00 UTC) runs with no statement budget and, if its batch fails, again every minute.
+- 0043's `idx_guild_writs_due (state, expires_at)` never applied - 0034 had taken the name for `(state, returned,
+  expires_at)` - so the minute's writ sweep walks every open writ.
+- The client's asks that do not back off on a failure: `/v1/prof/pixels` again every 5 s (`gatherHost.js`, three tries
+  each - a player's ~2,160 an hour against a failing service), `/v1/prof/state` every 30 s, `/v1/seats/list` and
+  `/v1/prof/motherlodes` every 60 s, `/v1/homes/layouts` every 24 s - none of them jittered.
+
 ## 9. LW16 - the word travels (BUILT 2026-10-09)
 
 Overall improvement: what happens in one town is heard in the next. The law is `src/systems/livingWorld/carried.js`
