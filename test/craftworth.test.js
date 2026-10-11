@@ -10,11 +10,11 @@ import './modsOff.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mintPiece } from '../src/systems/smithItems.js';
+import { mintPiece, temperItem } from '../src/systems/smithItems.js';
 import { tradeCost, getTradePrice, counterValueOf } from '../src/systems/tradeModes.js';
-import { craftedRarityWorth, applyRarity } from '../src/systems/lootRarity.js';
+import { craftedRarityWorth, applyRarity, rareEnchantWorth } from '../src/systems/lootRarity.js';
 import { itemValueOf } from '../src/systems/itemTemplates.js';
-import { itemWorth } from '../src/systems/itemLaw.js';
+import { itemWorth, itemFindings } from '../src/systems/itemLaw.js';
 import { patronWorth } from '../src/net/patronLaw.js';
 
 const PROV = '0123456789abcdef';
@@ -68,4 +68,23 @@ test('CRAFT-WORTH the keyed shelf (the counter with no trade art) prices a sale 
   assert.match(fn('sellPrice'), /const lot = tradeCost\('Sell', \[it\], \{ quality: b\.quality, priceAdjustment: shopAdjustment\(b, 'Sell'\) \}\);\n\s*return getTradePrice\('Sell', lot\.cost, b\.quality, /);
   assert.match(fn('showSellList'), /&& !isSummoned\(it\)\);/);
   assert.match(fn('doSell'), /\n\s*if \(isSummoned\(it\)\) return 0;/);
+});
+
+test('AUDIT CRAFT-WORTH a FOUND piece tempered keeps its patron worth (a temper writes `quality`, a craft mark, onto it - only a crafted piece loses its roll), a crafted piece with no value of its own is priced at its base untouched, and a malformed line list is no throw (mutants: the strip on any marked piece; the roll off the base; the list unguarded)', () => {
+  const found = mint('dagger:iron', 1, 3);
+  for (const k of ['provenance', 'quality', 'recipe']) delete found[k];
+  applyRarity(found, 'rare', () => 0.5);
+  const before = patronWorth(found, itemWorth);
+  assert.ok(before > 1000, `a found Rare's patron worth (${before})`);
+  assert.equal(temperItem(found, { quality: 2 }), true, 'tempered to Fine, by the real producer');
+  assert.equal(found.quality, 2);
+  assert.deepEqual(itemFindings(found), [], 'a lawful piece');
+  assert.equal(patronWorth(found, itemWorth), before, 'its lines are its own - the patron still reads them');
+  const mw = mint('staff:pine', 4, 7919);
+  const bare = mint('staff:pine', 1, 7919);
+  assert.equal(counterValueOf({ ...mw, value: NaN }), itemValueOf({ ...bare, value: NaN }), 'no value: the base, nothing taken off it');
+  assert.equal(counterValueOf({ ...mw, value: undefined }), itemValueOf({ ...bare, value: undefined }));
+  assert.equal(counterValueOf({ ...mw, value: 5 }), 1, 'a value under its roll (a record written low) sells for a gold, never a debt');
+  assert.equal(craftedRarityWorth({ ...mw, affixes: {} }), rareEnchantWorth(mw), 'a malformed list is worth nothing, never a throw');
+  assert.ok(Number.isFinite(sale({ ...mw, affixes: {} })), 'and the Sell walk still totals');
 });

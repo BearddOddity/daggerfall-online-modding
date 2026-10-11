@@ -91,7 +91,9 @@ test('STACK-CAP the ally lane: a party mate\'s re-casts renew the mate\'s bundle
 });
 
 // THE ONE CONSTRUCTION SEAM, swept: no door in src/ adds rounds onto a live entry - every like-kind merge goes through
-// renewRounds. A new door that writes `roundsRemaining +=` (or a timer `until +=`) brings back the bank.
+// renewRounds. A new door that writes `roundsRemaining +=` (or `roundsRemaining = x.roundsRemaining + n`) brings back the
+// bank; the two timers that kept a buff's time outside an entry (the torch's light, the gate court's trap) are pinned by
+// name - camp fuel and the like add to their own timers by design, so `until +=` is not swept.
 test('STACK-CAP sweep: nothing in src/ adds to an entry\'s roundsRemaining, and the gate court\'s trap timer renews (mutants: a stacking door added anywhere)', () => {
   const files = [];
   const walk = (dir) => {
@@ -105,7 +107,8 @@ test('STACK-CAP sweep: nothing in src/ adds to an entry\'s roundsRemaining, and 
   const hits = [];
   for (const p of files) {
     const lines = readFileSync(p, 'utf8').split('\n');
-    lines.forEach((l, i) => { if (/\broundsRemaining\s*\+=/.test(l) && !/^\s*(\/\/|\*)/.test(l)) hits.push(`${p.slice(ROOT.length + 1)}:${i + 1}`); });
+    // AUDIT STACK-CAP: both spellings of an addition - `+=`, and an assignment that reads the rounds back plus more
+    lines.forEach((l, i) => { if (/\broundsRemaining\s*(\+=|=\s*[\w.?]*roundsRemaining\s*\+)/.test(l) && !/^\s*(\/\/|\*)/.test(l)) hits.push(`${p.slice(ROOT.length + 1)}:${i + 1}`); });
   }
   assert.deepEqual(hits, [], 'a door that stacks rounds');
   const court = readFileSync(join(ROOT, 'src/scenes/gateCourt.js'), 'utf8');
@@ -113,4 +116,22 @@ test('STACK-CAP sweep: nothing in src/ adds to an entry\'s roundsRemaining, and 
   assert.doesNotMatch(court, /trapMark\.until \+=/);
   const torches = readFileSync(join(ROOT, 'src/scenes/droppedTorches.js'), 'utf8');
   assert.match(torches, /if \(inc\) renewRounds\(inc, st\.fireDuration\);/);
+});
+
+test('AUDIT STACK-CAP an ACTING incumbent renewed in its last listed round runs the round a fresh cast would have run - a Regenerate, a Continuous Damage - so a re-cast at the tail buys what letting it lapse and casting again buys (mutants: the tail round never run; run on every renewal)', () => {
+  const heals = (waitTicks) => {
+    const e = being();
+    let n = 0;
+    const sinks = { heal: () => { n++; } };
+    const regen = buildCustomSpell({ slots: [{ type: 18, subType: 255, settings: { ...blankEffectSettings(), durationBase: 4, magnitudeBaseLow: 4, magnitudeBaseHigh: 4 } }], rangeType: 0 });
+    applySpell(regen, 1, e, sinks, () => 0.5, null, {});
+    for (let i = 0; i < waitTicks; i++) tickActiveEffects(e, sinks, () => 0.5);
+    const before = n;
+    applySpell(regen, 1, e, sinks, () => 0.5, null, {});
+    for (let i = 0; i < 12; i++) tickActiveEffects(e, sinks, () => 0.5);
+    return n - before;
+  };
+  assert.equal(heals(6), 5, 'lapsed, then cast: the five rounds a fresh cast heals');
+  assert.equal(heals(4), 5, 'renewed at its tail (0 left, still listed): the same five');
+  assert.equal(heals(1), 4, 'renewed with three rounds still standing: no round run now - topped up to a fresh cast\'s four, never stacked (3 + 5)');
 });

@@ -113,7 +113,10 @@ export function patronWorth(item, worthOf) {
   if (!item || !CRAFT_MARKS.some((k) => Object.prototype.hasOwnProperty.call(item, k))) return worth;
   const plain = { ...item, value: 0 };
   for (const k of CRAFT_MARKS) delete plain[k];
-  for (const k of CRAFT_ROLLED) delete plain[k];   // CRAFT-WORTH: nor what its quality rolled
+  // CRAFT-WORTH: nor what its quality rolled - a CRAFTED piece's alone (its provenance, as lootRarity.js craftedRarityWorth
+  // reads it). AUDIT CRAFT-WORTH: `quality` is a mark a FOUND piece carries too once tempered (smithItems.js temperItem),
+  // and a found Rare tempered to Fine lost its lines to this strip - a patron's worth of 1,863 fell to 3
+  if (typeof item.provenance === 'string') for (const k of CRAFT_ROLLED) delete plain[k];
   return Math.min(worth, worthOf(plain));
 }
 

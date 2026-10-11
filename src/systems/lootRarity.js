@@ -1228,7 +1228,8 @@ export const rareEnchantWorth = (item) => Math.round(RARE_ENCHANT_WORTH * (isGar
  *  45, ~320k at the service's own throttle). 0 for a piece no craft made, or one its quality rolled nothing onto. */
 export function craftedRarityWorth(item) {
   if (typeof item?.provenance !== 'string' || !ROLLED_TIERS.includes(item.rarity)) return 0;
-  return affixesWorth(item.affixes, item) + (item.rarity === 'rare' ? rareEnchantWorth(item) : 0);
+  // AUDIT CRAFT-WORTH: a record's lines only as a list - a malformed one is worth nothing here, never a throw in the Sell walk
+  return affixesWorth(Array.isArray(item.affixes) ? item.affixes : [], item) + (item.rarity === 'rare' ? rareEnchantWorth(item) : 0);
 }
 
 /** THE HOST DOOR. Roll every eligible item of a freshly generated list

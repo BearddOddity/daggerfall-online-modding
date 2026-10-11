@@ -63,5 +63,23 @@
       "test/stackcap.test.js",
       "test/wbx_gate_fixes.test.js"
     ]
+  },
+  {
+    "name": "AUDIT-STACK-CAP-tail-round-never-run",
+    "file": "src/systems/effects.js",
+    "old": "  if (inc.roundsRemaining <= 0) runEffectRound(inc, target, sinks, rolls);",
+    "new": "",
+    "tests": [
+      "test/stackcap.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-STACK-CAP-round-run-on-every-renewal",
+    "file": "src/systems/effects.js",
+    "old": "  if (inc.roundsRemaining <= 0) runEffectRound(inc, target, sinks, rolls);",
+    "new": "  runEffectRound(inc, target, sinks, rolls);",
+    "tests": [
+      "test/stackcap.test.js"
+    ]
   }
 ]

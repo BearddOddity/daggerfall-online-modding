@@ -412,6 +412,10 @@ export async function supplyGuildWrit(ctx, player, env, { character, region, wri
   if (Number(w.region) !== region) return { error: 'writ-elsewhere' };
   if (units > Number(w.left_units)) return { error: 'writ-short' };
   if (!(await deliverMay(db, me, w.guild_id))) return { error: 'writ-own-guild' };
+  // AUDIT CRAFT-HOLD (the exploit audit): a held character's Stores fill no guild's writ - its units handed to another
+  // player's guild for Drakes, as a listing and a buy order (INT3) already refuse
+  const frozen = await realmHoldOf(db, me, character);
+  if (frozen) return frozen;
   const total = units * Number(w.pay);
   // SEAT2b: what of the delivery is bought (spent first) - a seat writ's influence counts its own and its bought apart
   const boughtSpent = w.seat != null ? Math.min(units, Math.max(0, Number((await storeOf(db, me, character, w.material)).bought ?? 0))) : 0;
@@ -814,6 +818,9 @@ async function moveGuildStores(ctx, player, env, { character, material: key, uni
   const g = a.me.guild_id;
   // AUDIT 31 R1: any member takes back their own deposit; the rest is an Officer's or the Guildmaster's
   if (kind === 'withdraw' && !guildTakeMay(rank, units, await ownDeposit(db, g, key, me, character))) return { error: 'guild-stores-mine' };
+  // AUDIT CRAFT-HOLD (the exploit audit): nor go into its guild's Stores - where an Officer, another of the account's
+  // characters among them, takes them out as bought units its own
+  if (kind === 'deposit') { const held = await realmHoldOf(db, me, character); if (held) return held; }
   if (await acting(ctx, player)) return { error: 'writ-rate' };
   const who = displayName(player);
   const nonce = mintId(rand);

@@ -253,6 +253,18 @@ export function markCounterBought(items, { online = isOnlinePage() } = {}) {
   return n;
 }
 
+/** CRAFT-WORTH (2026-10-11): THE VALUE A COUNTER PAYS A PIECE ON - its own (itemValueOf), less what a crafted piece's
+ *  quality rolled onto it (lootRarity.js craftedRarityWorth): a counter pays for a crafted piece what it pays for the
+ *  plain piece its recipe makes, never for its Magic or Rare lines. Every selling arm reads it - the trade windows'
+ *  Sell and SellMagic, and the keyed shelf's (scenes/worldModes.js sellPrice). AUDIT CRAFT-WORTH: the roll comes off a
+ *  piece's OWN value alone - a piece with none is priced at its template's base (itemValueOf), which never held the roll. */
+export function counterValueOf(item) {
+  const v = itemValueOf(item);
+  if (!Number.isFinite(item?.value)) return v;   // AUDIT CRAFT-WORTH: the base the read falls back to carries no roll to take off
+  const rolled = craftedRarityWorth(item);
+  return rolled > 0 ? Math.max(1, v - rolled) : v;
+}
+
 /**
  * UpdateCostAndGold (:425-489). Answers the cost strip's number and
  * whether the mode-action button is ENABLED - which is the same walk,
@@ -269,16 +281,6 @@ export function markCounterBought(items, { online = isOnlinePage() } = {}) {
  * is what getTradePrice's floor below asks a gold for. The sale and
  * identify arms count none.
  */
-/** CRAFT-WORTH (2026-10-11): THE VALUE A COUNTER PAYS A PIECE ON - its own (itemValueOf), less what a crafted piece's
- *  quality rolled onto it (lootRarity.js craftedRarityWorth): a counter pays for a crafted piece what it pays for the
- *  plain piece its recipe makes, never for its Magic or Rare lines. Every selling arm reads it - the trade windows'
- *  Sell and SellMagic, and the keyed shelf's (scenes/worldModes.js sellPrice). */
-export function counterValueOf(item) {
-  const v = itemValueOf(item);
-  const rolled = craftedRarityWorth(item);
-  return rolled > 0 ? Math.max(1, v - rolled) : v;
-}
-
 export function tradeCost(mode, staged = [], {
   quality = 0, priceAdjustment = 1000, holidayId = HOLIDAYS.None,
   guildFactionId = null, reducedRepairCost = null, reducedIdentifyCost = null,

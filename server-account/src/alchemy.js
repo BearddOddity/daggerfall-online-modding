@@ -203,8 +203,9 @@ export async function disenchantPiece(ctx, player, env, { character, provenance,
   if (!p) return { error: 'prof-no-piece', ...(await db.prepare('SELECT 1 FROM prof_disenchants WHERE player = ?1 AND provenance = ?2').bind(player.id, provenance).first() ? { why: 'disenchanted' } : {}) };   // AUDIT PROF-541 B2
   if (p.owner !== player.id) return { error: 'prof-not-yours' };
   // CRAFT-HOLD (the exploit audit): its Essence goes to the Stores the market sells from - a held character's craft is
-  // never turned to goods under another character's name (prepareRealmRecord's outbound hold reads the acting record alone)
-  const pieceHeld = await craftHoldOf(db, player.id, provenance);
+  // never turned to goods under another character's name (prepareRealmRecord's outbound hold reads the acting record alone).
+  // AUDIT CRAFT-HOLD: asked only where no record is - a realm actor's own record proves the piece its, below
+  const pieceHeld = side.at ? null : await craftHoldOf(db, player.id, provenance);
   if (pieceHeld) return pieceHeld;
   const r = recipeById(p.recipe);
   if (!pieceListable(p.recipe)) return { error: 'prof-no-essence' };   // AUDIT PROF-541 R2-S6: arrows (marketLaw pieceListable) - no piece the pack holds by its record

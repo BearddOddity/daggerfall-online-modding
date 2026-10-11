@@ -727,6 +727,16 @@ function runEffectRound(a, target, sinks, rolls) {
 
 /** Push a new active entry and fire its INITIAL magic round (F17):
  *  acts now and consumes round 1, exactly as AssignBundle does. */
+/** STACK-CAP (AUDIT): THE RENEWAL OF AN ACTING INCUMBENT - Regenerate and Continuous Damage's three, whose rounds DO
+ *  something. renewRounds tops one up to a fresh cast's rounds, but a fresh cast also runs its first round at once
+ *  (pushActive) and a renewal never does: one renewed in its last listed round (0 left, swept on the next pass) gave a
+ *  tick fewer than letting it lapse and casting again (a Regenerate of five rounds healed four times). That round runs
+ *  here, on the incumbent's own settings, exactly when the cast would otherwise have bought one fewer. */
+function renewActing(inc, rounds, target, sinks, rolls) {
+  if (inc.roundsRemaining <= 0) runEffectRound(inc, target, sinks, rolls);
+  renewRounds(inc, rounds - 1);
+}
+
 function pushActive(target, entry, sinks, rolls) {
   target.activeEffects = target.activeEffects || [];
   target.activeEffects.push(entry);
@@ -863,8 +873,8 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
   const heldItem = ctx.heldItem ?? null;
   const pinStart = target.activeEffects?.length ?? 0;
   // AUDIT ALLY-CAST C2: a party mate's cast (ctx.allyCast, tagged bundleAlly below) and the target's own never
-  // merge into one another. F12's incumbent law - a like-kind recast adds rounds and keeps the incumbent's
-  // magnitude/chance - was harmless while no outside source ever buffed a player; a level-1 mate's 1-point
+  // merge into one another. F12's incumbent law - a like-kind recast merges its rounds (renewed since STACK-CAP) and
+  // keeps the incumbent's magnitude/chance - was harmless while no outside source ever buffed a player; a level-1 mate's 1-point
   // Shield capped the target's own 60-point Shield at one for forty rounds, and a mate's Regenerate kept its
   // caster level over the target's own stronger cast. An ally's bundle stands beside mine, never over it.
   const allyCast = ctx.allyCast === true;
@@ -1023,7 +1033,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
       const rounds = rollDuration(e, casterLevel);
       if (rounds > 0) {
         const inc = findInc((a) => a.kind === 'continuousDamage');
-        if (inc) renewRounds(inc, rounds - 1);
+        if (inc) renewActing(inc, rounds, target, sinks, rolls);
         else pushActive(target, { kind: 'continuousDamage', effect: e, casterLevel, caster: caster?.entity ?? null, element: spell.element, flag, saveScaled, roundsRemaining: rounds }, sinks, rolls);
         out.continuous++;
       }
@@ -1207,7 +1217,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
       const rounds = rollDuration(e, casterLevel);
       if (rounds > 0) {
         const inc = findInc((a) => a.kind === 'continuousDamageFatigue');
-        if (inc) renewRounds(inc, rounds - 1);   // settings-blind incumbent (F12)
+        if (inc) renewActing(inc, rounds, target, sinks, rolls);   // settings-blind incumbent (F12)
         else pushActive(target, { kind: 'continuousDamageFatigue', effect: e, casterLevel, caster: caster?.entity ?? null, element: spell.element, flag, saveScaled, roundsRemaining: rounds }, sinks, rolls);
         out.continuous++;
       }
@@ -1227,7 +1237,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
       const rounds = rollDuration(e, casterLevel);
       if (rounds > 0) {
         const inc = findInc((a) => a.kind === 'continuousDamageSpellPoints');
-        if (inc) renewRounds(inc, rounds - 1);   // settings-blind incumbent (F12)
+        if (inc) renewActing(inc, rounds, target, sinks, rolls);   // settings-blind incumbent (F12)
         else pushActive(target, { kind: 'continuousDamageSpellPoints', effect: e, casterLevel, caster: caster?.entity ?? null, element: spell.element, flag, saveScaled, roundsRemaining: rounds }, sinks, rolls);
         out.continuous++;
       }
@@ -1240,7 +1250,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
       if (rounds > 0) {
         const sKey = settingsKeyOf(e);
         const inc = findInc((a) => a.kind === 'regenerate' && a.settingsKey === sKey);
-        if (inc) renewRounds(inc, rounds - 1);
+        if (inc) renewActing(inc, rounds, target, sinks, rolls);
         else pushActive(target, { kind: 'regenerate', effect: e, casterLevel, element: saveElement(e), flag: saveFlag(e), saveScaled, settingsKey: sKey, roundsRemaining: rounds }, sinks, rolls);   // magic-11
         // F078: Start's HUD line. base.Start precedes the incumbency
         // resolution, so it prints on EVERY cast that takes - the
