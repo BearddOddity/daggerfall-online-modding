@@ -263,7 +263,7 @@ export function addRefit(uid, id) {
   return true;
 }
 /** The port she was laid up at (`{ name }`), or null. */
-export function setShipPort(uid, port) { const r = _ships.get(uid); if (r) r.port = port ? { name: String(port.name ?? '') } : null; }
+export function setShipPort(uid, port) { const r = _ships.get(uid); if (r) r.port = port ? { name: String(port.name ?? ''), ...(port.ether ? { ether: true } : {}) } : null; }   // AUDIT CAPTAIN'S SEA P5: and which side of the Veil she lies
 /** Her title made again where none is (a crewed ship's parts placed swap back to her deed - the mod's takePlaceItem). */
 export function retitle(uid) {
   const r = _ships.get(uid);
@@ -302,7 +302,7 @@ export function restoreFleetSaveData(data) {
     for (const l of UPGRADE_LINES) r.upgrades[l.id] = Math.max(0, Math.min(UPGRADE_TIERS, Number(s.upgrades?.[l.id]) | 0));
     r.credit = s.credit && Number.isInteger(s.credit.region) && s.credit.region >= 0 ? { region: s.credit.region, due: Number.isFinite(s.credit.due) ? s.credit.due : 0 } : null;
     const port = typeof s.port?.name === 'string' ? printable(s.port.name).slice(0, 64) : '';
-    r.port = s.port && typeof s.port.name === 'string' ? { name: port } : null;
+    r.port = s.port && typeof s.port.name === 'string' ? { name: port, ...(s.port.ether === true ? { ether: true } : {}) } : null;   // AUDIT CAPTAIN'S SEA P5: her side of the Veil kept
     if (s.title) _book.push(mintDeed(r.hull, r.variant, r.uid, r.value));
   }
 }

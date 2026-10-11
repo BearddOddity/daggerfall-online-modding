@@ -264,7 +264,8 @@ test('SHIPYARDS A NAMED HAND ENLISTED AND RELEASED (shipCrew.js): he joins at hi
   const before = crew.morale;
   const h = crew.enlist({ name: 'Anna Voss', role: FIRST_MATE, mobile: MOBILE.Rogue, gender: 'female', fights: 7, boardings: 3, hall: '9:100:2' }, 4);
   // PIN MOVED (AUDIT SHIPYARDS L2-4, L2-9): her hall id and the spirits she actually lifted ride her
-  assert.deepEqual(h, { name: 'Anna Voss', role: FIRST_MATE, mobile: MOBILE.Rogue, gender: 'female', fights: 7, boardings: 3, hall: '9:100:2', lift: 4 });
+  // PIN MOVED (AUDIT CAPTAIN'S SEA C8, at the merge): her record her deeds, and no service kept apart (`prior` 0)
+  assert.deepEqual(h, { name: 'Anna Voss', role: FIRST_MATE, mobile: MOBILE.Rogue, gender: 'female', fights: 7, boardings: 3, prior: 0, hall: '9:100:2', lift: 4 });
   assert.equal(crew.hands.at(-1), h, 'at her roster\'s end');
   assert.equal(crew.hands.filter((x) => x.role === FIRST_MATE).length, 1, 'one First Mate');
   assert.equal(old.role, 'Deckhand', 'the old one stood down');
