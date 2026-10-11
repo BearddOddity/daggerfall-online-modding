@@ -5328,7 +5328,7 @@ export class Room {
       const own = this._siegeSocketOf(a.sub)?.[0] === ws;
       const pose = a.pose && !a.pose.dd && !sunk && own ? this._serpentFrameOf(f, a.pose) : null;   // the dead strike nothing
       // the kill is said by _serpentFall alone, its receipts minted and kept first (AUDIT WB A10's law) - never the brain's word of it here
-      await this._serpentSay(fights, id, f, serpentBrain.applySerpentHit(f, a.sub, m.d, m.z, pose, now).filter((o) => o.k !== 'fell'), now);
+      await this._serpentSay(fights, id, f, serpentBrain.applySerpentHit(f, a.sub, m.d, m.z, pose, now, m.r === 1).filter((o) => o.k !== 'fell'), now);   // SERPENT4: `r` 1 - a hand's own weapons
       if (f.fell && !f.said) { await this._serpentFall(id, f, now); return; }
     } else if (m.k === 'wr') {
       // AUDIT 2 XC5: a coil holding her lets her go. AUDIT INT13: her own word of a wreck makes it hers (`cw` gone - the
@@ -5370,7 +5370,7 @@ export class Room {
     if (mine && mine[0] !== id && mine[1].day === t.day) { no('the waters are full'); return; }
     let born = false;
     if (!f) {
-      if (!serpentAdmits(t.day, now)) { no('the storm has closed its waters'); return; }
+      if (!serpentAdmits(t.day, now)) { no('the serpent is gone'); return; }   // SERPENT4: open until it dives - past that it is gone
       const room = this._serpentRoomFor(fights, t.day);
       if (room === null) { no('the waters are full'); return; }
       if (room !== true) await this._serpentForget(fights, room);
@@ -5389,7 +5389,7 @@ export class Room {
     const lv = Number.isSafeInteger(a.cl) && a.cl >= 1 ? Math.min(m.lv, a.cl) : m.lv;
     if (!serpentBrain.joinSerpentFight(f, a.sub, a.name ?? '', lv, m.hl, now, serpentAdmits(t.day, now), present, off <= serpentBrain.ENGAGE_R)) {
       this._send(ws, JSON.stringify({ t: 'serpent', ...serpentBrain.serpentStateOf(f) }));
-      no(f.fell ? 'it is already slain' : f.gone ? 'the serpent is gone' : Object.keys(f.players).length >= serpentBrain.SERPENT_FIGHTERS_MAX ? 'the waters are full' : 'the storm has closed its waters');
+      no(f.fell ? 'it is already slain' : Object.keys(f.players).length >= serpentBrain.SERPENT_FIGHTERS_MAX ? 'the waters are full' : 'the serpent is gone');   // SERPENT4: no storm closes its waters
       return;
     }
     this._send(ws, JSON.stringify({ t: 'serpent', ...serpentBrain.serpentStateOf(f) }));
@@ -5479,7 +5479,8 @@ export class Room {
     let ok = true;   // a relay built without the binding (a harness, a local worker) keeps the cell's own word
     if (rooms?.idFromName && rooms?.get) {
       try {
-        const body = { d: f.day, at: f.fell.at, top: f.fell.top, n: f.fell.n, sx: f.sx, sz: f.sz, rc: Object.entries(f.rc ?? {}), here: f.here ?? [] };
+        // SERPENT4: and the fight's kin - who came to it and earned nothing of their own - for the hub's party share
+        const body = { d: f.day, b: f.boss, at: f.fell.at, top: f.fell.top, n: f.fell.n, sx: f.sx, sz: f.sz, rc: Object.entries(f.rc ?? {}), here: f.here ?? [], kin: serpentBrain.serpentKinOf(f) };
         const res = await rooms.get(rooms.idFromName(SOCIAL_ROOM)).fetch(new Request(`https://relay.internal${SERPENT_INTERNAL_FELL}`, { method: 'POST', body: JSON.stringify(body), signal: AbortSignal.timeout(ROOM_CALL_MS) }));   // SCALE2b's deadline, at the merge with main
         ok = !!res?.ok;
       } catch (e) { console.warn('[serpent] hub', e?.message ?? e); ok = false; }
@@ -5524,6 +5525,7 @@ export class Room {
       const c = r ? readSerpentReceipt(r.r) : null;
       if (c && c.s === e[0] && c.d === fell.d && Number.isFinite(c.e) && now < c.e * 1000) rc.set(e[0], { r: r.r, e: c.e });
     }
+    await this._serpentKinShare(body, fell, rc, now);   // SERPENT4: a party shares its kill
     const keys = [...rc.keys()].map((sub) => SERPENT_RC_PREFIX + sub);
     const had = keys.length ? await this.state.storage.get(keys) : new Map();
     const fresh = [...rc].filter(([sub]) => { const v = had.get(SERPENT_RC_PREFIX + sub); return !(v && typeof v === 'object' && Number.isSafeInteger(v.d) && v.d > fell.d); });
@@ -5544,6 +5546,36 @@ export class Room {
     // each earner the cell did not hand hers: at its newest socket (AUDIT SOC B9's law, the roll call's _siegeSockets)
     for (const [sub, [ws]] of this._siegeSockets()) if (handed.has(sub) && !here.has(sub)) this._send(ws, JSON.stringify({ t: 'serpent', k: 'rcpt', r: rc.get(sub).r }));
     return json({ ok: true });
+  }
+
+  /**
+   * SERPENT4 (2026-10-11, the players: "Rewards based on party or individual damage should be given on death"): A PARTY
+   * SHARES ITS KILL. The cell knows no party, so it says its fight's kin with the kill (serpentBrain.js serpentKinOf - who
+   * came to the fight and earned nothing of their own: `[sub, hull, level]`); the hub, which keeps the parties, mints a
+   * stander's receipt for each whose party - as it stands now - holds a dealer's receipt of this kill, into `rc` beside the
+   * cell's own, kept and handed as theirs are. A ship thrown out of its reach while her party fought on went home with
+   * nothing. Its claims are the cell's word of her (her hull, the level it admitted her at), the boss's the kill's own.
+   */
+  async _serpentKinShare(body, fell, rc, now) {
+    const kin = (Array.isArray(body?.kin) ? body.kin : []).slice(0, serpentBrain.SERPENT_FIGHTERS_MAX)
+      .filter((e) => Array.isArray(e) && typeof e[0] === 'string' && e[0] && !rc.has(e[0]) && Number.isInteger(e[1]) && Number.isInteger(e[2]));
+    if (!kin.length) return;
+    const dealers = new Set();
+    for (const [sub, v] of rc) if (readSerpentReceipt(v.r)?.x === 'dealt') dealers.add(sub);
+    if (!dealers.size) return;
+    const recs = await this._accts(kin.map((e) => e[0]));
+    const parties = await this._partiesOf([...recs.values()].map((r) => r.party).filter((pid) => typeof pid === 'string'));
+    const key = await this._receiptKeyOf(), nowS = Math.floor(now / 1000);
+    const boss = typeof body.b === 'string' ? body.b : serpentBossOf(fell.d).id;
+    for (const [sub, h, l] of kin) {
+      const party = parties.get(recs.get(sub)?.party);
+      if (!party?.members?.some((m) => m !== sub && dealers.has(m))) continue;
+      try {
+        const r = await mintSerpentReceipt({ d: fell.d, b: boss, s: sub, c: rand32(), x: 'stood', h, l }, key, { subtle: crypto.subtle, nowS });
+        const c = readSerpentReceipt(r);
+        if (c) rc.set(sub, { r, e: c.e });
+      } catch (e) { console.warn('[serpent] kin receipt refused', e?.message ?? e); }
+    }
   }
 
   // ───────────────────────────── DISCORD-GATES: THE HERALD ─────────────────────────────

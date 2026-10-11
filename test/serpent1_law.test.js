@@ -24,7 +24,7 @@ import {
   newSerpentFight, joinSerpentFight, applySerpentHit, stepSerpentBrain, serpentStateOf, serpentEarned, serpentEarnedBy, serpentTopDealers, serpentDamageChart, pickSerpentTarget, serpentAttacksFor,
   chooseSerpentAttack, coilWord, coilHolds, pruneLegs, refOf, clampHull, SHIP_REF, SERPENT_TTK_S, SERPENT_BUCKET_RATE_X, SERPENT_BUCKET_DEPTH_X,
   SERPENT_HIT_CAP_X, SERPENT_HIT_HZ_MAX, HEAD_X, STUN_X, ZONES, SERPENT_PHASE_AT, SERPENT_SHIELD_MS, SERPENT_ATTACK_TABLE, SERPENT_ATTACK_BY_ID, SERPENT_PHASE_TURN, SERPENT_OPENING_MS,
-  ENGAGE_R, GUN_REACH_M, SERPENT_POSE_SLACK, COIL_MS, COIL_ESC_MS, SERPENT_STUN_MS, COIL_TEAM_S, COIL_HP_MIN, SERPENT_RECEIPT_SHARE, SERPENT_STOOD_SHARE,
+  ENGAGE_R, GUN_REACH_M, SERPENT_POSE_SLACK, COIL_MS, COIL_ESC_MS, SERPENT_STUN_MS, COIL_TEAM_S, COIL_HP_MIN, SERPENT_PART_SHARE, SERPENT_STOOD_SHARE,
   SERPENT_FIGHTERS_MAX, SERPENT_ABSENT_RETIRE_MS, ARENA_R, MAEL_ORBIT_R, RAM_V, ramLen, BREACH_LEAD_MS, SERPENT_COIL_PASS, SERPENT_STAND_R, SERPENT_IDLE_RETIRE_MS, SERPENT_TARGET_R, serpentWreck, serpentShareWanted, COIL_WORD_EARLY_MS, serpentAtkFrame,
   SERPENT_SAY_AHEAD_MS,   // AUDIT SHIPS B5: an end's swim said ahead
 } from '../src/net/serpentBrain.js';
@@ -91,16 +91,16 @@ test('SERPENT1 schedule: the serpent the clock is about - today\'s until it has 
   assert.ok(serpentMarked('omen') && serpentMarked('late') && !serpentMarked('quiet') && !serpentMarked('gone'));
 });
 
-test('SERPENT1 schedule: who may come - a newcomer from the rising until the storm closes its waters, a fighter until it has gone; the countdowns and their words (mutants: admission past the seal; a hold past the dive)', () => {
+test('SERPENT1 schedule: who may come - a newcomer from the rising until it dives (SERPENT4: once until the storm closed its waters), a fighter until it has gone; the countdowns and their words (mutants: admission past the dive; admission closed at the storm; a hold past the dive)', () => {
   const t = serpentTimes(363);
-  assert.ok(!serpentAdmits(363, t.riseAt - 1) && serpentAdmits(363, t.riseAt) && serpentAdmits(363, t.sealAt - 1) && !serpentAdmits(363, t.sealAt));
+  assert.ok(!serpentAdmits(363, t.riseAt - 1) && serpentAdmits(363, t.riseAt) && serpentAdmits(363, t.sealAt) && serpentAdmits(363, t.soundAt - 1) && !serpentAdmits(363, t.soundAt));
   assert.ok(!serpentAdmits(364, serpentTimes(364).riseAt), 'no serpent, no admission');
   assert.ok(serpentHolds(363, t.sealAt) && serpentHolds(363, t.soundAt + SERPENT_DIVE_MS - 1) && !serpentHolds(363, t.soundAt + SERPENT_DIVE_MS) && !serpentHolds(363, t.riseAt - 1));
   assert.deepEqual(serpentCountdown(t, t.omenAt), { to: 'rise', ms: t.riseAt - t.omenAt });
   assert.equal(serpentCountdownWords(serpentCountdown(t, t.riseAt - 61_500)), 'rises in 1m 02s');
-  assert.equal(serpentCountdownWords(serpentCountdown(t, t.riseAt + SERPENT_SURFACE_MS)), `storm closes in ${serpentClock(t.sealAt - t.riseAt - SERPENT_SURFACE_MS)}`);
-  // AUDIT SERPENT B9: as it rises the countdown is the storm's - never "rises in 0s"
-  assert.deepEqual(serpentCountdown(t, t.riseAt + 1000), { to: 'seal', ms: t.sealAt - t.riseAt - 1000 });
+  assert.equal(serpentCountdownWords(serpentCountdown(t, t.riseAt + SERPENT_SURFACE_MS)), `dives in ${serpentClock(t.soundAt - t.riseAt - SERPENT_SURFACE_MS)}`);
+  // AUDIT SERPENT B9: as it rises the countdown is its dive's (SERPENT4: the storm's once) - never "rises in 0s"
+  assert.deepEqual(serpentCountdown(t, t.riseAt + 1000), { to: 'sound', ms: t.soundAt - t.riseAt - 1000 });
   assert.equal(serpentCountdownWords(serpentCountdown(t, t.sealAt)), 'dives in 10m 00s');
   assert.equal(serpentCountdown(t, t.soundAt), null);
   assert.equal(serpentClock(1), '1s', 'rounded up - never 0s with time left');
@@ -137,8 +137,9 @@ test('SERPENT1 words: the boss table, and each line the event, where and when (m
   assert.equal(serpentBossById('nobody').id, 'sethrakul');
   const w = { near: 'Sentinel', boss: 'Sethrakul', at: '14:32', left: '4m 07s' };
   assert.equal(sightingLine(w), 'Bells ring in the harbours: a great serpent is sighted off Sentinel. Sethrakul rises at 14:32 your time.');
-  assert.equal(risingLine(w), 'Sethrakul rises off Sentinel. The storm closes over its waters in 4m 07s.');
-  assert.equal(sealLine(w), 'A storm closes over Sethrakul\'s waters off Sentinel - no ship can join the fight now. It dives at 14:32 your time.');
+  // PIN MOVED: SERPENT4 - its waters open until it dives: the rising counts to the dive, the storm says a ship may still join
+  assert.equal(risingLine(w), 'Sethrakul rises off Sentinel. It dives in 4m 07s - sail out and join the fight.');
+  assert.equal(sealLine(w), 'A storm breaks over Sethrakul\'s waters off Sentinel - every ship may still join the fight. It dives at 14:32 your time.');
   assert.equal(soundLine(w), 'Sethrakul dives off Sentinel and is gone into the deep.');
   assert.equal(slainLine({ ...w, top: ['Ama', 'Bel', 'Cor'] }), 'Sethrakul is slain off Sentinel by Ama, Bel and Cor. Its hoard goes to the ships that fought it.');
   assert.equal(slainLine({ ...w, near: null, top: [] }), 'Sethrakul is slain. Its hoard goes to the ships that fought it.');
@@ -484,14 +485,14 @@ test('SERPENT1 brain: THE END - the kill stamps its fall once with its three bes
   assert.ok(!serpentEarned(f, 's3'), 'nobody before the fall');
   surfaced(f, T0 + 60_000);   // up again, round the heart, for the blows
   f.shieldUntil = 0;
-  applySerpentHit(f, 's2', SERPENT_RECEIPT_SHARE * f.players.s2.share * 0.5, ZONES.body, { x: -40, z: 0 }, T0 + 60_000);
+  applySerpentHit(f, 's2', SERPENT_PART_SHARE * f.players.s2.share * 0.5, ZONES.body, { x: -40, z: 0 }, T0 + 60_000);   // PIN MOVED: SERPENT4 - a part, the least that earns
   let t = T0 + 60_100;
   for (let n = 0; !f.fell && n < 5000; n++) { f.shieldUntil = 0; for (const o of applySerpentHit(f, 's1', 5000, ZONES.body, { x: 30, z: 0 }, t)) if (o.k === 'fell') assert.equal(o.top[0], 'P1'); t += 200; }
   assert.ok(f.fell, 'felled');
   assert.deepEqual(f.fell.top, serpentTopDealers(f, 3));
   assert.equal(f.fell.dm.length, 3);
   assert.ok(serpentEarned(f, 's1') && serpentEarnedBy(f, 's1') === 'dealt');
-  assert.ok(!serpentEarned(f, 's2'), 'half the share it needed, and ten seconds stood');
+  assert.ok(!serpentEarned(f, 's2'), 'half the part it needed, and ten seconds stood');
   assert.ok(f.players.s3.stoodMs >= SERPENT_STOOD_SHARE * f.liveMs && serpentEarned(f, 's3') && serpentEarnedBy(f, 's3') === 'stood', 'the hand stood it out');
   const was = f.players.s1.dealt;
   applySerpentHit(f, 's1', 10, ZONES.body, { x: 30, z: 0 }, t + 1000);

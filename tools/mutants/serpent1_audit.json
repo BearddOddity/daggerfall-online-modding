@@ -265,8 +265,8 @@
   {
     "name": "AUDIT-SERPENT-E1-receipt-share",
     "file": "src/net/serpentBrain.js",
-    "old": "export const SERPENT_RECEIPT_SHARE = 0.1;",
-    "new": "export const SERPENT_RECEIPT_SHARE = 0.02;",
+    "old": "export const SERPENT_PART_SHARE = 0.025;",
+    "new": "export const SERPENT_PART_SHARE = 0.005;",
     "tests": [
       "test/serpent1_audit.test.js"
     ]
@@ -479,8 +479,8 @@
   {
     "name": "AUDIT-SERPENT-T4-head-two",
     "file": "src/scenes/serpentHost.js",
-    "old": "const z = seg <= 1 && headExposed",
-    "new": "const z = seg === 0 && headExposed",
+    "old": "return seg <= 1 && headExposed",
+    "new": "return seg === 0 && headExposed",
     "tests": [
       "test/serpent1_auditclient.test.js"
     ]
@@ -712,7 +712,7 @@
   {
     "name": "AUDIT-SERPENT-S1-storm-no-birth",
     "file": "server/src/index.js",
-    "old": "if (!serpentAdmits(t.day, now)) { no('the storm has closed its waters'); return; }",
+    "old": "if (!serpentAdmits(t.day, now)) { no('the serpent is gone'); return; }",
     "new": "",
     "tests": [
       "test/serpent1_auditrelay.test.js"
@@ -803,8 +803,8 @@
   {
     "name": "AUDIT-SERPENT-S5-tell-rc",
     "file": "server/src/index.js",
-    "old": "rc: Object.entries(f.rc ?? {}), here: f.here ?? [] };",
-    "new": "rc: [], here: f.here ?? [] };",
+    "old": "rc: Object.entries(f.rc ?? {}), here: f.here ?? [],",
+    "new": "rc: [], here: f.here ?? [],",
     "tests": [
       "test/serpent1_auditrelay.test.js"
     ]
@@ -1456,8 +1456,8 @@
   {
     "name": "AUDIT-SERPENT-D-brain-receipt-share-doubled",
     "file": "src/net/serpentBrain.js",
-    "old": "export const SERPENT_RECEIPT_SHARE = 0.1;",
-    "new": "export const SERPENT_RECEIPT_SHARE = 0.2;",
+    "old": "export const SERPENT_RECEIPT_SHARE = 0.06;",
+    "new": "export const SERPENT_RECEIPT_SHARE = 0.12;",
     "tests": [
       "test/serpent1_law.test.js",
       "test/serpent1_relay.test.js",
