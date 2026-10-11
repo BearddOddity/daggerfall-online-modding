@@ -101,7 +101,7 @@
   {
     "name": "PERFARENA-never-let-go",
     "file": "src/render/renderer.js",
-    "old": "    if (a.free.length === 2 && a.free[1] === a.cap && a !== this._bbArenas[0]) {",
+    "old": "    if (at > 0 && a.free.length === 2 && a.free[1] === a.cap) {   // AUDIT PERF-ARENA A6: an arena not standing (-1) is never spliced",
     "new": "    if (false) {",
     "tests": [
       "test/perfarena.test.js"
@@ -110,8 +110,8 @@
   {
     "name": "PERFARENA-first-let-go",
     "file": "src/render/renderer.js",
-    "old": "    if (a.free.length === 2 && a.free[1] === a.cap && a !== this._bbArenas[0]) {",
-    "new": "    if (a.free.length === 2 && a.free[1] === a.cap) {",
+    "old": "    if (at > 0 && a.free.length === 2 && a.free[1] === a.cap) {   // AUDIT PERF-ARENA A6: an arena not standing (-1) is never spliced",
+    "new": "    if (at >= 0 && a.free.length === 2 && a.free[1] === a.cap) {",
     "tests": [
       "test/perfarena.test.js"
     ]
@@ -157,6 +157,87 @@
     "file": "src/render/renderer.js",
     "old": "    const home = key != null ? this._bbArenaOfKey.get(key) : undefined;",
     "new": "    const home = undefined;",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-ARENA-stale-home",
+    "file": "src/render/renderer.js",
+    "old": "      for (const [k, home] of this._bbArenaOfKey) if (home === a) this._bbArenaOfKey.delete(k);   // PERF-ARENA2: no record homes in a deleted arena",
+    "new": "      // (mutant) the homes kept",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-ARENA-cap-ignores-batch",
+    "file": "src/render/renderer.js",
+    "old": "cap = Math.max(last ? Math.min(BB_ARENA_MAX_QUADS, last * 2) : BB_ARENA_QUADS, quads);",
+    "new": "cap = last ? Math.min(BB_ARENA_MAX_QUADS, last * 2) : BB_ARENA_QUADS;",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-ARENA-no-home-on-first-fit",
+    "file": "src/render/renderer.js",
+    "old": "      if (at >= 0) { a.taken = at; if (key != null) this._bbArenaOfKey.set(key, a); return a; }",
+    "new": "      if (at >= 0) { a.taken = at; return a; }",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-ARENA-not-rebound",
+    "file": "src/render/renderer.js",
+    "old": "    for (const a of this._bbArenas) { this._bindVao(a.vao); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); }\n",
+    "new": "",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-ARENA-old-kept",
+    "file": "src/render/renderer.js",
+    "old": "    if (had) gl.deleteBuffer(had.ib);\n",
+    "new": "",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-ARENA-delete-shared",
+    "file": "src/render/renderer.js",
+    "old": "      gl.deleteVertexArray(a.vao); gl.deleteBuffer(a.vb);   // AUDIT PERF-ARENA A4: the index buffer is every arena's",
+    "new": "      gl.deleteVertexArray(a.vao); gl.deleteBuffer(a.vb); gl.deleteBuffer(this._bbIndex.ib);",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-ARENA-homes-unbounded",
+    "file": "src/render/renderer.js",
+    "old": "    if (this._bbArenaOfKey.size > BB_ARENA_HOMES_MAX) this._bbArenaOfKey.clear();",
+    "new": "    // (mutant) the homes never start over",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-ARENA-splice-unguarded",
+    "file": "src/render/renderer.js",
+    "old": "    if (at > 0 && a.free.length === 2 && a.free[1] === a.cap) {",
+    "new": "    if (at !== 0 && a.free.length === 2 && a.free[1] === a.cap) {",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-ARENA-dynamic-keeps-vao",
+    "file": "src/render/renderer.js",
+    "old": "    batch.vao = null;   // AUDIT PERF-ARENA A7: as destroyBillboardBatch - a list still holding it skips it (no VAO), never draws a deleted one\n",
+    "new": "",
     "tests": [
       "test/perfarena.test.js"
     ]
