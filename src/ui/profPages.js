@@ -451,8 +451,9 @@ export const GATHER_HOW = Object.freeze({
 });
 /** UNWITNESSED-ORE (FIELD BUGS 2026-10-09e, "Mining veins": hundreds of Iron veins in the mountains and not one of
  *  Silver, Gold, Platinum or Mithril, read as a bug): the ground's own law, said on the Mining page - a vein holds its
- *  ground's rarer ores only where three players have gathered (net/nodeLaw.js witnessedFact, UNCONFIRMED_VEIN_TIER). */
-export const MINING_GROUND_LINE = 'Ground that fewer than three players have gathered on holds Silver at most. Gold, Platinum, Mithril and a region\'s own ore appear there once three different players (each account at least a week old) have gathered on it - the mountains hold them, and the dungeons\' deep veins hold Silver anywhere.';
+ *  ground's rarer ores only where three players have gathered (net/nodeLaw.js witnessedFact, UNCONFIRMED_VEIN_TIER).
+ *  ORE-MAP: and where to read it for a place - the world map's ore card (ui/oreMapTip.js). */
+export const MINING_GROUND_LINE = 'Ground that fewer than three players have gathered on holds Silver at most. Gold, Platinum, Mithril and a region\'s own ore appear there once three different players (each account at least a week old) have gathered on it - the mountains hold them, and the dungeons\' deep veins hold Silver anywhere. Point at bare ground on the world map to see what its veins hold and whether it is witnessed yet.';
 /** TOOL-SAID: the empty Stores say where their goods come from - a node's act (TOOL-USE: the key's, or the tool's Use
  *  there), never a tool used from the pack. */
 /** AUDIT (2026-10-04): the empty Stores on BAG1's page - a carrying book's harvest goes into the bag or the pack, never

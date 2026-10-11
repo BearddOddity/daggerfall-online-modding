@@ -1513,7 +1513,7 @@ import { packWaterMask, WATER_DRAW_MASK_TABLE } from '../world/waterCorners.js';
 import { pageParam } from '../systems/pageQuery.js';   // PERF-URL: the page's query, parsed once a search
 import { SKIN_PAL_ROW, SKIN_PALETTE_UNIT } from './skinPalette.js';   // MWNPC1: the GPU skin's palette shape
 import { ecotoneGlsl, ECO_UNITS } from './ecotoneGlsl.js';   // ECOTONE1: the ground's share of its neighbours - the chunk, and the units their tile sets bind on
-import { SNOW_VS, snowTerrainFs, SNOW_UNITS, SNOW_LAYER } from './snowfallGlsl.js';   // SNOWFALL1: the mod's snow surface, lit as the ground is
+import { SNOW_VS, snowTerrainFs, SNOW_UNITS, SNOW_LAYER, snowSurfaceRise } from './snowfallGlsl.js';   // SNOWFALL1: the mod's snow surface, lit as the ground is
 const SNOW_UNIT_LIST = Object.entries(SNOW_UNITS);   // AUDIT ENVIRONS P1: the five pictures' units, listed once
 
 /** The automap render panel, DFU's own rect on the 320x200 native
@@ -1800,6 +1800,7 @@ export class Renderer {
     this._dwFog = new Float32Array(20);
     this._seaHaze = new Float32Array(2);   // FAR-SEA1: the hold and the sea's height (setSeaHaze)
     this._dwColumn = null;   // DW-F: the water column's frame for the flats (setWaterColumn), a frame's like the fog
+    this._snowRise = 0;      // SNOW-TELL: the snow's height over the ground this frame (drawSnow; beginFrame clears it)
     this._bbColumnOn = 0;   // LA-COST1 x DW-F: the billboard program's uColumnOn as last sent (the frame block resets it)
     this._bbTipOn = false;   // PROF4: the billboard program's uTip as last sent - a falling tree's (the frame block resets it)
     this._bbDissolveOn = false;   // DISSOLVE: the billboard program's uDissolve as last sent (the frame block resets it)
@@ -4258,14 +4259,15 @@ void main() {
   }
 
   /** TACT4: the foes' telegraphed blows on the ground (render/foeTelegraph.js), under this frame's camera - each
-   *  { blow, phase } of ai/foeBlows.js drawableBlows. */
+   *  { blow, phase } of ai/foeBlows.js drawableBlows. SNOW-TELL: lifted over the snow this frame drew (drawSnow's
+   *  `_snowRise`), which stands on the bare ground they were fitted to and writes depth - drawn first, it hid them. */
   drawFoeTelegraphs(list) {
     if (!list?.length || !this._proj || !this._view) return 0;
     // AUDIT TACT (BOOT2's reach): the pass is loaded on its first use, never on the boot graph - a wind-up runs 0.7 s
     // and more, so the frame or two its module takes to arrive is never a blow unseen
     if (!this._foeTelegraph) { this._loadFoeTelegraph(); return 0; }
     this._close2D();
-    const n = this._foeTelegraph.draw(list, this._proj, this._view, { mode: this._fogMode, density: this._fogDensity, range: this._fogRange, camPos: this._camPos, focus: this._focus });   // AUDIT TACT D9: the frame's fog (and the travel view's focus)
+    const n = this._foeTelegraph.draw(list, this._proj, this._view, { mode: this._fogMode, density: this._fogDensity, range: this._fogRange, camPos: this._camPos, focus: this._focus }, { snowRise: this._snowRise });   // AUDIT TACT D9: the frame's fog (and the travel view's focus); SNOW-TELL: over the frame's snow
     this.markForeignPass();   // the pass bound its own program and VAO
     return n;
   }
@@ -5117,6 +5119,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     if (!this._focusArmed && this._focus[3] !== 0) this._focus.fill(0);   // AUDIT TV B1: the travel view's focus too, unless set since the last beginFrame (setFocus)
     this._focusArmed = false;
     this._dwColumn = null;   // DW-F: and the water column's share over the flats
+    this._snowRise = 0;   // SNOW-TELL: and the snow's height over the ground - drawSnow's, on a frame that draws it
     // EV6: the shadows reset with the counters - whatever ran between
     // frames (UI passes, another context's work) is not trusted. The
     // cloud-shadow upload stamps are the same kind of claim (RS-3) and
@@ -6923,6 +6926,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
       if (P) P.model = true;
     }
     this._snowU4(L.uSnowDepths, u.depths); this._snowU4(L.uSnowLimits, u.limits);
+    this._snowRise = Math.max(this._snowRise, snowSurfaceRise(u));   // SNOW-TELL: the deepest tier drawn - the foes' telegraphs lie over it (drawFoeTelegraphs)
     this._snowU4(L.uSnowDynMap, u.dynMap); this._snowU4(L.uSnowDynTexel, u.dynTexel); this._snowU4(L.uSnowStatMap, u.statMap);
     this._snowU4(L.uSnowFarMap, u.farMap ?? u.dynMap); this._snowU4(L.uSnowFlags, u.flags); this._snowU4(L.uSnowRadius, u.radius);
     this._snowU4(L.uSnowInner, u.inner); this._snowU4(L.uSnowOuter, u.outer);

@@ -154,6 +154,12 @@ interiors) and `scenes/dungeonContext.js` (the dungeons) are FLAGGED, not
 wired: their frames run inside the exterior hosts' indoor branch, which ticks
 the mod indoors, and no snow lies there.
 
+SNOW-TELL (`01-Overview/Field-Bugs-2026-10-11.md`): what stands on the ground
+must stand on the snow too. A foe's telegraph is fitted to the bare ground (the
+colliders know no snow) and lay 0.06 m over it, under this surface; the renderer
+keeps the frame's snow height (`render/snowfallGlsl.js` snowSurfaceRise, each
+tier `drawSnow` draws) and the foes' ground pass lies its marks over it.
+
 ## Departures (Port-Ledger A, SNOWFALL1)
 
 - **THE SAVE'S BYTES.** The port's deflate writes one fixed-Huffman block;

@@ -1328,3 +1328,9 @@ to 1-2 (1 at 1080p and under, as it was), or the player's own 0.75-2 on the Inte
 icons" (prefs `mapScale`). `_layout` inks on the fitted paper over the scale at full device resolution, and the
 pointer, the hover card and the hands lane come back over it; the chrome is zoomed by `--hm-ui`, each of its
 viewport-relative bounds divided by it. The record: `01-Overview/Field-Bugs-2026-10-09e.md`.
+
+ORE-MAP (2026-10-11, the Discord's "Arbitrary mining conditions to 'unlock' higher nodes": "add something to the
+overworld map like 'this area is known for X ore'"): online, the professions open, bare ground answers with an ore
+card under the province's name - the pixel's veins, its dungeons', its kingdom's own ore and whether its ground is
+witnessed (`ui/oreMapTip.js`, the host's `oreAt`; its witnessed state asked once a pixel, after the pointer rests).
+A place keeps its own answer. The record: `01-Overview/Field-Bugs-2026-10-11.md`.

@@ -339,7 +339,9 @@ the points left under the last number of the attributes not too close", "The gol
   clicked on it in the info box"): the player trade window - the one window every skin opens - says a letter of
   credit's worth (`systems/walletItem.js letterWorthLine`) in the detail a click opens and in the row's hover, for a
   letter of either side; its value rides the wire whole (`systems/loot.js wireLootItem` floors, never drops it).
-  Pinned by `test/tradeinfo.test.js` TRADE-LOC.
+  Pinned by `test/tradeinfo.test.js` TRADE-LOC. TRADE-LOC II (`01-Overview/Field-Bugs-2026-10-11.md`): and on the
+  row itself, under the letter's name - no hover on a phone, and two letters told apart without a click each - and as
+  the pack's card's Worth (`letterWorthGold`).
 
 ### GRIM6 - the front door, the chest, the chat (2026-10-10)
 

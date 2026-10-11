@@ -1289,6 +1289,26 @@ test('MAP1 window: the selection - a click within 16 paper px of an inked mark s
   });
 });
 
+test('ORE-MAP window (FIELD BUGS 2026-10-11 #4, ui/oreMapTip.js): bare land answers with the host\'s ore card under the province\'s name - asked by its map pixel, with the window\'s own refresh to call when its witnessed state arrives; a place keeps its own answer, and with no card (offline, the sea) bare land answers as it always did (mutants: the card never asked; the card left off the answer; the refresh not handed)', () => {
+  withDocument(() => {
+    const mapDict = new Map();
+    for (const s of [summaryOf(3, 3, LOCATION_TYPES.TownCity)]) mapDict.set(s.id, s);
+    const maps = { regionCount: 1, getRegion: () => ({ mapNames: ['A', 'B', 'C', 'Wayrest'] }), getPoliticIndex: () => 128 };
+    const asked = [];
+    const card = { title: 'Ore here', lines: ['Veins: Iron, Lead, Sulphur, Gold, Ebony'] };
+    const win = open(mkWin({ mapDict, maps, oreAt: (px, py, again) => { asked.push([px, py, typeof again]); return px === 1 ? card : null; } }));
+    win._sheet.ensure();
+    win._view.scale = 8;
+    assert.deepEqual(win._hoverLabel(...toPaper(win._view, 1.5, 1.5)), { label: 'Alik\'r Desert', cursor: '', tip: { title: 'Ore here', lines: ['Veins: Iron, Lead, Sulphur, Gold, Ebony'] } });
+    assert.deepEqual(asked.at(-1), [1, 1, 'function'], 'asked by the map pixel, with the refresh');
+    assert.deepEqual(win._hoverLabel(...toPaper(win._view, 6.5, 7.5)), { label: 'Alik\'r Desert', cursor: '' }, 'no card: the province alone');
+    const n = asked.length;
+    assert.equal(win._hoverLabel(...toPaper(win._view, 3.5, 3.5))?.cursor, 'pointer', 'a place answers as itself');
+    assert.equal(asked.length, n, 'and is never asked its ore');
+    win.dispose();
+  });
+});
+
 test('HUB1 window: online a region hub\'s mark reads "Region : Location (Hub)" - "(Capital)" for a kingdom\'s own - and the I box opens with its title, known or not; offline, and on any other town, the label and the box are DFU\'s own (mutants: the word unread, the title dropped, the title only for a known town)', () => {
   withDocument(() => {
     const mapDict = new Map();

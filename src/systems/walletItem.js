@@ -137,12 +137,16 @@ export function walletContents(items, entity, { silver = walletSilver(), here = 
 }
 
 const num = (/** @type {number} */ n) => Number(n).toLocaleString('en-US');
+/** TRADE-LOC II (2026-10-11, from play: "Cant see how much a letter of credit is worth when trading directly with
+ *  players"): a LETTER OF CREDIT's worth as the gold it stands for ("12,500 gold"), or null for anything else - the line
+ *  below's figure, for a surface that names it under its own word (the pack's card says it as its Worth pair). */
+export const letterWorthGold = (/** @type {any} */ item) => (item?.templateIndex === LETTER_OF_CREDIT_TEMPLATE
+  ? `${num(Math.max(0, Math.trunc(Number(item.value) || 0)))} gold` : null);
 /** A LETTER OF CREDIT's worth, as a line - the gold it stands for (its `value`, the whole price it was minted at), or null
  *  for anything else. TRADE-LOC (Dudey: "when players trade in any ui the letter of credit doesnt show how many gold its
  *  worth when being clicked on it in the info box"): a letter is nothing but its worth, so a window that describes an item
  *  without its price - the player trade's - says it here. */
-export const letterWorthLine = (/** @type {any} */ item) => (item?.templateIndex === LETTER_OF_CREDIT_TEMPLATE
-  ? `Worth ${num(Math.max(0, Math.trunc(Number(item.value) || 0)))} gold` : null);
+export const letterWorthLine = (/** @type {any} */ item) => { const g = letterWorthGold(item); return g == null ? null : `Worth ${g}`; };
 /** AUDIT 625 W5: the silver's words where no figure is counted, by why (walletContents' `silverWhy`): offline the
  *  account keeps it; online the page is asking it (every look asks afresh - the sheet, the classic box, the hotbar); an
  *  account that holds none (a guest's, the counting-houses not striking yet). The online wait once said the offline
