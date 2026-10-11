@@ -10435,11 +10435,17 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** The helm's readout, under every window and with the HUD - `dt` the frame's (the card's hull bar's loss readout). */
   function navalHud(dt = 0) {
     if (!navalOn()) return;
+    const model = _mode() === 'exterior' ? naval.hudModel() : null;
+    const covered = townTalk.overlayActive || gamePaused() || !!townTalk.hudHidden;
+    // SEA-TOWN (FIELD BUGS 2026-10-11b): nothing to show (no ship near, the HUD covered) reads its clock and takes the
+    // plate down (ui/navalHud.js drawNavalHud returns there) - the keys' names, the HUD's rects and the compass box
+    // were made for it every frame ashore, three walks of the bindings among them
+    if (!model || covered) { drawNavalHud(model, { dt: gamePaused() ? 0 : dt, covered }); return; }
     const family = controllerLook() ? padFamily() : null;   // AUDIT NAV1: the pad in hand - its buttons named, not the keys
     const pad = family ? navalPadCodes() : null;
-    drawNavalHud(_mode() === 'exterior' ? naval.hudModel() : null, {
+    drawNavalHud(model, {
       dt: gamePaused() ? 0 : dt,
-      covered: townTalk.overlayActive || gamePaused() || !!townTalk.hudHidden,
+      covered,
       keys: pad ? { aim: pad.aim ? hdGlyphName(family, pad.aim) : null, board: pad.board ? hdGlyphName(family, pad.board) : null, brace: pad.brace ? hdGlyphName(family, pad.brace) : null }
         : { aim: navalKeyName('SwingWeapon'), board: navalKeyName('Interact'), brace: navalKeyName('Crouch') },
       scale: enhancedHudScale(),
@@ -10750,6 +10756,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (helm) helm = { ...helm, orders: navalOn() };   // SHIP-CREW: the Orders button while the naval arc is on
     if (!helm) csaHelmInput.held.clear();
     const ab = helm ? null : csaAboard.aboard;
+    if (!helm && !ab) { drawEnhancedHelm({ helm: null, aboard: null }, csaHelmHooks); return; }   // SEA-TOWN (FIELD BUGS 2026-10-11b): no helm, aboard nothing - the panel goes (ui/enhancedHelm.js), and the key's name and the cover's reads it never shows are not made every frame ashore
     drawEnhancedHelm({
       helm, aboard: ab ? { hull: ab.boat.hull, owner: peerName(ab.owner) } : null,
       covered: townTalk.hudCovered || (modes?.hudCovered ?? false) || gamePaused() || !hudRenderEnabled() || !!travelView?.active || !!_travelUIHolder.ui?.isShowing,   // A first-person journey also owns the helm. AUDIT NAV2 F17: under the travel view a journey holds the helm - its hand sets her sails, the arrows turn the view

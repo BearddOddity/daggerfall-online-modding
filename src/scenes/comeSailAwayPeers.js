@@ -211,6 +211,8 @@ export function createComeSailAwayPeers({ pool, selfId = () => null, log = conso
     const hide = look === 'hidden' && w.helm;
     if (s.boat.GameObject.activeSelf === hide) s.boat.GameObject.setActive(!hide);
     s.boat.conceal = w.helm && look && look !== 'hidden' ? look : null;
+    // SEA-TOWN (FIELD BUGS 2026-10-11b): her Animators as kept for her tree (boatAnimators), not walked out of it again
+    // for every boat of every player on every frame - asked even standing nowhere, so each starts over when she stands
     for (const a of boatAnimators(s.boat)) a.update(dt);
   }
 
