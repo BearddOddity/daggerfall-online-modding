@@ -345,8 +345,8 @@
   {
     "name": "BR5-account-version-unmoved",
     "file": "server-account/src/service.js",
-    "old": "export const ACCOUNT_VERSION = 'acct118';",
-    "new": "export const ACCOUNT_VERSION = 'acct117';",
+    "old": "export const ACCOUNT_VERSION = 'acct119';",
+    "new": "export const ACCOUNT_VERSION = 'acct118';",
     "tests": [
       "test/legacy7_service.test.js",
       "test/founder5.test.js"

@@ -166,14 +166,20 @@ export async function listSeats({ db, nowS }, player, env) {
 /**
  * SEAT1b: THE SEATS A PLEDGE, A TICK OR A TRIBUTE MAY NAME - every confirmed seat (a disputed one too: it keeps every
  * effect it had), by key: `Map<key, { key, name, region, tier, pixel, state }>`. The ignored accounts left out, as the
- * list leaves them. STORM-SHED: `kept` reads the isolate's kept rows (seatRowsOf) - the Watch's claims, which a client
- * asks every few minutes; a pledge, a battle, a Turning and every other act read the table as it stands.
+ * list leaves them. STORM-SHED: the Watch's claims read the isolate's kept rows (seatRowsOf). D1-LOAD (2026-10-11, the
+ * service slow after SEAT-LEASE): AND EVERY OTHER CALLER - the standings (every board opened, and a holder's members'
+ * Watchtowers every ten minutes), every market sale's and courier's Tithe (titheAt) and the minute's auctions closed
+ * with it, a market read's listings cap, a Levy's harvest, a Bounty's camp, a pledge: each read all 4,050 of the seats'
+ * witness rows, STORM-SHED's costliest read by time, and the Tithe's began on every sale in a region the moment its
+ * first Charter was held. A seat's facts move only with a witness's report or a strike (each lets the rows go here) and
+ * by the week, so the minute's bound is the list's own. `fresh` reads the table as it stands - the Turning's, once a
+ * week (seatTurning.js settleWeek), whose registry decides who holds what.
  * @param {any} db
  * @param {number} nowS
- * @param {{ kept?: boolean }} [opts]
+ * @param {{ fresh?: boolean }} [opts]
  */
-export async function confirmedSeats(db, nowS, { kept = false } = {}) {
-  const { seats } = seatFacts(await (kept ? seatRowsOf(db, nowS) : allSeatRows(db)), nowS);
+export async function confirmedSeats(db, nowS, { fresh = false } = {}) {
+  const { seats } = seatFacts(await (fresh ? allSeatRows(db) : seatRowsOf(db, nowS)), nowS);
   return new Map(seats.filter((s) => factConfirmed(s.fact)).map((s) => [s.key, { ...s.fact.seat, state: s.fact.state }]));
 }
 

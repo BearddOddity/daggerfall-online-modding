@@ -8,7 +8,7 @@ load." and its Try again. Read on the code as it stands at main's `314ff136`.
 |---|---|---|---|
 | 1 | "Time to take a castle and nothing happens"; "The standings did not load." | the Turning's read of every guild pledged anywhere bound them all in one statement; D1 refuses a statement of more than 100 parameters, and every seat route settles the Turning first - so past 100 guilds every seat read answered `server`, and no Charter was claimed | fixed (SEAT-CAP) |
 | 2 | "The server is expericing a bad load right now" - after SEAT-CAP deployed | every seat request ran the whole settle while the week was due, all at once; under load each outlasted its client's wait and was cancelled before its batch committed, so the week never settled and every client's minute retry began another | fixed (SEAT-LEASE) |
-| 3 | "So it works, but it takes forever to load" - after SEAT-LEASE deployed | a seat board is some 19 to 35 D1 statements one after another, and each waited 0.4 to 2 seconds on a busy primary; what kept it busy is not readable from the code alone | measured (D1-LOAD) - the reading below |
+| 3 | "So it works, but it takes forever to load" - after SEAT-LEASE deployed | a seat board is some 19 to 35 D1 statements one after another, each waiting 0.4 to 2 seconds on a busy primary; among what kept it busy, every market sale's Tithe, the minute's auctions and every standings read all 4,050 seat witness rows once a region's first Charter was held | fixed where the code shows it, and the rest measured (D1-LOAD) |
 
 ## SEAT-CAP: every guild list the seats bind is read IN_CHUNK at a time (1)
 
@@ -104,8 +104,31 @@ THE READING. The workflow asks, with the deploy's token, writing nothing:
 The questions are the tool's (`--names`, `--sql`, `--table`), the window whole hours from 1 to 168, refused before it
 reaches the SQL. A question refused (the token lacks Account Analytics: Read) is a warning, and the rest still answer.
 
-Pinned by `test/d1load.test.js` (2): the questions over the service's own dataset, weighted, ordered by the wait, the
+WHAT THE CODE SHOWS, AND IS FIXED. A map of every request a client sends on a timer (some 15 to 30 statements a player a
+minute: the heartbeat's board each minute, a realm checkpoint each two, the Watch's claim each ten) named the read that
+outweighs its count: `confirmedSeats`, all 4,050 of the seats' witness rows - STORM-SHED's costliest read by time, kept
+a minute by an isolate for the list and the Watch alone. Every other caller read the table: the standings (every board
+opened, and each holder's member's Watchtowers every ten minutes), every market sale's and courier's Tithe (`titheAt`)
+and the minute's closed auctions with it, a market read's listings cap where a Market Hall stands, a Levy's harvest, a
+Bounty's camp, a pledge. The Tithe's and the auctions' are asked only in a region where a Charter is held - so they
+began with week 2's Turning, the first to hand Charters out. Now EVERY caller reads the isolate's kept rows: a seat's
+facts move only with a witness's report or a strike (each lets the rows go in its isolate) and by the week, so the
+minute is the list's own bound; a seat confirmed through another isolate is pledgeable within it. The Turning reads the
+table as it stands (`{ fresh: true }`), once a week. And:
+- SEAT-LEASE's lease is READ before it is asked of the writer: every seat request that found the week due while another
+  settled asked an INSERT that changed nothing, each one the one writer's turn; now it reads the row and answers
+  pending, and only a caller that finds it free or run out asks - the write's own WHERE still holding off a racer;
+- each client asks its Turning's list read at its own share of SEAT_TURN_READ_SPREAD_MS (two minutes, drawn once a book)
+  past the boundary, never every client in the same second (`net/townSeatBook.js` redTick, AUDIT FESTIVAL S1's read).
+Read and set aside: the realm checkpoint's ledger read (`item_uids` by character) answers the live rows - a let-go
+piece's row is deleted, and kept `gone` only while a copy of it is known - so it is the character's holding, not its
+history, and nothing narrower is owed it.
+
+Pinned by `test/d1load.test.js` (4): the questions over the service's own dataset, weighted, ordered by the wait, the
 window's guard, an answer drawn and an empty one said; the workflow by hand only, its input read once as environment, its
 own queue, writing nothing, and its metrics step run under bash over a fake SQL API - every question drawn, a refusal
-warned and never drawn. `tools/mutants/d1load.json` (7: 6 dead, 1 equivalent as recorded - the status check beside
-loadTable's own refusal).
+warned and never drawn; the witness rows once a minute for twenty sales' Tithes and a standings, read again a minute on,
+the Turning fresh; the lease read with no write while held, a racer held off by the WHERE. `test/stormshed.test.js` C,
+`test/seat1b_service.test.js` THE PLEDGE and `test/seat_standing_festival.test.js` S1 moved with them (PIN MOVED).
+`tools/mutants/d1load.json` (12: 11 dead, 1 equivalent as recorded - the status check beside loadTable's own refusal);
+`stormshed.json`, `seat_lease.json` and `seat_standing_festival.json`'s records re-aimed by content.

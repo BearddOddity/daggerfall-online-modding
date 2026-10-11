@@ -63,5 +63,50 @@
   "tests": [
    "test/d1load.test.js"
   ]
+ },
+ {
+  "name": "D1LOAD-seats-default-kept",
+  "file": "server-account/src/townSeats.js",
+  "old": "await (fresh ? allSeatRows(db) : seatRowsOf(db, nowS))",
+  "new": "await (fresh || true ? allSeatRows(db) : seatRowsOf(db, nowS))",
+  "tests": [
+   "test/d1load.test.js"
+  ]
+ },
+ {
+  "name": "D1LOAD-turning-fresh",
+  "file": "server-account/src/seatTurning.js",
+  "old": "const registry = await confirmedSeats(db, nowS, { fresh: true });",
+  "new": "const registry = await confirmedSeats(db, nowS);",
+  "tests": [
+   "test/d1load.test.js"
+  ]
+ },
+ {
+  "name": "D1LOAD-lease-read",
+  "file": "server-account/src/seatTurning.js",
+  "old": "if (held && Number(held.until) > nowS) return { settled: 0, pending: true };",
+  "new": "",
+  "tests": [
+   "test/d1load.test.js"
+  ]
+ },
+ {
+  "name": "D1LOAD-turn-spread",
+  "file": "src/net/townSeatBook.js",
+  "old": "seatWeekOf(at) !== seatWeekOf(nowMs() - turnSpreadMs)",
+  "new": "seatWeekOf(at) !== seatWeekOf(nowMs())",
+  "tests": [
+   "test/seat_standing_festival.test.js"
+  ]
+ },
+ {
+  "name": "D1LOAD-turn-spread-window",
+  "file": "src/net/townSeatBook.js",
+  "old": "export const SEAT_TURN_READ_SPREAD_MS = 120_000;",
+  "new": "export const SEAT_TURN_READ_SPREAD_MS = 600_000;",
+  "tests": [
+   "test/seat_standing_festival.test.js"
+  ]
  }
 ]
