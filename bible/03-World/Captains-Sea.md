@@ -391,6 +391,6 @@ a reader of the event clock, named in `test/fixtures/time1_census.json`.
 GLASS-SPOT and GLASS-CLEAR: `test/glassclear.test.js` (9 tests; `tools/mutants/glassclear.json`, 41 records, all
 dead). Their pins moved say so (PIN MOVED): the look's card on an unknown hull (`test/spyglass.test.js` "at sea, the
 eye", `test/auditcaptsea.test.js` S24), the frame's lens and the glass's hold now taking the focus (`test/spyglass.test.js`
-"the world"), `lowerGlass` putting it back (`test/auditcaptsea.test.js` S1/S15), and the players' names' sight test
+"the world", `test/dwf_audit.test.js` E5-1/E5-4), `lowerGlass` putting it back (`test/auditcaptsea.test.js` S1/S15), and the players' names' sight test
 (`test/name1_bubbles.test.js`); three records re-aimed by content (NAV1H-the-card-by-the-look-alone,
 SPY-W-lens-unnarrowed, NAME1-host-sight-test-dropped) and four recorded `equivalent` (above).
