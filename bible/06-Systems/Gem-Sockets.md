@@ -99,8 +99,9 @@ The plain column is LOOT20's table, unchanged. A Perfect weapon line never stand
 three-socket blade wants three kinds.
 
 **In the world** (`rollGemFind`): every door the ladder rolls at (a corpse, a dungeon's pile, a tavern's or a guild's
-marker) has a chance at one graded gem, after the weapons' socket pass - 30 in a thousand, 5 more a tier of the source,
-to 150; a pile 1.3 times, a boss 2.5; the player's luck the ladder's own multiplier. Its grade is the source's tier's
+marker) has a chance at one graded gem, after the weapons' socket pass - 10 in a thousand, 2 more a tier of the source,
+to 50 (GEM-RARE, section 9: a third of GEM2's 30, 5 and 150); a pile 1.3 times, a boss 2.5; the player's luck the
+ladder's own multiplier. Its grade is the source's tier's
 (`GEM_GRADE_BANDS`, a boss four tiers deeper):
 
 | source tier | chipped | flawed | plain | flawless | perfect |
@@ -204,7 +205,8 @@ a hundred and never twice; a Rare 36.6 (1.3 with three, over every size); a Lege
 every id, `SOCKET_VALUES` over all of them, `GEM_GRADE_LINES` (the one table - LOOT20's `GEM_LINES` is its plain column,
 derived), `gemKindOf` for the graded rows, `gemTemplateOf`; and `registerGemFind`, the door's last draw. The new
 `src/systems/gems.js`: the thirty-two rows (`GEM_GRADE_ROWS` - the kind's weight, wear, points and art, the grade's
-price `GEM_GRADE_PRICE` and rarity, an ingredient), `mintGem`; `GEM_FIND` (30 + 5 a tier to 150, the ladder's
+price `GEM_GRADE_PRICE` and rarity, an ingredient), `mintGem`; `GEM_FIND` (30 + 5 a tier to 150 - a third of it
+since GEM-RARE, below - the ladder's
 `SOURCE_MULT` and `luckMult`), `GEM_GRADE_BANDS` and `GEM_BOSS_TIERS` (4), `rollGem` (two draws), `rollGemFind`
 (registered at import); `BOSS_GEMS` (the gate 1, the serpent 1 to a dealer, the Abyss 2) at `BOSS_GEM_SOURCE` (tier 21, a
 boss) through `bossGems`. Imported by `systems/worldTick.js`, `scenes/shared.js` and the headless `systems/itemLaw.js`
@@ -271,3 +273,27 @@ AUDIT GEM pin and its tightened rates, the GEM3 pin's new steps):
   back in `finally` (gem1, loot16, loot20, loot21).
 
 Pinned: `test/gem1_sockets.test.js` (9). `tools/mutants/gem1.json`.
+
+### GEM-RARE - a third as many gems (Mac, 2026-10-11: "We need to make gems that can be slotted more rare. Currently they are too common")
+
+The world's find (`GEM_FIND`, `src/systems/gems.js`) is a third of GEM2's: 10 in a thousand, 2 more a tier of the
+source, to 50, where it was 30, 5 and 150. At GEM2's odds a door found a gem about as often as the ladder minted a Rare
+(15 + 6 a tier, `Loot-Rarity.md`): one body in twelve at tier 10, one source in seven at the cap, more stones than the
+wells they were found for. The pile's 1.3, the boss's 2.5, the luck multiplier, the grade bands and the draws stand as
+GEM2 made them - one draw for the chance, two more when it lands, after every draw before it (law 9) - so a seeded door
+draws what it drew up to the find; a door whose find landed may now miss, and the two draws after it (TRUE-CURSE's
+damning, TECH1's technique) come two earlier there.
+
+Not moved: the bosses' gems (the Warden one, the Old Coil one to a ship that dealt, the Brass Remnant two - a boss's
+spoils, never a door's chance); DFU's own plain gems wherever DFU finds them (its loot tables, a pickpocket's kit, the
+counters - Port-Doctrine's 1:1); and the mining glint's gem (`professionLaw.js` GEM_CHANCE, PROF0 4.6 - a profession's
+yield, on its own page's law).
+
+Measured through the real door (`rollLootRarity`, a weapon on the list), 60,000 seeded doors a source over three
+seeds: a tier-3 corpse 16.3 in a thousand (the law's 16; GEM2's 45), a tier-10 corpse 28.5 (30; 80), a level-18 boss
+body 50.3 (the cap; 150) - Flawless 60.0 and Perfect 40.0 in a hundred, the bands' as before - and a tier-18 pile 48.6
+(the cap; 150).
+
+Pinned: `test/gem1_sockets.test.js`'s GEM2 find (the chance by tier to the new cap, by kind and by luck - PIN MOVED).
+`tools/mutants/gem1.json`: GEM2's base mutant re-aimed at the new table (`GEM2-the-find-twenty`, 10 to 20), and GEM2's 5 a tier and its cap of
+150 each put back alone (`GEM-RARE-five-a-tier-again`, `GEM-RARE-the-old-cap`) - 78, all dead.
