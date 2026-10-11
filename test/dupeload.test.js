@@ -11,6 +11,9 @@ import { readFileSync } from 'node:fs';
 import { routeKey } from '../src/ui/input.js';
 import { DeathScreen } from '../src/ui/deathScreen.js';
 import { NativeTradeWindow } from '../src/ui/nativeTrade.js';
+import { ActionTextBox } from '../src/ui/actionText.js';
+import { createTownTalk } from '../src/scenes/townTalk.js';
+import { makeWindowStack } from '../src/ui/windowStack.js';
 import { snapshotPlayer, restorePlayer } from '../src/systems/save.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -37,33 +40,76 @@ test('DUPE-LOAD the world host: its arm reads the death screen alone, every rout
   const fn = w.indexOf('async function worldQuickLoad(');
   const noSnap = w.indexOf("if (!snap) { townTalk.say('No saved game.'); return; }", fn);
   const closed = w.indexOf('closeWindowsForLoad();', fn);
-  const firstAwait = w.indexOf('await ', noSnap);
+  const firstAwait = w.indexOf('await _magicRegistries', noSnap);   // AUDIT DUPE-LOAD: the await itself, never a comment's word
   const restore = w.indexOf('const extras = restorePlayer(playerEntity, snap, spellsByIndex);', fn);
   assert.ok(fn > 0 && noSnap > fn && closed > noSnap, 'the windows come down once a save is in hand');
-  assert.ok(closed < firstAwait && closed < restore, 'before the first await and before the restore');
+  assert.ok(firstAwait > noSnap && closed < firstAwait && closed < restore, 'before the first await and before the restore');
+  // AUDIT DUPE-LOAD: and once more after the last await, right before the restore - a window opened while the load waited
+  const settled = w.indexOf('await modes?.transitionSettled?.();', fn);
+  const again = w.indexOf('closeWindowsForLoad();', settled);
+  assert.ok(settled > closed && again > settled && again < restore, 'closed again between the last await and the restore');
   assert.match(read('src/scenes/worldModes.js'), /overlayWindow: \(\) => interiorOverlay,/, 'the building\'s key context names its window for routeKey');
   assert.match(read('src/scenes/dungeonContext.js'), /overlayWindow: \(\) => activeOverlay,/, 'and the dungeon\'s');
 });
 
-test('DUPE-LOAD closeWindowsForLoad: the street\'s slot emptied window by window through each one\'s own close, the death screen left for closeDeathScreen (mutants: one window closed; the death screen closed too)', () => {
+test('DUPE-LOAD closeWindowsForLoad on the REAL street stack: a window over the slot is closed through its own close; under the death screen - a counter a box covered when the death took the top, a box pushed while it stands - everything is disposed and gone with no callback run, the death screen left for closeDeathScreen, and the restored pack is the save\'s alone (mutants: one window closed; the death screen closed too; the drain beneath skipped; a callback run)', () => {
   const w = read('src/scenes/world.js');
-  const at = w.indexOf('function closeWindowsForLoad() {');
-  const body = w.slice(at, w.indexOf('\n  }\n', at) + 4);
-  const run = (townTalk) => new Function('townTalk', 'DeathScreen', `${body}; closeWindowsForLoad();`)(townTalk, DeathScreen);
-  const closedOrder = [];
-  const slot = (stack) => ({
-    get overlay() { return stack.at(-1) ?? null; },
-    closeOverlay() { const win = stack.pop(); if (!win) return false; closedOrder.push(win.name); win.dispose?.(); return true; },
-  });
-  const stack = [{ name: 'counter' }, { name: 'box' }, { name: 'pack' }];
-  run(slot(stack));
-  assert.deepEqual(closedOrder, ['pack', 'box', 'counter'], 'every window down, the top first');
-  const death = new DeathScreen({ eyeHeight: 1.6, capsuleHeight: 1.8 });
-  const withDeath = [death, { name: 'box' }];
-  closedOrder.length = 0;
-  run(slot(withDeath));
-  assert.deepEqual(closedOrder, ['box'], 'a box over the death screen goes');
-  assert.equal(withDeath.at(-1), death, 'the death screen stays for closeDeathScreen');
+  const lift = (head) => { const at = w.indexOf(head); return w.slice(at, w.indexOf('\n  }\n', at) + 4); };
+  const make = (tt, modes = null) => new Function('townTalk', 'DeathScreen', 'modes', `${lift('function closeWindowsForLoad() {')}${lift('function closeDeathScreen() {')}; return { closeWindowsForLoad, closeDeathScreen };`)(tt, DeathScreen, modes);
+  const town = () => createTownTalk({ renderer: {}, canvas: { width: 320, height: 200 }, fetchBytes: async () => { throw new Error('no data'); }, playerEntity: { name: 'P', stats: {} }, regionIndex: 0 });
+  // a window over the slot (the pause pane's Load): closed through its own close, its callback run
+  const t1 = town();
+  let closedCb = 0;
+  t1.showOverlay(new ActionTextBox(['the pause']), () => { closedCb++; });
+  t1.pushOverlay(new ActionTextBox(['a box over it']), () => { closedCb++; });
+  make(t1).closeWindowsForLoad();
+  assert.equal(t1.overlay, null, 'the slot empty - the box and the window under it');
+  assert.equal(closedCb, 2, 'each through its own close');
+  // under the death screen: the real shape - a counter staging a dagger, a box over it, the death taking the top
+  const ent = { name: 'Dup', level: 1, stats: {}, skills: {}, goldPieces: 0, items: [{ group: 'Weapons', templateIndex: 113, name: 'Dagger', stackCount: 1, value: 30 }] };
+  const save = JSON.parse(JSON.stringify(snapshotPlayer(ent)));
+  const t2 = town();
+  const counter = new NativeTradeWindow({ mode: 'Sell', icons: ICONS, entity: ent, shelfItems: () => [], packItems: () => (ent.items ??= []), accepts: () => true, gold: () => ent.goldPieces });
+  let counterCb = 0;
+  t2.showOverlay(counter, () => { counterCb++; });
+  counter._pickLocal(0);
+  t2.pushOverlay(new ActionTextBox(['You collapse from exhaustion.']));
+  const death = new DeathScreen({ eyeHeight: 1.6, capsuleHeight: 1.8, entity: ent });
+  t2.showOverlay(death);
+  const late = new ActionTextBox(['a box pushed while dead']);
+  t2.pushOverlay(late);
+  assert.ok(t2.overlay === death && t2.containsOverlay(counter) && t2.containsOverlay(late), 'the counter and a box wait beneath the death screen');
+  const { closeWindowsForLoad, closeDeathScreen } = make(t2);
+  closeWindowsForLoad();
+  assert.ok(t2.overlay === death && !t2.containsOverlay(counter) && !t2.containsOverlay(late), 'only the death screen stands');
+  assert.equal(counterCb, 0, 'no callback of a window the load replaces runs');
+  assert.equal(counter.done, true, 'and the counter disposed - its own close, on the game the load replaces (its art freed: every allocation has an owner)');
+  restorePlayer(ent, JSON.parse(JSON.stringify(save)), null);
+  closeDeathScreen();
+  assert.equal(t2.overlay, null, 'nothing uncovered over the loaded game');
+  assert.deepEqual(ent.items.map((i) => i.name), ['Dagger'], 'the save\'s one dagger - the counter\'s close handed nothing to the loaded pack');
+  // the modes drain their own
+  let asked = 0;
+  make(town(), { discardBeneathDeath: () => { asked++; } }).closeWindowsForLoad();
+  assert.equal(asked, 1, 'the building\'s and the dungeon\'s stacks are asked too');
+});
+
+test('AUDIT DUPE-LOAD the building\'s and the dungeon\'s drains: windowStack.keepOnly leaves the one kept and disposes the rest top first; each mode host reconciles its hand-filled slot and keeps the death screen; the dungeon\'s own load drains before its restore (mutants: keepOnly keeps nothing; the reconcile skipped; the dungeon drain after the restore)', () => {
+  const stack = makeWindowStack();
+  const dropped = [];
+  const win = (name) => ({ name, dispose() { dropped.push(name); } });
+  const [a, b, d] = [win('counter'), win('box'), { name: 'death', holdsTop: true }];
+  stack.pushWindow(a); stack.pushWindow(b); stack.reconcile(d);
+  stack.keepOnly(d, (w) => w.dispose?.());
+  assert.equal(stack.topWindow(), d);
+  assert.equal(stack.windowCount(), 1, 'the death screen alone');
+  assert.deepEqual(dropped, ['counter'], 'the counter disposed (the box the death replaced was gone already)');
+  const wm = read('src/scenes/worldModes.js');
+  assert.match(wm, /discardBeneathDeath\(\) \{\n\s*if \(mode === 'dungeon'\) \{ dungeonCtx\?\.discardBeneathDeath\?\.\(\); return; \}\n\s*const death = interiorOverlay;\n\s*if \(!\(death instanceof DeathScreen\)\) return;\n\s*interiorWindows\.reconcile\(death\);\n\s*interiorWindows\.keepOnly\(death, \(w\) => w\.dispose\?\.\(\)\);/);
+  const dc = read('src/scenes/dungeonContext.js');
+  assert.match(dc, /discardBeneathDeath\(\) \{\n\s*const death = activeOverlay;\n\s*if \(!\(death instanceof DeathScreen\)\) return;\n\s*dungeonWindows\.reconcile\(death\);\n\s*dungeonWindows\.keepOnly\(death, \(w\) => w\.dispose\?\.\(\)\);/);
+  const ql = dc.slice(dc.indexOf('    quickLoad(setPlayerPos, key = null) {'));
+  assert.ok(ql.indexOf('this.discardBeneathDeath();') > 0 && ql.indexOf('this.discardBeneathDeath();') < ql.indexOf('const extras = restorePlayer('), 'the dungeon\'s own load drains before it restores');
 });
 
 test('DUPE-LOAD the hazard the order closes, on the real counter: goods staged on a Sell counter and the save restored - closed BEFORE the restore the pack is the save\'s, closed after it the goods come back on top (the control: why the close must come first)', () => {

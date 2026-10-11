@@ -13627,6 +13627,17 @@ export function createWorldModes(host) {
       if (mode === 'dungeon') { dungeonCtx?.clearDeathOverlay?.(); return; }
       if (interiorOverlay instanceof DeathScreen) { interiorOverlay.restoreView(); interiorOverlay = null; }
     },
+    /** AUDIT DUPE-LOAD (the exploit audit): A LOAD'S DRAIN BENEATH THE MODE'S DEATH SCREEN - the building's stack (the
+     *  dungeon's is its context's own): every window waiting under it disposed and gone, none of their close callbacks
+     *  run (townTalk.discardBeneath's law). A load runs forceExitToExterior AFTER its restore, whose clear disposed them
+     *  then - a counter's staged goods handed to the loaded pack. The slot is filled by hand, so the stack learns it first. */
+    discardBeneathDeath() {
+      if (mode === 'dungeon') { dungeonCtx?.discardBeneathDeath?.(); return; }
+      const death = interiorOverlay;
+      if (!(death instanceof DeathScreen)) return;
+      interiorWindows.reconcile(death);
+      interiorWindows.keepOnly(death, (w) => w.dispose?.());
+    },
     /** The restore half - and NOT gated on the mode, deliberately.
      *  worldQuickLoad calls forceExitToExterior FIRST (world.js:"else if (forgotten)")
      *  and only re-enters the building at :4217, so the mode at apply

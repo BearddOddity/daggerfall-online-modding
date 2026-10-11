@@ -812,10 +812,13 @@ export async function deleteRealm({ db, bucket, nowS = Math.floor(Date.now() / 1
   const row = await db.prepare('SELECT obj, prev, bytes, origin_id, dead_at, held FROM realm_characters WHERE id = ? AND player = ?').bind(id, playerId).first();
   if (!row) return { error: 'no-realm-character' };
   if (row.dead_at != null) return { error: 'dead' };   // AUDIT LEGACY III O7
-  // AUDIT CRAFT-HOLD (the exploit audit): A HELD CHARACTER IS NOT DELETED - its row is where its hold lives, and the
-  // hold on its crafts (craftHoldOf) and its Stores went with it: held for copies, deleted, and its pieces listed
-  // under any other name the next minute. Staff lift a hold (review.js realm-clear); then it goes as any other.
-  if (row.held) return { error: 'trade-held', held: row.held };
+  // AUDIT CRAFT-HOLD (the exploit audit): A HELD CHARACTER WITH CRAFTS IS NOT DELETED - its row is where its hold lives,
+  // and the hold on the pieces it made (craftHoldOf) went with it: held for copies, deleted, and its pieces listed under
+  // any other name the next minute. Its Stores go with the row (below), so a held character with no piece of its make at
+  // the account goes as any other - a finding can be the law's mistake, and the slot is the player's. Staff lift a hold
+  // (review.js realm-clear); then it goes.
+  if (row.held && await db.prepare('SELECT 1 FROM products WHERE owner = ?1 AND (char_id = ?2 OR char_id = ?3) LIMIT 1')
+    .bind(playerId, id, row.origin_id ?? id).first()) return { error: 'trade-held', held: row.held };
   if (row.origin_id && !(row.bytes > 0)) return undoCustoms({ db, bucket }, playerId, id, row.origin_id);
   const master = await db.prepare(`SELECT (SELECT COUNT(*) FROM guild_members o WHERE o.guild_id = m.guild_id) AS n,
     (SELECT treasury FROM guilds g WHERE g.id = m.guild_id) AS treasury,

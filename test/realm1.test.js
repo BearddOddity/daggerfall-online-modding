@@ -219,9 +219,7 @@ test('REALM P1: the player\'s own delete takes its objects and the row', async (
   const g = await guest();
   const a = (await call('POST', '/v1/realm/create', { name: 'Nystul' }, g.secret)).body;
   await put(a.id, save(FIRST), g.secret, { lease: a.lease, seq: 1 });
-  // PIN MOVED (AUDIT CRAFT-HOLD): a second save the judge can read - the text '2' held the character (unreadable), and a
-  // held character is not deleted now (realm.js deleteRealm)
-  await put(a.id, save(JSON.stringify(freshSave({ name: 'Nystul', goldPieces: 101 }))), g.secret, { lease: a.lease, seq: 2 });
+  await put(a.id, save('2'), g.secret, { lease: a.lease, seq: 2 });
   assert.equal(env.SAVES._map.size, 2);
   env.SAVES._map.set(`${realmPrefix(g.id)}${a.id}/9-deadbeef`, new Uint8Array(1));   // REALM P2.1: a lost write's object whose drop failed
   assert.deepEqual((await call('POST', '/v1/realm/delete', { id: a.id }, g.secret)).body, { ok: true });
@@ -273,9 +271,6 @@ test('REALM P1: customs brings an offline character in ONCE, and only one that p
   // brought in is `customs-already` here too - customs no longer answers "no record" of one the realm counted
   assert.deepEqual((await call('POST', '/v1/realm/customs', { origin, name: 'Nystul' }, other.secret)).body, { error: 'customs-already' });
   assert.deepEqual((await call('POST', '/v1/realm/customs', { origin, name: 'Nystul' }, copied.secret)).body, { error: 'customs-already' });
-  // PIN MOVED (AUDIT CRAFT-HOLD): the judge held this record (its first save `{"v":1}` holds no character), and a held
-  // character is not deleted now (realm.js deleteRealm) - staff's clear first, as review.js realm-clear lifts one
-  env.DB._raw.prepare('UPDATE realm_characters SET held = NULL WHERE id = ?').run(came.body.id);
   assert.equal((await call('POST', '/v1/realm/delete', { id: came.body.id }, g.secret)).status, 200);
   for (const who of [g, copied]) {
     assert.deepEqual((await call('POST', '/v1/realm/customs', { origin, name: 'Nystul' }, who.secret)).body, { error: 'customs-already' }, 'spent on every account');

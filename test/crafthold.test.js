@@ -79,7 +79,7 @@ test('CRAFT-HOLD a held character\'s craft is disenchanted to the Stores under n
   assert.equal(r.body.error, 'trade-held');
 });
 
-test('AUDIT CRAFT-HOLD a held character is never deleted - its row is where its hold lives, and deleted, its crafts listed under any other name the next minute; lifted, it goes (mutants: the delete unheld)', async () => {
+test('AUDIT CRAFT-HOLD a held character with crafts at the account is not deleted - its row is where its hold lives, and deleted, its crafts listed under any other name the next minute; lifted, it goes; one with none goes as any other (mutants: the delete unheld; every held character refused)', async () => {
   const { s, raw, eve, E, piece, hold } = await stand();
   piece(P(0xd1));
   hold('dupe');
@@ -91,6 +91,10 @@ test('AUDIT CRAFT-HOLD a held character is never deleted - its row is where its 
   assert.equal(list.body.error, 'trade-held', 'and its craft still lists for nothing');
   hold(null);
   assert.equal((await s.call('/v1/realm/delete', { id: E.id }, eve.secret)).status, 200, 'lifted, it goes as any other');
+  // a held character with no piece of its make at the account: its Stores go with its row, nothing escapes - it goes
+  const F = await seatRealm(s.env, eve.secret, 'Fen', { name: 'Fen', level: 5, items: [], goldPieces: 0 });
+  raw.prepare("UPDATE realm_characters SET held = 'law' WHERE id = ?").run(F.id);
+  assert.equal((await s.call('/v1/realm/delete', { id: F.id }, eve.secret)).status, 200, 'held with no craft: deleted (a finding can be the law\'s mistake, and the slot is the player\'s)');
 });
 
 test('AUDIT CRAFT-HOLD the hold is a HOLD alone and the account\'s own: an unheld maker unjudged or dead refuses no sibling, another account\'s buyer of a held maker\'s piece is never refused, and a piece made before customs follows its customs character (mutants: record-unjudged refused; the account guard dropped; the origin unread)', async () => {

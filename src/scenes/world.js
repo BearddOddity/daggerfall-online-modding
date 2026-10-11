@@ -14706,9 +14706,12 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** DUPE-LOAD: every window in the street's slot down through its own close, the top first and then each it was laid
    *  over - never the death screen (closeDeathScreen's). Bounded: a close that keeps opening a successor stops at 16. */
   function closeWindowsForLoad() {
-    for (let n = 0; n < 16 && townTalk.overlay && !(townTalk.overlay instanceof DeathScreen); n++) {
-      if (!townTalk.closeOverlay()) break;
-    }
+    for (let n = 0; n < 16 && townTalk.overlay && !(townTalk.overlay instanceof DeathScreen); n++) townTalk.closeOverlay();
+    // AUDIT DUPE-LOAD: and what waits BENEATH the death screen - a window a box covered when the death took the top, a
+    // box pushed while it stands (holdsTop) - goes uncalled: closeDeathScreen uncovered it over the loaded game. The
+    // modes drain their own (a building's stack, a dungeon's - worldModes.js discardBeneathDeath)
+    if (townTalk.overlay instanceof DeathScreen) townTalk.discardBeneath(townTalk.overlay);
+    modes?.discardBeneathDeath?.();
   }
   function closeDeathScreen() {
     const ov = townTalk.overlay;
@@ -15755,6 +15758,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       // before the save is read over the entity it was building for.
       modes?.abortTransition?.();
       await modes?.transitionSettled?.();
+      closeWindowsForLoad();   // AUDIT DUPE-LOAD: and once more after the last await - a window opened while the load waited (a door's build, the spell table) goes too
       if (csaRuntime) csaCall(() => csaRuntime.OnStartLoad());   // CSA-D: ComeSailAway.OnStartLoad - the riders dropped, the helm left; CSA-J (the audit): AHEAD of the save's player (SaveLoadManager.cs:1378, the restore at :1497) - its StopSailing hands a lent ship back, and after restorePlayer it took the loaded character's own
       const extras = restorePlayer(playerEntity, snap, spellsByIndex);
       if (!extras) { townTalk.say('Save version mismatch.'); return; }

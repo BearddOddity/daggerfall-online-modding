@@ -47,8 +47,8 @@
   {
     "name": "AUDIT-CRAFT-HOLD-the-delete-unheld",
     "file": "server-account/src/realm.js",
-    "old": "  // under any other name the next minute. Staff lift a hold (review.js realm-clear); then it goes as any other.\n  if (row.held) return { error: 'trade-held', held: row.held };\n",
-    "new": "  // under any other name the next minute. Staff lift a hold (review.js realm-clear); then it goes as any other.\n",
+    "old": "  if (row.held && await db.prepare('SELECT 1 FROM products WHERE owner = ?1 AND (char_id = ?2 OR char_id = ?3) LIMIT 1')\n",
+    "new": "  if (false && await db.prepare('SELECT 1 FROM products WHERE owner = ?1 AND (char_id = ?2 OR char_id = ?3) LIMIT 1')\n",
     "tests": [
       "test/crafthold.test.js"
     ]
@@ -105,6 +105,17 @@
     "new": "",
     "tests": [
       "test/crafthold.test.js"
+    ]
+  },
+  {
+    "name": "AUDIT-CRAFT-HOLD-delete-held-with-no-craft-refused",
+    "file": "server-account/src/realm.js",
+    "old": "  if (row.held && await db.prepare('SELECT 1 FROM products WHERE owner = ?1 AND (char_id = ?2 OR char_id = ?3) LIMIT 1')\n",
+    "new": "  if (row.held && (true || await db.prepare('SELECT 1 FROM products WHERE owner = ?1 AND (char_id = ?2 OR char_id = ?3) LIMIT 1'))\n",
+    "tests": [
+      "test/crafthold.test.js",
+      "test/realm1.test.js",
+      "test/auditrealm2_client.test.js"
     ]
   }
 ]
