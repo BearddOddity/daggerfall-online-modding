@@ -14,6 +14,7 @@
 import { itemLine, linePicture, markItemFrame, wearBar, itemBriefLines } from './enhancedInventory.js';   // TRADE-INFO: an item's magic, in words   // RARITY-UI: the pack's one frame marker; WEAR-UI: its wear bar
 import { lockRefuses, lockedText } from '../systems/itemLock.js';   // LOCK1: a locked piece is not held out
 import { setLines } from '../systems/sigilSets.js';   // CARD-FIT U4: a set's tiers, under the pointer
+import { letterWorthLine } from '../systems/walletItem.js';   // TRADE-LOC: a letter of credit says what it is worth
 import { SLOT_BOX } from './iconFit.js';   // UI1: the row's picture box
 import { fittedImg } from './textureCanvas.js';   // UI1: the fitted picture's element
 import { injectEnhancedStyle, injectEnhancedFonts } from './enhancedStyle.js';
@@ -115,7 +116,7 @@ export function mountEnhancedPlayerTrade(hostEl, { session, deps }) {
     b.append(mid, el('span', 'itemwt', `${line.weight.toFixed(2)} kg`));
     // TRADE-INFO (Tabitha: "magic item stats on the trade hover"): the row's hover says what its magic is - mine and theirs
     // (CARD-FIT: in brief - the sigil's line too, and the set's tiers each by its brief; the lore is the pack's Info box's)
-    b.title = [line.name, ...itemBriefLines(item, deps, { worn: true }), ...setLines(item).slice(1)].join('\n');
+    b.title = [line.name, letterWorthLine(item), ...itemBriefLines(item, deps, { worn: true }), ...setLines(item).slice(1)].filter(Boolean).join('\n');
     if (selected?.item === item) b.classList.add('picked');
     if (side === 'offer') b.classList.add('staged');
     b.onclick = (e) => {
@@ -189,7 +190,7 @@ export function mountEnhancedPlayerTrade(hostEl, { session, deps }) {
     const bar = el('div', 'trade-detail'); bar.append(itemTile(line));
     const info = el('div', 'trade-detail-info');
     info.append(el('h4', null, line.name + (line.stack ? ` ×${line.stack}` : '')));
-    const bits = [line.material, line.word, `${line.weight.toFixed(2)} kg`];
+    const bits = [letterWorthLine(selected.item), line.material, line.word, `${line.weight.toFixed(2)} kg`];   // TRADE-LOC: a letter's worth first
     if (line.damage != null) bits.push(`Damage ${line.damage}`);
     if (line.armour != null) bits.push(`Armour ${line.armour}`);
     for (const t of line.survival ?? []) bits.push(t);

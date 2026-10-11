@@ -811,3 +811,4 @@ page; the page is the record, this is the way in.
   (honest): the look hook's yaw effect is seam-verified only (walk
   mode exposes no yaw getter); the body is the literal mouse
   expression. Desktop untouched - the layer no-ops without touch.
+- `10-UI/Overhauls.md` - GRIM1 (2026-10-09, Discord: "I want some of the features of enhanced+ just not the overall look of it"): DFO GRIMOIRE - the UI card's fourth look, the enhanced skin (every window and feature, the hotbar, the tents, the rest) dressed in GrimoireUI's own art cut at run time from the shipped pack, its face, its ink on its pages, its rosters (the front door's book, the pack, the books, the scrolls, the Ascend) and its vials for the vitals.
