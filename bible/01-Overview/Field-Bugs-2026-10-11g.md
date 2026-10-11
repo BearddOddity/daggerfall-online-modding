@@ -113,7 +113,8 @@ drawn the lit item, the take, the window holding while the light moves inside it
 (9). PIN MOVED: `test/worldhover.test.js`'s "an itemised frame carries the rows" and "the same six rows are visible"
 (the frame's rows are every row, the window's are six), `test/quicklootstats.test.js`'s clamp (the wheel walks the whole
 pile and clamps at its last row), both quick-loot suites' fixture (`frameOf` mints every row, as resolveHover does
-now), `test/disc22c_classic_loot.test.js`'s draw site (the window handed to the panel).
+now), `test/disc22c_classic_loot.test.js`'s draw site (the window handed to the panel), and
+`test/resourcesafety.test.js`'s plaque slots (the window's `_winKey` and `_winFrom`, both reset by destroyWorldPlaque).
 
 ## QUEST-NAME: a quest person is named on the plaque (5)
 
@@ -141,7 +142,8 @@ spoken once, whether anyone stood in front of the person, and the town.
 
 Pinned by `test/fb1011g_questname.test.js` (3: the host's helper, run as written over the real plaque namer; both hosts
 asking it before the item gate with their clicks' own keys; the mod's own order, read from the vendored source);
-`tools/mutants/fb1011g_questname.json` (6).
+`tools/mutants/fb1011g_questname.json` (6). PIN MOVED: `test/audit26_talk.test.js` F016 counts eight static-NPC name
+sites, the plaque's quest Person the eighth.
 
 ## HELD-SIDE: a trade's refusal says whose hold it was (6)
 

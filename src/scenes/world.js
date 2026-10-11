@@ -13867,7 +13867,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     // that has detected you, so nothing else was going to.
     handOverSiteFoes();
     exteriorFoes.clearLive();
-    raidPoolCleared();   // FIELD BUGS 2026-10-11g RAID-WORD: the raiders and defenders it took hold the raid's places no longer
     wodCarry.clear();   // WOD3/WOD4: a sweep is an unload - nothing carries past it
     for (const list of _dwRubbleCarry.values()) for (const r of list) dwFreeRubble(r);   // AUDIT DW-F: nor does a rebuild's rubble
     _dwRubbleCarry.clear();
@@ -13875,6 +13874,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     wodSlots.clear();   // AUDIT BRANCH (WoD) L1-3: ClearStreamingWorld - every slot pooled out of range, so the teardown below pools nothing
     cityGuards.clearLive();
     lockOn.unlock();   // AUDIT 62 F16: destroy()/removeFoe empties the pool WITHOUT flagging `dead`, so lockOn's death break never fires on the orphan the lock still holds
+    raidPoolCleared();   // FIELD BUGS 2026-10-11g RAID-WORD: the raiders and defenders the sweep took (exteriorFoes and cityGuards clearLive, above) hold the raid's places no longer
     magic.clearMissiles();
     arrows.arrows.length = 0;   // the flights own no GL objects - the mesh is the host's cache
     // PERF-EXT21: AND THE GRASS FIELD. `state.init` below re-anchors the

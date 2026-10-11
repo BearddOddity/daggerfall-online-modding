@@ -47,7 +47,7 @@
   {
     "name": "RAID-WORD-f-the-host-never-tells-the-raid",
     "file": "src/scenes/world.js",
-    "old": "    raidPoolCleared();   // FIELD BUGS 2026-10-11g RAID-WORD: the raiders and defenders it took hold the raid's places no longer\n",
+    "old": "    raidPoolCleared();   // FIELD BUGS 2026-10-11g RAID-WORD: the raiders and defenders the sweep took (exteriorFoes and cityGuards clearLive, above) hold the raid's places no longer\n",
     "new": "",
     "tests": [
       "test/fb1011g_raidword.test.js"

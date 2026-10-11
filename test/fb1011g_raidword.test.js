@@ -127,7 +127,9 @@ test('RAID-WORD: a jump\'s sweep - the pool emptied, no one dead - frees the rai
 
 test('RAID-WORD by source: the world host tells the raid of its sweep beside the sweep itself - every jump, load and respawn runs it', () => {
   const w = read('src/scenes/world.js');
-  assert.match(w, /\n {4}handOverSiteFoes\(\);\n {4}exteriorFoes\.clearLive\(\);\n {4}raidPoolCleared\(\);/, 'the sweep, then the raid told');
+  const sweep = w.indexOf('    exteriorFoes.clearLive();\n'), guards = w.indexOf('    cityGuards.clearLive();\n');
+  assert.ok(sweep > 0 && guards > sweep, 'the sweep this pin reads');
+  assert.match(w.slice(guards, guards + 400), /\n {4}raidPoolCleared\(\);   \/\/ FIELD BUGS 2026-10-11g RAID-WORD/, 'the sweep, then the raid told');
   assert.match(w, /import \{[^}]*\braidPoolCleared\b[^}]*\} from '\.\.\/systems\/raidingParties\.js';/);
 });
 
