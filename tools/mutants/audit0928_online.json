@@ -229,8 +229,8 @@
   {
     "name": "A0928-R5-walk-allocates",
     "file": "src/scenes/comeSailAwayPool.js",
-    "old": "        multiply(m, mat4FromQuatPosScale(c.localRotation, c.localPosition, c.localScale, _local), matOf(c));",
-    "new": "        nodeMats.set(c, multiply(m, c.localMatrix()));",
+    "old": "    else { multiply(made(p), mat4FromQuatPosScale(r.lq, r.lt, r.ls, _local), r.m); r.pver = p.ver; }",
+    "new": "    else { r.m = multiply(made(p), mat4FromQuatPosScale(r.lq, r.lt, r.ls)); r.pver = p.ver; }",
     "tests": [
       "test/audit0928_online.test.js"
     ]

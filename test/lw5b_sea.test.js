@@ -183,6 +183,6 @@ test('LW5b the town by the dock: a traveller sailing walks to the dock and is go
 
 test('LW5b the streaming host: a port town\'s lanes from the Bay\'s own network - the far port, the lane\'s length - none for a town with no harbour, none yet while the map is unread (mutants: the lanes, the harbour, the unread)', () => {
   const w = rd('src/scenes/world.js');
-  assert.match(w, /livingTripWorld\.lanesFrom = \(town\) => \{\n\s*if \(!town\?\.port\) return \[\];\n\s*if \(!mapDict\) return undefined;/);
+  assert.match(w, /livingTripWorld\.lanesFrom = \(town\) => \{\n\s*if \(!town\?\.port\) return \[\];\n\s*if \(!mapDict \|\| \(typeof _lanesReady !== 'undefined' && !_lanesReady\)\) return undefined;/);
   assert.match(w, /got = laneNet\(\)\.filter\(\(l\) => l\.a\.id === id \|\| l\.b\.id === id\)\.flatMap\(\(l\) => \{\n\s*const way = livingLaneWay\(l\), to = livingTownOfPort\(l\.a\.id === id \? l\.b\.id : l\.a\.id\);\n\s*return way && to \? \[\{ to, len: way\.len, key: l\.key \}\] : \[\];/);
 });

@@ -56,7 +56,7 @@
 //     the culling above is what makes 24 face replays cheap.
 
 import { lookAt, multiply, ortho, perspective } from '../world/mat4.js';
-import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInVolume } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements
+import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInCubeOf, placementsInVolume } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements
 import { billboardKey } from './billboardKey.js';   // AUDIT 68 S16-bbkey-stale-shadow-reach: re-keyed here, however the batch reached the records
 import { aabbOutside } from './frustum.js';   // SHADOW-REACH: a host's box against the cascades
 import { getPref } from '../systems/uiPrefs.js';
@@ -546,12 +546,47 @@ const CUBE_FACES = Object.freeze([
 /** The six face view-projections of a point light at `pos` reaching `far`.
  *  `out` is six Float32Array(16). */
 export function pointFaceMatrices(pos, far, out) {
-  const proj = perspective(Math.PI / 2, 1, SHADOW_POINT_NEAR, far);
+  // PERF-ALLOC1 (2026-10-10): into two scratches - the same floats (lookAtInto / perspectiveInto, below), where every
+  // lantern's every frame minted a projection, six views and their twenty-four arrays (the real game at Knightstale by
+  // night: lookAt alone 47 KB a frame of the 1.4 MB the frame allocates)
+  const proj = perspectiveInto(_faceProj, Math.PI / 2, 1, SHADOW_POINT_NEAR, far);
   for (let f = 0; f < 6; f++) {
-    const [d, up] = CUBE_FACES[f];
-    const view = lookAt(pos, [pos[0] + d[0], pos[1] + d[1], pos[2] + d[2]], up);
-    multiply(proj, view, out[f]);
+    const d = CUBE_FACES[f][0], up = CUBE_FACES[f][1];
+    multiply(proj, lookAtInto(_faceView, pos, pos[0] + d[0], pos[1] + d[1], pos[2] + d[2], up), out[f]);
   }
+  return out;
+}
+const _faceProj = new Float32Array(16), _faceView = new Float32Array(16);
+/** PERF-ALLOC1: world/mat4.js lookAt written into `out` (a Float32Array(16)), the centre as three numbers - its
+ *  arithmetic in its order, so its floats; nothing allocated. HERE and not in mat4.js: mat4.js is in the relay's bundle
+ *  (test/relayversion.test.js RELAY_GRAPH), and a byte of it changed is a relay deploy - the client's own scratch twin
+ *  costs the relay nothing. test/perfalloc1.test.js holds it to mat4.js's lookAt to the bit. */
+export function lookAtInto(out, eye, cx, cy, cz, up) {
+  const zx = eye[0] - cx, zy = eye[1] - cy, zz = eye[2] - cz;
+  const zl = Math.hypot(zx, zy, zz);
+  const z0 = zx / zl, z1 = zy / zl, z2 = zz / zl;
+  let x0 = up[1] * z2 - up[2] * z1, x1 = up[2] * z0 - up[0] * z2, x2 = up[0] * z1 - up[1] * z0;
+  const xl = Math.hypot(x0, x1, x2);
+  x0 /= xl; x1 /= xl; x2 /= xl;
+  const y0 = z1 * x2 - z2 * x1, y1 = z2 * x0 - z0 * x2, y2 = z0 * x1 - z1 * x0;
+  out[0] = x0; out[1] = y0; out[2] = z0; out[3] = 0;
+  out[4] = x1; out[5] = y1; out[6] = z1; out[7] = 0;
+  out[8] = x2; out[9] = y2; out[10] = z2; out[11] = 0;
+  out[12] = -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);
+  out[13] = -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]);
+  out[14] = -(z0 * eye[0] + z1 * eye[1] + z2 * eye[2]);
+  out[15] = 1;
+  return out;
+}
+/** PERF-ALLOC1: world/mat4.js perspective written into `out` (every element: the rest zero, as a new array's). */
+export function perspectiveInto(out, fovYRad, aspect, near, far) {
+  const f = 1 / Math.tan(fovYRad / 2);
+  out.fill(0);
+  out[0] = f / aspect;
+  out[5] = f;
+  out[10] = (far + near) / (near - far);
+  out[11] = -1;
+  out[14] = (2 * far * near) / (near - far);
   return out;
 }
 
@@ -1093,6 +1128,7 @@ export class ShadowPass {
     // faces' own culls of what the cube kept, smaller than it read before the pre-pass for the same frame.
     this._planes = new Float32Array(24);   // EL5: the replay's frustum
     this._bSphere = new Float64Array(4);   // AUDIT 68 S16-batch-sphere-dup: batchSphere's scratch for the SC1 scans
+    this._cubeArgs = new Float64Array(5);   // PERF-ALLOC2: _candidateQuads' cube for placementsInCubeOf
     this._selfAt = new Float64Array(3);    // DISC29-E: where the player's own card stands this frame (_selfCardAt)
     this._selfCard = null;                 // AUDIT PRE-MERGE 0929 E2: the card, noted as recordBillboards meets it (cleared by discard)
     this._slotOfScratch = new Int32Array(SHADOW_POINT_CASTERS);   // SC1: rank -> slot
@@ -2059,7 +2095,7 @@ export class ShadowPass {
     const cand = this._candOf[rank];
     if (!cand || !this._candQuads[rank]) return;
     this._candQuads[rank] = 0;
-    const lim = this._candLim, o = rank * 5, sp = this._bSphere;
+    const lim = this._candLim, o = rank * 5, sp = this._bSphere, cube = this._cubeArgs;
     const rec = cand.rec, bb = cand.bb;
     let w = 0;
     for (let j = 0; j < cand.n; j++) {
@@ -2074,7 +2110,10 @@ export class ShadowPass {
             const c = batchSphere(b, sp);
             if (c && c[0] === c[0] && c[1] === c[1] && c[2] === c[2] && c[3] === c[3]) {
               const rad = quadRadius(r, wl, law, b);
-              if (rad === rad && !placementsInCube(b, rad, lim[o], lim[o + 1], lim[o + 2], lim[o + 3] + cubeReach(rad) - rad + lim[o + 4])) continue;   // AUDIT 637: the cube's own reach (placementsInCube adds the radius itself)
+              if (rad === rad) {   // PERF-ALLOC2: the cube through a typed array - five doubles a call were five heap numbers
+                cube[0] = rad; cube[1] = lim[o]; cube[2] = lim[o + 1]; cube[3] = lim[o + 2]; cube[4] = lim[o + 3] + cubeReach(rad) - rad + lim[o + 4];
+                if (!placementsInCubeOf(b, cube)) continue;   // AUDIT 637: the cube's own reach (placementsInCube adds the radius itself)
+              }
             }
           }
           list[m++] = b;
@@ -2433,7 +2472,7 @@ export class ShadowPass {
           if (sw !== lastSway) { gl.uniform1f(P.bb.sway, sw); lastSway = sw; }
           if (tex !== lastTex) { gl.bindTexture(gl.TEXTURE_2D, tex); lastTex = tex; }   // PERF-BASIS
           f.bindVao(b.vao);
-          gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, 0);
+          gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, b._ibOff | 0);   // PERF-ARENA: a still batch's range of its arena's indices
           draws++;
         }
       }

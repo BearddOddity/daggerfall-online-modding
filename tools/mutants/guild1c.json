@@ -494,7 +494,7 @@
   {
     "name": "GUILD1c-the-tag-never-written",
     "file": "src/ui/nameLayer.js",
-    "old": "        setText(tag.guild, guildTagText(p.gt) ?? '');   // GUILD1c: \"<HND>\", or nothing\n",
+    "old": "        if (tag.gtOf !== p.gt) { tag.gtOf = p.gt; setText(tag.guild, guildTagText(p.gt) ?? ''); }   // GUILD1c: \"<HND>\", or nothing\n",
     "new": "",
     "tests": [
       "test/guild1c.test.js"
