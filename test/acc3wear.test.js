@@ -273,7 +273,7 @@ test('ACC3c / TITLE-R: the roster REPAINTS when a glyph changes - it is keyed, a
   // sprout that aged out changes nothing else about the row - so
   // without the glyphs in the key the list is correct and never redrawn.
   const panel = src('src/ui/chatPanel.js');
-  const key = /const key = label \+ '\|' \+ total \+ '\|' \+ \(menuFor \?\? ''\) \+ '\|' \+ rows\.map\(\(r\) => [^\n]*\)\.join\(','\);/.exec(panel);   // CHAT-CHAN: the list's own word leads the key
+  const key = /const key = label \+ '\|' \+ total \+ '\|' \+ \(menuFor \?\? ''\) \+ '\|' \+ query \+ '\|' \+ rows\.map\(\(r\) => [^\n]*\)\.join\(','\);/.exec(panel);   // CHAT-CHAN: the list's own word leads the key
   assert.ok(key, 'the roster key moved');
   assert.match(key[0], /r\.glyphs/, 'a glyph that changes must repaint the row it is on');
   assert.doesNotMatch(key[0], /r\.title/, 'TITLE-R: the row draws no title, so a title changing repaints nothing');

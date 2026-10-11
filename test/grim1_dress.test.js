@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { OVERHAUL_PANELS, currentOption } from '../src/systems/overhauls.js';
 import { getPref, setPref, _resetForTests } from '../src/systems/uiPrefs.js';
 import {
-  plusDress, inkColour, woodColour, washColour, lineColour, inkCss, sayRule, kitCss, rosterCss, faceCss, G,
+  plusDress, inkColour, woodColour, washColour, lineColour, inkCss, sayRule, kitCss, varsOut, learnSheetVars, rosterCss, faceCss, G,
   INK_ROOTS, WOOD_ROOTS, PRESS_ROOTS, EXIT_WORDS, GRIMOIRE_STACK, GRIMOIRE_PAGES, GRIMOIRE_BACKDROPS, GRIMOIRE_VITALS,
   grimoirePages, grimoireBackdrop, grimoireVitals, DESK_BOOK, BOOK_SPINE, parseColour, GRIM_YELLOW, snapSize,
   GRIMOIRE_SPELLBOOKS, grimoireSpellbook, bookSound, BOOK_BEAT_MS, UNROLL_SEL, DIAL_WORD, ATTRIBUTE_WORD, VITAL_WORD,
@@ -300,10 +300,12 @@ test('GRIM6: the front door\'s desk is the pack\'s painting at its own resolutio
   const css = kitCss() + rosterCss();
   assert.match(css, /\.px-home:not\(\.px-over\):not\(\.lv-sky\)::before \{[^}]*BIOG00I0\.IMG\.png"\) var\(--gbx\) var\(--gby\) \/ var\(--gbw\) var\(--gbh\) no-repeat; image-rendering: auto; \}/);
   assert.match(css, /\.px-ground \{ display: none !important; \}/);
-  assert.match(css, /\.hmfindme \{ display: none !important; \}/);
+  assert.match(css, /\.hmroot\[data-hm-sheet="automap"\] \.hmfindme \{ display: none !important; \}/, 'Find me goes on the dungeon\'s sheet alone (FINDME-SHEET)');
+  assert.doesNotMatch(css, /[^\]] \.hmfindme \{ display: none/, 'never off the world map\'s and the town\'s');
+  assert.match(readFileSync(new URL('../src/ui/heldMap.js', import.meta.url), 'utf8'), /root\.dataset\.hmSheet = this\._slot\?\.live \?\? '';/, 'the map\'s root says which sheet is up');
   assert.match(css, /\.pack-shell \.equipped \.wornrow \{ padding: calc\(5 \* var\(--gq[^}]*overflow: hidden; \}/);
   assert.match(css, /body \.dfchat-input \{ color: #2b1a0c !important; -webkit-text-fill-color: #2b1a0c !important;/);
-  assert.match(css, /\.dfchat-box :is\(\.dfchat-name, \.dfchat-who-name\)\[style\*="color"\] \{ filter: brightness\(0\.5\) saturate\(1\.6\); \}/);
+  assert.match(css, /\.dfchat-box :is\(\.dfchat-name, \.dfchat-who-name\)\[style\*="color"\] \{ filter: brightness\(0\.3\) saturate\(1\.6\); \}/);
   assert.match(css, /\.dfchat-peek, [^{]*\.dfchat-peek \* \{\n  text-shadow: -1px 0 0 #120804/);
   assert.match(css, /\.lv-count \{ font-size: 32px !important; line-height: 32px;/);
   assert.match(css, /\.lv-plate > \.lv-count \{ grid-column: 2; grid-row: 1; justify-self: end; margin-right: -12px !important; \}/);
@@ -395,4 +397,61 @@ test('WOOD-HD: every board of the dress - a window\'s body and bars, a pane, a c
   assert.match(src, /out\.wood = resample\(doc, cut\(doc, woodPic, \[0, 0, woodPic\.width, woodPic\.height\]\), WOOD_TILE\[0\] \* gpx, WOOD_TILE\[1\] \* gpx\);/, 'at the device pixels it is drawn at');
   assert.match(src, /const gpx = Math\.max\(2, Math\.round\(3 \* \(doc\.defaultView\?\.devicePixelRatio \|\| 1\)\)\);/, 'the grid\'s own --gp');
   assert.match(src, /out\.frame = frame\(doc, frameWood, out\.tear\);/, 'the frame\'s rim too');
+});
+
+test('INK-VARS / INK-FIELDS (2026-10-11, the Social panel on the page: "those fonts need to be made readable"): a var WITH A FALLBACK is read as its colour - the fallback alone was re-said, so --dim and --bone still drew grey and bone on the parchment; a sheet\'s own var is read as the one colour the sheets give it, a per-kind var never; every field types in ink, focused too; a name\'s own colour, a dead press and its reason are deepened to read on the scroll (mutants: the fallback re-said in place; a two-coloured var pinned; the field left to the wood)', () => {
+  assert.equal(sayRule('color: var(--dim, #9a9486)').ink, 'color: hsl(26 60% 17%)', 'var(--dim, …) is --dim\'s colour, inked - never var(--dim, <ink>)');
+  assert.equal(sayRule('color: var(--bone, #e9e4d9)').ink, 'color: hsl(26 60% 9%)');
+  assert.equal(varsOut('var(--nope, rgba(1, 2, 3, 0.5))'), 'var(--nope, rgba(1, 2, 3, 0.5))', 'an unknown var keeps its place and its fallback');
+  learnSheetVars('.w { --inkvars-one: #b9ab93; } .k1 { --inkvars-two: #6f9ee8; } .k2 { --inkvars-two: #e4c34f; } :root[data-plus-theme="stone"] .w { --inkvars-one: #ffffff; }');
+  assert.equal(varsOut('var(--inkvars-one)'), '#b9ab93', 'a sheet\'s own var is its one colour (a Plus colour\'s re-definition is not read)');
+  assert.equal(varsOut('var(--inkvars-two, #fff)'), 'var(--inkvars-two, #fff)', 'a var with a colour per kind is the element\'s own - never pinned');
+  assert.ok(!/var\(--dim/.test(inkCss('.dfsocial-sub { color: var(--dim, #9a9486); }')), 'the Social panel\'s grey is ink on the page');
+  const kit = kitCss();
+  assert.match(kit, /body \.dfsocial-field:focus[^{]*\{ color: #2b1a0c !important; -webkit-text-fill-color: #2b1a0c !important;/, 'a field is ink, focused too');
+  assert.match(kit, /\.hmsearch input:focus/, 'the map\'s Find a place among them (its yellow on focus)');
+  assert.match(kit, /\.dfsocial :is\(\.dfsocial-name, \.dfsocial-subject\)\[style\*="color"\] \{ filter: brightness\(0\.3\)/);
+  assert.match(kit, /\[data-grim-on="page"\]:is\(:disabled, \[disabled\]\) \{ opacity: 1 !important; color: #5b3b1f !important;/);
+  assert.match(kit, /\[data-grim-on="page"\] \[class\$="-why"\] \{ color: #5b3b1f !important;/);
+  assert.match(kit, /\[data-rarity="aetheric"\] \.broker-name/, 'the Broker\'s names in their tier\'s ink');
+});
+
+test('FOE-PLATE / VIAL-LONG (2026-10-11: the foe\'s and the boss\'s bars, the loss animation, Alt+U\'s sizes and lengths): no drain on any bar; the foe\'s and the boss\'s glass drawn out at any length with nothing behind it and no thicker; the upright vials lengthen as height; the editor\'s length handle measured, never assumed, and a size kept on the screen; the boss bar has a length (mutants: the ghost drawn; the plank laid; the vial stretched; the length forced across a stood bar)', async () => {
+  const css = rosterCss();
+  assert.match(css, /:is\(\.hud-vital, \.hud-foe, \.hud-breath\) \.hud-ghost, [^{]*\.hud-chunk, [^{]*\.wb-boss-ghost \{ display: none !important; \}/, 'what a blow takes is gone at once');
+  assert.match(css, /\{ --grim-foe-h: clamp\(13px, 1\.75vh, 48px\); --grim-boss-h: clamp\(18px, 2\.45vh, 64px\);/, 'BAR-SCREEN: the two bars are the screen\'s size, not a pixel count');
+  assert.match(css, /\.hud \.hud-foe \.hud-foetrack \{ width: var\(--grim-foe-w\); height: var\(--grim-foe-h\);/);
+  assert.match(css, /\.hud \.hud-foe\[data-hm-len\] \.hud-foetrack \{ width: calc\(var\(--grim-foe-w\) \* var\(--hml, 1\)\) !important; \}/, 'the editor\'s length from the same base');
+  assert.match(css, /\.hud-foe \.hud-foetrack \{[^}]*calc\(28 \* var\(--gfoe/, 'the vial drawn at the bar\'s own measure');
+  assert.match(css, /body:has\(> \.wb-boss-bar:not\(\[data-hm-ghost\]\):is\(:not\(\[style\*="display: none"\]\), \[data-hm-dummy\]\)\)/, 'the editor\'s stand-in for a boss never pushes the foe\'s preview down');
+  assert.match(css, /\.hud-foe\[data-hm-dummy\]:not\(\.on\) \.hud-foename \{ overflow: visible; min-height: 20px;/, 'the preview\'s label is not clipped away');
+  assert.match(css, /\.hud \.hud-foe \.hud-foetrack \{[^}]*var\(--grim-vialHealthHeadEmpty/, 'the glass drawn out: its own head...');
+  assert.match(css, /\.hud \.hud-foe \.hud-foetrack \.hud-fill \{[^}]*calc\(100cqw - /, '...and its foot at the track\'s end, whatever the length');
+  assert.doesNotMatch(css.slice(css.indexOf('FOE-PLATE')), /\.hud-foe \{[^}]*background|\.wb-boss-bar \{[^}]*background/, 'nothing behind either bar');
+  assert.match(css, /\.wb-boss-track \{[^}]*height: var\(--grim-boss-h\);/, 'the boss\'s glass the screen\'s measure too');
+  assert.match(css, /\.wb-boss-bar\[data-hm-len\] \{ width: calc\(var\(--grim-boss-w\) \* var\(--hml, 1\)\) !important; \}/);
+  assert.match(css, /data-grim-vitals="upright"\] \.hud \.hud-bars, [^{]*\{ --hm-len-axis: y; \}/, 'the stood vials\' length runs up');
+  assert.match(css, /\.hud-health\[data-hm-len\] \.hud-fill \{ background: var\(--grim-vialHealthUpFoot/, 'and a taller vial is drawn out from its foot');
+  const { HUD_LAYOUT_CSS, HUD_PIECES } = await import('../src/ui/hudLayout.js');
+  assert.equal(HUD_PIECES.find((p) => p.id === 'boss').len, true, 'the boss bar has a length');
+  assert.match(HUD_LAYOUT_CSS, /\.wb-boss-bar\[data-hm-len\] \{ width: calc\(460px \* var\(--hml, 1\)\)/);
+  assert.match(HUD_LAYOUT_CSS, /i\[data-hm-handle="len"\]\[data-axis="y"\]/, 'the handle on the top edge of a stood bar');
+  const src = readFileSync(new URL('../src/ui/hudLayout.js', import.meta.url), 'utf8');
+  assert.match(src, /per = \(axis === 'y' \? a\.top - b\.top : b\.right - a\.right\)/, 'the handle\'s travel per length is measured');
+  assert.match(src, /else want = keepOnScreen\(want\);/, 'a size or a length never carries a piece off the screen');
+  const art = readFileSync(new URL('../src/ui/grimoireArt.js', import.meta.url), 'utf8');
+  assert.match(art, /\[`\$\{name\}UpHead`\]: v\.upHead/, 'the upright vial\'s own pieces are cut');
+});
+
+test('GRIM-FIELD (2026-10-11, the DFO Grimoire bug thread): the Controls head sticks as ONE line over the book\'s short scroll; a chosen chip says so over its shelf-box picture; a setting\'s words are a scroll BESIDE the book in game (out of the page column\'s clip, slid in only as far as the screen asks) and the held-out scroll in the front door\'s column; Find me off the dungeon\'s sheet alone (mutants: the head\'s sentence kept, the inset shadow trusted, the sheet left in the column)', () => {
+  const css = rosterCss();
+  assert.match(css, /\.ctl-head:not\(\.ctl-asking\) > p\.meta \{ display: none !important; \}/, 'the head\'s sentence is the intro\'s own law - said there');
+  assert.match(readFileSync(new URL('../src/ui/enhancedControls.js', import.meta.url), 'utf8'), /ctl-intro-law/, '...and the intro still says it');
+  assert.match(css, /@media \(any-pointer: fine\) \{\n\s+:root\[data-plus-dress="grimoire"\] \.px-journal \.ctl-row \{ padding-top: 3px !important;/, 'a key\'s row a line where there is no thumb');
+  assert.match(css, /\[aria-pressed="true"\][^{]*\{ color: #fff27a !important; outline: 2px solid #d8b04a !important; outline-offset: -3px;/, 'the chosen chip\'s mark stands OVER the picture');
+  assert.match(css, /\.px-setwrap \.panes \{ position: static !important; \}/, 'the page column is no longer the sheet\'s anchor');
+  assert.match(css, /\.px-setwrap \.detail\.open \{ display: flex;[^}]*left: min\(calc\(100% \+ calc\(13 \* var\(--gp, 3px\)\) \+ 12px\), calc\(\(100% \+ 100vw\) \/ 2 - var\(--grim-sw\)/, 'beside the book, or slid in to stay whole');
+  assert.match(css, /\.px-setwrap \.detail\.open \{[^}]*border-image: var\(--grim-sideScroll, none\)/, 'the picker\'s scroll, as the item scrolls are');
+  assert.match(css, /\.shell \.detail > :is\(\.dcard, \.card\) \{[^}]*border-image: var\(--grim-sideScroll, none\)/, 'the front door\'s column holds the same scroll');
+  assert.ok(UNROLL_SEL.includes('.px-setwrap .detail.open'), 'it unrolls and rolls shut');
 });

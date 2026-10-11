@@ -44,6 +44,7 @@ import {
   MISSILE_LIFESPAN_S, EXPLOSION_RADIUS, BODY_CAPSULE_RADIUS, pickTouchTarget, sweepFoes, sphereOverlapsCapsule,   // ROAD-H H2: DoAreaOfEffect's OverlapSphere, against the player's capsule too
   missileHitsCapsule, PLAYER_BODY_RADIUS,   // AUDIT 62 F21 (review): the SphereCast contact test   // AUDIT 65 CV-2: the PLAYER's own controller radius (motor.js CAPSULE_RADIUS), not the foe's
 } from '../systems/spellcast.js';
+import { toBoxLocal } from '../systems/naval/navalBallistics.js';   // SERPENT4: a missile inside a box mark
 import { silenceBlocksCast, SILENCED_TEXT, PRESS_BUTTON_TO_FIRE_SPELL, DOOR_SPELL_TEXT, SOUL_TRAP_TEXT } from '../systems/mysticism.js';
 import { calculateCastCost, effectSchool, EFFECT_COST_TABLE } from '../systems/spellcost.js';
 import { applySpell, SPELL_REFLECTED_TEXT, hasActiveEffect, isSoulTrapEffect, spellSways } from '../systems/effects.js';   // WBX7: a soul trap meets the court's boss too
@@ -177,6 +178,12 @@ export function createPlayerMagic({
   // name, its body), and the door a spell that met one leaves through (`castAtHost(spell, i)`)
   hostMarks = null,
   castAtHost = null,
+  // SERPENT4 (2026-10-11, the players: "also let players on the ship be able to hurt it"): MARKS THAT ARE BOXES - the sea
+  // serpent's segments (`boxMarks()` - `[{id, box}]`, navalBallistics.js orientedBox's shape, in this host's frame: its
+  // host's handBoxes), and the door a harmful missile of mine that met one leaves through (`castAtBox(spell, mark)` -
+  // the host computes it against its stand-in and gathers the number), answering whether it went
+  boxMarks = null,
+  castAtBox = null,
   // HOME-MAGIC (2026-09-27, Discord: "Players can use magic in player non owned houses"): THE HOST'S WORD ON THE PLACE -
   // a sentence refusing any cast where the player stands (a visitor in another's online home: worldModes.js
   // visitorMagicRefusal), or null. Asked at the ready, at the click (a spell readied outside is fired inside) and by an
@@ -395,6 +402,15 @@ export function createPlayerMagic({
     if (mark?.host != null) { try { return !!castAtHost?.(sp, mark.host); } catch { return false; } }
     try { return !!castAtBoss?.(sp); } catch { return false; }
   }
+  /** SERPENT4: the box marks (`{id, box}`) a missile of `sp` may meet - a harmful family's alone; [] otherwise. */
+  function boxMarksFor(sp) {
+    if (!boxMarks || !castAtBox || !sp || !duelSpellOf(sp)) return [];
+    let list = null;
+    try { list = boxMarks() ?? null; } catch { return []; }
+    return Array.isArray(list) ? list.filter((q) => q?.box && Array.isArray(q.box.c) && Array.isArray(q.box.h)) : [];
+  }
+  /** SERPENT4: a missile at `pos` inside box `box` grown by its own collider radius (DaggerfallMissile's sphere). */
+  const missileInBox = (pos, box) => { const l = toBoxLocal(box, pos); return l.every((v, i) => Math.abs(v) <= box.h[i] + MISSILE_COLLIDER_RADIUS); };
   /** DUEL1: a blow landed on the opponent: out through the duel's door. Nothing lands here - their client resolves it. */
   function giveToDuel(mark, sp) {
     try { return !!castAtDuel?.(mark.id, sp); } catch { return false; }
@@ -1398,6 +1414,16 @@ export function createPlayerMagic({
           if (m.spell.rangeType === 4) explodeAt(at, m.spell, effectiveLevel(playerEntity), playerFeet, playerCaster(), { playerHeight, allies: !!m.ally, duel: !!m.duel, boss: true });
           else giveToBoss(hitBoss, m.spell);
           showImpactFlash(m, at);
+          retireMissile(m);
+          continue;
+        }
+      }
+      // SERPENT4: ...and a box mark (the sea serpent's hide) - a harmful missile of mine stops on it and goes through its door
+      if (m.duel) {
+        const hitBox = boxMarksFor(m.spell).find((q) => missileInBox(m.pos, q.box));
+        if (hitBox) {
+          try { castAtBox(m.spell, hitBox); } catch { /* the host's door - nothing lands here */ }
+          showImpactFlash(m, [m.pos[0], m.pos[1], m.pos[2]]);
           retireMissile(m);
           continue;
         }

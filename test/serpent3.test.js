@@ -17,7 +17,7 @@ import {
 import { LEG, MODE, COIL_R, headAt, bodyAt, modeAt, anyExposed, legIndexAt, sameLeg } from '../src/net/serpentBody.js';
 import { createSerpentLink } from '../src/net/serpentLink.js';
 import { createSerpentHost } from '../src/scenes/serpentHost.js';
-import { fleetShare, shipHurt, crushHurt, gripHurt, grindHurt, SERPENT_PAIR_SHARE } from '../src/systems/serpentStrike.js';
+import { fleetShare, shipHurt, crushHurt, gripHurt, grindHurt, SERPENT_PAIR_SHARE, SERPENT_CANVAS_X } from '../src/systems/serpentStrike.js';
 import { serpentTimes, serpentSiteKey, SERPENT_BRAIN_V, SERPENT_BRAIN_MIN, SERPENT_NATIVE_PER_M } from '../src/net/serpentLaw.js';
 import { validSerpentOut, cellRoomOfWire, serpentFightId, PIXEL_UNITS } from '../src/net/wire.js';
 import { HULL } from '../src/systems/naval/navalShips.js';
@@ -361,10 +361,10 @@ test('SERPENT3 a pair\'s share (Mac: "Two or more ships"): with exactly two ship
   assert.deepEqual([0, 1, 2, 3, 5].map(fleetShare), [1, 1, 2 / 3, 1, 1]);
   const whole = { maxHull: 1200, maxSail: 600 };
   const A = SERPENT_ATTACK_TABLE.ram;
-  assert.deepEqual(shipHurt(A, whole, 2 / 3), { hull: Math.round((A.hull * 1200 + A.base) * 2 / 3), sail: Math.round(A.sail * 600 * 2 / 3), crew: Math.round(A.crew * 2 / 3) });
+  assert.deepEqual(shipHurt(A, whole, 2 / 3), { hull: Math.round((A.hull * 1200 + A.base) * 2 / 3), sail: Math.round(A.sail * SERPENT_CANVAS_X * 600 * 2 / 3), crew: Math.round(A.crew * 2 / 3) });   // PIN MOVED: SERPENT4 - its canvas halved
   assert.deepEqual(shipHurt(A, whole), shipHurt(A, whole, 1));
   // AUDIT SHIPS D7 (2026-10-06): each at exactly the share - "less than" passed a share squared or halved
-  assert.deepEqual(crushHurt(whole, 2 / 3), { hull: Math.round((CRUSH.hull * 1200 + CRUSH.base) * 2 / 3), sail: Math.round(CRUSH.sail * 600 * 2 / 3), crew: Math.round(CRUSH.crew * 2 / 3) });
+  assert.deepEqual(crushHurt(whole, 2 / 3), { hull: Math.round((CRUSH.hull * 1200 + CRUSH.base) * 2 / 3), sail: Math.round(CRUSH.sail * SERPENT_CANVAS_X * 600 * 2 / 3), crew: Math.round(CRUSH.crew * 2 / 3) });
   assert.equal(gripHurt(whole, 10, undefined, 2 / 3).hurt.hull, Math.floor((GRIP.hull * 1200 + GRIP.base) * 10 * 2 / 3));
   assert.equal(grindHurt(whole, 10, 0, 2 / 3).hurt.hull, Math.floor((MAEL_GRIND.hull * 1200 + MAEL_GRIND.base) * 10 * 2 / 3));
   const hostSrc = readFileSync(new URL('../src/scenes/serpentHost.js', import.meta.url), 'utf8');
@@ -395,9 +395,9 @@ test('SERPENT3 a pair\'s share (Mac: "Two or more ships"): with exactly two ship
 
 // ═══ THE LAW'S VERSION, AND THE CLIENT ═════════════════════════════════════════════════════════════════════════════
 
-test('SERPENT3 the brain\'s law is version 2 and a game before it is told to reload: it draws the whirl at the waters\' heart and takes a pair\'s blows whole (mutants: the old version kept)', async () => {
-  assert.equal(SERPENT_BRAIN_V, 2);
-  assert.equal(SERPENT_BRAIN_MIN, 2);
+test('SERPENT3 the brain\'s law is version 2 and a game before it is told to reload: it draws the whirl at the waters\' heart and takes a pair\'s blows whole - SERPENT4\'s 3: a game before it aims at a body two fifths its girth and throws its ship twice as far (mutants: the old version kept)', async () => {
+  assert.equal(SERPENT_BRAIN_V, 3);   // PIN MOVED: SERPENT4
+  assert.equal(SERPENT_BRAIN_MIN, 3);
   const DAY = 363, TT = serpentTimes(DAY), PX = 205, PY = 214;
   const SX = (PX + 0.5) * PIXEL_UNITS, SZ = (499 - PY + 0.5) * PIXEL_UNITS, CELL = cellRoomOfWire(SX, SZ);
   const realNow = Date.now; const clock = TT.riseAt + 20_000;
@@ -405,7 +405,7 @@ test('SERPENT3 the brain\'s law is version 2 and a game before it is told to rel
     Date.now = () => clock;
     const r = fakeRooms({ now: () => clock }).room(CELL);
     const a = r.connect(); await r.hello(a, 'peer-0001', { x: SX + 100 * SERPENT_NATIVE_PER_M, y: 0, z: SZ, yaw: 0, pitch: 0 });
-    await r.raw(a, JSON.stringify({ t: 'serpent', k: 'in', d: DAY, bv: 1, lv: 20, hl: 4, sx: SX, sz: SZ }));
+    await r.raw(a, JSON.stringify({ t: 'serpent', k: 'in', d: DAY, bv: 2, lv: 20, hl: 4, sx: SX, sz: SZ }));   // SERPENT4: SERPENT3's own law, before it
     assert.deepEqual(a.sent.filter((m) => m.t === 'serpent').at(-1), { t: 'serpent', k: 'no', m: 'reload' });
   } finally { Date.now = realNow; }
 });
