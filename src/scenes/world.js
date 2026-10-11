@@ -942,7 +942,8 @@ const TEST_GODMODE = false;
 const isStaffT = (g) => TEST_GODMODE || isStaff(g);
 import { isStaff, parseStaffCommand, STAFF_HELP_LINES, findPlace } from '../net/staffCommands.js';   // STAFF1: the staff's own commands
 import { RELAY_CFG_KEYS, mayRelayCfg } from '../net/relayCfg.js';   // SCALE5b: the relay's settings, a developer's
-import { shardOf, isChannelBus, channelOf, hubShardsSupported } from '../net/hubShards.js';   // SCALE5c: the hub, sixteen ways; part two: a region's channel, four
+import { shardOf, isChannelBus, channelOf, hubShardsSupported } from '../net/hubShards.js';
+import { cellOfRoom as layerCellOf, worldRoom as layerCellAt } from '../net/wire.js';   // SCALE5d: a crowded place's layer, my party's   // SCALE5c: the hub, sixteen ways; part two: a region's channel, four
 import { fieldFromNative, nativeFromField, fieldOfPixelLocal } from '../systems/weatherField.js';   // WEATHER2b: the field's metres from the streaming world's natives, and back
 import { cellOfField, VC_PROFILE } from '../render/volumetricClouds.js';   // WEATHER2c: the field's cells as the clouds' cells   // W1: the live weather state (the save halves ride save.js); SAV3: the classic import's zone array
 import { classicSaveToSnapshot, takePendingClassicSave, peekPendingClassicSave } from '../systems/classicSave.js';   // SAV3: the classic-save import arm
@@ -25192,6 +25193,16 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  session (resting or not) - `bk` and `rest` below. This host owns every party/online seam, so it reads INTO
    *  the other two hosts' own window stacks through the `restState` getter each now exposes (worldModes.js's
    *  interior, dungeonContext.js's own) rather than each of them learning to speak the wire itself. */
+  /** SCALE5d: THE LAYER MY PARTY STANDS IN at the cell `key` - my leader's, else any mate's, whose pose is in the open air
+   *  within a cell of it (wire.js validPartyPose `ly`) - asked first when I join it, so a crowd that overflows into
+   *  layers keeps a party together; 0 (the place itself) for anything else. The Worker walks on past a full one. */
+  const partyLayerAt = (key) => {
+    const at = layerCellOf(key), party = social?.party;
+    if (!at || !party) return 0;
+    const near = (m) => m.acct !== social.acct && m.p?.in === 0 && Number.isInteger(m.p.ly) && (() => { const c = layerCellOf(layerCellAt(m.p.px, m.p.py)); return !!c && Math.max(Math.abs(c[0] - at[0]), Math.abs(c[1] - at[1])) <= 1; })();
+    const mate = party.members.find((m) => m.acct === party.leader && near(m)) ?? party.members.find(near);
+    return mate?.p.ly ?? 0;
+  };
   const composePartyPose = () => {
     const mode = modes?.mode ?? 'exterior';
     const px = playerTravelPixel();   // AUDIT SOC B18: read ONCE - this ran twice a second, and it used to read the pixel three times and compose a whole look (every equipped item) for three fields
@@ -25216,6 +25227,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     return {
       px: px.x, py: px.y,
       in: mode === 'dungeon' ? 1 : mode === 'interior' ? 2 : 0,
+      ...(online?.layer ? { ly: online.layer } : {}),   // SCALE5d: the layer of the place I stand in, so a mate who comes asks for it
       loc: ident?.kind === 'dungeon' ? (ident.name ?? '') : (loc?.name ?? ''),
       // AUDIT SOC B5: fatigue in the DIGITS a sheet shows (ui/charsheet.js: the stored pool is x FATIGUE_MULTIPLIER) - a
       // member's card said 3200/6400 where their own sheet said 50/100
@@ -28065,7 +28077,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // AUDIT WORLD2 C8: a world room's edge is never a churn - the hold delayed every handover and let one dungeon's stream land in another
     // AUDIT WORLD6b-iii(b) B1/B8: a cell crossing is joined the moment the cell is HELD (the halo's socket promotes in
     // place - the hold bought nothing but a 500 ms strip with no socket in the cell I stood in); otherwise the hold
-    else if (key !== online.room) { if (!online.room || isWorldRoom(key) || isWorldRoom(online.room) || (isCellRoom(key) && online.inRoom(key)) || now - _onlineKeySince >= ROOM_HOLD_MS) { online.setLook(composeLook(playerEntity)); online.join(key, { ...pose, ...arm }); } }   // the look re-composed: the next room's hello carries the gear worn now (PROFILE2: through setLook, so a halo the join PROMOTES - no hello of its own - is told too)
+    else if (key !== online.room) { if (!online.room || isWorldRoom(key) || isWorldRoom(online.room) || (isCellRoom(key) && online.inRoom(key)) || now - _onlineKeySince >= ROOM_HOLD_MS) { online.setLook(composeLook(playerEntity)); online.layerHint = partyLayerAt(key); online.join(key, { ...pose, ...arm }); } }   // the look re-composed: the next room's hello carries the gear worn now (PROFILE2: through setLook, so a halo the join PROMOTES - no hello of its own - is told too)
     else online.sendPose({ ...pose, ...arm, ...poseFx() });   // PEERFX1: and my landed blows and the blows I took
     siegeSession?.tick();   // SEAT2a part four: the battle's pass, its `in`, its HUD, its window
     if (siegeNpcs) { if (inSiegeRoom()) siegeNpcs.frame(siegeSession.npcs(), battleNowMs()); else siegeNpcs.leave(); }   // SEAT2b part two (c): the relay's own fighters, in its room alone

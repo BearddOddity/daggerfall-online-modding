@@ -556,12 +556,12 @@
   {
     "name": "SCALE5b-full-uncounted",
     "file": "server/src/index.js",
-    "old": "{ this._metrics.c.full++; this._metricsTick(); return json({ error: 'room full' }, 503); }",
-    "new": "{ this._metricsTick(); return json({ error: 'room full' }, 503); }",
+    "old": "{ this._metrics.c.full++; this._metricsTick(); const full = json({ error: 'room full' }, 503);",
+    "new": "{ this._metricsTick(); const full = json({ error: 'room full' }, 503);",
     "tests": [
       "test/scale5b.test.js"
     ],
-    "note": "a room full counted nowhere, as before"
+    "note": "a room full counted nowhere, as before SCALE5d (re-aimed by content): the refusal said full for the layer walk"
   },
   {
     "name": "SCALE5b-peak-at-end",

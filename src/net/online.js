@@ -74,6 +74,7 @@ import { validStaffTeleportIn, validStaffTeleportOut, staffTeleportSupported } f
 import { validRelayCfgIn, validRelayCfgOut, relayCfgSupported } from './relayCfg.js';   // SCALE5b: the relay's settings, a developer's
 import { hubHopOf, isChannelShard, channelOf, HUB_FIND_MAX, HUB_FIND_Q_MAX, HUB_GUILD_WHO_MS, HUB_GUILD_WHO_MAX, HUB_WHO_MS } from './hubShards.js';   // SCALE5c: the hub, sixteen ways
 import { CHAT_ROSTER_MAX } from './wire.js';   // SCALE5c: the World tab's list while the hub is small
+import { isLayered, LAYERS_MAX } from './wire.js';   // SCALE5d: a crowded place's layers
 import { layoutRoomKey } from '../world/interiorShared.js';   // WD3 (AUDIT WD3 B3): an interior's room is its layout's
 import { tabStorage } from '../systems/appStorage.js';   // the tab's own storage - the seam, never the browser's own (a PIN)
 import { REALM_CHARACTER_RE } from './identityToken.js';   // AUDIT LEGACY III O1: a wed frame's stamped realm character, by the token's own shape
@@ -480,6 +481,9 @@ export class OnlineSession {
     this._hubWhoAt = -Infinity;
     this._shardMiss = 0;          // SCALE5c: a shard's socket that never opened, in a row (a relay before the shards refuses its key)
     this._hubBus = false;         // SCALE5c: the hub link fell back to the bus - it offers the shards no more this session
+    this.layer = 0;               // SCALE5d: the layer of the place my room is (its welcome's `ly`; 0 the place itself)
+    this.layerHint = 0;           // SCALE5d: the layer my next room is asked for first (my party's - the host sets it); the Worker walks on past a full one
+    this._layerRoom = null;       // SCALE5d: the room `layer` was said in - a reconnect to it asks for its own layer again
     this.onRelayCfg = null;       // SCALE5b: ({k, v}|{k, error}) => void - the hub's answer to a relay setting
     this.relayCfgOk = false;      // SCALE5b: the hub's relay takes a setting (its welcome says, relayCfgSupported)
     this.onTraveller = null;      // TV3: (frame) => void - a traveller's mark in my region (p null: they went in, or hid)
@@ -765,6 +769,7 @@ export class OnlineSession {
       const old = { ws: this._ws, status: this.status === 'open' ? 'open' : 'connecting', retryAt: null, backoff: BACKOFF_MIN_MS, since: this._now(), raidOk: this.raidOk, riteOk: this.riteOk, serpentOk: this.serpentOk, sdOk: this.sdOk, foeInventoryOk: this.foeInventoryOk, wildOk: this.wildOk, bossOk: this.bossOk };   // SERPENT1: and the serpent's; INT9 (AUDIT): and the zone's; AUDIT INT15: and the count's
       this._halo.delete(room);
       this._halo.set(this.room, old);
+      old.ly = this.layer; this.layer = h.ly ?? 0; this._layerRoom = room;   // SCALE5d: each socket's layer goes with it
       this._ws = h.ws; this.status = h.status; this.error = null; this._retryAt = h.retryAt; this._backoff = h.backoff; this._dropAt = h.dropAt ?? null;
       this.raidOk = !!h.raidOk; this.riteOk = !!h.riteOk; this.serpentOk = !!h.serpentOk; this.sdOk = !!h.sdOk;   // SD3: and the find's
       this.foeInventoryOk = !!h.foeInventoryOk;
@@ -1707,7 +1712,8 @@ export class OnlineSession {
     if (!this.url) { this.status = 'error'; this.error = 'the relay must be a wss:// address'; this.terminal = true; this.terminalAt = this._now(); return; }
     if (!this.room || !this._WS) { this.status = 'error'; this.error = 'no WebSocket'; return; }
     let ws;
-    try { ws = new this._WS(`${this.url}/room/${this.room}`); } catch (e) { this.status = 'error'; this.error = String(e?.message ?? e); this._scheduleRetry(); return; }
+    const ly = this.room === this._layerRoom && this.layer > 0 ? this.layer : this.layerHint;   // SCALE5d: a reconnect to my layer, else my party's
+    try { ws = new this._WS(`${this.url}/room/${this.room}${isLayered(this.room) && ly > 0 ? `?ly=${ly}` : ''}`); } catch (e) { this.status = 'error'; this.error = String(e?.message ?? e); this._scheduleRetry(); return; }   // SCALE5d: my party's layer asked first
     this._ws = ws;
     this.status = 'connecting';
     // AUDIT (the pre-merge audit, OWN1 O2): a new socket has no relay's word yet - the own lane waits for ITS welcome.
@@ -2599,6 +2605,9 @@ export class OnlineSession {
       if (primary) this._shardMiss = 0;   // SCALE5c: a room that welcomes is a room the relay keeps
       this.welcomes++;   // AUDIT HCC-PARK (client C4)
       { const ws = primary ? this._ws : this._halo.get(room)?.ws; if (ws) this._welcomed.add(ws); }   // SD-HELLO: this socket may say more than its hello now
+      // SCALE5d: the layer of the place this socket stands in - the primary's is mine (my party is told it), a halo's kept
+      // with it, so a crossing that promotes it carries its layer
+      { const ly = isLayered(room) && Number.isInteger(m.ly) && m.ly > 0 && m.ly < LAYERS_MAX ? m.ly : 0; if (primary) { this.layer = ly; this._layerRoom = room; } else { const h = this._halo.get(room); if (h) h.ly = ly; } }
       if (primary) this.claim = false;   // ONE-SEAT: the hub took the claim - a reconnect from here on is a reconnect
       // SLAM12 (AUDIT SLAM): THE BACKOFF IS RESET HERE, BY THE WELCOME, AND NOT BY THE SOCKET OPENING. A full room's
       // CLOSE_BUSY arrives AFTER the socket opens (the relay's hello gate), so a reset at `onopen` undid the hard

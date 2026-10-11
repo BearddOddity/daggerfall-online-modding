@@ -5,6 +5,8 @@
 // the room's counts written to Analytics Engine. Its constants and its one helper live here, not in index.js: a module
 // Worker reads every named export of its entrypoint as an entrypoint (the account service's probe found a Worker that
 // would not boot over four exported constants - Testing.md, `npm run account`).
+import { LAYERS_MAX, LAYER_HEADER, LAYER_FULL_HEADER, layerName } from './relay.js';
+
 /** SCALE2b: how long the socket index is trusted before one walk against the runtime's list (`_all`). */
 export const IDX_TRUST_MS = 1000;
 /** SCALE2b: the longest a moving pose waits before the runtime's copy of its attachment is rewritten (`_setAttach`). */
@@ -114,4 +116,20 @@ export function countedState(state, metrics) {
       return typeof v === 'function' ? v.bind(t) : v;
     },
   });
+}
+
+/** SCALE5d: the Worker's walk of a crowded place's layers - `start` first, then each after it, round to LAYERS_MAX; the
+ *  first object that is not full answers (its socket, or its own refusal), and only a full room's refusal
+ *  (LAYER_FULL_HEADER) sends the walk on. Every layer full: the last refusal, `room full`, as one room's was. Here, not
+ *  in index.js: the entrypoint's every named export is read as an entrypoint, and a function there stops workerd
+ *  starting (test/accountdeploy.test.js AUDIT-ACC F2 caught it). */
+export async function layerWalk(rooms, key, request, start) {
+  let res = null;
+  for (let i = 0; i < LAYERS_MAX; i++) {
+    const ly = (start + i) % LAYERS_MAX;
+    const headers = { ...Object.fromEntries(request.headers), [LAYER_HEADER]: String(ly) };   // the page's own word of a layer, overwritten (a Headers lower-cases its names)
+    res = await rooms.get(rooms.idFromName(layerName(key, ly))).fetch(new Request(request, { headers }));
+    if (res.status !== 503 || res.headers.get(LAYER_FULL_HEADER) !== '1') return res;
+  }
+  return res;
 }

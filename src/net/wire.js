@@ -929,6 +929,24 @@ const CELL_ROOM = /^world:-?\d{1,3},-?\d{1,3}$/;
 export const isCellRoom = (key) => CELL_ROOM.test(String(key ?? ''));
 /** A room whose foes ride the wire: a world room (the host's) or a cell (each spawner's). */
 export const streamsFoes = (key) => isWorldRoom(key) || isCellRoom(key);
+/** SCALE5d (2026-10-11, Mac's decision 3 - a full city overflows into a layer rather than refusing `room full`;
+ *  bible/11-Multiplayer/Scale-Arc.md SCALE5d): A CROWDED PLACE OVERFLOWS INTO LAYERS - copies of the same place, each
+ *  an object of its own, whose players do not see each other. A room is still its KEY everywhere (every law that reads
+ *  or compares a key reads the same one); the Worker picks the OBJECT: the place's own first - or the layer the page
+ *  asks for (`?ly=`, its party's) - and past a full one the next (`key#n`), round to LAYERS_MAX. The object hears which
+ *  layer it is from the Worker (LAYER_HEADER - never the page's word) and says it in its welcome (`ly`). An open-world
+ *  cell, a building and a dungeon layer; a channel, an event room and every other room does not (a fight is one
+ *  object's: SCALE5d part two). */
+export const LAYERS_MAX = 8;
+export const LAYER_HEADER = 'x-df-layer';
+/** The header a full room's refusal carries, so the Worker tells it from any other 503. */
+export const LAYER_FULL_HEADER = 'x-df-full';
+/** Does `key` overflow into layers? */
+export const isLayered = (key) => isCellRoom(key) || isWorldRoom(key);
+/** A layer named on the wire (`?ly=`, the header) - 1 to LAYERS_MAX - 1 - or 0, the place itself, for anything else. */
+export const layerOf = (v) => { const s = String(v ?? ''); return /^[1-9]$/.test(s) && Number(s) < LAYERS_MAX ? Number(s) : 0; };
+/** The object a layer of `key` is: the key itself for the place, `key#n` for its copies. */
+export const layerName = (key, ly) => (ly > 0 ? `${key}#${ly}` : key);
 /** WORLD6b: the owner a cell's hit is for - the frame's `to`, a peer id; null when the frame names none.
  *  AUDIT WORLD6b A5: an id is what the wire's own law says an id is (ID_RE) - a `to` no socket could ever carry
  *  named nobody yet bought a funnel token. */
@@ -2755,6 +2773,9 @@ export function validPartyPose(p) {
     }
     if (qk.length) out.qk = qk;
   }
+  // SCALE5d: `ly` - the layer of the place I stand in (wire.js isLayered), so a mate who comes asks for mine; omitted for
+  //   the place itself and refused alone when out of its law
+  if (Number.isInteger(p.ly) && p.ly >= 1 && p.ly < LAYERS_MAX) out.ly = p.ly;
   return out;
 }
 

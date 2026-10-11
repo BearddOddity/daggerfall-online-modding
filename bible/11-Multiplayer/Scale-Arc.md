@@ -66,7 +66,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | **Built** (2026-10-10, this branch; acct111) |
 | SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | **Built** (2026-10-10, this branch; relay world191, NOT YET DEPLOYED) - with the relay's settings at run time and a halo at a walking rate |
 | SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | **Built** (2026-10-11, this branch; relay world192, NOT YET DEPLOYED) - the hub's sixteen shards and each region's four, the World and Region tabs' lists and the search |
-| SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | Planned, by the metrics |
+| SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | **Part one built** (2026-10-11, this branch; world192) - a crowded place overflows into layers; the event rooms next |
 | SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | Planned, by the metrics |
 | SCALE6 | Abuse and backups: Turnstile on guest creation, /64 IPv6 rate keys, bans, report and ignore, `ALLOWED_ORIGIN`, R2 snapshots, a hub export | Some | Alongside |
 
@@ -1399,6 +1399,54 @@ PIN MOVED: the channel whitelist again (chat1, chatchan: each region's four); th
 (`channelLinkRoom` - chat1, oneseat and its harness); the Region tab's join (chatchan); a traveller's mark's region
 check (tv3, two). Re-aimed by content, all dead: TV3-host-switch-ignored, AUDIT-TV-C4-told-to-the-region-left,
 AUDIT-SCALE5a-n-off-the-leave.
+
+## SCALE5d part one: built (2026-10-11, this branch - a crowded place overflows into layers; the same world192, re-hashed)
+
+Mac's decision 3: a full city overflows into a layer rather than refusing `room full`. A room of the open world, a
+building or a dungeon held 256 sockets (everyone's halo socket counts), and the 257th was refused at the Worker's door
+and tried the same key again for as long as the crowd stood.
+
+**Measured first** (`node tools/wire2Bench.mjs CELL_N=256`): a full cell on the second wire sends 5,368 frames and
+37.5 MB a second out of one object, about 146 KB a second to each client; at 120 it was 10.8 MB. A room's cost grows with
+the square of its crowd, so SOCKETS_MAX stays at 256 and a crowd past it goes to another object.
+
+**The layers** (`src/net/wire.js` isLayered, layerOf, layerName; `server/src/relayScale.js` layerWalk):
+- **A layer is another object for the same key.** A room is still its key everywhere - every law that reads, parses or
+  compares a key reads the one it always did (a raid's pixel, a park's anchor, a serpent's cell). The Worker picks the
+  object: `key` itself for the place, `key#n` for its layers, n up to LAYERS_MAX - 1 (7).
+- **The Worker walks them.** It forwards the upgrade to the asked layer (0 unless the page asks), and past a full one to
+  the next, round to LAYERS_MAX. A full room's refusal says it is full (LAYER_FULL_HEADER); any other answer, a refusal
+  included, is the answer. Every layer full is `room full`, as one room's was. There is no hop back to the page, so no
+  token is minted twice.
+- **The object knows its layer** from the Worker's header (LAYER_HEADER - set by the Worker whatever the page sent). It
+  keeps it on each socket's attachment and says it in its welcome (`ly`).
+- **What layers:** an open-world cell, a building and a dungeon (isLayered). A channel has its shards, and a fight is one
+  object's (part two). Every internal call addressed to a room by its key (a park's registry, a hub's word) reaches
+  the place itself.
+- **The page.** A session asks for its party's layer first (`layerHint`, `?ly=`), and a reconnect asks for its own. Its
+  welcome tells it the layer it holds (`layer`); a halo's is kept with it, and a crossing that promotes the halo carries
+  it. A halo asks for the place itself, and the Worker walks it on if that is full.
+- **A party stays together.** The party pose carries the member's layer (`ly`, validPartyPose). The host asks for its
+  leader's layer, else any mate's, when the mate stands in the open air within a cell of the place it joins
+  (`partyLayerAt`).
+
+**Pins.** `test/scale5d.test.js` (4): the law; the Worker's walk (the asked layer first, round past the last, only a
+full room's refusal walked past, each object told its layer whatever the page sent, every layer full `room full`); the
+room (a full room said full, the layer kept on a socket only where the room layers, its welcome's `ly`); the session
+(the hint, a reconnect's own layer, the welcome, a halo's layer carried by a crossing, a channel never asked) and the
+party pose; the host's wiring. `tools/mutants/scale5d.json`: 24, all dead.
+
+PIN MOVED: the host's join (mwbody1: its party's layer asked first); the relay's graph (relayversion SLAM8:
+relayScale.js reaches relay.js first now). Re-aimed by content, all dead: AUDWB-A1-a-socket-unstamped,
+SCALE5b-full-uncounted, X12-welcome-without-v.
+
+**Found on the way, fixed.** The walk was first written in `server/src/index.js` as an exported function, which the
+pins could import. workerd reads every named export of an entrypoint as an entrypoint, and a function there stops the
+relay starting. AUDIT-ACC F2's pin (test/accountdeploy.test.js) failed on it before any deploy, and the walk moved to
+`server/src/relayScale.js`, where the relay's helpers live for that reason.
+
+**Left:** part two - the event rooms (a gate's court, a Super dungeon's realm) as copies around one fight. Only those two
+can fill: a siege seats 48 fighters and 60 watchers, and the arena 60 watchers and a bout's two.
 
 ## THE PLAN PAST 2,000 (2026-10-10)
 

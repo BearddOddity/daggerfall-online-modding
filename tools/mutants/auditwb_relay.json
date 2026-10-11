@@ -11,11 +11,12 @@
   {
     "name": "AUDWB-A1-a-socket-unstamped",
     "file": "server/src/index.js",
-    "old": "    const att = { key, id: null, name: null, pose: null, at: Date.now() };   // AUDIT WB A1: when it opened",
-    "new": "    const att = { key, id: null, name: null, pose: null };   // AUDIT WB A1: when it opened",
+    "old": "    const att = { key, id: null, name: null, pose: null, at: Date.now(), ...(ly ? { ly } : {}) };   // AUDIT WB A1: when it opened",
+    "new": "    const att = { key, id: null, name: null, pose: null, ...(ly ? { ly } : {}) };   // AUDIT WB A1: when it opened",
     "tests": [
       "test/auditwb_relay.test.js"
-    ]
+    ],
+    "note": "SCALE5d (re-aimed by content): and the layer the Worker says"
   },
   {
     "name": "AUDWB-A1-the-talker-unseated",
