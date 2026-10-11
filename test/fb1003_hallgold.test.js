@@ -43,7 +43,8 @@ test('HALL-GOLD the Guild tab: the service\'s view carries what of the treasury 
   svc.env.DB._raw.prepare('UPDATE guilds SET treasury = treasury + 40000').run();   // gold that came in before the realm
   v = await view();
   assert.deepEqual([v.treasury, v.hallGold], [100_000, 60_000], 'the treasury\'s whole, and what of it buys a hall');
-  assert.equal(guildHallGoldText(v.hallGold, v.treasury), '60,000 gold of the treasury\'s 100,000 can buy a hall - the gold realm characters put in. A bank account\'s gold never does.');
+  // PIN MOVED: AUDIT GUILD3 W15 - the Treasury's sentence, one rule said once: a hall, or a new name or tag
+  assert.equal(guildHallGoldText(v.hallGold, v.treasury), '60,000 gold of the treasury\'s 100,000 can buy a hall, or a new name or tag - the gold realm characters put in. A bank account\'s gold never does.');
   assert.equal(guildHallGoldText(undefined, 5), null, 'an older service\'s answer: nothing said');
   const panel = rd('src/ui/socialPanel.js');
   assert.match(panel, /const counted = guildHallGoldText\(v\.hallGold, v\.treasury\);/);

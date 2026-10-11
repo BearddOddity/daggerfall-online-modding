@@ -316,7 +316,7 @@ test('AUDIT-SEATS C7 EVERY SETTLING ANSWER REACHES THE CARD: claimed before, a v
   assert.deepEqual([t.hud.at(-1).card.claim, t.hud.at(-1).card.honour], [false, SIEGE_CLAIM_REFUSED['honours-twice']], 'never stuck on "claim it"');
   t.ses.claimed({ ok: true, honours: { marks: 50, xp: 2000 } }, mine);
   t.ses.tick();
-  assert.match(t.hud.at(-1).card.honour, /50 Marks/);
+  assert.match(t.hud.at(-1).card.honour, /50 silver/);   // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - silver, as every sentence says it
   assert.match(rd('src/scenes/world.js'), /onClaimed: \(a, r\) => siegeSession\?\.claimed\(a, r\)/);
 });
 

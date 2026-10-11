@@ -36,7 +36,8 @@ const listed = (/** @type {string[]} */ n) => (n.length < 2 ? n.join('') : `${n.
 /**
  * THE SEASON'S LINES of chapter `faction` of `region` as `c` says it (the sheet's chapter or the board's line): the
  * event's, the doctrine holding, its halls shut - each a sentence, none for Calm. A Schism names its two and their
- * doctrines; a Succession its three, or its heir once named.
+ * doctrines; a Succession its three, or its heir once named. GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md): five
+ * events - a Decline and an Ascendancy are the Failing and Ascendant bands' now, said on the chapter's band line.
  * @param {number} faction @param {number} region @param {any} c
  */
 export function chapterSeasonLines(faction, region, c) {
@@ -54,8 +55,6 @@ export function chapterSeasonLines(faction, region, c) {
     else out.push(names.every(Boolean) ? `The hall's head steps down this Season: ${listed(/** @type {string[]} */ (names))} stand to follow.` : 'The hall\'s head steps down this Season.');
   } else if (s.event === 'crackdown') out.push('The watch hunts the chapter this Season: its members\' own writs earn half again Merit.');   // AUDIT CHAP5 E1
   else if (s.event === 'rivalry') out.push(`The chapter races ${rivalOf(s.rival)} for Merit this Season.`);
-  else if (s.event === 'decline') out.push('The chapter is in decline this Season: it loses Strength each week its Merit falls short of twice the target.');
-  else if (s.event === 'ascendancy') out.push('The chapter is ascendant this Season.');
   if (s.doctrine) out.push(`The chapter holds to ${chapterDoctrineWords(s.doctrine)} this Season.`);
   if (s.shut) out.push('The chapter\'s halls are shut this Season, by the watch\'s order.');
   return out;

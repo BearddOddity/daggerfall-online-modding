@@ -191,26 +191,17 @@
   {
     "name": "CHAP6E-SVC-ASC",
     "file": "server-account/src/npcChapters.js",
-    "old": "WHERE event = 'ascendancy' AND event_season = ?1\")",
-    "new": "WHERE event = 'rivalry' AND event_season = ?1\")",
+    "old": "WHERE strength >= ?1 AND (faction, region) IN",
+    "new": "WHERE strength > ?1 AND (faction, region) IN",
     "tests": [
       "test/chap6e_titles.test.js"
     ]
   },
   {
-    "name": "CHAP6E-SVC-ASC-SEASON",
+    "name": "CHAP6E-SVC-ASC-NARROWED",
     "file": "server-account/src/npcChapters.js",
-    "old": "WHERE event = 'ascendancy' AND event_season = ?1\")",
-    "new": "WHERE event = 'ascendancy' AND ?1 IS NOT NULL\")",
-    "tests": [
-      "test/chap6e_titles.test.js"
-    ]
-  },
-  {
-    "name": "CHAP6E-SVC-COUNTED",
-    "file": "server-account/src/npcChapters.js",
-    "old": "const counted = seasonOf(week, zero)?.n ?? null;",
-    "new": "const counted = seasonOf(week, zero)?.n ?? 0;",
+    "old": "WHERE strength >= ?1 AND (faction, region) IN",
+    "new": "WHERE strength >= ?1 AND (faction, region) NOT IN",
     "tests": [
       "test/chap6e_titles.test.js"
     ]

@@ -110,8 +110,8 @@
  {
   "name": "ASL-L7-drakes",
   "file": "src/net/townSeatLaw.js",
-  "old": "paid ${marksText(Number(d.marks ?? 0))} of tribute",
-  "new": "paid ${Number(d.marks ?? 0)} Marks of tribute",
+  "old": "paid ${marksText(Number(d.marks ?? 0))} in fealty",
+  "new": "paid ${Number(d.marks ?? 0)} Marks in fealty",
   "tests": [
    "test/audit_seats_law.test.js"
   ]

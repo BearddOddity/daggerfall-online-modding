@@ -6,13 +6,15 @@
 // raced on the Season's Merit, a Crackdown's halls shut, the Chronicle's 'event' and 'season' rows), the opening week's
 // clean slate, the board's and the sheet's events (a hidden rival named to no stranger), a shut hall's writs none and a
 // Crackdown's half again.
+// GUILD3e (2026-10-11, bible/11-Multiplayer/Guilds-Made-Plain.md): FIVE events now - the Decline and the Ascendancy folded
+// into the Failing and Ascendant bands they repeated; their pins here moved or retired, each said where it stood.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   CHAPTER_EVENTS, CHAPTER_EVENT_EFFECTS, CHAPTER_RIVAL_PAIRS, chapterEventWeights, chapterEventOf, chapterEventOk, chapterEventName,
-  chapterRivalsOf, chapterRivalPick, declineAfter, rivalryEnd, crackdownMerit, crackdownShuts, chapterSeasonLine, chapterChronicleLine,
-  chapterBandOf, meritWeekOf, strengthAfter, strengthSeasonEnd, ROLL_FACTIONS, memberWrit,
+  chapterRivalsOf, chapterRivalPick, rivalryEnd, crackdownMerit, crackdownShuts, chapterSeasonLine, chapterChronicleLine,
+  chapterBandOf, meritWeekOf, strengthAfter, failingWeekAfter, strengthSeasonEnd, ROLL_FACTIONS, memberWrit,
 } from '../src/net/npcChapterLaw.js';
 import { seatWeekStartMs } from '../src/net/townSeatLaw.js';
 import { herbPatches, nodeKey, regionWritTable, daySeason } from '../src/net/nodeLaw.js';
@@ -33,32 +35,35 @@ const turnOf = (w) => seatWeekStartMs(w + 1) / 1000 + CHAPTER_TURNING_GRACE_S + 
 
 // ── THE LAW ─────────────────────────────────────────────────────────
 
-test('CHAP6a the events: seven, section 7\'s base weights in the table\'s order, a hundred in all; their names; anything else no event (mutants: a weight, the order, the check)', () => {
-  assert.deepEqual(CHAPTER_EVENTS.map((e) => [e.id, e.weight]), [['calm', 30], ['schism', 15], ['succession', 10], ['crackdown', 10], ['rivalry', 15], ['decline', 10], ['ascendancy', 10]]);
-  assert.deepEqual(CHAPTER_EVENTS.map((e) => chapterEventName(e.id)), ['Calm', 'Schism', 'Succession', 'Crackdown', 'Rivalry', 'Decline', 'Ascendancy']);
-  assert.deepEqual([chapterEventOk('decline'), chapterEventOk('Decline'), chapterEventOk(null), chapterEventName('war')], [true, false, false, null]);
+// PIN MOVED: GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md, CUT A DUPLICATE, NEVER DEPTH) - five events: the Decline
+// and the Ascendancy folded into the Failing and Ascendant bands they repeated (their numbers gone with them)
+test('CHAP6a the events: five (GUILD3e), section 7\'s base weights in the table\'s order; their names; anything else - a retired Decline or Ascendancy among it - no event (mutants: a weight, the order, the check)', () => {
+  assert.deepEqual(CHAPTER_EVENTS.map((e) => [e.id, e.weight]), [['calm', 30], ['schism', 15], ['succession', 10], ['crackdown', 10], ['rivalry', 15]]);
+  assert.deepEqual(CHAPTER_EVENTS.map((e) => chapterEventName(e.id)), ['Calm', 'Schism', 'Succession', 'Crackdown', 'Rivalry']);
+  assert.deepEqual([chapterEventOk('rivalry'), chapterEventOk('Rivalry'), chapterEventOk(null), chapterEventName('war'), chapterEventOk('decline'), chapterEventOk('ascendancy')],
+    [true, false, false, null, false, false]);
   assert.deepEqual(CHAPTER_EVENT_EFFECTS, {
     schismMasters: 2, schismMoved: 10, successionAscendant: 10, crackdownHidden: 2, crackdownCurfew: 10, crackdownMerit: 1.5, crackdownShut: 30,
-    rivalryThriving: 10, rivalrySwing: 10, declineFailing: 15, declineFall: 2, declineMeets: 2, ascendancyAscendant: 15, ascendancyPrice: 0.9,
-  });   // PIN MOVED (CHAP6d): an Ascendancy's prices
+    rivalryThriving: 10, rivalrySwing: 10,
+  });
 });
 
-test('CHAP6a the weights: each modifier of section 7\'s table - two Masters a Schism\'s, Ascendant a Succession\'s and an Ascendancy\'s, the underworld\'s Crackdown twice and a Curfew\'s more, no rival a Calm, a Thriving or Ascendant rival a Rivalry\'s, Failing a Decline\'s (mutants: each)', () => {
+test('CHAP6a the weights: each modifier of section 7\'s table - two Masters a Schism\'s, Ascendant a Succession\'s, the underworld\'s Crackdown twice and a Curfew\'s more, no rival a Calm, a Thriving or Ascendant rival a Rivalry\'s; Failing moves none - its band says it (GUILD3e) (mutants: each)', () => {
   const w = (o) => chapterEventWeights({ faction: FIGHTERS, rivalBand: 'steady', ...o });
-  assert.deepEqual(w({}), [30, 15, 10, 10, 15, 10, 10]);
+  assert.deepEqual(w({}), [30, 15, 10, 10, 15]);
   assert.deepEqual(w({ masters: 1 }), w({}), 'one change of hands is no Schism\'s');
-  assert.deepEqual(w({ masters: 2 }), [30, 25, 10, 10, 15, 10, 10]);
-  assert.deepEqual(w({ band: 'ascendant' }), [30, 15, 20, 10, 15, 10, 25]);
+  assert.deepEqual(w({ masters: 2 }), [30, 25, 10, 10, 15]);
+  assert.deepEqual(w({ band: 'ascendant' }), [30, 15, 20, 10, 15]);
   assert.deepEqual(w({ band: 'thriving' }), w({}), 'Thriving is no Ascendant');
-  assert.deepEqual(w({ band: 'failing' }), [30, 15, 10, 10, 15, 25, 10]);
-  assert.deepEqual(w({ curfew: true }), [30, 15, 10, 20, 15, 10, 10]);
+  assert.deepEqual(w({ band: 'failing' }), w({}), 'PIN MOVED: GUILD3e - a Failing chapter draws as any; the band is its story');
+  assert.deepEqual(w({ curfew: true }), [30, 15, 10, 20, 15]);
   // PIN MOVED (AUDIT CHAP5 D3): the underworld holds one doctrine (more writs) - no Schism, its weight Calm's
-  assert.deepEqual(chapterEventWeights({ faction: THIEVES, rivalBand: 'steady' }), [45, 0, 10, 20, 15, 10, 10]);
-  assert.deepEqual(chapterEventWeights({ faction: BROTHERHOOD, rivalBand: 'steady', curfew: true }), [45, 0, 10, 30, 15, 10, 10], 'twice, then the Curfew\'s');
-  assert.deepEqual(w({ rivalBand: null }), [45, 15, 10, 10, 0, 10, 10], 'CALL 5: no rival, the Rivalry\'s weight Calm\'s');
-  assert.deepEqual(chapterEventWeights({ faction: FIGHTERS }), [45, 15, 10, 10, 0, 10, 10], 'no rival unless one is named');
-  assert.deepEqual(w({ rivalBand: 'thriving' }), [30, 15, 10, 10, 25, 10, 10]);
-  assert.deepEqual(w({ rivalBand: 'ascendant' }), [30, 15, 10, 10, 25, 10, 10]);
+  assert.deepEqual(chapterEventWeights({ faction: THIEVES, rivalBand: 'steady' }), [45, 0, 10, 20, 15]);
+  assert.deepEqual(chapterEventWeights({ faction: BROTHERHOOD, rivalBand: 'steady', curfew: true }), [45, 0, 10, 30, 15], 'twice, then the Curfew\'s');
+  assert.deepEqual(w({ rivalBand: null }), [45, 15, 10, 10, 0], 'CALL 5: no rival, the Rivalry\'s weight Calm\'s');
+  assert.deepEqual(chapterEventWeights({ faction: FIGHTERS }), [45, 15, 10, 10, 0], 'no rival unless one is named');
+  assert.deepEqual(w({ rivalBand: 'thriving' }), [30, 15, 10, 10, 25]);
+  assert.deepEqual(w({ rivalBand: 'ascendant' }), [30, 15, 10, 10, 25]);
   assert.deepEqual(w({ rivalBand: 'failing' }), w({}));
 });
 
@@ -66,28 +71,30 @@ test('CHAP6a the draw: a pure function of the Season, the chapter and its weight
   const weights = chapterEventWeights({ faction: FIGHTERS, rivalBand: 'steady' });
   assert.equal(chapterEventOf(3, FIGHTERS, ANTICLERE, weights), chapterEventOf(3, FIGHTERS, ANTICLERE, weights), 'the same roll everywhere');
   // the roll itself, as every client and the service roll it - the salt, the key and the walk (a change is a new law)
-  // PIN MOVED (AUDIT CHAP5 E3): the roll scaled over the weights' sum (drawOf), never its remainder
-  assert.deepEqual(Array.from({ length: 24 }, (_, n) => chapterEventOf(n, FIGHTERS, ANTICLERE, weights)), ['rivalry', 'succession', 'ascendancy', 'crackdown', 'schism', 'succession',
-    'succession', 'ascendancy', 'calm', 'calm', 'decline', 'ascendancy', 'schism', 'ascendancy', 'decline', 'succession', 'rivalry', 'schism', 'calm', 'succession', 'decline', 'succession', 'succession', 'rivalry']);
-  assert.deepEqual(Array.from({ length: 24 }, (_, n) => chapterEventOf(n, MAGES, DAGGERFALL, [1, 1, 1, 1, 1, 1, 1])), ['succession', 'decline', 'ascendancy', 'succession', 'crackdown',
-    'succession', 'decline', 'crackdown', 'decline', 'succession', 'ascendancy', 'rivalry', 'ascendancy', 'schism', 'rivalry', 'succession', 'crackdown', 'crackdown', 'ascendancy', 'decline', 'succession', 'decline', 'schism', 'succession']);
+  // PIN MOVED (AUDIT CHAP5 E3): the roll scaled over the weights' sum (drawOf), never its remainder. PIN MOVED: GUILD3e -
+  // the same roll over the five events' table (the salt, the key and the walk unmoved)
+  assert.deepEqual(Array.from({ length: 24 }, (_, n) => chapterEventOf(n, FIGHTERS, ANTICLERE, weights)), ['crackdown', 'schism', 'rivalry', 'succession', 'calm', 'schism',
+    'schism', 'rivalry', 'calm', 'calm', 'crackdown', 'rivalry', 'schism', 'rivalry', 'rivalry', 'schism', 'succession', 'schism', 'calm', 'schism', 'rivalry', 'schism', 'schism', 'crackdown']);
+  assert.deepEqual(Array.from({ length: 24 }, (_, n) => chapterEventOf(n, MAGES, DAGGERFALL, [1, 1, 1, 1, 1])), ['schism', 'rivalry', 'rivalry', 'schism', 'succession',
+    'schism', 'rivalry', 'succession', 'crackdown', 'succession', 'rivalry', 'crackdown', 'rivalry', 'schism', 'crackdown', 'schism', 'succession', 'succession', 'rivalry', 'rivalry', 'succession', 'crackdown', 'calm', 'succession']);
   const n = Object.fromEntries(CHAPTER_EVENTS.map((e) => [e.id, 0]));
   for (let s = 0; s < 4000; s++) n[chapterEventOf(s, FIGHTERS, ANTICLERE, weights)]++;
-  for (const [i, e] of CHAPTER_EVENTS.entries()) assert.ok(Math.abs(n[e.id] / 4000 - weights[i] / 100) < 0.03, `${e.id}: ${n[e.id]}`);
+  const sum = weights.reduce((a, b) => a + b, 0);
+  for (const [i, e] of CHAPTER_EVENTS.entries()) assert.ok(Math.abs(n[e.id] / 4000 - weights[i] / sum) < 0.03, `${e.id}: ${n[e.id]}`);
   const byChapter = new Set(); const bySeason = new Set();
   for (const f of ROLL_FACTIONS) byChapter.add(chapterEventOf(5, f, ANTICLERE, weights));
   for (let s = 0; s < 22; s++) bySeason.add(chapterEventOf(s, FIGHTERS, DAGGERFALL, weights));
   assert.ok(byChapter.size > 3 && bySeason.size > 3, 'the chapter and the Season both in the roll');
   assert.notDeepEqual(ROLL_FACTIONS.map((f) => chapterEventOf(5, f, ANTICLERE, weights)), ROLL_FACTIONS.map((f) => chapterEventOf(5, f, DAGGERFALL, weights)), 'the region too');
-  for (let i = 0; i < 7; i++) {
-    const only = [0, 0, 0, 0, 0, 0, 0]; only[i] = 3;
+  for (let i = 0; i < CHAPTER_EVENTS.length; i++) {
+    const only = CHAPTER_EVENTS.map(() => 0); only[i] = 3;
     assert.equal(chapterEventOf(9, MAGES, ANTICLERE, only), CHAPTER_EVENTS[i].id);
   }
   const noRival = chapterEventWeights({ faction: MAGES });
   for (let s = 0; s < 500; s++) assert.notEqual(chapterEventOf(s, MAGES, ANTICLERE, noRival), 'rivalry');
-  assert.deepEqual([chapterEventOf(-1, FIGHTERS, ANTICLERE, weights), chapterEventOf(1.5, FIGHTERS, ANTICLERE, weights), chapterEventOf(2, FIGHTERS, ANTICLERE, [0, 0, 0, 0, 0, 0, 0]), chapterEventOf(2, FIGHTERS, ANTICLERE, null)],
+  assert.deepEqual([chapterEventOf(-1, FIGHTERS, ANTICLERE, weights), chapterEventOf(1.5, FIGHTERS, ANTICLERE, weights), chapterEventOf(2, FIGHTERS, ANTICLERE, [0, 0, 0, 0, 0]), chapterEventOf(2, FIGHTERS, ANTICLERE, null)],
     ['calm', 'calm', 'calm', 'calm']);
-  assert.equal(chapterEventOf(2, FIGHTERS, ANTICLERE, [-5, 0, 0, 0, 0, 0, 4]), 'ascendancy', 'a weight below none is none');
+  assert.equal(chapterEventOf(2, FIGHTERS, ANTICLERE, [-5, 0, 0, 0, 4]), 'rivalry', 'a weight below none is none');
 });
 
 test('CHAP6a the rivals: section 8\'s table - the Fighters and the Thieves, the Brotherhood and Arkay, Stendarr and every knightly order, the Mages and Julianos; a pick the strongest, the lower guild at a tie (mutants: a pair, the pick, the tie)', () => {
@@ -103,12 +110,8 @@ test('CHAP6a the rivals: section 8\'s table - the Fighters and the Thieves, the 
   assert.deepEqual([chapterRivalPick([]), chapterRivalPick(null)], [null, null]);
 });
 
-test('CHAP6a a Decline\'s week, a Rivalry\'s end, a Crackdown\'s pay and shut line (mutants: the fall, the twice, the floor, the swing, its caps, the tie, the pay, the line)', () => {
-  assert.equal(declineAfter(50, 0, 60), 48);
-  assert.equal(declineAfter(50, 119, 60), 48, 'once the target is not twice');
-  assert.equal(declineAfter(50, 120, 60), 50, 'twice the target holds it');
-  assert.equal(declineAfter(1, 0, 60), 0, 'never below 0');
-  assert.equal(declineAfter(30, 0, 0), 28, 'a target of none asks one');
+// PIN MOVED: GUILD3e - a Decline's week is gone with the event (the Failing band says it); its pins with it
+test('CHAP6a a Rivalry\'s end, a Crackdown\'s pay and shut line (mutants: the swing, its caps, the tie, the pay, the line)', () => {
   assert.deepEqual(rivalryEnd([50, 50], [10, 5]), { a: 60, b: 40, won: 'a' });
   assert.deepEqual(rivalryEnd([50, 50], [5, 10]), { a: 40, b: 60, won: 'b' });
   assert.deepEqual(rivalryEnd([95, 50], [10, 5]), { a: 100, b: 40, won: 'a' }, 'the winner stops at 100, the loser\'s sting whole');
@@ -134,8 +137,8 @@ test('CHAP6a the Season\'s lines in words - each ending, a hidden rival named no
   assert.equal(ev('schism'), 'At the end of the Season of Morning Star, the Fighters Guild\'s schism ended with neither side carried.');   // PIN MOVED (CHAP6b): the Schism worded
   assert.equal(chapterSeasonLine({ kind: 'event', faction: FIGHTERS, data: { season: -1, event: 'ascendancy' } }), null);
   assert.equal(chapterSeasonLine({ kind: 'event', faction: FIGHTERS, data: { season: 0, event: 'ascendancy' } }), 'At the end of Season 0, the Fighters Guild stood ascendant.');
-  assert.equal(chapterChronicleLine({ kind: 'season', faction: MAGES, name: 'Alda', data: { season: 2 } }), 'Through the Season of Sun\'s Dawn, Alda held the Master\'s seat of the Mages Guild.');
-  assert.equal(chapterChronicleLine({ kind: 'season', faction: MAGES, name: null, data: { season: 2 } }), 'Through the Season of Sun\'s Dawn, A member since gone held the Master\'s seat of the Mages Guild.');
+  assert.equal(chapterChronicleLine({ kind: 'season', faction: MAGES, name: 'Alda', data: { season: 2 } }), 'Through the Season of Sun\'s Dawn, Alda held the Master\'s chair of the Mages Guild.');
+  assert.equal(chapterChronicleLine({ kind: 'season', faction: MAGES, name: null, data: { season: 2 } }), 'Through the Season of Sun\'s Dawn, A member since gone held the Master\'s chair of the Mages Guild.');
   assert.equal(chapterChronicleLine({ kind: 'event', faction: MAGES, data: { season: 2, event: 'ascendancy' } }), 'At the end of the Season of Sun\'s Dawn, the Mages Guild stood ascendant.');
   assert.equal(chapterChronicleLine({ kind: 'season', faction: BROTHERHOOD, name: 'Alda', data: { season: 2 } }), null);
 });
@@ -179,7 +182,8 @@ test('CHAP6a the draw at the Turning that opens a Season: every confirmed chapte
   s.raw.prepare("INSERT INTO town_seat_holds (key, guild_id, region, tier, since_week, standing, at) VALUES (901, 'gcurfew', ?, 'palace', 0, 50, 0)").run(DAGGERFALL);
   s.raw.prepare("INSERT INTO town_seat_edicts (key, week, edict, guild_id, set_by, state, at) VALUES (901, ?, 'curfew', 'gcurfew', 'x', 'law', 0)").run(WEEK - 1);   // last week's, not this
   assert.deepEqual(await s.settle(WEEK), { settled: true, chapters: ROLL_FACTIONS.length * 2 });
-  const after = (f, g) => strengthAfter(strengths.get(`${f}|${g}`), 0, 60);
+  // PIN MOVED: AUDIT GUILD3 R1 - a chapter that begins its week Failing falls 2 more (failingWeekAfter)
+  const after = (f, g) => { const p = strengths.get(`${f}|${g}`); return failingWeekAfter(p, strengthAfter(p, 0, 60), 0, 60); };
   let rivalries = 0;
   for (const f of ROLL_FACTIONS) for (const g of [ANTICLERE, DAGGERFALL]) {
     const rivals = chapterRivalsOf(f).map((r) => ({ faction: r, strength: after(r, g) }));
@@ -215,7 +219,9 @@ test('CHAP6a a draw only where a Season opens and is counted, and only for a cha
   assert.equal(shut.row(FIGHTERS, ANTICLERE)?.event ?? null, null, 'the opening Turning passed shut');
 });
 
-test('CHAP6a a Decline\'s Season: 2 Strength more each week unless the week\'s Merit meets twice the target, the loss kept in its state; only the Season\'s own event (mutants: the event read, the Season, the Merit, the sum)', async () => {
+// PIN MOVED: GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md) - the Decline retired into the Failing band: a row the
+// developers' Turnings drew one for reads as none, and its chapter moves by the week's own step alone
+test('CHAP6a a retired Decline (GUILD3e): a chapter whose row still holds one moves by the week\'s own step alone - no 2 more, no `fell` - and its event reads as none from that Turning (mutants: none - the service asks the Decline no more)', async () => {
   const s = await stand();
   s.put(FIGHTERS, ANTICLERE, 60, { event: 'decline', season: 1 });
   s.put(MAGES, ANTICLERE, 60, { event: 'decline', season: 1 });
@@ -223,12 +229,10 @@ test('CHAP6a a Decline\'s Season: 2 Strength more each week unless the week\'s M
   s.merit(MAGES, ANTICLERE, WEEK + 1, 120);
   s.raw.prepare("INSERT INTO npc_chapter_weeks (week, active, target, chapters, open, at) VALUES (?, 0, 60, 0, 'on', 0)").run(WEEK);
   await s.settle(WEEK + 1);
-  assert.deepEqual([s.row(FIGHTERS, ANTICLERE).strength, s.row(FIGHTERS, ANTICLERE).event_data], [55, { fell: 2 }], '60 - 3 idle - 2');
-  assert.deepEqual([s.row(MAGES, ANTICLERE).strength, s.row(MAGES, ANTICLERE).event_data], [62, { fell: 0 }], 'twice the target: the step alone');
-  assert.equal(s.row(FIGHTERS, DAGGERFALL).strength, 57, 'last Season\'s Decline is over');
-  s.merit(FIGHTERS, ANTICLERE, WEEK + 2, 119);
-  await s.settle(WEEK + 2);
-  assert.deepEqual([s.row(FIGHTERS, ANTICLERE).strength, s.row(FIGHTERS, ANTICLERE).event_data], [54, { fell: 4 }], '55 + 1 - 2');
+  assert.deepEqual([s.row(FIGHTERS, ANTICLERE).strength, s.row(FIGHTERS, ANTICLERE).event], [57, null], '60 - 3 idle, nothing more');
+  assert.deepEqual([s.row(MAGES, ANTICLERE).strength, s.row(MAGES, ANTICLERE).event], [62, null], 'the step alone');
+  assert.equal(s.row(FIGHTERS, DAGGERFALL).strength, 57);
+  assert.equal(s.row(FIGHTERS, ANTICLERE).event_data.fell, undefined, 'no loss kept');
 });
 
 test('CHAP6a the Season\'s end: a Rivalry raced on the whole Season\'s Merit (its winner 10 of the loser\'s, once a pair), a Crackdown\'s chapter under 30 shut for the next Season, the halving after; an \'event\' row a chapter of no Calm (mutants: the race\'s Merit, the pair, the winner, the shut line, the shut Season, the rows)', async () => {
@@ -308,11 +312,12 @@ test('CHAP6a the opening week: no developers\' event nor shut hall past it (muta
 test('CHAP6a the Chronicle reads a Season\'s lines - never a hidden guild\'s (mutants: none - the reader\'s own SQL)', async () => {
   const s = await stand();
   s.raw.prepare("INSERT INTO npc_chapter_weeks (week, active, target, chapters, open, at) VALUES (?, 0, 60, 0, 'on', 0)").run(WEEK + 7);
-  s.put(FIGHTERS, ANTICLERE, 95, { event: 'ascendancy', season: 1 });
-  s.put(THIEVES, ANTICLERE, 95, { event: 'ascendancy', season: 1 });
+  // PIN MOVED: GUILD3e - a live event's ending (the Ascendancy retired into the Ascendant band; its old rows keep their words)
+  s.put(FIGHTERS, ANTICLERE, 95, { event: 'crackdown', season: 1 });
+  s.put(THIEVES, ANTICLERE, 95, { event: 'crackdown', season: 1 });
   await s.settle(WEEK + 8);
   const r = await chapterChronicle({ db: s.env.DB }, null, s.env, { region: ANTICLERE });
-  assert.deepEqual(r.rows.filter((x) => x.kind === 'event').map((x) => chapterChronicleLine(x, r.zero)), ['At the end of the Season of Morning Star, the Fighters Guild stood ascendant.']);
+  assert.deepEqual(r.rows.filter((x) => x.kind === 'event').map((x) => chapterChronicleLine(x, r.zero)), ['At the end of the Season of Morning Star, the Fighters Guild weathered a crackdown.']);
 });
 
 // ── THE SERVICE: THE BOARD, THE SHEET, THE WRITS ────────────────────

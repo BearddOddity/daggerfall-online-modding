@@ -322,8 +322,8 @@
   {
     "name": "AUDIT31-svc-escrow-word",
     "file": "server-account/src/guilds.js",
-    "old": "FROM guild_writs WHERE guild_id = ?1 AND returned = 0 AND escrow > 0').bind(guildId).first()) return 'guild-writ-escrow';",
-    "new": "FROM guild_writs WHERE guild_id = ?1 AND returned = 0 AND escrow > 0').bind(guildId).first()) return 'guild-writs';",
+    "old": "  ['guild-writ-escrow', (/** @type {string} */ p) => `EXISTS (SELECT 1 FROM guild_writs WHERE",
+    "new": "  ['guild-writs', (/** @type {string} */ p) => `EXISTS (SELECT 1 FROM guild_writs WHERE",
     "tests": [
       "test/audit31_service.test.js"
     ]

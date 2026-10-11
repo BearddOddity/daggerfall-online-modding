@@ -369,8 +369,8 @@
   {
     "name": "AUDIT2-GUILD2-S2-why-dropped-by-the-book",
     "file": "src/net/guildBook.js",
-    "old": "error: r?.error ?? 'server', ...(typeof r?.why === 'string' ? { why: r.why } : {}), ...(Number.isSafeInteger(r?.at) ? { at: r.at } : {}) };",
-    "new": "error: r?.error ?? 'server' };",
+    "old": "error: r?.error ?? 'server', ...(typeof r?.why === 'string' ? { why: r.why } : {}), ...(Number.isSafeInteger(r?.at) ? { at: r.at } : {}),",
+    "new": "error: r?.error ?? 'server',",
     "tests": [
       "test/guild2_client.test.js"
     ]

@@ -4964,7 +4964,8 @@ export function createWorldModes(host) {
     say(c ? U.plaqueLine(c.name, c.banner ? ARENA_TEXT.teams.the[c.banner] ?? '' : '', c.season) : U.hallNone);
   }
   /** CROWN-HALL: PRESSED - the roster board the holder's notes to its members (GUILD1e's board), the chest its Stores
-   *  (GUILD1d's chest); to anyone else each says whose it is. */
+   *  (GUILD1d's chest - its vault since GUILD2b, the Stores a page beside it: GUILD3a); to anyone else each says whose
+   *  it is. */
   function openCrownPiece(key) {
     const c = crownHere();
     if (!c) return;
@@ -5932,7 +5933,7 @@ export function createWorldModes(host) {
     // offline, nor for a chapter the sheet does not name): its band on the training, spells and shelf below
     // CHAP6d: the whole chapter - its band, and its Season's: an Ascendancy's tenth, the doctrines' tenth and two qualities
     const chapterHere = () => host.chapterHere?.(guild?.factionId ?? null) ?? null;   // AUDIT CHAP3 C6: the host's region, the chapters' own
-    const chapterFactor = (/** @type {string} */ service) => chapterHallFactor(chapterHere(), service, host.guildId?.() ?? null);   // CHAP7b: a patron's members the Thriving price
+    const chapterFactor = (/** @type {string} */ service) => chapterHallFactor(chapterHere(), service, host.guildId?.() ?? null);   // CHAP7b: a patron's members the Thriving price - GUILD3e: or the band's, where better
     const shelfQuality = () => chapterHallShelf(b?.quality ?? 0, chapterHere());
     const closeSelf = () => closeSpellWindow(flow);
     const now = () => interiorTicker.ownMinutes;   // already CLASSIC minutes (AUDIT 21 F2); LIVED1: a service's clock (training's cooldown, a blessing) is the character's own

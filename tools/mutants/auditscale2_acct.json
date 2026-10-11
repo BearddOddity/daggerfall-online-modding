@@ -412,11 +412,11 @@
   {
     "name": "AUDIT-SCALE-II-N3-history-renamed",
     "file": "test/renown_char.test.js",
-    "old": "'PIN MOVED: acct112, SCALE4f + SCALE4g + SCALE4h (acct111 on its branch, renumbered past HOME-VOTE at the merge); PIN MOVED: acct111, HOME-VOTE",
-    "new": "'PIN MOVED: acct112, HOME-VOTE",
+    "old": "PIN MOVED: acct112, SCALE4f + SCALE4g + SCALE4h (acct111 on its branch, renumbered past HOME-VOTE at the merge); PIN MOVED: acct111, HOME-VOTE (a town\\'s",
+    "new": "PIN MOVED: acct112, HOME-VOTE (a town\\'s",
     "tests": [
       "test/auditscale2_acct.test.js"
     ],
-    "note": "the version pin's history renamed as the merge left it"
+    "note": "the version pin's history renamed as the merge left it. GUILD-SEEN (re-aimed by content, PIN MOVED): acct113 heads the history now."
   }
 ]
