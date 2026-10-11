@@ -10117,7 +10117,7 @@ HOME-VOTE II (below).
   before it. A build from before DECOR-FIGURE draws that record's scale (II C3).
 - **HOME-VOTE - the vote.** A registered account a week old votes an online home - a guild's hall among them - up (+1)
   or down (-1), changes its mind, or takes its vote back (0): one vote an account a home
-  (`server-account/src/homeVotes.js` voteHome over `migrations/0107_home_votes.sql`, POST /v1/homes/vote; the law
+  (`server-account/src/homeVotes.js` voteHome over `migrations/0108_home_votes.sql`, POST /v1/homes/vote; the law
   `net/homeVoteLaw.js`). Never a guest's (a guest is a device - `homes-need-account`, told in a vote's own words:
   homeVoteRefusalLine); never an account registered less than HOME_VOTE_AGE_S ago (a week, a witness's bar -
   `vote-young`, which may still take back what it has); never on a home it is inside of - a home of its own account's
@@ -10180,7 +10180,7 @@ HOME-VOTE II (below).
 - **The four hosts.** `scenes/world.js` WIRED (the paint; the yards through `scenes/homeYards.js`).
   `scenes/worldModes.js` WIRED (the door, the room). `scenes/exterior.js` (the bench) stands no online homes - HOME1's
   own - so nothing to vote or hide; `scenes/dungeonContext.js` stands no homes.
-- **Deploy.** The account service first: migration 0107 applied, acct110 (acct107, acct108 and then acct109 on its branch - renumbered past LW15's, TECH1's and PATRON-LOAD's at the merges; DECOR-FIGURE's refusal rides the same deploy);
+- **Deploy.** The account service first: migration 0108 applied, acct111 (acct107, acct108, acct109 and then acct110 on its branch - renumbered past LW15's, TECH1's, PATRON-LOAD's and PATRON-LOAD II's at the merges, and its migration 0107 past PATRON-LOAD II's 0107_trader_reads; DECOR-FIGURE's refusal rides the same deploy);
   then the page. A build from before HOME-VOTE reads the town's answer as before (the fields are new) and is handed no
   more of a shunned home's room and paint than a new one (AUDIT A3); its yards are the client's to hide. No relay
   change.
@@ -10190,7 +10190,7 @@ HOME-VOTE II (below).
   counts where it is shown - never lookOfHome, which would rebuild the owner's street under the painter's preview;
   `tools/mutants/guild_yard.json` and `housing.json` re-aimed); home2's, homerent's and guild1d_client's door rows (the
   visitor's rows and the votes under them); decor1's room list (the vote's gate between the list stood and its
-  pieces); arena4b's carried columns (the score); acct110 across the service's version pins; accountworker's tables
+  pieces); arena4b's carried columns (the score); acct111 across the service's version pins; accountworker's tables
   (`home_votes`); `test/decorFakes.mjs` yardWorld takes a home row's `home`; AUDIT HOME-VOTE II: home2's and roadb's
   activateStaticDoor signature (`listed`, read at the press - B4, D1), home2's, homerent's and guild1d_client's door
   rows again (the votes where a plaque draws them - D1), decorfigure's move refusal (`decor-figure` - C2), homevote's
@@ -10214,7 +10214,7 @@ lines moved into homeVoteDoorText). FOUND, each fixed and pinned unless DOCUMENT
   homeVoteChoices, pinned; the host pinned by source line by line; the registry driven over the real accountHomes and
   the service (TEST THE SHAPE THE PRODUCER MINTS).
 - **MEDIUM - A2: every town read summed every vote of every home.** FIXED: the score is kept on the home's row by the
-  database (migration 0107's triggers), read as a column - no vote row read.
+  database (migration 0108's triggers), read as a column - no vote row read.
 - **MEDIUM - A3: only the client hid anything.** A desktop release not yet updated showed a shunned home whole. FIXED:
   the service hands a shunned home's room (but its trader) and paint to its insiders alone (decorOf, homesInTown);
   DOCUMENTED: the yards answer is every caller's alike (YARD-SHED's kept answer), so its hiding stays the client's.
@@ -10281,7 +10281,7 @@ fixed and pinned unless DOCUMENTED:
 - **LOW - A5: a write that found nothing answered `ok` once a second look found the house votable** (a guild left in
   between). FIXED: answered as the write found it.
 - **LOW - A6: a restore put a home back with its score and none of its votes** (`tools/realmRestore.mjs`, a snapshot
-  after 0107). FIXED: homeRowOf leaves the score out.
+  after 0108). FIXED: homeRowOf leaves the score out.
 - **LOW - B1: on a touch screen a locked home with a room to rent asked its rooms alone.** FIXED: the rent box carries
   its votes and its vote lines.
 - **LOW - B4: whether the plaque listed rows was read after the town's wait.** FIXED: read as the press lands.
@@ -14933,7 +14933,8 @@ the client, in `src/net/online.js`; the relay is untouched and stays on its vers
    (`scenes/world.js` `nativeFrame`), 40 units to the metre. There the snap was 0.75 m, and a runner at 10 Hz goes
    0.8 m a pose: they teleported on nearly every pose. The snap is the frame of the ROOM the pose was heard in now
    (`nativePoseRoom`, `snapUnitsFor`).
-2. **One pose, several rooms, no order.** `sendPose` sends down the cell's socket and every halo's, and each room is a
+2. **One pose, several rooms, no order.** `sendPose` sent down the cell's socket and every halo's (HALO-THIN,
+   `11-Multiplayer/Scale-Arc.md`: a halo now hears a pose only when it is due - a copy is rarer, and races when it comes), and each room is a
    Durable Object of its own. A listener holding two of them hears every pose twice, and the copies race. Only an
    identical copy was dropped (AUDIT WORLD6b-iii(b) C6); an OLDER copy landing second was eased toward and the peer
    walked backwards. The frame has no sequence to order by, so a peer is heard through ONE room at a time (`src`).
@@ -15010,7 +15011,7 @@ side). The wire gains one field and the client reads it.
 is an integer inside the modulus and drops it otherwise - never clamped, which would order every later pose behind it.
 `poseTsDiff` orders two across the wrap. Omitted by an older client, stripped by an older relay: a receiver that sees
 none plays the pose as NET-SMOOTH does. Every room's copy of one pose carries the same `ts` (one stamp, then the cell's
-socket and every halo's); the hello's pose is stamped as it is said; a pose that goes nowhere spends no stamp.
+socket and every halo it is due to - HALO-THIN); the hello's pose is stamped as it is said; a pose that goes nowhere spends no stamp.
 Wall clock, so a reload's poses are never older than the last page's.
 
 **The receiver** (`OnlineSession._arriveTimed`):

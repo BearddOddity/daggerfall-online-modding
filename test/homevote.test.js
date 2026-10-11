@@ -1,7 +1,7 @@
 // HOME-VOTE (2026-10-10, the owner: "I want to implement a house voting system within vicinity of player houses. If the
 // house votes run negative, the exterior decorations/interior decorations should not be shown to other players"). A
 // registered account a week old votes a home up or down - one vote a home, changed or taken back at will, never on its
-// own home or a hall of its own guild (server-account/src/homeVotes.js, migration 0107; the law net/homeVoteLaw.js) -
+// own home or a hall of its own guild (server-account/src/homeVotes.js, migration 0108; the law net/homeVoteLaw.js) -
 // standing at the house: its door's plaque lists the votes, unlit where they are all it lists, and an Info press asks
 // where no plaque is drawn (scenes/worldModes.js). The town's homes carry each one's score, kept on its row, and the
 // reader's own vote (homes.js homesInTown), and a home whose votes run negative stands for everyone but its insiders as

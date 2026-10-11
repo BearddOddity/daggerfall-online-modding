@@ -18,6 +18,7 @@
 // the online panels keep over it.
 import { FEATURES, resolveControl } from './features.js';
 import { getPref, setPref } from './uiPrefs.js';
+import { pageParam } from './pageQuery.js';
 import { modSetting, setModSetting } from './modSettings.js';
 import { onlineForcedPref, onlineForcedModSetting } from './onlineLane.js';
 import { uiSkin, setUiSkin, SKIN_NAMES } from './uiSkin.js';
@@ -80,10 +81,22 @@ export function uiChoiceUrl(skin, pack, href = globalThis.location?.href ?? 'htt
   if (skin === 'classic' && setUiPack(pack) === false) url.searchParams.set('uipack', pack);
   return url.toString();
 }
-const uiOption = (id, name, skin, pack, { by, blurb }) => Object.freeze({
-  id, name, by, blurb, skin, pack,
-  isOn: () => uiSkin() === skin && (skin !== 'classic' || (activeUiPack()?.id ?? UI_PACK_NONE) === pack),
-  apply: () => ({ reload: true, url: uiChoiceUrl(skin, pack) }),
+/** GRIM1: the dress an enhanced look wears over the skin - 'none' (Enhanced Plus) or 'grimoire' (DFO Grimoire,
+ *  ui/grimoireDress.js). Read off the shelf here rather than through the dress's module, which carries a stylesheet. */
+const dressWorn = (search = globalThis.location?.search ?? '') => {
+  const url = pageParam('dress', search);
+  return (url === 'grimoire' || url === 'none' ? url : getPref('plusDress')) === 'grimoire' ? 'grimoire' : 'none';
+};
+const uiOption = (id, name, skin, pack, { by, blurb, dress = 'none', vendor = null }) => Object.freeze({
+  id, name, by, blurb, skin, pack, dress, vendor,
+  isOn: () => uiSkin() === skin && (skin !== 'classic' ? dressWorn() === dress : (activeUiPack()?.id ?? UI_PACK_NONE) === pack),
+  // GRIM1: an enhanced look sets its dress on the shelf before the reload (the dress is the page's from its first frame)
+  apply: () => {
+    const url = new URL(uiChoiceUrl(skin, pack));
+    url.searchParams.delete('dress');
+    if (skin === 'enhanced' && setPref('plusDress', dress) === false) url.searchParams.set('dress', dress);   // SKIN-CARRY
+    return { reload: true, url: url.toString() };
+  },
 });
 
 /** VE3: a texture look - the texture mods switched on or off as one (systems/vanillaEnhanced.js). VE4: `addons` lists
@@ -138,6 +151,10 @@ export const OVERHAUL_PANELS = Object.freeze([
       // option - plain Enhanced, which stood beside it, is retired (systems/uiSkin.js isEnhancedPlus).
       uiOption('enhanced-plus', SKIN_NAMES.enhanced, 'enhanced', UI_PACK_NONE, { by: 'The port', blurb: 'New and improved UI for adventurers who want a more modern feel. Everything is built for playing with a mouse and keyboard, pad, controller or even a phone. You can tweak some settings the way you want and also tweak the controller bindings.' }),
       uiOption(G.id, G.title, 'classic', G.id, { by: `${G.author}, version ${G.version}`, blurb: 'A mix between classic and enhanced for adventurers who like that classic feeling from the old days but still want some improvements. 3 times more detail than classic, a brand new font, a spellbook for all the spells you ever need and a nice parchment and wood UI instead of the original rock one.' }),
+      // GRIM1 (2026-10-09, Discord: "I want some of the features of enhanced+ just not the overall look of it"): DFO
+      // GRIMOIRE - the enhanced skin, every window and feature it carries, dressed in GrimoireUI's own parchment, wood,
+      // red presses, glass vials and lettering (ui/grimoireDress.js). Its art is the pack's, so it names the pack.
+      uiOption('dfo-grimoire', 'DFO Grimoire', 'enhanced', UI_PACK_NONE, { dress: 'grimoire', vendor: G.vendor, by: `The port, in ${G.author}'s GrimoireUI ${G.version}`, blurb: 'GrimoireUI\u2019s parchment, wood and red-and-gold presses over every window the game has, for adventurers who love the Grimoire look but want everything Enhanced Plus does: the hotbar, the camps and tents, the rest, the maps, trading and every online panel. The vitals are its glass vials.' }),
     ]),
   }),
 ]);

@@ -129,6 +129,7 @@ import { getPref, setPref, isOpen, setOpen, PREF_DEFAULTS } from '../systems/uiP
 import { TOUCH_BUTTON_SLOTS, touchButtonSlots, nextTouchButton, touchButtonChoices } from './touchButtons.js';   // TOUCH-BUTTONS: the corner's three slots
 import { DEFAULT_SERVER } from '../net/online.js';   // ONLINE1: the relay this port hosts, the field's placeholder   // R7: the port's own switches; SO1: the folded tiers' memory
 import { GATE_CROWD_TIERS } from '../net/gateCrowd.js';   // GATE-CROWD: how many other players a gate's court draws
+import { PEER_RANGE_TIERS, peerRangeOf } from '../net/peerRange.js';   // PEER-RANGE: how far out other players are drawn, and the distance a stored value stands for
 import { replacementCount } from '../systems/musicReplacement.js';   // M-EXT: the packs card reports what the pick covers
 import { brandMark } from './brandMark.js';   // INTRO2: Mac's supplied logo, shared with the final splash
 import { soundReplacementCount } from '../systems/soundReplacer.js';   // SNDREP1: the sound pack's count
@@ -200,7 +201,9 @@ import { OVERHAUL_PANELS, currentOption } from '../systems/overhauls.js';
 import { setVeAddon } from '../systems/vanillaEnhanced.js';   // VE4: an add-on switched from the Texture Overhaul card
 import { installVanillaEnhancedPack } from '../systems/vanillaEnhancedPack.js';   // VE4: the shipped mods listed before any host boots
 import { PLUS_THEMES } from './enhancedFrame.js';   // PLUS2: Enhanced Plus's colours
-import { plusTheme, setPlusTheme } from './enhancedPlusStyle.js';  import { plusCursorOn, setPlusCursor } from './plusCursor.js';   // OVH1: the three looks
+import { plusTheme, setPlusTheme } from './enhancedPlusStyle.js';
+import { plusCursorOn, setPlusCursor } from './plusCursor.js';   // OVH1: the three looks
+import { GRIMOIRE_PAGES, GRIMOIRE_BACKDROPS, GRIMOIRE_VITALS, GRIMOIRE_SPELLBOOKS, grimoirePages, grimoireBackdrop, grimoireVitals, grimoireSpellbook, setGrimoirePages, setGrimoireBackdrop, setGrimoireVitals, setGrimoireSpellbook } from './grimoireDress.js';   // GRIM1: DFO Grimoire's own rows; GRIM3: and its spellbook
 import { UI_PACKS, packUrl } from '../systems/uiPack.js';   // OVH2: a pack's own picture on its card
 import { FEATURES, KINDS, KIND_ORDER, featureForControl, resolveControl, modModules, modDials, featureSearchText } from '../systems/features.js';   // FT14: each mod's curated keys (ORG2: the map places the rows, ui/settingsMap.js)
 import '../world/landView.js';   // RF4: the land-view lane registers itself with the registry
@@ -2805,6 +2808,12 @@ function peerSpritesCard() {
   c.append(prefRow('peerClassSprites', 'Animated sprite', 'On: the sprite above. Off: the paperdoll.', { home: true }));
   c.append(prefRow('peerAttackSounds', 'Attack sounds', 'Hear other players\u2019 weapon swings.', { home: true }));   // PEER-FS1: the two peer-sound switches, beside the sprite one
   c.append(prefRow('peerFootsteps', 'Footstep sounds', 'Hear other players\u2019 footsteps.', { home: true }));
+  // PEER-RANGE (2026-10-10, the owner: "the rendering of players far out is contributing to poor performance"): far
+  // players, not drawn - the near tier is inside a player's shot (200 m), and the row says so; the row reads the law's own
+  // answer, so a stored value that is no tier shows the 300 m it stands for (AUDIT PEER-RANGE A L2)
+  c.append(choiceRow('peerRange', 'Draw distance',
+    'How far away other players are drawn. Your party and your duel opponent always show. Nearer is faster; 150 m can hide an archer.',
+    PEER_RANGE_TIERS.map((m) => [m, m ? `${m} m` : 'Everyone']), { home: true, read: () => peerRangeOf(getPref('peerRange')) }));
   // GATE-CROWD (2026-10-07, Mac: "some type of filter when there are too many people"): a crowded court, thinned
   c.append(choiceRow('gateCrowd', 'Crowd in the Burning Court',
     'How many players the Burning Court draws. Your party always shows.',
@@ -3449,12 +3458,14 @@ const ovhAt = {};   // panel id -> the option index being shown
 function overhaulPicture(p, o, inUse) {
   const pic = el('div', 'look-pic');
   pic.dataset.look = o.id;
-  const pack = p.id === 'ui' ? UI_PACKS[o.pack] : null;
+  // GRIM1: DFO Grimoire wears the pack's art too - shown by its desk, where GrimoireUI is shown by its inventory
+  const grim = p.id === 'ui' && o.dress === 'grimoire';
+  const pack = p.id === 'ui' ? UI_PACKS[o.pack] ?? (grim ? UI_PACKS.grimoire : null) : null;
   if (pack) {
     const img = el('img');
-    img.alt = `${o.name}: the inventory`;
+    img.alt = grim ? `${o.name}: the desk` : `${o.name}: the inventory`;
     img.loading = 'lazy';
-    img.src = packUrl(pack, 'Img/INVE00I0.IMG.png');
+    img.src = packUrl(pack, grim ? 'Img/BIOG00I0.IMG.png' : 'Img/INVE00I0.IMG.png');
     pic.append(img);
   } else {
     const em = el('div', 'look-emblem', o.name);
@@ -3509,7 +3520,30 @@ function overhaulPanel(p) {
   card.append(nav, el('p', 'look-blurb', o.blurb));
   // PLUS2: ENHANCED PLUS'S COLOURS - offered on its own card while it is the look in use (they are its surfaces, and
   // they change at once, no reload). One swatch per stone; the chosen one is pressed.
-  if (p.id === 'ui' && o.id === 'enhanced-plus' && o === cur) {
+  // GRIM1: DFO Grimoire is the same enhanced skin, so it offers the same rows (the cursor, the hover card, the
+  // controller) - and in place of the stones, its own two: the page the windows are written on and what the front door
+  // stands on. Both are worn at once.
+  if (p.id === 'ui' && (o.id === 'enhanced-plus' || o.id === 'dfo-grimoire') && o === cur) {
+    const choiceRow = (label, options, now, wear) => {
+      const row = el('div', 'look-colours');
+      row.setAttribute('role', 'group');
+      row.setAttribute('aria-label', label);
+      row.append(el('span', 'look-colours-label', label));
+      for (const [id, name] of Object.entries(options)) {
+        const b = el('button', 'look-colour', name);
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String(id === now));
+        b.onclick = (e) => { e.stopPropagation(); wear(id); render(); };
+        row.append(b);
+      }
+      return row;
+    };
+    if (o.id === 'dfo-grimoire') {
+      card.append(choiceRow('Pages', GRIMOIRE_PAGES, grimoirePages(), (id) => setGrimoirePages(id)));
+      card.append(choiceRow('Backdrop', GRIMOIRE_BACKDROPS, grimoireBackdrop(), (id) => setGrimoireBackdrop(id)));
+      card.append(choiceRow('Vitals', GRIMOIRE_VITALS, grimoireVitals(), (id) => setGrimoireVitals(id)));
+      card.append(choiceRow('Spellbook', GRIMOIRE_SPELLBOOKS, grimoireSpellbook(), (id) => setGrimoireSpellbook(id)));   // GRIM3: a player: "(optionally) retain the look of the original GrimoireUI spellbook"
+    } else {
     const row = el('div', 'look-colours');
     row.setAttribute('role', 'group');
     row.setAttribute('aria-label', 'Enhanced Plus colour');
@@ -3527,6 +3561,7 @@ function overhaulPanel(p) {
       row.append(b);
     }
     card.append(row);
+    }
     // PLUS6: the gauntlet cursor, on or off - worn at once
     const crow = el('div', 'look-colours');
     crow.setAttribute('role', 'group');
