@@ -258,7 +258,8 @@ kept and exempted; the logo on the site and the launcher, sized from the
 IHDR), `test/rel4_release.test.js` 14 -> 15 (the aliases, the step's place,
 a real copy run, the asset lookup), PIN MOVEs in `test/landing.test.js`
 (the whitelist of one), `test/da8_launcher.test.js` (the CSP, the logo's
-serving and packing, the release link first), `test/terms1.test.js`
+serving and packing, the release link first), `test/da11_install_whole.test.js`
+(the logo packed into the archive beside the pad module), `test/terms1.test.js`
 (re-hashed at the kept version). Mutants: `tools/mutants/auditbr5.json`.
 
 ## BR4 DAGGERFALL ONLINE (2026-09-27, Mac's call)
