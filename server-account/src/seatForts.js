@@ -450,7 +450,8 @@ const marketTierOf = async (db, key, nowS) => (await fortTiersOf(db, key, nowS))
 export async function listingsCapAt(db, nowS, board) {
   if (!Array.isArray(board)) return MARKET_LISTINGS_MAX;
   if (!(await db.prepare("SELECT 1 FROM town_seat_forts WHERE work = 'market' AND tier > 0 LIMIT 1").first())) return MARKET_LISTINGS_MAX;
-  const seat = [...(await confirmedSeats(db, nowS)).values()].find((x) => x.pixel?.[0] === board[0] && x.pixel?.[1] === board[1]);
+  // MARKET-SPEED: the seats' places off the isolate's kept witness rows - every market read asked them whole
+  const seat = [...(await confirmedSeats(db, nowS, { kept: true })).values()].find((x) => x.pixel?.[0] === board[0] && x.pixel?.[1] === board[1]);
   return seat ? marketHallListings(MARKET_LISTINGS_MAX, await marketTierOf(db, seat.key, nowS)) : MARKET_LISTINGS_MAX;
 }
 /** A held seat's Tithe cap: its tier's, a point more a Market Hall tier. */
