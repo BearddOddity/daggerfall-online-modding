@@ -4,6 +4,8 @@
 // Master's place, never worn on its own - and a Master who held the seat a whole Season keeps "Master of the Fighters
 // Guild, Anticlere, Season 3" for good. Two generic ids more on the token, the seats' claim beside each; the relay
 // carrying them (world182, grown in place - undeployed); the client wording them; the service deriving them.
+// GUILD3e (2026-10-11, bible/11-Multiplayer/Guilds-Made-Plain.md): the Ascendancy event folded into the Ascendant band -
+// a High Master is the Master of a chapter standing Ascendant (Strength 90 or more), read off the chapter's Strength.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -40,7 +42,7 @@ test('CHAP6e the vocabulary: a High Master and a Season\'s Master, last in the c
     assert.deepEqual(row.ts, [4017, 2], `${t}: stamped`);
     assert.deepEqual(readBadge({ title: t, ts: [4017, 2], glyphs: [] }).ts, [4017, 2], `${t}: read back`);
   }
-  assert.equal(RELAY_VERSION, 'world194');   // PIN MOVED: world194, COATS1 (the horse look: rc on a mounted pose, hc on a parked word); PIN MOVED: world193, SERPENT4 (the sea serpent reworked - its waters open until it dives, hands strike it with their own weapons, a party shares the kill, its girth; its law version 3 - world192 on its branch, renumbered past SCALE5c at the merge); PIN MOVED: world192 (past WARDEN1, world191 on main, at the merge), SCALE5c (the hub split sixteen ways - the shards hold the sockets, the bus runs every law over a virtual socket for each; a search of everyone online by name, and the guild online on every shard); PIN MOVED: world191, SCALE5b (the second wire - batched slim poses, a channel roster and a beat in one frame - the relay hygiene, its metrics and run-time settings, the halo referee word); PIN MOVED: world190, AUDIT MW-NPC II (the foe look on the wire - world188, then world189, on its branch, renumbered past INT11-INT14 and SCALE5a at the merges); PIN MOVED: world189, SCALE5a (the hub's hello and leave without a walk of every socket; a busy refusal's token unread); PIN MOVED: world188, INT11-INT14 (the INTEGRITY arc's lane 3 - world186 on its branch, renumbered past SD-HERALD's world186 and WAGONS1's world187 at the merge); PIN MOVED: world185, INT7-INT10 (the INTEGRITY arc's lane 2 - world183, then world184, on its branch, renumbered past CHAP4c's world183 and PERF-RELAY1's world184 at the merges); PIN MOVED: world183 - past CARDS10's world182 at the merge of main
+  assert.equal(RELAY_VERSION, 'world195');   // PIN MOVED: world195, COATS1 (the horse look: rc on a mounted pose, hc on a parked word; world194 on its branch, renumbered past SLIM-FRAME at the merge); PIN MOVED: world194, SLIM-FRAME (the place on the second wire in its own units - every height in metres to the centimetre, the x and z of a dungeon, a town and a building too, those of a cell in whole world units); PIN MOVED: world193, SERPENT4 (the sea serpent reworked - its waters open until it dives, hands strike it with their own weapons, a party shares the kill, its girth; its law version 3 - world192 on its branch, renumbered past SCALE5c at the merge); PIN MOVED: world192 (past WARDEN1, world191 on main, at the merge), SCALE5c (the hub split sixteen ways - the shards hold the sockets, the bus runs every law over a virtual socket for each; a search of everyone online by name, and the guild online on every shard); PIN MOVED: world191, SCALE5b (the second wire - batched slim poses, a channel roster and a beat in one frame - the relay hygiene, its metrics and run-time settings, the halo referee word); PIN MOVED: world190, AUDIT MW-NPC II (the foe look on the wire - world188, then world189, on its branch, renumbered past INT11-INT14 and SCALE5a at the merges); PIN MOVED: world189, SCALE5a (the hub's hello and leave without a walk of every socket; a busy refusal's token unread); PIN MOVED: world188, INT11-INT14 (the INTEGRITY arc's lane 3 - world186 on its branch, renumbered past SD-HERALD's world186 and WAGONS1's world187 at the merge); PIN MOVED: world185, INT7-INT10 (the INTEGRITY arc's lane 2 - world183, then world184, on its branch, renumbered past CHAP4c's world183 and PERF-RELAY1's world184 at the merges); PIN MOVED: world183 - past CARDS10's world182 at the merge of main
 });
 
 // ── THE WORDS ───────────────────────────────────────────────────────
@@ -94,38 +96,41 @@ async function stand(t, { titles = 'on', zero = ZERO } = {}) {
   const seat = (char, f, region, s) => raw.prepare('INSERT INTO npc_chapter_seats (faction, region, char_id, account, seat, since, week, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(f, region, char, who.id, s, WEEK, WEEK, NOW);
   const event = (f, region, ev, season) => raw.prepare(`INSERT INTO npc_chapters (faction, region, strength, week, merit, at, event, event_season, event_data) VALUES (?, ?, 50, ?, 0, 0, ?, ?, '{}')
     ON CONFLICT (faction, region) DO UPDATE SET event = excluded.event, event_season = excluded.event_season`).run(f, region, WEEK - 1, ev, season);
+  // GUILD3e: a chapter's Strength - an Ascendant chapter's Master is its High Master
+  const strength = (f, region, n) => raw.prepare(`INSERT INTO npc_chapters (faction, region, strength, week, merit, at) VALUES (?, ?, ?, ?, 0, 0)
+    ON CONFLICT (faction, region) DO UPDATE SET strength = excluded.strength`).run(f, region, n, WEEK - 1);
   const held = (char, f, region, data) => raw.prepare("INSERT INTO npc_chapter_history (faction, region, week, kind, char_id, data, at) VALUES (?, ?, ?, 'season', ?, ?, ?)").run(f, region, WEEK - 2, char, typeof data === 'string' ? data : JSON.stringify(data), NOW);
   const mint = async (character) => (await svc.call('/v1/auth/token', { character }, who.secret)).body;
   const titlesOf = async (character = null) => (await chapterTitlesOfAccount(svc.env.DB, who.id, NOW, zero, character)).map((x) => [x.char === R.id ? 'R' : 'other', x.title, x.ts, x.high ?? false]);
-  return { svc, raw, who, R, other, seat, event, held, mint, titlesOf };
+  return { svc, raw, who, R, other, seat, event, strength, held, mint, titlesOf };
 }
 
-test('CHAP6e a High Master: a Master\'s seat at a chapter whose Ascendancy is this Season\'s is signed "highmaster" in the Master\'s place - its claim the Master\'s; never worn on its own; never another Season\'s Ascendancy, another event, an officer, or with no Season counted (mutants: the event, its Season, the counted Season, the seat, the mint)', async (t) => {
+test('CHAP6e a High Master - GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md): a Master\'s seat at a chapter standing Ascendant (Strength 90 or more, as the sheet carries it - the Ascendancy event folded into the band) is signed "highmaster" in the Master\'s place - its claim the Master\'s; never worn on its own; never under 90, at another chapter, an officer\'s; a retired Decline or Ascendancy row moves nothing (mutants: the floor, the narrowing)', async (t) => {
   const s = await stand(t);
   s.seat(s.R.id, MAGES, DAGGERFALL, 'master');
   s.seat(s.R.id, FIGHTERS, ANTICLERE, 'master');
   s.seat(s.other.id, MAGES, ANTICLERE, 'officer');
-  s.event(FIGHTERS, ANTICLERE, 'ascendancy', 3);
-  s.event(MAGES, ANTICLERE, 'ascendancy', 3);
-  s.event(MAGES, DAGGERFALL, 'decline', 3);
-  assert.deepEqual(await s.titlesOf(s.R.id), [['R', 'chaptermaster', [4121, 3], true], ['R', 'chaptermaster', [4017, 3], false]]);
-  assert.deepEqual(await s.titlesOf(s.other.id), [['other', 'chapterofficer', [4021, 3], false]], 'an officer\'s in an Ascendancy: an officer\'s');
+  s.strength(FIGHTERS, ANTICLERE, 90);
+  s.strength(MAGES, ANTICLERE, 95);
+  s.strength(MAGES, DAGGERFALL, 89);
+  s.event(MAGES, DAGGERFALL, 'ascendancy', 3);   // a retired event's row: no High Master by it
+  // PIN MOVED: GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md) - a High Master by the band, not the Season's event; marked by AUDIT GUILD3 R4
+  assert.deepEqual(await s.titlesOf(s.R.id), [['R', 'chaptermaster', [4121, 3], true], ['R', 'chaptermaster', [4017, 3], false]], 'Ascendant from 90 exactly; 89 is Thriving');
+  assert.deepEqual(await s.titlesOf(s.other.id), [['other', 'chapterofficer', [4021, 3], false]], 'an officer\'s at an Ascendant chapter: an officer\'s');
   assert.equal((await s.svc.call('/v1/account/title', { title: 'highmaster' }, s.who.secret)).status, 403, 'never worn on its own');
   const equip = await s.svc.call('/v1/account/title', { title: 'chaptermaster' }, s.who.secret);
   assert.equal(equip.status, 200, JSON.stringify(equip.body));
   assert.ok(!equip.body.titles.includes('highmaster'));
   const m = await s.mint(s.R.id);
-  assert.deepEqual([m.title, m.ts], ['highmaster', [4121, 3]], 'the Ascendancy\'s seat first, signed High');
+  assert.deepEqual([m.title, m.ts], ['highmaster', [4121, 3]], 'the Ascendant chapter\'s seat first, signed High');
   const claims = JSON.parse(Buffer.from(m.token.split('.')[1], 'base64url').toString());
   assert.deepEqual([claims.t, claims.ts], ['highmaster', [4121, 3]], 'in the signed claims');
-  s.event(FIGHTERS, ANTICLERE, 'ascendancy', 2);
-  assert.deepEqual([(await s.mint(s.R.id)).title, (await s.titlesOf(s.R.id)).map((x) => x[3])], ['chaptermaster', [false, false]], 'the Season before\'s Ascendancy: a Master');
-  s.event(FIGHTERS, ANTICLERE, 'rivalry', 3);
-  assert.deepEqual((await s.titlesOf(s.R.id)).map((x) => x[3]), [false, false], 'another event');
+  s.strength(FIGHTERS, ANTICLERE, 89);
+  assert.deepEqual([(await s.mint(s.R.id)).title, (await s.titlesOf(s.R.id)).map((x) => x[3])], ['chaptermaster', [false, false]], 'fallen to Thriving: a Master');
   const none = await stand(t, { zero: null });
   none.seat(none.R.id, FIGHTERS, ANTICLERE, 'master');
-  none.event(FIGHTERS, ANTICLERE, 'ascendancy', 0);
-  assert.deepEqual(await none.titlesOf(none.R.id), [['R', 'chaptermaster', [4121, 0], false]], 'no Season counted: every chapter Calm');
+  none.strength(FIGHTERS, ANTICLERE, 92);
+  assert.deepEqual(await none.titlesOf(none.R.id), [['R', 'chaptermaster', [4121, 0], true]], 'the band is the week\'s, Season or none');
 });
 
 test('CHAP6e a Season\'s Master: every Season a character held a Master\'s seat whole titles it for good - with no seat now, at a chapter struck since; its newest signed; never a hidden guild\'s, a dead character\'s, another character\'s, a row it cannot read, nor with the titles shut (mutants: the rows read, the kept chapter, the order, the switch)', async (t) => {

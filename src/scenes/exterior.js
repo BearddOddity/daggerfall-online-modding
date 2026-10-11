@@ -326,6 +326,7 @@ import { keptOffArenaGround, ARENA_GROUND_M } from '../systems/arenaGround.js'; 
 import { registerAttackResolutionListener } from '../combat/formulas.js';
 import { registerPlayerSwingListener } from '../combat/playerWeapon.js';
 import { raceDisplayName } from '../systems/talkSession.js';   // MACRO-ONE: %ra's display name, as world.js reads it
+import { startTutorialTour } from '../ui/tutorialPopup.js';   // TUT1: the welcome tour - and the popups' handler, registered by this host (the four hosts' rule)
 
 export async function bootExterior(canvas, renderer, params, status) {
   const regionName = params.get('region') || 'Daggerfall';
@@ -1538,6 +1539,7 @@ export async function bootExterior(canvas, renderer, params, status) {
     if (!questBridge) { _questStartPending = true; return; }
     _questStarted = true;
     questBridge.initAtGameStart();
+    startTutorialTour();   // TUT1: DFO's welcome tour, where DFU's _TUTOR__ spoke its first page (questBridge.js GAME_START_QUESTS)
   };
   /** QX1: the two journal seams a character sheet and an F5 journal
    *  take. charSheetHooks' LOGBOOK filter asks only that both were

@@ -429,8 +429,10 @@ test('audit24: a NEW CHARACTER starts the two hard-coded quests, main quest incl
   const { loadQuestTables } = await import('../src/systems/quest/tables.js');
   const { readFileSync, readdirSync, existsSync } = await import('node:fs');
 
-  assert.deepEqual([...GAME_START_QUESTS], ['_TUTOR__', '_BRISIEN'],
-    'in C#\'s order - _BRISIEN is the main quest\'s first quest');
+  // TUT1 (2026-10-11): DFO's own tutorial replaced _TUTOR__; the curse its close started (`start quest 977 977`)
+  // stands in its place, so the main quest still comes second, as in C#.
+  assert.deepEqual([...GAME_START_QUESTS], ['S0000977', '_BRISIEN'],
+    'the tutorial\'s curse in its place - _BRISIEN is the main quest\'s first quest');
 
   const QUESTS = join(ROOT, 'vendor/dfu-quests/Quests');
   const TABLES = join(ROOT, 'vendor/dfu-quests/Tables');
@@ -460,7 +462,7 @@ test('audit24: a NEW CHARACTER starts the two hard-coded quests, main quest incl
     onQuestStarted: (q) => started.push(q.questName),
   });
   bridge.initAtGameStart();
-  assert.deepEqual(started.slice(0, 2), ['_TUTOR__', '_BRISIEN'],
+  assert.deepEqual(started.slice(0, 2), ['S0000977', '_BRISIEN'],
     'both hard-coded quests really start, in order');
   assert.equal(bridge.machine.quests.size >= 2, true, 'and they are LIVE in the machine');
 });

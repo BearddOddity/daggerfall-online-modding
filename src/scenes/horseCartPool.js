@@ -97,6 +97,7 @@ import { validWagonKind, wagonHitchOf, WAGON_KINDS, wagonHorsesOf } from '../sys
 import { CARAVAN_TEXT } from '../systems/caravanRoom.js';
 import { recolorHorse, horseLookCode, horseLookOfCode, lookSuffix } from '../systems/horseCoats.js';   // COATS1: the horses' looks, dyed as they upload
 import { DECOR_DRAW, DECOR_SHADOW, DECOR_SKIP, castOnly } from './decorRoom.js';   // PERF-TEAMS: the host's view verdict (world.js yardCull), as the merchant yards' wagons take it; PERF-WAGON: and the one maps-alone renderer
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** The horse art's archive key and record names on the renderer's texture map: `hcc_h<view>` a standing view,
  *  `hcc_w<view>#<frame>` a walk frame (the foes' own `record#frame` folding, scenes/exteriorFoes.js). COATS1: a horse's
@@ -1295,6 +1296,7 @@ export function createHorseCartPool({
    *  inside the mod's own reach, else DFU's "too far" (AUDIT HCC O6, the dropped torch's arm). ACT-MENU: `mode` is
    *  the plaque row the player lit (null where no plaque stands: the interaction mode decides, as the mod's does). */
   function activate(key, distance, say = null, tooFar = null, mode = null) {
+    if (key === KEY_WAGON || key === KEY_FOLLOWING_WAGON) noteFirstUse('wagon'); else if (key === KEY_HORSE) noteFirstUse('horse');   // TUT1: my own team - another player's is theirs (AUDIT TUT1)
     if (!runtime) return false;
     if (key === KEY_WAGON && mode === CARAVAN_ENTER_ROW) {   // WAGONS1: into the caravan, at the mod's own reach
       if (!(distance <= ACTIVATION_REACH)) { tooFar?.(); return true; }   // the mod's own reach

@@ -29,8 +29,8 @@ const tick = () => new Promise((r) => setImmediate(r));
 
 // ── THE LAW ─────────────────────────────────────────────────────────
 
-test('CHAP3c a hall\'s factor by its chapter\'s band - a quarter more Failing, a tenth less Thriving and Ascendant, DFU\'s own Steady and where no Strength is known (mutants: each band, the unknown)', () => {
-  assert.deepEqual([0, 19, 20, 69, 70, 89, 90, 100].map(chapterPriceFactor), [1.25, 1.25, 1, 1, 0.9, 0.9, 0.9, 0.9]);
+test('CHAP3c a hall\'s factor by its chapter\'s band - a quarter more Failing, a tenth less Thriving, a fifth less Ascendant (GUILD3e), DFU\'s own Steady and where no Strength is known (mutants: each band, the unknown)', () => {
+  assert.deepEqual([0, 19, 20, 69, 70, 89, 90, 100].map(chapterPriceFactor), [1.25, 1.25, 1, 1, 0.9, 0.9, 0.8, 0.8]);   // PIN MOVED: GUILD3e - Ascendant a fifth off
   assert.deepEqual([null, undefined, NaN, '80', Infinity].map(chapterPriceFactor), [1, 1, 1, 1, 1]);
   assert.deepEqual(CHAPTER_BANDS.map((b) => b.shelf), [-4, 0, 4, 4]);
 });

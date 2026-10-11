@@ -12,6 +12,7 @@
 import { rankOf, suitOf, isCard } from '../net/cardLaw.js';
 import { SUIT_CROWNS, rankLabel, cardTitle, paintFace, paintBack } from '../render/cardFaces.js';   // CARDS-BAY: the suits' one home
 import { BUY_IN_MIN_BB, BUY_IN_START_BB } from '../systems/cardTableSession.js';   // the buy-in's one home (AUDIT CARDS-2 L10)
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** A card as the panel shows it (CARDS-BAY): its own painted face (`card`), the words a page without a canvas writes
  *  - `{text: 'K Daggerfall'}` in the crown's colour - and what the hover says; or a face-down card. */
@@ -246,6 +247,7 @@ const swallowPresses = (node) => {
  * @param {{onPress: (id: string, value?: number) => void, doc?: any}} p
  */
 export function createCardTableHud({ onPress, doc = document }) {
+  noteFirstUse('tavern-cards');   // TUT1: the first seat at a card table
   if (doc?.getElementById && !doc.getElementById(STYLE_ID)) {
     const s = doc.createElement('style');
     s.id = STYLE_ID; s.textContent = CSS;

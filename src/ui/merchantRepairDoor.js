@@ -5,6 +5,7 @@ import { isEnhanced } from '../systems/uiSkin.js';
 import { mountEnhancedChunk } from './enhancedChunk.js';
 import { registerOverlay } from './enhancedOverlays.js';
 import { MerchantRepairWindow, preloadMerchantRepairArt, merchantRepairArtLoaded } from './merchantRepairWindow.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { preloadMerchantRepairArt };
 
@@ -13,6 +14,7 @@ export function merchantRepairDoorReady() {
 }
 
 export function createMerchantRepairWindow(hooks = {}) {
+  noteFirstUse('shops');   // TUT1: the smith's counter is a shop
   if (isEnhanced() && typeof document !== 'undefined') return enhancedMerchantRepairOverlay(hooks);
   return new MerchantRepairWindow(hooks);
 }

@@ -75,8 +75,16 @@ for (const [W, H, width] of [[1280, 800, 'desktop'], [390, 760, 'phone']]) for (
         { id: 'c1', material: 'ore:iron', tier: 1, qty: 30, pay: 72, renown: 150, expiresAt: T + 20 * 3600, state: 'open' },
         { id: 'c2', material: OAK, tier: 1, qty: 20, pay: 24, renown: 50, expiresAt: T + 9 * 3600, state: 'taken' },
         { id: 'c3', material: 'ore:mithril', tier: 4, qty: 10, pay: 310, renown: 600, expiresAt: T + 30 * 3600, state: 'open' },
+        // GUILD3d (bible/11-Multiplayer/Guilds-Made-Plain.md): a chapter's writ and the reader's own
+        { id: 'h:1', kind: 'hall', faction: 41, material: 'ore:iron', tier: 2, qty: 12, pay: 40, renown: 90, expiresAt: T + 20 * 3600, state: 'open' },
+        { id: 'm:1', kind: 'member', faction: 41, material: OAK, tier: 1, qty: 8, pay: 18, renown: 40, expiresAt: T + 20 * 3600, state: 'open' },
       ],
       today: { filled: 1, max: 3 },
+      // GUILD3d: the region's chapters as cards - a Thriving one in a Rivalry the reader is a member of, a Failing one
+      chapters: [{ faction: 41, strength: 76, band: 'thriving', event: 'rivalry', season: 3, rival: 42, patron: { id: 'gabcdefghij', name: 'Grey Lanterns', tag: 'GLN' } },
+        { faction: 40, strength: 12, band: 'failing' }],
+      merit: [{ faction: 41, merit: 150, max: 600, elsewhere: false, from: null }],
+      receipts: [{ faction: 41, kind: 'gate', member: true, done: true }, { faction: 41, kind: 'raid', member: true, done: false }, { faction: 40, kind: 'gate', member: false, done: false }],
       guildWrits: [{ id: 'W1', kind: 'guild', guild: SH, region: 17, material: OAK, units: 800, left: 280, pay: 3, escrow: 840, at: 0, expiresAt: T + 5 * 86400, state: 'open', mine: false, may: false }],
       commissions: [{ id: 'K1', kind: 'commission', region: 17, recipe: 'longsword:mithril', quality: 2, pay: 900, poster: 'Ann', crafter: 'Silverthorn', at: 0, expiresAt: T + 5 * 86400, state: 'open', mine: false, forMe: false, returned: false }],
       yours: { commissions: [], guildWrits: [] }, guild: { ...SH, rank: 2, mayPost: false, marks: 5000 }, balance: 1234, writsOpen: true, me: 'Aldric',

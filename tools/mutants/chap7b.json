@@ -38,8 +38,8 @@
   {
     "name": "CHAP7B-FACTOR",
     "file": "src/net/npcChapterLaw.js",
-    "old": "const band = chapterPatronMember(chapter, guildId) ? CHAPTER_PATRON_PRICE : chapterPriceFactor(chapter.strength);",
-    "new": "const band = chapterPriceFactor(chapter.strength);",
+    "old": "const band = chapterPatronMember(chapter, guildId) ? Math.min(own, CHAPTER_PATRON_PRICE) : own;",
+    "new": "const band = own;",
     "tests": [
       "test/chap7b_patrons_client.test.js"
     ]
@@ -83,8 +83,8 @@
   {
     "name": "CHAP7B-SHEET-TAG",
     "file": "src/net/npcChapterLaw.js",
-    "old": "return p ? `Its patron this Season: ${p.name}${p.tag ? ` [${p.tag}]` : ''}.` : null;",
-    "new": "return p ? `Its patron this Season: ${p.name} [${p.tag}].` : null;",
+    "old": "${p.tag ? ` <${p.tag}>` : ''}",
+    "new": "${` <${p.tag}>`}",
     "tests": [
       "test/chap7b_patrons_client.test.js"
     ]
@@ -92,8 +92,8 @@
   {
     "name": "CHAP7B-SHEET-NONE",
     "file": "src/net/npcChapterLaw.js",
-    "old": "  const p = chapterPatronOf(patron);\n  return p ?",
-    "new": "  const p = patron;\n  return p ?",
+    "old": "  const p = chapterPatronOf(patron);\n  if (!p) return null;",
+    "new": "  const p = patron;\n  if (!p) return null;",
     "tests": [
       "test/chap7b_patrons_client.test.js"
     ]
@@ -329,7 +329,7 @@
   {
     "name": "CHAP7B-BOARD-PATRON",
     "file": "src/ui/noticeWindow.js",
-    "old": "      if (patronLine) body.append(el('p', 'notice-chapter notice-patron', patronLine));\n",
+    "old": "    if (patronLine) card.append(el('p', 'notice-chapter notice-patron', patronLine));\n",
     "new": "",
     "tests": [
       "test/chap7b_patrons_client.test.js"
@@ -338,8 +338,8 @@
   {
     "name": "CHAP7B-BOARD-DOOR",
     "file": "src/ui/noticeWindow.js",
-    "old": "      const bidLine = work.patron ? chapterPatronBidLine(c.patronBid) : null;",
-    "new": "      const bidLine = chapterPatronBidLine(c.patronBid);",
+    "old": "    const bidLine = work.patron ? chapterPatronBidLine(c.patronBid) : null;",
+    "new": "    const bidLine = chapterPatronBidLine(c.patronBid);",
     "tests": [
       "test/chap7b_patrons_client.test.js"
     ]

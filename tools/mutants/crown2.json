@@ -320,8 +320,8 @@
  {
   "name": "CROWN2-chron-marks",
   "file": "src/net/townSeatLaw.js",
-  "old": "paid ${marksText(Number(d.marks ?? 0))} of tribute",
-  "new": "paid ${d.marks} silver of tribute",
+  "old": "paid ${marksText(Number(d.marks ?? 0))} in fealty",
+  "new": "paid ${d.marks} silver in fealty",
   "tests": [
    "test/crown2_law.test.js"
   ]

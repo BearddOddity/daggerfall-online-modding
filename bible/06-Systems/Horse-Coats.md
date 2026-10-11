@@ -177,7 +177,7 @@ seed))`, at most `HORSE_LOOK_CODE_MAX` (6,881,279); 0 the bay as drawn.
   highest is no nearer one than another. A look chosen in the saddle goes out
   at once (`poseChanged`).
 
-The last two are relay law: RELAY_VERSION `world194`. An older client draws
+The last two are relay law: RELAY_VERSION `world195` (world194 on its branch, renumbered past SLIM-FRAME's world194 at the merge of main). An older client draws
 every horse a bay.
 
 ## The Stable card
