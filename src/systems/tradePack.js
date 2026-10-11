@@ -22,6 +22,7 @@ import { isEquipped } from './equip.js';
 import { clearLightSourceOnLeave } from './itemTransfer.js';
 import { entityMaxEncumbrance } from '../combat/formulas.js';
 import { isBound, BOUND_TRADE_TEXT } from './itemBound.js';   // SS1: a bound piece never leaves for another player
+import { stampItemIds } from './itemIds.js';   // OFFER-ID: an offered piece carries the id its checkpoint will
 import { BOAT_TEMPLATES } from '../net/realmTradeLaw.js';   // AUDIT REALM2 T1: nor a boat's deed or parts - what they stand for stays in the giver's save
 
 /** BAG1: the Materials Bag stays with its owner - a list of its own rides with it (systems/materialsBag.js), which no
@@ -75,6 +76,10 @@ export function createTradePack(entity) {
 
     /** [{item,count}] -> the records that go on the wire, or null. A partial stack is the origin's record at the count. */
     wire(entries) {
+      // OFFER-ID (FIELD BUGS 2026-10-11): each valuable piece offered is given its id NOW (INT4 itemIds.js
+      // stampItemIds), the one the trade's hold checkpoint would stamp after the offer was made - so the record the
+      // realm finds is the one offered, and a piece looted since the last checkpoint trades instead of being refused
+      stampItemIds({ items: entries.map((e) => e.item) });
       const recs = entries.map(({ item, count }) => {
         const copy = JSON.parse(JSON.stringify(item));   // a plain-data copy: nothing from the pack rides the frame by reference
         const have = Math.max(1, item.stackCount ?? 1);

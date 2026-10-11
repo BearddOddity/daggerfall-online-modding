@@ -35,6 +35,7 @@
 import { DROP_ICON_IDXS, DROP_ICON_ARCHIVES, RANDOM_TREASURE_ARCHIVE } from './lootDataTables.js';
 import { STORAGE_CONTEXT } from './horseCartLaw.js';   // HCC: the storage contexts the runtime's CanAccessWagonStorage takes
 import { BAG_CAPACITY, BAG_WORDS, hasBag } from '../net/bagLaw.js';   // BAG1: the Materials Bag, a second list as the wagon is
+import { activeWagonItem } from './wagonKinds.js';   // CART-SLOT: the Cart cell shows the wagon driven
 
 /** ItemGroups.Transportation.Small_cart's template index. */
 export const SMALL_CART_TEMPLATE = 93;
@@ -74,10 +75,16 @@ export const hasHorse = (items = []) =>
 
 /** The ITEM behind either answer, for a window that wants to draw it -
  *  its name, its icon. Null when there is none. `kind` is 'mount' or
- *  'cart', the words the UI uses; the template indices stay here. */
+ *  'cart', the words the UI uses; the template indices stay here.
+ *  CART-SLOT (FIELD BUGS 2026-10-11, the Discord's "The caravan became a
+ *  cart after the update"): the cart is the wagon DRIVEN (wagonKinds.js
+ *  activeWagonItem, the best owned) - every wagon is the Small Cart's
+ *  template, and the first of them was a Small Cart kept beside a Caravan
+ *  bought after it (WAGONS1), so the cell named the cart the world did not
+ *  drive. */
 export function transportItem(items = [], kind) {
-  const template = kind === 'mount' ? TRANSPORT_HORSE_TEMPLATE : SMALL_CART_TEMPLATE;
-  return (items ?? []).find((it) => it?.templateIndex === template) ?? null;
+  if (kind !== 'mount') return activeWagonItem(items ?? []);
+  return (items ?? []).find((it) => it?.templateIndex === TRANSPORT_HORSE_TEMPLATE) ?? null;
 }
 
 /**

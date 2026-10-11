@@ -265,7 +265,10 @@ test('FB1001 YARD-CORNER: a piece turned across the house\'s corner - none of it
   const lot = yardLot([0, 0, 0], HOUSE_BOX);
   const foot = turned(BENCH_BOX, 45);
   assert.equal(yardWhyNot([6.9, 0, 1.9], lot, [[7, 2, 9, 5]], foot), 'That is another building\'s ground.');
-  assert.equal(yardWhyNot([6.6, 0, 1.6], lot, [[7, 2, 9, 5]], foot), null, 'off its corner');
+  // PIN MOVED (HOME-LINE, FIELD BUGS 2026-10-11): off its corner the bench meets none of its ground - and stands nearer
+  // it than the house's, the neighbour's side of the line the ground between them is split by
+  assert.equal(homeYards.yardFootMeets(foot.map(([dx, dz]) => [6.6 + dx, 1.6 + dz]), [7, 2, 9, 5], homeYards.YARD_EDGE_PAD), false, 'off its corner');
+  assert.equal(yardWhyNot([6.6, 0, 1.6], lot, [[7, 2, 9, 5]], foot), 'That is another building\'s ground.', 'and on the neighbour\'s side of the line');
   // the ground as the law asks it: across both boxes' axes and every edge of the piece's - a diagonal whose box meets a
   // rect, itself clear of it, is clear (a segment's one axis too)
   assert.equal(homeYards.yardFootMeets([[0, 0], [2, 2]], [1.5, 0, 3, 0.4]), false);

@@ -65,7 +65,7 @@
 import { SKILLS, MAGIC_SKILLS } from './skills.js';
 import { registerEntityFold, registerWeaponBlowMod, newMods, EMPTY_MODS, NUMBER_BODY_PARTS } from './entityMods.js';
 import { registerPlayerStruckListener, registerPlayerStrikeListener } from '../combat/formulas.js';
-import { registerPlayerDamageMod, registerPlayerDeathSave, registerPlayerHurtListener, registerPlayerDoorOpen } from '../characters/playerEntity.js';
+import { registerPlayerDamageMod, registerPlayerDeathSave, registerPlayerHurtListener, registerPlayerDoorOpen, setFoeBlowProbe } from '../characters/playerEntity.js';
 import { registerPlayerKillListener } from './playerKills.js';
 import { registerSpellCostMod } from './spellcost.js';
 import { healMine } from './playerHeal.js';   // SERPENT-SET: Shed Skin heals through the loot's own heal
@@ -605,6 +605,7 @@ registerPlayerDamageMod(SIGIL_SETS_POWER, setDamageMod);
 registerPlayerDeathSave(SIGIL_SETS_POWER, setDeathSave);
 registerPlayerHurtListener(SIGIL_SETS_POWER, setHurt);
 registerPlayerDoorOpen(SIGIL_SETS_POWER, setDoorOpen);   // AUDIT FINAL F10
+setFoeBlowProbe(() => _pending != null);   // FULL-GUARD (FIELD BUGS 2026-10-11): the door asks this file's law of what a blow is
 registerPlayerKillListener(SIGIL_SETS_POWER, setKill);
 registerSpellCostMod(SIGIL_SETS_POWER, setCastCost);
 registerAbsorptionChance(SIGIL_SETS_POWER, setAbsorbChance);

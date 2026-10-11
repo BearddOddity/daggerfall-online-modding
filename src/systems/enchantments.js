@@ -310,10 +310,15 @@ export function heldEquipIsFree(item, nowMinutes) {
   return since >= 0 && since < REROLL_MINIMUM_HOURS * MINUTES_PER_HOUR;
 }
 /** (2) The equip bill never breaks the piece: it stops at 1 condition. What wears a held piece out is its wear while
- *  worn (the MagicRound arm, 1 every 4 rounds), as DFU's own comment says it should "die of use". */
+ *  worn (the MagicRound arm, 1 every 4 rounds), as DFU's own comment says it should "die of use".
+ *  (3) LEGEND-HELD (FIELD BUGS 2026-10-11, Boar: "Equipping legendary shield Aegis of Dawn damage it by 1/3 of its
+ *  durability"; Mac: "I dont care about DFU parity"; a DEPARTURE, Port-Ledger A): a Legendary's equip bills nothing -
+ *  its held spell is its record's (the Loot arc's), and the Aegis's Spell Resistance cost a leather buckler a third of
+ *  its life the first time it went on. Its wear while worn is (2)'s, unmoved. */
 export function heldEquipBill(item, cost) {
   // the condition lowerCondition will lower: minted, and a weapon on its row's pool moved to the one pool first
   if (item && Object.isExtensible(item)) { mintCondition(item); repoolWeapon(item); }
+  if (item?.rarity === 'legendary') return 0;   // LEGEND-HELD
   const left = Number.isFinite(item?.currentCondition) ? item.currentCondition : Infinity;
   return Math.max(0, Math.min(cost, left - 1));
 }

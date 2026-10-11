@@ -111,7 +111,7 @@ export function createTravellerSprites({ renderer, getTexture, uploadRecordFrame
    * the ground the bodies stand whole to the list's own edge.
    * LW4: `striking` the edge an armed body's attack begins on; `talk: false` no talk target (a foe); `flat` a still
    * picture's archive and record (the fallen).
-   * @param {Array<{ key: string, res: any, feet: number[], yaw: number, moving: boolean, distM: number, striking?: boolean, talk?: boolean, flat?: { archive: number, record: number } | null }>} list
+   * @param {Array<{ key: string, res: any, feet: number[], yaw: number, moving: boolean, distM: number, striking?: boolean, talk?: boolean, flat?: { archive: number, record: number } | null, body?: boolean }>} list
    * @param {{ dt?: number, eye?: number[]|null, grow?: number, fade?: number, ground?: boolean }} [o]
    */
   function sync(list, { dt = 0, eye = null, grow = 1, fade = 1, ground = true } = {}) {
@@ -135,7 +135,7 @@ export function createTravellerSprites({ renderer, getTexture, uploadRecordFrame
         Object.assign(b, { id: `${laneName}:${++_ids}`, yaw: 0, moving: false, swings: 0, striking: false, talk: m.talk !== false, roll: 1 + (textSeed(String(m.res.id)) % 3), look: undefined });
         bodies.set(m.key, b);
       }
-      b.yaw = m.yaw; b.moving = !!m.moving;
+      b.yaw = m.yaw; b.moving = !!m.moving; b.body = m.body !== false;   // CAMP-FIRE: a camp's fire is a flame, nobody's body
       if (m.striking && !b.striking) b.swings++;   // MWNPC10c: each strike begun, one blow
       b.striking = !!m.striking;
       const target = ground ? 1 : bandSpriteReach(m.distM) * Math.max(0, Math.min(1, fade));
@@ -180,12 +180,14 @@ export function createTravellerSprites({ renderer, getTexture, uploadRecordFrame
   /**
    * MWNPC10c: the last sync's bodies in their Morrowind bodies, before the host's billboard pass draws their sprites -
    * on the ground only; a class's sprite drawn (its blade out), the rest not; the fallen (a flat no one talks to) dead.
+   * CAMP-FIRE (FIELD BUGS 2026-10-11): a flat that is nobody (`body: false`, a camp's fire) stands no body - its sprite draws.
    * @param {any} canvas @param {Float32Array} proj @param {Float32Array} view @param {number[]} eye @param {number} dt
    */
   function drawBodies(canvas, proj, view, eye, dt) {
     bodiesLane.frame();
     if (_ground) {
       for (const b of shown) {
+        if (!b.body) continue;   // CAMP-FIRE (FIELD BUGS 2026-10-11): its flame drawn, never one of the fallen
         if (b.look === undefined) b.look = residentLook(b, b.res, { still: !!b.flat && b.talk });
         if (!b.look) continue;
         bodiesLane.offer(rosterActor(b, { id: b.id, look: b.look, feet: b.batch.origin, yaw: b.yaw, moving: b.moving, swingKey: b.swings || null,
