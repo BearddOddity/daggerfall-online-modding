@@ -57,6 +57,7 @@ import { calculateCost, calculateTradePrice, essentialPrice } from './shopStock.
 import { GOLD_PIECE_WEIGHT_KG, isEnchanted } from './inventory.js';
 import { calculateItemRepairCost, repairRefusal } from './repairService.js';
 import { itemValueOf, conditionPercentage } from './itemTemplates.js';
+import { craftedRarityWorth } from './lootRarity.js';   // CRAFT-WORTH: a crafted piece's rolled worth, never a counter's
 import { isOnlinePage } from './onlineLane.js';   // SELL-AS-FOUND: online, a sale reads a piece as it was found
 import { isCampfireKit } from './survival/items.js';   // AUDIT REST: the Campfire an essential online
 import { isFirewood } from './restItems.js';
@@ -268,6 +269,16 @@ export function markCounterBought(items, { online = isOnlinePage() } = {}) {
  * is what getTradePrice's floor below asks a gold for. The sale and
  * identify arms count none.
  */
+/** CRAFT-WORTH (2026-10-11): THE VALUE A COUNTER PAYS A PIECE ON - its own (itemValueOf), less what a crafted piece's
+ *  quality rolled onto it (lootRarity.js craftedRarityWorth): a counter pays for a crafted piece what it pays for the
+ *  plain piece its recipe makes, never for its Magic or Rare lines. Every selling arm reads it - the trade windows'
+ *  Sell and SellMagic, and the keyed shelf's (scenes/worldModes.js sellPrice). */
+export function counterValueOf(item) {
+  const v = itemValueOf(item);
+  const rolled = craftedRarityWorth(item);
+  return rolled > 0 ? Math.max(1, v - rolled) : v;
+}
+
 export function tradeCost(mode, staged = [], {
   quality = 0, priceAdjustment = 1000, holidayId = HOLIDAYS.None,
   guildFactionId = null, reducedRepairCost = null, reducedIdentifyCost = null,
@@ -290,7 +301,7 @@ export function tradeCost(mode, staged = [], {
         // CalculateCost never reads - see the header; RRI2: Roleplay &
         // Realism: Items' override reads it, so the slot is passed.
         // SELL-AS-FOUND: online, no better than the condition the world handed the piece over at
-        cost += calculateCost(itemValueOf(item), quality, priceAdjustment, saleConditionPercentage(item, { online })) * stack;   // JAN1: an item with no finite value is priced at its base, never NaN
+        cost += calculateCost(counterValueOf(item), quality, priceAdjustment, saleConditionPercentage(item, { online })) * stack;   // JAN1: an item with no finite value is priced at its base, never NaN; CRAFT-WORTH: a crafted piece at its plain worth
         break;
       case 'SellMagic':
         // DFU's own TODO sits on this line: "Fencing base price higher
@@ -298,7 +309,7 @@ export function tradeCost(mode, staged = [], {
         // WITHOUT the stack multiply - a stack of five soul gems fences
         // for the price of one. Verbatim, and deliberately not "fixed".
         modeActionEnabled = true;
-        cost += calculateCost(itemValueOf(item), quality, priceAdjustment);
+        cost += calculateCost(counterValueOf(item), quality, priceAdjustment);   // CRAFT-WORTH: a fenced crafted piece at its plain worth
         break;
       case 'Repair':
         if (isBeingRepaired(item)) break;
