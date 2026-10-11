@@ -22,11 +22,17 @@ curse's pins (`test/cursesync.test.js`) read its `_no_` task. Port-Ledger sectio
 
 ## The three parts
 
-- **The words** - `src/systems/tutorialCatalogue.js`. Seventy pages in thirteen groups (Getting Started, Combat &
+- **The words** - `src/systems/tutorialCatalogue.js`. Sixty-eight pages in thirteen groups (Getting Started, Combat &
   Magic, Your Character, Exploring, Travel & Mounts, Towns, Trade & Guilds, Quests & Bounties, Loot & Gear,
   Professions & Survival, Ships & the Sea, Challenges, Family & Legacy, Playing Online). Each page: an id, a title, a
   `trigger` sentence (when it pops, or MENU_ONLY), paragraphs and points. Every claim was checked against the system's
   own bible page and code when it was written; a slice that changes how a system plays changes its page.
+  TUT1 AUDIT (Mac: "Ensure explanations dont sound AI and arent overloaded"): every page rewritten plain and short -
+  at most two paragraphs, three points and sixty words (the first cut averaged 49 words and ran to 113; now 33 and
+  60), no asides, no flourish, the words a player uses. The popup lost its foot (the welcome page says where every
+  page is read again), a last line is never one word, and a key is named as the keyboard prints it (`keyWord`: `1`,
+  `BACKSPACE`, `NUMPAD /` - never the Controls page's `A1`, `BCKSPC`, `KPADDIVIDE`). `test/tut1_tutorials.test.js`
+  holds every page to the limits.
 - **The law** - `src/systems/tutorials.js`. The read list and the popups' switch live on the port's prefs shelf
   (`tutorialsSeen`, `tutorialPopups` in `systems/uiPrefs.js` PREF_DEFAULTS) - the PLAYER's, not the character's: a
   second character does not need the inventory explained again. `noteFirstUse(id, { after })` is the trigger every
@@ -51,7 +57,7 @@ classic parchment); no host was handed a new seam.
 - **Keys as bound.** A page writes `{Action}` and the popup fills it with the key the player has bound now
   (`boundKeyName`: the Controls page's own names), `[unbound]` when nothing is.
 - **The welcome tour.** `startTutorialTour()` - one box of the tour's unread pages (`TUTORIAL_TOUR`: welcome,
-  movement, interacting, the HUD, the menu, saving, first steps), each dismissal turning the page (`addNext`). The two
+  movement, using things, the HUD, the menu and saving), each dismissal turning the page (`addNext`). The two
   new-game seams call it right after `questBridge.initAtGameStart()`: `world.js:"    startTutorialTour();"` and its
   twin in `exterior.js`, where `_TUTOR__` used to speak its first page.
 

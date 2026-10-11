@@ -22,7 +22,7 @@ import { ACTIONS, DEFAULT_BINDINGS, DEFAULT_SHARES } from '../src/systems/inputA
 import { _resetForTests as resetPrefs, getPref, PREF_DEFAULTS } from '../src/systems/uiPrefs.js';
 import {
   tutorialFirstUse, startTutorialTour, showTutorialNow, tutorialLine, clearTutorialLine, _setTutorialDepsForTests,
-  TutorialBox, SHOW_DELAY_MS, RETRY_MS, SCENE_CHANGE_TUTORIAL_MS, boundKeyName,
+  TutorialBox, SHOW_DELAY_MS, RETRY_MS, SCENE_CHANGE_TUTORIAL_MS, boundKeyName, keyWord,
 } from '../src/ui/tutorialPopup.js';
 import { tutorialsMatching } from '../src/ui/tutorialsPane.js';
 import { GAME_START_QUESTS, retireDfuTutorial } from '../src/scenes/questBridge.js';
@@ -49,7 +49,7 @@ test('TUT1: the catalogue - unique ids, real groups (each one used), the tour\'s
     assert.ok(Object.isFrozen(t) && Object.isFrozen(t.body), `${t.id}: frozen`);
   }
   for (const g of groups) assert.ok(tutorialsIn(g).length, `${g}: a section with no page is a hole in the menu`);
-  assert.deepEqual([...TUTORIAL_TOUR], ['welcome', 'movement', 'interacting', 'hud', 'menu', 'saving', 'first-steps']);
+  assert.deepEqual([...TUTORIAL_TOUR], ['welcome', 'movement', 'interacting', 'hud', 'menu']);
   for (const id of TUTORIAL_TOUR) assert.ok(tutorialById(id), `${id}: a tour page is a page`);
   assert.equal(tutorialById('nope'), null);
   assert.ok(TUTORIALS.length >= 60, `comprehensive: ${TUTORIALS.length} pages`);
@@ -88,14 +88,21 @@ test('TUT1: a page fits a popup - every wrapped line within the measure, no page
       const text = typeof r === 'string' ? r : r.text;
       if (typeof r === 'string') assert.ok(text.length <= TUTORIAL_WRAP + 8, `${t.id}: "${text}" overruns the measure`);
     }
-    assert.ok(rows.length <= 24, `${t.id}: ${rows.length} rows - too tall for the notice panel`);
+    assert.ok(rows.length <= 16, `${t.id}: ${rows.length} rows - too tall for a popup`);
+    // TUT1 audit (Mac: "Ensure explanations dont sound AI and arent overloaded"): two paragraphs at most, three points
+    // at most, and no page over sixty words
+    assert.ok(t.body.length <= 2 && (t.points ?? []).length <= 3, `${t.id}: too many parts`);
+    const words = [...t.body, ...(t.points ?? [])].join(' ').split(/\s+/).length;
+    assert.ok(words <= 60, `${t.id}: ${words} words`);
   }
 });
 
 test('TUT1: fillKeys names the bound key or says it is unbound; wrapTutorialText wraps greedily and keeps every word', () => {
   assert.equal(fillKeys('Press {Inventory} or {Nope}.', (a) => (a === 'Inventory' ? 'F6' : null)), 'Press [F6] or [unbound].');
   assert.equal(fillKeys('no keys'), 'no keys');
-  assert.deepEqual(wrapTutorialText('aaa bbb ccc', 7), ['aaa bbb', 'ccc']);
+  assert.deepEqual(wrapTutorialText('aaa bbb cccc', 7), ['aaa bbb', 'cccc'], 'cccc alone stays: bbb cccc would not fit');
+  assert.deepEqual(wrapTutorialText('aaa bbb ccc', 7), ['aaa', 'bbb ccc'], 'ccc takes bbb down with it');
+  assert.deepEqual(wrapTutorialText('aa bb cc dd', 8), ['aa bb', 'cc dd'], 'a word alone on the last line takes one from above');
   assert.deepEqual(wrapTutorialText('averyveryverylongword x', 5), ['averyveryverylongword', 'x']);
   assert.deepEqual(wrapTutorialText('  ', 10), []);
   const words = 'the quick brown fox jumps over the lazy dog '.repeat(9).trim();
@@ -105,11 +112,13 @@ test('TUT1: fillKeys names the bound key or says it is unbound; wrapTutorialText
   assert.ok(points.length);
 });
 
-test('TUT1: the popup\'s rows - the title first (centred, its own face), the foot naming the menu, a tour page numbered', () => {
+test('TUT1: the popup\'s rows - the title first (centred, its own face), the words, nothing after them; a tour page numbered', () => {
   const rows = tutorialRows(tutorialById('inventory'), { keyName: () => 'X' });
-  assert.deepEqual(rows[0], { text: 'Your Inventory', center: true, cls: 'tut-title' });
-  assert.deepEqual(rows.at(-1), { text: 'Read it again any time: Menu > Tutorials', center: true, cls: 'tut-foot' });
-  assert.equal(tutorialRows(tutorialById('welcome'), { page: 2, pages: 7 })[0].text, 'Welcome to DFO  (2 of 7)');
+  assert.deepEqual(rows[0], { text: 'Inventory', center: true, cls: 'tut-title' });
+  assert.equal(rows.at(-1), 'don\'t need.', 'the last row is the page\'s own last words - no foot (TUT1 audit), and no word alone on it');
+  assert.ok(rows.every((r, i) => i === 0 || typeof r === 'string'), 'only the title is a record');
+  assert.match(tutorialById('welcome').body.join(' '), /Menu > Tutorials/, 'the welcome page says where every page is read again');
+  assert.equal(tutorialRows(tutorialById('welcome'), { page: 2, pages: 5 })[0].text, 'Welcome to DFO  (2 of 5)');
   // points are dashed, their second lines indented
   const pts = tutorialRows(tutorialById('combat'), { keyName: () => 'K' }).filter((r) => typeof r === 'string' && /^(- | {2})/.test(r));
   assert.ok(pts[0].startsWith('- ') && pts.some((r) => r.startsWith('  ')));
@@ -197,7 +206,7 @@ test('TUT1: the first touch pops its page a beat late, over the window just open
   assert.equal(r.mounted.length, 1);
   const box = r.mounted[0];
   assert.ok(box instanceof TutorialBox && box.tutorial);
-  assert.equal(box.lines[0].text, 'Your Inventory');
+  assert.equal(box.lines[0].text, 'Inventory');
   assert.ok(box.lines.some((l) => typeof l === 'string' && l.includes('[<Inventory>]')), 'the key filled from the live binding');
   assert.equal(box.pauseWhileOpen, true, 'modal, as a message box is');
   assert.deepEqual(tutorialLine(), { waiting: [['talk']], showing: ['inventory'] });
@@ -210,7 +219,7 @@ test('TUT1: the first touch pops its page a beat late, over the window just open
   assert.equal(isTutorialSeen('inventory'), true, 'read when dismissed');
   r.advance(SHOW_DELAY_MS);
   assert.equal(r.mounted.length, 2);
-  assert.equal(r.mounted[1].lines[0].text, 'Talking to People');
+  assert.equal(r.mounted[1].lines[0].text, 'Talking');
   box.dispose();   // a host tidying a box already read is no replacement
   assert.deepEqual(tutorialLine().waiting, []);
   clearTutorialLine();
@@ -239,7 +248,7 @@ test('TUT1: a box REPLACED before it is read goes back to the front and is offer
   r.setTake(true);
   r.advance(RETRY_MS);
   assert.equal(r.mounted.length, 3);
-  assert.equal(r.mounted[2].lines[0].text, 'Resting and Waiting');
+  assert.equal(r.mounted[2].lines[0].text, 'Resting');
   clearTutorialLine();
 });
 
@@ -264,7 +273,7 @@ test('TUT1: a scene change holds its page back; a page read meanwhile, or the po
   tutorialFirstUse('oblivion-gate', { after: SCENE_CHANGE_TUTORIAL_MS });
   tutorialFirstUse('bank');
   r.advance(SHOW_DELAY_MS);
-  assert.equal(r.mounted[0].lines[0].text, 'The Bank', 'the page that is due goes before the one held back');
+  assert.equal(r.mounted[0].lines[0].text, 'Banks', 'the page that is due goes before the one held back');
   r.mounted[0].input();
   await flush();
   r.advance(SHOW_DELAY_MS);
@@ -294,9 +303,9 @@ test('TUT1: the welcome tour is ONE box of its unread pages, numbered, first in 
   assert.equal(startTutorialTour(), false, 'once');
   r.advance(SHOW_DELAY_MS);
   const box = r.mounted[0];
-  assert.equal(box.lines[0].text, 'Welcome to DFO  (1 of 6)', 'the tour goes before the combat page, without the page already read');
-  for (let i = 0; i < 5; i++) { box.input(); assert.equal(box.done, false); }
-  assert.match(box.lines[0].text, /\(6 of 6\)$/);
+  assert.equal(box.lines[0].text, 'Welcome to DFO  (1 of 4)', 'the tour goes before the combat page, without the page already read');
+  for (let i = 0; i < 3; i++) { box.input(); assert.equal(box.done, false); }
+  assert.match(box.lines[0].text, /\(4 of 4\)$/);
   assert.equal(isTutorialSeen('welcome'), false);
   box.input();
   await flush();
@@ -315,10 +324,13 @@ test('TUT1: showTutorialNow shows a page already read; boundKeyName names a boun
   assert.equal(showTutorialNow('bank'), true);
   assert.equal(showTutorialNow('nope'), false);
   r.advance(SHOW_DELAY_MS);
-  assert.equal(r.mounted[0].lines[0].text, 'The Bank');
+  assert.equal(r.mounted[0].lines[0].text, 'Banks');
   clearTutorialLine();
   const store = { getAction: () => null };
   assert.equal(boundKeyName('Inventory', store), null, 'a store that binds nothing names nothing');
+  // TUT1 audit: a key as the keyboard prints it, never DFU's own spelling ("A1", "BCKSPC", "KPADDIVIDE")
+  assert.deepEqual(['Digit1', 'Backspace', 'NumpadDivide', 'KeyW', 'ShiftLeft', 'F6', 'Numpad7', 'Mouse1'].map(keyWord),
+    ['1', 'BACKSPACE', 'NUMPAD /', 'W', 'SHIFT', 'F6', 'NUMPAD 7', 'RIGHT CLICK']);
 });
 
 // ── THE SEAMS ──────────────────────────────────────────────────

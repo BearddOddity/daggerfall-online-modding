@@ -7,7 +7,9 @@
 // - The game is DFO. A page never names the old game it grew from - not the game, not its capital.
 // - A key is written `{Action}` (an action of systems/inputActions.js) and filled with the key the player has bound
 //   now, never a key's name: a rebound key would make the page lie.
-// - A page is short enough to read in a popup: a few short paragraphs and a few points.
+// - A page is short and plain (TUT1 audit, Mac: "Ensure explanations dont sound AI and arent overloaded"): what the
+//   player needs to start, in the words a player uses - one or two short paragraphs, at most three points, no
+//   asides and no flourish. The detail lives in the game; the page gets the player to it.
 // - `trigger` says, in words, when the page pops on its own (the menu shows it under the title); a page with no seam
 //   says it is read here. `TUTORIAL_TOUR` pops together as the welcome tour when a new character first stands in the
 //   world.
@@ -34,7 +36,8 @@ export const TUTORIAL_GROUPS = Object.freeze([
 ]);
 
 /** Said for a page no seam pops: it is read in the menu. */
-export const MENU_ONLY = 'Read it here, in the menu, any time.';
+export const MENU_ONLY = 'Menu only.';
+const TOUR = 'Part of the welcome tour.';
 
 /** @param {Tutorial} t */
 const page = (t) => Object.freeze({ ...t, body: Object.freeze([...t.body]), points: Object.freeze([...(t.points ?? [])]) });
@@ -43,528 +46,496 @@ const page = (t) => Object.freeze({ ...t, body: Object.freeze([...t.body]), poin
 export const TUTORIALS = Object.freeze([
   // ── GETTING STARTED ──────────────────────────────────────────
   page({
-    id: 'welcome', group: 'basics', title: 'Welcome to DFO', trigger: 'The welcome tour, when a new character first wakes.',
+    id: 'welcome', group: 'basics', title: 'Welcome to DFO', trigger: TOUR,
     body: [
-      'Welcome to DFO - a vast, open world of cities, wilderness and dungeons, played alone or alongside others online.',
-      'These pages teach the basics. Whenever you reach something new - a window, a mount, a ship, a card table - a short page like this one explains it the first time.',
-      'Every page can be read again: press {Escape} and open the Tutorials tab.',
+      'You start in a small cave. Gear up from your pack, find the exit and head for the nearest town.',
+      'The first time you run into something new, a short note like this explains it. You can read them all again under Menu > Tutorials.',
     ],
   }),
   page({
-    id: 'movement', group: 'basics', title: 'Moving Around', trigger: 'The welcome tour.',
+    id: 'movement', group: 'basics', title: 'Moving Around', trigger: TOUR,
     body: [
-      'Walk with {MoveForwards} {MoveLeft} {MoveBackwards} {MoveRight} and look with the mouse. Hold {Run} to run, press {Jump} to jump and {Crouch} to crouch. {AutoRun} runs forward on its own.',
-      'Press {Jump} at a ledge to climb or vault it. Catch a high ledge to hang from it: forward climbs up, left and right move along it, and {Crouch} lets go. Your grip tires - Climbing skill holds it longer.',
+      '{MoveForwards} {MoveLeft} {MoveBackwards} {MoveRight} to move and the mouse to look. Hold {Run} to run. {Jump} jumps and {Crouch} crouches.',
     ],
     points: [
-      '{FreeMouse} frees the cursor to click on the world and the HUD; press it again to look around.',
+      'Jump at a ledge to climb up, or hold forward against a wall to climb it.',
+      '{FreeMouse} frees the cursor. Press it again to go back to looking around.',
       '{TogglePerspective} switches between first and third person.',
-      'Every key can be changed in Settings > Controls.',
     ],
   }),
   page({
-    id: 'interacting', group: 'basics', title: 'Using Things', trigger: 'The welcome tour.',
+    id: 'interacting', group: 'basics', title: 'Using Things', trigger: TOUR,
     body: [
-      'Look at a door, a chest, a lever or a person and press {ActivateCenterObject} or {Interact} to use it. The words under your crosshair say what a press will do.',
-      'What a click does depends on your mode - Steal, Grab, Info or Talk. Hold {ModeWheel} for the mode wheel, flick toward one and let go. Info mode names buildings and things from afar.',
+      'Look at a door, chest, lever or person and press {ActivateCenterObject} or {Interact}. The text under your crosshair says what will happen.',
+      'Hold {ModeWheel} to switch between Steal, Grab, Info and Talk. Info tells you what a building is from a distance.',
     ],
   }),
   page({
-    id: 'hud', group: 'basics', title: 'Reading the HUD', trigger: 'The welcome tour.',
+    id: 'hud', group: 'basics', title: 'The HUD', trigger: TOUR,
     body: [
-      'Your health, fatigue and magicka are the three bars. The compass shows your heading, and a followed quest marks its goal on it.',
-      'Messages appear at the right of the screen. The hotbar at the bottom holds weapons, potions and spells for a single key press.',
+      'The three bars are health, fatigue and magicka. The compass points to the quest you are tracking. The hotbar at the bottom holds items and spells.',
     ],
     points: [
-      '{Status} tells you where you are, the date and your condition.',
-      '{CharacterSheet} opens your character, {Inventory} your pack, {LogBook} your quests and {AutoMap} your map.',
-      'Settings > Interface moves, locks and scales the HUD.',
+      '{Inventory} inventory, {CharacterSheet} character, {LogBook} quests, {AutoMap} map.',
+      '{Status} shows where you are and the date.',
     ],
   }),
   page({
-    id: 'menu', group: 'basics', title: 'The Menu', trigger: 'The welcome tour.',
+    id: 'menu', group: 'basics', title: 'The Menu and Saving', trigger: TOUR,
     body: [
-      '{Escape} opens the menu. Its tabs: Quests (your journal), Stats, Holdings (your horse, wagon, ships, companions and collections), Family, Tutorials, and System - save, load, settings and more.',
-      'Settings > Features lists every system DFO adds; each one can be switched on or off there. Online, the world goes on while the menu is open.',
+      '{Escape} opens the menu. Saving, loading and settings are on the System tab.',
+      '{QuickSave} quicksaves and {QuickLoad} loads it. Save often.',
     ],
-  }),
-  page({
-    id: 'saving', group: 'basics', title: 'Saving Your Game', trigger: 'The welcome tour.',
-    body: [
-      'Save often. {QuickSave} quicksaves and {QuickLoad} loads it; Save Game and Load Game are on the menu\'s System tab.',
-      'Signed in to an account, your saves can follow you to other devices.',
-    ],
-  }),
-  page({
-    id: 'first-steps', group: 'basics', title: 'Your First Steps', trigger: 'The welcome tour.',
-    body: [
-      'You wake in a small cave of your own - a safe place to learn. Open your pack, put on the best armour you carry and ready a weapon you are skilled with. Then find the way out.',
-      'Outside, make for a town. Talk to people, sell what you found, join a guild and ask for work. There is no wrong direction.',
+    points: [
+      'Any of DFO\'s added features can be turned off in Settings > Features.',
+      'Online, the game keeps running while the menu is open.',
     ],
   }),
 
   // ── COMBAT & MAGIC ───────────────────────────────────────────
   page({
-    id: 'combat', group: 'combat', title: 'Fighting', trigger: 'The first time you draw a weapon.',
+    id: 'combat', group: 'combat', title: 'Fighting', trigger: 'When you first draw a weapon.',
     body: [
-      '{ReadyWeapon} draws or sheathes your weapon and {SwingWeapon} attacks. Moving the mouse as you attack chooses the stroke; Settings > Controls changes how attacks are made.',
-      'Whether a blow lands depends on your skill with the weapon and its material. If you keep missing, use a weapon you are skilled with, or a better metal. Some foes can only be hurt by stronger materials - and running away is always allowed.',
+      '{ReadyWeapon} draws your weapon and {SwingWeapon} attacks. The way you move the mouse sets the swing.',
+      'If you keep missing, you are either unskilled with the weapon or its material is too weak for the target. You can always run.',
     ],
     points: [
-      '{SwitchHand} swaps between your two hands.',
-      'A weapon (or gauntlets) of Magic rarity or better may carry a technique - a special move such as a Whirlwind or a Leap Strike. {WeaponTechnique} uses it; it costs fatigue and needs time to recover.',
+      '{SwitchHand} swaps hands.',
+      'Some weapons have a technique, a special move on {WeaponTechnique}. It costs fatigue and has a cooldown.',
     ],
   }),
   page({
-    id: 'death', group: 'combat', title: 'When You Fall', trigger: 'The first time you die.',
+    id: 'death', group: 'combat', title: 'Dying', trigger: 'When you first die.',
     body: [
-      'Online, you wake at the nearest temple, town or graveyard - or a dungeon\'s entrance - with part of your health, and you lose a tenth of the gold you carry. Banked gold and letters of credit are safe.',
-      'Offline, it depends on your family: an Enduring family rises the same way and ages a little; in a Bloodline family death is final and an heir takes up the line. With Project Legacy off, death ends the run - load a save.',
-    ],
-    points: ['Waking ends poisons, but not diseases, vampirism or lycanthropy.'],
-  }),
-  page({
-    id: 'spellbook', group: 'combat', title: 'Casting Spells', trigger: 'The first time you open your spellbook.',
-    body: [
-      '{CastSpell} opens your spellbook. Pick a spell to cast it; a spell with a target is then aimed and released with {SwingWeapon}.',
-      'Spells cost magicka. {RecastSpell} casts your last spell again and {AbortSpell} lets a readied spell go.',
-    ],
-    points: ['Spells are bought and made at the Mages Guild.', 'A spell can sit on the hotbar for one key press.'],
-  }),
-  page({
-    id: 'spellmaker', group: 'combat', title: 'The Spellmaker', trigger: 'The first time you open the spellmaker.',
-    body: [
-      'Build your own spell from up to three effects. Set each one\'s duration, chance and magnitude, then choose who it targets and its element.',
-      'A stronger spell costs more gold to make and more magicka to cast. Name it, and it joins your spellbook.',
+      'Online, you wake at the nearest temple, town or graveyard and lose a tenth of the gold you carry. Banked gold is safe.',
+      'Offline, it depends on your family. In an Enduring family you get back up, a little older. In a Bloodline family death is permanent and your heir takes over. With Project Legacy off, load a save.',
     ],
   }),
   page({
-    id: 'magic-items', group: 'combat', title: 'Magic Items', trigger: 'The first time you use a magic item.',
+    id: 'spellbook', group: 'combat', title: 'Casting Spells', trigger: 'When you first open your spellbook.',
     body: [
-      'Rings, amulets, weapons and armour can carry enchantments. Some work while worn; others are used: {UseMagicItem} lists them - pick one to use its power.',
-      'Using a power wears the item down. Have it repaired before it breaks.',
+      '{CastSpell} opens your spellbook. Pick a spell, then aim and cast it with {SwingWeapon}.',
+      '{RecastSpell} casts your last spell again. {AbortSpell} cancels it. The Mages Guild sells spells and lets you make your own.',
     ],
   }),
   page({
-    id: 'daedra-summoning', group: 'combat', title: 'Summoning Daedra', trigger: 'The first time you ask to summon a Daedra Prince.',
+    id: 'spellmaker', group: 'combat', title: 'Making Spells', trigger: 'When you first open the spellmaker.',
     body: [
-      'Summoners at the Mages Guild, some temples and the witches\' covens can call a Daedra Prince - for a price, and only on the right days.',
-      'A Prince who answers offers a task. Finish it and you are rewarded with one of their artifacts.',
+      'Pick up to three effects, set their duration, chance and magnitude, then choose a target and an element.',
+      'Stronger spells cost more gold to make and more magicka to cast.',
     ],
   }),
   page({
-    id: 'quickslots', group: 'combat', title: 'The Hotbar', trigger: 'The first time you use a hotbar slot.',
+    id: 'magic-items', group: 'combat', title: 'Magic Items', trigger: 'When you first use a magic item.',
     body: [
-      'The hotbar holds what you reach for in a hurry. {QuickUse1} and {QuickUse2} use its consumables, {QuickSpell} its spell and {QuickOffHand} your off hand; {Hotbar5} to {Hotbar10} use the rest.',
-      'Put an item on it from your inventory: point at the item and choose a slot. {QuickDial} opens the quick dial.',
+      'Some enchanted items work while you wear them. Others have to be used: press {UseMagicItem} and pick one.',
+      'Using a power wears the item down, so keep it repaired.',
+    ],
+  }),
+  page({
+    id: 'daedra-summoning', group: 'combat', title: 'Summoning Daedra', trigger: 'When you first ask to summon a Daedra Prince.',
+    body: [
+      'Summoners at the Mages Guild, some temples and the witch covens can call a Daedra Prince for a fee, but only on certain days.',
+      'Do what the Prince asks and you get one of their artifacts.',
+    ],
+  }),
+  page({
+    id: 'quickslots', group: 'combat', title: 'The Hotbar', trigger: 'When you first use the hotbar.',
+    body: [
+      '{QuickUse1} and {QuickUse2} use your consumables, {QuickSpell} casts your hotbar spell and {QuickOffHand} uses your off hand. {Hotbar5} to {Hotbar10} use the rest.',
+      'To fill a slot, point at an item in your inventory and choose a slot.',
     ],
   }),
 
   // ── YOUR CHARACTER ───────────────────────────────────────────
   page({
-    id: 'inventory', group: 'character', title: 'Your Inventory', trigger: 'The first time you open your inventory.',
+    id: 'inventory', group: 'character', title: 'Inventory', trigger: 'When you first open your inventory.',
     body: [
-      '{Inventory} opens your gear and your pack. Put an item on your body to equip it: wear armour everywhere you can, and carry the best weapon you are skilled with.',
-      'Weight matters - carry too much and you slow down. Sell what you do not need in town.',
-    ],
-    points: ['Point at an item to read it; right-click for what you can do with it.'],
-  }),
-  page({
-    id: 'wallet', group: 'character', title: 'Your Wallet', trigger: 'The first time you open your wallet.',
-    body: [
-      'Every character carries a wallet. It counts your gold - and online, your account\'s silver - and holds your letters of credit, Deadlands Embers and Welkynd Shards.',
-      'It cannot be stored, traded or set out as decor; it is always with you.',
+      '{Inventory} opens your inventory. Put items on your character to equip them. Wear armour everywhere you can and use a weapon you are skilled with.',
+      'Carrying too much slows you down. Sell what you don\'t need.',
     ],
   }),
   page({
-    id: 'character-sheet', group: 'character', title: 'Your Character', trigger: 'The first time you open your character sheet.',
+    id: 'wallet', group: 'character', title: 'Your Wallet', trigger: 'When you first open your wallet.',
     body: [
-      'Your attributes, skills and standings. Skills rise by use - swing a sword to grow your blade skill, cast to grow your magic.',
-      'Your primary and major skills drive your level: when enough of them have risen, you level up.',
+      'Your wallet counts your gold and holds letters of credit, Deadlands Embers and Welkynd Shards. Online, it also shows your account\'s silver.',
     ],
   }),
   page({
-    id: 'level-up', group: 'character', title: 'Levelling Up', trigger: 'The first time you level up.',
+    id: 'character-sheet', group: 'character', title: 'Your Character', trigger: 'When you first open your character sheet.',
     body: [
-      'You have grown stronger. Open your character sheet and spend the points you are given on your attributes - each shapes what you are good at.',
-      'Your health rises with every level. Keep using your skills to reach the next.',
+      'This shows your attributes, skills and standing with each faction. Skills improve as you use them, and when your main skills have gone up enough, you level up.',
     ],
   }),
   page({
-    id: 'rest', group: 'character', title: 'Resting and Waiting', trigger: 'The first time you rest.',
+    id: 'level-up', group: 'character', title: 'Level Up', trigger: 'When you first level up.',
     body: [
-      '{Rest} rests until you recover your health, fatigue and magicka, or loiters until a shop opens. You cannot rest with enemies near.',
-      'Sleeping in the open is risky; an inn room is safest. Online, you can rest with your party at a campfire or a bed.',
+      'You levelled up. Open your character sheet to spend your new points on attributes.',
     ],
   }),
   page({
-    id: 'reputation', group: 'character', title: 'Reputation and Standing', trigger: MENU_ONLY,
+    id: 'rest', group: 'character', title: 'Resting', trigger: 'When you first rest.',
     body: [
-      'Every guild, temple, knightly order and region remembers how you treat it. Their quests raise your standing; crimes and failures lower it, and bad standing slowly mends with time.',
-      'Higher standing brings better prices, kinder words and higher ranks. Your character sheet shows it; Settings can list every faction, not only your own.',
+      '{Rest} lets you rest to recover, or wait until a set time, like when a shop opens. You can\'t rest with enemies nearby.',
+      'Sleeping outdoors is risky. An inn room is safer.',
     ],
   }),
   page({
-    id: 'afflictions', group: 'character', title: 'Disease and Curses of the Blood', trigger: 'The first time you fall ill.',
+    id: 'reputation', group: 'character', title: 'Reputation', trigger: MENU_ONLY,
     body: [
-      'A creature\'s bite or a filthy place can give you a disease. It worsens with time - temples cure it, and so do potions and spells.',
-      'Vampirism and lycanthropy are curses of the blood. A vampire does not burn in the sun here: daylight weakens them and night strengthens them, and a raised hood lets them travel by day.',
+      'Guilds, temples, knightly orders and regions remember what you do. Quests raise your standing and crimes lower it. Bad standing slowly recovers.',
+      'Better standing gets you better prices and higher ranks.',
+    ],
+  }),
+  page({
+    id: 'afflictions', group: 'character', title: 'Disease and Curses', trigger: 'When you first get sick.',
+    body: [
+      'Bites and filthy places can make you sick, and diseases get worse over time. Temples, potions and spells cure them.',
+      'Vampirism and lycanthropy are curses. Vampires don\'t burn in sunlight here, but they are weaker by day and stronger at night.',
     ],
   }),
 
   // ── EXPLORING ────────────────────────────────────────────────
   page({
-    id: 'automap', group: 'world', title: 'The Map', trigger: 'The first time you open the map.',
+    id: 'automap', group: 'world', title: 'The Map', trigger: 'When you first open the map.',
     body: [
-      '{AutoMap} opens the map of where you are: a dungeon\'s halls as you have walked them, or a town\'s streets and buildings.',
-      'Drag to pan and scroll to zoom. Right-click to place a waypoint and find your way back.',
+      '{AutoMap} shows a map of where you are: the parts of a dungeon you have explored, or a town\'s streets and buildings.',
+      'Drag to move it and scroll to zoom. Right-click to add a waypoint.',
     ],
   }),
   page({
-    id: 'dungeons', group: 'world', title: 'Dungeons', trigger: 'The first time you enter a dungeon.',
+    id: 'dungeons', group: 'world', title: 'Dungeons', trigger: 'When you first enter a dungeon.',
     body: [
-      'Dungeons are large and winding. Open your map often, and watch for levers, switches and secret doors that open the way.',
-      'The way out is the door you came in by. Quests often hide what you seek in a dungeon\'s deepest rooms.',
+      'Dungeons are big and easy to get lost in. Check your map often and look for levers and hidden doors. You leave the way you came in.',
     ],
   }),
   page({
-    id: 'searchables', group: 'world', title: 'Searching', trigger: 'The first time you search something.',
+    id: 'searchables', group: 'world', title: 'Searching', trigger: 'When you first search something.',
     body: [
-      'Coffins, sarcophagi, shelves, gravestones, chests and crates can be searched. A search turns up treasure - always some gold - or wakes something better left asleep, or finds nothing at all.',
+      'You can search coffins, shelves, gravestones, chests and crates. You might find gold, find nothing, or wake something up.',
     ],
   }),
   page({
-    id: 'torches', group: 'world', title: 'Torches and Lanterns', trigger: 'The first time you light a torch.',
+    id: 'torches', group: 'world', title: 'Torches', trigger: 'When you first light a torch.',
     body: [
-      'A light in your off hand pushes back the dark. {TorchToggleLight} lights or puts it out, {TorchDrop} sets it down and {TorchThrow} throws a torch - hold it to throw further.',
-      'Drawing a weapon that needs both hands puts the torch out.',
+      'Hold a torch or lantern in your off hand to see in the dark. {TorchToggleLight} lights it or puts it out, {TorchDrop} drops it and {TorchThrow} throws a torch.',
+      'Drawing a two-handed weapon puts your torch out.',
     ],
   }),
   page({
-    id: 'crime', group: 'world', title: 'Crime and the Law', trigger: 'The first time you face the law.',
+    id: 'crime', group: 'world', title: 'Crime', trigger: 'When the law first catches up with you.',
     body: [
-      'Theft, trespass and violence against innocents are crimes. Guards who know you stop you: pay the fine, go to court, or refuse and fight.',
-      'Murder and treason get you banished from the region for 30 days - or buy a pardon at its temple. Each region keeps its own record of you.',
+      'Stealing, trespassing and attacking innocents are crimes. When a guard stops you, you can pay the fine, go to court or resist.',
+      'Murder and treason get you banished from the region for 30 days. The region\'s temple sells pardons.',
     ],
   }),
 
   // ── TRAVEL & MOUNTS ──────────────────────────────────────────
   page({
-    id: 'travel-map', group: 'travel', title: 'The Travel Map', trigger: 'The first time you open the travel map.',
+    id: 'travel-map', group: 'travel', title: 'The Travel Map', trigger: 'When you first open the travel map.',
     body: [
-      '{TravelMap} opens the map of the land. Pick a region, then a place, and travel there - the journey passes days of the world\'s time in a moment of yours.',
-      'Choose to travel cautiously or recklessly, on foot, by horse or by ship, and to camp or stay at inns along the way. Find searches for a place by name.',
-    ],
-    points: ['Online, journeys over land are walked on the roads, not skipped.'],
-  }),
-  page({
-    id: 'travel-view', group: 'travel', title: 'The Overworld', trigger: 'The first time you open the Overworld.',
-    body: [
-      'The Overworld button at the foot of the map shows the land from above. Click a town to travel the roads to it, or open ground to walk straight there; you can stop anywhere and step back into the world.',
-      '{FollowPaths} follows the road ahead on your own.',
+      '{TravelMap} opens the map of the whole land. Pick a place to travel there. The trip takes days of game time but only a moment for you.',
+      'You choose how fast to go, how to travel and whether to camp or stay at inns. Online, trips over land are walked on the roads instead.',
     ],
   }),
   page({
-    id: 'carriages', group: 'travel', title: 'Carriages', trigger: 'The first time you hire a carriage.',
+    id: 'travel-view', group: 'travel', title: 'The Overworld', trigger: 'When you first open the Overworld.',
     body: [
-      'Carriage drivers wait outside the gates of walled cities. Talk to one to ride to a city, hamlet or village for a daily fare, plus the inns along the way.',
-      'Online, a carriage or a ship\'s passage from a port is the quick way across the land.',
+      'Open it with the Overworld button at the bottom of the map. Click a town to travel there by road, or click open ground to go straight there. You can stop and get out anywhere.',
+      '{FollowPaths} follows the road ahead.',
     ],
   }),
   page({
-    id: 'horse', group: 'travel', title: 'Horses and Transport', trigger: 'The first time you choose your transport.',
+    id: 'carriages', group: 'travel', title: 'Carriages', trigger: 'When you first hire a carriage.',
     body: [
-      'Every city and town has a stable that sells horses. {Transport} chooses how you travel - on foot, by horse or by cart.',
-      '{HorseMount} mounts and dismounts, and {HorseSummon} calls your horse and wagon to you.',
+      'Carriage drivers wait outside the gates of walled cities. Talk to one to ride to another town for a daily fare, plus inns along the way.',
     ],
   }),
   page({
-    id: 'wagon', group: 'travel', title: 'Wagons and Carts', trigger: 'The first time you use a wagon.',
+    id: 'horse', group: 'travel', title: 'Horses', trigger: 'When you first choose how to travel.',
     body: [
-      'A town\'s wagon yard sells a Small Cart (750 kg), an Open Wagon (1,500 kg, with four seats for players and companions) and a Caravan (2,000 kg, and you can step inside). The bigger two need a team of two horses.',
-      'Do not leave a wagon on a town\'s road: after ten minutes the watch drags it outside the town, cargo and all.',
+      'Every town has a stable that sells horses. {Transport} picks how you travel: on foot, on horseback or by cart.',
+      '{HorseMount} gets on and off. {HorseSummon} calls your horse and wagon to you.',
     ],
   }),
   page({
-    id: 'portal-stone', group: 'travel', title: 'Portal Stones', trigger: 'The first time you use a portal stone.',
+    id: 'wagon', group: 'travel', title: 'Wagons', trigger: 'When you first use a wagon.',
     body: [
-      'Use a Portal Stone from your pack and choose any place on the map: a portal stands for 30 seconds, and online anyone nearby may follow you through. Each stone is used up.',
-      'Stones cost Welkynd Shards at a shop\'s counter. They will not open indoors, in dungeons, near enemies, or during a duel, a siege or a journey.',
+      'Wagon yards sell carts and wagons for carrying cargo. The Open Wagon and the Caravan need two horses.',
+      'Don\'t leave a wagon on a town road. After ten minutes the watch drags it out of town, cargo and all.',
+    ],
+  }),
+  page({
+    id: 'portal-stone', group: 'travel', title: 'Portal Stones', trigger: 'When you first use a portal stone.',
+    body: [
+      'Use a portal stone and pick any place on the map. A portal opens for 30 seconds, and online anyone nearby can follow you. Each stone works once.',
+      'They don\'t work indoors, in dungeons or near enemies.',
     ],
   }),
 
   // ── TOWNS, TRADE & GUILDS ────────────────────────────────────
   page({
-    id: 'talk', group: 'towns', title: 'Talking to People', trigger: 'The first time you talk to someone.',
+    id: 'talk', group: 'towns', title: 'Talking', trigger: 'When you first talk to someone.',
     body: [
-      'Ask for directions to places and people, for news, and for work. Choose your tone; the person\'s mood and your standing decide what they tell you.',
-      'Ask the same person about a building again and they may mark it on your map. Befriend someone and new topics open.',
+      'Ask people for directions, news or work. Your tone, their mood and your reputation change what they tell you.',
+      'Ask about a building more than once and they may mark it on your map.',
     ],
   }),
   page({
-    id: 'shops', group: 'towns', title: 'Shops and Trade', trigger: 'The first time you trade with a merchant.',
+    id: 'shops', group: 'towns', title: 'Shops', trigger: 'When you first trade with a shopkeeper.',
     body: [
-      'Shopkeepers buy and sell. Each kind of shop buys certain goods - pawnbrokers almost anything, smiths weapons and armour.',
-      'Your Mercantile skill and the shop\'s quality set the price. Most shops close at night: rest until morning if one is shut.',
-    ],
-    points: ['Smiths repair worn weapons and armour.'],
-  }),
-  page({
-    id: 'bank', group: 'towns', title: 'The Bank', trigger: 'The first time you visit a bank.',
-    body: [
-      'Banks keep your gold safe and write letters of credit, which weigh nothing. They lend money - repay it on time - and sell houses and ships.',
-      'Each region has its own bank and keeps its own accounts.',
+      'Each shop buys certain goods. Pawnbrokers take almost anything. Smiths buy weapons and armour and do repairs.',
+      'Prices depend on your Mercantile skill. Most shops close at night.',
     ],
   }),
   page({
-    id: 'guilds', group: 'towns', title: 'Guilds and Temples', trigger: 'The first time you visit a guild.',
+    id: 'bank', group: 'towns', title: 'Banks', trigger: 'When you first visit a bank.',
     body: [
-      'Join a guild to earn its services and its work. Rising in rank takes skill in what the guild values and regular quests for it.',
-      'You may join one temple and one knightly order, and as many guilds as will have you. Some guilds keep themselves hidden.',
+      'Banks keep your gold safe and write letters of credit, which weigh nothing. They also give loans and sell houses and ships. Each region\'s bank has its own accounts.',
     ],
   }),
   page({
-    id: 'tavern', group: 'towns', title: 'Taverns and Inns', trigger: 'The first time you visit a tavern.',
+    id: 'guilds', group: 'towns', title: 'Guilds', trigger: 'When you first visit a guild.',
     body: [
-      'Taverns sell food, drink and rooms. Rent a room to rest safely, ask the patrons for news and work, and sit at a table for a game of cards.',
+      'Join a guild for its services and its quests. To rank up, raise the skills it cares about and keep working for it.',
+      'You can join one temple and one knightly order, and as many guilds as will take you.',
     ],
   }),
   page({
-    id: 'tavern-cards', group: 'towns', title: 'Tavern Cards', trigger: 'The first time you sit at a card table.',
+    id: 'tavern', group: 'towns', title: 'Taverns', trigger: 'When you first visit a tavern.',
     body: [
-      'Every tavern has card tables: a chips table for anyone and, online, a table for gold. Play Texas Hold\'em or Iliac Hand, a collectible card game, against the regulars or other players.',
-      'Your Card Binder keeps the cards you collect; Menu > Holdings > Collections shows them.',
+      'Taverns sell food, drink and rooms. A rented room is the safest place to sleep, and the regulars are good for news and work.',
     ],
   }),
   page({
-    id: 'holdings', group: 'towns', title: 'Houses', trigger: 'The first time you look at a house to buy or rent.',
+    id: 'tavern-cards', group: 'towns', title: 'Card Games', trigger: 'When you first sit at a card table.',
     body: [
-      'A house is yours to keep: store your belongings, rest safely and furnish it as you please. Offline, buy one at a bank. Online, buy any unowned house at its front door - up to three - and choose who may enter.',
-      'Decorating costs gold by the size of the piece. Online, you can rent rooms out to other players.',
+      'Play Texas Hold\'em or Iliac Hand against the locals or other players. Online, one table plays for real gold.',
+      'Cards you collect go in your Card Binder. See them under Menu > Holdings > Collections.',
     ],
   }),
   page({
-    id: 'notice-board', group: 'towns', title: 'Notice Boards', trigger: 'The first time you read a notice board.',
+    id: 'holdings', group: 'towns', title: 'Houses', trigger: 'When you first look at buying or renting a house.',
     body: [
-      'Online, a town\'s notice board is the meeting place of its players: notices, Work (writs to fill), the Market (an auction house), Vendors (players\' stalls), Guilds and the Seat.',
+      'Offline, banks sell houses. Online, you can buy up to three empty houses at their front doors and choose who can come in.',
+      'A house is a safe place to sleep, store your things and decorate.',
+    ],
+  }),
+  page({
+    id: 'notice-board', group: 'towns', title: 'Notice Boards', trigger: 'When you first read a notice board.',
+    body: [
+      'Online, a town\'s notice board has player notices, work orders, the market, player stalls and guild news.',
     ],
   }),
 
   // ── QUESTS & BOUNTIES ────────────────────────────────────────
   page({
-    id: 'quests', group: 'quests', title: 'Quests', trigger: 'The first time you hear quest news or open your quests.',
+    id: 'quests', group: 'quests', title: 'Quests', trigger: 'When you first get quest news or open your log.',
     body: [
-      'A quest has a goal and often a time limit. {LogBook} and the menu\'s Quests tab keep every quest\'s latest word - read it carefully: it names who to find and where.',
-      'Quests choose places around you. Many offer to plan your travel straight to their destination. Refusing work costs nothing, unless it is part of the main story.',
+      '{LogBook} and the menu\'s Quests tab keep track of your quests. Read them closely. They tell you who to find and where.',
+      'Many quests have a time limit. Turning down work costs nothing, except in the main story.',
     ],
   }),
   page({
-    id: 'quest-guide', group: 'quests', title: 'Following a Quest', trigger: 'The first time you follow a quest.',
+    id: 'quest-guide', group: 'quests', title: 'Tracking Quests', trigger: 'When you first track a quest.',
     body: [
-      'Follow a quest and its card stands at the top right, its goal marked on your compass and map. News of your quests appears as it happens.',
-      'Settings > Features sets how much the marks give away: Journal (only what your log says), Town, or Exact - which can spoil a search.',
+      'A tracked quest shows in the top right, with its goal marked on your compass and map. Settings > Features sets how exact the markers are.',
     ],
   }),
   page({
-    id: 'bounties', group: 'quests', title: 'Bounty Boards', trigger: 'The first time you read a bounty board.',
+    id: 'bounties', group: 'quests', title: 'Bounties', trigger: 'When you first read a bounty board.',
     body: [
-      'Towns with more than one board keep a bounty board posting four hunts. Take one, kill its targets and return for gold and an item.',
-      'Each finished bounty raises your standing with the region.',
+      'Bounty boards list four hunts. Take one, kill the targets and come back for gold and an item. It also raises your standing in the region.',
     ],
   }),
   page({
-    id: 'notebook', group: 'quests', title: 'Your Notebook', trigger: 'The first time you open your notebook.',
+    id: 'notebook', group: 'quests', title: 'Notebook', trigger: 'When you first open your notebook.',
     body: [
-      '{NoteBook} opens your notebook: your own notes, and the record of every quest you have finished.',
+      '{NoteBook} opens your notebook. It holds your own notes and a record of the quests you have finished.',
     ],
   }),
 
   // ── LOOT & GEAR ──────────────────────────────────────────────
   page({
-    id: 'loot', group: 'loot', title: 'Loot and Rarity', trigger: 'The first time you loot or find a rare item.',
+    id: 'loot', group: 'loot', title: 'Loot', trigger: 'When you first loot something.',
     body: [
-      'Take what you want from a treasure pile or a fallen foe. {QuickLootAll} takes everything; {QuickLootOpen} opens the full window.',
-      'Gear comes in rarities, shown by colour: Common, Magic, Rare and Legendary - and, won rather than found, Aetheric, Artifact and Gilded. Rarer pieces carry more and stronger properties.',
+      '{QuickLootAll} takes everything from a body or pile. {QuickLootOpen} opens the full loot window.',
+      'An item\'s colour shows how rare it is: Common, Magic, Rare or Legendary. Rarer items have more and better bonuses.',
     ],
   }),
   page({
-    id: 'materials', group: 'loot', title: 'The Materials Bag', trigger: 'The first time you bag a material.',
+    id: 'materials', group: 'loot', title: 'Materials Bag', trigger: 'When you first gather a crafting material.',
     body: [
-      'Online, a Materials Bag from any General Store holds 300 kg of crafting materials without weighing you down. You can own one. Without it, materials go into your pack.',
+      'Online, a Materials Bag carries up to 300 kg of crafting materials without weighing you down. General stores sell them, one per player.',
     ],
   }),
   page({
-    id: 'reforge', group: 'loot', title: 'The Reforge', trigger: 'The first time you visit the Reforge.',
+    id: 'reforge', group: 'loot', title: 'Reforging', trigger: 'When you first visit the Reforge.',
     body: [
-      'The Reforge stands at the Mages Guild. It re-rolls one property of a Magic or Rare piece for Welkynd Shards and gold, and can draw a gem out of a socket whole.',
-      'Salvage breaks the pieces you do not want into Welkynd Shards.',
+      'The Reforge at the Mages Guild rerolls one bonus on a Magic or Rare item for Welkynd Shards and gold. It can also take a gem out of a socket.',
+      'Salvage turns gear you don\'t want into Welkynd Shards.',
     ],
   }),
   page({
-    id: 'gem-sockets', group: 'loot', title: 'Gems and Sockets', trigger: 'The first time you set a gem.',
+    id: 'gem-sockets', group: 'loot', title: 'Gems', trigger: 'When you first set a gem.',
     body: [
-      'Weapons hold one to three sockets by size, armour one. Set a gem from your pack into a socket - it is free - and the piece gains the gem\'s power.',
+      'Weapons have one to three sockets, depending on size. Armour has one. Setting a gem is free and adds its bonus to the item.',
     ],
   }),
   page({
-    id: 'sigil-sets', group: 'loot', title: 'Sigil Sets', trigger: 'The first time you read a set piece or meet the Sigil Broker.',
+    id: 'sigil-sets', group: 'loot', title: 'Sigil Sets', trigger: 'When you first look at a set item.',
     body: [
-      'A sigil names the set a piece belongs to. Wear two, four or six pieces of one set to wake its powers; they grow with your Renown, and the set is only as strong as its weakest piece. Sets work online, never in duels.',
-      'The Sigil Broker trades set pieces and weapons for Deadlands Embers - each offer once a day.',
+      'Items with the same sigil form a set. Wear 2, 4 or 6 pieces for set bonuses, which grow with your Renown and your weakest piece.',
+      'Sets only work online and never in duels. The Sigil Broker sells set pieces for Deadlands Embers.',
     ],
   }),
 
   // ── PROFESSIONS & SURVIVAL ───────────────────────────────────
   page({
-    id: 'foraging', group: 'livelihood', title: 'Gathering', trigger: 'The first time you gather.',
+    id: 'foraging', group: 'livelihood', title: 'Gathering', trigger: 'When you first gather something.',
     body: [
-      'Herbs, ore, timber, fish and game can be gathered in the wild with the right tool - a sickle, pick-axe, wood-axe, fishing net, basket or skinning knife.',
-      'Look at what you want to gather and pick an action from its list; {ActChoice} steps through the list.',
+      'With the right tool you can gather herbs, ore, wood, fish and game. Look at something you can gather and pick an action. {ActChoice} cycles through them.',
     ],
   }),
   page({
-    id: 'professions', group: 'livelihood', title: 'Professions', trigger: 'The first time you gather.',
+    id: 'professions', group: 'livelihood', title: 'Professions', trigger: 'When you first gather something.',
     body: [
-      'Online, every gather, craft and sale grows a profession. Each grows with practice and opens better work.',
-      '{Professions} opens your Professions and your Stores - storage kept for you on the server, also on the menu\'s Holdings tab.',
+      'Online, gathering, crafting and selling level up your professions. {Professions} opens them and your Stores, where your stored goods are kept.',
     ],
   }),
   page({
-    id: 'survival', group: 'livelihood', title: 'Hunger, Cold and Weariness', trigger: 'The first time you grow hungry, cold or tired.',
+    id: 'survival', group: 'livelihood', title: 'Hunger and Cold', trigger: 'When you first get hungry, cold or tired.',
     body: [
-      'Your character needs food, drink, warmth and sleep. Eat and drink, dress for the climate and rest when weary. Small icons by your bars show what you feel.',
-      'Survival has three settings - Off, Casual (the default: needs only tire you) and Hard (they cost attributes and health, and can make you sick). Change it in Settings > Features.',
+      'You need food, water, warmth and sleep. Icons next to your bars show what you are short on.',
+      'Survival can be Off, Casual (the default) or Hard. On Hard, needs can hurt you and make you sick. Change it in Settings > Features.',
     ],
   }),
 
   // ── SHIPS & THE SEA ──────────────────────────────────────────
   page({
-    id: 'ships', group: 'sea', title: 'Sailing', trigger: 'The first time you board a boat.',
+    id: 'ships', group: 'sea', title: 'Sailing', trigger: 'When you first board a boat.',
     body: [
-      'Boats are sold as parts or a deed in General Stores and Pawn Shops: use the parts in the water, or the deed near a port. Your fleet is on the menu\'s Holdings tab.',
-      'At the helm, {BoatToggleSail} raises or stows the sails, {BoatSailUp} and {BoatSailDown} give more or less sail, {BoatTrimLeft} and {BoatTrimRight} trim them. {BoatDisembark} leaves the helm, {BoatToggleLight} lights the lanterns and {BoatTimeScaleUp} hurries time.',
+      'General stores and pawn shops sell boats as parts or as a deed. Use the parts in water, or the deed near a port.',
+      'At the helm, {BoatToggleSail} raises or lowers the sail and {BoatSailUp} and {BoatSailDown} set how much. {BoatDisembark} leaves the helm.',
     ],
   }),
   page({
-    id: 'shipyard', group: 'sea', title: 'Shipwrights', trigger: 'The first time you visit a shipwright.',
+    id: 'shipyard', group: 'sea', title: 'Shipwrights', trigger: 'When you first visit a shipwright.',
     body: [
-      'Take your helm in a port town\'s waters to reach its shipwright: repair your hull and outfit your ship.',
+      'Take the helm in a port town\'s harbour to reach its shipwright, who can repair your ship.',
     ],
   }),
   page({
-    id: 'naval-combat', group: 'sea', title: 'Battles at Sea', trigger: 'The first time you take a prize at sea.',
+    id: 'naval-combat', group: 'sea', title: 'Fighting at Sea', trigger: 'When you first take a ship\'s cargo.',
     body: [
-      'Look to one side, hold {SwingWeapon} to aim a broadside and let go to fire. Batter a ship until she strikes her colours, then board her and take her cargo.',
-      'Piracy is a crime. And not everything in the deep is a ship.',
+      'Turn side-on to a ship, hold {SwingWeapon} to aim a broadside and let go to fire. Damage a ship until she surrenders, then board her and take her cargo.',
+      'Piracy is a crime.',
     ],
   }),
 
   // ── CHALLENGES ───────────────────────────────────────────────
   page({
-    id: 'arena', group: 'challenges', title: 'The Arena', trigger: 'The first time you visit the arena.',
+    id: 'arena', group: 'challenges', title: 'The Arena', trigger: 'When you first visit the arena.',
     body: [
-      'The arena stands in the province\'s capital. The Herald at its gate opens its window; the Red and Blue Banner recruiters take you onto a team, and a bookmaker takes bets.',
-      'The ladder climbs ten tiers of opponents, with purses up to 10,000 gold for Grand Champion. A loss ends your run, and no potions are allowed on the sand. Online, players fight each other too.',
+      'The arena is in the province\'s capital. Talk to the Herald at the gate to fight. The recruiters let you join a team, and the bookmaker takes bets.',
+      'The ladder has ten tiers and pays up to 10,000 gold. One loss ends your run, and potions aren\'t allowed.',
     ],
   }),
   page({
-    id: 'oblivion-gate', group: 'challenges', title: 'Dagon\'s Breach', trigger: 'The first time you step through Dagon\'s Breach.',
+    id: 'oblivion-gate', group: 'challenges', title: 'Dagon\'s Breach', trigger: 'When you first go through Dagon\'s Breach.',
     body: [
-      'Online, Dagon\'s Breach - a burning door into the Deadlands - opens every two hours. A burning sky and a mark on the map warn you a quarter of an hour before; the gate stands open for ten minutes. Step through to fight what waits beyond, with everyone else who came.',
-      'Every fighter\'s spoils are their own: gold, gear, a Deadlands Ember and perhaps a piece of Ruhn\'s Regalia. Break the ritual of Dagon\'s faithful before the gate opens for another Ember - and to free the Sigil Broker.',
+      'Online, Dagon\'s Breach opens every two hours for ten minutes. The sky turns red and the map marks it about fifteen minutes before. Walk through to fight the boss with everyone else.',
+      'Everyone gets their own loot: gold, gear, a Deadlands Ember and maybe a piece of Ruhn\'s Regalia.',
     ],
   }),
   page({
-    id: 'abyss', group: 'challenges', title: 'The Abyss Dungeon', trigger: 'The first time you enter the Abyss Dungeon.',
+    id: 'abyss', group: 'challenges', title: 'The Abyss Dungeon', trigger: 'When you first enter the Abyss Dungeon.',
     body: [
-      'Online, one Abyss Dungeon stands at a time, near a city in the busiest region - find it by its column of light, and by the talk in that city\'s taverns.',
-      'At its end, the Rift leads into the Shattered Hour: a puzzle, a climb, and the Brass Remnant. You have one life there.',
+      'Online, there is one Abyss Dungeon at a time, near a city in the busiest region. Look for the column of light, or listen to the city\'s tavern talk.',
+      'The Rift at the end leads to the Shattered Hour and the Brass Remnant. You only get one life in there.',
     ],
   }),
   page({
-    id: 'ocean-holes', group: 'challenges', title: 'Ocean Holes', trigger: 'The first time you dive into an Ocean Hole.',
+    id: 'ocean-holes', group: 'challenges', title: 'Ocean Holes', trigger: 'When you first dive into an Ocean Hole.',
     body: [
-      'Black holes in the seafloor, under a purple mist. Swim down into one to find a flooded dungeon - and mind your breath.',
+      'Black holes in the seabed, under purple mist, lead down to flooded dungeons. Watch your breath.',
     ],
   }),
 
   // ── FAMILY & LEGACY ──────────────────────────────────────────
   page({
-    id: 'legacy', group: 'legacy', title: 'Project Legacy', trigger: 'The first time your line passes on.',
+    id: 'legacy', group: 'legacy', title: 'Family', trigger: 'When your heir first takes over.',
     body: [
-      'Your character has a family. Befriend someone until they are a Friend, court them in conversation, and marry at their town\'s temple. Children may follow.',
-      'An Enduring family rises again after death; in a Bloodline family death is final and an heir takes up the name and its blessings. {LegacyFamily} opens the Family tab: your tree, your house and the Hall of Ancestors.',
+      'Become friends with someone, court them in conversation and marry at their town\'s temple. You may have children.',
+      'In an Enduring family you get back up after death. In a Bloodline family death is permanent and your heir takes over. {LegacyFamily} opens your family tree.',
     ],
   }),
   page({
-    id: 'revenants', group: 'legacy', title: 'Revenants', trigger: 'The first time a revenant rises or kneels.',
+    id: 'revenants', group: 'legacy', title: 'Revenants', trigger: 'When you first meet a revenant.',
     body: [
-      'An elite or champion foe that kills you - or flees and gets away - may come back as a revenant: named, stronger, better armed, and remembering you.',
-      'Beat it and it kneels. Then choose: kill it, or spare it.',
+      'When an elite enemy kills you or gets away, it can come back as a revenant: named, stronger and better armed.',
+      'Beat it and it kneels. Then you choose whether to kill it or spare it.',
     ],
   }),
   page({
-    id: 'companions', group: 'legacy', title: 'Companions', trigger: 'The first time a revenant kneels to you.',
+    id: 'companions', group: 'legacy', title: 'Companions', trigger: 'When a revenant first kneels to you.',
     body: [
-      'A revenant you spare swears to follow you. Up to six may be sworn, and three walk at your side; your ship\'s crew can come ashore too.',
-      'Call them, send them away or release them on the menu\'s Holdings tab.',
+      'Spare a revenant and it swears to follow you. You can have six, with three at your side. Manage them under Menu > Holdings.',
     ],
   }),
 
   // ── PLAYING ONLINE ───────────────────────────────────────────
   page({
-    id: 'online', group: 'online', title: 'Playing Online', trigger: 'The first time you play online.',
+    id: 'online', group: 'online', title: 'Playing Online', trigger: 'When you first play online.',
     body: [
-      'Online, you share the world with other players: the same hour, the same weather and the same events. The world does not pause while your menu is open.',
-      'Your first cave is your own - you meet others once you step outside.',
+      'Online, everyone shares the same world, time, weather and events. The game doesn\'t pause when you open the menu.',
+      'Your starting cave is yours alone. You meet other players once you leave it.',
     ],
   }),
   page({
-    id: 'chat', group: 'online', title: 'Chat', trigger: 'The first time you open chat.',
+    id: 'chat', group: 'online', title: 'Chat', trigger: 'When you first open chat.',
     body: [
-      '{ActivateCursor} opens chat. Its tabs choose who hears you: World, Region and Local - and Party and Guild when you belong to one.',
-      'Settings > Interface moves, sizes and hides the chat.',
+      '{ActivateCursor} opens chat. The tabs pick who hears you: World, Region, Local, and Party or Guild if you are in one.',
     ],
   }),
   page({
-    id: 'party', group: 'online', title: 'Other Players', trigger: 'The first time you reach out to another player.',
+    id: 'party', group: 'online', title: 'Other Players', trigger: 'When you first interact with another player.',
     body: [
-      'Look at another player and press {SocialInteract}: add them as a friend, invite them to your party (four seats), trade or inspect them. With nobody in front of you, it opens your friends and party.',
-      'A party can share bounties, and rest together if each member allows it.',
+      'Look at a player and press {SocialInteract} to add them as a friend, invite them to your party, trade or inspect them. With nobody in front of you, it opens your friends list.',
     ],
   }),
   page({
-    id: 'player-trade', group: 'online', title: 'Trading with Players', trigger: 'The first time you trade with another player.',
+    id: 'player-trade', group: 'online', title: 'Trading', trigger: 'When you first trade with a player.',
     body: [
-      'Both players lay out what they offer. Nothing changes hands until both accept the same offer.',
+      'You each put up what you are offering. Nothing changes hands until you both accept.',
     ],
   }),
   page({
-    id: 'duel', group: 'online', title: 'Duels', trigger: 'The first time you are challenged to a duel.',
+    id: 'duel', group: 'online', title: 'Duels', trigger: 'When you are first challenged to a duel.',
     body: [
-      'Challenge a player from their Inspect card. If both agree, the duel is refereed fairly and your real health is never touched - no one dies and no one is charged with a crime.',
+      'Challenge a player from their Inspect card. A duel doesn\'t touch your real health. Nobody dies and nobody breaks the law.',
     ],
   }),
   page({
-    id: 'wild-zone', group: 'online', title: 'The Open Zone', trigger: 'The first time you enter the open zone.',
+    id: 'wild-zone', group: 'online', title: 'The Open Zone', trigger: 'When you first enter the open zone.',
     body: [
-      'The Wrothgarian Mountains are open to fighting between players. Monsters are stronger and loot is better.',
-      'Die there and you drop what your bag and cart carry - and the player who killed you may take one item you wore.',
+      'Players can fight each other in the Wrothgarian Mountains. Monsters are tougher and loot is better.',
+      'If you die there, you drop what is in your bag and cart, and your killer can take one item you were wearing.',
     ],
   }),
   page({
-    id: 'player-guilds', group: 'online', title: 'Guilds of Players', trigger: MENU_ONLY,
+    id: 'player-guilds', group: 'online', title: 'Player Guilds', trigger: MENU_ONLY,
     body: [
-      'Players can found their own guilds, with a shared vault and a guild chat. A guild can hold a palace town as its Seat - and must defend it in sieges.',
+      'Players can start guilds with a shared vault and guild chat. A guild can claim a palace town as its seat, but has to hold it against sieges.',
     ],
   }),
   page({
     id: 'world-events', group: 'online', title: 'Raids and Caravans', trigger: MENU_ONLY,
     body: [
-      'Each day a town somewhere in the Bay is raided; drive the raiders off to raise your standing. Caravans travel the roads - attack them, guard them or trade with them.',
+      'Every day, raiders attack a town somewhere. Drive them off to raise your standing. Caravans travel the roads, and you can attack, guard or trade with them.',
     ],
   }),
 ]);
 
 /** The welcome tour: the pages a new character reads first, in order, in one box. */
-export const TUTORIAL_TOUR = Object.freeze(['welcome', 'movement', 'interacting', 'hud', 'menu', 'saving', 'first-steps']);
+export const TUTORIAL_TOUR = Object.freeze(['welcome', 'movement', 'interacting', 'hud', 'menu']);

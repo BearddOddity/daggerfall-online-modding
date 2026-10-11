@@ -47,13 +47,19 @@ export const tutorialPopupsOn = () => getPref(TUTORIAL_POPUPS_PREF) !== false;
 /** Turn the popups on or off; the store's word comes back. */
 export const setTutorialPopups = (on) => setPref(TUTORIAL_POPUPS_PREF, !!on);
 
-/** The ids read, as a Set - only ids the catalogue knows. */
-export function seenTutorials() {
+/** The ids read, as a Set - only ids the catalogue knows. Kept while the shelf's list is the same array (the shelf
+ *  hands back the one it holds until a write), because a few seams ask every frame (the HUD's survival chips, the duel
+ *  strip); a caller gets its own copy, so nothing it does reaches the kept one. */
+let _seenRaw;
+let _seenSet = new Set();
+function seenNow() {
   const raw = getPref(TUTORIALS_SEEN_PREF);
-  return new Set(Array.isArray(raw) ? raw.filter((id) => BY_ID.has(id)) : []);
+  if (raw !== _seenRaw) { _seenRaw = raw; _seenSet = new Set(Array.isArray(raw) ? raw.filter((id) => BY_ID.has(id)) : []); }
+  return _seenSet;
 }
+export const seenTutorials = () => new Set(seenNow());
 
-export const isTutorialSeen = (id) => seenTutorials().has(id);
+export const isTutorialSeen = (id) => seenNow().has(id);
 
 /** Mark pages read. Unknown ids are dropped; a write happens only when the list grew. Answers whether it did. */
 export function markTutorialsSeen(ids) {
@@ -110,7 +116,8 @@ export function fillKeys(text, keyName = null) {
   });
 }
 
-/** Greedy word wrap to `width` characters; a word longer than the line stands on its own. */
+/** Greedy word wrap to `width` characters; a word longer than the line stands on its own, and the last line is never
+ *  one word when the line above can spare one. */
 export function wrapTutorialText(text, width = TUTORIAL_WRAP) {
   const out = [];
   let line = '';
@@ -120,6 +127,13 @@ export function wrapTutorialText(text, width = TUTORIAL_WRAP) {
     else { out.push(line); line = word; }
   }
   if (line) out.push(line);
+  // no word left alone on the last line: the line above lends it its last word when both still fit
+  const n = out.length;
+  if (n > 1 && !out[n - 1].includes(' ') && out[n - 2].includes(' ')) {
+    const cut = out[n - 2].lastIndexOf(' ');
+    const moved = `${out[n - 2].slice(cut + 1)} ${out[n - 1]}`;
+    if (moved.length <= width) { out[n - 2] = out[n - 2].slice(0, cut); out[n - 1] = moved; }
+  }
   return out;
 }
 
@@ -132,8 +146,9 @@ export function tutorialText(t, keyName = null) {
   };
 }
 
-/** The popup's rows (systems/notify.js's row records): the title, the page's paragraphs and points wrapped, and a foot
- *  saying where the page can be read again. `page`/`pages` number a tour's pages. */
+/** The popup's rows (systems/notify.js's row records): the title, then the page's paragraphs and points wrapped.
+ *  `page`/`pages` number a tour's pages. No foot: the welcome page says where every page can be read again, and a
+ *  line saying it on all of them was one more thing to read (TUT1 audit). */
 export function tutorialRows(t, { keyName = null, page = 0, pages = 0, width = TUTORIAL_WRAP } = {}) {
   const { title, body, points } = tutorialText(t, keyName);
   const rows = [];
@@ -150,7 +165,5 @@ export function tutorialRows(t, { keyName = null, page = 0, pages = 0, width = T
       lines.forEach((l, i) => rows.push(`${i ? '  ' : '- '}${l}`));
     }
   }
-  rows.push('');
-  rows.push({ text: 'Read it again any time: Menu > Tutorials', center: true, cls: 'tut-foot' });
   return rows;
 }

@@ -171,20 +171,20 @@ function fillRail(list, root, seen) {
       b.append(el('span', 'px-c', '◆'), document.createTextNode(t.title));
       if (!seen.has(t.id)) {
         const gem = el('span', 'px-qtimed tut-new', '◆');
-        gem.title = 'Not read yet';
+        gem.title = 'Unread';
         b.append(gem);
       }
       b.onclick = () => select(root, t.id);
       list.append(b);
     }
   }
-  if (first) list.append(el('p', 'px-note', 'No tutorial matches that search.'));
+  if (first) list.append(el('p', 'px-note', 'Nothing found.'));
 }
 
 function controls(root, seen) {
   const card = el('div', 'card tut-controls');
   const on = tutorialPopupsOn();
-  card.append(el('p', 'meta', `${seen.size} of ${TUTORIALS.length} read. Popups ${on ? 'show the first time you reach each system' : 'are off - every page is still here'}.`));
+  card.append(el('p', 'meta', `${seen.size} of ${TUTORIALS.length} read. Popups are ${on ? 'on' : 'off'}.`));
   const row = el('div', 'acts');
   const toggle = el('button', on ? 'act' : 'act primary', on ? 'Turn popups off' : 'Turn popups on');
   toggle.onclick = () => {
@@ -192,7 +192,7 @@ function controls(root, seen) {
     if (on) clearTutorialLine();
     paint(root);
   };
-  const reset = el('button', armedReset ? 'act primary' : 'act', armedReset ? 'Press again to show every popup again' : 'Show all again');
+  const reset = el('button', armedReset ? 'act primary' : 'act', armedReset ? 'Click again to confirm' : 'Show all again');
   reset.onclick = () => {
     if (!armedReset) { armedReset = true; paint(root); return; }
     armedReset = false;

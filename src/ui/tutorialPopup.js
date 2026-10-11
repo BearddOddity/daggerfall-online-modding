@@ -37,21 +37,39 @@ export const SCENE_CHANGE_TUTORIAL_MS = 4000;
 export const RETRY_MS = 1500;
 export const MAX_RETRIES = 40;
 /** The caption under the enhanced panel. */
-export const TUTORIAL_HINT = 'click or press a key to continue';
+export const TUTORIAL_HINT = 'click or press any key';
 
 export const TUTORIAL_STYLE_ID = 'dfo-tutorial-style';
 const TUTORIAL_CSS = `
 .notice-row.tut-title { color: rgb(243,239,44); font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
   text-shadow: 2px 2px 0 rgb(93,77,12); }
-.notice-row.tut-foot { color: #9c937d; font-size: 12px; letter-spacing: 0.06em; }
 `;
 
-/** The key bound to an action now, as the Controls page names it; null when nothing a keyboard has is bound. */
+/** TUT1 audit: a key as it is printed on the keyboard. The Controls page speaks DFU's own names ("A1" for the 1 key,
+ *  "BCKSPC", "KPADDIVIDE"), which a player reading a tutorial should not have to decode; everything else is its name. */
+const KEY_WORDS = Object.freeze({
+  Backspace: 'BACKSPACE', Escape: 'ESC', Enter: 'ENTER', Space: 'SPACE', Tab: 'TAB', Backquote: '`', Quote: "'",
+  Semicolon: ';', Comma: ',', Period: '.', Slash: '/', Backslash: '\\', BracketLeft: '[', BracketRight: ']',
+  ShiftLeft: 'SHIFT', ShiftRight: 'RIGHT SHIFT', ControlLeft: 'CTRL', ControlRight: 'RIGHT CTRL', AltLeft: 'ALT',
+  AltRight: 'RIGHT ALT', ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT', PageUp: 'PAGE UP',
+  PageDown: 'PAGE DOWN', Home: 'HOME', End: 'END', Insert: 'INSERT', Delete: 'DELETE',
+  NumpadAdd: 'NUMPAD +', NumpadSubtract: 'NUMPAD -', NumpadMultiply: 'NUMPAD *', NumpadDivide: 'NUMPAD /',
+  NumpadEnter: 'NUMPAD ENTER', NumpadDecimal: 'NUMPAD .',
+  Mouse3: 'MOUSE BACK', Mouse4: 'MOUSE FORWARD',
+});
+export function keyWord(code) {
+  if (KEY_WORDS[code]) return KEY_WORDS[code];
+  const m = /^(?:Key([A-Z])|Digit(\d)|Numpad(\d)|(F\d{1,2}))$/.exec(code);
+  if (m) return m[1] ?? m[2] ?? (m[3] != null ? `NUMPAD ${m[3]}` : m[4]);
+  return buttonText(code, true);   // the mouse's clicks, a combo, anything else: the Controls page's own words
+}
+
+/** The key bound to an action now, as a player reads it off the keyboard; null when nothing a keyboard has is bound. */
 export function boundKeyName(action, store = null) {
   try {
     const code = codeForAction(store ?? bindings(), action);
     if (!code || /^Joystick/.test(code)) return null;
-    return buttonText(code, true);
+    return keyWord(code);
   } catch { return null; }
 }
 
