@@ -82,6 +82,7 @@ import {
 import { hitchAxle, bogieAxle, steerToward, yawed } from '../systems/horseFollow.js';   // WAGON-HITCH: the shafts' one law, for a peer's trailing wagon (WAGONS2: and a four-wheeler's two)
 import { DeployedWagonVisual, wheelContacts, rolledAngles } from '../systems/horseCart.js';   // DISC20-C: the mod's own two-wheel solve, for a peer's parked wagon (WAGONS2: and each wheel's roll)
 import { PARK_REACH, PARK_TTL_MS } from '../net/wire.js';   // HCC-PARK: how far a kept team's parts may stand from its anchor, and how long the relay keeps one
+import { thrownRecord } from '../systems/wagonWarden.js';   // WARDEN1: a kept team the town watch threw, where it landed
 import { WAGON_HOVER_TEXT } from '../player/eotbWagon.js';   // the hover word for a wagon - the noun of Eye Of The Beholder's Info line, so both carts read alike
 import { hccWireRecord, validHccRecord, hccRecordKey, easeToward, HCC_WIRE_KIND } from '../systems/horseCartWire.js';
 import { decodePng } from '../systems/textureReplacement.js';
@@ -288,6 +289,14 @@ export function createHorseCartPool({
   const _kept = new Map();   // HCC-PARK: `${room}|${k}` -> a cell's kept word { room, k, id, w, h, n, name, expires, toScene, seq } (the relay's memory; AUDIT HCC-PARK: per ROOM and per owner KEY, so one cell's word never unsays another's)
   let _keptSeq = 0;
   let _lastKey = '';
+  // WARDEN1 (systems/wagonWarden.js): the teams the town watch is carrying - '' mine, a peer's key - drawn by its show
+  // (scenes/wagonWardenShow.js) and not here: no wagon, no horse it carries, no harness, no box for the ray or my
+  // collider, no seat to ride. AUDIT WARDEN1: counted (two shows over one key - a peer's live word - each set it down
+  // only once both have), and `lone` whether a lone horse beside it is carried too (one following its owner, or left
+  // further off, is not: drawn as it stands - C2). owner -> { n, lone }
+  /** @type {Map<string, { n: number, lone: boolean }>} */
+  const _held = new Map();
+  let wardenWord = null;   // WARDEN1: setWardenWord's - (anchor) => the park word's watch fields ({ ly, tw?, rd? }) or null
 
   const fetchPng = async (file) => {
     const f = fetchFn ?? globalThis.fetch;
@@ -623,7 +632,7 @@ export function createHorseCartPool({
     if (s?.wagon) partsOf(s.wagon.model);   // a wagon shown before the runtime asked for the parts (a peer's, a restored one) starts the build
     const myParts = partsOf(myKind());
     const parked = s?.deployed && s.wagon && myParts ? wagonMatrix(s.wagon.position, s.wagon.rotation) : null;
-    standWagonCollider(parked && !capsuleInBox(parked, myParts) ? parked : null, myParts);   // WAGONS3: never round my capsule
+    standWagonCollider(parked && !capsuleInBox(parked, myParts) && !_held.has('') ? parked : null, myParts);   // WAGONS3: never round my capsule; WARDEN1: nor while the watch carries it
     poseTeam('', teamOf('', s, dt), cameraPos);   // WAGONS3: my horse - or my team, two abreast
     for (const [owner, p] of _peers) {
       const look = peerLook?.(owner) ?? null;   // AUDIT (pre-merge) I-B: 'hidden', a concealed look, or null
@@ -766,6 +775,7 @@ export function createHorseCartPool({
    *  whether a horse bears it - the one frame the draw and the seats in its back (seatDrawn, seatGlue) stand on. Null
    *  where no wagon of that owner's is drawn. */
   function drawnFrameOf(owner, { selfGrow = 1, grow = null } = {}, s = owner === '' ? shown() : null) {
+    if (_held.has(owner)) return null;   // WARDEN1: on the watch's shoulders
     if (owner === '') {
       if (!s?.wagon) return null;
       const driven = s.wagon.kind === HCC_WIRE_KIND.Trailing && !!s.wagon.hitch;
@@ -896,6 +906,8 @@ export function createHorseCartPool({
    * away (I own two). A horse with no wagon to pull is itself, alone.
    */
   function teamOf(owner, s = owner === '' ? shown() : null, dt = 0, grows = _lastGrows) {
+    const held = _held.get(owner) ?? null;   // WARDEN1: on the watch's shoulders - its lone horse too, unless the throw leaves it
+    if (held?.lone) { _teamWalk.delete(owner); return []; }
     const mine = owner === '';
     const p = mine ? null : _peers.get(owner);
     const w = mine ? s?.wagon ?? null : p?.wagon ?? null;
@@ -912,6 +924,7 @@ export function createHorseCartPool({
     _teamWalk.delete(owner);
     const out = [];
     const inHarness = !!lone && !!w && (w.kind === HCC_WIRE_KIND.Following || (w.kind === HCC_WIRE_KIND.Deployed && !!w.hitched));
+    if (held) return lone && !inHarness ? [{ ...lone, g: 1, drawn: true, hitched: false, side: 0 }] : [];   // WARDEN1: a horse the throw leaves
     if (inHarness && parts) {
       // AUDIT WAGONS3 T2: my pair's wagon left in harness with one horse (a horse sold from under the team, an older
       // save) stands that one beside the pole - its mate was a horse I do not own. A peer's word says no count, so
@@ -1142,7 +1155,7 @@ export function createHorseCartPool({
   }
   function targets() {
     const out = [];
-    const s = shown();
+    const s = _held.has('') ? null : shown();   // WARDEN1: a team the watch carries is nobody's to press
     const mine = s?.wagon ? partsOf(s.wagon.model) : null;
     if (s?.wagon && mine) {
       const box = transformedAabb(mine.box, wagonMatrix(s.wagon.position, s.wagon.rotation));
@@ -1165,6 +1178,7 @@ export function createHorseCartPool({
       // Eye Of The Beholder's cart, player/eotbWagon.js). The square box around a slanted wagon bulges past it at every
       // corner, and an eye in a corner (a crouch beside it) read as INSIDE and was dropped by CASTLE1's no-surface
       // rule - while from further off the corner's empty road was measured as the wagon.
+      if (_held.has(owner)) continue;   // WARDEN1
       const theirs = p.wagon && p.shownWagon ? partsOf(p.wagon.model) : null;
       if (theirs) {
         const pm = wagonMatrix(p.shownWagon, p.shownRotation ?? p.wagon.rotation);
@@ -1274,6 +1288,7 @@ export function createHorseCartPool({
   /** WAGONS1: seat `k` of another player's wagon as drawn here (where I ride), or null. */
   function peerSeat(owner, k) {
     const p = _peers.get(owner);
+    if (_held.has(owner)) return null;   // AUDIT WARDEN1 C10: lifted - no seat to sit on (wagonRiders.js stands its rider down)
     return p?.wagon && p.shownWagon ? seatWorld(p.wagon.model, p.shownWagon, p.shownRotation ?? p.wagon.rotation, k, p.wagon.kind !== HCC_WIRE_KIND.Deployed || p.wagon.hitched) : null;
   }
   /** WAGONS2 (FINAL AUDIT): seat `k` of another player's wagon where its WORD stands it (the pose the owner's frame
@@ -1287,7 +1302,7 @@ export function createHorseCartPool({
   function peerRide(owner) {
     const p = _peers.get(owner);
     if (!p || p.kept) return null;
-    return { model: p.wagon?.model ?? null, kind: p.wagon?.kind ?? null, passengers: p.wagon?.passengers ?? [], go: p.go ?? null, declined: p.pn ?? [], position: p.shownWagon ?? null, wire: p.wire?.w?.position ?? null };
+    return { model: p.wagon?.model ?? null, kind: p.wagon?.kind ?? null, passengers: p.wagon?.passengers ?? [], go: p.go ?? null, declined: p.pn ?? [], position: p.shownWagon ?? null, wire: p.wire?.w?.position ?? null, held: _held.has(owner) };   // WARDEN1: `held` the town watch lifts it
   }
   /** WAGONS1: the seats my wagon has - its model's, once up (0 for no wagon of mine standing). */
   function mySeatCount() {
@@ -1493,6 +1508,20 @@ export function createHorseCartPool({
     }
   }
 
+  /** WARDEN1: AN OWNER'S TEAM AS DRAWN THIS FRAME ('' mine, a peer's key) - what the town watch lifts: the wagon's kind,
+   *  paint, load (`tier`), wheels (`turn`) and hitch, where it stands and how it is turned (the scene's), the owner's
+   *  concealment (a peer's look), and each horse drawn with it (its feet, its facing) - those in its harness (a hitched
+   *  wagon's horse is its team's, its parts in or not), and a lone one beside it only when `lone` says the throw takes it (AUDIT WARDEN1 C2/C8/C13) - or null where no wagon of theirs
+   *  is drawn. Read before the hold (a held team is drawn nowhere). */
+  function teamSnapshot(owner, lone = false) {
+    const f = drawnFrameOf(owner, {});
+    if (!f) return null;
+    const horses = (_teams.get(owner) ?? []).filter((h) => h.drawn && (h.hitched || f.hitched || lone)).map((h) => ({ at: [h.position[0], h.position[1], h.position[2]], forward: [h.forward[0], h.forward[1], h.forward[2]] }));
+    const p = owner === '' ? null : _peers.get(owner) ?? null;
+    const w = f.wagon, turn = owner === '' ? w.turn ?? { angle: w.angle ?? 0 } : p?.turn ?? { angle: w.angle ?? 0 };
+    return { kind: w.model, look: w.look ?? null, tier: w.tier ?? 0, turn, hitched: !!f.hitched, conceal: p?.look ?? null, lone: !!lone, at: [f.at[0], f.at[1], f.at[2]], rotation: [...f.rotation], horses };
+  }
+
   // ── HCC-PARK: THE CELL'S MEMORY OF A PARKED TEAM (net/wire.js's header)
   /** A cell room's word about one owner's parked team (online.js's projection): `k` the owner key, `id` the peer id
    *  it was last said under, `name` the owner's as the relay stamped it (so a team whose owner is away is still
@@ -1501,14 +1530,16 @@ export function createHorseCartPool({
     if (!e || typeof e !== 'object' || typeof e.k !== 'string' || !e.k || typeof e.id !== 'string' || !e.id) return false;
     if (e.id === (selfId?.() ?? null)) return false;
     const slot = `${room}|${e.k}`;
-    const v = e.r == null ? null : validHccRecord(e.r);
+    // WARDEN1: a team the town watch threw (`y`) stands where it landed (systems/wagonWarden.js thrownRecord)
+    const thrown = e.r != null && Number.isFinite(e.y);
+    const v = e.r == null ? null : validHccRecord(thrown ? thrownRecord(e.r) : e.r);
     if (!v || !(v.w?.kind === HCC_WIRE_KIND.Deployed || v.w == null) || (!v.w && !v.h)) {
       _kept.delete(slot);
       syncKept(e.k);
       return e.r == null;
     }
     const ttl = Number.isFinite(e.ttl) ? Math.max(0, Math.min(PARK_TTL_MS, e.ttl)) : PARK_TTL_MS;
-    _kept.set(slot, { room, k: e.k, id: e.id, w: v.w ?? null, h: v.h ?? null, n: v.n ?? '', name: typeof e.name === 'string' ? e.name.slice(0, 32) : '', expires: nowMs + ttl, toScene, seq: ++_keptSeq });
+    _kept.set(slot, { room, k: e.k, id: e.id, w: v.w ?? null, h: v.h ?? null, n: v.n ?? '', name: typeof e.name === 'string' ? e.name.slice(0, 32) : '', expires: nowMs + ttl, toScene, seq: ++_keptSeq, y: thrown ? e.y : null });
     syncKept(e.k);
     return true;
   }
@@ -1551,6 +1582,7 @@ export function createHorseCartPool({
     if (horseParked && rec?.h && !v.horseFollowing && !v.teamFollowing && near(rec.h[0], rec.h[2])) { r.h = [...rec.h]; r.h[5] = 0; if (rec.n) r.n = rec.n; }
     if (r.w && !near(r.w[1], r.w[3])) { delete r.w; delete r.wk; delete r.wh; delete r.wl; }
     if (r.w && rec.we) { r.we = rec.we; if (rec.wg) r.wg = rec.wg; }   // WAGONS2-VISIT: who may enter it, the cell's to keep while its owner is away
+    if (r.w) Object.assign(r, wardenWord?.(a) ?? {});   // WARDEN1: a parked wagon's town, its road and where the watch would throw it
     return r.w || r.h ? { a, r } : { a };
   }
 
@@ -1559,6 +1591,18 @@ export function createHorseCartPool({
     /** AUDIT (the pre-merge audit, I-B): the host's word on each other player's look - 'hidden' (INVIS-NET's classic
      *  lane), a concealed visual (INVIS-LOOK), or null - so a concealed owner's team is concealed with it. */
     setPeerLook(fn) { peerLook = typeof fn === 'function' ? fn : null; },
+    /** WARDEN1 (scenes/wagonWardenHost.js): the host's watch fields for my park word's anchor - { ly, tw?, rd? } or null. */
+    setWardenWord(fn) { wardenWord = typeof fn === 'function' ? fn : null; },
+    /** WARDEN1: an owner's team ('' mine, a peer's key - keptOwner for a kept one) carried by the town watch, or set down. */
+    holdTeam(owner, on, lone = true) {
+      if (typeof owner !== 'string') return;
+      const h = _held.get(owner);
+      if (on) { if (h) { h.n++; h.lone = h.lone || !!lone; } else _held.set(owner, { n: 1, lone: !!lone }); }
+      else if (h && --h.n <= 0) _held.delete(owner);
+    },
+    get held() { return _held; },
+    keptOwner: (k) => keptKey(k),
+    teamSnapshot,
     /** The mod's own switch (modSettings Enabled): a disabled mod is one DFU never loaded. */
     setEnabled(on) {
       const was = enabled;
@@ -1588,6 +1632,6 @@ export function createHorseCartPool({
     /** MERCHANT-YARDS (scenes/merchantYardsHost.js): A WAGON ON SHOW in a town's Wagon Yard - one of `kind`, standing
      *  empty, unhitched, its wheels at rest and its paint its own, at `position` turned by `rotation` (Unity's quaternion):
      *  drawn as a parked one is (drawWagon). Answers whether it drew (false while its parts still build). */
-    drawShowWagon: (r, texRemap, position, rotation, kind) => drawWagon(r, texRemap, position, rotation, 0, null, 1, kind, false, null),
+    drawShowWagon: (r, texRemap, position, rotation, kind, look = null, tier = 0, turn = null, hitched = false) => drawWagon(r, texRemap, position, rotation, tier, turn, 1, kind, hitched, look),   // WARDEN1: the watch's carried wagon in its own paint, load, wheels and hitch (AUDIT WARDEN1 C8)
   };
 }

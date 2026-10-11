@@ -1309,7 +1309,8 @@ export const KEEPALIVE_FAN_MS = HEARTBEAT_MS / 2;
  *  is deployed by CI and the relay by hand, so a skew between them is the ordinary state of a release day, and until
  *  now nothing on either end could see it. */
 // Integrated Arena spectator visibility with staff teleport, stable boat identity and private ownership; deploy relay before clients.
-export const RELAY_VERSION = 'world190';   // AUDIT MW-NPC II (2026-10-10, the MW-NPC arc's second audit, world188, then world189, on its branch - renumbered past main's INT11-INT14 world188 and SCALE5a world189 at the merges; bible/04-Characters/Morrowind-NPCs.md section 23; NOT YET DEPLOYED): a foe record may carry the look its owner stands it in - `ls` its seed and `lw` a person's worn kit (validFoeRecord) - read by the clients alone; the relay forwards foe frames unread, so no frame changes shape and the bundle's bytes move only by wire.js's own. A new version rather than one re-hashed: the one before it is main's INT11-INT14, and may be deployed before this lands.
+export const RELAY_VERSION = 'world191';   // WARDEN1 (2026-10-10, Mac: "Anytime there are too many carts/wagons in a city or they are parked on the road for a long time. I want a gaurd to navigate, lift the wagon/horse on top of their sprite and yeet it far away"; bible/06-Systems/Wagon-Warden.md; world188, world189 then world190 on its branch - renumbered past main's INT11-INT14 world188 at the rebase onto it, past SCALE5a's world189 at the merge after it and past AUDIT MW-NPC II's world190 at the next; NOT YET DEPLOYED - a deploy drops every player once): THE TOWN WATCH THROWS A PARKED TEAM OUT - a park record keeps where a throw lands (validParkData `ly`, within WARDEN_LAND_REACH of its anchor), its town (`tw`) and its road (`rd`); the cell keeps when each team came to stand where it stands (`since`), throws a road team WARDEN_ROAD_MS on (at the first frame past it, at a hello, at a store - never on the alarm, whose firing is a cell's other duties') and the longest parked past a town's WARDEN_TOWN_CAP (at the store), marks it (`y`, fanned and listed), and tells its owner's sockets (the new frame out, `parkYeet` - wire.js validParkYeet; a socket's `pk` names whose team it last spoke for, and the frame names it, `k`); WARDEN_RELAY_MIN 191 - an older relay drops `ly`, `tw` and `rd`, and nothing is thrown. AUDIT WARDEN1 (re-hashed, never deployed): one account one team a town's crowd, a team's spot by WARDEN_SPOT_NATIVES, a landing a wagon's alone, the round's failure never a frame's. The bundle's files unchanged.
+// world190:   AUDIT MW-NPC II (2026-10-10, the MW-NPC arc's second audit, world188, then world189, on its branch - renumbered past main's INT11-INT14 world188 and SCALE5a world189 at the merges; bible/04-Characters/Morrowind-NPCs.md section 23; NOT YET DEPLOYED): a foe record may carry the look its owner stands it in - `ls` its seed and `lw` a person's worn kit (validFoeRecord) - read by the clients alone; the relay forwards foe frames unread, so no frame changes shape and the bundle's bytes move only by wire.js's own. A new version rather than one re-hashed: the one before it is main's INT11-INT14, and may be deployed before this lands.
 // world189:   SCALE5a (2026-10-10, Mac: "we just hit 500 online people. I think its time to scale up our server and improve performance for more people"; bible/11-Multiplayer/Scale-Arc.md SCALE5a; NOT YET DEPLOYED): THE HUB'S HELLO AND LEAVE WITHOUT A WALK OF EVERY SOCKET - the account index and a subject index kept by the doors that move a socket, not rebuilt by a walk at every hello and leave; a channel's hello asks no host; the hello's walks methods of their own (`_message` runs interpreted); the join's, the leave's and the channel's fans walk the index in place; a drain told without a filtered copy; a hub hello's serpent receipt asked once. A BUSY REFUSAL THAT MINTS NOTHING: a room's hello gate, asked before the token, closes with BUSY_TOKEN_UNREAD and the client carries the unspent token again. A channel's join and leave say the room's count (`n`), so a roster cut at CHAT_ROSTER_MAX holds the room's own - AUDIT SCALE5a (five lenses; `re` retired, re-hashed in place, undeployed).
 // world188:   INT11-INT14 (2026-10-10, world186 on its branch - renumbered past main's SD-HERALD world186 and WAGONS1 world187 at the merge; the INTEGRITY arc's lane 3 - bible/06-Systems/Integrity-Arc.md section 6; Mac: "I want to do everything and do it properly", and "Measure, then enforce"; NOT YET DEPLOYED): THE BODY COUNTED - the relay judges each boss's blows no save answers on the poses it holds (net/bossRef.js: a gate's, the Abyss Dungeon's Remnant, the serpent's on a hull - each landing on the pose trail before and after it, in the struck player's favour) and keeps its own count of each fighter's body or hull (net/bossBody.js): a fighter's word of its body (`vt`, the gate's, `sd`'s and `serpent`'s new kind) believed as a mend out of a budget; the count's measure carried on each boss receipt (`m`), for the account service (acct105) to keep - deploy this relay first. MEASURE FIRST: the BOSS_BODY var's line enforces nothing until staff set `enforce` (then a fall by the count is a fall: `bd` to the fallen, the Abyss Dungeon's one life, a ship wrecked). Four new files in its bundle: net/bossBody.js, net/bossRef.js, net/gateStrike.js, systems/serpentStrike.js.
 // world187:   WAGONS1 (2026-10-09, world182, world183, world185 then world186 on its branch - renumbered past main's CARDS10 world182 at the first merge, past CHAP4c world183 and PERF-RELAY1 world184 at the second, past INT7-INT10 world185 at the third and past SD-HERALD world186 at the fourth; NOT YET DEPLOYED - one deploy with TV-BEYOND's world181, CARDS10's world182, CHAP4c's world183, PERF-RELAY1's world184, INT7-INT10's world185 and SD-HERALD's world186, below, if they have not gone): a parked wagon's park record keeps its kind and its horse in harness (validParkData `wk`, `wh` - systems/horseCartWire.js), so the cell remembers a caravan as a caravan; an older relay drops both and the cell remembers a cart. WAGONS2 (re-hashed in place, the same undeployed version): and its paint (`wl`, 1..PARK_WAGON_LOOK_MAX - systems/wagonLooks.js), or the cell remembers it as built. No frame changes shape. WAGONS2-VISIT (re-hashed in place again, still undeployed): a caravan's own room, `caravan:<k>` (net/privateInterior.js caravanRoomOf - its owner's park key), keeps what its owner placed in it - the new frame `caravan` (validCaravanData; relaySupportsCaravan, CARAVAN_RELAY_MIN 187 - an older relay closes the socket on it), stored from the owner alone (parkKeyOf of the token's account and the frame's character is the room's key), handed to every joiner after its welcome, fanned, and forgotten PARK_TTL_MS after it was said (the alarm); and a parked caravan's record keeps who may enter it (`we` 1..PARK_WAGON_ENTRY_MAX, `wg` the guild's tag with the guild's). WAGONS2-VISIT AUDIT (re-hashed in place again, still undeployed): the `caravan` frame metered - one a second a socket (CARAVAN_DOC_MIN_MS), an unchanged document neither stored again nor fanned until its lease wants renewing, the fan charged to the sender's act bytes; and a caravan's door (`wagonEntry`) among the receiver's marks the wire's clamp leaves behind (net/realmTradeLaw.js RECEIVER_MARKS). WAGONS2 FINAL AUDIT (re-hashed in place again, still undeployed): the `caravan` frame's second the ROOM's (CARAVAN_DOC_MIN_MS - an owner's N sockets were N seconds), its fan charged to the room's act bytes after the sender's, and a fan refused in debt owed to the alarm at the repay, never dropped (its visitors kept the old layout). TV-BEYOND, world181 (2026-10-09, world180 on its branch - renumbered past main's TAVERN-TABLES world180 at the merge; the field: "if i bug the game outside of the bay i can become invisible to everyone and everyone becomes invisible to me"; bible/01-Overview/Field-Bugs-2026-10-09.md; NOT YET DEPLOYED): the world's pixels on the wire are TAMRIEL2's, not the Bay's (WORLD_PIXEL_BOUND) - a pose past 1024 pixels no longer refused (the relay closed the socket), a cell west or north of the Bay a cell (CELL_ROOM, cellHaloFor), a traveller's mark, a party pose and its walk, a duel's point and a park's anchor past the Bay carried; deploy relay before clients.
@@ -3366,8 +3367,113 @@ export function validParkData(d) {
     if (n && rec.h) rec.n = n;
   }
   if (!rec.w && !rec.h) return null;
+  // WARDEN1: what the cell cannot read off the record - where a throw LANDS (`ly`, natives, never further than
+  // WARDEN_LAND_REACH from the wagon - where the throw is measured from, parkSpotOf), and with it the TOWN the team stands
+  // in (`tw`, its map id) and whether it stands ON A ROAD (`rd`). A word with no landing is never thrown (an older
+  // client's), so neither rides without one; and only a WAGON is thrown (AUDIT WARDEN1 R3: a lone horse is no cart).
+  const ly = r.ly, spot = rec.w ? [rec.w[1], rec.w[3]] : null;
+  if (spot && Array.isArray(ly) && ly.length === 2 && ly.every(finite) && ly.every((v) => Math.abs(v) <= POSE_BOUND) && Math.abs(ly[0] - spot[0]) <= WARDEN_LAND_REACH && Math.abs(ly[1] - spot[1]) <= WARDEN_LAND_REACH) {
+    rec.ly = [ly[0], ly[1]];
+    if (Number.isInteger(r.tw) && r.tw >= 0 && r.tw <= WARDEN_TOWN_MAX) rec.tw = r.tw;
+    if (r.rd === 1) rec.rd = 1;
+  }
   out.r = rec;
   return out;
+}
+
+// ═══ WARDEN1 (2026-10-10, Mac: "Anytime there are too many carts/wagons in a city or they are parked on the road for a
+// long time. I want a gaurd to navigate, lift the wagon/horse on top of their sprite and yeet it far away"; asked: it
+// lands outside town, fetched or summoned; everyone sees it; ten real minutes on a road; four a town, the longest parked
+// first) - THE TOWN WATCH THROWS A PARKED TEAM OUT ═══
+//
+// THE CELL KEEPS THE CLOCK. The room that keeps a parked team (HCC-PARK, above) keeps when it came to stand where it
+// stands (`since` - a word that keeps it on its spot keeps it, parkSameSpot). A team that has stood on a road WARDEN_ROAD_MS, or one
+// past the first WARDEN_TOWN_CAP of a town's teams by how long they have stood (the longest parked go, ties by key), is
+// THROWN: the cell marks its record (`y`, the cell's clock), fans it, and tells its owner (`parkYeet`, the spot it was
+// thrown from and where it landed). Every reader in sight plays the watch's throw and draws the team where it landed;
+// the owner's client moves its own save there (systems/horseCart.js adoptYeet), so its next word is the landing's - and
+// a word that moved the team clears the mark. An owner away when it happens is told when their word next reaches the
+// cell: re-saying the spot it was thrown from is answered with the throw.
+// THE OWNER SAYS WHAT THE CELL CANNOT KNOW: the town, the road and the landing (validParkData's `tw`, `rd`, `ly`), read off
+// the town's layout as the team parked (systems/wagonWarden.js). A false road or landing throws only its own team; a town
+// is counted among the teams standing in its own map pixel (a town stands in one), so a word naming it from elsewhere in
+// the cell crowds nobody's; and ONE ACCOUNT IS ONE TEAM A TOWN (AUDIT WARDEN1 R1): a socket names its characters itself
+// (parkKeyOf's `c`), so an account's later teams in a town are thrown before anyone's - PARK_ACCOUNT_MAX made-up
+// characters' wagons crowded every other player's out.
+export const WARDEN_ROAD_MS = 10 * 60 * 1000;
+export const WARDEN_TOWN_CAP = 4;
+/** How far from its anchor a throw may land (natives, either axis): a map pixel - past the edge of any town in it. */
+export const WARDEN_LAND_REACH = PIXEL_UNITS;
+/** The largest town id a word may name (a MAPS.BSA map id, unsigned). */
+export const WARDEN_TOWN_MAX = 0xffffffff;
+/** The relay that keeps the watch's clock (an older one drops `tw`, `rd` and `ly`, and nothing is thrown). */
+export const WARDEN_RELAY_MIN = 191;
+/** How near two words stand their team (natives, either axis) to stand it on one spot: a ground solved again, a horse's
+ *  picture not yet in (its word says no horse), a repaint or a new door move nothing (AUDIT WARDEN1 R2 - an exact match
+ *  of every part let an owner's first word back undo a throw unheard). */
+export const WARDEN_SPOT_NATIVES = 40;
+/** Where a record's team stands - its wagon, else its horse ([x, z] natives), or null. */
+export const parkSpotOf = (r) => (Array.isArray(r?.w) ? [r.w[1], r.w[3]] : Array.isArray(r?.h) ? [r.h[0], r.h[2]] : null);
+/** Whether two records stand their team on one spot (WARDEN_SPOT_NATIVES - a wagon's by its wagon, a lone horse's by its
+ *  horse; a wagon's and a lone horse's never). */
+export function parkSameSpot(a, b) {
+  const p = parkSpotOf(a), q = parkSpotOf(b);
+  return !!p && !!q && Array.isArray(a.w) === Array.isArray(b.w) && Math.abs(p[0] - q[0]) <= WARDEN_SPOT_NATIVES && Math.abs(p[1] - q[1]) <= WARDEN_SPOT_NATIVES;
+}
+/**
+ * WARDEN1: WHICH OF A CELL'S PARKED TEAMS THE WATCH THROWS NOW. `list` the cell's records ({ k, sub, r, since, y? }),
+ * `now` its clock. Only a wagon (`r.w`), never one already thrown (`y`), nor one with no landing (`r.ly`). On a road
+ * (`r.rd`) WARDEN_ROAD_MS since it came to stand there: thrown. In a town (`r.tw`, counted among the teams in its map
+ * pixel) holding more than WARDEN_TOWN_CAP standing teams: an account's later teams there first (`sub` - one account, one
+ * team a town), then the longest parked, until WARDEN_TOWN_CAP stand (ties by key). Answers `{ due: [k ...], next }` -
+ * `next` when the next road team falls due (null: none waits). Pure.
+ */
+export function wardenVerdicts(list, now) {
+  const due = new Set();
+  let next = null;
+  const live = (Array.isArray(list) ? list : []).filter((e) => e && typeof e.k === 'string' && !e.y && Array.isArray(e.r?.w) && Array.isArray(e.r?.ly));
+  const since = (e) => (Number.isFinite(e.since) ? e.since : Number.isFinite(e.at) ? e.at : now);
+  for (const e of live) {
+    if (e.r.rd !== 1) continue;
+    const at = since(e) + WARDEN_ROAD_MS;
+    if (now >= at) due.add(e.k);
+    else next = next === null ? at : Math.min(next, at);
+  }
+  // a town stands in one map pixel, so its crowd is the teams that name it AND stand there - the town is the owner's own
+  // word, and a word naming it from elsewhere in the cell crowds nobody's team
+  const towns = new Map();
+  for (const e of live) {
+    const at = Number.isInteger(e.r.tw) && !due.has(e.k) ? parkSpotOf(e.r) : null;
+    if (!at) continue;
+    const town = `${e.r.tw}@${Math.floor(at[0] / PIXEL_UNITS)},${Math.floor(at[1] / PIXEL_UNITS)}`;
+    if (!towns.has(town)) towns.set(town, []);
+    towns.get(town).push(e);
+  }
+  for (const teams of towns.values()) {
+    if (teams.length <= WARDEN_TOWN_CAP) continue;
+    teams.sort((x, y) => since(x) - since(y) || (x.k < y.k ? -1 : x.k > y.k ? 1 : 0));
+    // one account, one team a town: each account's longest parked is its own, the rest go first
+    const seen = new Set(), own = [], extra = [];
+    for (const e of teams) { const who = typeof e.sub === 'string' && e.sub ? e.sub : e.k; (seen.has(who) ? extra : own).push(e); seen.add(who); }
+    for (const e of [...extra, ...own].slice(0, teams.length - WARDEN_TOWN_CAP)) due.add(e.k);
+  }
+  return { due: [...due], next };
+}
+/** AUDIT WARDEN1 R4: a round the cell could not make (its park list refused) is asked again this soon, ms. */
+export const WARDEN_RETRY_MS = 30 * 1000;
+/** WARDEN1: whether a cell's watch must make its round at `now` - `at` the next road team's time (null: none waits;
+ *  undefined: the object has not read its teams since it woke). */
+export const wardenDue = (at, now) => at === undefined || (at !== null && now >= at);
+/** WARDEN1: the owner's word that the watch threw their team - the cell's clock (`at`), the spot it stood (`from`) and
+ *  where it landed (`to`), [x, z] natives each, and whose team (`k`, its park key - AUDIT WARDEN1 C6: a socket's `pk` is
+ *  the last character it spoke for, and a session that loaded another character is told of the first one's; null from a
+ *  relay that names none); or null. */
+export function validParkYeet(m) {
+  const pt = (p) => Array.isArray(p) && p.length === 2 && p.every(finite) && p.every((v) => Math.abs(v) <= POSE_BOUND);
+  if (!m || typeof m !== 'object' || !Number.isFinite(m.at) || !pt(m.from) || !pt(m.to)) return null;
+  if (Math.abs(m.to[0] - m.from[0]) > WARDEN_LAND_REACH || Math.abs(m.to[1] - m.from[1]) > WARDEN_LAND_REACH) return null;
+  if (m.k !== undefined && !(typeof m.k === 'string' && PARK_KEY_RE.test(m.k))) return null;
+  return { at: m.at, from: [m.from[0], m.from[1]], to: [m.to[0], m.to[1]], k: m.k ?? null };
 }
 
 // ═══ WAGONS2-VISIT (2026-10-09, Mac: "People should be able to use the interior just like houses, like crafting and
