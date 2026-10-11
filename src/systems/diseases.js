@@ -42,6 +42,7 @@ import { INFECTION, startInfection } from './infection.js';   // V1: the three s
 import { FATIGUE_MULTIPLIER } from './statMods.js';
 import { dice100 } from '../combat/formulas.js';
 import { MOBILE_TYPES } from '../characters/mobileTypes.js';
+import { noteFirstUse } from './tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 // ---- MagicAndEffectsEnums.Diseases, verbatim ----
 export const DISEASES = Object.freeze({
@@ -143,6 +144,7 @@ export function startDisease(target, diseaseType, currentDay, rolls = Math.rando
   if (!specialInfection && isEntityImmuneToDisease(target)) return null;
   if (!target.isPlayer || (target.level ?? 0) < 2) return null;   // Start: EndDisease for non-player hosts
   if (target.activeEffects?.some((a) => a.kind === 'disease' && a.disease === diseaseType && !a.ended)) return null;   // AddState no-op
+  noteFirstUse('afflictions');   // TUT1: the player's first disease (or curse of the blood)
   const data = DISEASE_DATA[diseaseType];
   const entry = {
     kind: 'disease', disease: diseaseType, permanent: true,

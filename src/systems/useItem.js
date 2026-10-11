@@ -30,6 +30,7 @@
 // unregistered type the same way rather than indexing past its
 // tables.
 import { templateByIndex, itemUseHandler } from './itemTemplates.js';   // RRI2: ItemHelper's registered use handlers
+import './fletching.js';   // FLETCH: the pack's arrow craft - its wood's handlers, registered before the ladder asks
 import { doItemEnchantmentPayloads, PAYLOAD } from './enchantments.js';   // E2: the Used payload arm
 import { inflictPoison } from './poisons.js';
 import { inflictDisease } from './diseases.js';   // SURV2: a bad meal's sickness, handed to the food law

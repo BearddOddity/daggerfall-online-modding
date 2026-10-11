@@ -43,6 +43,7 @@ import { injectEnhancedStyle, injectEnhancedFonts } from './enhancedStyle.js';
 import { entryOpening, timeLeftWords } from './questRail.js';
 import { marksOn } from './questMarks.js';   // AUDIT GUIDE T2: the marks follow this model too (pure: the HUD stays light)
 import { guidanceTier } from '../systems/questGuidance.js';   // AUDIT DELVE E7: the Exact tier follows it too
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** The switch's prefs key (systems/features.js row `quest-tracker`). */
 export const TRACKER_PREF = 'questTracker';
@@ -134,6 +135,7 @@ export class QuestTracker {
 
   /** The journal's Track button: track this quest, or stop tracking it. Returns what is tracked now. */
   toggle(id) {
+    if (id != null) noteFirstUse('quest-guide');   // TUT1: the first quest followed
     this.pinned = this.isPinned(id) || id == null ? null : String(id);
     return this.pinned;
   }

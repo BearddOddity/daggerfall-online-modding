@@ -7,6 +7,7 @@
 // arrows and Tab move over its buttons, Enter and Space press the one lit (the host's ladder prevents the browser's own
 // focus walk under an overlay, so the window walks itself).
 import { mountEnhancedChunk } from './enhancedChunk.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** @type {any} */ let _open = null;
 
@@ -32,6 +33,7 @@ export const successionOpen = () => !!_open && !_open.done;
  * @returns {any} the overlay, or null with no document
  */
 export function createSuccessionOverlay(deps) {
+  noteFirstUse('legacy');   // TUT1: the first succession
   if (typeof document === 'undefined') return null;
   _open?.dispose();
   let fired = false;

@@ -148,8 +148,34 @@ export function tokensToRows(tokens) {
 }
 
 /** StartGameBehaviour.cs:445-447 - the two quests a new character
- *  always starts, in this order. _BRISIEN is the main quest's first. */
-export const GAME_START_QUESTS = Object.freeze(['_TUTOR__', '_BRISIEN']);
+ *  always starts, in this order. _BRISIEN is the main quest's first.
+ *
+ *  TUT1 (2026-10-11, Mac: "replace the current DFU tutorial with our own custom tutorial"): DFU's first is _TUTOR__,
+ *  and it is no longer started - DFO's own tutorial (systems/tutorials.js, ui/tutorialPopup.js) stands where its pages
+ *  stood. What _TUTOR__ did besides its pages is kept: every way out of it, finished or declined, ran its `_no_`
+ *  task, `start quest 977 977` - the curse on the old capital's streets, a world quest (questFoeHost.js WORLD_QUESTS) -
+ *  so S0000977 starts here, in the tutorial's place, as a player who said No to its first page started it. Port-Ledger
+ *  section A. */
+export const GAME_START_QUESTS = Object.freeze(['S0000977', '_BRISIEN']);
+
+/** TUT1: the DFU tutorial a save from before TUT1 may still be running, and the quest its close starts. */
+export const RETIRED_TUTORIAL_QUEST = '_TUTOR__';
+export const RETIRED_TUTORIAL_STARTS = 'S0000977';
+
+/** TUT1: A SAVE FROM BEFORE TUT1 may still be in DFU's tutorial - its next page waiting on a clock. It is retired at the
+ *  load as its own No would have retired it: the quest goes (removeQuest: tombstoned, no notebook entry - it had nothing
+ *  to file) and the curse it would have started starts, unless that save already holds it. Answers what it did. */
+export function retireDfuTutorial(machine) {
+  if (!machine?.quests) return { retired: 0, started: false };
+  const live = [...machine.quests.values()].filter((q) => q?.questName === RETIRED_TUTORIAL_QUEST && !q.questComplete && !q.questTombstoned);
+  if (!live.length) return { retired: 0, started: false };
+  for (const q of live) machine.removeQuest(q);
+  const held = [...machine.quests.values()].some((q) => String(q?.questName ?? '').toUpperCase() === RETIRED_TUTORIAL_STARTS);
+  let started = false;
+  // AUDIT TUT1: a start that throws (StartQuestImmediate propagates) costs the curse, never the load around it
+  if (!held) { try { started = !!machine.startQuestByName(RETIRED_TUTORIAL_STARTS); } catch (e) { console.warn('[quest] the curse did not start in the retired tutorial\'s place', e); } }
+  return { retired: live.length, started };
+}
 
 /**
  * THE CONTRACT, AND THE ONE LINE THAT SAYS WHAT A HOST DID NOT WIRE.
@@ -711,7 +737,9 @@ export function createQuestBridge(ctx, { label = 'host' } = {}) {
      *      QuestMachine.Instance.StartQuest("_TUTOR__");
      *      QuestMachine.Instance.StartQuest("_BRISIEN");
      *  _BRISIEN is the MAIN QUEST's first quest. Both files are
-     *  vendored; neither had ever been parsed. The optional
+     *  vendored; neither had ever been parsed. TUT1: the first of the
+     *  two is now the curse _TUTOR__'s close started (GAME_START_QUESTS
+     *  above) - DFO's own tutorial replaces DFU's. The optional
      *  LaunchQuest arm between them has no port-side setter and is
      *  recorded rather than invented. */
     initAtGameStart() {
@@ -744,6 +772,7 @@ export function createQuestBridge(ctx, { label = 'host' } = {}) {
       // MEDIUM-DISTINCT: a medium dungeon that laid one interior block twice lays two now, so a quest at a medium size
       // has its markers enumerated again where its dungeon's layout moved (questRepair.js relayMovedLayouts) - online and off
       relayMovedLayouts(machine, { carriesQuestItem: (item) => ctx.carriesQuestItem?.(item) ?? false });
+      retireDfuTutorial(machine);   // TUT1: a save still in DFU's tutorial leaves it, as its No would have
       // AUDIT 26 F102: DFU restores the notebook only when the save
       // CARRIES one (`if (!string.IsNullOrEmpty(notebookDataJson))`,
       // SaveLoadManager.cs:1451-1456) - the empty-block substitute
