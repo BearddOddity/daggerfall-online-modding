@@ -1,4 +1,7 @@
-# FIELD BUGS 2026-10-11 - ten Discord bug reports
+# FIELD BUGS 2026-10-11b - ten Discord bug reports
+
+(Named 2026-10-11 until main's #773 took that wave's name, `01-Overview/Field-Bugs-2026-10-11.md`; its pages, pins and
+records renamed with it, as FIELD BUGS 2026-10-09g was.)
 
 Ten threads from the Discord's #bug-reports, handed over as screenshots on the evening of 2026-10-10. Each was traced
 through the code first. Seven changes ship (CAMP-FIRE, CART-SLOT, OFFER-ID, JUMP-SLOW, LEGEND-HELD, HOME-LINE,
@@ -33,8 +36,8 @@ fire did not. The two slices were each right alone and met when #749 merged.
 Now the fire says it is nobody (`body: false`), the sprite keeps the word (`b.body`), and drawBodies stands no body for
 it: the flame draws as it does with the Morrowind bodies off. The fallen beside it still lie dead. THE FOUR HOSTS: the
 roads' layer is world.js's alone (the streaming host); exterior.js, worldModes.js and dungeonContext.js stand no road.
-Pinned by `test/fb1011_campfire.test.js` (2, on the real roads' layer's own fire through the real sprites over a
-recording lane); `tools/mutants/fb1011.json`.
+Pinned by `test/fb1011b_campfire.test.js` (2, on the real roads' layer's own fire through the real sprites over a
+recording lane); `tools/mutants/fb1011b.json`.
 
 ## CART-SLOT: the Cart cell is the wagon driven (2)
 
@@ -48,7 +51,7 @@ asks. The Mount cell is unmoved.
 Two other readings were checked and are not this. The living world's merchant parties draw the Small Cart by design
 (`world/roadTeams.js` ROAD_WAGON_KIND, Living-World-II.md section 3.3). A peer's parked Caravan comes back as the Small
 Cart from a relay older than world187 (Wagons.md). The reporter can be asked which wagon it was, but the cell was wrong
-either way. Pinned by `test/fb1011_cartslot.test.js` (3); `tools/mutants/fb1011.json`.
+either way. Pinned by `test/fb1011b_cartslot.test.js` (3); `tools/mutants/fb1011b.json`.
 
 ## OFFER-ID: an offered piece carries its id from the offer (3)
 
@@ -68,9 +71,9 @@ The report itself - a piece identified by its new holder coming back unknown - s
 here with the mods on and with ids stamped. The one way left is the one TRADE-KNOWN named: identifying a piece is not a
 realm act. It rides the identifier's next checkpoint, so a tab that joins again before one lands plays the older record.
 The reporter is owed the same two questions: did the trade window show the known name, and is the piece known after a
-relog? Pinned by `test/fb1011_offerid.test.js` (3, the realm round through the real Worker, and the host's hand-off by
+relog? Pinned by `test/fb1011b_offerid.test.js` (3, the realm round through the real Worker, and the host's hand-off by
 source); realm0's pin on the host's pack line moved (PIN MOVED) and its record re-aimed by content;
-`tools/mutants/fb1011.json`.
+`tools/mutants/fb1011b.json`.
 
 ## JUMP-SLOW: the jump given back under Slowfall (9)
 
@@ -88,7 +91,7 @@ with is replayed through the fall, and the spell makes every drop of more than a
 at a walk, the body glides to the far wall and SLOW-PRESS (FIELD BUGS 2026-10-01) holds it there. Giving the glide air
 control is a larger departure, and it rewrites four of fb1001_slowaudit's pins. It was offered to the owner, who chose
 the jump alone. THE FOUR HOSTS: the motor is every host's. A departure, Port-Ledger A. Pinned by
-`test/fb1011_jumpslow.test.js` (3); `tools/mutants/fb1011.json` (and AUDITCLIMB1-F7's record re-aimed by content: the
+`test/fb1011b_jumpslow.test.js` (3); `tools/mutants/fb1011b.json` (and AUDITCLIMB1-F7's record re-aimed by content: the
 gate's line lost its slowfall clause).
 
 ## LEGEND-HELD: a Legendary goes on at the condition it had (7)
@@ -101,7 +104,7 @@ leather Buckler (512 condition, 1.00 kg, the card's "+1") its bill was about a t
 Legendary's equip bills nothing. That holds for every piece already minted, because the law reads the piece's tier, not
 its record. Its wear while worn (DFU's MagicRound arm) is unmoved, and every other held piece keeps the bill. THE FOUR
 HOSTS: the equip table's door. A departure, Port-Ledger A (HELD-REWEAR's row narrowed beside it). Pinned by
-`test/fb1011_legendheld.test.js` (2, the ladder's own Aegis on a Buckler); `tools/mutants/fb1011.json`.
+`test/fb1011b_legendheld.test.js` (2, the ladder's own Aegis on a Buckler); `tools/mutants/fb1011b.json`.
 
 ## HOME-LINE: the ground between two houses split down its middle (10)
 
@@ -115,8 +118,8 @@ ground than the house's own. A tie goes to the house. A piece that meets another
 wherever its points stand. The marked edge is still the lot's rectangle: the bar's word ("That is another building's
 ground.") is where the line shows. THE FOUR HOSTS: the yards' law is world.js's (the streaming host, yardHost);
 exterior.js stands no yard (FB1001), and worldModes.js and dungeonContext.js have none outdoors. Not a departure from DFU
-(the yards are the port's, HOME-YARD). Pinned by `test/fb1011_homeline.test.js` (3); three pins moved by intent
-(`fb1009_yardfoot` twice, `fb1001_yard` once, each a PIN MOVED note); `tools/mutants/fb1011.json`, and the two neighbour
+(the yards are the port's, HOME-YARD). Pinned by `test/fb1011b_homeline.test.js` (3); three pins moved by intent
+(`fb1009_yardfoot` twice, `fb1001_yard` once, each a PIN MOVED note); `tools/mutants/fb1011b.json`, and the two neighbour
 records (YARD-CORNER's and HOME-YARD's) now name this file too.
 
 ## FULL-GUARD: no foe's one blow from full health (6)
@@ -137,10 +140,10 @@ it). So a fall, a spell, a poison's round, a trap and a world boss's strike are 
 a duel's blow (`spare`) or on a SetHealth(0) door, as for every set power. BAL2 and BAL4 are unmoved: the owner chose
 the guard over reverting BAL2's crit. THE FOUR HOSTS: the one damage door every host's foes reach (world.js's foes,
 guards and arrows; exterior.js's the same; worldModes.js's interior foes, guards and arrows; dungeonContext.js's melee
-and arrows) - no host seam. A departure, Port-Ledger A. Pinned by `test/fb1011_fullguard.test.js` (3, on the real
+and arrows) - no host seam. A departure, Port-Ledger A. Pinned by `test/fb1011b_fullguard.test.js` (3, on the real
 attack formula's tail, the real door and Malacath's real Unbroken); six pins moved by intent, each a PIN MOVED note: a
 killing blow that was dealt from full now starts a point short of it (`revenant`, `revenant_card`, `sd9d_numidium`
-four times); `tools/mutants/fb1011.json`.
+four times); `tools/mutants/fb1011b.json`.
 
 ## The three that are not the code's to change
 
@@ -183,5 +186,5 @@ Port-Ledger A: JUMP-SLOW, LEGEND-HELD, FULL-GUARD (and HELD-REWEAR's row narrowe
 cancel list), `04-Characters/Morrowind-NPCs.md` section 15c (the fallen and the fire), `05-Combat/Balance-Arc.md` (the
 guard beside BAL2), `06-Systems/Loot-Arc.md` (the Aegis's bill), `10-UI/UI-Arc.md` (PX21a's transportItem),
 `01-Overview/Field-Bugs-2026-10-09.md` (HOME-FOOT's lot sentence retired), `09-Testing/Testing.md` (seven rows and the
-Suite line). The tests: `fb1011_campfire`, `fb1011_cartslot`, `fb1011_offerid`, `fb1011_jumpslow`, `fb1011_legendheld`,
-`fb1011_homeline`, `fb1011_fullguard` (19). The mutants: `tools/mutants/fb1011.json`.
+Suite line). The tests: `fb1011b_campfire`, `fb1011b_cartslot`, `fb1011b_offerid`, `fb1011b_jumpslow`, `fb1011b_legendheld`,
+`fb1011b_homeline`, `fb1011b_fullguard` (19). The mutants: `tools/mutants/fb1011b.json`.

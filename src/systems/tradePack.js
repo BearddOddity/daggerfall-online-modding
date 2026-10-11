@@ -67,7 +67,7 @@ function offerWeight(entries, gold) {
 /**
  * The adapter over one entity's pack. `entity` is the live player entity (`items`, `goldPieces`).
  * Returns the `pack` object net/tradeSession.js takes.
- * OFFER-ID (FIELD BUGS 2026-10-11): `stampIds` - the realm's id stamp (itemIds.js stampItemIds), handed in by the host
+ * OFFER-ID (FIELD BUGS 2026-10-11b): `stampIds` - the realm's id stamp (itemIds.js stampItemIds), handed in by the host
  * that checkpoints the realm's save (world.js) rather than imported: itemIds.js reads the item law, and importing the law
  * installs it into the wire's clamp (itemLaw.js setItemLaw) for every reader of this file.
  * @param {any} entity @param {{ stampIds?: ((owner: { items: any[] }) => number) | null }} [o]
@@ -79,7 +79,7 @@ export function createTradePack(entity, { stampIds = null } = {}) {
 
     /** [{item,count}] -> the records that go on the wire, or null. A partial stack is the origin's record at the count. */
     wire(entries) {
-      // OFFER-ID (FIELD BUGS 2026-10-11): each valuable piece offered is given its id NOW (INT4 itemIds.js
+      // OFFER-ID (FIELD BUGS 2026-10-11b): each valuable piece offered is given its id NOW (INT4 itemIds.js
       // stampItemIds), the one the trade's hold checkpoint would stamp after the offer was made - so the record the
       // realm finds is the one offered, and a piece looted since the last checkpoint trades instead of being refused
       stampIds?.({ items: entries.map((e) => e.item) });

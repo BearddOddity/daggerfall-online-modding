@@ -343,7 +343,7 @@
     "new": "  if (false) return YARD_ON_OTHER;",
     "tests": [
       "test/homeyard.test.js",
-      "test/fb1011_homeline.test.js"
+      "test/fb1011b_homeline.test.js"
     ]
   },
   {

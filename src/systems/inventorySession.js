@@ -76,7 +76,7 @@ export const hasHorse = (items = []) =>
 /** The ITEM behind either answer, for a window that wants to draw it -
  *  its name, its icon. Null when there is none. `kind` is 'mount' or
  *  'cart', the words the UI uses; the template indices stay here.
- *  CART-SLOT (FIELD BUGS 2026-10-11, the Discord's "The caravan became a
+ *  CART-SLOT (FIELD BUGS 2026-10-11b, the Discord's "The caravan became a
  *  cart after the update"): the cart is the wagon DRIVEN (wagonKinds.js
  *  activeWagonItem, the best owned) - every wagon is the Small Cart's
  *  template, and the first of them was a Small Cart kept beside a Caravan

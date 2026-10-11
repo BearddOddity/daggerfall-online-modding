@@ -775,9 +775,9 @@ AcrobatMotor/PlayerMotor/FrictionMotor/PlayerHealth read end to end:
   hack), a Cart cancels the jump outright, and so does exterior water
   (AUDIT 64 F1: AcrobatMotor.cs:64-70 is ONE four-clause cancel,
   `OnExteriorWater == Swimming` included). Its slowfall clause is
-  dropped (JUMP-SLOW, FIELD BUGS 2026-10-11, a departure: the rise is
+  dropped (JUMP-SLOW, FIELD BUGS 2026-10-11b, a departure: the rise is
   the jump's and the spell takes the descent from the apex -
-  `01-Overview/Field-Bugs-2026-10-11.md`).
+  `01-Overview/Field-Bugs-2026-10-11b.md`).
 - **airControl = false** (AcrobatMotor.cs:21): airborne horizontal
   momentum FREEZES at liftoff - DFU recomputes x/z from input only in
   the grounded branch, so mid-air steering does nothing. AUDIT 64 F2:
@@ -1603,7 +1603,7 @@ the expectation with them. Mutant: the clause dropped; 1 killed.
 `AcrobatMotor.HandleJumpInput` cancels the jump on four conditions
 (`Game/Player/AcrobatMotor.cs:64-70`): `IsParalyzed`, `OnExteriorWater
 == OnExteriorWaterMethod.Swimming`, `IsSlowFalling`, and `TransportMode
-== Cart`. The port's gate carried slowfall (dropped by JUMP-SLOW, FIELD BUGS 2026-10-11) and Cart, the hosts' zeroed
+== Cart`. The port's gate carried slowfall (dropped by JUMP-SLOW, FIELD BUGS 2026-10-11b) and Cart, the hosts' zeroed
 input bag covers paralysis, and the water clause was covered nowhere -
 so standing in outdoor deep water the port granted the full
 `JUMP_SPEED * boost` leap DFU refuses outright. The clause is live for

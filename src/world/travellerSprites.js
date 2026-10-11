@@ -180,14 +180,14 @@ export function createTravellerSprites({ renderer, getTexture, uploadRecordFrame
   /**
    * MWNPC10c: the last sync's bodies in their Morrowind bodies, before the host's billboard pass draws their sprites -
    * on the ground only; a class's sprite drawn (its blade out), the rest not; the fallen (a flat no one talks to) dead.
-   * CAMP-FIRE (FIELD BUGS 2026-10-11): a flat that is nobody (`body: false`, a camp's fire) stands no body - its sprite draws.
+   * CAMP-FIRE (FIELD BUGS 2026-10-11b): a flat that is nobody (`body: false`, a camp's fire) stands no body - its sprite draws.
    * @param {any} canvas @param {Float32Array} proj @param {Float32Array} view @param {number[]} eye @param {number} dt
    */
   function drawBodies(canvas, proj, view, eye, dt) {
     bodiesLane.frame();
     if (_ground) {
       for (const b of shown) {
-        if (!b.body) continue;   // CAMP-FIRE (FIELD BUGS 2026-10-11): its flame drawn, never one of the fallen
+        if (!b.body) continue;   // CAMP-FIRE (FIELD BUGS 2026-10-11b): its flame drawn, never one of the fallen
         if (b.look === undefined) b.look = residentLook(b, b.res, { still: !!b.flat && b.talk });
         if (!b.look) continue;
         bodiesLane.offer(rosterActor(b, { id: b.id, look: b.look, feet: b.batch.origin, yaw: b.yaw, moving: b.moving, swingKey: b.swings || null,

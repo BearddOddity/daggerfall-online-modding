@@ -3272,7 +3272,7 @@ export class PlayerMotor {
     // HandleJumpInput while the player wades a record-0 tile and
     // refuses the leap; the port granted the full JUMP_SPEED * boost.
     // (The paralysis clause is covered host-side by the zeroed bag.)
-    // JUMP-SLOW (FIELD BUGS 2026-10-11, Mac: "Give the jump back"; a departure, Port-Ledger A): DFU's IsSlowFalling
+    // JUMP-SLOW (FIELD BUGS 2026-10-11b, Mac: "Give the jump back"; a departure, Port-Ledger A): DFU's IsSlowFalling
     // clause of this cancel (AcrobatMotor.cs:68) is dropped - the rise is the jump's, and the spell's 2.1 m/s takes the
     // descent from the apex (ApplyGravity below). Still ground-gated (0.1 s): no jump from the air, so no climbing on air.
     if (this.grounded && input.jump && !this._pkJumpLatch   // AUDIT CLIMB1 F7: not the Jump a move spent

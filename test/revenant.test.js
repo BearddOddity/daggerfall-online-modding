@@ -95,7 +95,7 @@ test('REVENANT THE KILL: the blow that kills me makes its foe a revenant through
   await tick();
   assert.equal(N.livingRevenants().length, 0, 'Stendarr\'s mercy: no death, no revenant');
   setAvoidDeathHook(null);
-  me.health = 99;   // PIN MOVED (FULL-GUARD, FIELD BUGS 2026-10-11): a foe's blow from full health leaves me at 1 - a point short of full, it kills
+  me.health = 99;   // PIN MOVED (FULL-GUARD, FIELD BUGS 2026-10-11b): a foe's blow from full health leaves me at 1 - a point short of full, it kills
   setStruck(killer, me, 500); hurtPlayer(me, 500);
   assert.equal(N.livingRevenants().length, 0, 'confirmed once the hurt is done, not inside it');
   await tick();

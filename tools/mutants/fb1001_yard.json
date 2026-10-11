@@ -172,7 +172,7 @@
     "tests": [
       "test/fb1001_yard.test.js",
       "test/homeyard.test.js",
-      "test/fb1011_homeline.test.js"
+      "test/fb1011b_homeline.test.js"
     ]
   },
   {

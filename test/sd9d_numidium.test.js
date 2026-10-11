@@ -197,7 +197,7 @@ test('SD9d THE HOUR TURNS (6): a blow that would kill me does not - the door lea
   const e = wearSet(player(), 'numidium', 6);
   door(e);
   at(10);
-  e.health = 99;   // PIN MOVED (FULL-GUARD, FIELD BUGS 2026-10-11): a foe's blow from full leaves me at 1 before any death save - a point short of full, the Hour's own save takes it
+  e.health = 99;   // PIN MOVED (FULL-GUARD, FIELD BUGS 2026-10-11b): a foe's blow from full leaves me at 1 before any death save - a point short of full, the Hour's own save takes it
   const dead = blow(e, 150);
   assert.equal(dead, false, 'no death');
   assert.equal(e.health, 16, 'left at 1, and 15% of 100 back');

@@ -607,7 +607,7 @@ registerPlayerDamageMod(SIGIL_SETS_POWER, setDamageMod);
 registerPlayerDeathSave(SIGIL_SETS_POWER, setDeathSave);
 registerPlayerHurtListener(SIGIL_SETS_POWER, setHurt);
 registerPlayerDoorOpen(SIGIL_SETS_POWER, setDoorOpen);   // AUDIT FINAL F10
-setFoeBlowProbe(() => _pending != null);   // FULL-GUARD (FIELD BUGS 2026-10-11): the door asks this file's law of what a blow is
+setFoeBlowProbe(() => _pending != null);   // FULL-GUARD (FIELD BUGS 2026-10-11b): the door asks this file's law of what a blow is
 registerPlayerKillListener(SIGIL_SETS_POWER, setKill);
 registerSpellCostMod(SIGIL_SETS_POWER, setCastCost);
 registerAbsorptionChance(SIGIL_SETS_POWER, setAbsorbChance);

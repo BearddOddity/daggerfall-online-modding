@@ -274,7 +274,7 @@ function tellDoorOpen(entity) {
 /** A foe's blow at me came to nothing before any door was called (a shared foe's, weighed to nothing for the party
  *  beside me - partyScale.js partyFoeHits): the door's word on it all the same. */
 export function playerBlowCameToNothing(entity) { tellDoorOpen(entity); }
-// FULL-GUARD (FIELD BUGS 2026-10-11): WHETHER THE HURT IN HAND IS A FOE'S BLOW. The one law of what a blow is stays the set
+// FULL-GUARD (FIELD BUGS 2026-10-11b): WHETHER THE HURT IN HAND IS A FOE'S BLOW. The one law of what a blow is stays the set
 // powers' (sigilSetPowers.js pendingPlayerBlow - the formula's struck tail's mark, taken as the door opened), handed in
 // here so this leaf imports none of it; until it is, no hurt is a blow.
 let _foeBlow = () => false;
@@ -353,7 +353,7 @@ export function hurtPlayer(entity, dmg, { bypassShield = false, spare = null } =
     try { spare(entity); } catch { /* the duel's word is not the blow's problem */ }
     return false;
   }
-  // FULL-GUARD (FIELD BUGS 2026-10-11, YeetMaster64: "I get one hit killed several times a day"; Mac: "No kill from full
+  // FULL-GUARD (FIELD BUGS 2026-10-11b, YeetMaster64: "I get one hit killed several times a day"; Mac: "No kill from full
   // health"): a foe's one blow never takes a player at full health to dead - it leaves them at 1, told as what it took,
   // and no death save is spent on it. A blow is the struck tail's mark (setFoeBlowProbe): a fall, a poison's round, a
   // spell, a trap or a world boss's strike is none, and the next blow at 1 kills as it always has.
