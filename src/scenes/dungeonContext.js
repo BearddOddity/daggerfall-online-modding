@@ -4394,7 +4394,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
     if (trapFx.length) {
       const noSink = () => {};
       // AUDIT WBX F6: a trap of mine already running on him (the court keeps it) is his incumbent for this cast - a recast
-      // stacks its rounds onto it with no new save (effects.js AddState), where the stand-in's forgotten trap made every
+      // renews its rounds with no new save (effects.js renewRounds, STACK-CAP), where the stand-in's forgotten trap made every
       // recast a new one against his save
       const running = opts.bossTrapNow?.() ?? null;
       if (running) boss.entity.activeEffects = [{ kind: 'soulTrap', chance: running.chance, roundsRemaining: 0 }];

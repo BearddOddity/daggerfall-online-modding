@@ -272,8 +272,10 @@ WaterWalking (31,255), ChameleonNormal (23,0) - so the starting
 spellbooks WORK: incumbent self-effects tracked by kind on
 activeEffects, a re-cast STACKS rounds onto the incumbent (the F12
 correction superseded this record's original 'renews, not stacked'
-claim - AUDIT 23 annotates it here), expiry clears the hasActiveEffect
-query. CONSUMERS THREADED
+claim - AUDIT 23 annotates it here; and STACK-CAP, 2026-10-11, the
+owner's call, renews it again: a re-cast tops the incumbent up to a
+fresh cast's rounds and never stacks - effects.js renewRounds,
+Port-Ledger A), expiry clears the hasActiveEffect query. CONSUMERS THREADED
 (no globals - the first cut's function-property hook was killed for
 the same smell audits keep burying): slowfall scales the player
 motor's gravity (fallScale 0.15, fed per frame by BOTH hosts from a
