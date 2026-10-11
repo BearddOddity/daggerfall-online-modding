@@ -2468,6 +2468,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   // an early renderer draws nothing until the weather says so.
   void warmPrograms([
     ...renderer.warmSteps(),
+    ...(renderer.lazyWarmSteps?.() ?? []),   // PERF-COMPILE1: the telegraph pass and the windows' background, at idle
     () => { if (!precip) precip = new PrecipitationRenderer(renderer.gl, precipOpts); },
   ]);
   const wisps = sky.enhanced ? new WindWispsRenderer(renderer.gl) : null;   // WIND3: built on the enhanced lane, so a shader fault is a boot fault; its row is read per frame
@@ -4256,6 +4257,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const dwRender = deepWatersOn() ? new DeepWatersRenderer(renderer) : null;
   latchModLoaded(DEEP_WATERS_VENDOR, !!dwRender);   // AUDIT PRE-MERGE 0928 S4: the sea is built now or not at all - its fish's shelf rows answer the same (systems/deepWatersFishItems.js)
   if (dwRender) renderer.prepareTerrainClip();   // FAR-CLIP1: the cap's clip program, built with the mod's own at mount - not inside the first frame that draws a coast
+  if (dwRender) void warmPrograms([() => dwRender._ensure()]);   // PERF-COMPILE1 (stutter): the mod's seven programs at idle - they were built inside the first frame that drew a coast, seven compiles in one frame
   // DW-E2: GameManager.IsPlayingGame for the Deep Waters runtime's gates - no window up. The overlay slot (townTalk) is
   // made further down; the first pixels promote before it exists, so the question is late-bound (nothing is up yet).
   let _dwOverlayUp = () => false;
@@ -4303,6 +4305,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   // OH-B / OH-C: THE PITS - Iliac Puddle No More's dependant, cut into its floors (scenes/oceanHolesHost.js says how). Its
   // switch is read once, at the world's mount, with its dependency's: no carved sea, no pits.
   const ohRender = deepWaters && oceanHolesOn(true) ? new OceanHolesRenderer(dwRender) : null;
+  if (ohRender) void warmPrograms([() => ohRender._ensure()]);   // PERF-COMPILE1 (stutter): the holes' two programs at idle, not at the first hole drawn
   let _ohTime = 0;   // OceanHoles' Time.time - the game's, held by a pause (the entrance's once-a-second)
   const _ohOrigin = [0, 0, 0];
   oceanHoles = ohRender ? createOceanHoles({
@@ -9309,6 +9312,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** CSA-F: the waves' pass, and their pictures (InitializeWaveTextures, 1811-1819): the author's two paints and the
    *  snow they key, TEXTURE.303 record 1 of the player's ARENA2 - loaded at boot, as Start has them (CSA-J). */
   const csaRender = csaRuntime ? new ComeSailAwayRenderer(renderer) : null;
+  if (csaRender) void warmPrograms([() => csaRender._ensurePart(), () => csaRender._ensureWave()]);   // PERF-COMPILE1 (stutter): the sea's four programs at idle, not on the first frame at sea
   let _csaWaveLoad = null;
   function csaWaveFrames() {
     _csaWaveLoad ??= (async () => {
@@ -31968,6 +31972,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // IsParalyzed itself (:90-93) - the zeroed input bag below is
     // the movement half of the same law, not this one.
     player.paralyzed = paralyzed;
+    meterFor(renderer.gl)?.markCpu('motor');   // PERF-SIM1: the old 'sim' in parts (Dudey's readout in a live town: sim 9-16 ms of a 19-28 ms frame) - the player's motor, the activation, the walk's own hosts
 
     const frameMotor = () => {   // PERF-V8: each `// PERF-V8` statement runs as a closure of its own, so the frame stays under V8's optimizing ceiling (bible/07-Rendering/Performance-Priority.md)
     if (walkMode) {
@@ -32746,6 +32751,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     frameMotor();
 
     // Streaming step: recentre, enqueue new pixels, drop far ones.
+    meterFor(renderer.gl)?.markCpu('stream');   // PERF-SIM1: the streaming step - the recentre, the pixels in and out
     spendRestrides();   // STREAM1: a promoted pixel's grid, one a frame, off the crossing's own frame
     const frameDwTerrainPass = () => {   // PERF-V8
     if (deepWaters) {
@@ -32950,6 +32956,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     }
     };
     framePixelChanged();
+    meterFor(renderer.gl)?.markCpu('hosts');   // PERF-SIM1: the bounties, the legacy, the patches, the notice book, the farms, the pump
     try { bountyHost?.tick(dt); } catch (e) { console.warn('[bounty] tick', e); }   // BOUNTY1: the hunts - packs stood and counted, a purse paid, a notice raised
     try { legacyStep(dt); } catch (e) { console.warn('[legacy] tick', e); }   // LEGACY1: the seat, the elder, the estate, a dead load
     try { gatherHost?.tick(dt); } catch (e) { console.warn('[prof] tick', e); }   // PROF1: the patches, the prompt, the act, the answers
@@ -32963,6 +32970,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     if (_farmSyncT <= 0) { _farmSyncT = 0.5; try { bountyFarms?.sync(bountyHost?.farmsWanted() ?? []); } catch (e) { console.warn('[bounty] farms', e); } }   // BOUNTY-FARM: the farms brought in line with the bounties held
     pump();
 
+    meterFor(renderer.gl)?.markCpu('view');   // PERF-SIM1: the projection, the cameras (the Morrowind camera machine, the travel view, the helm)
     // ROAD-E E5: the DOCKED large HUD shrinks the world pass rather
     // than covering it (ViewportChanger.cs:56-62), and Unity derives a
     // camera's aspect from its viewport - so the lens takes the bar's
@@ -33041,6 +33049,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       touch.setLockDot(_dp && _dp.front ? _dp.x : null, _dp?.y);
     }
     holdNpcBodies(!!tvf);   // AUDIT MW-NPC II H2: UNDER THE OVERWORLD NO NPC BODY STANDS (C3's law, every lane's) - a figure a few pixels tall, drawn upright under the flats' lean
+    meterFor(renderer.gl)?.markCpu('weather');   // PERF-SIM1: the clock, the season, the sweeps, the weather front, the wind, the ambience
     // World clock (R5): sun, ambient, window style, sky frame by time.
     const minute = minuteNow();
     // A1: DaggerfallLocation.Update's season poll (:118-130), on the
@@ -33108,8 +33117,10 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     const _wfPx = playerTravelPixel();
     const windfallLaw = windfall.frame({ dt: gamePaused() ? 0 : dt * worldTimeScale(), outside: true, weather, minutes: skyMinutes(), climate: maps.getClimateIndex(_wfPx.x, _wfPx.y), mapPixel: _wfPx,
       heading: wd.on ? wd.dir : null, feet: walkMode && playerSpawned ? player.pos : cam.pos, height: player.height });   // WINDFALL1: the mod's frame - its sounds and leaves, and the law the flora lean by (one wind: WIND1's heading); AUDIT ENVIRONS W1: WindMod.Update's Time.deltaTime, held by a pause and scaled with the world
+    meterFor(renderer.gl)?.markCpu('snow');   // PERF-SIM1: the snow layer's frame
     _snowPixels.clear();
     snowfall.frame({ now: now / 1000, inside: false, player: snowPlayer(), weather, seconds: worldMinutes() * 60, winter: season === SEASON.Winter, climate: maps.getClimateIndex(_wfPx.x, _wfPx.y), overworld: !!tvf, npcs: snowNpcs, corpses: snowBodies });   // SNOWFALL1: DynamicSnowController.Update - its tiers round the player, the tracks, the snowpack by the event clock; TV-SNOW: under the Overworld, which draws no snow, the clocks alone (snowfallHost.js)
+    meterFor(renderer.gl)?.markCpu('storms');   // PERF-SIM1: the animals, the lightning, the dread and the sun baby, the sky and the light settings
     animalAmbience.update(dt, cam.pos);   // A4: town animal barks (PlayRandomlyIfPlayerNear)
     // Storm lightning strobe. AUDIT 39 (#14): ENHANCED-SKIN ONLY -
     // shipped DFU renders no flash (PlayLightningEffect is 0 on both
@@ -33233,9 +33244,12 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // and the clock's answer.
     renderer.setWindowEmission(windowEmissionRGB(
       params.has('window') ? params.get('window') : windowStyleForTime(minute)));
+    meterFor(renderer.gl)?.markCpu('scene');   // PERF-SIM1: the spawners, the city gates, the sky and fog, the pools, the lights chosen, the boats
     tickWodSpawners();   // WOD3: LocationEnemySpawner.Update, every exterior frame
+    meterFor(renderer.gl)?.markCpu('gates');   // PERF-SIM2: the old 'scene' in parts (Dudey's second readout: scene 6-10 ms in the town at night) - the city gates, the interior lane's sync
     tickCityGates(minute);   // AUDIT 64 F14: DaggerfallCityGate.Update, every frame as DFU's is - and on the first frame after a pixel builds, which is what closes a gate streamed in at 20:00
     iilSyncLane(renderer, false);   // IIL2: outdoors the mod's shadow lane comes off - the streets are the classic set's, day or night
+    meterFor(renderer.gl)?.markCpu('skyset');   // PERF-SIM2: the sky handed its frame, the fog
     const currentEntry = built.get(`${state.current.x},${state.current.y}`);
     // DaggerfallSky.cs:363-367 - a non-Normal WeatherStyle (every rain,
     // thunder and snow) disables the clear night sky, so the DAY sky at
@@ -33263,6 +33277,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     sky.renderer.fogColor = fogColor;
     sky.renderer.fogMix = fogNow.excludeSky ? 0 : 1 - fogFactor(fogNow, 800);
 
+    meterFor(renderer.gl)?.markCpu('pools');   // PERF-SIM2: the gates, the Broker, the rite, the harbours, the camps, the quays, the monument
     // WB2: the gate stood for this frame - before the lights (its fire lights the ground) and the world pass (its stone)
     try { if (gatePool?.frame(dt)) warmGateVeil(); } catch (e) { console.warn('[gate] pool', e?.message ?? e); }   // AUDIT WB D5: a gate stands - the step's veil is built ahead
     if (gatePool || sdHost) presenceFrame();   // SD19: the banner and the card - the gate's, else a Hollow's door's
@@ -33280,6 +33295,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // channel: the lanterns and the player's own lights keep the shared
     // colour they always had, the mod's take theirs. With none built
     // both branches below make the calls they always made.
+    meterFor(renderer.gl)?.markCpu('lamps');   // PERF-SIM2: the lanterns pooled and the nearest picked
     const wodLit = wod ? _wodLitCount() : 0;   // AUDIT BRANCH (WoD) n: with the mod off, no walk of the built pixels at all
     const csaLit = csaOn() ? csa.lights(cam.pos) : [];   // AUDIT PRE-MERGE 0928 R2: the boats' lit lanterns are scene lights - in the selection below with the street's, never the player's extras
     // QUAYS: the quays' lanterns, in the lanterns' hours, scene lights beside the boats' in the town lanterns' colour -
@@ -33313,6 +33329,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       // LA-LIGHTS2: on the lane, one lantern past the cap - the first one it leaves out is where the others' fade ends
       const _lanterns = wodSel ? null : nearestLights(_sceneLights, cam.pos, renderer.maxPointLights + (renderer.lightingLane ? 1 : 0), _litRanges, null, 0, n);
       // DW-D: UnderwaterPresentationEffects.SuppressPlayerTorch - EnablePlayerTorch's light dark under the fog (the fuel burns on, the light is the only thing it takes)
+      meterFor(renderer.gl)?.markCpu('lightset');   // PERF-SIM3: the hand lights, the peers' torches, the camps' fires added, the set handed to the renderer
       const lit = withPlayerLights(wodSel ? wodSel.data : _lanterns,   // EL1: the installed set's cap (16 classic, 48 on the lane); PERF-LIGHTS: `n` is how much of the pool is live
         magic?.candleLight(), _dwFogP?.under ? null : playerTorchLight(playerEntity, player.feetAt(), cam.yaw), thunderlockMuzzleLight(playerEntity, player.feetAt(), cam.yaw), ...(naval?.enabled ? naval.lights() : []), ...peerTorchLights(), ...(gatePool?.lights() ?? []), ...(riteHost?.lights() ?? []), ...camps.lights(), ...droppedTorches.lights());   // PEERLIGHT1: the others' torches, right after my own hand lights   // X11 candle; T1 torch; HT1 the dropped lights; FIELD-GUN13 the muzzle flash; DISC13-A the hand lights ride the render feet (feetAt), as the camera does; NAV-B the broadsides' flashes and the burning decks beside the Thunderlock's own flash - the brightest things for a frame, cut last by the cap
       if (wodSel) _wodSetLights(lit, wodSel);
@@ -33331,13 +33348,16 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     }
     };
     frameLanterns();
+    meterFor(renderer.gl)?.markCpu('sails');   // PERF-SIM3: Come Sail Away's boats - the sails, the lanterns, the peers' boats
     csaPoolFrame(dt);   // CSA-B/C: the sails' FixDeformations (LateUpdate) and the lanterns' two behaviours, on Time.deltaTime; the lights they decide reach the next frame's list (the mod's own Update and LateUpdate ran after the motor: csaUpdate)
+    meterFor(renderer.gl)?.markCpu('boats');   // PERF-SIM2: the ashes, the crews, the wagon, the viewport
     warmAshesFrame(gamePaused() ? 0 : dt * worldTimeScale());   // WA1: TransportToShipWithDelay's WaitForSeconds, held by a pause, scaled with the world
     crewAshoreTick();   // CREW-COMPANIONS: the party stood on the street
     revenantAshoreTick();   // REVENANT-COMPANION: and the sworn
     renderer.setClearColor(SKY_CLEAR);   // INCIDENT 2026-09-04 / REVIEW 2026-09-05: this frame is the EXTERIOR's (the mode frames returned above and clear black in worldModes) - CameraClearManager.cs:51-57
     renderer.setFlashLight(sky.lightningLight() ?? boltFrame.flash);   // DS1: Dynamic Skies' LightningFlash, composed first on the point-light channel just stored; BOLT: else a near ground strike's own light, from where it struck
     renderer.setWorldViewport(worldViewportRect(canvas.clientWidth, canvas.clientHeight));   // E5: ViewportChanger.Update, every frame
+    meterFor(renderer.gl)?.markCpu('begin');   // PERF-SIM1: the renderer's frame open
     renderer.beginFrame(proj, view, sunDirection(minute), WORLD_FRAME);   // AUDIT-EL F5: a WORLD frame - the lane replays its records for this one
     meterFor(renderer.gl)?.markCpu('bodies');   // PERF-ZONE2: the Morrowind bodies - the player's, every peer's - the wagon and the camps, which the renderer's own 'world' mark used to swallow
     if (deepWaters) { _dwNowMs = now; beginDeepWatersFrame(minute); }   // DW-C: the look and the distance fog - a frame's, so after the clear of both

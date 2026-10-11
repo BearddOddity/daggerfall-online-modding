@@ -53,7 +53,7 @@ export const RIDER_RETRY_MS = 30000;
 async function decodeUrl(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url}: ${res.status}`);
-  return worldOrderColors(await decodePng(new Uint8Array(await res.arrayBuffer())));
+  return worldOrderColors(await decodePng(new Uint8Array(await res.arrayBuffer())), { owned: true });   // PERF-PEERS5: the decode is this door's alone - turned in its own bytes
 }
 
 /**

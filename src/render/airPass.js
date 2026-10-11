@@ -1920,7 +1920,7 @@ export class AirPass {
           gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
           gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, emis);
           f.bindVao(b.vao);
-          gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, 0);
+          gl.drawElements(gl.TRIANGLES, b.indexCount, gl.UNSIGNED_INT, b._ibOff | 0);   // PERF-ARENA: a still batch's range of its arena's indices
           this.stats.emitDraws++;
         }
       }

@@ -341,3 +341,15 @@ database_id = "resolved-by-account-deploy-workflow"
 [[r2_buckets]]
 binding = "SAVES"
 bucket_name = "daggerfall-saves"
+
+# ── ADMIT-LINE: THE SIGN-IN LINE ───────────────────────────────────
+# One Durable Object the whole service shares (src/admit.js AdmitGate): every sign-in takes its place in its line,
+# let in a few a second, so a deploy's reconnect wave waits its turn instead of overloading D1. SQLite-backed, the
+# class every plan may create; the line itself lives in memory.
+[[durable_objects.bindings]]
+name = "ADMIT"
+class_name = "AdmitGate"
+
+[[migrations]]
+tag = "admit1"
+new_sqlite_classes = ["AdmitGate"]

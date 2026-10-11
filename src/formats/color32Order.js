@@ -42,6 +42,27 @@ export function toColor32Order(image) {
 }
 
 /**
+ * PERF-PEERS5 (2026-10-10): THE SAME ROWS REVERSED, IN THE RASTER'S OWN BYTES - for a caller that owns a raster no one
+ * else reads (a PNG it has just decoded and will only upload). toColor32Order's answer, byte for byte, without the
+ * second raster a picture: one row of scratch, the rows swapped end for end.
+ * @param {{width:number,height:number,data:Uint8Array}} image - its `data` is rewritten
+ * @returns {{width:number,height:number,data:Uint8Array}}
+ */
+export function toColor32OrderInPlace(image) {
+  const { width, height, data } = image;
+  const row = width * 4;
+  if (data.length !== row * height) throw new Error(`${width}x${height} carries ${data.length} bytes`);
+  const tmp = new Uint8Array(row);
+  for (let y = 0, z = height - 1; y < z; y++, z--) {
+    const a = y * row, b = z * row;
+    tmp.set(data.subarray(a, a + row));
+    data.copyWithin(a, b, b + row);
+    data.set(tmp, b);
+  }
+  return { width, height, data };
+}
+
+/**
  * The same conversion, handed back in the shape the upload path reads:
  * `{ colors, width, height }`, which is what `getColor32` returns and
  * what `uploadTexture`/`uploadEmissionTexture` take `asBytes` of
