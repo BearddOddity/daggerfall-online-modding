@@ -16750,15 +16750,6 @@ export async function bootWorld(canvas, renderer, params, status) {
       isOnShip: () => isOnShip(playerEntity, playerEntity.boardShipPosition ?? null, playerTravelPixel()),
     };
   }
-  /** ONE construction for the map, because G5 gave it a second opener
-   *  and the dependency list is long enough that two copies would
-   *  drift (the ONE CONSTRUCTION SEAM rule). U61: the DOOR now forks
-   *  the skin inside this one seam - the host says what it HAS
-   *  (woods rides along for the overworld's relief) and never which
-   *  map that adds up to. */
-  /** AUDIT SD III (D7): the held map's tier labels, by place (`region:index`) - a dungeon's tier and size are its own
-   *  for good, read once a page. */
-  const _tierLabels = new Map();
   /** ORE-MAP (ui/oreMapTip.js): A BARE PIXEL'S ORE CARD on the held map - its veins, its dungeons', its kingdom's own and
    *  whether the witnesses have vouched for its ground. The ground's witnessed state is the book's (net/profBook.js
    *  pixel); one the book has not heard today is asked once, after the pointer has rested on it ORE_ASK_MS, through the
@@ -16781,6 +16772,15 @@ export async function bootWorld(canvas, renderer, params, status) {
     }
     return oreMapTip({ climate: maps.getClimateIndex(px, py), region: maps.getRegionIndexAt(px, py), fact });
   };
+  /** ONE construction for the map, because G5 gave it a second opener
+   *  and the dependency list is long enough that two copies would
+   *  drift (the ONE CONSTRUCTION SEAM rule). U61: the DOOR now forks
+   *  the skin inside this one seam - the host says what it HAS
+   *  (woods rides along for the overworld's relief) and never which
+   *  map that adds up to. */
+  /** AUDIT SD III (D7): the held map's tier labels, by place (`region:index`) - a dungeon's tier and size are its own
+   *  for good, read once a page. */
+  const _tierLabels = new Map();
   function buildTravelMapWindow(extra = {}) {
     // MAP-POV (2026-09-20, Mac: "If you're in 3rd person and decide to
     // use the map, it should transition you to first person and then

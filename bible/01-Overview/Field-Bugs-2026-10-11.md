@@ -42,6 +42,7 @@ of "nobody could tell me". Renaming either is the owner's call (Mac named the mo
 Pinned by `test/fb1011_snowtell.test.js` (4: the rise law over the runtime's own uniforms at the mod's defaults and its
 deepest dial; the pass's uLift with and without snow through a fake GL; the renderer's clear, record and hand-off; both
 snowy hosts' order and the other two hosts' absence of snow); `tools/mutants/fb1011_snowtell.json`.
+`test/audittact.test.js`'s AUDIT TACT D9 pin moved (PIN MOVED: the snow's height handed beside the fog).
 
 ## TRADE-LOC II: a letter of credit says its worth on its row (2)
 

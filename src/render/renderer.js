@@ -5119,7 +5119,6 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     if (!this._focusArmed && this._focus[3] !== 0) this._focus.fill(0);   // AUDIT TV B1: the travel view's focus too, unless set since the last beginFrame (setFocus)
     this._focusArmed = false;
     this._dwColumn = null;   // DW-F: and the water column's share over the flats
-    this._snowRise = 0;   // SNOW-TELL: and the snow's height over the ground - drawSnow's, on a frame that draws it
     // EV6: the shadows reset with the counters - whatever ran between
     // frames (UI passes, another context's work) is not trusted. The
     // cloud-shadow upload stamps are the same kind of claim (RS-3) and
@@ -5159,6 +5158,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     this._lightDir = lightDir;
     this._frameStamp++;   // PERF3
     this._ripples = null;   // AUDIT WATER-NEXT G12: no ripple field but the one a host hands over this frame
+    this._snowRise = 0;   // SNOW-TELL: and the snow's height over the ground - drawSnow's, on a frame that draws it
     gl.uniform3fv(this.uAmbient, this._c3(this._ambient));   // EL1: every colour goes up as the installed set wants it (_c3)
     this._uploadTrilight();
     gl.uniform1f(this.uSunScale, this._sunScale);
