@@ -526,6 +526,7 @@ export async function bootExterior(canvas, renderer, params, status) {
   // an early renderer draws nothing until the weather says so.
   void warmPrograms([
     ...renderer.warmSteps(),
+    ...(renderer.lazyWarmSteps?.() ?? []),   // PERF-COMPILE1: the telegraph pass and the windows' background, at idle
     () => { if (!precip) precip = new PrecipitationRenderer(renderer.gl, precipOpts); },
   ]);
   const wisps = sky.enhanced ? new WindWispsRenderer(renderer.gl) : null;   // WIND3: built on the enhanced lane, so a shader fault is a boot fault; its row is read per frame

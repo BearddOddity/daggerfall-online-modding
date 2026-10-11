@@ -229,7 +229,10 @@ test('PERF-EXT10 (the review): the shadow record writes every batch\'s fractiona
  *  drawElements under a billboard program - the main pass's (classic or the lane's) or the shadow replay's - the held
  *  uSize and uOrigin must be the drawn batch's own. Returns how many draws it checked. */
 function assertEveryFlatDrawSeesItsOwn(calls, programs, batches) {
-  const byVao = new Map(batches.map((b) => [b.vao, b]));
+  // PIN MOVED (PERF-ARENA): a still batch draws a RANGE of its arena's indices - the draw is named by the VAO and the
+  // offset together (many batches share one VAO now)
+  const byVao = new Map();
+  for (const b of batches) { if (!byVao.has(b.vao)) byVao.set(b.vao, new Map()); byVao.get(b.vao).set(b._ibOff | 0, b); }
   const held = new Map();
   let cur = null, vao = null, checked = 0;
   const bad = [];
@@ -237,8 +240,8 @@ function assertEveryFlatDrawSeesItsOwn(calls, programs, batches) {
     if (c[0] === 'useProgram') { cur = c[1]; if (!held.has(cur)) held.set(cur, new Map()); }
     else if (c[0] === 'uniform2f' || c[0] === 'uniform3f') held.get(cur)?.set(c[1], c.slice(2));
     else if (c[0] === 'bindVertexArray') vao = c[1];
-    else if (c[0] === 'drawElements' && programs.includes(cur) && byVao.has(vao)) {
-      const b = byVao.get(vao), u = held.get(cur), o = b.origin || [0, 0, 0];
+    else if (c[0] === 'drawElements' && programs.includes(cur) && byVao.get(vao)?.has(c[4] | 0)) {
+      const b = byVao.get(vao).get(c[4] | 0), u = held.get(cur), o = b.origin || [0, 0, 0];
       checked++;
       const size = u.get('uSize'), origin = u.get('uOrigin');
       if (!size || size[0] !== b.size.w || size[1] !== b.size.h) bad.push(`${b.archive}_${b.record}: drew with uSize ${size} for ${b.size.w},${b.size.h}`);
