@@ -279,18 +279,33 @@ function noise(x, y, s) {
   const a = hash3(ix, iy, s), b = hash3(ix + 1, iy, s), c = hash3(ix, iy + 1, s), d = hash3(ix + 1, iy + 1, s);
   return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
 }
-/** The nearest of a jittered lattice's points to (x, y), in cells: [its distance, its cell's hash]. */
-function nearest(x, y, s) {
+/**
+ * The nearest two of a jittered lattice's points to (x, y), in cells: [the nearest's distance, the next's, the nearest
+ * cell's hash]. Each point's distance is measured in its own stretched and turned frame (`stretch` how far a cell may be
+ * squashed, 0 none), so a spot or a dapple is an oval of its own bearing, never a circle.
+ */
+function nearest2(x, y, s, stretch = 0) {
   const ix = Math.floor(x), iy = Math.floor(y);
-  let best = 9, bh = 0;
+  let f1 = 9, f2 = 9, bh = 0;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     const cx = ix + dx, cy = iy + dy;
-    const px = cx + 0.15 + 0.7 * hash3(cx, cy, s), py = cy + 0.15 + 0.7 * hash3(cy, cx, s + 1);
-    const d = Math.hypot(px - x, py - y);
-    if (d < best) { best = d; bh = hash3(cx, cy, s + 2); }
+    const px = cx + 0.1 + 0.8 * hash3(cx, cy, s), py = cy + 0.1 + 0.8 * hash3(cy, cx, s + 1);
+    let ex = x - px, ey = y - py;
+    if (stretch) {
+      const a = hash3(cx, cy, s + 3) * Math.PI, c = Math.cos(a), sn = Math.sin(a);
+      const k = 1 + stretch * hash3(cx, cy, s + 4);
+      [ex, ey] = [(ex * c + ey * sn) / k, (ey * c - ex * sn) * k];
+    }
+    const d = Math.hypot(ex, ey);
+    if (d < f1) { f2 = f1; f1 = d; bh = hash3(cx, cy, s + 2); } else if (d < f2) f2 = d;
   }
-  return [best, bh];
+  return [f1, f2, bh];
 }
+/** (x, y) pushed about by the seed's noise, `amp` its reach - so a lattice's rows and a patch's edge wander. */
+function warp(x, y, s, amp, freq = 1.3) {
+  return [x + amp * (noise(x * freq + 13.1, y * freq, s + 21) * 2 - 1), y + amp * (noise(x * freq, y * freq + 7.7, s + 22) * 2 - 1)];
+}
+const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 /** A seed's own [0, 1) for its `k`th question. */
 const seedRand = (seed, k) => hash3(seed, k, 0x5eed);
 
@@ -308,38 +323,44 @@ export function shadeOf(seed) {
 function markingAt(pattern, seed, u, v, px, py) {
   const s = seed | 0, ox = seedRand(s, 3) * 61, oy = seedRand(s, 4) * 47;
   switch (HORSE_PATTERNS[pattern]) {
-    case 'pinto': {   // tobiano: broad white across the back and down the flanks, ragged where it meets the colour
-      const n = 0.65 * noise(u * 2.6 + ox, v * 2.6 + oy, s) + 0.35 * noise(u * 6 + oy, v * 6 + ox, s + 7);
+    case 'pinto': {   // tobiano: broad white across the back and down the flanks, its edge wandering and ragged
+      const [wu, wv] = warp(u * 2.4 + ox, v * 2.4 + oy, s, 0.45, 1.1);
+      const n = 0.62 * noise(wu, wv, s) + 0.28 * noise(wu * 2.3 + oy, wv * 2.3 + ox, s + 7) + 0.1 * noise(wu * 7, wv * 7, s + 8);
       const t = 0.5 + (seedRand(s, 5) - 0.5) * 0.16;
-      return [n > t ? 1 : 0, 0];
+      return [smooth(t - 0.012, t + 0.012, n), 0];
     }
     case 'appaloosa': {   // half are leopards (white, the coat in spots), half snowflakes (the coat, flecked in white)
-      const cell = 0.07 + seedRand(s, 6) * 0.03;
-      const [d, h] = nearest(u / cell + ox, v / cell + oy, s);
-      const spot = d < 0.22 + 0.16 * h;
-      if (seedRand(s, 7) < 0.5) return spot ? [0, 0.15] : [1, 0];
-      return [spot && h < 0.55 ? 1 : 0, 0];
+      const cell = 0.075 + seedRand(s, 6) * 0.03;
+      const [wu, wv] = warp(u / cell + ox, v / cell + oy, s, 0.55);
+      const [f1, , h] = nearest2(wu, wv, s, 0.9);
+      const r = (0.14 + 0.2 * h) * (0.75 + 0.5 * noise(u * 40 + ox, v * 40 + oy, s + 9));   // each spot its own size, its edge ragged
+      const spot = smooth(r - 0.04, r + 0.04, r * 2 - f1);
+      if (seedRand(s, 7) < 0.5) return [1 - spot, spot * 0.15];   // leopard
+      return [h < 0.7 ? spot : 0, 0];   // snowflake: most cells flecked
     }
-    case 'dapples': {   // lighter rounds in darker rings
-      const cell = 0.085 + seedRand(s, 8) * 0.025;
-      const [d] = nearest(u / cell + ox, v / cell + oy, s);
-      if (d < 0.3) return [0.45, 0];
-      if (d < 0.44) return [0, 0.18];
-      return [0, 0];
+    case 'dapples': {   // soft lighter blots, each its own size and bearing, the coat a shade darker between them - no line drawn
+      const cell = 0.08 + seedRand(s, 8) * 0.025;
+      const [wu, wv] = warp(u / cell + ox, v / cell + oy, s, 0.4);
+      const [f1, , h] = nearest2(wu, wv, s, 0.7);
+      const r = 0.3 + 0.16 * h;
+      const blot = 1 - smooth(r * 0.45, r, f1 * (0.85 + 0.3 * noise(u * 30 + ox, v * 30 + oy, s + 9)));
+      const fade = 0.55 + 0.45 * smooth(0.25, 0.75, noise(u * 1.6 + oy, v * 1.6 + ox, s + 10));   // dapples come and go across the coat
+      return [0.34 * blot * fade, (1 - blot) * 0.16 * fade];
     }
-    case 'roan': {   // white hairs through the coat
-      const density = 0.3 + seedRand(s, 9) * 0.15;
+    case 'roan': {   // white hairs through the coat, thicker on the body in patches
+      const density = 0.22 + seedRand(s, 9) * 0.12 + 0.2 * noise(u * 3 + ox, v * 3 + oy, s + 12);
       return [hash3(px, py, s + 11) < density ? 0.6 : 0, 0];
     }
     default: return [0, 0];
   }
 }
 
-/** Whether a pixel is the hide's (THE DYE's first two rules): warm, coloured, and not the tack's leather. */
-export function isCoatPixel(r, g, b) {
+/** Whether a pixel is the hide's (THE DYE's first two rules): warm, coloured, and - where a saddle is drawn (`tack`) -
+ *  not the tack's leather. */
+export function isCoatPixel(r, g, b, tack = true) {
   const [h, s, v] = hsv(r, g, b);
   if (!((h <= 50 || h >= 345) && s >= 0.2)) return false;
-  return !(h >= 28 && h <= 48 && s >= 0.36 && s < 0.58 && v >= 0.24 && v < 0.5);
+  return !(tack && h >= 28 && h <= 48 && s >= 0.36 && s < 0.58 && v >= 0.24 && v < 0.5);
 }
 
 /**
@@ -348,14 +369,15 @@ export function isCoatPixel(r, g, b) {
  * the bay as drawn (code 0), which is no pass at all. `bottomFirst` whether row 0 is the picture's bottom (the world's
  * billboards' order, formats/color32Order.js - the pool's and Eye Of The Beholder's pictures; the legs' white climbs
  * from the hooves, and the markings hang from the top); `legs` false where no hoof is drawn (the riding sprite's head
- * and neck), so no white is laid along the picture's lower edge.
+ * and neck), so no white is laid along the picture's lower edge; `tack` false where no saddle is (the riding sprite's
+ * neck: its shadow along the mane is the leather band's colour, and without a saddle to spare it is the hide's).
  * @template {{ width: number, height: number, colors: ArrayLike<number> & { buffer: ArrayBufferLike, byteOffset: number, byteLength: number } }} T
  * @param {T} image
  * @param {any} look
- * @param {{ bottomFirst?: boolean, legs?: boolean }} [opts]
+ * @param {{ bottomFirst?: boolean, legs?: boolean, tack?: boolean }} [opts]
  * @returns {T}
  */
-export function recolorHorse(image, look, { bottomFirst = true, legs = true } = {}) {
+export function recolorHorse(image, look, { bottomFirst = true, legs = true, tack = true } = {}) {
   const l = lookOf(look);
   if (!horseLookCode(l) || !image?.colors) return image;
   const dye = COAT_DYES[HORSE_COATS[l.coat]];
@@ -367,7 +389,7 @@ export function recolorHorse(image, look, { bottomFirst = true, legs = true } = 
   const coatMask = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
     const o = i * 4;
-    if (src[o + 3] && isCoatPixel(src[o], src[o + 1], src[o + 2])) coatMask[i] = 1;
+    if (src[o + 3] && isCoatPixel(src[o], src[o + 1], src[o + 2], tack)) coatMask[i] = 1;
   }
   const region = new Int32Array(n).fill(-1);
   const sizes = [], light = [];

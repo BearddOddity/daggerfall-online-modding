@@ -68,7 +68,8 @@ export const ridingLook = (mode, look) => (mode === TRANSPORT_MODES.Horse ? hors
  *  COATS1: `look` the horse's (a look code, systems/horseCoats.js) - each
  *  frame dyed on its way up, under its own record (`~<code>`; the bay as
  *  drawn keeps the record it always was). No hoof is in the picture, so
- *  no leg is whitened (its lower edge is the neck's). `records` the
+ *  no leg is whitened (its lower edge is the neck's), and no saddle, so
+ *  no leather is spared (the neck's shadow by the mane is the hide's). `records` the
  *  frames' records, so a look left behind is let go (player/mountRig.js). */
 export async function loadRidingArt(getBytes, palette, renderer, mode, look = 0) {
   const fileName = ridingTextureName(mode);
@@ -78,7 +79,7 @@ export async function loadRidingArt(getBytes, palette, renderer, mode, look = 0)
   const { width, height } = cfa.getSize(0);
   const frames = [], records = [];
   for (let f = 0; f < cfa.getFrameCount(0); f++) {
-    const c32 = recolorHorse(frameToColor32(cfa.getDFBitmap(0, f), palette, null), c, { bottomFirst: false, legs: false });
+    const c32 = recolorHorse(frameToColor32(cfa.getDFBitmap(0, f), palette, null), c, { bottomFirst: false, legs: false, tack: false });
     records.push(`ride:${fileName}:${f}${lookSuffix(c)}`);
     frames.push(renderer.uploadTexture('img', records[f], c32));
   }

@@ -128,6 +128,7 @@ test('COATS1 the dye: the hide is the warm, coloured, non-leather pixels; the ta
   assert.equal(isCoatPixel(...MANE.slice(0, 3)), false, 'the mane');
   assert.equal(isCoatPixel(120, 120, 130), false, 'steel');
   assert.equal(isCoatPixel(40, 120, 40), false, 'green cloth');
+  assert.equal(isCoatPixel(...TACK.slice(0, 3), false), true, 'where no saddle is drawn (the riding sprite), the leather band is the neck\'s own shadow');
 });
 
 test('COATS1 the dye: the body takes the coat, the face apart from it, the saddle and the mane keep theirs; the bay as drawn is no pass', () => {
@@ -176,7 +177,7 @@ test('COATS1 the seed: one horse is one picture, every time; two horses of one c
   assert.notDeepEqual(bay, HIDE); assert.ok(bay[0] > bay[1] && bay[1] > bay[2], 'still a warm brown');
 });
 
-test('COATS1 the patterns: pinto patches, appaloosa spots, dapples and roan flecks - each its own per seed, laid on the hide alone', () => {
+test('COATS1 the patterns: pinto patches, appaloosa spots, soft dapples and roan flecks - each its own per seed, never a circle, laid on the hide alone', () => {
   const img = flank();
   const share = (out) => { let n = 0; for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) if (whiteish(out, x, y)) n++; return n / (img.width * img.height); };
   const pinto = recolorHorse(img, code(1, 1, 0, 11));
@@ -186,13 +187,15 @@ test('COATS1 the patterns: pinto patches, appaloosa spots, dapples and roan flec
     const app = share(recolorHorse(img, code(2, 2, 0, seed)));
     assert.ok(app > 0.01 && app < 0.99, `appaloosa ${seed}: spots (${app.toFixed(2)})`);
   }
-  const solid = recolorHorse(img, code(3, 0, 0, 21)), dapple = recolorHorse(img, code(3, 3, 0, 21));
+  const solid = recolorHorse(img, code(1, 0, 0, 21)), dapple = recolorHorse(img, code(1, 3, 0, 21));
   let lighter = 0, darker = 0;
   for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) {
-    const a = at(solid, x, y)[0], b = at(dapple, x, y)[0];
-    if (b > a + 8) lighter++; else if (b < a - 4) darker++;
+    const a = at(solid, x, y)[2], b = at(dapple, x, y)[2];
+    if (b > a + 8) lighter++; else if (b < a - 2) darker++;
   }
-  assert.ok(lighter > 200 && darker > 200, `dapples: lighter rounds (${lighter}) in darker rings (${darker})`);
+  assert.ok(lighter > 200 && darker > 200, `dapples: lighter blots (${lighter}), the coat a shade darker between (${darker})`);
+  // and no line drawn between them: a dapple is soft - no pixel darker than the coat by more than DAPPLE's own shade
+  for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) assert.ok(at(dapple, x, y)[0] >= at(solid, x, y)[0] * 0.8, 'no dark net');
   let flecked = 0;
   const plain = recolorHorse(img, code(0, 0, 0, 31)), roan = recolorHorse(img, code(0, 4, 0, 31));
   for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) if (at(roan, x, y)[2] > at(plain, x, y)[2] + 30) flecked++;
@@ -303,7 +306,7 @@ test('COATS1 the riding sprite: the horse\'s frames dyed under their own record,
   assert.equal(ridingLook(TRANSPORT_MODES.Cart, look), 0, 'MRED01I0\'s boards are the hide\'s brown');
   assert.equal(ridingLook(TRANSPORT_MODES.Horse, HORSE_LOOK_CODE_MAX + 1), 0);
   const src = readFileSync(new URL('../src/systems/riding.js', import.meta.url), 'utf8');
-  assert.match(src, /recolorHorse\(frameToColor32\(cfa\.getDFBitmap\(0, f\), palette, null\), c, \{ bottomFirst: false, legs: false \}\)/, 'each frame dyed before its upload, its lower edge no hoof');
+  assert.match(src, /recolorHorse\(frameToColor32\(cfa\.getDFBitmap\(0, f\), palette, null\), c, \{ bottomFirst: false, legs: false, tack: false \}\)/, 'each frame dyed before its upload - its lower edge no hoof, no saddle to spare');
   assert.match(src, /records\.push\(`ride:\$\{fileName\}:\$\{f\}\$\{lookSuffix\(c\)\}`\)/, 'under its look\'s record');
   const uploads = [];
   await assert.rejects(loadRidingArt(async () => { throw new Error('no ARENA2'); }, null, { uploadTexture: (...a) => uploads.push(a) }, TRANSPORT_MODES.Horse, look));

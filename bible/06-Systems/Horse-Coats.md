@@ -99,19 +99,28 @@ off its own (so the art's shading is still its shading) and a value
   from its left, down from its top, in `PATTERN_SCALE_PX` (100 pixels, the side
   view's width, or the hide's width if wider) so a spot is one size from every
   side though a front view is a third as wide:
-  - **Pinto** (tobiano): two octaves of the seed's value noise, white past a
-    threshold the seed moves - broad, ragged patches;
-  - **Appaloosa**: a jittered lattice of spots, its size the seed's; half the
+  - **Pinto** (tobiano): three octaves of the seed's value noise over a
+    domain the noise itself pushes about (`warp`), white past a threshold the
+    seed moves - broad patches with wandering, ragged edges;
+  - **Appaloosa**: a jittered lattice of spots over a warped domain, each spot
+    measured in its own stretched and turned frame (`nearest2`) with a ragged
+    edge - an oval blot of its own size and bearing, never a circle; half the
     seeds are leopards (white, the coat in spots), half snowflakes (the coat,
     white in spots);
-  - **Dapples**: the same lattice, lighter rounds in darker rings;
-  - **Roan**: white hairs - a third or so of the hide's pixels, by the seed's
-    hash of each - mixed in, never a pure white pixel;
+  - **Dapples**: soft lighter blots on the same warped, stretched lattice, the
+    coat a shade darker between them and the whole fading in and out across
+    the hide - no ring and no line is drawn (a first cut drew the cells' edges
+    darker and read as cracks; another drew rings and read as circles, both
+    turned back by the player);
+  - **Roan**: white hairs - a quarter to a half of the hide's pixels, thicker in
+    patches, by the seed's hash of each - mixed in, never a pure white pixel;
 - the LEGS whiten the hide from the hooves up - socks a tenth of its height,
   stockings a fifth, the top ragged by the seed. `bottomFirst` says which end
   of the rows is the hooves (the world's billboards hold the picture's bottom
   row first, `formats/color32Order.js`); `legs: false` lays none where no hoof
-  is drawn (the riding sprite's lower edge is the neck).
+  is drawn (the riding sprite's lower edge is the neck); `tack: false` spares no
+  leather where no saddle is drawn (the riding sprite's neck: its shadow along
+  the mane falls in the leather band's colours).
 
 Every white is the hide's own light in white (`0.4 + 0.85 v`), so a patch in
 shadow is a shadowed white. The mane stays the art's on every look: the dye
@@ -130,9 +139,10 @@ other flank.
   a failed load is not asked every frame; a load overtaken by a newer one is
   never drawn, and a look left behind is let go. The CART's sprite
   (`MRED01I0.CFA`) is never dyed (`ridingLook`): its boards are the hide's
-  brown. NOT SEEN: the riding sprite is the player's own data, which the tree
-  does not carry; the dye is pinned on the other two sets and on drawn
-  pictures.
+  brown. Seen on the freeware ARENA2's `MRED00I0.CFA` (all four frames,
+  rendered through the port's own CfaFile, palette and dye - locally, never
+  committed); pinned on drawn pictures, the riding sprite being the player's
+  own data, which the tree does not carry.
 - **The pool's horses** (`scenes/horseCartPool.js`): the bay's decoded views
   and walk frames are kept, and each look's are dyed off them once
   (`horseArt.ensureLook`) under `h<view>~<code>` and `w<view>#<frame>~<code>`,
