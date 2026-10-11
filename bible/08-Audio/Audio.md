@@ -755,3 +755,43 @@ filters twice for the same reason). Two song writers merge a note laid where the
 note, its loudest and longest (`systems/sdScore.js`, `systems/gateScore.js`: thirty-three doubled note-ons in the Hour's
 nine songs, twenty-five in the Warden's war). Every score is let go by a fade (`music.fadeOut`), never a cut: the Hour's,
 the court's and the arena's. See `11-Multiplayer/Super-Dungeons.md` section 16's SD20d; `test/sd20d_audio.test.js`.
+
+## MIDI-OUT1 (2026-10-11): the music on a MIDI device - a recorded departure
+
+A player asked for MIDI out. Settings > Audio > Music has a **MIDI out** row (`port:midiOut`, the uiPrefs shelf's
+`midiOut`: the output's name, '' for none). The button names the device and a click steps to the next one connected,
+then Off. The first click is the one that asks the browser for MIDI (`requestMIDIAccess`, no sysex), so a player who
+never touches the row is never asked. Safari has no Web MIDI and the row says so. The desktop app's permission handler
+already grants the game page every permission, so it needs nothing.
+
+THE SAME SONGS, ANOTHER VOICE. `MidiOutSongPlayer` (`systems/midiOut.js`) IS a SongPlayer. It overrides only the
+methods that touch the audio graph and hands the device each event instead, timestamped on the Web MIDI clock
+(performance.now, which the player keeps as its clock). The lookahead pump, the loop and its seam, the stall skip and
+the channel state stay the one scheduler's. `SongPlayer` grew two seams for it: `_origin(lead)`, where a song or a
+loop's next pass begins, and `_skip(toTick)`, the stall's fold. `noteSeconds` is the voice's note length, exported so
+both voices keep it. `MusicService` builds this player when a device is picked and connected (`adoptMidiOut`: at boot,
+at every pick, when a device is plugged in or pulled out). A MIDI.BSA song that is sounding moves across from its top.
+The latest pick wins, and a pick the player has already moved past never sounds. A pulled device hands the music back
+to the synth and is left silent. A replacement pack is audio and plays as it did.
+
+WHAT THE DEVICE IS SENT, AND WHAT IS OURS:
+- **Channel events as their bytes**, clamped to seven bits: note-ons, controllers (the sustain pedal among them),
+  program changes, pitch bend and both pressures. The court's score adds accents past 127, and a data byte with bit 7
+  set is a status byte to a device. HMI's own events, meta events and sysex are not sent.
+- **The note-offs are the player's.** It releases each note at the length the synth gives it, a window at a time, and
+  ignores the stream's releases. The songs made in code carry lengths and no note-offs. Chrome has never had
+  `MIDIOutput.clear()`, so a release queued seconds ahead could not be taken back and would cut the next song's note.
+  A release due on a re-strike's tick is sent before the re-strike, and at its time at the latest: origin + tick +
+  length can round 1.8e-15 s past origin + (tick + length), and a device orders by timestamp.
+- **The volume is CC7.** MusicVolume and the video mute (`trackGain`: the setting alone, as a pack has it, because
+  MUSIC_GAIN is the FM bank's trim), a song's own level (WBX9) and the switch's fade (DISC20-B) are multiplied into
+  every channel's CC7. It is re-sent when one moves: the slider and the mute at once, a fade each pump. A re-level is
+  never queued under a CC7 the window already holds. The press (WB10a) belongs to the synth and is not applied.
+- **A clean device per song.** A song starts as `freshChannelState` starts the synth: CC121, program 0, pan and bend
+  centred, volume full and scaled, a millisecond before its origin. A stop releases every note it struck (a note-on
+  still queued is answered just after itself), then sends the pedal up and all-notes-off on every channel, now and
+  again after the last message queued. The next song begins after that.
+- **A stalled tab** skips its gap as the synth does, and tells the device each control's last value past it.
+
+Port-Ledger A: THE MUSIC ON A MIDI DEVICE. Pins: `test/midiout1.test.js`, 10 tests; `tools/mutants/midiout1.json`,
+22 mutants, all dead.
