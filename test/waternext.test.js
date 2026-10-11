@@ -74,7 +74,8 @@ test('WATER-NEXT 3 the shore: foam over the shallow band the swell pushes up and
   assert.match(fs, /float shore = 1\.0 - smoothstep\(0\.0, band, vdepth - sw\.x \* 2\.20\);/);
   assert.match(fs, /\* smoothstep\(0\.55, 0\.9, uWindStrength\);/, 'the crests need a wind');
   assert.match(fs, /edge = max\(edge, foam \* smoothstep\(0\.0, 0\.2, edge\)\);/);
-  assert.match(fs, /float spec = pow\(max\(dot\(n, H\), 0\.0\), 180\.0\) \* uSunScale \* shadow \* \(1\.0 - foam\);/);
+  assert.match(fs, /float spec = seaSunLobe\(dot\(n, H\)\) \* uSunScale \* shadow \* \(1\.0 - foam\);/);   // PIN MOVED (AUDIT FAR-SEA1 C12): the lobe is one text with the far ring's sea
+  assert.ok(fs.includes('float seaSunLobe(float nh) { return pow(max(nh, 0.0), 180.0); }'), 'the sun\'s lobe, 180');
 });
 
 test('WATER-NEXT 2 the copy: once a frame, before the first water draw, the lane\'s frame only, its units its own and rebound every draw; the open sea drawn by the same program over Deep Waters\' sheets from above (mutants: a copy a draw; the units shared; the sea\'s old top kept from above)', () => {

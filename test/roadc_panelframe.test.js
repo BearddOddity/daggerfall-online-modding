@@ -97,6 +97,7 @@ test('c2/S2 every named global is written and written BACK to its entry value', 
   r.setIndirectLight([5, 6, 7], 8, new Float32Array([0.2, 0.3, 0.4]));
   r.setAmbientTrilight({ sky: [0.6, 0.7, 0.8], ground: [0.2, 0.15, 0.1] });   // AUDIT-AMAP H5: the dungeon's BA1 pair
   r._clearColor.set([0.53, 0.7, 0.92, 1]);
+  r.setSeaHaze(0.85, 34);   // AUDIT FAR-SEA1 H1: the far ring's haze on the sea - the open sea draws after a decorator's preview
 
   const before = {
     ambientTri: { sky: [...r._ambientTri.sky], ground: [...r._ambientTri.ground] },
@@ -110,6 +111,7 @@ test('c2/S2 every named global is written and written BACK to its entry value', 
     pointLights: [...r._pointLights], pointColor: [...r._pointColor],
     indirect: [...r._indirect], indirectColor: [...r._indirectColor],
     clearColor: [...r._clearColor],
+    seaHaze: [...r._seaHaze],
   };
 
   r.panelFrame({
@@ -138,6 +140,7 @@ test('c2/S2 every named global is written and written BACK to its entry value', 
   assert.equal(r._fogDensity, before.fogDensity, 'fog density');
   assert.deepEqual([...r._fogRange], before.fogRange, 'fog range');
   assert.deepEqual([...r._fogColor], before.fogColor, 'fog colour');
+  assert.deepEqual([...r._seaHaze], before.seaHaze, 'AUDIT FAR-SEA1 H1: the sea\'s haze - the bracket\'s own beginFrame clears it');
   assert.deepEqual([...r._ambient], before.ambient, 'ambient');
   assert.equal(r._sunScale, before.sunScale, 'sun scale');
   assert.deepEqual([...r._sunColor], before.sunColor, 'sun colour');

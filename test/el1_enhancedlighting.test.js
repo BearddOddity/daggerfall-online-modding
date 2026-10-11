@@ -198,7 +198,7 @@ test('EL1: the five lane shaders declare the 48-light arrays and the lane\'s two
   assert.match(EL_BB_FS, /uConceal\.x == 2\.0\) lit \*= /, 'the billboard keeps the shade');
   assert.match(EL_TERRAIN_FS, /texelFetch\(uTilemap, cell, 0\)/, 'the terrain keeps its tilemap read');
   assert.match(EL_CHAR_FS, /elDecode\(vColor \* texel\.rgb\)/, 'the rig\'s vertex colour decodes like a texel');
-  assert.match(EL_FAR_RING_FS, /uniform float uELExposure;/); assert.match(EL_FAR_RING_FS, /gl_FragDepth = 1\.0;/, 'the ring stays at the far plane');
+  assert.match(EL_FAR_RING_FS, /uniform float uELExposure;/); assert.ok(!/gl_FragDepth/.test(EL_FAR_RING_FS), 'the ring stays at the far plane by its pass\'s depthRange(1, 1), not a depth write (PIN MOVED, AUDIT FAR-SEA1 P1: a write runs the shader before the depth test)'); assert.match(readFileSync('src/render/farRing.js', 'utf8'), /gl\.depthRange\(1, 1\);[^\n]*\n[\s\S]*?gl\.drawElements\([\s\S]*?gl\.depthRange\(0, 1\);/, 'set around the draw and put back');
   assert.ok(!/uPointLights/.test(EL_FAR_RING_FS), 'the ring takes no lanterns, as before');
   // the classic shaders: the sixteen, the classic falloff, no lane uniform
   const r = read('src/render/renderer.js');
