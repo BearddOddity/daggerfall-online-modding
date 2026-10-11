@@ -309,6 +309,7 @@ import { isYardTown, yardKeeper, YARD_KIND_ORDER } from '../systems/merchantYard
 import { HARBOUR_REACH } from '../systems/naval/shipLife.js';   // AUDIT HOLDINGS O1: the harbour's scan reach, its pixels built before it is sounded
 import { createHarbourBook } from '../systems/naval/harbourBook.js';   // HARBOUR-BOOK: the harbours near the player, the quays' and the sea's
 import { withdrawIntoPack, materialLabel, materialCountLabel } from '../systems/profItems.js';   // PROF1: a Stores material as DFU's own item
+import { oreMapTip } from '../ui/oreMapTip.js';   // ORE-MAP: the held map's word on a pixel's ore
 import { heldOf as bagHeldOf, heldKeysOf as bagHeldKeysOf, roomFor as bagRoomFor, mintCarried, takeCarried, giveCarried, bagTakesOf, bagWeight, hasBag, emptyBagIntoPack } from '../systems/materialsBag.js';   // BAG1: the Materials Bag and the pack, the book's hands; UNCOUNTED: every material they hold
 import { BAG_KG_LIMIT, madeWhere, movedFirstText } from '../net/bagLaw.js';   // AUDIT BAG1 B9: where a station's work went; AUDIT2 K8: what went in before a refusal
 import { smeltRecipe, stockOf, WEAVERS_STOCK, APOTHECARY_STOCK, professionName } from '../net/professionLaw.js';   // PROF2: a smelt's product, for its word; PROF4: a counter's; PROF5: the Weavers'
@@ -16788,6 +16789,28 @@ export async function bootWorld(canvas, renderer, params, status) {
       isOnShip: () => isOnShip(playerEntity, playerEntity.boardShipPosition ?? null, playerTravelPixel()),
     };
   }
+  /** ORE-MAP (ui/oreMapTip.js): A BARE PIXEL'S ORE CARD on the held map - its veins, its dungeons', its kingdom's own and
+   *  whether the witnesses have vouched for its ground. The ground's witnessed state is the book's (net/profBook.js
+   *  pixel); one the book has not heard today is asked once, after the pointer has rested on it ORE_ASK_MS, through the
+   *  gathering host (gatherHost.askPixels - a pixel it stands is stood again on the answer, as its own ask does), and
+   *  the card asked again (`again`) when the word comes. A pixel asked is never asked again on this page: a refused or
+   *  silent ask leaves the card saying the rule, not a loop. */
+  const ORE_ASK_MS = 400;
+  const _oreAsked = new Set();
+  let _oreAskTimer = null;
+  const oreMapAt = (px, py, again) => {
+    const fact = profBook?.state?.open === true ? profBook.pixel(px, py) : null;
+    const k = `${px},${py}`;
+    if (!fact && profBook?.state?.open === true && gatherHost && !_oreAsked.has(k)) {
+      clearTimeout(_oreAskTimer);
+      _oreAskTimer = setTimeout(() => {
+        if (_oreAsked.has(k)) return;
+        _oreAsked.add(k);
+        gatherHost?.askPixels([[px, py]]).then(() => again?.(), () => {});
+      }, ORE_ASK_MS);
+    }
+    return oreMapTip({ climate: maps.getClimateIndex(px, py), region: maps.getRegionIndexAt(px, py), fact });
+  };
   /** ONE construction for the map, because G5 gave it a second opener
    *  and the dependency list is long enough that two copies would
    *  drift (the ONE CONSTRUCTION SEAM rule). U61: the DOOR now forks
@@ -16870,6 +16893,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       // SEAT1a: each seat's ring (and a crown's crown, a March's and a Free Land's second ring) - while the seats are open
       seatAt: seatBook ? (summary) => seatHere(summary?.mapID ?? summary?.mapId) : null,
       carriageAt: (summary) => carriageTown(summary?.mapID ?? summary?.mapId),   // OW-HUBS: a carriage town's wheel
+      oreAt: profBook ? oreMapAt : null,   // ORE-MAP: bare ground's ore card - online, where the professions are
       // TO1: the mod itself rides travelFareDeps (above); the reads its additions to this window need follow.
       // AUDIT-TO1 I4: ...and the door ACTS on the refusal it can still get
       // (the popup was minted before the online state could change).
