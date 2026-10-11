@@ -752,7 +752,10 @@ const GARMENT_FLAVOURS = Object.freeze([
 /** The DFU catalogue enchantment a Rare carries, one per item, by
  *  group: a weapon strikes or drinks, a piece of armour or jewellery
  *  holds. {type, param} are the catalogue's own (enchantmentCatalogue
- *  ENCHANTMENT_COSTS: the CastWhen* params are classic spell ids). */
+ *  ENCHANTMENT_COSTS: the CastWhen* params are classic spell ids).
+ *  BAL5: a `retired` flavour is no longer drawn (rareFlavour) and stays
+ *  in its list - the law (itemLaw.js) and the market (smithItems.js
+ *  asMinted) still read a piece that drew it as minted, so it keeps it. */
 export const RARE_FLAVOURS = Object.freeze({
   Weapons: Object.freeze([
     { type: T.CastWhenStrikes, param: 7 },    // Wizard's Fire
@@ -771,7 +774,11 @@ export const RARE_FLAVOURS = Object.freeze({
     { type: T.CastWhenHeld, param: 37 },      // Slowfalling
     { type: T.CastWhenHeld, param: 41 },      // Water Walking
     { type: T.CastWhenHeld, param: 42 },      // Water Breathing
-    { type: T.CastWhenHeld, param: 24 },      // Troll's Blood
+    // BAL5 (bible/05-Combat/Balance-Arc.md section 11): RETIRED. A held Regenerate heals every magic round for as long
+    // as the piece is worn - DFU prices it at 920 of an item maker's points and wears the piece out for it (CastWhenHeld's
+    // 1 in 4 rounds, and no smith mends a magic piece); the port mends one by default (DISC22-A), so a random Rare handed
+    // out regeneration that never ended, and with it a fight won by standing still
+    { type: T.CastWhenHeld, param: 24, retired: true },      // Troll's Blood
     { type: T.RegensHealth, param: 2 },       // in darkness
     { type: T.RegensHealth, param: 1 },       // in sunlight
     { type: T.IncreasedWeightAllowance, param: 0 },
@@ -1200,7 +1207,8 @@ export function applyRarity(item, tier, rolls = Math.random, legendaryPool = nul
 /** A Rare's flavour, drawn from its group's. AUDIT PROF-541 J4: `fits` (a crafted piece's - smithItems.js mintPiece: the
  *  points the piece carries) draws again, among the flavours that fit, a first draw that does not - so every draw that
  *  fit stands as its seed made it, and what fits is still drawn evenly. */
-function rareFlavour(all, rolls, fits = null) {
+function rareFlavour(list, rolls, fits = null) {
+  const all = list.filter((f) => !f.retired);   // BAL5: a retired flavour is the law's, never a draw's
   const first = pick(all, rolls);
   if (typeof fits !== 'function' || fits(first)) return first;
   const ok = all.filter(fits);

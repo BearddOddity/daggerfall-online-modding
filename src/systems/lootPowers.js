@@ -20,7 +20,8 @@
 //               damage): that share of it heals me, the fraction carried
 //   thorns      a LANDED-BLOW listener (sigilSetPowers.js - the one law
 //               of a foe's blow that took my health): the foe takes that
-//               much back, all I wear summed under THORNS_CAP
+//               much back, all I wear summed under THORNS_CAP - and never
+//               its last point (BAL5, playerDoor.js paidBack)
 //   focus       a CAST COST modifier: that share off my spells'
 //               magicka, all I wear summed under FOCUS_CAP
 //
@@ -47,7 +48,7 @@ import { registerPlayerStrikeListener, enemyEntityGroup, ENEMY_GROUPS } from '..
 import { registerSpellCostMod } from './spellcost.js';
 import { registerCastSpeedMod } from './castSpeed.js';   // CAST-SPEED: the castSpeed lines' door onto a cast's rate
 import { registerPlayerBlowLanded, pendingPlayerBlow, REACH_RISE_M } from './sigilSetPowers.js';
-import { playerDoor } from './playerDoor.js';
+import { playerDoor, paidBack } from './playerDoor.js';   // BAL5: a blow paid back never kills
 import { careerTolerance, EFFECT_FLAGS } from './spellcast.js';
 import { lootRarityOn, validAffix, powerOf, registerLegendaryFind, readLines } from './lootRarity.js';   // GEM1: readLines, law 6's reading
 import { equipTableOf } from './equip.js';
@@ -66,8 +67,10 @@ import { SKILLS } from './skills.js';
 import { friendlyProtected } from '../combat/playerWeapon.js';
 import { KNIGHT_CITY_WATCH } from '../characters/mobileTypes.js';
 
-/** All the thorns a wearer's pieces sum to, at most, a blow. */
-export const THORNS_CAP = 25;
+/** All the thorns a wearer's pieces sum to, at most, a blow. BAL5 (bible/05-Combat/Balance-Arc.md section 11): 10, the
+ *  top of a Legendary line's band and a Legendary sear's own most - it was 25, a whole endgame swing paid back on every
+ *  blow that landed, past every foe's armour and the metal it asks of a weapon (an Ancient Lich killed by standing still). */
+export const THORNS_CAP = 10;
 /** All the focus a wearer's pieces sum to, at most (%). */
 export const FOCUS_CAP = 30;
 /** LOOT5: all the loot takes off a spell's magicka, focus and powers together, at most (%). */
@@ -283,7 +286,8 @@ function quake(target, amount, metres) {
 
 // ── a foe's blow landed: thorns ────────────────────────────────────
 /** A FOE'S BLOW TOOK MY HEALTH (sigilSetPowers.js registerPlayerBlowLanded): the thorns I wear, summed under the cap,
- *  back to the foe that struck - through its own pool's door (systems/playerDoor.js), a kill mine. */
+ *  back to the foe that struck - through its own pool's door (systems/playerDoor.js), never its last point (BAL5: the
+ *  kill is mine to take, never the thorns'). */
 export function lootLanded(entity, attacker, took) {
   if (!mine(entity) || !(took > 0) || !attacker || attacker.isPlayer) return;
   // LOOT5: the powers a landed blow arms - Dawnward's charge, Bedrock's stack, the Hex on the foe that struck
@@ -297,7 +301,8 @@ export function lootLanded(entity, attacker, took) {
   if (n <= 0) return;
   const door = playerDoor();
   const f = door?.foes().find((x) => x.entity === attacker);
-  if (f && !f.dead) door.hurtFoe(f, n);
+  const back = f && !f.dead ? paidBack(f, n) : 0;
+  if (back > 0) door.hurtFoe(f, back);
 }
 
 // ── LOOT5: the damage I take ────────────────────────────────────────

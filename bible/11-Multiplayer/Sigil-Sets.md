@@ -86,7 +86,7 @@ Each is a build, and each answers to a Prince. Every one can land on any won pie
 | pieces | ability | Faint -> Ascendant |
 |---|---|---|
 | 2 | **Orc-Hide** - armour on every body part, and Endurance | +2 -> +5 armour a part; +2 -> +6 END |
-| 4 | **Spite of the Spurned** - a foe whose blow lands on you (a weapon's, a claw's, an arrow's) takes a share of it back | 10% -> 30% |
+| 4 | **Spite of the Spurned** - a foe whose blow lands on you (a weapon's, a claw's, an arrow's) takes a share of it back - it wounds, never kills (BAL5) | 10% -> 30% |
 | 6 | **Unbroken** - damage that would kill you leaves you at 1 health instead, and for a while all damage you take is halved; then it must recover | 4 -> 8 s halved; recovers 300 -> 150 s |
 
 ### Dagon's Brand - the one who does not stop (melee)
@@ -434,7 +434,8 @@ my Renown known, no duel)? For anyone else - a peer's entity here, a foe - and w
   the whole blow, whole and at least 1, through the door as my hurt - a melee blow only, never a bow's or the
   Thunderlock's. A swing that strikes two foes cleaves from each.
 - **Spite of the Spurned**: at the attack formula's struck tail (a weapon's, a claw's, an archer's arrow), the foe that
-  struck takes its share back through the door.
+  struck takes its share back through the door - never its last point (BAL5, `05-Combat/Balance-Arc.md` section 11:
+  `playerDoor.js` paidBack; the kill is the player's to take, so no foe is won by standing still in front of it).
 - **Unbroken**: a death save on the damage door - left at 1, said and sounded, all damage halved for its seconds
   (the halving is a damage modifier, before the shield); then it recovers. Never a SetHealth(0) door, never a duel.
 - **Wrath of the Warden**: a hurt listener - a blow that takes me from at or above 30% to under it (a death that
