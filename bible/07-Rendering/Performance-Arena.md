@@ -112,6 +112,18 @@ scattered over the 38: the pass hopped between arenas on nearly every draw.
   arena - so a run stays in one arena and the pass binds where the key changes anyway. A deleted arena takes its keys'
   homes with it.
 
+Measured (the same probe, Knightstale by night, the base the PERF-CROWD head, then PERF-ARENA, then this):
+
+| | base | PERF-ARENA | PERF-ARENA2 |
+|---|---|---|---|
+| `bindVertexArray` a frame | 905 | 508 | 278 |
+| WebGL calls a frame (draws 952 in all three) | 6,986 | 6,587 | 6,360 |
+| the world host's frame (ms of this container's CPU) | 25.7 | 22.1 | 19.1 |
+| - the billboards (`drawBillboards`) | 2.8 | 2.4 | 1.4 |
+| - - `drawOne` | 1.69 | 1.14 | 0.60 |
+| - the shadow pass | 5.2 | 4.0 | 3.7 |
+| allocated a frame | 1.42 MB | 1.17 MB | 1.09 MB |
+
 The draws are the same draws in the same order; only where a batch's corners live moved. Pins: `test/perfarena.test.js`
 (the spill test's growth and the record's home; the growth's bound, its sixth); mutants PERFARENA2-no-growth,
 PERFARENA2-unbounded, PERFARENA2-no-home (dead), PERFARENA-no-spill re-aimed by content.
