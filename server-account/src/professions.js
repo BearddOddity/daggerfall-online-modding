@@ -344,7 +344,7 @@ export async function profPixels({ db }, player, env, { character, pixels, dunge
  * @param {{ player: string, char_id: string, day: number, profession: string, material: string, gem?: string|null,
  *   extra?: string|null, carry: boolean }} spec @param {string} rid the harvest's request id @param {number} nowS
  */
-function answerReads(db, player, env, spec, rid, nowS) {
+function answerReads(db, player, env, spec, rid, nowS, { marks = true } = {}) {
   /** @type {Array<[string, any]>} */
   const q = [];
   const { player: p, char_id: c, day } = spec;
@@ -358,7 +358,8 @@ function answerReads(db, player, env, spec, rid, nowS) {
   }
   if (spec.profession === 'hunting') q.push(['hunt', huntStatement(db, p, day)]);   // PROF7: the account's hides today
   if (spec.profession === 'fishing') q.push(['hauls', haulsStatement(db, p, day)]);   // PROF8: the account's hauls today
-  findLineStatements(db, player, env, gatherStrikeRid(rid), nowS).forEach((st, i) => q.push([`marks${i}`, st]));   // SILVER-FINDS
+  // SILVER-FINDS - AUDIT GATHER-SPEED G5: asked only where a line may stand (a fresh harvest's find rolled none: none)
+  if (marks) findLineStatements(db, player, env, gatherStrikeRid(rid), nowS).forEach((st, i) => q.push([`marks${i}`, st]));
   return q;
 }
 /** GATHER-SPEED: a harvest row's own spec for answerReads - what it wrote. */
@@ -662,7 +663,7 @@ export async function harvestNode(ctx, player, env, body = {}) {
   // hides of any tier, and Fishing's of forty hauls, are counted no more
   const huntedHigh = "COALESCE((SELECT SUM(qty) FROM node_harvests WHERE player = ?1 AND profession = 'hunting' AND day = ?6 AND tier >= ?20), 0)";
   // GATHER-SPEED: the answer's reads (answerReads), behind the decision in its own batch - and the row read back first
-  const answer = answerReads(db, player, env, { player: player.id, char_id: character, day, profession, material: key2, gem, extra, carry }, rid, nowS);
+  const answer = answerReads(db, player, env, { player: player.id, char_id: character, day, profession, material: key2, gem, extra, carry }, rid, nowS, { marks: !!find });
   const decided = [
     // BAG1: the carried count cut to what the pack and the bag hold of it, before the decision reads its room
     // AUDIT BAG1 B2/B3: and only the material the held count is of (`heldKey` - a herb, a log, a hide: the client names

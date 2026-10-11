@@ -701,7 +701,14 @@ export function createGatherHost(deps) {
     // GATHER-SAID: every kept act says so (a flag once a session left the second slow answer silent), and why
     if (r?.kept) { hud.toast(r.error === 'auth' || r.error === 'no-session' ? KEPT_SIGNED_OUT_LINE : KEPT_LINE); return; }
     // GATHER-SPEED: a kept harvest let go unanswered stands its node again - it went as its act ended
-    if (r?.error === 'lapsed') { hud.toast(LAPSED_LINE); if (!a && nodeKeyOf) restandNode(nodeKeyOf); return; }
+    if (r?.error === 'lapsed') {
+      hud.toast(LAPSED_LINE);
+      if (!a && nodeKeyOf) {
+        restandNode(nodeKeyOf);
+        for (const k of kinds) { try { k.refused?.(nodeKeyOf, 'lapsed'); } catch (e) { console.warn('[gather] a lapse', e); } }   // AUDIT GATHER-SPEED G2: a tree's fall taken back
+      }
+      return;
+    }
     hud.toast(accountRefusalText(r?.error));
     // GATHER-SPEED: and a refused one - its node went as its act ended, and stands again unless it is another's (node-taken)
     if (a && !a.loose && (r?.error === 'node-taken' || a.fell)) restandOf(a);

@@ -147,9 +147,11 @@ export function treePlan({ node, taken, counting, rank, axe, storesFull, lumberj
  * @returns {import('./gatherHost.js').GatherKind}
  */
 export function treeKind({ book, renderer = null, flatBatchAabb = null, getTexture = null, billboardSize = null, uploadRecord = null }) {
-  /** the falls under way and the logs lying: `{ entry, batch, t, logs? }` */
+  /** the falls under way and the logs lying: `{ entry, batch, t, key }` - AUDIT GATHER-SPEED G2: each its node's key */
   const falls = [];
   const logsLying = [];
+  /** AUDIT GATHER-SPEED G2: the keys a refusal took a fall back from before its logs were laid - they never lie */
+  const unlaid = new Set();
   /** AUDIT 30 A11: the pixels torn down - a fall's logs whose texture came after its pixel went are never laid (an
    *  entry's batch list outlives it, so it could not say so). */
   const torn = new WeakSet();
@@ -227,7 +229,7 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
       b.noShadow = true;
       b.tip = [dx, dz, 0];
       entry.batches.push(b);
-      falls.push({ entry, batch: b, t: 0 });
+      falls.push({ entry, batch: b, t: 0, key: n.key });
       if (LOGS_ARCHIVES.includes(f.base) && getTexture && billboardSize) {
         const t = await getTexture(f.archive);
         if (!t || LOGS_RECORD >= t.recordCount || torn.has(entry)) return;
@@ -237,7 +239,8 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
         const logs = renderer.createBillboardBatch(f.archive, LOGS_RECORD, size, [at]);
         logs._box = flatBatchAabb ? flatBatchAabb([at], size) : [at[0] - size.w, at[1], at[2] - size.w, at[0] + size.w, at[1] + size.h, at[2] + size.w];
         entry.batches.push(logs);
-        logsLying.push({ entry, batch: logs, at });
+        if (unlaid.delete(n.key)) { drop(entry, logs); return; }   // AUDIT GATHER-SPEED G2: refused while its texture came
+        logsLying.push({ entry, batch: logs, at, key: n.key });
       }
     },
     /** Every frame: the falls tip, each gone once it lies flat; the logs are taken when walked over. */
@@ -255,6 +258,16 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
         if (!tr) { logsLying.splice(i, 1); continue; }
         if (Math.hypot(lg.at[0] + tr[0] - feet[0], lg.at[2] + tr[2] - feet[2]) <= LOGS_TAKE_M) { drop(lg.entry, lg.batch); logsLying.splice(i, 1); }
       }
+    },
+    /** AUDIT GATHER-SPEED G2: A FELL REFUSED - the fall is the act's end's now (scenes/gatherHost.js fallNow), so a
+     *  harvest the service refuses, or a kept one let go, stands its tree again: its falling picture and its logs go
+     *  with it, never a tree standing over its own fall. */
+    refused(key) {
+      if (typeof key !== 'string') return;
+      let fell = false, laid = false;
+      for (let i = falls.length - 1; i >= 0; i--) if (falls[i].key === key) { drop(falls[i].entry, falls[i].batch); falls.splice(i, 1); fell = true; }
+      for (let i = logsLying.length - 1; i >= 0; i--) if (logsLying[i].key === key) { drop(logsLying[i].entry, logsLying[i].batch); logsLying.splice(i, 1); laid = true; }
+      if (fell && !laid) unlaid.add(key);   // its logs' texture still under way: laid, they go at once
     },
     /** A pixel torn down: its falls and logs went with its batches. */
     dropped(entry) {

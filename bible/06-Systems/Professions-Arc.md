@@ -1277,7 +1277,7 @@ THE FOUR HOSTS: the gathering host is one (`scenes/gatherHost.js`, built online 
 press): `world.js` and `worldModes.js` WIRED through it; `exterior.js` and `dungeonContext.js` hold no gathering of their
 own (a dungeon's veins are the same host's). Port-Ledger: nothing of DFU's - Daggerfall has no service.
 
-Version: `acct119` (no migration; acct118 on its branch, renumbered past SEAT-LEASE at the merge). Code: the files above. Pins: `test/gatherspeed.test.js` (10) - the round trips
+Version: `acct119` (no migration; acct118 on its branch, renumbered past SEAT-LEASE at the merge). Code: the files above. Pins: `test/gatherspeed.test.js` (10; 14 with the audit's below) - the round trips
 counted, a statement's own call one and a batch one; the answers held to their shape (a harvest's answer and its repeat
 say the same); the seats' rows read once for six asks; the node down as its act ends, up again on a refusal and a
 lapse; the parse and the pump's idle; the cache's minute and the tab's one draw. PIN MOVED: `seat1d_client` (the Levy
@@ -1290,6 +1290,24 @@ within thirty lines of a changed line judged whole - 335 dead, seven equivalent 
 AUDIT30-A5-the-act-s-node-fallen (the fall the act's end's, the A5 pin no longer told the node as its pixel stands from
 the act's own): `audit30_host` A5 now stands the wood again under the act with every flat one place on, and the node's
 own tree must fall - dead.
+
+**AUDIT GATHER-SPEED** (2026-10-11, Mac: "audit this"). A review of the slice's diff against main, each finding read
+against the code before anything moved:
+
+| # | Finding | Disposition |
+|---|---|---|
+| G1 | `gone` stands behind every kind's `gone` and `mark`, and the host asks those of every node near the player every frame (the target's scan, the marks, the groups) - each a storage read of the kept table: hundreds a frame, on the path the slice meant to lighten | FIXED (`net/profBook.js` countingSet): the nodes being counted kept as a set, read again when the book writes the table, the slot changes, or PUMP_IDLE_MAX_MS on (another tab's harvest) |
+| G2 | A tree falls as its act ends now; a refused harvest stood the tree again, but its falling picture finished its fall beside it and its logs lay at its foot for a harvest that never was | FIXED (`scenes/treeHost.js` refused): the fall and the logs taken back by the node's key - logs whose texture was still coming are never laid; a lapse hands the kinds its key too (`gatherHost.js` answered) |
+| G3 | A market read's settle is one batch, one transaction: a statement that throws rolls every row back, where each row was its own batch | KEPT: a row that throws throws out of the read either way, and asks the same row first next time - the account's market stood blocked behind it before as after; every statement is guarded in its WHERE (the Stores' room, the Marks cap), none is known to throw |
+| G4 | A harvest the hour refuses still reads its ground, its track and the Levy's edicts (asked together with the hour's count) | KEPT: three indexed point reads in two trips, against a round trip more for every honest harvest; the account's per-minute door (240) still bounds a flood before the route |
+| G5 | A fresh harvest asked its find's line, the day's finds and the balance whether or not its dice found silver (nine times in ten, none) | FIXED (`server-account/src/professions.js` answerReads `{ marks }`): asked only where a line was struck; a repeat asks as before |
+| G6 | The Levy's and the Tithe's seat come from the isolate's kept minute - a seat struck or witnessed on another isolate is seen up to a minute late | KEPT, as STORM-SHED decided for the Watch: a seat's place moves with a report and by the week, and this isolate's own writes let the rows go at once; the holder, its Tithe and the Levy's law are read as they stand |
+| G7 | A read skipped its "Reading..." draw whenever any act ran - a view or a filter chosen while the window's settle ran looked unheard | FIXED (`ui/marketTab.js` load `{ underAct }`): only the read an act asks waits for the act's own draw |
+| G8 | `goneIn` stood between STORES-ROOM's comment and `storesFullIn` | FIXED: above it |
+| G9 | The kept table parsed by two copies of the same code | FIXED (`parseKept`, one) |
+
+Pins: `test/gatherspeed.test.js` (+4: G1, G2, G5, G7). Mutants: eight more in `tools/mutants/gatherspeed.json` (32), and
+the records the fixes moved re-aimed by content - 38 dead, AUDIT29-C4 equivalent as recorded.
 
 ## 11. Writs - the Work tab
 

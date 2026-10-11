@@ -169,12 +169,16 @@ export function createProfBook({ door, storage = null, character = () => null, n
   // ─── THE KEPT ACTS ─────────────────────────────────────────────────
   let _memory = null;
   let _wrote = 0;   // GATHER-SPEED: the kept table's writes, counted
-  const table = () => {
-    if (_memory) return _memory;
+  /** The kept table's text read as a table - anything else is an empty one. */
+  const parseKept = (raw) => {
     try {
-      const v = JSON.parse(storage?.getItem?.(PROF_KEPT_KEY) ?? 'null');
+      const v = JSON.parse(raw ?? 'null');
       return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
     } catch { return {}; }
+  };
+  const table = () => {
+    if (_memory) return _memory;
+    try { return parseKept(storage?.getItem?.(PROF_KEPT_KEY)); } catch { return {}; }
   };
   const writeTable = (t) => {
     try { storage?.setItem?.(PROF_KEPT_KEY, JSON.stringify(t)); _memory = null; } catch { _memory = t; }
@@ -189,14 +193,21 @@ export function createProfBook({ door, storage = null, character = () => null, n
     if (_memory) return _memory;
     let raw;
     try { raw = storage?.getItem?.(PROF_KEPT_KEY) ?? 'null'; } catch { return {}; }
-    if (raw !== _peek.raw) {
-      let v = null;
-      try { v = JSON.parse(raw); } catch { v = null; }
-      _peek = { raw, table: v && typeof v === 'object' && !Array.isArray(v) ? v : {} };
-    }
+    if (raw !== _peek.raw) _peek = { raw, table: parseKept(raw) };
     return _peek.table;
   };
   const peekHarvests = (key = slot()) => { const h = peekTable()[key]?.harvests; return Array.isArray(h) ? h : []; };
+  /** AUDIT GATHER-SPEED G1: THE NODES BEING COUNTED, as a set - `gone` asks it of every node near the player, every frame
+   *  (the target's scan, the marks, the groups), and a storage read for each was hundreds a frame. Read again when this
+   *  book writes the table, the slot changes, or PUMP_IDLE_MAX_MS on (another tab's harvest). */
+  let _counting = { key: '', wrote: -1, at: -Infinity, set: /** @type {Set<string>} */ (new Set()) };
+  const countingSet = () => {
+    const key = slot(), t = now();
+    if (_counting.key !== key || _counting.wrote !== _wrote || !(t >= _counting.at && t - _counting.at < PUMP_IDLE_MAX_MS)) {
+      _counting = { key, wrote: _wrote, at: t, set: new Set(peekHarvests(key).map((h) => `${h.node}|${h.kind}`)) };
+    }
+    return _counting.set;
+  };
   const keptOf = (key = slot()) => {
     const k = table()[key];
     return {
@@ -482,7 +493,7 @@ export function createProfBook({ door, storage = null, character = () => null, n
     // ─── A HARVEST ──────────────────────────────────────────────────
     /** Whether a node's kind is taken today - by the service's word, or on its way to it (being counted). */
     taken(node, kind) { return state.taken.has(`${node}|${kind}`); },
-    counting(node, kind) { return peekHarvests().some((h) => h.node === node && h.kind === kind); },
+    counting(node, kind) { return countingSet().has(`${node}|${kind}`); },
     /** GATHER-SPEED: WHETHER A NODE'S KIND IS GONE FROM THE WORLD - taken, or being counted. A node stood until its
      *  answer came back from the service (the harvest's round trip, or a kept harvest's minutes), the patch still
      *  growing and the tree still standing after the act that took them. The kinds stand what is gone by this; their

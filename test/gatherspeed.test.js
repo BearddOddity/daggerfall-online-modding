@@ -24,6 +24,7 @@ import { CARRIED_MAX } from '../src/net/bagLaw.js';
 import { createProfBook, PUMP_IDLE_MAX_MS, PROF_KEPT_KEY } from '../src/net/profBook.js';
 import { MINE_ACT } from '../src/net/professionLaw.js';
 import { mineKind } from '../src/scenes/mineHost.js';
+import { treeKind } from '../src/scenes/treeHost.js';
 import { herbKind } from '../src/scenes/herbHost.js';
 import { createGatherHost, aimAt } from '../src/scenes/gatherHost.js';
 import { setForagingHost } from '../src/systems/foragingInstall.js';
@@ -378,4 +379,85 @@ test('MARKET-SPEED client: a view the minute\'s cache answers is drawn once, wit
   draws = 0;
   await tab.load(true);
   assert.equal(draws, 2, 'forced: the wait, then the answer');
+});
+
+// ═══ AUDIT GATHER-SPEED (2026-10-11, Mac: "audit this") ══════════════════════════════════════════════════════════════
+
+test('AUDIT GATHER-SPEED G1: `gone` asked of every node near the player, every frame, reads the storage once - the set of nodes being counted kept until this book writes, the slot changes or PUMP_IDLE_MAX_MS (mutant: counting read off the storage each ask)', async () => {
+  const storage = memStorage();
+  storage.setItem(PROF_KEPT_KEY, JSON.stringify({ 'acct-1|c1': { harvests: [{ node: 'n7', kind: 'ore', rid: 'p7', nextAt: 0, queuedAt: 0, at: 0, character: 'c1', tries: 0 }], withdrawals: [] } }));
+  let t = 1_000;
+  const book = createProfBook({ door: { account: () => 'acct-1', harvest: async () => ({ ok: false, error: 'offline' }) }, storage, character: () => 'c1', now: () => t, sleep: () => Promise.resolve() });
+  const reads = storage.reads;
+  let gone = 0;
+  for (let i = 0; i < 300; i++) gone += book.gone(`n${i}`, 'ore') ? 1 : 0;
+  assert.equal(gone, 1, 'the one being counted');
+  assert.ok(storage.reads - reads <= 1, `three hundred asks: ${storage.reads - reads} reads`);
+  await book.harvest({ node: 'n8', kind: 'ore', climate: 231, region: 59, act: {}, at: 1 });
+  assert.equal(book.gone('n8', 'ore'), true, 'a harvest this book kept: at once');
+  // another tab's: within PUMP_IDLE_MAX_MS
+  const other = JSON.parse(storage.getItem(PROF_KEPT_KEY));
+  other['acct-1|c1'].harvests.push({ node: 'n9', kind: 'ore', rid: 'p9', nextAt: 0, queuedAt: 0, at: 0, character: 'c1', tries: 0 });
+  storage.setItem(PROF_KEPT_KEY, JSON.stringify(other));
+  t += PUMP_IDLE_MAX_MS;
+  assert.equal(book.gone('n9', 'ore'), true, 'another tab\'s, PUMP_IDLE_MAX_MS on');
+});
+
+test('AUDIT GATHER-SPEED G2: a tree felled as its act ended and then refused takes back its fall and its logs - laid, or still to be laid (mutants: the refusal leaves the fall; the logs laid after it)', async () => {
+  const made = [], destroyed = new Set();
+  let release = null;
+  const kind = treeKind({
+    book: { taken: () => false, counting: () => false }, renderer: { createBillboardBatch: (a, r, size, centers) => { const b = { a, r, centers }; made.push(b); return b; }, destroyBatch: (b) => destroyed.add(b) },
+    getTexture: () => new Promise((res) => { release = () => res({ recordCount: 99 }); }), billboardSize: () => ({ w: 1, h: 1 }), uploadRecord: () => {}, flatBatchAabb: () => [0, 0, 0, 1, 1, 1],
+  });
+  const forest = { base: 504, archive: 504, groups: new Map([['g', { batch: { archive: 504, record: 12 }, size: { w: 4, h: 8 }, centers: [[5, 0, 5], [9, 0, 9]] }]]) };
+  const entry = { forest, batches: [] };
+  const fell = (key, i) => kind.felled({ key, flat: { group: 'g', i } }, { entry, from: [0, 0, 0], tr: [0, 0, 0] });
+  // refused after its logs lay
+  const a = fell('tree:a', 0);
+  release(); await a;
+  assert.equal(entry.batches.length, 2, 'the fall and the logs');
+  kind.refused('tree:a', 'prof-rank');
+  assert.equal(entry.batches.length, 0, 'both gone');
+  assert.equal(destroyed.size, 2);
+  // refused while its logs' texture is under way: they are never laid
+  const b = fell('tree:b', 1);
+  assert.equal(entry.batches.length, 1, 'the fall, its logs to come');
+  kind.refused('tree:b', 'lapsed');
+  release(); await b;
+  assert.deepEqual(entry.batches, [], 'nothing lies');
+  assert.equal(made.length, 4, 'its logs were made, and let go at once');
+});
+
+test('AUDIT GATHER-SPEED G5: a fresh harvest whose dice found no silver asks after no find - its line, the day\'s finds and the balance are read only where a find was struck (mutant: the find\'s reads always asked)', async () => {
+  const s = await stand();
+  const mac = await s.player('Mac');
+  const seen = { with: 0, without: 0 };
+  for (const p of PATCHES.slice(20, 30)) {
+    const sql = [];
+    const db = Object.create(s.env.DB);
+    db.prepare = (q) => { sql.push(q); return s.env.DB.prepare(q); };
+    const a = await harvestNode({ db, nowS: NOW, rand }, mac.row, s.env, harvestBody(mac, p));
+    assert.equal(a.ok, true, JSON.stringify(a));
+    const asked = sql.filter((q) => q === 'SELECT * FROM marks_ledger WHERE actor = ? AND rid = ?').length;
+    assert.equal(asked, a.marks ? 1 : 0, `a harvest ${a.marks ? 'with' : 'without'} a find`);
+    seen[a.marks ? 'with' : 'without']++;
+  }
+  assert.ok(seen.without > 0, 'a harvest without a find was asked');
+});
+
+test('AUDIT GATHER-SPEED G7: a view chosen while some other market act runs draws its wait - only the read an act asks waits for the act\'s own draw (mutant: every read under an act undrawn)', async () => {
+  let draws = 0, busy = true;
+  const book = {
+    state: { open: true, balance: 10, road: [], counts: {} }, pending: 0, busy: false, cached: () => null, fresh: () => false,
+    read: async () => ({ ok: true, data: { rows: [], medians: {} } }), settle: async () => ({ ok: true, settled: 0 }),
+  };
+  const m = { book, stores: () => new Map(), region: 17, regionNameOf: () => 'Daggerfall', hubs: {}, name: (k) => k, countName: (k) => k, pieces: () => [], board: null };
+  const tab = createMarketTab(m, { busy: () => busy, run: async (f) => { await f(); }, rerender: () => { draws++; }, nowS: () => 0, alive: () => true });
+  await tab.load(false);
+  assert.equal(draws, 2, 'chosen under another act: its wait, then its answer');
+  draws = 0;
+  await tab.load(true, { underAct: true });
+  assert.equal(draws, 1, 'the act\'s own read: its answer alone (the act\'s end draws its wait)');
+  busy = false;
 });
