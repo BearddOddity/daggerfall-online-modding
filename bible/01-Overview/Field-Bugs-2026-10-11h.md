@@ -8,6 +8,7 @@ load." and its Try again. Read on the code as it stands at main's `314ff136`.
 |---|---|---|---|
 | 1 | "Time to take a castle and nothing happens"; "The standings did not load." | the Turning's read of every guild pledged anywhere bound them all in one statement; D1 refuses a statement of more than 100 parameters, and every seat route settles the Turning first - so past 100 guilds every seat read answered `server`, and no Charter was claimed | fixed (SEAT-CAP) |
 | 2 | "The server is expericing a bad load right now" - after SEAT-CAP deployed | every seat request ran the whole settle while the week was due, all at once; under load each outlasted its client's wait and was cancelled before its batch committed, so the week never settled and every client's minute retry began another | fixed (SEAT-LEASE) |
+| 3 | "So it works, but it takes forever to load" - after SEAT-LEASE deployed | a seat board is some 19 to 35 D1 statements one after another, and each waited 0.4 to 2 seconds on a busy primary; what kept it busy is not readable from the code alone | measured (D1-LOAD) - the reading below |
 
 ## SEAT-CAP: every guild list the seats bind is read IN_CHUNK at a time (1)
 
@@ -80,3 +81,31 @@ unsettled, a pledge `seats-settling` 503, the clock pending; run out, the next r
 one read and no lease; a settle that throws frees it. `tools/mutants/seat_lease.json` (5, all dead). acct118 (the
 version pins moved); `seat1c.json` and `season1.json`'s records on the route's settle line re-aimed by content, and
 `seat1c_client.test.js`'s host pin.
+
+## D1-LOAD: what fills the database, read by the operator (3)
+
+`tools/d1Load.mjs`, `.github/workflows/d1-load.yml` (Actions, "Account database load", run by hand).
+
+FOUND. After SEAT-LEASE the seat routes answered, but slowly: a one-row read took 0.6 to 6.6 seconds where a route that
+asks the database nothing took 0.2, in a once-a-minute rhythm that stood with the seats switched off too - so not the
+seats. A seat board is some 19 statements one after another at a quiet seat (a session, the witnesses, the pledges, the
+holder, the Legacy, the reader's guild, its pledges and politics, the battles, the Chronicle), more at a held and
+contested one, so a second's wait a statement is half a minute a board. Read from the code: the 1,508 distinct statements
+the Worker-backed suite runs, each through `EXPLAIN QUERY PLAN` on the migrated schema, show no full scan of a growing
+table on a hot route - the scans are developer reports, the hourly sweeps and two small ones (a card table's stake sum, a
+Sellsword's handle). The sessions' freshness writes are SCALE1's, once per SESSION_TOUCH_S. What fills the primary is in
+the service's own metrics, which nothing read back.
+
+THE READING. The workflow asks, with the deploy's token, writing nothing:
+- D1's query insights (`wrangler d1 insights`, sum of time): the statements that took the most of the database's time;
+- the service's metrics points (metrics.js) through the Analytics Engine SQL API, every count weighted by
+  `_sample_interval`: the D1 wait by route (`double5`, most first), the window minute by minute, the clock's jobs
+  (`CRON`), and every answer that was not a 2xx.
+The questions are the tool's (`--names`, `--sql`, `--table`), the window whole hours from 1 to 168, refused before it
+reaches the SQL. A question refused (the token lacks Account Analytics: Read) is a warning, and the rest still answer.
+
+Pinned by `test/d1load.test.js` (2): the questions over the service's own dataset, weighted, ordered by the wait, the
+window's guard, an answer drawn and an empty one said; the workflow by hand only, its input read once as environment, its
+own queue, writing nothing, and its metrics step run under bash over a fake SQL API - every question drawn, a refusal
+warned and never drawn. `tools/mutants/d1load.json` (7: 6 dead, 1 equivalent as recorded - the status check beside
+loadTable's own refusal).
