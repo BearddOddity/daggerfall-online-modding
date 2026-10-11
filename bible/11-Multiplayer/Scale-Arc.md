@@ -62,8 +62,8 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE5a | At 500 online: the hub's hello and leave without a walk of every socket, a busy refusal that mints nothing, the World tab's count past the roster's cut | Yes, once | **Deployed** (2026-10-10, #755; world189) |
 | SCALE5 | Past about 1-2k players: the hub split (presence and social state per account, world chat over shard rooms), slimmer or binary poses, pose-only halo frames | Yes | **Planned** as the slices below (THE PLAN PAST 2,000) |
 | SCALE2c | The reconnect wave spread by the hub's own count; a full foes frame that says nothing said once - client only | No | **Built** (2026-10-10, this branch) |
-| SCALE4f | The mint's realm row read once (four statements in one), and its guild membership once (three in one); every statement's D1 wait, rows and a replica's serving on the metrics point; an overloaded D1 a 503 | No | **Built** (2026-10-10, this branch; acct110) - the writes stay, with their reasons |
-| SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | **Built** (2026-10-10, this branch; acct110) |
+| SCALE4f | The mint's realm row read once (four statements in one), and its guild membership once (three in one); every statement's D1 wait, rows and a replica's serving on the metrics point; an overloaded D1 a 503 | No | **Built** (2026-10-10, this branch; acct111) - the writes stay, with their reasons |
+| SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | **Built** (2026-10-10, this branch; acct111) |
 | SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | **Built** (2026-10-10, this branch; relay world191, NOT YET DEPLOYED) - with the relay's settings at run time and a halo at a walking rate |
 | SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | **Built** (2026-10-11, this branch; relay world192, NOT YET DEPLOYED) - the hub's sixteen shards and each region's four, the World and Region tabs' lists and the search |
 | SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | Planned, by the metrics |
@@ -928,10 +928,11 @@ the room's 4 MiB/s foes budget, past which the relay drops frames silently, real
 `tools/mutants/scale2c.json`: 17 mutants, 17 dead. One more survived its first run, `sent` checking a cell that `skip`
 already checks. It was redundant, so it is gone.
 
-## SCALE4f: built (2026-10-10, this branch - acct110, no migration)
+## SCALE4f: built (2026-10-10, this branch - acct111, no migration)
 
 acct107, then acct108 and acct109, on the branch: main's LW15 (#749) took acct107 first, TECH1 (#746) acct108 and
-PATRON-LOAD (#763) acct109, so the merges moved this deploy to acct110 and every ACCOUNT_VERSION pin with it.
+PATRON-LOAD (#763) acct109 and PATRON-LOAD II (#767) acct110, so the merges moved this deploy to acct111 and every
+ACCOUNT_VERSION pin with it.
 
 The account service's half of the plan, first part.
 
@@ -1057,14 +1058,14 @@ PIN MOVED:
   INT7-AUDIT-REALM-ANOTHERS-ARMS and -THE-LEVEL-UNJUDGED, LEGACY7-dead-held-at-the-door (still equivalent: a death clears
   the lease) and -tomb-wears-house, LEGACY7-mint-no-house, and REALM-DOOR-rc-any-realm-shaped-id and -rc-any-account.
   All dead. And SCALE1-B-statements-uncounted, whose prepare is timed now.
-- ACCOUNT_VERSION's pins (18 files, and the fb1004d and gatekeys records) to acct107, then acct108 at the merge past LW15, then acct109 at the merge past TECH1, then acct110 at the merge past PATRON-LOAD.
+- ACCOUNT_VERSION's pins (18 files, and the fb1004d and gatekeys records) to acct107, then acct108 at the merge past LW15, then acct109 at the merge past TECH1, then acct110 at the merge past PATRON-LOAD, then acct111 at the merge past PATRON-LOAD II.
 
 **Found on the way, fixed.** LEGACY7-model-rewritten survived, on main too: a line's model change sent with the stored
 copy's `base` reached the UPDATE, which keeps the model column, and would have written a record that says another
 model. Only a write with no `base` was pinned, and the stale path refused that one. `test/legacy7_service.test.js` now
 sends one made from the stored copy, and the mutant dies.
 
-## SCALE4g: built (2026-10-10, this branch - acct110, beside SCALE4f; no migration)
+## SCALE4g: built (2026-10-10, this branch - acct111, beside SCALE4f; no migration)
 
 SCALE4d put the mint's reads on a D1 session opened `first-primary`. The reads a tab keeps asking - the heartbeat
 (every minute in a town), the account view, the realm's list, the professions' state and the day's motherlodes - still
@@ -1356,7 +1357,7 @@ PIN MOVED, each a pin that read a line SCALE5c moved:
   AUDIT-WB12d-T-relay-hello-word-in-every-room
   re-aimed and still equivalent, as recorded.
 
-**The deploy.** One announced relay drop, with SCALE5b's world191 (neither is deployed). The account service (acct110)
+**The deploy.** One announced relay drop, with SCALE5b's world191 (neither is deployed). The account service (acct111)
 ships first or with it. No database migration.
 
 **Left:** nothing of the slice - part two, below, is the region channels.

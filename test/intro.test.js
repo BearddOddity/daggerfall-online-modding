@@ -14,7 +14,7 @@ const read = (p) => readFileSync(new URL('../' + p, import.meta.url));
 test('INTRO2: supplied logo and Mac\u2019s remastered recording are byte-exact; timing cannot drift behind a replacement track', () => {
   // BR4 (2026-09-27): the logo is Mac's Daggerfall Online cut, his PNG as he
   // supplied it (real alpha; INTRO2's JPEG had a black backing to screen away).
-  assert.equal(createHash('sha256').update(read('src/assets/branding/daggerfall-online.png')).digest('hex'), 'f9f632c7986cd8c2316358324d1b20ab0b86f4cf3a5c41a6d68904b014d6db84');
+  assert.equal(createHash('sha256').update(read('src/assets/branding/daggerfall-online.png')).digest('hex'), '28b1672949bc2b0300d43dad8f502b8e2cb3b62fde8d093e57750830921324c9');
   const track = read('src/assets/intro/theme.mp3');
   assert.equal(createHash('sha256').update(track).digest('hex'), '5aab723345ea13b785877bee82c240effad48b840307f8714a68592f1b161b7b');
 

@@ -18,15 +18,20 @@ import { CURSOR_CSS } from './plusCursor.js';   // PLUS7: the gauntlet pointer
 import { SIGIL_RUNE_TILE_URL } from './sigilRune.js';   // SIGIL-UI: the rune in a sigil weapon's tile corner (AUDIT MERGE-PLUS D5: a picture, its outline drawn in)
 import { PROF_ACT_CSS } from './profActStyle.js';   // PROF-RETICLE: the acts on the crosshair, dressed
 import { PROF_STATION_CSS } from './profStationStyle.js';   // PROF-STATIONS: the stations' acts, dressed
+import { plusDress, GRIMOIRE_DRESS, mountGrimoireDress } from './grimoireDress.js';   // GRIM1: the DFO Grimoire dress over the kit
 
 export const PLUS_STYLE_ID = 'enhanced-plus-style';
 
 /** PLUS2: the colour in effect - the stored one if it is a theme, else Slate. */
 export const plusTheme = () => (Object.hasOwn(PLUS_THEMES, getPref('plusTheme')) ? getPref('plusTheme') : DEFAULT_PLUS_THEME);
-/** Wear the stored colour on the page (the theme rules key on the root's data-plus-theme). */
+/** Wear the stored colour on the page (the theme rules key on the root's data-plus-theme). GRIM1: under the DFO
+ *  Grimoire dress (ui/grimoireDress.js) the colour stands at Slate - the bare kit the dress repaints - and the dress is
+ *  laid; the player's own colour stays on the shelf for when they wear Enhanced Plus again. */
 export function applyPlusTheme(doc = globalThis.document) {
   const root = doc?.documentElement;
-  if (root?.dataset) root.dataset.plusTheme = plusTheme();
+  if (!root?.dataset) return;
+  if (plusDress() === GRIMOIRE_DRESS) { root.dataset.plusTheme = DEFAULT_PLUS_THEME; mountGrimoireDress(doc); return; }
+  root.dataset.plusTheme = plusTheme();
 }
 /** Choose a colour: stored, and worn at once - no reload, the rules are already on the page. */
 export function setPlusTheme(id, doc = globalThis.document) {

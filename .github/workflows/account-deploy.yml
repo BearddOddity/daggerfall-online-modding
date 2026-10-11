@@ -1034,10 +1034,20 @@ jobs:
             echo "::error::/v1/homes/decor/place did not refuse a guest as homes-need-account ($code)"; cat /tmp/place.json || true; exit 1
           fi
 
-          handle="smoke$(date +%s | tail -c 7)"
-          code=$(curl -sS --max-time 25 -o /tmp/reg.json -w '%{http_code}' -X POST "$base/v1/auth/register" \
-            -H 'content-type: application/json' \
-            -d "{\"secret\":\"$secret\",\"handle\":\"$handle\",\"password\":\"a-long-enough-password\",\"terms\":\"$LEGAL_TERMS\",\"privacy\":\"$LEGAL_PRIVACY\"}")
+          # PATRON-LOAD II (2026-10-11, the owner's screenshot of #766's deploy: "register -> 500 {"error":"server"}"):
+          # A REGISTRATION'S 5xx IS ASKED AGAIN TOO, as every `post` above is. It was the one call here asked once, and
+          # D1 overloaded (the traders read, bible/06-Systems/Living-World-II.md 8.5) answered it 500 - read as the
+          # PBKDF2 cap, the deploy failed though its Worker was live. Each try a new handle, so a first try the database
+          # took is never a second's `handle-taken`; the cap's 500 is every try's, and still fails.
+          for i in $(seq 1 7); do
+            handle="smoke$(date +%s | tail -c 7)$i"
+            code=$(curl -sS --max-time 25 -o /tmp/reg.json -w '%{http_code}' -X POST "$base/v1/auth/register" \
+              -H 'content-type: application/json' \
+              -d "{\"secret\":\"$secret\",\"handle\":\"$handle\",\"password\":\"a-long-enough-password\",\"terms\":\"$LEGAL_TERMS\",\"privacy\":\"$LEGAL_PRIVACY\"}") || code=000
+            if [ "${code#5}" = "$code" ] && [ "$code" != "000" ]; then break; fi
+            echo "  register -> $code (attempt $i)" >&2
+            sleep 5
+          done
           echo "register -> $code"
           cat /tmp/reg.json || true
           echo

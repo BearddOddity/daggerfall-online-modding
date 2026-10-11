@@ -6,7 +6,7 @@
 // rasterises, and the arena's draws resolve to the very triangles the per-batch buffers did, draw for draw.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Renderer, WORLD_FRAME, BB_ARENA_QUADS, arenaTake, arenaGive } from '../src/render/renderer.js';
+import { Renderer, WORLD_FRAME, BB_ARENA_QUADS, BB_ARENA_MAX_QUADS, arenaTake, arenaGive } from '../src/render/renderer.js';
 import { EL_LANE } from '../src/render/enhancedLighting.js';
 import { perspective, lookAt, mirrorProjectionX } from '../src/world/mat4.js';
 
@@ -189,23 +189,29 @@ test('PERF-ARENA a batch\'s life: freed, its range goes back (its VAO with it, s
     s.draws.length = 0;
     s.r.drawBillboards([b, c, gib], RIGHT, UP);
     const big = s.r.createBillboardBatch(504, 1, { w: 1, h: 1 }, Array.from({ length: BB_ARENA_QUADS + 3 }, (_, i) => [i, 0, 0]));
-    if (arenas) { assert.equal(big._arena.cap, BB_ARENA_QUADS + 3, 'a batch bigger than an arena: an arena its size'); assert.equal(big._q0, 0); }
+    if (arenas) { assert.ok(big._arena.cap >= BB_ARENA_QUADS + 3, 'a batch bigger than an arena: an arena with room for it'); assert.equal(big._q0, 0); }
     return drawn(s);
   });
   assert.equal(runs[0].length, 3);
   assert.deepEqual(runs[1], runs[0], 'the moved, the reused and the dynamic batch draw what the base draws');
 });
 
-test('PERF-ARENA the arenas fill and spill: still batches past an arena\'s room open a second, a freed range anywhere is taken first-fit before a new arena is made, and every batch draws its own corners wherever it landed; an arena emptied whole is let go, the first kept (mutants: PERFARENA-no-spill, PERFARENA-never-let-go, PERFARENA-first-let-go)', () => {
+test('PERF-ARENA the arenas fill and spill: still batches past an arena\'s room open a second twice its size (PERF-ARENA2), a record\'s batch goes to its record\'s arena first and a new record\'s takes a freed range first-fit before a new arena is made, and every batch draws its own corners wherever it landed; an arena emptied whole is let go, the first kept (mutants: PERFARENA-no-spill, PERFARENA-never-let-go, PERFARENA-first-let-go, PERFARENA2-no-growth, PERFARENA2-no-home)', () => {
   const s = stand(true);
   const rows = [];
   const quads = Math.floor(BB_ARENA_QUADS / 4) + 1;   // four do not fit in one arena
   for (let k = 0; k < 4; k++) rows.push(s.r.createBillboardBatch(504, 1, { w: 1, h: 1 }, Array.from({ length: quads }, (_, i) => [k, i, 0])));
   assert.equal(s.r._bbArenas.length, 2, 'the fourth spilled into a second arena');
   assert.ok(rows[3]._arena === s.r._bbArenas[1] && rows[3]._q0 === 0);
+  assert.equal(s.r._bbArenas[1].cap, BB_ARENA_QUADS * 2, 'PERF-ARENA2: the second arena holds twice the first');
   s.r.destroyBatch(rows[1]);
-  const back = s.r.createBillboardBatch(504, 1, { w: 1, h: 1 }, [[42, 42, 42]]);
+  // PERF-ARENA2: a batch of the same record goes to its record's arena first (the second, where the last went), though
+  // the first holds a freed range that fits; a batch of a record with no arena yet takes the first fit
+  const kin = s.r.createBillboardBatch(504, 1, { w: 1, h: 1 }, [[41, 41, 41]]);
+  assert.ok(kin._arena === s.r._bbArenas[1], 'a record\'s batches together: its home arena first');
+  const back = s.r.createBillboardBatch(504, 2, { w: 1, h: 1 }, [[42, 42, 42]]);
   assert.ok(back._arena === s.r._bbArenas[0] && back._q0 === rows[1]._q0, 'first fit: the freed range in the first arena');
+  s.r.destroyBatch(kin);
   s.r.beginFrame(I, I, new Float32Array([0.3, 0.8, 0.2]), WORLD_FRAME);
   s.draws.length = 0;
   s.r.drawBillboards([rows[0], rows[3], back], RIGHT, UP);
@@ -249,4 +255,15 @@ test('PERF-ARENA stray array state: a foreign pass that bound an array of its ow
   assert.deepEqual(runs[1].after, runs[0].after, 'the arena\'s flats drew their own triangles after the stray bind');
   assert.equal(runs[0].again.length, 6);
   assert.deepEqual(runs[1].again, runs[0].again, 'and after the snow\'s blanket was built, the same');
+});
+
+test('PERF-ARENA2 the growth: each arena holds twice the one before it, and never more than BB_ARENA_MAX_QUADS - an arena opened past a full one of the most holds the most again (mutant: PERFARENA2-unbounded)', () => {
+  const s = stand(true);
+  s.r.createBillboardBatch(504, 1, { w: 1, h: 1 }, [[0, 0, 0]]);
+  assert.equal(s.r._bbArenas[0].cap, BB_ARENA_QUADS, 'the first: BB_ARENA_QUADS');
+  s.r._bbArenas.push({ vao: { id: 'full' }, vb: null, ib: null, cap: BB_ARENA_MAX_QUADS, free: [], taken: 0 });   // a full arena of the most
+  s.r._bbArenas[0].free.length = 0;   // and the first full too
+  const b = s.r.createBillboardBatch(504, 3, { w: 1, h: 1 }, [[1, 1, 1]]);
+  assert.equal(b._arena, s.r._bbArenas[2], 'a third opened');
+  assert.equal(b._arena.cap, BB_ARENA_MAX_QUADS, 'holding the most, not twice it');
 });

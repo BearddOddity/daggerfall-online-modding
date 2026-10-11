@@ -32,3 +32,7 @@ GrimoireUI is the classic skin with the pack worn over it, as Daggerfall Unity's
 loose-file injection does: every classic screen keeps its 320x200 layout and hit
 rects, only the texture behind it is the pack's (src/ui/packArt.js), and the two
 fonts draw through DFU's SDF arm (src/ui/text.js) when GUI/SDFFontRendering is on.
+
+DFO Grimoire (GRIM1, 2026-10-09) is the pack's second use: the ENHANCED skin dressed in these same pictures, cut at run
+time by src/ui/grimoireArt.js (nothing derived is committed) and painted by src/ui/grimoireDress.js - the UI panel's
+fourth look. See bible/10-UI/Overhauls.md, GRIM1.
