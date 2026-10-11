@@ -165,8 +165,8 @@ test('SCALE4f every statement a request awaits is timed, its answers\' rows summ
     const rs = await db.batch([db.prepare('UPDATE a SET x = 1'), db.prepare('UPDATE b SET y = 2').bind(9)]);
     assert.equal(rs.length, 2, 'D1\'s batch took its own statements');
     assert.equal(tally.n, 6, 'six prepared');
-    assert.equal(tally.ms, 7 + 5 + 11 + 4 + 13, 'every wait: first, all, run, raw and the batch whole');
-    assert.equal(tally.rr, 3 + 3 + 1 + 1, 'the rows read that the answers said (a first and a raw say none)');
+    assert.equal(tally.ms, 5 + 5 + 11 + 4 + 13, 'every wait: first (SCALE4h, PIN MOVED: run as its own all()), all, run, raw and the batch whole');
+    assert.equal(tally.rr, 3 + 3 + 3 + 1 + 1, 'the rows read that the answers said (SCALE4h: a first\'s now too; a raw says none)');
     assert.equal(tally.rw, 2 + 1 + 1, 'and written');
     assert.equal(tally.replica, 1, 'the one a replica served');
   } finally { Date.now = () => T0 * 1000; }
@@ -180,7 +180,7 @@ test('SCALE4f the request\'s point carries D1\'s rows written, its wait, its row
     const serve = async (req, env) => { await env.DB.prepare('SELECT replica FROM t').all(); await env.DB.prepare('UPDATE t SET a = 1').run(); clock.t += 2; return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }); };
     await measured(new Request('https://accounts.invalid/v1/heartbeat', { method: 'POST' }), { DB: fakeD1(clock), METRICS: { writeDataPoint: (p) => points.push(p) } }, serve);
     assert.equal(points.length, 1);
-    assert.deepEqual(points[0].doubles, [5 + 11 + 2, 200, 2, 2, 16, 6, 1], 'wall ms, the status, statements, rows written, D1\'s wait, rows read, a replica\'s');
+    assert.deepEqual(points[0].doubles.slice(0, 7), [5 + 11 + 2, 200, 2, 2, 16, 6, 1], 'wall ms, the status, statements, rows written, D1\'s wait, rows read, a replica\'s');   // SCALE4h (PIN MOVED): the hot rows' four follow - test/scale4h.test.js
     assert.deepEqual(points[0].indexes, ['/v1/heartbeat']);
   } finally { Date.now = () => T0 * 1000; }
 });

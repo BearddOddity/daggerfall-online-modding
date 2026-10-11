@@ -136,9 +136,9 @@ test('RENOWN1 the track: one row a character, the level DERIVED from its total; 
   const db = d1();
   const P = await player(db);
   let r = await reportRenownXp({ db, nowS: T0 }, P, { character: 'char-aaaa', xp: 150, name: 'Mara Venn' });
-  assert.deepEqual(r, { character: 'char-aaaa', xp: 150, level: 2, credited: 150, rose: true });
+  assert.deepEqual(r, { character: 'char-aaaa', xp: 150, level: 2, credited: 150, rose: true, room: RENOWN_XP_HOUR_MAX - 150 });   // SCALE4h (PIN MOVED): what the hour still takes
   r = await reportRenownXp({ db, nowS: T0 + 1 }, P, { character: 'char-aaaa', xp: 50 });
-  assert.deepEqual(r, { character: 'char-aaaa', xp: 200, level: 2, credited: 50, rose: false }, 'no new level, no rise');
+  assert.deepEqual(r, { character: 'char-aaaa', xp: 200, level: 2, credited: 50, rose: false, room: RENOWN_XP_HOUR_MAX - 200 }, 'no new level, no rise');
   // the hour, across two characters: 200 + 5000*2 + (the rest) = RENOWN_XP_HOUR_MAX (15,000 since RENOWN-ACCOUNT)
   for (let i = 0; i < 2; i++) assert.equal((await reportRenownXp({ db, nowS: T0 + 2 + i }, P, { character: 'char-bbbb', xp: 5000 })).credited, 5000);
   r = await reportRenownXp({ db, nowS: T0 + 9 }, P, { character: 'char-bbbb', xp: 5000 });

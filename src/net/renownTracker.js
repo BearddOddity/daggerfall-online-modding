@@ -51,14 +51,16 @@
 // What is earned is held here and sent every RENOWN_REPORT_MS (sooner when a
 // report's worth has piled up), one report at a time. The service's
 // answer is the truth: its total, its level, and whether the level ROSE
-// (with the signed order the rooms take). A report the network loses is
+// (with the signed order the rooms take). SCALE4h: every RENOWN_COALESCE_MS
+// instead while the answer would say nothing the page cannot - no rise, the
+// hour's bound not near (renownReportSoon); the bar draws what waits. A report the network loses is
 // kept for the next; one the hour's bound cut short is not re-sent - the
 // service said how much counted.
 //
 // Pure: every clock and the service are arguments.
 // ═══════════════════════════════════════════════════════════════════
 
-import { RENOWN_REPORT_MS, RENOWN_XP_REPORT_MAX } from './renown.js';
+import { RENOWN_REPORT_MS, RENOWN_COALESCE_MS, RENOWN_XP_REPORT_MAX, renownProgress } from './renown.js';
 import { KNIGHT_CITY_WATCH } from '../characters/mobileTypes.js';
 
 /** How recent a blow of yours must be when a foe dies for it to pay you - half a minute of the fight. */
@@ -137,6 +139,8 @@ export function _resetRenownKillsForTests() { _struck = new WeakMap(); _onKill =
  *   `capped`   whether the hour's bound cut this report short: never at the cap's total (`max`), where there is no
  *              hour to speak of, and never for a repeat (a report already credited, answered again);
  *   `xp`       RENOWN4: the track's total as the service now holds it, for the page's own bar (ui/hudRenown.js) -
+ *              null for an answer without one;
+ *   `room`     SCALE4h: what the hour's bound still takes, as the service now holds it (renownReportSoon reads it) -
  *              null for an answer without one.
  */
 export function renownAnswer(data, sent, said = null) {
@@ -145,7 +149,28 @@ export function renownAnswer(data, sent, said = null) {
   const announce = level !== null && data?.rose === true && (said === null || level > said) ? level : null;
   const capped = Number.isSafeInteger(data?.credited) && data.credited < sent && !data?.max && !data?.repeat;
   const xp = Number.isSafeInteger(data?.xp) && data.xp >= 0 ? data.xp : null;
-  return { level, order, announce, capped, xp };
+  const room = Number.isSafeInteger(data?.room) && data.room >= 0 ? data.room : null;   // SCALE4h: what the hour still takes
+  return { level, order, announce, capped, xp, room };
+}
+
+/**
+ * SCALE4h (2026-10-11, the plan's "10k writes"; bible/11-Multiplayer/Scale-Arc.md SCALE4h): IS THE NEXT REPORT'S
+ * ANSWER ONE THE PAGE NEEDS SOON? Then it goes at the minute's pace (RENOWN_REPORT_MS), as every report did; else what
+ * is earned waits RENOWN_COALESCE_MS, drawn meanwhile as the bar's ghost (ui/hudRenown.js). Soon, when:
+ *   - the hour's bound is spent (`capped`): what is earned in it is said within it, credited nothing, as before;
+ *   - the track's total (`xp`) or the hour's room (`room`) is not known - the next answer says them;
+ *   - what is earned (`pending`) reaches the room: the bound's word, and the sigils' stop, come at the minute's pace;
+ *   - what is earned completes the level: the rise, and its signed order to the rooms, come at the minute's pace.
+ * At the cap's total no rise is left to say. Pure.
+ * @param {{ xp: number|null, pending: number, room: number|null, capped: boolean }} o
+ */
+export function renownReportSoon({ xp, pending, room, capped }) {
+  if (capped) return true;
+  if (!Number.isSafeInteger(xp) || !Number.isSafeInteger(room)) return true;
+  const n = Number.isFinite(pending) && pending > 0 ? pending : 0;
+  if (n >= /** @type {number} */ (room)) return true;
+  const p = renownProgress(/** @type {number} */ (xp));
+  return p.need > 0 && n >= p.need - p.into;
 }
 
 /** The service's refusals that will not change by trying again: this character (or this build) cannot report. */
@@ -191,13 +216,17 @@ export function renownRid(rand = (b) => globalThis.crypto.getRandomValues(b)) {
  *
  * SEAT1b (Seats-Arc 4.2): `region()` - the region the player stands in as XP is earned (0-61, or null) - rides each
  * report as its `region`, which the account service keeps for the character's guild where it pledged a seat there.
+ *
+ * SCALE4h: `soon()` - whether the next answer is one the page needs at the minute's pace (renownReportSoon, the host's
+ * word over what it last heard); not soon, a report waits RENOWN_COALESCE_MS. None given, every report is soon, as
+ * before. A refusal's wait is its own either way.
  * @param {{ report: (c: string, xp: number, name: string|null, rid: string, region?: number|null) => Promise<any>,
  *   leave?: ((c: string, xp: number, name: string|null, rid: string, region?: number|null) => any)|null,
  *   character: () => string|null, name?: () => string|null, earning?: () => boolean, now?: () => number,
  *   onAnswer?: (data: any, sent: number) => void, onStop?: (error: string) => void, rid?: () => string,
- *   region?: () => number|null }} o
+ *   region?: () => number|null, soon?: () => boolean }} o
  */
-export function createRenownTracker({ report, leave = null, character, name = () => null, earning = () => true, now = () => Date.now(), onAnswer = () => {}, onStop = () => {}, rid = () => renownRid(), region = () => null }) {
+export function createRenownTracker({ report, leave = null, character, name = () => null, earning = () => true, now = () => Date.now(), onAnswer = () => {}, onStop = () => {}, rid = () => renownRid(), region = () => null, soon = () => true }) {
   /** earned, in no report yet - by the region it was earned in (SEAT1b, Seats-Arc 4.2: "The Renown report grows
    *  `region`"; null where none was known), so one report never names a region XP was not earned in */
   const pend = new Map();
@@ -240,8 +269,11 @@ export function createRenownTracker({ report, leave = null, character, name = ()
     return held;
   };
 
-  /** How long since the last report before the next may go: a minute, doubling with each refusal in a row. */
-  const waitMs = () => (refused ? Math.min(RENOWN_BACKOFF_MAX_MS, RENOWN_REPORT_MS * 2 ** (refused - 1)) : RENOWN_REPORT_MS);
+  /** SCALE4h: the host's word that the next answer is wanted at the minute's pace - a word that throws is soon. */
+  const soonNow = () => { try { return soon() !== false; } catch { return true; } };
+  /** How long since the last report before the next may go: a minute, doubling with each refusal in a row - and
+   *  (SCALE4h) RENOWN_COALESCE_MS while the answer would say nothing the page needs soon. */
+  const waitMs = () => (refused ? Math.min(RENOWN_BACKOFF_MAX_MS, RENOWN_REPORT_MS * 2 ** (refused - 1)) : soonNow() ? RENOWN_REPORT_MS : RENOWN_COALESCE_MS);
 
   const due = (t = now()) => !stopped && !inFlight && (held !== null || pendingXp() > 0)
     && (t - lastAt >= waitMs() || (!refused && held === null && pendingXp() >= RENOWN_XP_REPORT_MAX));

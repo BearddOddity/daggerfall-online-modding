@@ -23,6 +23,12 @@
 //           statements, summed (SCALE4f)
 //   double6 D1 rows read (SCALE4f)
 //   double7 statements a read replica served (SCALE4f)
+//   double8-11 rows written to the plan's hot rows, by table: `players`,
+//           `sessions`, `renown_tracks`, `realm_characters` (SCALE4h)
+//   blob5   every table the request wrote, "table:rows" by rows, most
+//           first (SCALE4h)
+//   blob6   a heartbeat's parts, "beat,board,mail,post" - the ones its
+//           body asked (SCALE4h); "" for any other route
 //
 // SCALE4f (2026-10-10, Mac: "really future proof our archetecture"; bible
 // 11-Multiplayer/Scale-Arc.md SCALE4f): HOW BUSY THE ONE PRIMARY IS. The
@@ -33,9 +39,17 @@
 // and a batch whole), and the rows its answers say it read and wrote are
 // summed, with how many a READ REPLICA served (the answer's
 // `served_by_primary` false): SCALE4d put the mint's reads on a session a
-// replica may serve, and this is where it shows whether one does. A
-// `first()` answers a row with no meta, so its rows go uncounted; its
-// wait does not.
+// replica may serve, and this is where it shows whether one does.
+//
+// SCALE4h (2026-10-11, "10k writes, by the metrics"; Scale-Arc.md SCALE4h):
+// WHICH ROWS. A `first()` answers a row with no meta, so its rows went
+// uncounted - and the play beat's write (accounts.js creditPlay) is one, so
+// the heartbeat's rows written never showed it. A `first()` is now run as
+// the statement's own `all()` - the query D1 sends is the same, first()
+// only drops the meta - and its first row answered. Each statement's rows
+// written are charged to the table it writes (tableOf), so the point says
+// which hot row a route writes, not only how many; and a heartbeat says
+// which parts it carried, so the beat, the board and the box are apart.
 //
 // NOTHING IDENTIFIES A PLAYER. The route is a template, the word is one
 // of the service's own, and no header, id, handle or body is written.
@@ -52,6 +66,10 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { ROUTES, savePathOf, realmPathOf, DB_ROOT } from './service.js';
+import { HEARTBEAT_PARTS } from './heartbeat.js';
+
+/** SCALE4h: the heartbeat's route, whose parts the point says. */
+const HEARTBEAT_PATH = '/v1/heartbeat';
 
 /** The route as a TEMPLATE: a served path as it stands, a save slot or a realm character's save by its shape - never
  *  the ids or the names they carry - and anything else one word, so the set of labels is bounded. */
@@ -66,34 +84,62 @@ export function routeLabel(/** @type {string} */ path) {
 /** SCALE4f: a tally's field moved by `v` - a tally a caller made with `n` alone grows the rest as they come. */
 const add = (/** @type {any} */ tally, /** @type {string} */ key, /** @type {number} */ v) => { if (Number.isFinite(v)) tally[key] = (tally[key] ?? 0) + v; };
 
-/** SCALE4f: what an answer's meta says D1 did - its rows read and written, and whether a replica served it. */
-function noteMeta(/** @type {any} */ result, /** @type {any} */ tally) {
+/** SCALE4h: the table a statement writes - `INSERT [OR ...] INTO t`, `REPLACE INTO t`, `UPDATE [OR ...] t`, `DELETE
+ *  FROM t` - or null for a read. */
+export const tableOf = (/** @type {unknown} */ sql) => {
+  const m = typeof sql === 'string' ? /^\s*(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|REPLACE\s+INTO|UPDATE(?:\s+OR\s+\w+)?|DELETE\s+FROM)\s+["`]?(\w+)/i.exec(sql) : null;
+  return m ? m[1].toLowerCase() : null;
+};
+
+/** SCALE4h: the plan's hot rows (Scale-Arc.md SCALE4h), each its own double on the point - the session, the account's
+ *  row (the play clock, the Renown hour, the touch), the Renown tally and the realm's checkpoint. */
+export const HOT_TABLES = Object.freeze(['players', 'sessions', 'renown_tracks', 'realm_characters']);
+
+/** SCALE4f: what an answer's meta says D1 did - its rows read and written, and whether a replica served it. SCALE4h:
+ *  and the rows written charged to the table its statement (`sql`) writes. */
+function noteMeta(/** @type {any} */ result, /** @type {any} */ tally, /** @type {unknown} */ sql = null) {
   const m = result?.meta;
   if (!m || typeof m !== 'object') return;
   add(tally, 'rr', m.rows_read);
   add(tally, 'rw', m.rows_written);
   if (m.served_by_primary === false) add(tally, 'replica', 1);
+  const t = Number.isFinite(m.rows_written) && m.rows_written > 0 ? tableOf(sql) : null;
+  if (t) { const by = tally.tables ??= {}; by[t] = (by[t] ?? 0) + m.rows_written; }
 }
+
+/** SCALE4h: the point's blob of every table written - "table:rows", most first, at most eight. */
+export const tablesBlob = (/** @type {Record<string, number>|undefined} */ by) => Object.entries(by ?? {})
+  .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, 8).map(([t, n]) => `${t}:${n}`).join(' ');
 
 /** SCALE4f: the real statement behind a timed one - D1's batch is handed its own. */
 const REAL = new WeakMap();
+/** SCALE4h: a timed statement's SQL, for the table its batch answer's rows are charged to. */
+const SQL = new WeakMap();
 
 /** SCALE4f: A STATEMENT WHOSE WAIT IS COUNTED. Every member is the statement's own, called on the statement itself
  *  (workerd's are a class with private fields - a method called on a Proxy throws, AUDIT SCALE4d D8); `bind` answers a
  *  timed statement in turn, and each way of running it adds its wall time (and an answer's rows) to the tally. */
-function timedStatement(/** @type {any} */ stmt, /** @type {any} */ tally) {
+function timedStatement(/** @type {any} */ stmt, /** @type {any} */ tally, /** @type {unknown} */ sql = null) {
   if (!stmt || typeof stmt !== 'object') return stmt;
   const timed = new Proxy(stmt, {
     get(target, key) {
       const v = Reflect.get(target, key);
       if (typeof v !== 'function') return v;
-      if (key === 'bind') return (/** @type {any[]} */ ...args) => timedStatement(v.apply(target, args), tally);
+      if (key === 'bind') return (/** @type {any[]} */ ...args) => timedStatement(v.apply(target, args), tally, sql);
       if (key === 'first' || key === 'all' || key === 'run' || key === 'raw') {
+        // SCALE4h: a `first()` (no column named) run as the statement's own `all()`, so its meta is read - its first row
+        // answered, or null, as first() answers it
+        const all = key === 'first' ? Reflect.get(target, 'all') : null;
         return async (/** @type {any[]} */ ...args) => {
           const started = Date.now();
           try {
+            if (typeof all === 'function' && args.length === 0) {
+              const r = await all.call(target);
+              noteMeta(r, tally, sql);
+              return r?.results?.[0] ?? null;
+            }
             const r = await v.apply(target, args);
-            if (key === 'all' || key === 'run') noteMeta(r, tally);   // a row (`first`) or rows (`raw`) carry no meta
+            if (key === 'all' || key === 'run') noteMeta(r, tally, sql);   // rows (`raw`), or a column (`first('c')`), carry no meta
             return r;
           } finally { add(tally, 'ms', Date.now() - started); }
         };
@@ -102,6 +148,7 @@ function timedStatement(/** @type {any} */ stmt, /** @type {any} */ tally) {
     },
   });
   REAL.set(timed, stmt);
+  SQL.set(timed, sql);
   return timed;
 }
 
@@ -115,7 +162,7 @@ export function countedDb(/** @type {any} */ db, /** @type {{ n: number }} */ ta
   return new Proxy(db, {
     get(target, key) {
       if (key === DB_ROOT) return Reflect.get(target, DB_ROOT) ?? target;
-      if (key === 'prepare') return (/** @type {any[]} */ ...args) => { tally.n += 1; return timedStatement(target.prepare(...args), tally); };
+      if (key === 'prepare') return (/** @type {any[]} */ ...args) => { tally.n += 1; return timedStatement(target.prepare(...args), tally, args[0]); };
       if (key === 'batch') {
         const batch = Reflect.get(target, key);
         if (typeof batch !== 'function') return batch;
@@ -123,7 +170,7 @@ export function countedDb(/** @type {any} */ db, /** @type {{ n: number }} */ ta
           const started = Date.now();
           try {
             const rs = await batch.call(target, Array.isArray(list) ? list.map((st) => REAL.get(st) ?? st) : list, ...rest);
-            if (Array.isArray(rs)) for (const r of rs) noteMeta(r, tally);
+            if (Array.isArray(rs)) rs.forEach((r, i) => noteMeta(r, tally, Array.isArray(list) ? SQL.get(list[i]) : null));
             return rs;
           } finally { add(tally, 'ms', Date.now() - started); }
         };
@@ -158,16 +205,28 @@ export async function measured(request, env, serve) {
   const sink = env?.METRICS;
   if (!sink || typeof sink.writeDataPoint !== 'function') return serve(request, env);
   const started = Date.now();
-  const tally = { n: 0, ms: 0, rr: 0, rw: 0, replica: 0 };
+  const tally = { n: 0, ms: 0, rr: 0, rw: 0, replica: 0, tables: /** @type {Record<string, number>} */ ({}) };
   const counted = env.DB ? { ...env, DB: countedDb(env.DB, tally) } : env;
+  const parts = await heartbeatPartsOf(request);   // SCALE4h: read off a copy before the service reads the body
   const res = await serve(request, counted);
   try {
     const route = routeLabel(new URL(request.url).pathname);
     sink.writeDataPoint({
       indexes: [route],
-      blobs: [route, request.method, String(res.status), await refusalOf(res)],
-      doubles: [Date.now() - started, res.status, tally.n, tally.rw, tally.ms, tally.rr, tally.replica],   // SCALE4f: rows written, D1's wait, rows read, a replica's statements
+      blobs: [route, request.method, String(res.status), await refusalOf(res), tablesBlob(tally.tables), parts],   // SCALE4h: the tables written, a heartbeat's parts
+      doubles: [Date.now() - started, res.status, tally.n, tally.rw, tally.ms, tally.rr, tally.replica,   // SCALE4f: rows written, D1's wait, rows read, a replica's statements
+        ...HOT_TABLES.map((t) => tally.tables[t] ?? 0)],   // SCALE4h: the hot rows, by table
     });
   } catch { /* a metric never costs a request */ }
   return res;
+}
+
+/** SCALE4h: the parts a heartbeat's body asked (heartbeat.js HEARTBEAT_PARTS, in its order), comma-joined - "" for any
+ *  other route, and for a body that is not JSON. A copy of the request is read; the service reads its own. */
+export async function heartbeatPartsOf(/** @type {Request} */ request) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).pathname !== HEARTBEAT_PATH) return '';
+    const body = await request.clone().json();
+    return HEARTBEAT_PARTS.filter((k) => body?.[k] !== undefined && body[k] !== false).join(',');
+  } catch { return ''; }
 }

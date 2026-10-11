@@ -35,9 +35,11 @@ export function d1() {
       const api = {
         bind(...a) { args = a; return api; },
         async first() { return stmt.get(...args) ?? null; },
-        async all() { return { results: stmt.all(...args) }; },
-        async run() { const r = stmt.run(...args); return { meta: { changes: Number(r.changes) } }; },
-        _result() { const results = stmt.all(...args); return { results, meta: { changes: writes ? Number(db.prepare('SELECT changes() AS c').get().c) : 0 } }; },
+        // SCALE4h: an answer's meta says its rows written, as D1's does (a table's rows - D1 counts its indexes' too), so a
+        // route's metrics point can be read over this database
+        async all() { const results = stmt.all(...args); return { results, meta: { rows_written: writes ? Number(db.prepare('SELECT changes() AS c').get().c) : 0 } }; },
+        async run() { const r = stmt.run(...args); return { meta: { changes: Number(r.changes), rows_written: writes ? Number(r.changes) : 0 } }; },
+        _result() { const results = stmt.all(...args); const n = writes ? Number(db.prepare('SELECT changes() AS c').get().c) : 0; return { results, meta: { changes: n, rows_written: n } }; },
       };
       return api;
     },

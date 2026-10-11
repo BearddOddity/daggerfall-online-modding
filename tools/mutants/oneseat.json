@@ -219,11 +219,12 @@
   {
     "name": "ONESEAT-renown-in-any-tab",
     "file": "src/scenes/world.js",
-    "old": "    earning: () => !!online && !seatOut(),",
-    "new": "    earning: () => !!online,",
+    "old": "    earning: () => !!online && !seatOut() && _renownCapHour !== renownHour(),",
+    "new": "    earning: () => !!online && _renownCapHour !== renownHour(),",
     "tests": [
       "test/oneseat.test.js"
-    ]
+    ],
+    "note": "SCALE4h (re-aimed by content): a spent hour's clause beside it."
   },
   {
     "name": "ONESEAT-take-no-claim",

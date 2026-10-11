@@ -68,7 +68,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | **Built** (2026-10-10, this branch; relay world191, NOT YET DEPLOYED) - with the relay's settings at run time and its word of its referees for a halo (`rf` - HALO-THIN, below, the halos' one law) |
 | SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | **Built** (2026-10-11, this branch; relay world192, NOT YET DEPLOYED) - the hub's sixteen shards and each region's four, the World and Region tabs' lists and the search |
 | SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | **Part one built** (2026-10-11, this branch; world192) - a crowded place overflows into layers; the event rooms next |
-| SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | Planned, by the metrics |
+| SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | **Built** (2026-10-11, this branch; acct111) - measured first: written less at the source, not moved - Renown coalesced, the session touched hourly, the metrics by table; a token bound to a key considered |
 | SCALE6 | Abuse and backups: Turnstile on guest creation, /64 IPv6 rate keys, bans, report and ignore, `ALLOWED_ORIGIN`, R2 snapshots, a hub export | Some | Alongside |
 
 **Relay deploy policy (SCALE):** relay changes are batched into as few deploys as possible, each in a window announced beforehand. A deploy drops every player, and until SCALE2 every reconnect is a D1 write storm.
@@ -1554,6 +1554,139 @@ relay starting. AUDIT-ACC F2's pin (test/accountdeploy.test.js) failed on it bef
 **Left:** part two - the event rooms (a gate's court, a Super dungeon's realm) as copies around one fight. Only those two
 can fill: a siege seats 48 fighters and 60 watchers, and the arena 60 watchers and a bout's two.
 
+## SCALE4h: built (2026-10-11, this branch - acct111, no migration, no drop)
+
+The plan's eighth slice: "A player's hot rows (the session, the play clock, the Renown tally, the rate windows) off the
+one primary: per-account objects or account shards, chosen once SCALE4f's metrics say how busy the primary really is."
+SCALE4f's metrics are not deployed yet (acct111 is on this branch), so the slice measured first, with a tool of its own.
+
+**Measured first** (`node tools/hotWritesBench.mjs`): one player-hour through the real account Worker over node:sqlite
+(test/accountDb.mjs), each clock the client's own constant - the heartbeat at the board's pace with the box, the post
+and the play beat riding it, the realm checkpoint, and a fighter's Renown through the client's own tracker at SCALE3's
+40 XP a minute - with every statement counted and its rows changed charged to its table. On the tree before:
+
+| an hour of | statements | rows changed | of them |
+|---|---|---|---|
+| a walker in a town | 166 | 36 | the heartbeat 121 / 21, the idle checkpoint 45 / 15 |
+| a fighter | 736 | 226 | **Renown 354 / 118 (59 reports)**, the checkpoint 261 / 87, the heartbeat 121 / 21 |
+
+By table, the fighter's rows: `players` 75, `renown_tracks` 59, `realm_characters` 58, `realm_wealth_hours` 29,
+`sessions` 5. The Renown tally was half of everything a fighting hour wrote. The session's touch was 12 rows an hour
+(both its rows, six times). The play beat was 12. The rate windows wrote nothing: ACCT-RATE-MEM had moved the
+account's into isolate memory, and the sign-in windows (`ip:`, `login:`) are written only by a sign-in.
+
+**The choice.** Neither objects nor shards. Every row named is one D1 must keep:
+- **The Renown tally** has five writers - the report, a raid's and a serpent's reward (each charging the same hour's
+  window, `renown_last_credit`), a writ's, a siege's - and each credit is one transaction with its receipt or its
+  writ. A per-account object owning the tally would split each of those transactions in two, or rewrite all five.
+- **The play clock** is read by the INT5 wealth budget at every checkpoint (`played_s`). Held in an object, it would
+  have to be written back before each checkpoint, which comes as often as the beat.
+- **The session** is read by every authenticated request (`WHO_SQL`). A session held elsewhere is a call on every
+  request instead of a read.
+
+What the numbers ask is fewer writes at the source.
+
+**Renown, coalesced** (`src/net/renownTracker.js` renownReportSoon, `src/net/renown.js` RENOWN_COALESCE_MS):
+- A report goes at the minute's pace (RENOWN_REPORT_MS) only while its answer says something the page cannot know:
+  - the hour's bound is spent;
+  - the track's total, or the hour's room, has not been said yet;
+  - what is earned reaches the hour's room - the bound's word and the sigils' stop come as promptly as before;
+  - what is earned completes the level - the rise, and its signed order to the rooms, come as promptly as before.
+
+  Otherwise what is earned waits RENOWN_COALESCE_MS (5 minutes). The bar draws it all the while as its ghost
+  (ui/hudRenown.js, RENOWN4), and a report's worth (5,000) still goes at once.
+- **The service says the room** (`server-account/src/renownTracks.js`): each answer carries `room`, what the account's
+  open hour still takes. It is read back by the report's own decision, so it counts every writer's spend so far.
+- **The host keeps the room with the hour and the total it was said at** (`scenes/world.js` `_renownRoom`). Another
+  hour, or a total another door moved (a raid's, a writ's), makes the room unknown, and the next report goes at the
+  minute's pace to learn it.
+- **A spent hour earns nothing.** The service credits nothing in it, the sigils drink nothing and the bar draws no
+  ghost, each as the page last heard it. The tracker no longer earns there either, rather than reporting every minute
+  to be credited nothing. One edge moves: XP earned in a spent hour's last minute and reported after the hour turned
+  was credited by the next hour's window; the page's hour (the shared clock's, AUDIT SET D7) now says it was earned in
+  the spent one.
+- A tracker given no word reports at the minute's pace, as every one did.
+
+**The session, touched hourly** (`server-account/src/accounts.js` SESSION_TOUCH_S, 10 minutes to an hour). Nothing
+reads `last_seen` finer: the idle bound is a year, and the device list orders by it.
+
+**The metrics that say which rows** (`server-account/src/metrics.js`):
+- **A `first()`'s rows, counted.** A `first()` answers a row with no meta, so the beat's write (`creditPlay`, an
+  UPDATE ... RETURNING) never showed in rows written. It is now run as the statement's own `all()`, which sends D1 the
+  same query (the binding's `first()` is its `all()`'s first row), and its first row is answered. A `first(column)` is
+  the runtime's own.
+- **Rows written by table.** Each statement's rows written are charged to the table it writes (tableOf):
+  - `blob5`: every table written, "table:rows", most first;
+  - `double8`-`double11`: the plan's hot rows, by table - `players`, `sessions`, `renown_tracks`, `realm_characters`.
+- **A heartbeat's parts** (`blob6`: "beat,board,mail,post", the ones its body asked), read off a copy of the request
+  before the service reads its own. The beat, the board and the box are apart at last.
+
+**After** (the same bench, the tree as built):
+
+| an hour of | statements | rows changed | Renown reports |
+|---|---|---|---|
+| a walker in a town | 166 -> 156 | 36 -> 26 (28 once its session is an hour old: one touch, not six) | - |
+| a fighter, 40 XP a minute at Renown 20 | 736 -> 444 (-40%) | 226 -> 122 (-46%) | 59 -> 12 |
+| at Renown 3 (a rise every few minutes) | 736 -> 456 | 226 -> 126 | 59 -> 14 |
+| at 400 XP a minute (the hour spent at 37 minutes) | 736 -> 426 | 226 -> 116 | 59 -> 9 |
+| at 2,000 XP a minute (the hour spent at 8 minutes) | 736 -> 402 | 226 -> 108 | 59 -> 5 |
+
+SCALE3's fleet (half of it fighting) wrote 172 rows a bot-hour; Renown was a third of them.
+
+**Mac's decision 1, considered: a token bound to a key.** A reconnect's token is spent once (`server/src/index.js`
+`_spent`, a room's own memory), so every reconnect after a relay deploy is a mint. A token bound to a key the page
+holds could be presented again until it expires, proven by a signature over the room and the moment. What it costs:
+- **One announced relay drop.** `identityToken.js` and `wire.js` are in the relay's bundle.
+- **The token's size.** Its body is capped at 800 characters, and the widest is 794 today, so a 32-byte key does not
+  fit beside it. The cap and the wire's `TOKEN_RE` grow, or the claims slim.
+- **A proof in every hello.** The relay says nothing before a hello, so the proof signs the room, the time and the
+  token within the clock's skew, or the hello gains a round trip.
+- **Staleness.** A room sees a badge at most a minute old today (TOKEN_REUSE_MS) and a token at most five
+  (MAX_TTL_S). A longer life leaves a title, glyphs, a house and arms stale for it, and those have no override order.
+- **Revocation.** A closed session stops new mints today, and its tokens die within five minutes. A longer token
+  needs a way to revoke it.
+
+What it buys is a mint per reconnect. SCALE2c spreads those over the hub's own admission, ADMIT-LINE queues them, and
+SCALE4d/4f made each about 4 statements on a replica session. Decision 1 recommends it at 5,000, not before. It stays
+the plan for that point, built when `/v1/auth/token`'s D1 wait (`double5`, SCALE4f) climbs in a deploy's wave.
+
+**Left, each with its reason:**
+- **The checkpoint** is now 59% of a fighting hour's statements and 71% of its rows. Each is one batch: the realm row
+  twice (the save's UPDATE and the verdict's), `realm_wealth_hours` once, and the ledger's reads. Folding the two
+  UPDATEs rewrites the INT5 judge's own guards (SCALE4f). The pace (ONLINE_CHECKPOINT_MS, 2 minutes while the save
+  moves) is how much a crash loses. It is the next lever, chosen by `double11` once acct111 is deployed.
+- **The play beat** stays every five minutes: the budget reads `played_s` at each checkpoint, and a coarser clock is
+  a coarser allowance.
+- **A crash's loss.** A page that dies without `pagehide` loses what it earned since its last report: up to five
+  minutes of Renown, not one. The page's last word still goes by `keepalive` on every ordinary close.
+
+**Pins.**
+- `test/scale4h.test.js` (8):
+  - the law, every arm;
+  - the tracker's pace (coalesced, the minute, a word that throws, none given, a report's worth, a refusal's own
+    backoff);
+  - the service's room (across characters, a repeat, a spent hour, a new hour, the route, the page's plan);
+  - the host's wiring;
+  - a fighter's measured hour;
+  - the hourly touch;
+  - a `first()`'s rows and rows by table;
+  - the point's tables, hot rows and heartbeat parts, over the real Worker too.
+- `tools/mutants/scale4h.json`: 30 mutants, 30 dead. One survived its first run, a negative count unclamped, because
+  no pin asked it against a spent room; the pin now does.
+
+PIN MOVED:
+- `renown1`'s and `auditrenown1`'s answers carry `room`;
+- `scale1`'s bound on the touch (an hour, from fifteen minutes);
+- `scale4f`'s metrics pins: a `first()`'s wait and rows are now its `all()`'s, and the point's first seven doubles
+  are SCALE4f's;
+- `oneseat`'s Renown door: a tab out of the seat, and now a spent hour, earns nothing.
+
+Re-aimed by content, all dead: AUDIT-RENOWN1-tracker-no-backoff, ONESEAT-renown-in-any-tab,
+RENOWN1-hour-spend-matches-nothing, SCALE1-B-statements-uncounted, and SCALE4f-batch-wait-uncounted, -bind-untimed and
+-point-as-before.
+
+The pins' D1 (test/accountDb.mjs) answers `rows_written` in its meta, as D1's does, so a point can be read over it.
+
 ## THE PLAN PAST 2,000 (2026-10-10)
 
 Mac, after #755's merge: "Alright lets now tackle the bigger work. I want to go deep and really future proof our
@@ -1638,7 +1771,8 @@ slice below measures again with a tool of its own in the tree.
    raised as far as SCALE5b's batching measures room for, then layering (Mac's decision 3).
 8. **SCALE4h - 10k writes, by the metrics.** A player's hot rows (the session, the play clock, the Renown tally, the
    rate windows) off the one primary: per-account objects or account shards, chosen once SCALE4f's metrics say how
-   busy the primary really is.
+   busy the primary really is. (Built, above: measured, the tally and the touch written less at the source, and the metrics
+   by table.)
 
 **Deploys:** SCALE2c, 4f, 4g and 4h drop nobody. SCALE5b and 5c are one announced relay deploy each, and the
 account service ships before either (SCALE4e makes it survive the wave either way).

@@ -72,12 +72,12 @@
   {
     "name": "SCALE4f-batch-wait-uncounted",
     "file": "server-account/src/metrics.js",
-    "old": "            if (Array.isArray(rs)) for (const r of rs) noteMeta(r, tally);\n            return rs;\n          } finally { add(tally, 'ms', Date.now() - started); }",
-    "new": "            if (Array.isArray(rs)) for (const r of rs) noteMeta(r, tally);\n            return rs;\n          } finally { /* uncounted */ }",
+    "old": "            if (Array.isArray(rs)) rs.forEach((r, i) => noteMeta(r, tally, Array.isArray(list) ? SQL.get(list[i]) : null));\n            return rs;\n          } finally { add(tally, 'ms', Date.now() - started); }",
+    "new": "            if (Array.isArray(rs)) rs.forEach((r, i) => noteMeta(r, tally, Array.isArray(list) ? SQL.get(list[i]) : null));\n            return rs;\n          } finally { /* uncounted */ }",
     "tests": [
       "test/scale4f.test.js"
     ],
-    "note": "a batch's wait never counted - every write path's"
+    "note": "a batch's wait never counted - every write path's SCALE4h (re-aimed by content): each answer's rows charged to its own statement's table."
   },
   {
     "name": "SCALE4f-rows-unread",
@@ -112,22 +112,22 @@
   {
     "name": "SCALE4f-bind-untimed",
     "file": "server-account/src/metrics.js",
-    "old": "      if (key === 'bind') return (/** @type {any[]} */ ...args) => timedStatement(v.apply(target, args), tally);",
+    "old": "      if (key === 'bind') return (/** @type {any[]} */ ...args) => timedStatement(v.apply(target, args), tally, sql);",
     "new": "      if (key === 'bind') return v.bind(target);",
     "tests": [
       "test/scale4f.test.js"
     ],
-    "note": "a bound statement untimed - almost every statement the service runs"
+    "note": "a bound statement untimed - almost every statement the service runs SCALE4h (re-aimed by content): the bound statement keeping its SQL."
   },
   {
     "name": "SCALE4f-point-as-before",
     "file": "server-account/src/metrics.js",
-    "old": "      doubles: [Date.now() - started, res.status, tally.n, tally.rw, tally.ms, tally.rr, tally.replica],",
-    "new": "      doubles: [Date.now() - started, res.status, tally.n],",
+    "old": "      doubles: [Date.now() - started, res.status, tally.n, tally.rw, tally.ms, tally.rr, tally.replica,   // SCALE4f",
+    "new": "      doubles: [Date.now() - started, res.status, tally.n,   // SCALE4f",
     "tests": [
       "test/scale4f.test.js"
     ],
-    "note": "the point as SCALE1 wrote it - nothing of D1's wait reaches the dataset"
+    "note": "the point as SCALE1 wrote it - nothing of D1's wait reaches the dataset SCALE4h (re-aimed by content): the hot rows' four after SCALE4f's."
   },
   {
     "name": "SCALE4f-overload-unread",
