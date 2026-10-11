@@ -836,28 +836,38 @@ A new property specifficaly used for the card table"**.
   Menakat ... same tavern layout" - the table and its stools across the doorway between a tavern's two rooms). Past an
   entry room too small for the ring, the nearest cell was the mouth of the doorway the walk left it by. A spot is passed
   over now when its table and ring and a lane round them (`PLACE_LANE_CELLS`, one cell), taken out of the walk, leave a
-  walked cell outside them unreachable from the entrance - the walk again on its own grid, so every client the same
-  table; the first spot that leaves the walk whole stands it, and a room with no such spot stands it where it stood (no
-  tavern loses its table). The gold table's walk already goes round the first (it is in the collider). Pinned by
-  `test/fb1009c_walkwhole.test.js` (the real prop, a 10 cm flood of the player's capsule round it); the doorway's, the
-  narrow hall's, the corridor's and the lattice room's spots in `test/taverntable.test.js` moved with it;
-  `tools/mutants/fb1009c_walkwhole.json` (5, all dead; `taverntable.json`'s TT-walk-order re-aimed by content). Not
-  verified in Menakat: no ARENA2 here - a table moved in an old layout moves for every client at once, a peer on an
-  older build sees it where it stood.
+  walked cell outside them unreachable from the entrance - the walk's own grid, so every client the same table. The
+  gold table's walk already goes round the first (it is in the collider). Pinned by `test/fb1009c_walkwhole.test.js`
+  (the real prop, a 10 cm flood of the player's capsule round it); the doorway's, the narrow hall's, the corridor's
+  and the lattice room's spots in `test/taverntable.test.js` moved with it; `tools/mutants/fb1009c_walkwhole.json`
+  (`taverntable.json`'s TT-walk-order re-aimed by content).
+  AND NEVER IN THE WAY (WAY-ROUND, FIELD BUGS 2026-10-11, the same thread: "another one at Dancing Castle in
+  Pilliweyn"; `01-Overview/Field-Bugs-2026-10-11.md`). Read on the player's own taverns (the freeware ARENA2, both town
+  packs), WALK-WHOLE moved neither table it was written for: the Gold Dungeon's only floor for the ring is the corridor
+  its two halves meet by, every spot there cut the walk, and its fallback for such a room - "stands it where it stood
+  (no tavern loses its table)", RETIRED - stood it there; and a spot in a doorway or the mouth of an opening passed
+  whenever the building went round another way (the Dancing Castle's gold table, GENRAL03 #2's chips table). A spot is
+  passed over now when the walked cells round its table, ring and lane, out to `PLACE_ROUND_CELLS` (a metre) past
+  them, fall apart with those cells taken out - WALK-WHOLE's cut is one case of it, so its walk again from the
+  entrance is gone - and a table already stood that the window meets is taken in whole, so the way round the gold
+  table may go round the pair. A room with no spot left whole stands none, the chips table first: with the packs, two
+  tables in 13,298 taverns, one in 2,931, none in 1,935. Pinned by `test/fb1011_wayround.test.js` (built rooms of the
+  reported shapes, and every tavern the towns lay, gated on ARENA2_PATH, against the player's capsule);
+  `tools/mutants/fb1011_wayround.json` (8, all dead) and `fb1009c_walkwhole.json` (4, all dead) re-aimed.
 - **The table in the room** (`scenes/interiorContext.js`, `opts.placeCardTable`). Stood after the room's own models and
   its closed doors, so the walk sees the whole room. It is one of the room's models - drawn by its own mesh, never the
   static merge (AUDIT TAVERN-TABLE H1, section 29), in the collider and on the automap (its key the next placement
   index, past the record's own) - and its one `tables` row, the table's own box and world box, so its seats,
   the seat, the regulars, the relay's table and the watch are CARDS2-CARDS6's, unchanged. Its mesh is the room's,
   freed by `destroy()`; its two textures the renderer's, uploaded once. A room with no enter marker or no such floor
-  stands none, and says so in the console.
+  stands none, and says so in the console - nor one whose only floor for it is in the way (WAY-ROUND, above).
 - **THE FOUR HOSTS.** `scenes/worldModes.js` asks for it (`placeCardTable`: a tavern) in the one interior build
   `scenes/world.js` and `scenes/exterior.js` both enter buildings through; `scenes/dungeonContext.js` stands no tavern.
   The `?interior` viewer (`scenes/interior.js`) does not ask: it has no body to seat.
-- **Not verified in a live tavern.** No ARENA2 here: the walk is pinned on fake rooms, and the build on a fake room
-  through the real collider (its six seats found by the host's own seat probe, each over its stool). Where it lands in
-  each tavern, and how it looks under the tavern's light, is the owner's first eye; `cards.html` (`src/tools/cardsLab.js`)
-  draws the same prop.
+- **Not verified in a live tavern.** The walk is pinned on fake rooms and, since WAY-ROUND, on every tavern the towns
+  lay, built from the freeware ARENA2 through the real collider (gated on ARENA2_PATH); the build on a fake room
+  through the real collider (its six seats found by the host's own seat probe, each over its stool). How it looks
+  under the tavern's light is the owner's first eye; `cards.html` (`src/tools/cardsLab.js`) draws the same prop.
 - **Pins:** `test/taverntable.test.js`, 17 tests (15 at TAVERN-TABLE, 17 at its audit); `test/cards2_seat.test.js`
   re-aimed (the ids and the census gone, the context's one table the prop's). `tools/mutants/taverntable.json`: 80 -
   79 dead, 1 equivalent (the felt's nap transposed is another felt as good); `tools/mutants/cards2.json` loses the five

@@ -5,8 +5,11 @@
 // The walk (world/placedCardTable.js) stood the table at the cell NEAREST the entrance whose table and ring were clear
 // floor - and past an entry room too small for the ring, the nearest such cell is the mouth of the doorway the walk
 // left it by. A spot is passed over now when its table and ring, taken out of the walk, leave a walked cell unreachable
-// from the entrance; a room with no other spot stands it where it stood (no tavern loses a table).
-// `01-Overview/Field-Bugs-2026-10-09c.md`; `11-Multiplayer/Tavern-Cards.md` section 28.
+// from the entrance. PIN MOVED (WAY-ROUND, FIELD BUGS 2026-10-11): a room with no other spot stood it where it stood
+// (no tavern lost a table) - and the Gold Dungeon was such a room, so it stood in its corridor all the same; a room
+// with no spot left whole stands none now (test/fb1011_wayround.test.js).
+// `01-Overview/Field-Bugs-2026-10-09c.md`, `01-Overview/Field-Bugs-2026-10-11.md`; `11-Multiplayer/Tavern-Cards.md`
+// section 28.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { placedTableSpot, PLACE_GRID_OFF, PLACE_CELL, PLACE_LANE_CELLS } from '../src/world/placedCardTable.js';
@@ -82,7 +85,7 @@ test('WALK-WHOLE: past an entry room too small for it, the table stands in the h
   }
 });
 
-test('WALK-WHOLE: a room whose only floor for it closes the walk stands it there all the same - no tavern loses the table it had', () => {
+test('WALK-WHOLE (PIN MOVED at WAY-ROUND): a room whose only floor for it closes the walk stands no table - it stood there all the same once, and that was the Gold Dungeon\'s corridor (mutant: a spot that cuts the walk stood)', () => {
   // a corridor east from the entrance into a room exactly the table's ring (seven cells by five), a corridor on east of
   // it to a dead end - every spot the ring fits cuts the far corridor off
   const [ox, oz] = PLACE_GRID_OFF;
@@ -92,7 +95,10 @@ test('WALK-WHOLE: a room whose only floor for it closes the walk stands it there
     if (dx >= 2.9 && dx <= 6.1 && Math.abs(dz) <= 1.1) return 0;       // the room
     return null;
   };
-  const spot = placedTableSpot(CARD_TABLE_BOX, [0, 0, 0], room({ floorAt }));
+  assert.equal(placedTableSpot(CARD_TABLE_BOX, [0, 0, 0], room({ floorAt })), null, 'no table: its one spot cuts the far corridor off');
+  // the far corridor gone, the room's one spot cuts nothing, and the table stands there
+  const open = (x, z) => (x - ox > 6.6 ? null : floorAt(x, z));
+  const spot = placedTableSpot(CARD_TABLE_BOX, [0, 0, 0], room({ floorAt: open }));
   assert.ok(spot, 'it stands');
   assert.deepEqual([Math.round((spot.cx - ox) * 100) / 100, Math.round((spot.cz - oz) * 100) / 100, spot.yawDeg], [4.5, 0, 0], 'the room\'s one spot');
 });
