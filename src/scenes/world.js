@@ -10571,6 +10571,18 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** CSA-L: the key the Controls page names for an action (the primary, else the secondary dict's), '' for none or a
    *  pad's button - the helm panel's hints. */
   const csaKeyLabel = (action) => { const b = bindings(); const c = getBinding(b, action) ?? getBinding(b, action, false); return c && !/^Joystick/.test(c) ? buttonText(c) : ''; };
+  /** STEED-UI: THE SADDLE PANEL (ui/enhancedSaddle.js, scenes/saddleHost.js) - Enhanced Plus, outdoors, astride a horse
+   *  or on a wagon's bench. Once a frame from the frame's own top, as the helm is (a door, a death, the skin turned take
+   *  it down); hidden under the helm's own covers - a window over the HUD, the HUD toggled off, a pause, a journey. */
+  function saddleDrawPanel() {
+    const show = isEnhancedPlus() && typeof document !== 'undefined' && walkMode && playerSpawned && _mode() === 'exterior' && !(townTalk.overlay instanceof DeathScreen);
+    saddleHost.frame({
+      show, mode: player.transportMode,
+      covered: townTalk.hudCovered || (modes?.hudCovered ?? false) || gamePaused() || !hudRenderEnabled() || !!travelView?.active || !!_travelUIHolder.ui?.isShowing,
+      touch: !!touch, mouseFree: show && (cursorActive() || pointerSurfaces.size > 0 || !document.pointerLockElement),
+      freeKey: csaKeyLabel('FreeMouse'), keyOf: csaKeyLabel,
+    });
+  }
   /** CSA-L: THE HELM PANEL (ui/enhancedHelm.js) - Enhanced Plus, at the helm, or aboard another's boat (whose). Once a
    *  frame from the frame's own top (every mode: a dungeon's water is sailed too), hidden under a window over the HUD,
    *  the HUD toggled off, or a pause; taken down with the skin, the mod or the helm. */
@@ -10862,18 +10874,6 @@ export async function bootWorld(canvas, renderer, params, status) {
       touch: !!touch, mouseFree: cursorActive() || pointerSurfaces.size > 0 || !document.pointerLockElement,
       freeKey: csaKeyLabel('FreeMouse'), keyOf: csaKeyLabel,
     }, csaHelmHooks);
-  }
-  /** STEED-UI: THE SADDLE PANEL (ui/enhancedSaddle.js, scenes/saddleHost.js) - Enhanced Plus, outdoors, astride a horse
-   *  or on a wagon's bench. Once a frame from the frame's own top, as the helm is (a door, a death, the skin turned take
-   *  it down); hidden under the helm's own covers - a window over the HUD, the HUD toggled off, a pause, a journey. */
-  function saddleDrawPanel() {
-    const show = isEnhancedPlus() && typeof document !== 'undefined' && walkMode && playerSpawned && _mode() === 'exterior' && !(townTalk.overlay instanceof DeathScreen);
-    saddleHost.frame({
-      show, mode: player.transportMode,
-      covered: townTalk.hudCovered || (modes?.hudCovered ?? false) || gamePaused() || !hudRenderEnabled() || !!travelView?.active || !!_travelUIHolder.ui?.isShowing,
-      touch: !!touch, mouseFree: show && (cursorActive() || pointerSurfaces.size > 0 || !document.pointerLockElement),
-      freeKey: csaKeyLabel('FreeMouse'), keyOf: csaKeyLabel,
-    });
   }
   /** AUDIT HCC H1: TrailingWagonRuntime.LateUpdate, ONCE a frame and in EVERY mode (the machine gates its own
    *  presentation on PlayerEnterExit.IsPlayerInside, and its hotkeys answer indoors with the mod's "outdoors only").
@@ -32055,8 +32055,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // AUDIT OH-F B5: and BEFORE the online frame - a Recall's reactivation renames the dungeon, and its map id is the
     // relay room's key (online.js roomKeyFor): the drowned dungeon never joins its dry template's room for a frame.
     if (oceanHoles) { _ohTime += gamePaused() ? 0 : dt * worldTimeScale(); oceanHoles.checkSettings(); ohAbyss?.update(); }
+    saddleDrawPanel();   // STEED-UI: the saddle panel, as the helm's below - every mode, so a door takes it down
     csaDrawHelmPanel();   // CSA-L: the helm panel, once a frame in every mode
-    saddleDrawPanel();   // STEED-UI: the saddle panel, the same - every mode, so a door takes it down
     spoilsRecoverFrame();   // WB5: a boss's spoils no save holds, back to their character as it stands up - before it can save, online or not
     if (onlineOn && playerSpawned) { if (!online) onlineStart(); onlineFrame(now, dt); } else { if (_peerCandleLights.length) peerCandlesFrame([], dt);   /* PEERLIGHT2: offline, no one's candle stays lit */ serpentAway(!onlineOn); /* SERPENT1: its bar put away - offline, my ship let go of its coil */ sdFightAway(); /* SD8c: and the Remnant's */ if (!onlineOn && modes?.gateArenaDay?.() != null) { ejectFromCourt(COURT_TEXT.collapse); gateCourt?.leave(); /* AUDIT SS: and its floor into the pack - online, the frame's own court does it */ } if (player.arena) player.arena = modes?.gateArenaDay?.() != null ? courtRing() : null; if (!player.arena) player.arena = arenaBouts.ring(); /* ARENA2: my bout's ring on the arena's sand */ siegeHud?.hide(); /* AUDIT-SEATS C1: no online frame (a load, a spawn), no battle's tick - its HUD hidden, never frozen; the next tick draws it again */ }   // DUEL1: no online frame, no duel's law to hold the body - the ring is the live duel's alone; WB3b: the court's is its floor's, and offline there is no court   // ONLINE1: the pose out, the peers in - after the look is paid, before the camera is read and any mode draws
     deadlandsAirFrame();   // WB6b: after the court's ways out have run, online or not - the frame it is gone is the frame its air falls silent

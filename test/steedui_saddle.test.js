@@ -308,7 +308,7 @@ test('STEED-UI the four hosts: world.js and exterior.js build the one glue over 
     assert.ok(s.includes("isEnhancedPlus() && typeof document !== 'undefined' && walkMode"), `${name}: Enhanced Plus only`);
     assert.ok(s.includes('covered: townTalk.hudCovered || (modes?.hudCovered ?? false) || gamePaused() || !hudRenderEnabled()'), `${name}: the helm's covers`);
   }
-  assert.ok(world.includes('    csaDrawHelmPanel();   // CSA-L: the helm panel, once a frame in every mode\n    saddleDrawPanel();'), 'world.js: beside the helm, every mode');
+  assert.ok(world.includes('    saddleDrawPanel();   // STEED-UI: the saddle panel, as the helm\'s below - every mode, so a door takes it down\n    csaDrawHelmPanel();'), 'world.js: beside the helm, every mode');
   assert.match(world, /canView: \(\) => mwViewCanTogglePerspective\(\), toggleView: \(\) => \{ mwViewTogglePerspective\(\); \}, foot: \(\) => setTransportModeHere\(TRANSPORT_MODES\.Foot\)/);
   assert.ok(world.includes("_mode() === 'exterior' && !(townTalk.overlay instanceof DeathScreen)"), 'world.js: outdoors, alive');
   const extTop = ext.indexOf('    gamepad?.tick(dt);   // GP1'), extFrame = ext.indexOf('saddleHost.frame({'), extModal = ext.indexOf("hccTick(dt, now);   // AUDIT HCC H1: the runtime's LateUpdate indoors too");
