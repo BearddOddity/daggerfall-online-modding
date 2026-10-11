@@ -491,7 +491,7 @@ After the kill the bar holds a moment and fades.
 
 ## 11. Versions and deploy order
 
-- **SERPENT4's relay: `world192`** (section 16). Its law's version 3 (`SERPENT_BRAIN_MIN`): a game before it is told to
+- **SERPENT4's relay: `world193`** (section 16; `world192` on its branch, renumbered past SCALE5c's `world192` at the merge). Its law's version 3 (`SERPENT_BRAIN_MIN`): a game before it is told to
   reload. The `hit` word carries `r` (a hand's own weapons - an older relay drops it and judges her on a purse of
   nought, so nothing lands), the kill tells the hub its kin, and the hub mints a party's stander's receipts. Deploy the
   relay with the client; the account service is untouched (a stander's receipt is a stander's, whoever minted it).
@@ -560,7 +560,7 @@ After the kill the bar holds a moment and fades.
   `serpent1.json` and `serpent1_audit.json` re-aimed by content (the stray's once is the resume's now).
 - SERPENT4's: `test/serpent4.test.js` (9 - section 16) and `tools/mutants/serpent4.json` (36), all dead; seventeen records
   of `sailfree.json`, `serpent1.json`, `serpent1_audit.json`, `serpent2.json`, `serpent3.json` and `soc1.json` re-aimed by
-  content (the storm's three records the dive's and the hunt's now, and the relay's version world192).
+  content (the storm's three records the dive's and the hunt's now, and the relay's version world193).
 
 ## 14. The herald and the timers (SERPENT2, 2026-10-04)
 
@@ -838,7 +838,7 @@ THE FOUR HOSTS RULE: `scenes/world.js` wires the gale (Come Sail Away's `gale` b
 `scenes/worldModes.js` and `scenes/dungeonContext.js` carry no serpent (section 7) - their Come Sail Away and their
 missiles ask seams they are not handed, and answer as before.
 
-**The relay:** `world192` (section 11). **Pins:** `test/serpent4.test.js` (9) and the SERPENT1, AUDIT SERPENT, SERPENT2,
+**The relay:** `world193` (section 11). **Pins:** `test/serpent4.test.js` (9) and the SERPENT1, AUDIT SERPENT, SERPENT2,
 SERPENT3 and AUDIT SHIPS pins its laws moved; `tools/mutants/serpent4.json` (36, all dead).
 
 See also: `World-Bosses.md` (the gate, whose law this follows at sea), `03-World/Naval-Combat.md` (the guns, the

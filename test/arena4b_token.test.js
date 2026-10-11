@@ -1,5 +1,5 @@
 // ARENA4b (2026-10-03): THE `cl` CLAIM AT THE MINT - a realm character's own level (server-account/src/realm.js
-// realmLevelOf - INT7: the level its judge trusts, else its tile's summary), signed into the identity token beside `rc` by /v1/auth/token
+// realmLevelOf, folded since into realm.js realmMintFacts by SCALE4f - INT7: the level its judge trusts, else its tile's summary), signed into the identity token beside `rc` by /v1/auth/token
 // (server-account/src/index.js), for the relay to read. Driven through the real Worker over node:sqlite
 // (test/accountDb.mjs); the claim's own law in src/net/identityToken.js claimsValid.
 import { test } from 'node:test';
@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { standService, T0 } from './accountDb.mjs';
 import { seatRealm } from './realmSeat.mjs';
 import { verifyToken, claimsValid, mintToken } from '../src/net/identityToken.js';
-import { REALM_LEVEL_CLAIM_MAX, realmLevelOf } from '../server-account/src/realm.js';
+import { REALM_LEVEL_CLAIM_MAX, realmMintFacts } from '../server-account/src/realm.js';   // PIN MOVED (SCALE4f): realmLevelOf is realmMintFacts' `cl`
 
 const { subtle } = globalThis.crypto;
 
@@ -64,8 +64,8 @@ test('ARENA4b the mint signs a realm character\'s level as `cl` - INT7: the leve
   const ov = await verifyToken(other.body.token, S.identityPublic, { subtle, nowS: T0 });
   assert.equal('cl' in ov.claims, false, 'another account naming it: none');
   // the read itself is the account's own - never another's character, whatever the mint asks before it
-  assert.equal(await realmLevelOf({ db: S.env.DB }, B.id, R.id), null, 'another account\'s character: no level');
-  assert.equal(await realmLevelOf({ db: S.env.DB }, who.id, R.id), 14, 'its own account\'s: its tile\'s');
+  assert.equal((await realmMintFacts({ db: S.env.DB }, B.id, R.id)).cl, null, 'another account\'s character: no level');
+  assert.equal((await realmMintFacts({ db: S.env.DB }, who.id, R.id)).cl, 14, 'its own account\'s: its tile\'s');
 });
 
 test('ARENA4b the claim\'s law: optional, a whole number from 1 to 1000, refused present and wrong at the minter (mutants: 0 admitted; a fraction admitted; a string admitted)', async () => {

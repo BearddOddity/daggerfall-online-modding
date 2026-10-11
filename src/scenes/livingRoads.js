@@ -283,7 +283,7 @@ export function createLivingRoads(deps) {
   /** LW4: the bodies busy in a fight this frame (no word to the player from them). @type {Set<string>} */
   const busy = new Set();
   let timer = Infinity;
-  /** @type {{ key: string, res: any, feet: number[], yaw: number, moving: boolean, distM: number, striking?: boolean, talk?: boolean, flat?: { archive: number, record: number } | null }[]} */
+  /** @type {{ key: string, res: any, feet: number[], yaw: number, moving: boolean, distM: number, striking?: boolean, talk?: boolean, flat?: { archive: number, record: number } | null, body?: boolean }[]} */
   const list = [];
   /** @type {Map<string, number>} */
   const greeted = new Map();
@@ -441,7 +441,7 @@ export function createLivingRoads(deps) {
       for (const { p, at, fight, live, allies, peerLive, places, fire } of drawn) {
         if (fire) {
           const distM = Math.hypot(fire.x - here.x, fire.z - here.z) / NATIVE_PER_M;
-          if (distM <= reach) list.push({ key: `fire:${p.trip.id}`, res: { id: `fire:${p.trip.id}`, name: '' }, feet: deps.sceneOf(fire.x, fire.z), yaw: 0, moving: false, distM, talk: false, flat: FIRE_FLAT });
+          if (distM <= reach) list.push({ key: `fire:${p.trip.id}`, res: { id: `fire:${p.trip.id}`, name: '' }, feet: deps.sceneOf(fire.x, fire.z), yaw: 0, moving: false, distM, talk: false, flat: FIRE_FLAT, body: false });   // CAMP-FIRE: nobody's body
         }
         for (const m of places) {
           if (allies?.has(m.res.id)) continue;

@@ -15,6 +15,7 @@ import { SOCIAL_ROOM, SERPENT_FIGHT_KEY, SERPENT_TELL_RETRY_MS, serpentFightId, 
 import { serpentTimes, serpentSiteKey, SERPENT_BRAIN_V, SERPENT_DIVE_MS, SERPENT_NATIVE_PER_M } from '../src/net/serpentLaw.js';
 import { SERPENT_TICK_MS, SERPENT_LV_MAX, SERPENT_RECEIPT_SHARE, SERPENT_PART_SHARE, newSerpentFight, joinSerpentFight, serpentEarned, serpentEarnedBy } from '../src/net/serpentBrain.js';
 import { fakeRooms } from './fakeRoom.mjs';
+import { RELAY_INTERNAL_CFG } from '../src/net/relayCfg.js';   // SCALE5b: the beat's ask of the hub, which the failing hub lets through
 import worker from '../server-account/src/index.js';
 import { _resetKeyForTests } from '../server-account/src/signing.js';
 import { createGuest } from '../server-account/src/accounts.js';
@@ -181,8 +182,10 @@ test('AUDIT-D relay: the kill kept BEFORE the hub is told; a hub that fails is t
     const world = fakeRooms({ now: () => clock });
     const r = world.room(CELL); r.env.GATE_SIGNING_KEY = pkcs8;
     const hub = world.room(SOCIAL_ROOM);
+    // PIN MOVED (SCALE5b): the cell's beat asks the hub for the relay's settings too (RELAY_INTERNAL_CFG) - the hub that
+    // fails here fails the tells alone, two of them, as it did before the ask joined the beat
     let fails = 2; const get = world.ROOMS.get;
-    world.ROOMS.get = (id) => (id === SOCIAL_ROOM && fails-- > 0 ? { fetch: async () => new Response('{}', { status: 500 }) } : get(id));
+    world.ROOMS.get = (id) => (id === SOCIAL_ROOM ? { fetch: async (req) => (new URL(req.url).pathname !== RELAY_INTERNAL_CFG && fails-- > 0 ? new Response('{}', { status: 500 }) : get(id).fetch(req)) } : get(id));
     const tick = async (n = 1) => { for (let i = 0; i < n; i++) { clock += SERPENT_TICK_MS; if (r.alarm.at != null && clock >= r.alarm.at) await r.fire(); } };
     const say = (ws, o) => r.raw(ws, JSON.stringify({ t: 'serpent', ...o }));
     const a = r.connect(); await r.hello(a, 'peer-0001', pos(120, 0));

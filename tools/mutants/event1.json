@@ -101,11 +101,12 @@
   {
     "name": "EVENT1-relay-every-channel-says-it",
     "file": "server/src/index.js",
-    "old": "const ev = isSocialRoom(a.key) ? await this._liveEvent() : null;",
+    "old": "const ev = isSocialRoom(a.key) && !shard ? await this._liveEvent() : null;",
     "new": "const ev = await this._liveEvent();",
     "tests": [
       "test/event1_live_event.test.js"
-    ]
+    ],
+    "note": "SCALE5c (re-aimed by content): a shard joiner hears the event from the bus"
   },
   {
     "name": "EVENT1-relay-unknown-stored-word",

@@ -219,11 +219,12 @@
   {
     "name": "ONESEAT-renown-in-any-tab",
     "file": "src/scenes/world.js",
-    "old": "    earning: () => !!online && !seatOut(),",
-    "new": "    earning: () => !!online,",
+    "old": "    earning: () => !!online && !seatOut() && _renownCapHour !== renownHour(),",
+    "new": "    earning: () => !!online && _renownCapHour !== renownHour(),",
     "tests": [
       "test/oneseat.test.js"
-    ]
+    ],
+    "note": "SCALE4h (re-aimed by content): a spent hour's clause beside it."
   },
   {
     "name": "ONESEAT-take-no-claim",
@@ -300,20 +301,22 @@
   {
     "name": "ONESEAT-R1-moved-seat-swept",
     "file": "server/src/index.js",
-    "old": "      if (!others.length && !carried) {",
-    "new": "      if (!others.length) {",
+    "old": "      if (!others.length && !carried && !this._swept) {",
+    "new": "      if (!others.length && !this._swept) {",
     "tests": [
       "test/oneseat.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): beside the drain's marker (`_swept`)."
   },
   {
     "name": "ONESEAT-R1-drain-never-swept",
     "file": "server/src/index.js",
-    "old": "      if (!others.length && !carried) {",
+    "old": "      if (!others.length && !carried && !this._swept) {",
     "new": "      if (false) {",
     "tests": [
       "test/oneseat.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): beside the drain's marker (`_swept`)."
   },
   {
     "name": "ONESEAT-R1-reconnect-not-carried",

@@ -2,20 +2,11 @@
   {
     "name": "WALK-WHOLE-the-cut-unasked",
     "file": "src/world/placedCardTable.js",
-    "old": "      if (!cutsWalk(i, k, w)) return spot;\n",
-    "new": "      return spot;\n",
+    "old": "      if (inTheWay(i, k, w)) continue;\n",
+    "new": "",
     "tests": [
       "test/fb1009c_walkwhole.test.js",
       "test/taverntable.test.js"
-    ]
-  },
-  {
-    "name": "WALK-WHOLE-no-table-when-every-spot-cuts",
-    "file": "src/world/placedCardTable.js",
-    "old": "      fallback ??= spot;\n",
-    "new": "",
-    "tests": [
-      "test/fb1009c_walkwhole.test.js"
     ]
   },
   {
@@ -31,8 +22,8 @@
   {
     "name": "WALK-WHOLE-every-spot-cuts",
     "file": "src/world/placedCardTable.js",
-    "old": "    return q.length < order.length - taken;",
-    "new": "    return q.length <= order.length - taken;",
+    "old": "      else if (was !== after[c]) return true;",
+    "new": "      else return true;",
     "tests": [
       "test/fb1009c_walkwhole.test.js",
       "test/taverntable.test.js"

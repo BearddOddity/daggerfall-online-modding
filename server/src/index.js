@@ -181,6 +181,8 @@
 import { routeStaffTeleport } from './staffTeleport.js';
 import { privateInteriorOf, privateInteriorAdmits, caravanKeyOf } from '../../src/net/privateInterior.js';   // WAGONS2-VISIT: and a caravan's own room
 import { isStaff } from '../../src/net/staffCommands.js';
+import { RELAY_CFG_TTL_MS, RELAY_INTERNAL_CFG, mayRelayCfg, relayCfgValue } from '../../src/net/relayCfg.js';   // SCALE5b: the relay's settings, at run time
+import { busOf, shardOf, isChannelShard, isChannelBus, isRegionBus, isCourtCopy, courtOfCopy, upOf, HUB_INTERNAL_UP, HUB_INTERNAL_DOWN, HUB_BATCH_MS, HUB_SYNC_MS, HUB_COUNT_MS, HUB_BATCH_MAX, CLOSE_HUB, HUB_FIND_MAX, HUB_FIND_ROOM_HZ_MAX, HUB_GUILD_WHO_MAX, HUB_WHO_KEEP_MS, HUB_FRAME_MAX, HUB_UP_HZ_MAX, HUB_UP_BURST, shardKeeps, foldFind, HUB_BATCH_BYTES, HUB_UP_QUEUE_BYTES, HUB_INTERNAL_RESYNC, HUB_SILENT_MS, SHARD_LAW_KEYS, HUB_KEY_KEY, VHUBS_KEY } from '../../src/net/hubShards.js';   // SCALE5c: the hub, sixteen ways
 import { verifyToken, verifyOrder, verifyStakeOrderAnyAge, importPublicKeyB64, MAX_TTL_S, ORDER_TTL_S, renownIssuable, deckDigest, remainsDigest } from '../../src/net/identityToken.js';   // MOD1: and the mute order, checked with the same key
 /** ACC1d/F8: the most spent signatures one room remembers. Every entry
  *  expires within MAX_TTL_S and the hello gate bounds how fast they can
@@ -200,7 +202,8 @@ const GUILD_OUTS_KEY = 'guildouts';
 const GUILD_OUT_KEEP_S = MAX_TTL_S + ORDER_TTL_S + 60;
 
 // ═══ SCALE2b (2026-10-04): the relay's half of the scale arc - its constants and helper in ./relayScale.js ═══
-import { IDX_TRUST_MS, ATTACH_LAZY_MS, PARTIES_MAX, HUB_KEEP_MAX, ACCT_SEEN_WRITE_MS, ROOM_CALL_MS, Bounded, RoomMetrics, countedState, roomKindOf } from './relayScale.js';
+import { IDX_TRUST_MS, ATTACH_LAZY_MS, PARTIES_MAX, HUB_KEEP_MAX, ACCT_SEEN_WRITE_MS, ROOM_CALL_MS, Bounded, RoomMetrics, countedState, roomKindOf, layerWalk } from './relayScale.js';
+import { LAYER_ASK_HEADER, LAYER_EMPTY_HEADER, LAYER_LAST_HEADER, LAYERS_MAX } from './relay.js';   // AUDIT SCALE II R3-3, R1-5, R3-9: an asked layer's emptiness, the walk's last try, and a hall's every layer
 
 // ═══ WB3: THE GATE'S BOSS ROOM ═════════════════════════════════════
 //
@@ -220,6 +223,7 @@ import { mintDuelReceipt } from '../../src/net/duelReceipt.js';   // INT8: a due
 import { newFight, joinFight, applyHit, applyCrystalHit, applyHostHit, applyHeal, healRef, stepBrain, stateOf, earned, earnedBy, COURT_CENTRE, BRAIN_TICK_MS, CHECKPOINT_MS, GATE_FIGHTERS_MAX } from '../../src/net/gateBrain.js';
 import { mintReceipt, importReceiptKey, readReceipt, RECEIPT_TTL_S } from '../../src/net/gateReceipt.js';
 import { bodyConfig, bodyStruck, bodySaid, bodyHealed, bodyLife, bodyCensus, bodyMeasure, bodyOut, bodyDown, bodyTellOwed, HULL_REFLOAT, BODY_TRAIL_MS, BODY_TRAIL_MAX } from '../../src/net/bossBody.js';   // INT11: the body counted
+import { BODY_DEFAULT, BODY_LINE_MAX } from '../../src/net/bossBody.js';   // AUDIT SCALE II R1-4: a relay setting's line, refused past it in words
 import { judgeGate, judgeRemnant, judgeSerpent } from '../../src/net/bossRef.js';   // INT11-INT13: the boss's blows judged here
 // SERPENT1 (2026-10-04, Mac: "a new world event that requires players with a ship to meet up and take on a large scale
 // sea serpent in the ocean"): FOUR FILES JOIN THE BUNDLE - net/serpentLaw.js (the day's window - it imports wire.js and
@@ -278,7 +282,7 @@ import { mintArenaReceipt } from '../../src/net/arenaReceipt.js';
 import { owIdInCell, owRowInCell, owRowSane, owFoldSpent, owFoldRows, owRowsBehind, owPrune, owLedgerOf, owLedgerEmpty, toWelcome } from '../../src/net/overworldLaw.js';
 
 import { serpentGate, validSerpentOut, SERPENT_INTERNAL_FELL, SERPENT_TELL_RETRY_MS, SERPENT_FIGHT_KEY, SERPENT_FIGHTS_KEY, SERPENT_SITES_MAX, serpentFightId, SERPENT_FELLS_KEY, SERPENT_FELLS_MAX, SERPENT_RC_PREFIX } from './relay.js';   // SERPENT1: the serpent's frame and its doors (the wire's, through relay.js - walked last, as ever)
-import { roomOf, parseClient, inRange, inRangeOf, poseGate, chatGate, redGate, dmGate, muteGate, tokenGate, rosterFor, badged, isChatRoom, isWorldRoom, isCellRoom, streamsFoes, hitOwnerOf, worldFrameMaxFor, CELL_FRAME_RECORDS_MAX, HELLO_HZ_MAX, CHAT_HELLO_HZ_MAX, CHAT_ROOM_HZ_MAX, SOCKETS_MAX, CHAT_SOCKETS_MAX, DROP_STRIKES_MAX, CHAT_STRIKES_MAX, WORLD_MIN_MS, WORLD_CHUNK, WORLD_TTL_MS, WORLD_PREFIX, FOES_PREFIX, OWN_PREFIX, foesGate, byteGate, FOES_ROOM_BYTES_PER_S, HIT_ROOM_HZ_MAX, ACT_ROOM_HZ_MAX, ACT_ROOM_BYTES_PER_S, actGate, MAX_FRAME_BYTES, CLOSE_REPLACED, CLOSE_POLICY, CLOSE_BUSY, HIT_ROOM_BYTES_PER_S, whoGate, whoIdOf, WHO_ROOM_HZ_MAX, poseFan, poseChanged, RELAY_VERSION, KEEPALIVE_FAN_MS, ACT_SENDER_BYTES_PER_S, CHAT_ROSTER_MAX, isSocialRoom, socialGate, partyGate, SOCIAL_ROOM_HZ_MAX, FRIENDS_MAX, PENDING_MAX, PARTY_MAX, PARTY_INVITES_MAX, INVITE_TTL_MS, PARTY_OFFLINE_MS, ACCOUNT_TABS_MAX, mintPartyId, SOCIAL_REPEAT_MS, ACCOUNT_IDLE_MS, ACCOUNT_SWEEP_MS, SWEEP_STEP_MS, SWEEP_PAGE, questShareGate, amapShareGate, AMAP_ROOM_HZ_MAX, QUEST_ROOM_HZ_MAX, QUEST_ROOM_BYTES_PER_S, QUEST_PREFIX, QUEST_FRAME_MAX, tradeGate, TRADE_ROOM_HZ_MAX, TRADE_ROOM_BYTES_PER_S, castGate, CAST_HZ_MAX, CAST_DEST_SENDERS_MAX, parkGate, parkKey, parkKeyOf, PARK_KEY_RE, CARAVAN_DECOR_KEY, parkRegistryRoom, cellRoomOfWire, PARK_INTERNAL_REG, PARK_INTERNAL_DROP, PARK_CELL_MAX, PARK_ACCOUNT_MAX, PARK_TTL_MS, PARK_REFRESH_MS, wardenVerdicts, wardenDue, parkSameSpot, parkSpotOf, WARDEN_RETRY_MS, CARAVAN_DOC_MIN_MS, PARTY_CHAT_ROOM_HZ_MAX, rollGate, rollDice, cardGate, pageGate, duelGate, DUEL_HZ_MAX, wedGate, WED_HZ_MAX, renownGate, renownRoomGate, lookGate, eventGate, EVENT_KEY, validLiveEvent, gateGate, siegeGate, SIEGE_IN_MS, GATE_INTERNAL_FELL, SOCIAL_ROOM, validGateOut, HELLO_WAIT_MS, GATE_TELL_RETRY_MS, gateReceiptKey, GATE_BRAIN_MIN, GATE_HERE_HOLD_MS, guildGate, guildRoomGate, GUILD_CHAT_ROOM_HZ_MAX, SEAT_ELSEWHERE, raidGate, RAID_INTERNAL_CLEAN, RAID_INTERNAL_DAY, RAID_DAY_ASK_MS, raidTownsGate, RAID_TELL_RETRY_MS, RAID_CLEANS_MAX, RAID_LEDGER_PREFIX, raidLedgerKey, RAID_RC_PREFIX, raidReceiptKeyOf, RAID_RC_KEEP, RAID_RC_KEEP_MS, mapPixelOfWire, validRaidOut, worldRoom, sharedClassicMinutes, wallMsForClassicMinutes, isRegionRoom, travHubGate, travRoomGate, TRAV_STALE_MS, TRAV_WELCOME_MAX, owGate, owRoomGate, OW_LEDGER_KEY, REALM_DOOR_WORD, riteRelayGate, validRiteOut, sanitizeName, RITE_INTERNAL_BROKEN, RITE_INTERNAL_DAY, RITE_TELL_RETRY_MS, RITE_KEY, RITE_BY_MAX, RITE_CIRCLES_MAX, RITE_HUB_CIRCLES_MAX, RITE_ASK_EVERY_MS, RITE_ASK_TIMEOUT_MS, arenaGate, bodyWordRelayGate, BUSY_TOKEN_UNREAD } from './relay.js';   // AUDIT INT15: bodyWordRelayGate - a body's word on a bucket of its own
+import { roomOf, parseClient, inRange, inRangeOf, poseGate, chatGate, redGate, dmGate, muteGate, tokenGate, rosterFor, badged, isChatRoom, isWorldRoom, isCellRoom, streamsFoes, hitOwnerOf, worldFrameMaxFor, CELL_FRAME_RECORDS_MAX, HELLO_HZ_MAX, CHAT_HELLO_HZ_MAX, CHAT_ROOM_HZ_MAX, SOCKETS_MAX, CHAT_SOCKETS_MAX, DROP_STRIKES_MAX, CHAT_STRIKES_MAX, WORLD_MIN_MS, WORLD_CHUNK, WORLD_TTL_MS, WORLD_PREFIX, FOES_PREFIX, OWN_PREFIX, foesGate, byteGate, FOES_ROOM_BYTES_PER_S, HIT_ROOM_HZ_MAX, ACT_ROOM_HZ_MAX, ACT_ROOM_BYTES_PER_S, actGate, MAX_FRAME_BYTES, CLOSE_REPLACED, CLOSE_POLICY, CLOSE_BUSY, HIT_ROOM_BYTES_PER_S, whoGate, whoIdOf, WHO_ROOM_HZ_MAX, poseFan, poseChanged, RELAY_VERSION, KEEPALIVE_FAN_MS, ACT_SENDER_BYTES_PER_S, CHAT_ROSTER_MAX, isSocialRoom, socialGate, partyGate, SOCIAL_ROOM_HZ_MAX, FRIENDS_MAX, PENDING_MAX, PARTY_MAX, PARTY_INVITES_MAX, INVITE_TTL_MS, PARTY_OFFLINE_MS, ACCOUNT_TABS_MAX, mintPartyId, SOCIAL_REPEAT_MS, ACCOUNT_IDLE_MS, ACCOUNT_SWEEP_MS, SWEEP_STEP_MS, SWEEP_PAGE, questShareGate, amapShareGate, AMAP_ROOM_HZ_MAX, QUEST_ROOM_HZ_MAX, QUEST_ROOM_BYTES_PER_S, QUEST_PREFIX, QUEST_FRAME_MAX, tradeGate, TRADE_ROOM_HZ_MAX, TRADE_ROOM_BYTES_PER_S, castGate, CAST_HZ_MAX, CAST_DEST_SENDERS_MAX, parkGate, parkKey, parkKeyOf, PARK_KEY_RE, CARAVAN_DECOR_KEY, parkRegistryRoom, cellRoomOfWire, PARK_INTERNAL_REG, PARK_INTERNAL_DROP, PARK_CELL_MAX, PARK_ACCOUNT_MAX, PARK_TTL_MS, PARK_REFRESH_MS, CARAVAN_DOC_MIN_MS, PARTY_CHAT_ROOM_HZ_MAX, rollGate, rollDice, cardGate, pageGate, duelGate, DUEL_HZ_MAX, wedGate, WED_HZ_MAX, renownGate, renownRoomGate, lookGate, eventGate, EVENT_KEY, validLiveEvent, gateGate, siegeGate, SIEGE_IN_MS, GATE_INTERNAL_FELL, SOCIAL_ROOM, validGateOut, HELLO_WAIT_MS, GATE_TELL_RETRY_MS, gateReceiptKey, GATE_BRAIN_MIN, GATE_HERE_HOLD_MS, guildGate, guildRoomGate, GUILD_CHAT_ROOM_HZ_MAX, SEAT_ELSEWHERE, raidGate, RAID_INTERNAL_CLEAN, RAID_INTERNAL_DAY, RAID_DAY_ASK_MS, raidTownsGate, RAID_TELL_RETRY_MS, RAID_CLEANS_MAX, RAID_LEDGER_PREFIX, raidLedgerKey, RAID_RC_PREFIX, raidReceiptKeyOf, RAID_RC_KEEP, RAID_RC_KEEP_MS, mapPixelOfWire, validRaidOut, worldRoom, sharedClassicMinutes, wallMsForClassicMinutes, isRegionRoom, travHubGate, travRoomGate, TRAV_STALE_MS, TRAV_WELCOME_MAX, owGate, owRoomGate, OW_LEDGER_KEY, REALM_DOOR_WORD, riteRelayGate, validRiteOut, sanitizeName, RITE_INTERNAL_BROKEN, RITE_INTERNAL_DAY, RITE_TELL_RETRY_MS, RITE_KEY, RITE_BY_MAX, RITE_CIRCLES_MAX, RITE_HUB_CIRCLES_MAX, RITE_ASK_EVERY_MS, RITE_ASK_TIMEOUT_MS, arenaGate, bodyWordRelayGate, BUSY_TOKEN_UNREAD, POSE_BATCH_MS, ROSTER_BATCH_MS, WIRE2_BATCH_MAX, slimPose, wire2Batch, isLayered, layerOf, layerName, LAYER_HEADER, LAYER_FULL_HEADER, validPose, wardenVerdicts, wardenDue, parkSameSpot, parkSpotOf, WARDEN_RETRY_MS } from './relay.js';   // AUDIT INT15: bodyWordRelayGate - a body's word on a bucket of its own
 import { holdemGate, holdemSitRoomGate } from './relay.js';   // CARDS5: the card table's gate; AUDIT CARDS-3 A4: the room's sits
 import { newTable, topUp as holdemTopUp, sit as holdemSit, sitRefusal as holdemSitRefusal, stand as holdemStand, actAt as holdemAct, tick as holdemTick, nextAt as holdemNextAt, emptyTable as holdemEmpty, tableLook as holdemLook, stateDelta as holdemDelta, holdemGoldTable } from '../../src/net/holdemTable.js';   // CARDS5: THE RELAY DEALS - the room's card tables (holdemTable.js imports only cardLaw.js, which imports only dice.js)
 // WILD1 (2026-10-07, the owner: "Wrothgarian mountains need to be turned into a open pvp zone"): ONE FILE JOINS THE
@@ -345,6 +349,22 @@ const riteHelpersBy = (r, d, site) => {
 };
 /** A kept rite record's shape (a cell's ledger or the hub's day): `{ d, c: { 'px,py': circle } }`. */
 const riteRecordOk = (v) => !!v && typeof v === 'object' && Number.isSafeInteger(v.d) && !!v.c && typeof v.c === 'object' && !Array.isArray(v.c);
+/** AUDIT SCALE II R1-4: WHY THE HUB REFUSES A RELAY SETTING (null: it takes it) - by its consumers' own law, so a setting
+ *  answered as now in force is one they run. The hub kept any string of RELAY_CFG_VALUE_MAX and said it was in force,
+ *  and each consumer fell back without a word: a role pasted as Discord's mention (`<@&...>`) left the herald pinging
+ *  no role (heraldRole), and a BOSS_BODY missing a part's `perS` switched the count's enforcement off (bodyConfig's
+ *  default whole). A role is heraldRole's (a Discord id); the line is bodyConfig's and no other - JSON whose every key
+ *  is one it reads (a misspelt `enforce` it would ignore), and that it reads as a line rather than as its default.
+ *  The words go back in the hub's answer (`error`), which /relay shows its developer. */
+const BODY_KEYS = ['enforce', 'body', 'hull'], BODY_LINE_KEYS = ['depth', 'perS'];
+const relayCfgRefusal = (k, v) => {
+  if (k !== 'bossBody') return heraldRole(v) === null ? `${k} is a Discord role's id, 15 to 21 digits - not its name or its mention` : null;
+  let o = null;
+  try { o = JSON.parse(v); } catch { /* refused below */ }
+  const known = (x, keys) => !!x && typeof x === 'object' && !Array.isArray(x) && Object.keys(x).every((key) => keys.includes(key));
+  const ok = known(o, BODY_KEYS) && ['body', 'hull'].every((part) => o[part] === undefined || known(o[part], BODY_LINE_KEYS)) && bodyConfig(v) !== BODY_DEFAULT;
+  return ok ? null : `bossBody is JSON {enforce, body: {depth, perS}, hull: {depth, perS}}, each part whole, each number 0 to ${BODY_LINE_MAX}`;
+};
 
 /** SD3: how long a realm keeps the hub's answer of its record before it asks again (a hello storm asks once), how soon a
  *  hub beat that failed tries again, and how many region channels the census asks at once (each with its own deadline,
@@ -407,6 +427,13 @@ export default {
     // from the hub, after the socket's own check so no other request asks it): no object is minted for a slot the hub
     // never raised, nor for one gone
     if (isSdRoom(key)) { const s = sdSlotOfRoom(key); const rec = await sdLiveAsk(env.ROOMS, s); if (!(rec && rec.s === s && sdHolds(rec, Date.now()))) return json({ error: 'the Hour has closed' }, 404); }
+    // SCALE5d: A CROWDED PLACE OVERFLOWS INTO LAYERS (wire.js isLayered) - its own object first, or the layer the page
+    // asks for (its party's, `?ly=`), and past a full one the next, round to LAYERS_MAX; each object told which layer
+    // it is (LAYER_HEADER, set here whatever the page sent). A refusal for anything but a full room is answered as it was
+    if (isLayered(key)) return layerWalk(env.ROOMS, key, request, layerOf(url.searchParams.get('ly')));
+    // SCALE5d part two: A GATE'S COURT OVERFLOWS INTO ITS COPIES (hubShards.js isCourtCopy) - the court itself first,
+    // always (its fight is there), and past it full the copies, which hand the court their sockets' fight
+    if (isGateRoom(key)) return layerWalk(env.ROOMS, key, request, 0);
     const id = env.ROOMS.idFromName(key);
     return env.ROOMS.get(id).fetch(request);
   },
@@ -444,6 +471,9 @@ const ILIAC_OWED_MAX = 32;
  *  C6: a receipt's life (net/cardReceipt.js CARD_RECEIPT_TTL_S), not a week - a player away a fortnight still voids. */
 const HOLDEM_STAKE_VOID_S = CARD_RECEIPT_TTL_S;
 const HOLDEM_STAKE_KEEP_S = HOLDEM_STAKE_VOID_S + 24 * 3600;
+/** AUDIT SCALE II R3-3 (c): a layer's door to its place's stakes - a void said in a layer, spent where every stake of the
+ *  room is spent (the public worker forwards /room/<key> alone, so no page reaches it). */
+const HOLDEM_INTERNAL_VOID = '/internal/holdem/void';
 /** CARDS6: the most cash-outs an account is owed in one room (AUDIT CARDS-4 B5: each one a stake of at least
  *  HOLDEM_STAKE_MIN_BB big blinds, so the bound is the account's gold, and past it the oldest goes). */
 const HOLDEM_OWED_MAX = 64;
@@ -490,6 +520,27 @@ const COOL_MAX = 4096;
  *  S01-stale-party-pointer-blocks-sweep: its party is judged by the sweep against the party's own record, not here. */
 const unlisted = (r, now) => !!r && !(r.friends?.length) && !(r.in?.length) && !(r.out?.length) && !(r.invites ?? []).some((i) => now - i.at < INVITE_TTL_MS);
 
+/** AUDIT SCALE II R2-11: what an event a shard owes the bus weighs, bytes - a frame its length, a hello or a pose a
+ *  bound on what one says. */
+const upBytesOf = (ev) => (typeof ev[2] === 'string' ? ev[2].length : 512);
+/** AUDIT SCALE II R2-7: how many times the bus hands a shard one delivery before it lets it go (its shard's sync then
+ *  says what it holds, and a close it did not hear is said again), and how long after a miss it tries again, ms. */
+const HUB_DOWN_TRIES = 5;
+const HUB_RETRY_MS = 1000;
+
+/** SCALE5c: A SHARD'S SOCKET, AS THE BUS HOLDS IT (net/hubShards.js). The bus runs every law it always ran - an account's
+ *  hello and leave, a friend's act, a party's pose, a world line, a receipt handed to an account's newest socket - over the
+ *  sockets in its index, and a player on a shard is one of them: this object, which answers a socket's four calls. A frame
+ *  sent it is owed its shard (`_vsend`, the next HUB_INTERNAL_DOWN), a close is said to the shard, which closes the real
+ *  socket, and its attachment lives here, never the runtime's (nothing is stored for it - a woken bus is told again). */
+class ShardSocket {
+  constructor(bus, hub, vid) { this.virtual = true; this.hub = hub; this.vid = vid; this.att = null; this.closed = false; this._bus = bus; }
+  send(s) { if (this.closed) throw new Error('closed'); this._bus._vsend(this, s); }
+  close(code, reason) { if (this.closed) return; this.closed = true; this._bus._vclose(this, code, reason); }
+  serializeAttachment(a) { this.att = a; }
+  deserializeAttachment() { return this.att; }
+}
+
 export class Room {
   constructor(state, env) {
     this._metrics = new RoomMetrics();   // SCALE2b: the room's counts, written to Analytics Engine a window at a time (relayScale.js)
@@ -515,6 +566,9 @@ export class Room {
      *  provider links - the record says exactly what that does and does
      *  not close. */
     this._spent = new Map();
+    this._owed = new Map();    // SCALE5b: the second wire's batch - socket -> what the room has said it and not yet sent (`_owe`)
+    this._owedSoon = null;     // SCALE5b: the batch's timer while a pose is owed (POSE_BATCH_MS)
+    this._owedLate = null;     // SCALE5b: and while only a channel's roster is (ROSTER_BATCH_MS)
     /** MOD1: THE NEWEST MUTE ORDER THIS ROOM HAS APPLIED, per account -
      *  `{i, mu, sig}`. Two jobs: an order older than one already applied
      *  is ignored (so a replayed mute cannot undo an unmute inside its
@@ -575,6 +629,60 @@ export class Room {
     this._roomRenown = null;     // AUDIT RENOWN1 SEC-2/WIRE-1: the room's budget for renown fans (RENOWN_ROOM_HZ_MAX) - on the instance, as the chat's is
     this._acctIdx = null;        // SOC1: account -> its hello'd sockets, built from the index when asked; SCALE5a: then KEPT by the doors that change a socket's account (`_reindex`), rebuilt only when the index itself is re-walked
     this._idxSeq = new WeakMap(); this._idxN = 0;   // SCALE5a: each socket's place in the index's own order (`_enter`) - a per-account set is read back in it
+    this._idIdx = null;          // SCALE5b: peer id -> its sockets, kept as the account index is - a directed frame's target without a walk (`_idFirst`)
+    this._giIdx = null;          // SCALE5c: guild -> its members' sockets, kept the same way - a guild's line without a walk of the whole hub
+    this._folds = new WeakMap();   // SCALE5c: an attachment -> its name as a search folds it (`_findNames`)
+    this._findRoom = null;       // SCALE5c: the whole hub's search bucket (HUB_FIND_ROOM_HZ_MAX)
+    this._everyone = null;       // SCALE5c: { at, s } - everyone online as the bus last said it (`_everyoneSaid`)
+    this._busKey = undefined;    // SCALE5c part two: the channel this bus is (its first shard's), never another's
+    this._hostMemo = undefined;  // SCALE5b: the room's host (`_hostOf`), kept until a socket's id or hello stamp moves - undefined: not known
+    this._relayCfg = undefined;  // SCALE5b: the relay's settings (net/relayCfg.js) - the hub's from its storage, any other room's as the hub last answered
+    this._relayCfgAt = -Infinity;   // SCALE5b: when a room not the hub last asked
+    this._rfSaid = false;        // SCALE5b: whether this cell last said it judges the poses that reach it (`_rfSay`)
+    // SCALE5c (the bus): its shards' sockets (`ShardSocket`, by the id each shard gives its own), and what is owed each shard
+    this._vsocks = new Map();
+    this._vper = new Map();      // shard -> how many ShardSockets of its the bus holds (the shards a frame to everyone reaches)
+    this._cper = new Map();      // SCALE5d part two: a court's copy -> how many of its sockets the court holds (its beats' reach)
+    this._vshut = new Bounded(HUB_KEEP_MAX);   // SCALE5d part two: the ids of the ShardSockets this object closed - never asked to say their hello again
+    this._down = new Map();      // shard -> { s: [frames], i: frame -> its index, seg: [Map vid -> [indexes] | {all: index}], cur: the open Map, close: [[vid, code, reason]] }
+    this._downT = null;
+    this._downBusy = new Map();  // shard -> the delivery in flight (one at a time a shard, so its order is the order said)
+    this._toldN = new Map();     // shard -> the count its last delivery carried (every shard the bus has handed anything - a hello's words, at least)
+    this._countT = null;         // the count's tell, owed within HUB_COUNT_MS of a hello or a leave
+    // SCALE5c (a shard): what it owes the bus, and what it knows of the hub
+    this._up = [];               // [vid, kind, payload] in the order they happened
+    this._upGate = new WeakMap();   // socket -> its frames' bucket on the way up (HUB_UP_HZ_MAX)
+    this._upT = null;
+    this._upBusy = null;         // the hand-up in flight
+    this._vidIdx = new Map();    // vid -> its socket here (rebuilt from the attachments after a wake - `_byVid`)
+    this._vidIdxFull = false;
+    this._hubKey = undefined;    // this shard's key (undefined: not known yet; null: no shard)
+    this._hubTotal = null;       // the hub's count everywhere, as the bus last said it
+    this._hubTotalSaid = null;   // the count last said to this shard's sockets
+    this._hubCountT = null;
+    this._hubSyncAt = 0;         // when this shard last told the bus every socket it holds
+    this._hubAlarmed = false;
+    this._vseq = 0;
+    // AUDIT SCALE II R2-7: EVERY HAND-UP AND DELIVERY NUMBERED. One delivery in flight each way kept the order, and a lost
+    // one was lost for good (a world line, a hello's words, a close the bus decided - the link open and mute); one that
+    // landed but whose answer was lost, sent again, would run twice. Each is numbered under its sender's instance (`_boot`);
+    // one that did not land goes again as it was, and its receiver runs a number it has run once, never twice
+    this._boot = crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
+    this._upSeq = 0;              // (a shard) the last hand-up's number
+    this._upRetry = null;         // (a shard) the hand-up that did not land: { q, e, live? }, sent again before anything after it
+    this._upInFlight = null;      // (a shard) the events of the hand-up on the wire
+    this._upHoldUntil = 0;        // (a shard) after a miss, when the next try goes
+    this._upBytes = 0;            // (a shard) AUDIT SCALE II R2-11: what `_up` holds, bytes
+    this._upSeen = new Map();     // (the bus) shard -> { b, q }: the newest hand-up of its it ran
+    this._downSeq = new Map();    // (the bus) shard -> the last delivery's number
+    this._downRetry = new Map();  // (the bus) shard -> { q, body, tries }: the delivery that did not land
+    this._downSeen = null;        // (a shard) { b, q }: the newest delivery it ran
+    this._shardSeen = new Map();  // (the bus) AUDIT SCALE II R2-9: shard -> when it last handed anything up
+    this._silentAt = 0;           // (the bus) when it last let go of a silent shard's sockets
+    this._vhubs = null;           // (the bus) AUDIT SCALE II R2-6: the shards it has heard from (VHUBS_KEY), read once a wake
+    this._busWoke = false;        // (the bus) whether this instance has asked them to say their sockets again
+    this._hubKeyKept = null;      // (a shard) AUDIT SCALE II R2-4: the name it last kept in storage (HUB_KEY_KEY)
+    this._swept = false;         // SCALE5b: the drain's sweep ran and nothing has said hello since - the next empty room's hello need not sweep again
     this._subIdx = null;         // SCALE5a: verified account (`sub`) -> its hello'd sockets, kept as the account index is - ONE-SEAT's other tabs (`_otherTabsOf`) without a walk of every socket
     this._parties = new Bounded(PARTIES_MAX);   // SOC1: party id -> record, kept while the object is awake (a party pose reads its party once a second; a wake reads storage once and keeps it again)
     this._recs = new Bounded(RECS_MAX);      // AUDIT SOC A5: account id -> record, kept while the object is awake - every write goes through _putAcct/_putAccts so the copy is the storage's; bounded at RECS_MAX
@@ -648,6 +756,10 @@ export class Room {
     if (path === GATE_INTERNAL_FELL) return this._gateFellInternal(request);   // WB3: a gate's kill, said to the hub
     if (path === SERPENT_INTERNAL_FELL) return this._serpentFellInternal(request);   // SERPENT1: the serpent's kill, said to the hub
     if (path === RAID_INTERNAL_CLEAN) return this._raidCleanInternal(request);   // RAID3: a raid's cleanse, said to the hub
+    if (path === RELAY_INTERNAL_CFG) return json(await this._relayCfgOf());   // SCALE5b: a boss's room asking the hub for the relay's settings
+    if (path === HUB_INTERNAL_UP) return this._hubUpInternal(request);   // SCALE5c: a shard's hellos, frames and closes, to the bus
+    if (path === HUB_INTERNAL_DOWN) return this._hubDownInternal(request);   // SCALE5c: the bus's frames for a shard's sockets
+    if (path === HUB_INTERNAL_RESYNC) return this._hubResyncInternal();   // AUDIT SCALE II R2-6: the bus woke - every socket here said again
     if (path === RAID_INTERNAL_DAY) return this._raidDayInternal(request);   // RAID-ROLL: a cell asking the hub for the day's roll
     if (path === WDUN_INTERNAL_RESET) return this._wdunResetInternal(request);   // PVPDUNGEONS: the hub wiping a hall's world room
     if (path === WDUN_INTERNAL_KIN) return this._wdunKinInternal(request);   // PVPDUNGEONS: a place room asking the hub whether two accounts share a party
@@ -661,6 +773,7 @@ export class Room {
     if (path === SD_INTERNAL_FOUND) return this._sdFoundInternal(request);   // SD3: a cell telling the hub a Hollow found
     if (path === SD_INTERNAL_LIVE) return this._sdLiveInternal();   // SD3: the Worker or a realm asking the hub its record
     if (path === SD_INTERNAL_FELL) return this._sdFellInternal(request);   // SD8b: a realm telling the hub its Remnant fell
+    if (path === HOLDEM_INTERNAL_VOID) return this._holdemVoidInternal(request);   // AUDIT SCALE II R3-3 (c): a layer's void, spent by its place
     const key = roomOf(new URL(request.url).pathname);
     if (!key || (key.startsWith('owned:') && !privateInteriorOf(key))) return json({ error: 'no such private room' }, 404);
     // AUDIT WB A1: A SEAT IS A HELLO'S. A socket that opened and never said hello kept its seat for as long as it stood
@@ -668,7 +781,13 @@ export class Room {
     // gate's court included, for its whole day. Each socket is stamped as it opens; a full room first closes the silent
     // ones past HELLO_WAIT_MS (busy - a real client retries), and is full only if it still is.
     const cap = isChatRoom(key) ? CHAT_SOCKETS_MAX : SOCKETS_MAX;
-    if (this.state.getWebSockets().length >= cap) { this._unseatSilent(Date.now()); if (this.state.getWebSockets().length >= cap) return json({ error: 'room full' }, 503); }   // the runtime drops a socket the object closed from the list at once (AUDIT WORLD34 D1)
+    const walked = isLayered(key) || isGateRoom(key);   // SCALE5d: the rooms the Worker's walk reaches (relayScale.js layerWalk)
+    // AUDIT SCALE II R3-3: AN ASKED LAYER THAT HOLDS NOBODY IS NO PAGE'S TO OPEN - the walk starts again at the place
+    // (LAYER_EMPTY_HEADER), and this layer is admitted only when that walk reaches it in turn
+    if (walked && layerOf(request.headers.get(LAYER_HEADER)) > 0 && request.headers.get(LAYER_ASK_HEADER) === '1' && !this.state.getWebSockets().length) { const empty = json({ error: 'layer empty' }, 503); empty.headers.set(LAYER_EMPTY_HEADER, '1'); return empty; }
+    // AUDIT SCALE II R1-5: double13 is the sockets refused `room full` - a full layer the walk passes on from refused
+    // nobody, so only the walk's last try counts (LAYER_LAST_HEADER), and a room no walk reaches always does
+    if (this.state.getWebSockets().length >= cap) { this._unseatSilent(Date.now()); if (this.state.getWebSockets().length >= cap) { if (!walked || request.headers.get(LAYER_LAST_HEADER) === '1') this._metrics.c.full++; this._metricsTick(); const full = json({ error: 'room full' }, 503); full.headers.set(LAYER_FULL_HEADER, '1'); return full; } }   // SCALE5d: said full, so the Worker walks on to the next layer   // SCALE5b: counted   // the runtime drops a socket the object closed from the list at once (AUDIT WORLD34 D1)
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     // hibernation API: the object may sleep between messages; every
@@ -676,14 +795,15 @@ export class Room {
     // included - and the look sits in storage under the id (its meters
     // are the instance's: AUDIT ATTACH)
     this.state.acceptWebSocket(server);
-    const att = { key, id: null, name: null, pose: null, at: Date.now() };   // AUDIT WB A1: when it opened
+    const ly = isLayered(key) || isGateRoom(key) ? layerOf(request.headers.get(LAYER_HEADER)) : 0;   // SCALE5d part two: and a gate court's copy   // SCALE5d: the layer the Worker says this object is
+    const att = { key, id: null, name: null, pose: null, at: Date.now(), ...(ly ? { ly } : {}) };   // AUDIT WB A1: when it opened
     server.serializeAttachment(att);
     this._adopt(server, att);
     return new Response(null, { status: 101, webSocket: client });
   }
   /** SCALE2b: a socket the runtime has just accepted, into the index - the one door a socket comes in by (the index
    *  is never rebuilt for one; a wake's first `_all` reads every socket the runtime holds). */
-  _adopt(ws, att) { if (!this._idx) return; if (!this._idx.has(ws)) this._enter(ws); this._idx.set(ws, att); }   // SCALE5a: its place in the index's order
+  _adopt(ws, att) { if (!this._idx) return; const was = this._idx.get(ws); if (!was) this._enter(ws); this._idx.set(ws, att); this._reindex(ws, was, att); if (this._idx.size > this._metrics.c.peak) this._metrics.c.peak = this._idx.size; }   // SCALE5a: its place in the index's order; SCALE5b: and in the kept indexes (a socket accepted with no id moves none)
   /** SCALE5a: a socket NEW to the index takes the next place in its order - the order a walk of the index gives (a Map's
    *  insertion order: a key set again keeps its place, a key deleted and set again goes last, as here). */
   _enter(ws) { this._idxSeq.set(ws, ++this._idxN); }
@@ -711,11 +831,11 @@ export class Room {
     const now = Date.now();
     if (this._idx && now - this._idxAt < IDX_TRUST_MS) return this._idx;
     const sockets = this.state.getWebSockets();
-    if (!this._idx) { this._idx = new Map(); this._acctIdx = null; this._subIdx = null; }
+    if (!this._idx) { this._idx = new Map(); this._acctIdx = null; this._subIdx = null; this._idIdx = null; this._giIdx = null; this._hostMemo = undefined; }
     let moved = false;
-    if (this._idx.size) { const live = new Set(sockets); for (const ws of [...this._idx.keys()]) if (!live.has(ws)) { this._idx.delete(ws); moved = true; } }
+    if (this._idx.size) { const live = new Set(sockets); for (const ws of [...this._idx.keys()]) if (!live.has(ws) && !ws.virtual) { this._idx.delete(ws); moved = true; } }   // SCALE5c: a shard's socket is never the runtime's
     for (const ws of sockets) if (!this._idx.has(ws)) { let a; try { a = ws.deserializeAttachment() ?? {}; } catch { a = {}; } this._enter(ws); this._idx.set(ws, a); moved = true; }
-    if (moved) { this._acctIdx = null; this._subIdx = null; }   // SOC1: rebuilt with the index; SCALE5a: the subject index too
+    if (moved) { this._acctIdx = null; this._subIdx = null; this._idIdx = null; this._giIdx = null; this._hostMemo = undefined; }   // SOC1: rebuilt with the index; SCALE5a: the subject index too; SCALE5b: the id index and the host
     this._idxAt = now;
     return this._idx;
   }
@@ -738,6 +858,9 @@ export class Room {
   _reindex(ws, was, a) {
     keyMove(this._acctIdx, ws, was?.id && was.acct ? was.acct : null, a?.id && a.acct ? a.acct : null);
     keyMove(this._subIdx, ws, was?.id && was.sub ? was.sub : null, a?.id && a.sub ? a.sub : null);   // and the subject index
+    keyMove(this._idIdx, ws, was?.id || null, a?.id || null);   // SCALE5b: and the id index
+    keyMove(this._giIdx, ws, was?.id && was.gi ? was.gi : null, a?.id && a.gi ? a.gi : null);   // SCALE5c: and the guild index
+    if ((was?.id || null) !== (a?.id || null) || (was?.since ?? 0) !== (a?.since ?? 0)) this._hostMemo = undefined;   // SCALE5b: the host is asked again once an id or a hello stamp moves
   }
   /** SCALE5a: the hello'd sockets of each verified account (`sub`) - built as `_byAcct` is, kept the same way. */
   _bySub() {
@@ -746,6 +869,36 @@ export class Room {
     const m = new Map();
     for (const [ws, a] of this._all()) if (a.id && a.sub) { let s = m.get(a.sub); if (!s) m.set(a.sub, s = new Set()); s.add(ws); }
     return (this._subIdx = m);
+  }
+  /** SCALE5b: the sockets of each peer id - built as `_byAcct` is, kept the same way. */
+  _byId() {
+    this._all();   // as `_byAcct`'s
+    if (this._idIdx) return this._idIdx;
+    const m = new Map();
+    for (const [ws, a] of this._all()) if (a.id) { let s = m.get(a.id); if (!s) m.set(a.id, s = new Set()); s.add(ws); }
+    return (this._idIdx = m);
+  }
+  /** SCALE5c: the hello'd sockets of each guild - built as `_byAcct` is, kept the same way. */
+  _byGuild() {
+    this._all();   // as `_byAcct`'s
+    if (this._giIdx) return this._giIdx;
+    const m = new Map();
+    for (const [ws, a] of this._all()) if (a.id && a.gi) { let s = m.get(a.gi); if (!s) m.set(a.gi, s = new Set()); s.add(ws); }
+    return (this._giIdx = m);
+  }
+  /** SCALE5b (2026-10-10, Mac: "lets now tackle the bigger work ... really future proof our archetecture while also
+   *  increasing performance"; bible/11-Multiplayer/Scale-Arc.md SCALE5b): A DIRECTED FRAME'S TARGET WITHOUT A WALK. A
+   *  blow, a heal, a who's answer and every act at one peer found its socket by copying the whole index and searching
+   *  it - O(N) and an array of N a frame, in a full cell at every blow. The first socket but `except` holding `id`, in
+   *  the index's order, with its attachment - exactly what `[...this._all()].find(([o, b]) => o !== except && b.id ===
+   *  id)` answered - read off the id's own sockets (one, but for a reconnect's moment). */
+  _idFirst(id, except = null) {
+    if (!id) return null;
+    const s = this._byId().get(id);
+    if (!s) return null;
+    let best = null, seq = Infinity;
+    for (const ws of s) { if (ws === except) continue; const q = this._idxSeq.get(ws) ?? 0; if (q < seq) { seq = q; best = ws; } }
+    return best ? [best, this._all().get(best)] : null;
   }
   /** SCALE5a: a set's sockets in the index's own order - what a walk of the index would have listed. */
   _inOrder(set) {
@@ -785,8 +938,10 @@ export class Room {
   /** The sockets but `ws` holding the id `id` - a reconnect's old socket, which it replaces. A list, made before any is
    *  replaced. */
   _withId(id, ws) {
-    const out = [];
-    for (const [other, b] of this._all()) if (other !== ws && b.id === id) out.push([other, b]);
+    const s = id ? this._byId().get(id) : null;   // SCALE5b: the id's own sockets, never a walk of every socket
+    if (!s) return [];
+    const idx = this._all(), out = [];
+    for (const other of this._inOrder(s)) if (other !== ws) out.push([other, idx.get(other)]);
     return out;
   }
   /** Everyone but `ws` the room can name - hello'd, and never a socket this object closed or whose leave is said
@@ -829,21 +984,727 @@ export class Room {
    *  write, which carries the latest pose with it). A wake loses at most that much of a moving player's pose; the
    *  next pose sets it right. */
   _setAttach(ws, a, lazy = false) {
+    if (ws.court) { ws.att = a; return true; }   // SCALE5d part two: a copy's socket is the fight's alone - never the court's index, so no crowd walk meets it
     const now = Date.now();
     if (!lazy || !(now - (this._attachedAt.get(ws) ?? -Infinity) < ATTACH_LAZY_MS)) {
       try { ws.serializeAttachment(a); } catch { return false; }
       this._attachedAt.set(ws, now);
     }
     const idx = this._all(), was = idx.get(ws);
+    if (ws.virtual && was) this._vlaw(ws, was, a);   // AUDIT SCALE II R2-5: a ShardSocket's law moved - said to its shard
     if (!was) this._enter(ws);   // SCALE5a: new to the index - last in its order
     this._reindex(ws, was, a);   // SOC1: the account index follows the ids alone - a pose's write leaves it standing; SCALE5a: moved, not dropped
     idx.set(ws, a);
     return true;
   }
-  _forget(ws) { const a = this._idx?.get(ws); if (this._idx?.delete(ws)) this._reindex(ws, a, null); }   // SCALE5a: out of the account index too - not the whole of it dropped
+  _forget(ws) { this._owed.delete(ws); const a = this._idx?.get(ws); if (this._idx?.delete(ws)) this._reindex(ws, a, null); }   // SCALE5b: and owed nothing   // SCALE5a: out of the account index too - not the whole of it dropped
+
+  /** SCALE5b: THE SECOND WIRE'S BATCH (wire.js POSE_BATCH_MS, ROSTER_BATCH_MS, wire2Batch). What the room fans to a
+   *  socket whose hello offered `w2` is OWED it, in the order the room said it - a pose as its slim entry (`[id, pose]`,
+   *  built once a pose), a channel's join or leave as its whole frame - and goes out as ONE frame: at the batch's end,
+   *  or sooner, ahead of any other frame the room sends that socket (`_send`), so nothing the room says overtakes what
+   *  it said before. A queue that reaches WIRE2_BATCH_MAX goes out at once - a reader takes no more. */
+  _owe(ws, item, ms = POSE_BATCH_MS) {
+    let q = this._owed.get(ws);
+    if (!q) this._owed.set(ws, q = []);
+    q.push(item);
+    this._metrics.c.owed++;
+    if (q.length >= WIRE2_BATCH_MAX) { this._flushOwedOf(ws); return; }
+    if (ms <= POSE_BATCH_MS) { if (!this._owedSoon) this._owedSoon = setTimeout(() => this._flushOwed(), POSE_BATCH_MS); }
+    else if (!this._owedSoon && !this._owedLate) this._owedLate = setTimeout(() => this._flushOwed(), ms);
+  }
+  _flushOwedOf(ws) {
+    const q = this._owed.get(ws);
+    if (!q) return;
+    this._owed.delete(ws);
+    this._metrics.c.batches++;
+    this._send(ws, wire2Batch(q));
+  }
+  _flushOwed() {
+    clearTimeout(this._owedSoon); clearTimeout(this._owedLate);
+    this._owedSoon = this._owedLate = null;
+    for (const ws of [...this._owed.keys()]) this._flushOwedOf(ws);
+  }
+  /** SCALE5b: a channel's join or leave - to a socket of the second wire, owed it for the roster's batch; to any other,
+   *  at once, as `_fanBut` says it. */
+  _fanRoster(ws, out) { for (const [other, b] of (this._vper.size ? this._reals() : this._all())) if (other !== ws && b.id && !other.virtual) { if (b.w2) this._owe(other, out, ROSTER_BATCH_MS); else this._send(other, out); } }   // SCALE5c: a shard's sockets hear their own shard's roster - the bus's walk is its own sockets'
+  /** SCALE5b: DOES THIS CELL JUDGE THE POSES THAT REACH IT - a duel's bout (INT8), the Wild zone's fighters (INT9), a sea
+   *  serpent's fight (SERPENT1, INT11's trails and INT13's hulls)? Each reads every pose a fighter's socket here says, a
+   *  halo's copy too, and a client thins what it says to a halo that is none of these (online.js haloPoseDue, HALO-THIN) -
+   *  so the room says which it is: in its welcome (`rf`) and, when it moves, to the second wire's sockets (`_rfSay`). */
+  _refereesPoses() { return !!(this._duelRef?.bouts?.size || this._wildRef?.fighters?.size || this._serpents?.size); }
+  /** SCALE5b: the referee's word, said again - `{t:'rf', on}` to every socket of the second wire, each a halo's or a cell's. */
+  _rfSay() {
+    const rf = this._refereesPoses();
+    this._rfSaid = rf;
+    const out = JSON.stringify({ t: 'rf', on: rf ? 1 : 0 });
+    for (const [ws, b] of this._all()) if (b.id && b.w2) this._send(ws, out);
+  }
+  /** SCALE5b: A BEAT'S FRAMES, ONE FRAME A LISTENER. A boss's beat (the gate's, a siege's, a Remnant's, a serpent's, a
+   *  bout's) said each of its frames as a send of its own to every socket that hears it; a socket of the second wire
+   *  hears them as one frame batch (wire.js wire2Batch) - at once, never waiting on a batch's timer - and any other one
+   *  send a frame as before, a send that fails ending that socket's (its close is said). The index walked in place. */
+  _fanFrames(outs, hears) {
+    if (!outs.length) return;
+    let one = null;
+    for (const [ws, b] of this._all()) {
+      if (!hears(b)) continue;
+      if (b.w2 && outs.length > 1) { this._metrics.c.owed += outs.length; this._metrics.c.batches++; this._send(ws, one ??= wire2Batch(outs)); }
+      else for (const s of outs) if (!this._send(ws, s)) break;
+    }
+  }
+  /** SCALE5c: THE HUB'S WORDS TO A HELLO, after its welcome and its join - the account's picture, the world's kills,
+   *  rites, raids and Hour, this account's receipts - said by the bus to a socket of its own or to a shard's
+   *  (ShardSocket), the same words either way. Each contained, as they always were. */
+  async _hubHelloWords(ws, m, sub, now) {
+    // SOC1: the account, in the hub - after the welcome and the join, so a client's session has reset on the
+    // welcome before its picture lands; a hello naming none is a build before this slice, admitted as it was
+    if (m.acct) { try { await this._helloAccount(ws, m, now); } catch (e) { console.warn('[hub] account hello failed', e?.message ?? e); } }   // AUDIT SOC A2: contained, as the acts and the leave are
+    // WB3: a gate's kill said while this player was away, while that gate still stands - so it collapses on their screen too
+    { try { const g = await this._gateFellOf(); if (g && gateHolds(g.d, now)) this._send(ws, JSON.stringify({ t: 'gate', ...g })); } catch (e) { console.warn('[hub] gate word failed', e?.message ?? e); } }
+    // SERPENT1: and a sea serpent's, while its day holds - its ring on their map reads slain, its lines are not said;
+    // AUDIT SERPENT S1: each site's kill (a client hears its own site's); S5: and this account's receipt while it is good
+    { try { const g = await this._serpentFellsOf(); if (g && serpentHolds(g.d, now)) for (const fell of g.list) this._send(ws, JSON.stringify({ t: 'serpent', ...fell })); } catch (e) { console.warn('[hub] serpent word failed', e?.message ?? e); } }
+    if (sub) { try { await this._serpentReceiptTo(ws, sub, now); } catch (e) { console.warn('[hub] serpent receipt failed', e?.message ?? e); } }
+    // AUDIT WB A4: and this account's receipt, while it is good (spent, it goes)
+    if (sub) { try { await this._gateReceiptTo(ws, sub, now); } catch (e) { console.warn('[hub] gate receipt failed', e?.message ?? e); } }
+    // SD9a: and this account's Hour receipt, while it is good (spent, it goes)
+    if (sub) { try { await this._sdReceiptTo(ws, sub, now); } catch (e) { console.warn('[hub] sd receipt failed', e?.message ?? e); } }
+    // WB12d: the faithful's rite broken while this player was away, while its circle still stands
+    // BROKER-CAGE: and its faithful every one fallen - the Broker's cage open - until the Wrath's midnight (cageStands: a
+    // Warden fallen early takes the circle, never her)
+    {
+      try {
+        const r = await this._riteOf();
+        if (r) {
+          const stands = riteStands(r.d, now, await this._fellAtOf(r.d)), caged = cageStands(r.d, now);
+          for (const c of Object.values(r.c)) {
+            if (c.said && stands) this._send(ws, JSON.stringify({ t: 'rite', ...riteSaid(r.d, c) }));   // each circle said (a client hears its own)
+            if (c.cl && caged) this._send(ws, JSON.stringify({ t: 'rite', ...cageSaid(r.d, c) }));
+          }
+        }
+      } catch (e) { console.warn('[hub] rite word failed', e?.message ?? e); }
+    }
+    // RAID3: the raids cleansed today and yesterday - so a raid this player's machine still holds open is closed quietly,
+    // never said withdrawn (the cleanse's own word went out while they were away)
+    { try { const l = await this._raidCleansOf(now); if (l.length) this._send(ws, JSON.stringify({ t: 'raid', k: 'cls', l })); } catch (e) { console.warn('[hub] raid word failed', e?.message ?? e); } }
+    // AUDIT RAID R2: and this account's raid receipts the hub holds - an earner who was not in the town's cell at the
+    // cleanse, or whose link dropped at it, is handed them here (the account service counts each once)
+    if (sub) { try { await this._raidReceiptsTo(ws, sub, now); } catch (e) { console.warn('[hub] raid receipts failed', e?.message ?? e); } }
+    // RAID-ROLL: and, while the hub holds no towns table its operator pinned, the ask for one by its hash - any
+    // client whose own table hashes to it hands it over (the relay never holds the game's files)
+    { try { const h = await this._raidTownsWanted(); if (h) this._send(ws, JSON.stringify({ t: 'raid', k: 'tw', h })); } catch (e) { console.warn('[hub] raid towns ask failed', e?.message ?? e); } }
+    // SD3: and the Super dungeon's record - a Hollow risen, found, fallen or gone - so a player who joins mid-life stands it
+    // (or, inside one gone while they were away, is cast out); an older client drops a frame type it does not know
+    { try { const r = await this._sdOf(); if (r && r.s > 0) this._send(ws, JSON.stringify({ t: 'sd', k: 'ev', ...r })); } catch (e) { console.warn('[hub] sd word failed', e?.message ?? e); } }
+  }
+  // ─────────────────────── SCALE5c: THE HUB, SIXTEEN WAYS (net/hubShards.js) ───────────────────────
+  /** The hub's count as a shard says it: the bus's (everyone on every shard and the bus's own), never under the shard's. */
+  _hubN(local) { return this._hubTotal != null ? Math.max(this._hubTotal, local) : local; }
+  /** A shard's attachment as the bus keeps it on the ShardSocket - the socket's id, badge and account, never its place,
+   *  its room, its wire or the shard's own bookkeeping. */
+  _shardAtt(a) { const { key, pose, hm, at, w2, vid, ly, ...att } = a; void key; void pose; void hm; void at; void w2; void vid; void ly; return att; }
+  /** (a shard) A socket that came to the wrong shard is told the right one, and closed - nothing written. */
+  _hubHop(ws, key) {
+    this._send(ws, JSON.stringify({ t: 'hub', key }));
+    try { ws.close(CLOSE_HUB, 'hub'); } catch { /* already closed */ }
+    this._dead.add(ws);
+    this._closed(ws);
+  }
+  /** (a shard) The socket holding `vid`, or null - the index's, rebuilt once after a wake (an instance starts with none). */
+  _byVid(vid) {
+    const ws = this._vidIdx.get(vid);
+    if (ws || this._vidIdxFull) return ws ?? null;
+    this._vidIdxFull = true;
+    for (const [w, b] of this._all()) if (b.vid && b.id) this._vidIdx.set(b.vid, w);
+    return this._vidIdx.get(vid) ?? null;
+  }
+  /** (a shard) A frame of its socket's, handed to the bus - never past the largest frame the hub takes, and on a gate of
+   *  the shard's own (HUB_UP_HZ_MAX), so no socket floods the bus with frames it would only refuse: over it, a junk strike. */
+  _hubForward(ws, a, message) {
+    if (message.length > HUB_FRAME_MAX) { this._refuse(ws, 'frame too large'); return; }
+    const g = tokenGate(this._upGate.get(ws), Date.now(), HUB_UP_HZ_MAX, HUB_UP_BURST);
+    this._upGate.set(ws, g.bucket);
+    if (!g.pass) { this._junk(ws); return; }
+    // AUDIT SCALE II R2-11: a bus that takes nothing (down, or slow) - past HUB_UP_QUEUE_BYTES a frame is dropped and
+    // counted, never queued without end
+    if (this._upBytes + message.length > HUB_UP_QUEUE_BYTES) { this._metrics.c.drops++; return; }
+    this._hubUpOwe(a.vid, 'f', message);
+  }
+  /** (a shard) What it owes the bus, in the order it happened - handed up within HUB_BATCH_MS. */
+  _hubUpOwe(vid, kind, payload) {
+    const ev = [vid, kind, payload];
+    this._up.push(ev);
+    this._upBytes += upBytesOf(ev);   // AUDIT SCALE II R2-11
+    if (!this._upT) this._upT = setTimeout(() => { this._upT = null; this._hubUpFlush(); }, HUB_BATCH_MS);
+  }
+  /** (a shard) Every socket it holds, by the id the bus knows it by. */
+  _hubLive() { const out = []; for (const [w, b] of this._all()) if (b.id && b.vid && !this._dead.has(w) && !this._gone.has(w)) out.push(b.vid); return out; }
+  /** (a shard) A socket the bus says it does not hold (a bus woken, a hello lost): its hello said again. AUDIT SCALE II
+   *  R2-1: with the id's secret, which the bus asks as the hub's hello always asked it; R3-6: marked said again (`re`), so
+   *  a court admits a socket it held before it woke by the clock alone. Answers the events, for the caller to place. */
+  _hubRehelloEvents(vid) {
+    const ws = this._byVid(vid);
+    if (!ws) return [];
+    const a = this._attach(ws);
+    if (!a.id) return [];
+    const out = [[vid, 'h', { att: this._shardAtt(a), m: { acct: a.hm?.acct ?? null, asecret: a.hm?.as ?? null, ps: a.hm?.ps === 1 ? 1 : 0, cl: 0, secret: a.hm?.sc ?? null, re: 1 } }]];
+    if (a.ly && isGateRoom(a.key) && a.pose) out.push([vid, 'p', a.pose]);   // SCALE5d part two: and a court copy's, where it stands
+    return out;
+  }
+  _hubRehello(vid) { for (const ev of this._hubRehelloEvents(vid)) this._hubUpOwe(ev[0], ev[1], ev[2]); }
+  /** (a shard, or a copy) AUDIT SCALE II R2-4 = R3-2: THE NAME IT HANDS UP UNDER. A hello said it, and a woken object held
+   *  none - a shard that slept held its sockets' frames until its alarm (a minute: a world line, an invite, a copy's
+   *  blows), and one whose last socket closed on a woken instance never handed up that leave (the bus counted the player
+   *  online for good). Its sockets' attachments say it, and its storage keeps it (HUB_KEY_KEY, written once an instance,
+   *  at a hello). Null for an object that is no shard and no copy. */
+  async _hubKeyOf() {
+    if (this._hubKey) return this._hubKey;
+    let k = null, ly = 0;
+    for (const [, b] of this._all()) { k = b.key ?? null; ly = b.ly | 0; break; }
+    let key = isChannelShard(k) ? k : isGateRoom(k) && ly > 0 ? layerName(k, ly) : null;
+    if (!key && this._hubKey === undefined) { try { const v = await this.state.storage.get(HUB_KEY_KEY); key = typeof v === 'string' && upOf(v) != null ? v : null; } catch { key = null; } }
+    this._hubKey = key;
+    return key;
+  }
+  /** (a shard) AUDIT SCALE II R2-8: is a close or a replacement of `vid`'s still owed the bus (queued, on the wire, or to
+   *  be sent again)? A delivery for it is then not one for a socket gone - the bus hears why in a moment. */
+  _vidLeaving(vid) {
+    const has = (l) => Array.isArray(l) && l.some((ev) => ev[0] === vid && (ev[1] === 'r' || ev[1] === 'x'));
+    return has(this._up) || has(this._upInFlight) || has(this._upRetry?.e);
+  }
+  /** (a shard) AUDIT SCALE II R2-11: the next hand-up's events - HUB_BATCH_MAX at most and HUB_BATCH_BYTES (one at least). */
+  _upTake() {
+    let n = 0, bytes = 0;
+    while (n < this._up.length && n < HUB_BATCH_MAX) { const w = upBytesOf(this._up[n]); if (n && bytes + w > HUB_BATCH_BYTES) break; bytes += w; n++; }
+    this._upBytes = Math.max(0, this._upBytes - bytes);
+    return this._up.splice(0, n);
+  }
+  /** (a shard, or a copy) AUDIT SCALE II R2-6: HUB_INTERNAL_RESYNC - the bus woke: every socket held here said to it now. */
+  async _hubResyncInternal() {
+    this._hubSyncAt = 0;
+    this._upHoldUntil = 0;
+    await this._hubUpFlush();
+    return json({ ok: 1 });
+  }
+  /** (a shard) The batch to the bus - one in flight at a time, so the bus hears it in the order it happened, and every
+   *  HUB_SYNC_MS every socket this shard holds besides (the bus closes any it holds that are not, and asks again for any
+   *  it lacks). Answers once this batch, and any it waited on, is handed. */
+  _hubUpFlush() {
+    if (this._upBusy) return this._upBusy.then(() => (this._up.length || this._upRetry ? this._hubUpFlush() : undefined));
+    const rooms = this.env?.ROOMS;
+    const now = Date.now();
+    const sync = now - this._hubSyncAt >= HUB_SYNC_MS;
+    if (!rooms?.get || (!this._up.length && !this._upRetry && !sync)) return Promise.resolve();
+    // AUDIT SCALE II R2-7: after a miss, the next try waits HUB_RETRY_MS (a bus that does not answer is never asked in a loop)
+    if (now < this._upHoldUntil) { if (!this._upT) this._upT = setTimeout(() => { this._upT = null; this._hubUpFlush(); }, this._upHoldUntil - now); return Promise.resolve(); }
+    this._upBusy = (async () => {
+      let again = false;
+      try {
+        const hub = await this._hubKeyOf();   // AUDIT SCALE II R2-4: a woken shard's name, read back
+        if (upOf(hub) == null) return;   // SCALE5c part two: a region's shard too; SCALE5d part two: and a court's copy
+        // AUDIT SCALE II R2-7: one that did not land goes again first, AS IT WAS - never cut again with what came after it
+        let body = this._upRetry;
+        if (!body) {
+          body = { q: ++this._upSeq, e: this._upTake() };
+          if (sync) { this._hubSyncAt = now; body.live = this._hubLive(); }
+        }
+        this._upInFlight = body.e;
+        let ans = null;
+        try {
+          const res = await rooms.get(rooms.idFromName(/** @type {string} */ (upOf(hub)))).fetch(new Request(`https://relay.internal${HUB_INTERNAL_UP}`, { method: 'POST', body: JSON.stringify({ hub, b: this._boot, ...body }), signal: AbortSignal.timeout(ROOM_CALL_MS) }));
+          ans = res?.ok ? await res.json() : null;   // AUDIT SCALE II R2-7: an answer that is not ok is a miss, as a throw is
+        } catch (e) { console.warn('[shard] the bus did not answer', e?.message ?? e); }
+        if (!ans) {
+          this._upRetry = body;
+          this._upHoldUntil = Date.now() + HUB_RETRY_MS;
+          this._hubSyncAt = 0;   // the next hand-up after it says every socket again, and the bus asks for what it lacks
+          again = true;
+          return;
+        }
+        this._upRetry = null;
+        if (Number.isSafeInteger(ans.n) && ans.n >= 0) this._hubTotalSet(ans.n);   // AUDIT SCALE II R2-4 (p4d): the hub's count, with every answer
+        // AUDIT SCALE II R2-6: A SOCKET THE BUS DID NOT HOLD (a bus woken, a hello lost) - its hello said again, then the
+        // frames of this hand-up the bus could not run for it, in their order, ahead of anything since (they were dropped:
+        // the first world line, invite or accept after a bus woke was lost)
+        const unknown = new Set(Array.isArray(ans.unknown) ? ans.unknown.filter((v) => typeof v === 'string') : []);
+        if (unknown.size) {
+          const redo = [];
+          for (const vid of unknown) { const h = this._hubRehelloEvents(vid); if (!h.length) continue; redo.push(...h); for (const ev of body.e) if (ev[0] === vid && (ev[1] === 'f' || ev[1] === 'p')) redo.push(ev); }
+          if (redo.length) { this._up.unshift(...redo); for (const ev of redo) this._upBytes += upBytesOf(ev); }
+        }
+      } finally { this._upInFlight = null; this._upBusy = null; }
+      if (!again && this._up.length) await this._hubUpFlush();
+      else if (again && !this._upT) this._upT = setTimeout(() => { this._upT = null; this._hubUpFlush(); }, HUB_RETRY_MS);
+    })();
+    return this._upBusy;
+  }
+  /** (a shard) HUB_INTERNAL_DOWN: the bus's frames for its sockets, each socket's in the order said, then its closes, and
+   *  the hub's count. Answers the ids it no longer holds - the bus lets those ShardSockets go. */
+  async _hubDownInternal(request) {
+    let b;
+    try { b = await request.json(); } catch { return json({ error: 'bad' }, 400); }
+    if (!b || !Array.isArray(b.s) || !Array.isArray(b.seg)) return json({ error: 'bad' }, 400);
+    // AUDIT SCALE II R2-7: a delivery already run (its answer lost on the way back, so sent again) is not run twice
+    if (typeof b.b === 'string' && Number.isSafeInteger(b.q)) {
+      if (this._downSeen && this._downSeen.b === b.b && b.q <= this._downSeen.q) return json({ ok: 1, gone: [] });
+      this._downSeen = { b: b.b, q: b.q };
+    }
+    // AUDIT SCALE II R2-5: the bus's word on a socket's law (a mute, a guild worn or taken off, its ribbon, its Renown) -
+    // the real socket's attachment, which every hello this shard says again is made of, takes it
+    for (const t of Array.isArray(b.att) ? b.att : []) {
+      const ws = Array.isArray(t) && typeof t[0] === 'string' ? this._byVid(t[0]) : null;
+      if (!ws || !t[1] || typeof t[1] !== 'object' || this._dead.has(ws) || this._gone.has(ws)) continue;
+      const next = { ...this._attach(ws) };
+      for (const k of SHARD_LAW_KEYS) if (k in t[1]) { if (t[1][k] == null) delete next[k]; else next[k] = t[1][k]; }
+      this._setAttach(ws, next);
+    }
+    const gone = new Set();
+    for (const g of b.seg) {
+      if (Number.isInteger(g?.all)) {   // to every socket it holds that the bus holds too
+        const s = b.s[g.all];
+        if (typeof s === 'string') for (const [ws, a] of this._all()) if (a.id && a.vid && a.id !== g.x && !this._dead.has(ws) && !this._gone.has(ws)) this._send(ws, s);
+        continue;
+      }
+      for (const e of Array.isArray(g?.to) ? g.to : []) {
+        if (!Array.isArray(e) || typeof e[0] !== 'string' || !Array.isArray(e[1])) continue;
+        const ws = this._byVid(e[0]);
+        if (!ws || this._dead.has(ws) || this._gone.has(ws)) { if (!this._vidLeaving(e[0])) gone.add(e[0]); continue; }   // AUDIT SCALE II R2-8: a socket whose replacement (a reconnect) or close the bus is about to hear is not one gone - "gone" said its leave and then its join
+        for (const k of e[1]) if (typeof b.s[k] === 'string' && !this._send(ws, b.s[k])) break;
+      }
+    }
+    for (const c of Array.isArray(b.close) ? b.close : []) {
+      const ws = Array.isArray(c) ? this._byVid(c[0]) : null;
+      if (!ws) continue;
+      this._vidIdx.delete(c[0]);
+      this._setAttach(ws, { ...this._attach(ws), vid: null });   // the bus closed it - its leave tells the bus nothing
+      try { ws.close(Number.isInteger(c[1]) ? c[1] : CLOSE_POLICY, typeof c[2] === 'string' ? c[2] : ''); } catch { /* gone */ }
+      this._dead.add(ws);
+      this._closed(ws);
+    }
+    if (Number.isSafeInteger(b.n) && b.n >= 0) this._hubTotalSet(b.n);
+    await this._reap();
+    this._metricsTick();
+    return json({ ok: 1, gone: [...gone] });
+  }
+  /** (a shard) The hub's count, from the bus - said to this shard's sockets (`{t:'n'}`) at most every HUB_COUNT_MS. */
+  _hubTotalSet(n) {
+    const was = this._hubTotal;
+    this._hubTotal = n;
+    if (n !== was && !this._hubCountT) this._hubCountT = setTimeout(() => { this._hubCountT = null; this._hubCountSay(); }, HUB_COUNT_MS);   // its own count walked when it is said, never at every delivery
+  }
+  _hubCountSay() {
+    const n = this._hubN(this._namedCount());
+    if (n === this._hubTotalSaid) return;
+    this._hubTotalSaid = n;
+    const out = JSON.stringify({ t: 'n', n });
+    for (const [ws, b] of this._all()) if (b.id) this._send(ws, out);
+  }
+
+  /** (the bus) The hub's count - everyone the bus can name: its shards' sockets (each ShardSocket it holds is one - it
+   *  lets one go as its leave is said) and its own, walked. `_namedCount`'s answer without a walk of every ShardSocket. */
+  _busCount() {
+    let n = this._vsocks.size;
+    for (const [ws, b] of this._reals()) if (b.id && !this._dead.has(ws) && !this._gone.has(ws)) n++;
+    return n;
+  }
+  /** (the bus) A hello or a leave moved the hub's count: every shard heard from whose last delivery said another is
+   *  told within HUB_COUNT_MS - one delivery a shard a second at most, carrying whatever else it is owed. */
+  _busCountMoved() {
+    if (!this._toldN.size || this._countT) return;
+    this._countT = setTimeout(() => { this._countT = null; this._busCountTell(); }, HUB_COUNT_MS);
+  }
+  _busCountTell() {
+    const n = this._busCount();
+    for (const [hub, told] of this._toldN) if (told !== n) this._vbatch(hub);
+    return this._downFlush();
+  }
+  /** (the bus) HUB_INTERNAL_UP: a shard's batch, every event in its order - a hello (`h`: a ShardSocket made and greeted),
+   *  a frame (`f`: run over it, as a socket's), a close (`x`: its leave said) or a replacement (`r`: let go, nothing said);
+   *  with `live`, every socket the shard holds. Answers the ids it does not hold, so the shard says their hellos again. */
+  async _hubUpInternal(request) {
+    let b;
+    try { b = await request.json(); } catch { return json({ error: 'bad' }, 400); }
+    const hub = b?.hub;
+    if (upOf(hub) == null || !Array.isArray(b.e)) return json({ error: 'bad' }, 400);   // SCALE5d part two: a court's copy too
+    if (this._busKey === undefined) this._busKey = upOf(hub);   // SCALE5c part two: a bus is the channel its first shard names
+    else if (this._busKey !== upOf(hub)) return json({ error: 'bad' }, 400);   // and never another channel's
+    this._all();
+    const now = Date.now();
+    this._shardSeen.set(hub, now);   // AUDIT SCALE II R2-9
+    await this._busWake(hub);   // AUDIT SCALE II R2-6: a woken bus asks every shard it has heard from for its sockets
+    await this._busSilentSweep(now);   // AUDIT SCALE II R2-9: and lets go of a silent one's
+    // AUDIT SCALE II R2-7: a hand-up already run (its answer lost on the way back, so sent again) is not run twice
+    if (typeof b.b === 'string' && Number.isSafeInteger(b.q)) {
+      const seen = this._upSeen.get(hub);
+      if (seen && seen.b === b.b && b.q <= seen.q) return json({ ok: 1, unknown: [] });
+      this._upSeen.set(hub, { b: b.b, q: b.q });
+    }
+    const unknown = new Set();
+    for (const ev of b.e.slice(0, HUB_BATCH_MAX)) {
+      if (!Array.isArray(ev) || typeof ev[0] !== 'string') continue;
+      const [vid, kind, p] = ev;
+      if (kind === 'h') { if (isCourtCopy(hub)) await this._courtHello(hub, vid, p); else await this._vhello(hub, vid, p); continue; }   // SCALE5d part two
+      const vws = this._vsocks.get(vid);
+      if (!vws || vws.hub !== hub) { if ((kind === 'f' || kind === 'p') && !this._vshut.has(vid)) unknown.add(vid); continue; }   // SCALE5d part two: never one this object closed; AUDIT SCALE II R2-6: a frame or a pose the bus does not hold its socket for is asked its hello, and handed again behind it
+      if (kind === 'p') { if (vws.court) this._courtPose(vws, p); continue; }   // SCALE5d part two: a copy's socket's pose
+      if (kind === 'f') { if (typeof p === 'string') await this.webSocketMessage(vws, p); }
+      else if (kind === 'x') await this._vgone(vws, true);
+      else if (kind === 'r') await this._vgone(vws, false);
+    }
+    if (Array.isArray(b.live)) {
+      const live = new Set(b.live.filter((x) => typeof x === 'string'));
+      for (const [vid, vws] of [...this._vsocks]) if (vws.hub === hub && !live.has(vid)) await this._vgone(vws, true);
+      for (const vid of live) {
+        if (this._vsocks.has(vid)) continue;
+        const shut = this._vshut.get(vid);
+        // AUDIT SCALE II R2-7: one this object closed that its shard still holds - the close never got there (a delivery
+        // lost): said again, never left open and mute; SCALE5d part two: and never asked its hello again
+        if (shut) { this._vbatch(hub).close.push([vid, shut.code ?? CLOSE_POLICY, shut.reason ?? '']); this._downArm(); }
+        else unknown.add(vid);
+      }
+    }
+    await this._reap();
+    return json({ ok: 1, unknown: [...unknown], ...(isCourtCopy(hub) ? {} : { n: this._busCount() }) });   // AUDIT SCALE II R2-4 (p4d): and the hub's count, to a shard (a woken one knows none)
+  }
+  /** (the bus) A shard's hello: its ShardSocket made, in the index as any socket; ONE-SEAT across the bus's own tabs (a
+   *  tab from before the shards holds the hub itself - the shard judged its own); the bus's own sockets told the join, as
+   *  its roster always was; the live event; then the hub's words, as to any hello. */
+  async _vhello(hub, vid, p) {
+    if (this._vsocks.has(vid) || !p || !p.att || typeof p.att !== 'object' || typeof p.att.id !== 'string') return;
+    const now = Date.now();
+    const m = { id: p.att.id, ...(typeof p.m?.acct === 'string' && typeof p.m?.asecret === 'string' ? { acct: p.m.acct, asecret: p.m.asecret } : {}), ...(p.m?.ps === 1 ? { ps: 1 } : {}), ...(p.m?.cl === 1 ? { cl: 1 } : {}) };   // `id`: the account's hello asks the socket still holds the id it greeted
+    const vws = new ShardSocket(this, hub, vid);
+    const bus = /** @type {string} */ (busOf(hub)), hubBus = bus === SOCIAL_ROOM;
+    let a = { ...p.att, key: bus };
+    // AUDIT SCALE II R2-1 / R2-2: THE ID'S SECRET IS THE BUS'S TO ASK, as the hub's hello always asked it (A3). A shard knows
+    // its own sockets' secrets alone, so a hello naming a shard player's peer id - on the bus itself (a build from before
+    // the shards), or on another shard - passed: the first replaced the player's ShardSocket (the real socket closed
+    // `replaced`, which its client takes as for good), the second held the id beside it and took the acts sent by it
+    const secret = typeof p.m?.secret === 'string' && p.m.secret ? p.m.secret : null;
+    const kept = await this._secretOf(a.id);
+    if (kept && kept !== secret) { vws.att = a; this._refuse(vws, 'id taken'); return; }
+    // AUDIT SCALE II R2-5: THE BUS'S ORDERS OVER A SHARD'S HELLO. A mute the bus applied after the hello's token was minted,
+    // and a guild member removed (or a guild gone) since, win over the token - MOD1's and GUILD1c's laws, as `_named`
+    // applies a room's own over a hello said to it; the shard never hears the orders, so its own hello applied none
+    const ti = Number.isSafeInteger(a.gio) ? a.gio : 0;
+    const order = typeof a.sub === 'string' ? this._orders.get(a.sub) : null;
+    if (order && order.i > ti) a = { ...a, mu: order.mu };
+    if (a.gi) { await this._loadGuildOuts(Math.floor(now / 1000)); if (this._guildOutAfter(a.gi, a.gm, ti)) a = this._unguild(a); }
+    vws.att = a;
+    this._vput(vws);
+    this._all();
+    // AUDIT SCALE II R2-12: the same id held here - the player's tab from before the shards, or its own ShardSocket whose
+    // reconnect's `r` has not reached the bus - is replaced by the newer, as the hub's hello replaces one (the secret is the
+    // id's, asked above): its id taken off first, so its close says no leave
+    for (const [other, b] of this._withId(a.id, vws)) {
+      this._setAttach(other, { ...b, id: null, replaced: true });
+      try { other.close(CLOSE_REPLACED, 'replaced'); } catch { /* gone */ }
+      this._closed(other);
+    }
+    this._adopt(vws, a);
+    if (secret && (kept !== secret || !this._secrets.has(a.id))) { await this.state.storage.put(secretKey(a.id), secret); this._secrets.set(a.id, secret); }   // the hub's own law: written when it is new
+    this._vlaw(vws, p.att, a);   // AUDIT SCALE II R2-5: an order applied here is the shard's word too
+    this._metrics.c.hellos++;
+    const held = hubBus && a.sub ? this._otherTabsOf(a.sub, vws, a.id).filter((o) => !o.virtual) : [];   // ONE-SEAT is the hub's (a region's channel never held a seat)
+    if (held.length && !m.cl) { this._refuse(vws, SEAT_ELSEWHERE, CLOSE_REPLACED); return; }
+    if (m.cl) for (const o of held) this._refuse(o, SEAT_ELSEWHERE, CLOSE_REPLACED);
+    this._busCountMoved();
+    this._fanRoster(vws, JSON.stringify(badged({ t: 'join', id: a.id, name: a.name, sub: a.sub, n: this._busCount() }, a)));
+    if (!hubBus) { this._travTell(vws, now); return; }   // SCALE5c part two: a region's - its travellers' marks
+    const ev = await this._liveEvent();
+    if (ev) this._send(vws, JSON.stringify({ t: 'event', kind: ev.kind, at: ev.at, w: 1 }));   // `w`: as a welcome says it - a joiner's, not a fresh staging
+    await this._hubHelloWords(vws, m, a.sub, now);
+  }
+  /** (a region's bus) SCALE5c part two: a shard's joiner told the region's fresh traveller marks (TV3) - its shard's
+   *  welcome holds none, the marks being the bus's - TRAV_WELCOME_MAX at most, as a welcome's `tr` is cut. Each as a
+   *  `trav` frame, which a client reads as said now: a mark up to TRAV_SEND_MIN_MS old is drawn that much longer. */
+  _travTell(vws, now) {
+    let n = 0;
+    for (const [w, b] of this._all()) {
+      if (w === vws || !b.id || !b.tm || now - b.tm.at > TRAV_STALE_MS || this._dead.has(w) || this._gone.has(w)) continue;
+      const p = { ...b.tm };
+      delete p.at;
+      this._send(vws, JSON.stringify(badged({ t: 'trav', id: b.id, name: b.name, sub: b.sub, p }, b)));
+      if (++n >= TRAV_WELCOME_MAX) break;
+    }
+  }
+  /** (a gate's court) SCALE5d part two: A COPY'S HELLO - its socket made here as a ShardSocket the court's index never
+   *  holds (so no walk of its crowd - a pose's fan, a roster, a line - ever reaches it), admitted by the court's own law
+   *  as a hello here is (`_gateAdmit`: a fighter of this fight always, a newcomer while the gate admits), else closed with
+   *  the court's word; and, as a hello here, the one seat its account holds in the court and every copy - an older one
+   *  replaced. Its fight words, beats and receipts are said to it from then on, as to any socket here. */
+  async _courtHello(hub, vid, p) {
+    if (this._vsocks.has(vid) || !p || !p.att || typeof p.att !== 'object' || typeof p.att.id !== 'string') return;
+    const court = /** @type {string} */ (courtOfCopy(hub)), now = Date.now();
+    const vws = new ShardSocket(this, hub, vid);
+    vws.court = true;
+    vws.att = { ...p.att, key: court };
+    // AUDIT SCALE II R3-11: JUDGED BEFORE IT IS HELD - a throw (the fight's storage) is a refusal its client asks again
+    // (`busy`), never a socket held unjudged: the census's, the beats' and the kill's, past the seal. AUDIT SCALE II R3-6:
+    // a hello said again (`re` - the court woke, and the copy says every socket it holds) is a socket this court held, judged
+    // by the clock as the copy's own door judges it: every copy watcher was closed `the gate is sealed` at a wake past the
+    // seal, while the court's own watchers, held across the same wake, stayed
+    let no;
+    try { no = p.m?.re === 1 ? (gateHolds(gateDayOfRoom(court), now) ? null : 'the gate is closed') : await this._gateAdmit(court, vws.att.sub, now); } catch (e) { console.warn('[gate] a copy\'s hello', e?.message ?? e); no = 'busy'; }
+    if (no) { if (no === 'busy') this._refuse(vws, no, CLOSE_BUSY); else this._refuse(vws, no); return; }
+    this._vput(vws);
+    if (typeof vws.att.sub === 'string' && vws.att.sub) {
+      for (const [other, b] of [...this._all()]) if (b.id && b.sub === vws.att.sub) this._refuse(other, 'replaced', CLOSE_REPLACED);
+      this._courtReplace(vws.att.sub, vws);
+    }
+  }
+  /** (a gate's court) SCALE5d part two: a copy's socket's pose - where its body stands for the fight (its census, its
+   *  blows' reach) and, while it fights, on its trail as a socket's here is. Shaped as the copy took it; asked again. */
+  _courtPose(vws, p) {
+    const pose = validPose(p);
+    if (!pose || vws.closed) return;
+    vws.att = { ...vws.att, pose };
+    if (this._trailing(vws.att)) this._trailPose(vws, pose, Date.now());
+  }
+  /** (a gate's court) SCALE5d part two: the court's one seat an account - its copies' sockets of `sub` but `keep`, replaced. */
+  _courtReplace(sub, keep) {
+    if (!this._cper.size) return;
+    for (const v of [...this._vsocks.values()]) if (v.court && v !== keep && !v.closed && v.att?.sub === sub) this._refuse(v, 'replaced', CLOSE_REPLACED);
+  }
+  /** (a gate's court) SCALE5d part two: EVERY SOCKET THE FIGHT HEARS - the court's own (its index's) and its copies' -
+   *  with their attachments: the fight's census, its present, its kill's `here`, its receipts and its body words. */
+  *_courtSockets() {
+    yield* this._all();
+    if (this._cper.size) for (const v of this._vsocks.values()) if (v.court && !v.closed && v.att) yield [v, v.att];
+  }
+  /** (a gate's court) SCALE5d part two: the socket a peer id names, in the court or a copy - a heal's healer. */
+  _courtIdFirst(id) {
+    const here = this._idFirst(id);
+    if (here || !this._cper.size || !id) return here;
+    for (const v of this._vsocks.values()) if (v.court && !v.closed && v.att?.id === id) return [v, v.att];
+    return null;
+  }
+  /** (a gate's court) SCALE5d part two: one frame to every copy's every socket - one entry a copy, never one a socket. */
+  _courtSendAll(s) {
+    for (const [hub, n] of this._cper) {
+      if (!(n > 0)) continue;
+      const b = this._vbatch(hub);
+      b.seg.push({ all: this._vframe(b, s) });
+      b.cur = null;
+    }
+    if (this._cper.size) this._downArm();
+  }
+  /** SCALE5c part two: one frame to everyone the room holds but the peer `id` (and the socket `skip`) - on a bus, one
+   *  entry a shard (`_vsendAll`) and a walk of its own sockets, never of its shards'; anywhere else, the walk. */
+  _fanAllBut(skip, id, out) {
+    if (this._vper.size) { this._vsendAll(out, id); for (const [o, b] of this._reals()) if (o !== skip && b.id && b.id !== id) this._send(o, out); return; }
+    for (const [o, b] of [...this._all()]) if (o !== skip && b.id && b.id !== id) this._send(o, out);
+  }
+  /** (the bus) A ShardSocket gone: closed (`said` - its leave said, as any socket's), or replaced by its own reconnect on
+   *  its shard (nothing said: the id lives on in the new one - the hub's own law for a reconnect). */
+  async _vgone(vws, said) {
+    this._vdrop(vws);
+    vws.closed = true;
+    if (vws.court) return;   // SCALE5d part two: a copy's socket was never the court's crowd - nobody here is told it went
+    this._busCountMoved();
+    if (said) { await this.webSocketClose(vws, 1000, ''); return; }
+    const a = this._attach(vws);
+    this._setAttach(vws, { ...a, id: null, replaced: true });
+    this._gone.add(vws);
+    this._forget(vws);
+  }
+  /** (the bus) A frame said to a ShardSocket - owed its shard: each frame once a batch, each socket's list in its order. */
+  _vsend(vws, s) {
+    const b = this._vbatch(vws.hub);
+    const k = this._vframe(b, s);
+    if (!b.cur) b.seg.push(b.cur = new Map());
+    let l = b.cur.get(vws.vid);
+    if (!l) b.cur.set(vws.vid, l = []);
+    l.push(k);
+    this._downArm();
+  }
+  /** (the bus) A frame to EVERY ShardSocket - one entry a shard, never one a socket: each shard says it to every socket
+   *  it holds. In its batch's order (a segment of its own), so nothing said a socket before it is heard after it. */
+  _vsendAll(s, x = null) {
+    for (const [hub, n] of this._vper) {
+      if (!(n > 0)) continue;
+      const b = this._vbatch(hub);
+      b.seg.push(x ? { all: this._vframe(b, s), x } : { all: this._vframe(b, s) });   // `x`: a peer it is not said to (a traveller's own mark)
+      b.cur = null;
+    }
+    if (this._vper.size) this._downArm();
+  }
+  _vframe(b, s) { let k = b.i.get(s); if (k === undefined) { k = b.s.length; b.s.push(s); b.i.set(s, k); } return k; }
+  _vput(vws) { this._vsocks.set(vws.vid, vws); const per = vws.court ? this._cper : this._vper; per.set(vws.hub, (per.get(vws.hub) ?? 0) + 1); }   // SCALE5d part two: a court's copies counted apart - no channel's fan reaches them
+  _vdrop(vws) { if (this._vsocks.get(vws.vid) !== vws) return; this._vsocks.delete(vws.vid); const per = vws.court ? this._cper : this._vper; const n = (per.get(vws.hub) ?? 1) - 1; if (n > 0) per.set(vws.hub, n); else per.delete(vws.hub); if (vws.court) this._trails?.delete(vws); }
+  /** SCALE5c: everyone the room can name but `ws` whose folded name holds `q` - HUB_FIND_MAX at most, badged. Each
+   *  attachment's fold kept with it (a new attachment is a new fold), so a search is a walk and no string work. */
+  _findNames(ws, q) {
+    const l = [];
+    if (!q) return l;
+    for (const [w, b] of this._all()) {
+      if (w === ws || !b.id || this._dead.has(w) || this._gone.has(w)) continue;
+      let f = this._folds.get(b);
+      if (f === undefined) this._folds.set(b, f = foldFind(b.name));
+      if (!f.includes(q)) continue;
+      l.push(badged({ id: b.id, name: b.name, sub: b.sub }, b));
+      if (l.length >= HUB_FIND_MAX) break;
+    }
+    return l;
+  }
+  /** SCALE5c (Mac's decision 2): EVERYONE ONLINE, as a shard's World tab lists them while the hub is small - the room's
+   *  roster as a welcome cuts it (CHAT_ROSTER_MAX, the oldest first), or nobody past it (the list is then its own shard's,
+   *  its friends, its guild and the search). One frame for HUB_WHO_KEEP_MS: every ask inside it is that frame, which a
+   *  shard's batch carries once - the asker's own row among them (its client lists itself once). */
+  _everyoneSaid(now) {
+    if (this._everyone && now - this._everyone.at < HUB_WHO_KEEP_MS) return this._everyone.s;
+    const l = [];
+    if ((this._vsocks.size ? this._busCount() : this._namedCount()) <= CHAT_ROSTER_MAX) {
+      for (const [w, b] of this._all()) {
+        if (!b.id || this._dead.has(w) || this._gone.has(w)) continue;
+        l.push(badged({ id: b.id, name: b.name, sub: b.sub }, b));
+        if (l.length >= CHAT_ROSTER_MAX) break;
+      }
+    }
+    this._everyone = { at: now, s: JSON.stringify({ t: 'found', all: 1, l }) };
+    return this._everyone.s;
+  }
+  /** SCALE5c: who of `a`'s guild is online, every shard's - never the asker (ONE-SEAT seats an account's one tab, so a
+   *  socket is a member). */
+  _guildWho(ws, a) {
+    const l = [];
+    if (!a.gi) return l;
+    const idx = this._all();
+    for (const w of this._byGuild().get(a.gi) ?? []) {
+      const b = idx.get(w);
+      if (w === ws || !b?.id || this._dead.has(w) || this._gone.has(w)) continue;
+      l.push(badged({ id: b.id, name: b.name, sub: b.sub }, b));
+      if (l.length >= HUB_GUILD_WHO_MAX) break;
+    }
+    return l;
+  }
+  /** (the bus) Its OWN sockets - a tab from before the shards - with their attachments: the runtime's list, never a walk
+   *  of every ShardSocket in the index. */
+  *_reals() { const idx = this._all(); for (const ws of this.state.getWebSockets()) { const b = idx.get(ws); if (b) yield [ws, b]; } }
+  /** (the bus) A ShardSocket closed here (a refusal, ONE-SEAT, a strike): its shard told to close the real one. */
+  _vclose(vws, code, reason) {
+    this._vshut.set(vws.vid, { code: code | 0, reason: String(reason ?? '').slice(0, 120) });   // AUDIT SCALE II R2-7: with its word - said again if its shard still holds it; SCALE5d part two: closed here - a frame or a pose of its on the way is not one to ask its hello again for (a refused hello asked again was refused again, for ever)
+    this._vdrop(vws);
+    this._busCountMoved();
+    this._vbatch(vws.hub).close.push([vws.vid, code | 0, String(reason ?? '').slice(0, 120)]);
+    this._downArm();
+  }
+  _vbatch(hub) { let b = this._down.get(hub); if (!b) this._down.set(hub, b = { s: [], i: new Map(), seg: [], cur: null, close: [], att: [] }); return b; }
+  /** (the bus) AUDIT SCALE II R2-5: A SHARDSOCKET'S LAW CHANGED HERE (a mute, a guild, its ribbon, its Renown) - said to its
+   *  shard (the delivery's `att`), whose own attachment is what a hello said again after a wake is made of: a mute or a
+   *  guild's removal lived in the bus's memory alone and was gone at its next wake, and the bus's `_orders` never covered
+   *  a reconnect on a shard at all. Only SHARD_LAW_KEYS; nothing is said for none moved. */
+  _vlaw(vws, from, to) {
+    if (!vws?.virtual || vws.court || vws.closed) return;
+    let d = null;
+    for (const k of SHARD_LAW_KEYS) { const x = from?.[k], y = to?.[k]; if (x !== y && JSON.stringify(x) !== JSON.stringify(y)) (d ??= {})[k] = y ?? null; }
+    if (!d) return;
+    this._vbatch(vws.hub).att.push([vws.vid, d]);
+    this._downArm();
+  }
+  /** (the bus, or a court) AUDIT SCALE II R2-6: A WOKEN BUS ASKS ITS SHARDS AGAIN. Its ShardSockets are memory, and a woken
+   *  one holds none: a shard whose sockets said nothing since heard nothing the bus fanned (`_vsendAll` reaches the shards
+   *  it holds sockets of) until its sync, a minute on, and the count read low meanwhile. The first thing a woken bus does
+   *  asks every shard it has ever heard from (VHUBS_KEY, kept in its storage) to say every socket it holds now; a shard
+   *  heard from the first time is kept. A court does the same for its copies. */
+  async _busWake(hub = null) {
+    if (!this._vhubs) {
+      let v = null;
+      try { v = await this.state.storage.get(VHUBS_KEY); } catch { v = null; }
+      if (!this._vhubs) this._vhubs = new Set(Array.isArray(v) ? v.filter((h) => typeof h === 'string' && upOf(h) != null) : []);
+    }
+    if (!this._busWoke) {
+      this._busWoke = true;
+      const rooms = this.env?.ROOMS;
+      if (rooms?.get) for (const h of this._vhubs) void Promise.resolve().then(() => rooms.get(rooms.idFromName(h)).fetch(new Request(`https://relay.internal${HUB_INTERNAL_RESYNC}`, { method: 'POST', signal: AbortSignal.timeout(ROOM_CALL_MS) }))).catch((e) => console.warn('[bus] a shard did not resync', h, e?.message ?? e));
+    }
+    if (hub && !this._vhubs.has(hub)) { this._vhubs.add(hub); try { await this.state.storage.put(VHUBS_KEY, [...this._vhubs]); } catch { this._vhubs.delete(hub); } }
+  }
+  /** (the bus, or a court) AUDIT SCALE II R2-9: A SHARD THE BUS HAS NOT HEARD FROM IN HUB_SILENT_MS LOST ITS SOCKETS (an
+   *  object reset, no close said - its sync runs only while it holds any): every ShardSocket of its let go, its leaves
+   *  said, the count right again. Asked at most every HUB_SYNC_MS / 2, by any shard's hand-up and by the alarm. */
+  async _busSilentSweep(now) {
+    if (!this._vsocks.size || now - this._silentAt < HUB_SYNC_MS / 2) return;
+    this._silentAt = now;
+    for (const v of [...this._vsocks.values()]) {
+      if (now - (this._shardSeen.get(v.hub) ?? 0) < HUB_SILENT_MS) continue;
+      if (v.court) { this._vdrop(v); v.closed = true; } else await this._vgone(v, true);
+    }
+  }
+  _downArm() { if (!this._downT) this._downT = setTimeout(() => { this._downT = null; this._downFlush(); }, HUB_BATCH_MS); }
+  /** (the bus) Every shard owed anything, handed its batch. Answers once they are. */
+  _downFlush() { return Promise.all([...new Set([...this._down.keys(), ...this._downRetry.keys()])].map((hub) => this._downTo(hub))); }   // AUDIT SCALE II R2-7: and every delivery owed again
+  /** (the bus) One shard's batch - one delivery in flight a shard, so its sockets hear the bus in the order it spoke. */
+  _downTo(hub) {
+    const busy = this._downBusy.get(hub);
+    if (busy) return busy.then(() => (this._down.has(hub) || this._downRetry.has(hub) ? this._downTo(hub) : undefined));
+    // AUDIT SCALE II R2-7: a delivery that did not land goes again first, AS IT WAS (its number with it), ahead of anything
+    // said since - HUB_DOWN_TRIES at most, then let go (its shard's next sync says what it holds, and a close it never
+    // heard is said again there)
+    let send = this._downRetry.get(hub) ?? null;
+    if (send && Date.now() < send.at) { if (!this._downT) this._downT = setTimeout(() => { this._downT = null; this._downFlush(); }, send.at - Date.now()); return Promise.resolve(); }
+    if (!send) {
+      const b = this._down.get(hub);
+      if (!b) return Promise.resolve();
+      this._down.delete(hub);
+      const court = isCourtCopy(hub), n = court ? null : this._busCount();   // SCALE5d part two: a court's copy is told no channel's count
+      if (!court) this._toldN.set(hub, n);
+      const q = (this._downSeq.get(hub) ?? 0) + 1;
+      this._downSeq.set(hub, q);
+      send = { q, tries: 0, at: 0, body: JSON.stringify({ b: this._boot, q, s: b.s, seg: b.seg.map((g) => (g instanceof Map ? { to: [...g] } : g)), close: b.close, ...(b.att.length ? { att: b.att } : {}), ...(court ? {} : { n }) }) };
+    }
+    const rooms = this.env?.ROOMS;
+    const p = (async () => {
+      let ans = null;
+      try {
+        if (!rooms?.get) return;
+        const res = await rooms.get(rooms.idFromName(hub)).fetch(new Request(`https://relay.internal${HUB_INTERNAL_DOWN}`, { method: 'POST', body: send.body, signal: AbortSignal.timeout(ROOM_CALL_MS) }));
+        ans = res?.ok ? await res.json() : null;   // AUDIT SCALE II R2-7: an answer that is not ok is a miss, as a throw is
+      } catch (e) { console.warn('[bus] a shard did not answer', hub, e?.message ?? e); }
+      finally { this._downBusy.delete(hub); }
+      if (!ans) {
+        if (rooms?.get && ++send.tries < HUB_DOWN_TRIES) { send.at = Date.now() + HUB_RETRY_MS * 2 ** (send.tries - 1); this._downRetry.set(hub, send); this._downArm(); }
+        else this._downRetry.delete(hub);
+      } else {
+        this._downRetry.delete(hub);
+        for (const vid of Array.isArray(ans?.gone) ? ans.gone : []) { const v = this._vsocks.get(vid); if (v && v.hub === hub) await this._vgone(v, true); }
+      }
+      await this._reap();
+    })();
+    this._downBusy.set(hub, p);
+    return p;
+  }
+  /** SCALE5b (PERF-RELAY1's lesson, `_poseFrame`): THE FOES FRAME'S FAN, A METHOD OF ITS OWN. Written inside `_message`,
+   *  which is past V8's ceiling for an optimized function, it ran in the interpreter for the life of the object - at
+   *  the rate a full cell's every socket streams its foes. And the room's byte budget is asked BEFORE the walk: a frame
+   *  the room cannot afford for even one listener is dropped without one (the budget's bucket left exactly as the walk
+   *  and a refusal, or a fan to nobody, would have left it - refilled to now, nothing spent). In a crowded cell, where
+   *  the budget drops most frames, that was a copy of the whole index and a range test per socket for nothing.
+   *  `kind` 'foes' (a cell's: ranged as the pose is - AUDIT WORLD6b A4; a world room's host's: everyone) or 'own'
+   *  (OWN1: everyone); answers the budget's bucket. A5: the fan is the frame times its listeners, and over the budget
+   *  the frame is dropped and nobody struck (the next full frame heals it); AUDIT WORLD6b A3: asked before the frame is
+   *  re-serialised (the fan's bytes estimated: the frame's plus the envelope's), so a dropped frame costs no stringify. */
+  _foesFan(ws, a, kind, data, length, ranged, bucket, now) {
+    const per = length + a.id.length + 8;
+    const ahead = byteGate(bucket, now, per, FOES_ROOM_BYTES_PER_S);
+    this._metrics.c.foes++;   // SCALE5b: the frames by type
+    if (!ahead.pass) { this._metrics.c.drops++; return ahead.bucket; }   // SCALE5b: not one listener's worth - no walk
+    const reach = ranged ? inRangeOf(a.key, a.pose) : null;
+    const listeners = [];
+    for (const [other, b] of this._all()) if (other !== ws && b.id && (!reach || reach(b.pose))) listeners.push(other);
+    const budget = byteGate(bucket, now, per * listeners.length, FOES_ROOM_BYTES_PER_S);
+    if (!budget.pass) { this._metrics.c.drops++; return budget.bucket; }
+    if (!listeners.length) return budget.bucket;
+    const out = fanOut(kind, a.id, data, length);   // AUDIT (pre-merge) O3/O4
+    if (out == null) { this._junk(ws); return budget.bucket; }
+    for (const other of listeners) this._send(other, out);
+    return budget.bucket;
+  }
 
   /** A frame to one socket; a socket that will not take it is closed (A10). */
   _send(ws, s) {
+    if (this._owed.size && this._owed.has(ws)) this._flushOwedOf(ws);   // SCALE5b: what a socket is owed goes ahead of any other frame to it - its order is the order the room said them in
     try { ws.send(s); this._metrics.c.sends++; this._metrics.c.bytesOut += s.length; return true; } catch {
       try { ws.close(1011, 'send failed'); } catch { /* gone */ }
       this._dead.add(ws);   // AUDIT WORLD34 D1: closed by the object - its leave is ours to say
@@ -871,12 +1732,25 @@ export class Room {
     while (this._dead.size) {
       const [ws] = this._dead;
       this._dead.delete(ws);
+      if (ws.court) continue;   // SCALE5d part two: a copy's socket the court closed - its copy says its leave, to its own crowd
       try { await this._leave(ws); } catch { /* the next door reaps again */ }
     }
   }
 
-  /** WORLD1: the room's host - the hello'd socket in the room longest (the earliest hello stamp; ties by id), or null. */
+  /** WORLD1: the room's host - the hello'd socket in the room longest (the earliest hello stamp; ties by id), or null.
+   *  SCALE5b: KEPT, NOT WALKED FOR. A world room asked it on every foes frame, every memory write and every blow - a walk
+   *  of every socket each - and it moves only when a socket's id or hello stamp does (`_reindex`, `_all`). Asked without
+   *  `except`, or with a socket that is not the host's, the kept answer; else the walk. */
   _hostOf(except = null) {
+    this._all();   // a walk due past IDX_TRUST_MS runs first, as the walk below would have run it - and forgets the kept host if it finds the room moved
+    if (this._hostMemo === undefined) this._hostMemo = this._hostWalk(null);
+    const host = this._hostMemo;
+    if (except == null || host == null) return host;
+    if (this._all().get(except)?.id !== host) return host;
+    return this._hostWalk(except);
+  }
+  /** The walk itself - what `_hostOf` answered before SCALE5b. */
+  _hostWalk(except) {
     let best = null;
     for (const [ws, a] of this._all()) {
       if (ws === except || !a.id) continue;
@@ -1052,7 +1926,7 @@ export class Room {
       this._travClearFan = g.bucket;
       if (!g.pass) return;
       this._travOwed.delete(id);
-      for (const [other, b] of [...this._all()]) if (b.id && b.id !== id) this._send(other, out);
+      this._fanAllBut(null, id, out);   // SCALE5c part two: on a region's bus, one entry a shard
     }
   }
   /** TRADE1: the trade frames' own bucket (TRADE_HZ_MAX), the same strikes - an offer beside the poses, never starving them. */
@@ -1191,12 +2065,13 @@ export class Room {
   }
   /** HCC-PARK: the owner's registry learns the cell their team stands in (null: nowhere), stamped with when the word
    *  was said. A relay built without the binding (a harness, a local dev worker) keeps the cell's own law and skips
-   *  the cross-cell drop. */
-  async _parkRegister(k, cell, at) {
+   *  the cross-cell drop. AUDIT SCALE II R3-8: `ly` the layer of the cell whose object keeps the record (SCALE5d) - said
+   *  by the object that stored it, its own; left out by one that names a cell it does not hold the record for. */
+  async _parkRegister(k, cell, at, ly) {
     const rooms = this.env?.ROOMS;
     if (!rooms?.idFromName || !rooms?.get) return;
     try {
-      await rooms.get(rooms.idFromName(parkRegistryRoom(k))).fetch(new Request(`https://relay.internal${PARK_INTERNAL_REG}`, { method: 'POST', body: JSON.stringify({ owner: k, cell, at }), signal: AbortSignal.timeout(ROOM_CALL_MS) }));
+      await rooms.get(rooms.idFromName(parkRegistryRoom(k))).fetch(new Request(`https://relay.internal${PARK_INTERNAL_REG}`, { method: 'POST', body: JSON.stringify({ owner: k, cell, at, ...(ly !== undefined ? { ly } : {}) }), signal: AbortSignal.timeout(ROOM_CALL_MS) }));   // AUDIT SCALE II R3-8: and the layer the record stands in, when this object holds it
     } catch (e) { console.warn('[park] registry', e?.message ?? e); }
   }
   /** Tell a cell to drop an owner's record said no later than `at`. */
@@ -1220,13 +2095,20 @@ export class Room {
     const cell = body.cell == null ? null : (isCellRoom(body.cell) ? body.cell : undefined);
     if (cell === undefined) return json({ ok: false }, 400);
     const prev = (await this.state.storage.get('reg')) ?? null;
+    // AUDIT SCALE II R3-8: A RECORD STANDS IN A CELL'S LAYER. The registry kept the cell alone and told the drop to its
+    // key - the place itself - so a team parked from a layer, then parked elsewhere, stood on in that layer as a ghost
+    // wagon for PARK_TTL_MS (72 h). The registry keeps the layer the storing object said (`ly`), and the drop goes to
+    // that layer's object (layerName). A word that names a cell whose record it does not hold says no layer: the one
+    // kept for that cell stands. A record from before it carries none - the place itself, as it always was
+    const ly = cell === null ? 0 : body.ly !== undefined ? layerOf(body.ly) : prev?.cell === cell ? prev.ly | 0 : 0;
+    const where = cell && layerName(cell, ly), was = prev?.cell ? layerName(prev.cell, prev.ly | 0) : null;
     if (prev && (prev.at ?? 0) > at) {
-      if (cell && cell !== prev.cell) await this._parkTellDrop(cell, k, at);
+      if (where && where !== was) await this._parkTellDrop(where, k, at);
       return json({ ok: true });
     }
-    await this.state.storage.put('reg', { cell, at });
+    await this.state.storage.put('reg', { cell, at, ...(ly ? { ly } : {}) });
     await this.state.storage.setAlarm(at + PARK_TTL_MS);   // AUDIT 68 X8-park-registry-unbounded: the word is forgotten when every record it could name has expired
-    if (prev?.cell && prev.cell !== cell) await this._parkTellDrop(prev.cell, k, at);
+    if (was && was !== where) await this._parkTellDrop(was, k, at);
     return json({ ok: true });
   }
   /** WORLD3: the action frames' own bucket (ACT_HZ_MAX), the same strikes - a door beside the poses, never starving them. */
@@ -1304,7 +2186,7 @@ export class Room {
       this._guildChat = budget.bucket;
       if (!budget.pass) return;
       const line = JSON.stringify({ ...frame, ch: 'guild' });
-      for (const [other, b] of this._all()) if (b.id && b.gi === a.gi) this._send(other, line);   // the sender's own tabs too: the echo is the receipt   // SCALE5a: in place, as the join's
+      for (const other of [...(this._byGuild().get(a.gi) ?? [])]) this._send(other, line);   // the sender's own tabs too: the echo is the receipt   // SCALE5c: the guild's own sockets, never a walk of the whole hub (a copy - a failed send forgets its socket)
       return;
     }
     if (ch === 'party') {
@@ -1330,6 +2212,8 @@ export class Room {
     if (!room.pass) return;
     const out = JSON.stringify(frame);
     const chat = isChatRoom(a.key);
+    // SCALE5c: the bus's line to everyone - one entry a shard (`_vsendAll`), and its own sockets walked, never its shards'
+    if (chat && !S && this._vper.size) { this._vsendAll(out); for (const [other, b] of this._reals()) if (b.id) this._send(other, out); return; }
     for (const [other, b] of this._all()) {   // SCALE5a: in place, as the join's
       if (!b.id || (S && !S.members[b.sub])) continue;
       if (other === ws || chat || inRange(a.key ?? '', a.pose, b.pose)) this._send(other, out);   // the sender hears its own line back: that is the receipt
@@ -1340,7 +2224,13 @@ export class Room {
    *  drain, re-armed by every later one - unless someone is in the room when it fires: a world parked in a room
    *  nobody plays would cost storage for ever, and the rooms a client can name are many. */
   async alarm() {
-    if (await this.state.storage.get('hub')) { await this._sweepHub(Date.now()); await this._heraldBeat(Date.now()); await this._serpentHeraldBeat(Date.now()); await this._sdBeat(Date.now()); await this._sdHeraldBeat(Date.now()); return; }   // AUDIT SOC A3: the hub's alarm is its sweep, whoever is in the room; DISCORD-GATES: and its herald's posts; SERPENT2: and the serpent's; SD3: and the Super dungeon's director; SD-HERALD: and its herald's, after the director's moves
+    if (!this._busWoke) await this._busWake();   // AUDIT SCALE II R2-6: a woken bus (or court) asks its shards (or copies) again
+    await this._busSilentSweep(Date.now());   // AUDIT SCALE II R2-9
+    // SCALE5c: a shard's alarm is its sync - every socket it holds told the bus, every HUB_SYNC_MS while it holds any;
+    // SCALE5d part two: a court's copy syncs as a shard does. AUDIT SCALE II R2-4: its name read back from its storage when
+    // its sockets say none, and the alarm kept while anything is still owed the bus (a last leave on a woken instance)
+    if (await this._hubKeyOf()) { this._hubSyncAt = 0; await this._hubUpFlush(); if (this.state.getWebSockets().length || this._up.length || this._upRetry) await this.state.storage.setAlarm(Date.now() + HUB_SYNC_MS); return; }
+    if (await this.state.storage.get('hub')) { await this._relayCfgOf(); await this._sweepHub(Date.now()); await this._heraldBeat(Date.now()); await this._serpentHeraldBeat(Date.now()); await this._sdBeat(Date.now()); await this._sdHeraldBeat(Date.now()); return; }   // AUDIT SOC A3: the hub's alarm is its sweep, whoever is in the room; DISCORD-GATES: and its herald's posts; SERPENT2: and the serpent's; SD3: and the Super dungeon's director; SD-HERALD: and its herald's, after the director's moves
     // AUDIT 68 X8-park-registry-unbounded: an owner's registry (HCC-PARK) is one object per account and character a
     // client names - its word goes PARK_TTL_MS after it was said, as the cell's record it points at does
     const reg = await this.state.storage.get('reg');
@@ -1440,6 +2330,8 @@ export class Room {
   }
   /** SCALE2b: the window's metrics point, when it is due (or `force`d - a drain) - relayScale.js RoomMetrics. */
   _metricsTick(force = false) {
+    const n = this._idx?.size ?? 0;
+    if (n > this._metrics.c.peak) this._metrics.c.peak = n;   // SCALE5b: the window's most, seen at every door that ticks (and every socket adopted)
     try { this._metrics.flush(this.env?.METRICS, this._kind ?? 'none', this._idx?.size ?? 0, RELAY_VERSION, Date.now(), force); } catch { /* a metric never costs a frame */ }
   }
 
@@ -1671,6 +2563,8 @@ export class Room {
     if (posed && this._duelRef?.bouts.size) { duelPose(this._duelRef, a.sub, m.p, now); await this._duelBeat(now); }
     if (posed && this._wildRef?.fighters.has(a.sub)) { wildPose(this._wildRef, a.sub, m.p, now); await this._wildBeat(now); }   // INT9: the zone's believed place, and a fall waiting on a pick
     if (posed && this._trailing(a)) this._trailPose(ws, m.p, now);   // INT11: where a boss fight's body stood, as its poses came - AUDIT INT11: its socket's, in a fight that lives
+    if (posed && a.vid && a.ly && isGateRoom(a.key)) this._hubUpOwe(a.vid, 'p', m.p);   // SCALE5d part two: a court copy's pose is the court's too - where its body stands, and its trail
+    if (posed && isCellRoom(a.key) && this._refereesPoses() !== this._rfSaid) this._rfSay();   // SCALE5b: a referee begun or ended here - the halos told
     // AUDIT-SEATS T2 (Seats-Arc 6.6: "no body drawn to fighters, no collider, excluded from every banner count, a free
     // camera over the town"): A SPECTATOR IS NO BODY - in a battle room a socket that is no fighter (a spectator's pass,
     // or a fighter's before its `in`) keeps its camera on its own attachment and is drawn to nobody: the fan below said
@@ -1683,7 +2577,9 @@ export class Room {
       const cur = this._attach(ws);
       if (cur.af) { try { const st = await this._boutOf(); if (st && cur.afid) poseOf(st, cur.afid, m.p.x, m.p.z, now); } catch (e) { console.warn('[arena] pose', e?.message ?? e); } }
     }
-    const out = JSON.stringify({ t: 'pose', id: a.id, p: m.p });
+    // SCALE5b: the frame built once, as each kind of listener needs it - the whole pose for a socket that said no `w2`,
+    // the slim entry for one that did (its batch, `_owe`)
+    let out = null, entry = null;
     // SLAM1: the fan is BOUNDED. A room's cost was N senders times N listeners, and the range cull does not help
     // the one case that matters - an event, where everybody stands in one place and every range test passes.
     // Measured on the fake object: 91k sends a second at 96 players (SLAM13 struck a claim here about where a real
@@ -1713,7 +2609,10 @@ export class Room {
       if (other === ws || !b.id || (S && !S.members[b.sub])) continue;
       if (reach(b.pose)) heard.push([other, b]);
     }
-    for (const [other] of (still ? heard : poseFan(heard, m.p, (e) => e[1].pose, met.turn, (e) => e[1].id))) this._send(other, out);   // SLAM10: the far tier bucketed by the listener's ID, so a moving crowd cannot shuffle who is served
+    for (const [other, b] of (still ? heard : poseFan(heard, m.p, (e) => e[1].pose, met.turn, (e) => e[1].id))) {   // SLAM10: the far tier bucketed by the listener's ID, so a moving crowd cannot shuffle who is served
+      if (b.w2) this._owe(other, entry ??= JSON.stringify([a.id, slimPose(m.p)]));   // SCALE5b: the second wire's - batched, slim
+      else this._send(other, out ??= JSON.stringify({ t: 'pose', id: a.id, p: m.p }));
+    }
     // SEAT1b (Seats-Arc 4.2): THE WATCH - a verified account standing in a cell, having moved, is ticked every
     // WATCH_TICK_MS with a receipt only the account service counts, and only in a seat's own pixel (net/watchReceipt.js)
     // AUDIT-SEATS R7: in the pose's OWN cell alone - every cell room ticked whatever pixel the pose claimed, a halo's too
@@ -1725,7 +2624,15 @@ export class Room {
 
   async _message(ws, message) {
     let a = this._attach(ws);
+    if (!this._busWoke && (isChannelBus(a.key) || (isGateRoom(a.key) && !a.ly))) await this._busWake();   // AUDIT SCALE II R2-6: a bus (or a court) woken by a socket of its own
     this._kind ??= a.key ? roomKindOf(a.key) : null;   // SCALE2b: a metric names the room's kind, never the room
+    // SCALE5c: A SHARD HANDS ON every frame but its socket's hello, ping and pose (a channel keeps no place), AS IT CAME -
+    // before any door or parse here: the bus parses it, meters it and strikes for it over the socket's ShardSocket, as
+    // the hub always did, and its doors (a quest's, which asks the account only the bus's socket carries) are the bus's
+    if (a.vid && a.id && typeof message === 'string' && isChannelShard(a.key) && !shardKeeps(message)) { this._hubForward(ws, a, message); return; }
+    // SCALE5d part two: A COURT'S COPY HANDS ON its sockets' gate words - the fight is the court's. AUDIT SCALE II R3-1: by
+    // what a frame IS, in the gate arm below, never by how it begins (here it was a frame's first bytes, and a gate word
+    // in another key order stood a fight on the copy)
     // WARDEN1: a cell's road team whose time has come is thrown at the first frame of anyone in the room (a woken
     // object reads its teams once); every socket here keeps alive, so everyone in sight sees it on time
     // AUDIT WARDEN1 R4: a round that fails (the cell's park list refused) is the round's alone - asked again
@@ -1786,6 +2693,13 @@ export class Room {
     }
     const m = parseClient(message, { hasHello: !!a.id });
     if (m.error) { this._refuse(ws, m.error); return; }
+    // AUDIT SCALE II R1-7: A SHARD KEEPS A FRAME BY WHAT IT IS. The door above kept a frame by its first key, and JSON's
+    // last duplicate wins - `{"t":"pose","t":"chat",...}` was kept and run here as a line under the shard's own law (a
+    // mute the bus applied never reached it). Parsed as anything but the three it keeps, it goes up as it came: the bus
+    // parses it as this did, and judges it
+    if (a.vid && a.id && isChannelShard(a.key) && m.t !== 'hello' && m.t !== 'ping' && m.t !== 'pose') { this._hubForward(ws, a, message); return; }
+    // AUDIT SCALE II R3-7: and a court hears from a copy's socket its gate words alone (the copy hands up nothing else)
+    if (ws.court && m.t !== 'gate') { this._junk(ws); return; }
     if (m.t === 'hello') {
       const now = Date.now();
       this._metrics.c.hellos++;   // SCALE2b
@@ -1818,6 +2732,10 @@ export class Room {
       // attachment), so a refused hello leaves nothing behind - a tokenless one planted a secret that refused the owner
       const who = await this._named(m, now);
       if (who.error) { this._refuse(ws, who.error); return; }
+      // SCALE5c: A SHARD HOLDS ITS OWN ACCOUNTS - one whose subject lands on another is told which (its client goes there),
+      // before anything here is written
+      if (isChannelShard(a.key) && shardOf(busOf(a.key), who.subject) !== a.key) { this._hubHop(ws, shardOf(busOf(a.key), who.subject) ?? /** @type {string} */ (busOf(a.key))); return; }   // SCALE5c part two: a region's shards the same
+      if (isChannelBus(a.key) && m.hs === 1 && shardOf(a.key, who.subject)) { this._hubHop(ws, /** @type {string} */ (shardOf(a.key, who.subject))); return; }   // SCALE5c: a hub link of a build that knows the shards, said hello to the bus itself (no stored word of them yet), is told its own - before anything is held, so its close says no leave
       if (a.key.startsWith('owned:') && !await privateInteriorAdmits(a.key, who.subject, isStaff(who.glyphs))) {
         this._refuse(ws, 'private room'); return;
       }
@@ -1825,7 +2743,7 @@ export class Room {
       // above): a newcomer while the gate is open and its boss stands, a fighter already in the fight (a reconnect, a
       // player cast out and back) until the wrath's end. The Worker refused the key outside the window already; this is
       // the object's own word, for a socket that opened a moment before the seal.
-      if (isGateRoom(a.key)) { const no = await this._gateAdmit(a.key, who.subject, now); if (no) { this._refuse(ws, no); return; } }
+      if (isGateRoom(a.key)) { const no = a.ly ? (gateHolds(gateDayOfRoom(a.key), now) ? null : 'the gate is closed') : await this._gateAdmit(a.key, who.subject, now); if (no) { this._refuse(ws, no); return; } }   // SCALE5d part two: a copy holds no fight - it asks the clock, and the court the rest when the hello reaches it
       // SD3: A SUPER DUNGEON'S REALM ADMITS while the hub's record holds its slot - a newcomer while it is found and its boss
       // stands, one who entered it before (a reconnect, a fighter cast out and back) until it is gone - asked before anything
       // is written (the gate's law; the Worker asked the hub already, and this is the object's own word for a socket that
@@ -1871,6 +2789,7 @@ export class Room {
       let replaced = null;   // AUDIT WORLD A4: the reconnect keeps the first hello's stamp - a host whose connection blipped keeps its seat
       for (const [other, b] of this._withId(m.id, ws)) {   // SCALE5a: listed by a method of its own (`_withId`) - `_message`'s own loops run interpreted
         replaced = b;
+        if ((isChannelShard(a.key) || (a.ly && isGateRoom(a.key))) && b.vid) { this._vidIdx.delete(b.vid); this._hubUpOwe(b.vid, 'r', 0); }   // SCALE5c: its ShardSocket replaced too - nothing said for its account; SCALE5d part two: a court copy's too
         this._setAttach(other, { ...b, id: null, replaced: true });
         try { other.close(CLOSE_REPLACED, 'replaced'); } catch { /* gone */ }
         this._closed(other);   // SCALE2b
@@ -1883,6 +2802,7 @@ export class Room {
       // account, the newest socket speaking for it), so a second socket is never a second fighter, only a seat the court
       // cannot give anyone else: the older goes, replaced, its leave said.
       if ((isGateRoom(a.key) || isBattleRoom(a.key) || isSdRoom(a.key)) && who.subject) for (const [other, b] of [...this._all()]) if (other !== ws && b.id && b.sub === who.subject) this._refuse(other, 'replaced', CLOSE_REPLACED);   // PVP-REF: and a siege's field, one fighter an account; SD3: and a Super dungeon's realm
+      if (isGateRoom(a.key) && !a.ly && who.subject) this._courtReplace(who.subject, null);   // SCALE5d part two: and the court's one seat across its copies
       // ONE-SEAT: A CLAIM TAKES THE SEAT - every other tab of this account in the hub is closed, the reason said first,
       // and its client leaves every room it holds (net/online.js `superseded`). Their leaves are said at the reap, as
       // every close this object makes is (AUDIT WORLD34 D1).
@@ -1894,7 +2814,8 @@ export class Room {
       // carried over - a claim that closed the account's other tabs, or a reconnect that replaced its own old socket,
       // moved a seat the room never lost, and the sweep below took every party in the hub with it (a stranger's too)
       const carried = !!replaced || (!!m.cl && seatHeld.length > 0);
-      if (!others.length && !carried) { try { await this._sweep(); } catch (e) { console.warn('[room] sweep failed', e?.message ?? e); } }   // AUDIT-SEATS R3: a battle room's fighter spent no stored bucket   // an empty room forgets every look and secret an unclean close left behind - not its hello gate (AUDIT SOC A2: contained - a failed list here made every first hello into an empty hub throw before its welcome)
+      if (!others.length && !carried && !this._swept) { try { await this._sweep(); } catch (e) { console.warn('[room] sweep failed', e?.message ?? e); } }   // AUDIT-SEATS R3: a battle room's fighter spent no stored bucket   // an empty room forgets every look and secret an unclean close left behind - not its hello gate (AUDIT SOC A2: contained - a failed list here made every first hello into an empty hub throw before its welcome)   // SCALE5b: not when the drain's sweep already ran and nothing has said hello since - a halo's every step into an empty cell paid both
+      this._swept = false;   // SCALE5b: this hello writes
       if (held !== m.secret || !this._secrets.has(m.id)) { await this.state.storage.put(secretKey(m.id), m.secret); this._secrets.set(m.id, m.secret); }   // SCALE2b: written when it is new, not on every hello (or when an empty room's sweep, just above, took it)
       if (!chat && (!this._looks.has(m.id) || JSON.stringify(this._looks.get(m.id)) !== JSON.stringify(m.look))) { await this.state.storage.put(lookKey(m.id), m.look); this._looks.set(m.id, m.look); }   // SCALE2b: and a look when it changed   // a channel keeps no look: nobody is drawn from it
       const guild = who.gi ? { gi: who.gi, gt: who.gt, gm: who.gm } : {};   // GUILD1c: the guild the token carried, when it carried one
@@ -1908,7 +2829,14 @@ export class Room {
       // AUDIT PRE-MERGE 1003b R4: a private session's floor is shown to its members - a socket that is none yet is shown
       // the sand when its join makes it one (`_sessionShow`)
       const shown = isArenaPrivateRoom(a.key) ? { shown: (await this._sessionOf())?.members?.[who.subject] ? 1 : 0 } : {};
-      if (!this._setAttach(ws, { ...a, ...placed, ...shown, id: m.id, name: who.name, title: who.title, ...(who.ts ? { ts: who.ts } : {}), glyphs: who.glyphs, gx: who.gx, au: who.au, ...(who.rb ? { rb: who.rb } : {}), lv: who.lv, ...guild, ...(who.hn ? { hn: who.hn, hc: who.hc, hb: who.hb, hg: who.hg } : {}), ...(who.ci && !chat && !isSocialRoom(a.key) ? { ci: who.ci } : {}), ...(armsOk(who.wa) && !chat && !isSocialRoom(a.key) ? { wa: who.wa } : {}), gio: who.gio, sub: who.subject, ...(siegeSide ? { sd: siegeSide } : {}), mu: who.mu, pose: chat ? null : m.pose, since: replaced?.since ?? now, ...arena, ...charLv, ...linked })) { this._refuse(ws, 'hello too large'); return; }   // MOD1: `sub` the verified account (what a mute names), `mu` until when it may not talk   // RENOWN1: `lv` the Renown level the token carried
+      // SCALE5c: a shard's socket is the bus's ShardSocket by this id - and keeps what its hello said the bus, to say it again
+      const shard = isChannelShard(a.key), copy = !!a.ly && isGateRoom(a.key), vid = shard || copy ? `${m.id}~${now.toString(36)}${(++this._vseq).toString(36)}${crypto.getRandomValues(new Uint16Array(1))[0].toString(36)}` : null;   // SCALE5d part two: a court copy's socket is the court's by this id
+      if (shard || copy) {
+        this._hubKey = shard ? a.key : layerName(a.key, a.ly);
+        // AUDIT SCALE II R2-4: and kept, so a woken instance whose sockets say nothing still knows it
+        if (this._hubKeyKept !== this._hubKey) { this._hubKeyKept = this._hubKey; try { await this.state.storage.put(HUB_KEY_KEY, this._hubKey); } catch { this._hubKeyKept = null; } }
+      }
+      if (!this._setAttach(ws, { ...a, ...placed, ...shown, ...(shard ? { vid, hm: { acct: m.acct ?? null, as: m.asecret ?? null, ps: m.ps === 1 ? 1 : 0, sc: m.secret } } : copy ? { vid } : {}), id: m.id, name: who.name, title: who.title, ...(who.ts ? { ts: who.ts } : {}), glyphs: who.glyphs, gx: who.gx, au: who.au, ...(who.rb ? { rb: who.rb } : {}), lv: who.lv, ...guild, ...(who.hn ? { hn: who.hn, hc: who.hc, hb: who.hb, hg: who.hg } : {}), ...(who.ci && !chat && !isSocialRoom(a.key) ? { ci: who.ci } : {}), ...(armsOk(who.wa) && !chat && !isSocialRoom(a.key) ? { wa: who.wa } : {}), gio: who.gio, sub: who.subject, ...(siegeSide ? { sd: siegeSide } : {}), mu: who.mu, pose: chat ? null : m.pose, since: replaced?.since ?? now, ...arena, ...charLv, ...linked, ...(m.w2 === 1 ? { w2: 1 } : {}) })) { this._refuse(ws, 'hello too large'); return; }   // MOD1: `sub` the verified account (what a mute names), `mu` until when it may not talk   // RENOWN1: `lv` the Renown level the token carried
       if (!chat && m.pose && this._trailing({ key: a.key, sub: who.subject })) this._trailPose(ws, m.pose, now);   // AUDIT INT11: a fighter's socket new to the room stands where its hello put it, from now - on its trail, or none says when
       // SRV-N: `v` rides EVERY welcome, a channel's included. A player in the enhanced skin holds a presence socket
       // and one chat socket per tab; whichever reconnects first after a hand deploy is the one that notices, and the
@@ -1921,60 +2849,33 @@ export class Room {
         // read - the hello path stays as cheap as AUDIT CHAT A1 priced it); socket order, cut at CHAT_ROSTER_MAX, with
         // `n` the true count. The join below is said here too, with the name and nothing else.
         const named = others.slice(0, CHAT_ROSTER_MAX).map((b) => badged({ id: b.id, name: b.name, sub: b.sub }, b));   // MOD1: and the verified account - what /mute names   // ACC3: and whatever the token vouched for, beside it   // ACC1g: a name and nothing beside it - every name in this room was verified to get in, so a per-name verdict says the same thing about everybody
-        const ev = isSocialRoom(a.key) ? await this._liveEvent() : null;   // EVENT1: the hub says the live event staged now, so a player who joins mid-event sees it; no field is no event (an old client reads none)
+        const ev = isSocialRoom(a.key) && !shard ? await this._liveEvent() : null;   // SCALE5c: a shard's joiner hears it from the bus   // EVENT1: the hub says the live event staged now, so a player who joins mid-event sees it; no field is no event (an old client reads none)
         // TV3: a region's channel says where its travellers are - the fresh marks on the other sockets' attachments,
         // badged as the roster is, cut at TRAV_WELCOME_MAX; no field is no traveller (an old client reads none)
         // AUDIT DEEP T3-6: each with its AGE (`ag`, whole seconds) - a joiner stamps it that old, so a mark four minutes
         // stale here is not five minutes fresh there
         const tr = isRegionRoom(a.key) ? others.filter((b) => b.tm && now - b.tm.at <= TRAV_STALE_MS).slice(0, TRAV_WELCOME_MAX).map((b) => { const p = { ...b.tm }; delete p.at; return badged({ id: b.id, name: b.name, sub: b.sub, p, ag: Math.max(0, Math.floor((now - b.tm.at) / 1000)) }, b); }) : [];
-        if (!this._send(ws, JSON.stringify({ t: 'welcome', id: m.id, peers: named, n: others.length + 1, v: RELAY_VERSION, now: Date.now(), ...(ev ? { ev } : {}), ...(tr.length ? { tr } : {}) }))) return;   // AUDIT SOC B7: the relay's clock rides the channel's welcome too (WORLD5's `now`), so the hub link reads last-seen and an invite's lapse on the relay's time without waiting on the presence session's welcome
+        if (!this._send(ws, JSON.stringify({ t: 'welcome', id: m.id, peers: named, n: shard ? this._hubN(others.length + 1) : others.length + 1, v: RELAY_VERSION, now: Date.now(), ...(ev ? { ev } : {}), ...(tr.length ? { tr } : {}) }))) return;   // AUDIT SOC B7: the relay's clock rides the channel's welcome too (WORLD5's `now`), so the hub link reads last-seen and an invite's lapse on the relay's time without waiting on the presence session's welcome
         // AUDIT SCALE5a C1-C3: AND THE ROOM'S COUNT, as the welcome says it (`n`). A client whose roster the welcome cut at
         // CHAT_ROSTER_MAX kept the count by arithmetic, a join +1 and a leave -1, and every door that says one without the
         // other moved it for good: a claim's closed tab (its leave said after the claimer's welcome had counted it out), a
         // joiner whose welcome failed (its leave said, no join), a reconnect after its old socket's leave. The count each
         // join and leave carries is the room's own, so nothing can drift (SCALE5a's `re` retired with it).
-        const said = JSON.stringify(badged({ t: 'join', id: m.id, name: who.name, sub: who.subject, n: others.length + 1 }, who));
-        this._fanBut(ws, said);   // SCALE5a: the index walked in place, by a method of its own
-        // SOC1: the account, in the hub - after the welcome and the join, so a client's session has reset on the
-        // welcome before its picture lands; a hello naming none is a build before this slice, admitted as it was
-        if (isSocialRoom(a.key) && m.acct) { try { await this._helloAccount(ws, m, now); } catch (e) { console.warn('[hub] account hello failed', e?.message ?? e); } }   // AUDIT SOC A2: contained, as the acts and the leave are
-        // WB3: a gate's kill said while this player was away, while that gate still stands - so it collapses on their screen too
-        if (isSocialRoom(a.key)) { try { const g = await this._gateFellOf(); if (g && gateHolds(g.d, now)) this._send(ws, JSON.stringify({ t: 'gate', ...g })); } catch (e) { console.warn('[hub] gate word failed', e?.message ?? e); } }
-        // SERPENT1: and a sea serpent's, while its day holds - its ring on their map reads slain, its lines are not said;
-        // AUDIT SERPENT S1: each site's kill (a client hears its own site's); S5: and this account's receipt while it is good
-        if (isSocialRoom(a.key)) { try { const g = await this._serpentFellsOf(); if (g && serpentHolds(g.d, now)) for (const fell of g.list) this._send(ws, JSON.stringify({ t: 'serpent', ...fell })); } catch (e) { console.warn('[hub] serpent word failed', e?.message ?? e); } }
-        if (isSocialRoom(a.key) && who.subject) { try { await this._serpentReceiptTo(ws, who.subject, now); } catch (e) { console.warn('[hub] serpent receipt failed', e?.message ?? e); } }
-        // AUDIT WB A4: and this account's receipt, while it is good (spent, it goes)
-        if (isSocialRoom(a.key) && who.subject) { try { await this._gateReceiptTo(ws, who.subject, now); } catch (e) { console.warn('[hub] gate receipt failed', e?.message ?? e); } }
-        // SD9a: and this account's Hour receipt, while it is good (spent, it goes)
-        if (isSocialRoom(a.key) && who.subject) { try { await this._sdReceiptTo(ws, who.subject, now); } catch (e) { console.warn('[hub] sd receipt failed', e?.message ?? e); } }
-        // WB12d: the faithful's rite broken while this player was away, while its circle still stands
-        // BROKER-CAGE: and its faithful every one fallen - the Broker's cage open - until the Wrath's midnight (cageStands: a
-        // Warden fallen early takes the circle, never her)
-        if (isSocialRoom(a.key)) {
-          try {
-            const r = await this._riteOf();
-            if (r) {
-              const stands = riteStands(r.d, now, await this._fellAtOf(r.d)), caged = cageStands(r.d, now);
-              for (const c of Object.values(r.c)) {
-                if (c.said && stands) this._send(ws, JSON.stringify({ t: 'rite', ...riteSaid(r.d, c) }));   // each circle said (a client hears its own)
-                if (c.cl && caged) this._send(ws, JSON.stringify({ t: 'rite', ...cageSaid(r.d, c) }));
-              }
-            }
-          } catch (e) { console.warn('[hub] rite word failed', e?.message ?? e); }
+        // AUDIT SCALE II R2-4 (p4d): a shard woken knows no hub count until the bus says one - its join carries none then
+        // (the client counts it), never its own few as the hub's
+        const jn = shard ? (this._hubTotal != null ? this._hubN(others.length + 1) : null) : others.length + 1;
+        const said = JSON.stringify(badged({ t: 'join', id: m.id, name: who.name, sub: who.subject, ...(jn != null ? { n: jn } : {}) }, who));
+        this._fanRoster(ws, said);   // SCALE5a: the index walked in place, by a method of its own; SCALE5b: the second wire's batched
+        if (shard) {
+          // SCALE5c: A SHARD'S HELLO IS THE BUS'S TOO - its ShardSocket made there, which the account's picture, the
+          // world's words and its receipts are said to, and the shard told the hub's count from then on
+          this._vidIdx.set(vid, ws);
+          this._hubUpOwe(vid, 'h', { att: this._shardAtt(this._attach(ws)), m: { acct: m.acct ?? null, asecret: m.asecret ?? null, ps: m.ps === 1 ? 1 : 0, cl: m.cl ? 1 : 0, secret: m.secret } });   // AUDIT SCALE II R2-1: the id's secret, the bus's to ask
+          if (!this._hubAlarmed) { this._hubAlarmed = true; try { if ((await this.state.storage.getAlarm()) == null) await this.state.storage.setAlarm(now + HUB_SYNC_MS); } catch { /* the next hello arms it */ } }
+          return;
         }
-        // RAID3: the raids cleansed today and yesterday - so a raid this player's machine still holds open is closed quietly,
-        // never said withdrawn (the cleanse's own word went out while they were away)
-        if (isSocialRoom(a.key)) { try { const l = await this._raidCleansOf(now); if (l.length) this._send(ws, JSON.stringify({ t: 'raid', k: 'cls', l })); } catch (e) { console.warn('[hub] raid word failed', e?.message ?? e); } }
-        // AUDIT RAID R2: and this account's raid receipts the hub holds - an earner who was not in the town's cell at the
-        // cleanse, or whose link dropped at it, is handed them here (the account service counts each once)
-        if (isSocialRoom(a.key) && who.subject) { try { await this._raidReceiptsTo(ws, who.subject, now); } catch (e) { console.warn('[hub] raid receipts failed', e?.message ?? e); } }
-        // RAID-ROLL: and, while the hub holds no towns table its operator pinned, the ask for one by its hash - any
-        // client whose own table hashes to it hands it over (the relay never holds the game's files)
-        if (isSocialRoom(a.key)) { try { const h = await this._raidTownsWanted(); if (h) this._send(ws, JSON.stringify({ t: 'raid', k: 'tw', h })); } catch (e) { console.warn('[hub] raid towns ask failed', e?.message ?? e); } }
-        // SD3: and the Super dungeon's record - a Hollow risen, found, fallen or gone - so a player who joins mid-life stands it
-        // (or, inside one gone while they were away, is cast out); an older client drops a frame type it does not know
-        if (isSocialRoom(a.key)) { try { const r = await this._sdOf(); if (r && r.s > 0) this._send(ws, JSON.stringify({ t: 'sd', k: 'ev', ...r })); } catch (e) { console.warn('[hub] sd word failed', e?.message ?? e); } }
+        if (isChannelBus(a.key)) this._busCountMoved();   // SCALE5c: the bus's own hello - its shards told the count
+        if (isSocialRoom(a.key)) await this._hubHelloWords(ws, m, who.subject, now);
         return;
       }
       // SLAM5 (2026-09-16, AUDIT SLAM): THE ROSTER IS CHOSEN BEFORE THE LOOKS ARE READ, and this was a hard wall.
@@ -2024,8 +2925,14 @@ export class Room {
       // AUDIT WORLD5 C11: stamped as the welcome is BUILT, not as the hello began - four storage awaits sit between the
       // two, and every millisecond of them was an offset the client carried as the relay's clock
       // SRV-N / SLAM13 (AUDIT SLAM A5): the relay's VERSION rides it (`v`, last), so a client can tell a restarted relay from the one it was talking to, and one built against another law can say so
-      const welcome = `{"t":"welcome","id":${JSON.stringify(m.id)},"peers":${JSON.stringify(roster)},"host":${JSON.stringify(host)}${ow},"world":${world ?? 'null'},"now":${Date.now()},"v":${JSON.stringify(RELAY_VERSION)}}`;
+      const rf = isCellRoom(a.key) && this._refereesPoses() ? ',"rf":1' : '';   // SCALE5b: this cell judges the poses that reach it - a halo's at their full rate
+      const welcome = `{"t":"welcome","id":${JSON.stringify(m.id)},"peers":${JSON.stringify(roster)},"host":${JSON.stringify(host)}${ow},"world":${world ?? 'null'},"now":${Date.now()},"v":${JSON.stringify(RELAY_VERSION)}${rf}${a.ly ? `,"ly":${a.ly}` : ''}}`;   // SCALE5d: and which layer of the place this is
       if (!this._send(ws, welcome)) return;
+      // AUDIT SCALE II R1-1: `_rfSaid` IS WHAT EVERY SOCKET OF THE SECOND WIRE WAS LAST TOLD - a welcome tells its own
+      // socket alone. It was set here from the welcome's word, so a referee begun since the last pose (a Wild zone fighter,
+      // a bout, a serpent's fight) and a hello before the next pose left every halo already here never told it: each said
+      // its poses thinned while the cell judged them. A word that moved is said to all of them now
+      if (isCellRoom(a.key) && this._refereesPoses() !== this._rfSaid) this._rfSay();
       // HCC-PARK: the cell's parked teams, after the welcome that resets the joiner's session (a halo's hello included)
       // AUDIT HCC-PARK (client C3): ALWAYS, an empty list included - a reconnect's welcome is the whole truth, and a
       // team taken up while this socket was away must go; never the joiner's own account's records (D2)
@@ -2058,6 +2965,14 @@ export class Room {
       if (unseen) return;   // HOTFIX 1003f: a floor's hello said as anyone's - a private session's stranger's to nobody (a member's join says it: `_sessionShow`)
       const join = JSON.stringify(badged({ t: 'join', id: m.id, name: who.name, look: m.look, pose: this._drawn({ sub: who.subject, pose: m.pose }, a.key).pose }, who));   // AUDIT-SEATS T2: and a spectator's join stands it nowhere
       for (const [other, b] of [...this._all()]) if (other !== ws && b.id && (!S || S.members[b.sub])) this._send(other, join);   // AUDIT PRE-MERGE 1003b R4: a member's to the members alone
+      if (copy) {
+        // SCALE5d part two: A COPY'S HELLO IS THE COURT'S TOO - its socket made there (admitted by the court's law, or
+        // closed by it), and where it stands; its crowd here has met it already
+        this._vidIdx.set(vid, ws);
+        this._hubUpOwe(vid, 'h', { att: this._shardAtt(this._attach(ws)) });
+        if (m.pose) this._hubUpOwe(vid, 'p', m.pose);
+        if (!this._hubAlarmed) { this._hubAlarmed = true; try { if ((await this.state.storage.getAlarm()) == null) await this.state.storage.setAlarm(now + HUB_SYNC_MS); } catch { /* the next hello arms it */ } }
+      }
       return;
     }
     if (m.t === 'world') {
@@ -2135,19 +3050,7 @@ export class Room {
       // reader, and a dungeon's bound (`i >= _layoutFoes`, a layout every client built) has no cell equivalent; over
       // it the frame is junk, counted (the relay still reads nothing inside a record)
       if (cell && (!Array.isArray(m.data.f) || m.data.f.length > CELL_FRAME_RECORDS_MAX)) { this._junk(ws); return; }
-      // AUDIT WORLD6b A4: a cell's fan is RANGED as the pose's is (RANGE_PIXELS inside a sixteen-pixel cell) - a foe
-      // nobody near me can see stands nowhere on my screen; a dungeon's reaches every socket in the place
-      const listeners = [...this._all()].filter(([other, b]) => other !== ws && b.id && (!cell || inRange(a.key, a.pose, b.pose)));
-      // A5: the room's byte budget - the fan is the frame times its listeners, and one host into a full room was
-      // 191 MiB/s out of one object; over it the frame is dropped and nobody struck (the next full frame heals it).
-      // AUDIT WORLD6b A3: the budget is asked BEFORE the frame is re-serialised (the fan's bytes are the frame's plus
-      // the envelope's, estimated), so a dropped frame costs no stringify
-      const budget = byteGate(this._roomFoes, now, (message.length + a.id.length + 8) * listeners.length, FOES_ROOM_BYTES_PER_S);
-      this._roomFoes = budget.bucket;
-      if (!budget.pass || !listeners.length) return;
-      const out = fanOut('foes', a.id, m.data, message.length);   // AUDIT (pre-merge) O3/O4
-      if (out == null) { this._junk(ws); return; }
-      for (const [other] of listeners) this._send(other, out);
+      this._roomFoes = this._foesFan(ws, a, 'foes', m.data, message.length, cell, this._roomFoes, now);   // SCALE5b: a method of its own
       return;
     }
     if (m.t === 'own') {
@@ -2156,16 +3059,11 @@ export class Room {
       const now = Date.now();
       if (doored !== 'own') { if (!isWorldRoom(a.key)) { this._junk(ws); return; } a = this._meterFoes(ws, a, now); if (!a) return; }
       if (!Array.isArray(m.data.f) || m.data.f.length > CELL_FRAME_RECORDS_MAX) { this._junk(ws); return; }
-      const listeners = [...this._all()].filter(([other, b]) => other !== ws && b.id);
-      const budget = byteGate(this._roomOwn, now, (message.length + a.id.length + 8) * listeners.length, FOES_ROOM_BYTES_PER_S);
-      this._roomOwn = budget.bucket;
-      if (!budget.pass || !listeners.length) return;
-      const out = fanOut('own', a.id, m.data, message.length);   // AUDIT (pre-merge) O3/O4
-      if (out == null) { this._junk(ws); return; }
-      for (const [other] of listeners) this._send(other, out);
+      this._roomOwn = this._foesFan(ws, a, 'own', m.data, message.length, false, this._roomOwn, now);   // SCALE5b: the foes frame's method
       return;
     }
     if (m.t === 'hit') {
+      this._metrics.c.hits++;   // SCALE5b: the frames by type
       // WORLD2: a blow on the host's foe - from anyone but the host, in a world room, on the pose bucket, to the
       // host's socket alone (the host applies it through its own damage door and the next foes frame says so)
       const now = Date.now();
@@ -2181,7 +3079,7 @@ export class Room {
       // AUDIT WORLD6b A1: the ROUTE is resolved before anything is spent - a `to` that names no socket in the room (a
       // peer gone, or a name a hostile client made up) delivers nothing, buys nothing, and is counted as junk (AUDIT
       // WORLD2 A4's instrument), so a stream of them is struck out; a world room's host is always a socket
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === host) ?? null;
+      const target = this._idFirst(host, ws);
       if (!target) { if (owned) this._junk(ws); return; }
       // A6: the funnel onto the destination's ONE socket - all strikers together, HIT_ROOM_HZ_MAX a second; over it
       // the blow is dropped and nobody struck. AUDIT WORLD6b A1/A2: the budget is the DESTINATION's (its own bucket,
@@ -2218,7 +3116,7 @@ export class Room {
       if (isChatRoom(a.key) || isSocialRoom(a.key)) return;
       const to = m.data.to;
       if (to === a.id) { this._junk(ws); return; }
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       // the funnel onto the destination's ONE socket - every sender together (the hit arm's A6 law, its own bucket)
       const [tws] = target;
@@ -2247,7 +3145,7 @@ export class Room {
       if (isChatRoom(a.key) || isSocialRoom(a.key)) return;
       const to = m.data.to;
       if (to === a.id) { this._junk(ws); return; }
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       const [tws] = target;
       // AUDIT ALLY-CAST B2: the funnel onto the destination is PER SENDER (wire.js CAST_DEST_SENDERS_MAX) - one bucket
@@ -2268,7 +3166,7 @@ export class Room {
       if (isChatRoom(a.key) || isSocialRoom(a.key)) return;
       const to = m.data.to;
       if (to === a.id) { this._junk(ws); return; }
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       const [tws] = target;
       // THE CAST ARM'S FUNNEL, SHARED - not a second one: one sender, one destination, one bucket, whatever the directed
@@ -2301,7 +3199,7 @@ export class Room {
       const k = m.data.k;
       if (k === 'strike' || k === 'spell') { await this._duelBlow(a, m.data, now); return; }   // INT8: the referee's, routed to nobody
       if ((k === 'end' || k === 'cancel') && await this._duelForfeit(a, m.data, now)) return;   // INT8: a fighter's own end of its bout
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       const [tws, tb] = target;
       // the funnel onto the destination, per sender - the cast's shape on slots of its own at the duel's rate
@@ -2328,7 +3226,7 @@ export class Room {
       if (isChatRoom(a.key) || isSocialRoom(a.key)) return;
       const to = m.data.to;
       if (to === a.id) { this._junk(ws); return; }
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       const [tws] = target;
       // the funnel onto the destination, per sender - the duel's shape on slots of its own at the wedding's rate
@@ -2368,7 +3266,7 @@ export class Room {
       if (wildDirected(m.data)) {
         const to = m.data.to;
         if (to === a.id) { this._junk(ws); return; }
-        const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+        const target = this._idFirst(to, ws);
         if (!target) return;
         const [tws] = target;
         if (!this._senderFunnel(tws, a.id, now, 'wiin', WILD_HZ_MAX)) return;
@@ -2392,7 +3290,7 @@ export class Room {
       if (isChatRoom(a.key) || isSocialRoom(a.key)) return;
       const to = m.data.to;
       if (to === a.id) { this._junk(ws); return; }
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;
+      const target = this._idFirst(to, ws);
       if (!target) return;
       const [tws] = target;
       // the funnel onto the destination, per sender - the cast's and the card's ONE (_senderFunnel says why)
@@ -2416,7 +3314,7 @@ export class Room {
         const thrown = await this._parkStore(k, a.sub, a.id, a.name ?? '', m.data.r, now);
         if (thrown) this._parkTellOwner(thrown, ws);   // WARDEN1: away when the watch threw it - told now, as they re-say where it stood
       } else if (here && cell !== here) await this._parkDrop(k);   // mine here is superseded: nothing parked, or it stands elsewhere
-      await this._parkRegister(k, cell, now);
+      await this._parkRegister(k, cell, now, m.data.r && cell === here ? a.ly | 0 : undefined);   // AUDIT SCALE II R3-8: the layer it is kept in, when it is kept here
       return;
     }
     if (m.t === 'caravan') {
@@ -2473,6 +3371,11 @@ export class Room {
         return;
       }
       if (!isGateRoom(a.key) || typeof a.sub !== 'string' || !a.sub) { this._junk(ws); return; }
+      // AUDIT SCALE II R3-1: A COPY HOLDS NO FIGHT. Its socket's gate word - whatever order its keys came in, metered
+      // above on the copy's own bucket - is handed to the court as one gate frame, written again from what it parsed
+      // (`t` first), and is never run here: a copy that ran one stood a fight of its own, which one fighter killed
+      // alone and whose fall the hub told everyone online
+      if (a.ly) { if (a.vid && a.id) this._hubUpOwe(a.vid, 'f', JSON.stringify({ t: 'gate', ...m })); return; }
       try { await this._gateFrame(ws, a, m, now); } catch (e) { console.warn('[gate] frame failed', e?.message ?? e); }
       return;
     }
@@ -2657,6 +3560,41 @@ export class Room {
       routeStaffTeleport(this, ws, a, m, now);
       return;
     }
+    if (m.t === 'find') {
+      // SCALE5c (Mac's decision 2): A SEARCH OF EVERYONE ONLINE BY NAME - the hub's (the bus holds every shard's sockets),
+      // on a bucket of its own and the whole hub's (a search walks everyone; past HUB_FIND_ROOM_HZ_MAX it is answered
+      // `busy`): the names whose fold holds the search's, HUB_FIND_MAX at most, badged as a roster is. `g`: my guild
+      // online instead, every shard's - the Guild tab's list - off the guild's own sockets
+      const now = Date.now();
+      if (!this._spend(ws, now, (b, t) => tokenGate(b, t, 1, 3), 'findbucket', 'finddrops', 'too many searches')) return;
+      if (m.all === 1 && isRegionBus(a.key)) { this._send(ws, this._everyoneSaid(now)); return; }   // SCALE5c part two: a region's too - the Region tab's list
+      if (!isSocialRoom(a.key)) { this._junk(ws); return; }
+      if (m.g === 1) { this._send(ws, JSON.stringify({ t: 'found', g: 1, l: this._guildWho(ws, a) })); return; }
+      if (m.all === 1) { this._send(ws, this._everyoneSaid(now)); return; }
+      const room = tokenGate(this._findRoom, now, HUB_FIND_ROOM_HZ_MAX);
+      this._findRoom = room.bucket;
+      if (!room.pass) { this._send(ws, JSON.stringify({ t: 'found', q: m.q, l: [], busy: 1 })); return; }
+      this._send(ws, JSON.stringify({ t: 'found', q: m.q, l: this._findNames(ws, foldFind(m.q)) }));
+      return;
+    }
+    if (m.t === 'cfg') {
+      // SCALE5b: A RELAY SETTING (net/relayCfg.js) - in the hub alone, from a developer's verified glyphs alone, on a bucket
+      // of its own: kept in the hub's storage, in force for the hub at once and for a boss's room within RELAY_CFG_TTL_MS.
+      // Anyone else is answered in words and struck for nothing - a staff command a Dungeon Master typed is no attack
+      const now = Date.now();
+      if (!this._spend(ws, now, (b, t) => tokenGate(b, t, 1, 4), 'cfgbucket', 'cfgdrops', 'too many settings')) return;
+      if (!isSocialRoom(a.key)) { this._junk(ws); return; }
+      if (!mayRelayCfg(a.glyphs)) { this._send(ws, JSON.stringify({ t: 'cfg', k: m.k, error: 'only a developer may change the relay\'s settings' })); return; }
+      const no = m.v === null ? null : relayCfgRefusal(m.k, m.v);   // AUDIT SCALE II R1-4: by its consumers' law, or refused in words - nothing kept
+      if (no) { this._send(ws, JSON.stringify({ t: 'cfg', k: m.k, error: no })); return; }
+      const cfg = { ...(await this._relayCfgOf()) };
+      if (m.v === null) delete cfg[m.k]; else cfg[m.k] = m.v;
+      await this.state.storage.put('relaycfg', cfg);
+      this._relayCfg = cfg; this._herald = undefined; this._bodyCfg = undefined;
+      console.info('[cfg] set', m.k, m.v === null ? '(the var)' : m.v);
+      this._send(ws, JSON.stringify({ t: 'cfg', k: m.k, v: relayCfgValue(cfg, this.env, m.k) ?? '' }));
+      return;
+    }
     if (m.t === 'social') {
       // SOC1: a friend or party act - on the acts' own bucket (the same strikes), in the hub alone (outside it junk: a
       // correct client sends none there), from an account (without one refused in words), under the room's budget
@@ -2704,7 +3642,7 @@ export class Room {
       // nothing to send again, so a dropped one left the player drawn for TRAV_STALE_MS; it is said on the budget's next
       // pass (the room's next traveller frame - a room over the budget has them every moment)
       if (!room.pass) { if (clear) this._oweTravClear(a.id, out); return; }
-      for (const [other, b] of [...this._all()]) if (other !== ws && b.id) this._send(other, out);
+      this._fanAllBut(ws, a.id, out);   // SCALE5c part two: on a region's bus, one entry a shard
       return;
     }
     if (m.t === 'party') {
@@ -2801,7 +3739,7 @@ export class Room {
       const budget = tokenGate(this._roomWho, now, WHO_ROOM_HZ_MAX);
       this._roomWho = budget.bucket;
       if (!budget.pass) return;
-      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === id) ?? null;
+      const target = this._idFirst(id, ws);
       if (!target) return;
       const [tws, b] = target;
       let look = this._looks.get(b.id) ?? null;
@@ -2822,6 +3760,7 @@ export class Room {
     }
     if (m.t === 'pose' || m.t === 'ping') return this._poseFrame(ws, a, m);   // PERF-RELAY1: the room's hottest path, a method of its own
     if (m.t === 'chat') {
+      this._metrics.c.chats++;   // SCALE5b: the frames by type
       // CHAT1: the chat gate, its own bucket and strikes (a talker is not a mover)
       const now = Date.now();
       if (!this._spend(ws, now, chatGate, 'cbucket', 'cdrops', 'too many lines', CHAT_STRIKES_MAX)) return;   // over the rate: dropped, never queued
@@ -3130,8 +4069,8 @@ export class Room {
     // SCALE2b: out of the index - unless the runtime still lists it (a close this object made, not yet complete: AUDIT
     // ONESEAT R4), when it stays, said gone, as the old index re-read it, until the walk finds it unlisted
     if (!listed.includes(ws)) this._forget(ws);   // SCALE5a: still listed, its place in the kept account index stands
-    const last = listed.length === 0 || (listed.length === 1 && listed[0] === ws);   // SCALE5a: nobody but this one - said without a filtered copy of every socket
-    if (last) { try { await this._sweep(); if (isWorldRoom(a.key)) await this.state.storage.setAlarm(Date.now() + WORLD_TTL_MS); } catch { /* the next drain, or the next empty hello */ } this._metricsTick(true); }   // SCALE2b: a drained room says its last window
+    const last = (listed.length === 0 || (listed.length === 1 && listed[0] === ws)) && !this._vsocks.size;   // SCALE5a: nobody but this one - said without a filtered copy of every socket; SCALE5c: and no shard's either
+    if (last) { try { await this._sweep(); this._swept = this.state.getWebSockets().length === 0; if (isWorldRoom(a.key)) await this.state.storage.setAlarm(Date.now() + WORLD_TTL_MS); } catch { /* the next drain, or the next empty hello */ } this._metricsTick(true); }   // SCALE2b: a drained room says its last window
     if (!a.id) return;   // never said hello, or replaced - the id lives on in another socket
     // INT9 (AUDIT): a fighter whose last socket here went is out of the zone (a closed tab kept its `zone` for good, and a
     // room of them refused every newcomer)
@@ -3141,8 +4080,10 @@ export class Room {
     this._raidTownsUp.delete(ws);   // SCALE2b: an upload its socket never finished goes with it
     if (!last) { try { await this.state.storage.delete([lookKey(a.id), secretKey(a.id)]); } catch { /* the room forgets it on the next empty hello */ } }
     // ROSTER-G: a channel says its leaves now, as it says its joins - the roster beside the chat is everyone online
-    const out = JSON.stringify({ t: 'leave', id: a.id, ...(isChatRoom(a.key) ? { n: this._namedCount() } : {}) });   // AUDIT SCALE5a C1-C3: a channel's leave says the room's count, as its join does
-    this._fanBut(ws, out);   // SCALE5a: in place, as the join's
+    const out = JSON.stringify({ t: 'leave', id: a.id, ...(isChatRoom(a.key) && !(isChannelShard(a.key) && this._hubTotal == null) ? { n: isChannelShard(a.key) ? this._hubN(this._namedCount()) : this._vsocks.size ? this._busCount() : this._namedCount() } : {}) });   // AUDIT SCALE II R2-4 (p4d): and a woken shard's leave none, as its join   // SCALE5c: a shard's, the hub's count   // AUDIT SCALE5a C1-C3: a channel's leave says the room's count, as its join does
+    if (isChatRoom(a.key)) this._fanRoster(ws, out); else this._fanBut(ws, out);   // SCALE5a: in place, as the join's; SCALE5b: a channel's, the second wire's batched
+    if ((isChannelShard(a.key) || (a.ly && isGateRoom(a.key))) && a.vid) { this._vidIdx.delete(a.vid); this._hubUpOwe(a.vid, 'x', 0); }   // SCALE5d part two: a court copy's too   // SCALE5c: and the bus told it went
+    else if (isChannelBus(a.key)) this._busCountMoved();   // SCALE5c: the bus's - its shards told the hub's count
     this._travOwed.delete(a.id);   // AUDIT DEEP2 C2: the leave takes the mark out - an owed clear of it is said
     if (!isChatRoom(a.key) && this._leads(a, ws)) this._sayHost({ skip: ws, except: ws });   // WORLD1: the host left - the next-longest in the room is the host now, said to everyone (ROSTER-G: a channel has no host)
     if (isBattleRoom(a.key) && a.sub) { try { await this._siegeGone(ws, a.sub, Date.now()); } catch (e) { console.warn('[siege] leave failed', e?.message ?? e); } }   // AUDIT-SEATS T3: a fighter's place kept from now
@@ -3207,6 +4148,15 @@ export class Room {
       // whole stake back in a receipt ('refused'), so no gold the service holds is ever stranded by a chair
       let stake = null;
       await this._holdemOwed(ws, a, m.table);   // a returning player hears what he is owed first
+      // AUDIT SCALE II R3-3 (c): NO TABLE IN A LAYER. A room's stakes are spent and remembered by its object (`cstake:`),
+      // and a layer is another object for the same room (SCALE5d) - an order the place had seated was spent again in a
+      // layer that never heard of it, and a cash-out owed in a layer is told only at a look there, which a reconnect
+      // walked from the place (R3-3 (a)) may never make again. A layer seats nobody, staked or not, and spends no order:
+      // refused before any spend, in the client's own words for a table that cannot take him ('stakes closed', 'bad
+      // table' - cardTableHud.js HOLDEM_REFUSALS, both a lost chair in cardRemoteTable.js SIT_REFUSALS). The stake the
+      // service holds for that sit is the device's to void (cardStakes.js voidable), which the place spends (_holdemVoid).
+      // What a layer already owes - a look's, a sit's cash-outs above - it keeps telling, as it always did
+      if (a.ly) { refuse(m.stake !== undefined ? 'stakes closed' : 'bad table'); return; }
       const back = !!t?.seats.some((x) => x?.id === a.id && x.leaving && !x.cashed);   // his own chair, mid-hand: the stake it holds is his - AUDIT CARDS-5 E2: never a chair already cashed out (a new stake there was seated by no one and spent by no one)
       if (m.stake !== undefined && !back) {
         const v = await this._holdemStake(a, m, now);
@@ -3282,6 +4232,7 @@ export class Room {
    *  table read again after the order's await (AUDIT CARDS-4 B2), then spent, onto the stack, and settled at once in a
    *  'joined' receipt - its chips come home in the seat's own. */
   async _holdemTopUp(a, m, now, refuse) {
+    if (a.ly) { refuse('stakes closed'); return; }   // AUDIT SCALE II R3-3 (c): no table in a layer - its order unspent, the device voids it
     await this._loadKey();
     if (!this._verifyKey || !a.sub || !(await this._receiptKeyOf())) { refuse('stakes closed'); return; }
     const v = await verifyOrder(m.stake, this._verifyKey, { subtle: crypto.subtle, nowS: Math.floor(now / 1000), kind: 'stake' });
@@ -3309,22 +4260,74 @@ export class Room {
     if (!v.ok || v.claims.s !== a.sub || v.claims.cr !== a.key) { refuse('stake refused'); return; }
     const c = v.claims, nowS = Math.floor(now / 1000);
     if (nowS - c.i > HOLDEM_STAKE_VOID_S) { refuse('stake too old'); return; }
-    if (await this.state.storage.get(stakeKeyOf(c.cj))) { refuse('stake spent'); return; }
-    await this.state.storage.put(stakeKeyOf(c.cj), nowS);
+    // AUDIT SCALE II R3-3 (c): A LAYER SPENDS NO ORDER - the place does. Its memory of a spend is its own object's, so a
+    // void in a layer handed back a stake the place had seated (or a seat in the place sat one a layer had voided): the
+    // gold paid twice. A layer's void goes to its place, which spends it - once, for every layer - and mints the receipt;
+    // so a stake the service holds for a sit a layer refused comes home wherever its device stands
+    if (a.ly) {
+      const back = await this._holdemVoidAtPlace(a.key, m.stake, a.sub);
+      if (back.no) { refuse(back.no); return; }
+      await this._holdemKeepReceipt(back.table, a.id, c.s, c.cj, back.receipt);   // and owed here too, till the device says it holds it
+      return;
+    }
+    const no = await this._holdemVoidSpend(c, nowS);
+    if (no) { refuse(no); return; }
     await this._holdemReceipt(c.ct, a.id, { j: c.cj, s: c.s, r: c.ca, w: 'void' });
+  }
+  /** CARDS6: a verified order's void SPENT here, once (`cstake:`) - a refusal word, or null once spent. */
+  async _holdemVoidSpend(c, nowS) {
+    if (await this.state.storage.get(stakeKeyOf(c.cj))) return 'stake spent';
+    await this.state.storage.put(stakeKeyOf(c.cj), nowS);
+    return null;
+  }
+  /** AUDIT SCALE II R3-3 (c): a layer's void, asked of its place (the room's key is the place's own object) - `{receipt,
+   *  table}`, or `{no}` in the table's words: the place's refusal, or 'stakes closed' when it did not answer (the device
+   *  asks again in a minute). */
+  async _holdemVoidAtPlace(key, stake, sub) {
+    const rooms = this.env?.ROOMS;
+    if (!rooms?.idFromName || !rooms?.get) return { no: 'stakes closed' };
+    try {
+      const res = await rooms.get(rooms.idFromName(key)).fetch(new Request(`https://relay.internal${HOLDEM_INTERNAL_VOID}`, { method: 'POST', body: JSON.stringify({ key, stake, sub }), signal: AbortSignal.timeout(ROOM_CALL_MS) }));
+      const o = await res.json();
+      if (typeof o?.receipt === 'string' && Number.isSafeInteger(o.table)) return { receipt: o.receipt, table: o.table };
+      return { no: typeof o?.no === 'string' ? o.no : 'stakes closed' };
+    } catch (e) { console.warn('[holdem] the place did not answer a void', e?.message ?? e); return { no: 'stakes closed' }; }
+  }
+  /** AUDIT SCALE II R3-3 (c): THE PLACE'S HALF of a layer's void - the order checked again here (the account, this room,
+   *  its age: this object mints the gold's receipt), spent here, and its receipt minted, kept owed here and answered. */
+  async _holdemVoidInternal(request) {
+    let body = null;
+    try { body = await request.json(); } catch { /* refused below */ }
+    const key = typeof body?.key === 'string' ? body.key : null, sub = typeof body?.sub === 'string' && body.sub ? body.sub : null;
+    if (!key || !sub || !isLayered(key)) return json({ no: 'stake refused' }, 400);
+    await this._loadKey();
+    if (!this._verifyKey || !(await this._receiptKeyOf())) return json({ no: 'stakes closed' });
+    const v = await verifyStakeOrderAnyAge(body.stake, this._verifyKey, { subtle: crypto.subtle });
+    if (!v.ok || v.claims.s !== sub || v.claims.cr !== key) return json({ no: 'stake refused' });
+    const c = v.claims, nowS = Math.floor(Date.now() / 1000);
+    if (nowS - c.i > HOLDEM_STAKE_VOID_S) return json({ no: 'stake too old' });
+    const no = await this._holdemVoidSpend(c, nowS);
+    if (no) return json({ no });
+    const receipt = await this._holdemReceipt(c.ct, null, { j: c.cj, s: c.s, r: c.ca, w: 'void' });
+    return receipt ? json({ receipt, table: c.ct }) : json({ no: 'stakes closed' });
   }
   /** A cash-out signed (net/cardReceipt.js), kept for its account (the room may not see it again for a week) and sent to
    *  the seat's sockets now. */
   async _holdemReceipt(index, id, { j, s, r, w }) {
     let receipt;
     try { receipt = await mintCardReceipt({ s, j, r, w }, await this._receiptKeyOf(), { subtle: crypto.subtle, nowS: Math.floor(Date.now() / 1000) }); } catch (e) { console.warn('[holdem] a cash-out would not mint', e?.message ?? e); return false; }
+    return this._holdemKeepReceipt(index, id, s, j, receipt);
+  }
+  /** A cash-out kept owed to its account here and sent to the seat's sockets now - the receipt answered (AUDIT SCALE II
+   *  R3-3 (c): a layer keeps the one its place minted for its void, as any it minted itself). */
+  async _holdemKeepReceipt(index, id, s, j, receipt) {
     const key = cashoutKeyOf(s), nowS = Math.floor(Date.now() / 1000);
     const kept = ((await this.state.storage.get(key)) ?? []).filter((x) => x && x.e > nowS && x.j !== j);
     kept.push({ j, receipt, e: nowS + CARD_RECEIPT_TTL_S });
     await this.state.storage.put(key, kept.slice(-HOLDEM_OWED_MAX));
     const out = JSON.stringify({ t: 'holdem', table: index, now: Date.now(), cashout: receipt });
     for (const [w, b] of this._all()) if (b.id && (b.id === id || b.sub === s)) this._send(w, out);
-    return true;
+    return receipt;
   }
   /** The cash-outs this account is owed in this room, told to the asking socket (a look - the room's way in). */
   async _holdemOwed(ws, a, index) {
@@ -3436,6 +4439,11 @@ export class Room {
     if (m.op === 'look') { msgs = t ? iliacLook(t, a.id) : []; await this._iliacOwed(ws, a, m.table); }   // AUDIT CARDS-6 C1: and the results owed this account here
     else if (m.op === 'sit') {
       await this._iliacOwed(ws, a, m.table);   // AUDIT CARDS-6 C1: a returning player hears what he is owed first
+      // AUDIT SCALE II R3-3 (c): NO TABLE IN A LAYER - Hold'em's law (_holdemWord): a ranked game's results are owed by the
+      // object that dealt it, told at a hello there (_iliacHello) - a layer's never reached again by a reconnect walked
+      // from the place. Refused in the client's own words (iliacTableGame.js ILIAC_ONLINE_REFUSALS): a ranked sit
+      // 'ranked closed', any other 'busy' (the room is: its place is full). What a layer already owes it keeps telling
+      if (a.ly) { refuse(m.order !== undefined ? 'ranked closed' : 'busy'); return; }
       // a ranked seat: the order checked first (its await opens the room to other words, so the table is read after)
       let sub = null, orderE;
       if (m.order !== undefined) {
@@ -3762,8 +4770,7 @@ export class Room {
    *  hello'd socket, so one told the seats are full heard the whole bout all the same (sixty seats a bound on nothing). */
   _boutFan(words) {
     if (!words?.length) return;
-    const outs = words.map((w) => JSON.stringify({ t: 'arena', ...w }));
-    for (const [ws, b] of [...this._all()]) if (b.id && (b.af || b.asp)) for (const s of outs) if (!this._send(ws, s)) break;
+    this._fanFrames(words.map((w) => JSON.stringify({ t: 'arena', ...w })), (b) => b.id && (b.af || b.asp));   // SCALE5b: a beat one frame to the second wire
   }
   /** The whole bout to every socket on its sand or in its stands - each with its own fighter id, '' in the stands. */
   _boutFanState(st) { for (const [ws, b] of [...this._all()]) if (b.id && (b.af || b.asp)) this._arenaSend(ws, stateWord(st, b.afid ?? '')); }
@@ -4306,8 +5313,7 @@ export class Room {
   /** Frames to everyone in the room. */
   _siegeFan(frames) {
     if (!frames.length) return;
-    const outs = frames.map((fr) => JSON.stringify({ t: 'siege', ...fr }));
-    for (const [ws, b] of [...this._all()]) if (b.id) for (const o of outs) if (!this._send(ws, o)) break;
+    this._fanFrames(frames.map((fr) => JSON.stringify({ t: 'siege', ...fr })), (b) => b.id);   // SCALE5b: a beat one frame to the second wire
   }
   /** The next fall's wave armed, unless an earlier alarm stands. */
   async _siegeArm(at) {
@@ -4486,8 +5492,7 @@ export class Room {
     // its two) - a defender 45 m over the Rebel Captain shot every rebel down where none of their blows reached it
     if (siegeOffGround(siegeGroundOf(b, a.sub), by.pose) > SIEGE_HEIGHT_M) return;
     if (isSiegeNpcId(m.to)) { await this._siegeNpcBlow(ws, a, s, b, by, m, now); return; }   // SEAT2b part two (c): on one of the relay's own fighters
-    let target = null;
-    for (const [, t] of this._all()) if (t.id === m.to) { target = t; break; }
+    const target = this._idFirst(m.to)?.[1] ?? null;   // SCALE5b: by the id index
     const to = target?.sub ? s.fighters[target.sub] : null;
     if (!to) return;   // a spectator, or a socket gone: nothing to strike
     // AUDIT-SEATS R9: ONCE A BATTLE STANDS, A BLOW OR A CAST IS BETWEEN SIDED FIGHTERS ALONE. A developer who entered PVP-REF's
@@ -4685,7 +5690,7 @@ export class Room {
   // Seats-Arc 7.6: DUEL1's ring, every blow the referee's; one bout at a time; the ladder the room's (net/siegeRef.js).
   /** A peer id's account here, or null. */
   _royalSubOf(id) {
-    for (const [, t] of this._all()) if (t.id === id && t.sub) return t.sub;
+    for (const [, t] of this._withId(id, null)) if (t.sub) return t.sub;   // SCALE5b: the id's own sockets, in the index's order
     return null;
   }
   /** The ladder as the room says it - each contender by its peer id here ('' for one gone). */
@@ -4786,7 +5791,7 @@ export class Room {
    *  its last pose stands, and whether that pose says it died. */
   _gateBodies(f) {
     const newest = new Map();
-    for (const [ws, b] of this._all()) {
+    for (const [ws, b] of this._courtSockets()) {   // SCALE5d part two: its copies' fighters too
       if (!b.id || !b.sub || !b.pose || !f.players[b.sub]) continue;
       const had = newest.get(b.sub);
       if (!had || (b.since ?? 0) >= (had[1].since ?? 0)) newest.set(b.sub, [ws, b]);
@@ -4796,7 +5801,30 @@ export class Room {
   // ── INT11-INT13: THE BODY COUNTED (net/bossBody.js, net/bossRef.js; bible/06-Systems/Integrity-Arc.md section 6) ──
   /** The line the boss fights' count runs by - the BOSS_BODY var (bodyConfig: a mistyped one is the default, which
    *  measures and enforces nothing), read once an instance. */
-  _bodyLine() { return (this._bodyCfg ??= bodyConfig(this.env?.BOSS_BODY)); }
+  _bodyLine() { return (this._bodyCfg ??= bodyConfig(relayCfgValue(this._relayCfg, this.env, 'bossBody'))); }   // SCALE5b: the hub's setting over the var
+  /** SCALE5b: THE RELAY'S SETTINGS (net/relayCfg.js) - the hub's, read from its storage once a wake and kept. */
+  async _relayCfgOf() {
+    if (this._relayCfg === undefined) { const v = await this.state.storage.get('relaycfg'); this._relayCfg = v && typeof v === 'object' && !Array.isArray(v) ? v : {}; }
+    return this._relayCfg;
+  }
+  /** SCALE5b: a boss's room asks the hub for the settings at most every RELAY_CFG_TTL_MS, at its beat - a hub that does
+   *  not answer leaves the last answer standing (or none: the Worker's vars). A setting that moved is in force from here.
+   *  AUDIT SCALE II R1-2: NEVER AWAITED BY A BEAT (AUDIT WB12d R2/L3's law, the rite's ask beside it) - the gate's, a
+   *  Remnant's and a serpent's beat each awaited this call, so a slow hub froze the fight up to ROOM_CALL_MS once a
+   *  minute. The beat asks and goes on with the line it holds; the answer, when it lands, is the next beat's. It is
+   *  stamped before it goes (one ask a TTL however many beats run meanwhile) and its every failure caught here, so a
+   *  call nobody awaits can neither run twice nor reject unheard. */
+  async _relayCfgFresh(now) {
+    if (now - this._relayCfgAt < RELAY_CFG_TTL_MS) return;
+    this._relayCfgAt = now;
+    const rooms = this.env?.ROOMS;
+    if (!rooms?.idFromName || !rooms?.get) return;
+    try {
+      const res = await rooms.get(rooms.idFromName(SOCIAL_ROOM)).fetch(new Request(`https://relay.internal${RELAY_INTERNAL_CFG}`, { signal: AbortSignal.timeout(ROOM_CALL_MS) }));
+      const v = res?.ok ? await res.json() : null;
+      if (v && typeof v === 'object' && !Array.isArray(v) && JSON.stringify(v) !== JSON.stringify(this._relayCfg ?? {})) { this._relayCfg = v; this._bodyCfg = undefined; }
+    } catch (e) { console.warn('[cfg] the hub did not answer', e?.message ?? e); }
+  }
   /**
    * AUDIT INT11: DOES THIS SOCKET'S POSE GO ON A TRAIL? A socket of an account a fight here counts, while that fight lives
    * - a gate's court, an Abyss Dungeon's realm, a serpent's waters in its cell (the fights the instance holds awake). A cell
@@ -4856,7 +5884,7 @@ export class Room {
   /** The count's fall (`{t, k: 'bd'}` and `extra`) to each of the fighter's sockets here. */
   _bodyWord(t, sub, extra = {}) {
     const word = JSON.stringify({ t, k: 'bd', ...extra });
-    for (const [ws, b] of [...this._all()]) if (b.id && b.sub === sub) this._send(ws, word);
+    for (const [ws, b] of [...this._courtSockets()]) if (b.id && b.sub === sub) this._send(ws, word);   // SCALE5d part two: a copy's fighter's too (the court's own index elsewhere)
   }
   /** AUDIT INT11: THE FALL TOLD AGAIN to each fighter it is owed (bodyTellOwed - fallen by the count, its game not yet
    *  dead by it; `owed` the fight's own acknowledgement besides), once a beat at most every BODY_TELL_MS. */
@@ -4874,7 +5902,8 @@ export class Room {
   _gateFan(frames) {
     if (!frames.length) return;
     const outs = frames.map((fr) => JSON.stringify({ t: 'gate', ...fr }));
-    for (const [ws, b] of [...this._all()]) if (b.id) for (const s of outs) if (!this._send(ws, s)) break;
+    this._fanFrames(outs, (b) => b.id);   // SCALE5b: a beat one frame to the second wire
+    if (this._cper.size) for (const s of outs) this._courtSendAll(s);   // SCALE5d part two: and to every copy, one entry each
   }
   /** The fight to storage - every CHECKPOINT_MS from the beat, at once on a join and on the kill. */
   async _gateSave(f, now, force) {
@@ -4899,7 +5928,7 @@ export class Room {
       if (!f) f = this._fight = newFight(day, now, gateTimes(day).wrathAt, gateBossOf(day).id, gateModsOf(day));   // WB8b: the day's marks, kept on the fight
       const joined = !f.players[a.sub];   // AUDIT WB A3: a newcomer - an `in` again (every welcome says one) changes nothing to keep
       const present = new Set();   // AUDIT WB A1: the accounts in the court now - a full fight frees an idle seat, never theirs
-      for (const [, b] of this._all()) if (b.id && b.sub) present.add(b.sub);
+      for (const [, b] of this._courtSockets()) if (b.id && b.sub) present.add(b.sub);   // SCALE5d part two: and in its copies
       if (!joinFight(f, a.sub, a.name ?? '', m.lv, now, gateAdmits(day, now), present)) {
         const no = f.fell || f.wrath ? 'the gate is closing' : Object.keys(f.players).length >= GATE_FIGHTERS_MAX ? 'the court is full' : 'the gate is sealed';
         this._send(ws, JSON.stringify({ t: 'gate', k: 'no', m: no }));
@@ -4926,7 +5955,7 @@ export class Room {
       const pose = a.pose ? this._courtOf(a.pose) : null;   // the fallen too: a heal before a fall may be said after it
       const me = f.players[a.sub];
       for (const [by, n] of m.h) {
-        const healer = [...this._all()].find(([, b]) => b.id === by)?.[1]?.sub ?? null;
+        const healer = this._courtIdFirst(by)?.[1]?.sub ?? null;   // SCALE5b: by the id index; SCALE5d part two: a copy's healer too
         // AUDIT INT11: and what was believed, the count's too - an ally's mend, never its own budget's (net/bossBody.js
         // bodyHealed), at the brain's own reference health (healRef - generous, so the share it reads is the least)
         const got = healer ? applyHeal(f, a.sub, healer, n, pose, now) : 0;
@@ -4959,6 +5988,7 @@ export class Room {
     const f = await this._gateFightOf();
     if (!f) return false;
     const now = Date.now();
+    void this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it - AUDIT SCALE II R1-2: asked ahead, never awaited by the beat
     const end = gateTimes(f.day).wrathAt + GATE_COLLAPSE_MS;
     if (now >= end) { this._fight = null; await this.state.storage.delete('gatefight'); return true; }
     try {
@@ -4974,7 +6004,7 @@ export class Room {
       else if (f.said && !f.told) await this._gateTellHubOnce(f, now);   // AUDIT WB A10: the hub told until it answers
       await this._gateSave(f, now, false);
     } catch (e) { console.warn('[gate] beat failed', e?.message ?? e); }
-    const here = [...this._all()].some(([, b]) => b.id);
+    const here = [...this._courtSockets()].some(([, b]) => b.id);   // SCALE5d part two: a copy's crowd keeps the beat as the court's does
     await this.state.storage.setAlarm(f.said && !f.told ? now + GATE_TELL_RETRY_MS : here && !f.fell && !f.wrath ? now + BRAIN_TICK_MS : end);
     return true;
   }
@@ -5016,10 +6046,10 @@ export class Room {
     f.said = true;
     // AUDIT WBX S4: who stood in the court at the kill - their spoils are its floor's, so the hub does not hand another
     // tab of theirs the same receipt first (it keeps it for their next hello all the same)
-    f.here = [...new Set([...this._all()].filter(([, b]) => b.id && b.sub && f.rc[b.sub]).map(([, b]) => b.sub))].slice(0, GATE_FIGHTERS_MAX);
+    f.here = [...new Set([...this._courtSockets()].filter(([, b]) => b.id && b.sub && f.rc[b.sub]).map(([, b]) => b.sub))].slice(0, GATE_FIGHTERS_MAX);   // SCALE5d part two: a copy's fighter stood in the court
     await this._gateSave(f, now, true);
     this._gateFan([{ k: 'fell', at: f.fell.at, top: f.fell.top, n: f.fell.n, ...(f.fell.dm ? { dm: f.fell.dm } : {}) }]);   // GATE-UX: the damage chart to the court alone (the hub's word stays the names)
-    for (const [ws, b] of [...this._all()]) { const r = b.id && b.sub ? f.rc[b.sub] : null; if (r) this._send(ws, JSON.stringify({ t: 'gate', k: 'rcpt', r })); }
+    for (const [ws, b] of [...this._courtSockets()]) { const r = b.id && b.sub ? f.rc[b.sub] : null; if (r) this._send(ws, JSON.stringify({ t: 'gate', k: 'rcpt', r })); }   // SCALE5d part two: to a copy's fighter too
     await this._gateTellHubOnce(f, now);
   }
   /** AUDIT WB A10: the hub told of the kill, and it kept - once it has answered. */
@@ -5252,8 +6282,7 @@ export class Room {
   /** A fight's frames to everyone who hears it, in order - AUDIT SERPENT 2 F1: each naming the fight's site. */
   _serpentFan(fights, id, f, frames) {
     if (!frames.length) return;
-    const outs = frames.map((fr) => JSON.stringify({ t: 'serpent', ...fr, sx: f.sx, sz: f.sz }));
-    for (const [ws, b] of [...this._all()]) if (this._serpentHears(id, f, b)) for (const o of outs) if (!this._send(ws, o)) break;
+    this._fanFrames(frames.map((fr) => JSON.stringify({ t: 'serpent', ...fr, sx: f.sx, sz: f.sz })), (b) => this._serpentHears(id, f, b));   // SCALE5b: a beat one frame to the second wire
   }
   /** AUDIT 2 XB6 (2026-10-06): a fight's words said - the fight kept first when one lays what every screen draws
    *  (serpentBrain.js serpentSaysTrack), so a relay restarted wakes it no earlier than any screen holds it. */
@@ -5300,6 +6329,13 @@ export class Room {
    * not heard - never junk: a correct client says it.
    */
   async _serpentFrame(ws, a, m, now) {
+    // AUDIT SCALE II R3-3: NO SERPENT IN A LAYER. A cell layers (SCALE5d), and a fight is its cell object's: each layer
+    // stood a serpent of its own for the same day and site - the same fight id - with its own health, fighters and kill,
+    // and a layer's kill told the hub, which said the serpent fell to everyone online while the place's fought on. The
+    // fight is the place's alone: a layer's `in` is answered as the waters' own refusal when they hold no more ships
+    // (the client's SERPENT_NO_TEXT - true of a place past full), its every other word nothing (it holds no fight to
+    // name). Nothing is read or kept in a layer's storage for it
+    if (a.ly) { if (m.k === 'in') this._send(ws, JSON.stringify({ t: 'serpent', k: 'no', m: 'the waters are full' })); return; }
     const fights = await this._serpentFights();
     if (m.k === 'in') { await this._serpentIn(ws, a, m, now, fights); return; }
     const by = this._serpentFightBy(fights, a.sub);
@@ -5407,6 +6443,7 @@ export class Room {
     const fights = await this._serpentFights();
     if (!fights.size) return null;
     const now = Date.now();
+    void this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it - AUDIT SCALE II R1-2: asked ahead, never awaited by the beat
     let at = Infinity, live = false;
     for (const [id, f] of [...fights]) {
       const end = f.soundAt + SERPENT_DIVE_MS + SERPENT_KEEP_MS;
@@ -5582,12 +6619,15 @@ export class Room {
   /** The hub's door to Discord, read once an instance: the channel's webhook (GATE_DISCORD_WEBHOOK, a Worker SECRET) and
    *  the role its omen pings (GATE_DISCORD_ROLE, a var), or null - no webhook, no herald: nothing posted, nothing kept. */
   _heraldOf() {
-    if (this._herald === undefined) {
+    if (this._herald === undefined || this._heraldCfg !== this._relayCfg) {   // SCALE5b: and again once the hub's settings are read, or moved
+      this._heraldCfg = this._relayCfg;
       const hook = heraldWebhook(this.env?.GATE_DISCORD_WEBHOOK);
       if (!hook && this.env?.GATE_DISCORD_WEBHOOK) console.warn('[herald] GATE_DISCORD_WEBHOOK is not a Discord webhook\'s URL - nothing is posted');
       // SERPENT2: and the role the serpent's bells ping - SERPENT_DISCORD_ROLE when the operator names one, else the gate's
       // SD-HERALD: and the role the Abyss Dungeon's rise and find ping - SD_DISCORD_ROLE, else the gate's (the serpent's law)
-      this._herald = hook ? { hook, role: heraldRole(this.env?.GATE_DISCORD_ROLE), serpentRole: serpentHeraldRole(this.env?.SERPENT_DISCORD_ROLE, this.env?.GATE_DISCORD_ROLE), sdRole: serpentHeraldRole(this.env?.SD_DISCORD_ROLE, this.env?.GATE_DISCORD_ROLE) } : null;
+      // SCALE5b: each role the hub's setting when it holds one (net/relayCfg.js), else the var - `_relayCfgOf` read first
+      const cfg = this._relayCfg, role = (k) => relayCfgValue(cfg, this.env, k);
+      this._herald = hook ? { hook, role: heraldRole(role('gateRole')), serpentRole: serpentHeraldRole(role('serpentRole'), role('gateRole')), sdRole: serpentHeraldRole(role('sdRole'), role('gateRole')) } : null;
     }
     return this._herald;
   }
@@ -6153,8 +7193,7 @@ export class Room {
   /** The fight's frames to everyone in the realm, in order. */
   _sdFightFan(frames) {
     if (!frames.length) return;
-    const outs = frames.map((fr) => JSON.stringify({ t: 'sd', ...fr }));
-    for (const [ws, b] of [...this._all()]) if (b.id) for (const s of outs) if (!this._send(ws, s)) break;
+    this._fanFrames(frames.map((fr) => JSON.stringify({ t: 'sd', ...fr })), (b) => b.id);   // SCALE5b: a beat one frame to the second wire
   }
   /** The beat is armed now unless it already is, sooner. */
   async _sdFightArm(now) {
@@ -6253,6 +7292,7 @@ export class Room {
     const f = await this._sdFightOf();
     if (!f || f.lost || (f.said && f.told)) return false;
     const now = Date.now();
+    void this._relayCfgFresh(now);   // SCALE5b: the line the count runs by, as the hub holds it - AUDIT SCALE II R1-2: asked ahead, never awaited by the beat
     try {
       // INT12: ITS BLOWS JUDGED HERE first, on the census as the count has it - one life: a fall by the count, enforced,
       // is the realm's own (_sdMarkFallenAt), and no death rises again here
@@ -6470,6 +7510,11 @@ export class Room {
   async _raidWord(ws, a, m, now) {
     if (worldRoom(m.px, m.py) !== a.key) { this._junk(ws); return; }
     if (!raidWordSane(m)) { this._junk(ws); return; }   // AUDIT RAID R6: no honest machine's word
+    // AUDIT SCALE II R3-3: NO RAID LEDGER IN A LAYER. A raid's ledger is its town cell's object's, and a layer is another
+    // object for the same cell (SCALE5d): it made a ledger of its own for the same raid - its own count, its own cleanse,
+    // its own receipts minted, and the hub told the town cleansed while the place's raid went on. A layer's word is
+    // nothing at all (the client knows no refusal of a raid word, and an honest one says it here: no strike)
+    if (a.ly) return;
     if (!raidWordFits(m, sharedClassicMinutes(now))) return;   // outside its raid's time: nothing read, kept or said
     // RAID-ROLL: a raid the day never rolled is nobody's - its start, target and party against the day's own draws
     // (no game data), and its whole tuple against the day's roll while the hub holds the pinned towns table. Silent:
@@ -6563,6 +7608,12 @@ export class Room {
   async _riteWord(ws, a, m, now) {
     if (worldRoom(m.px, m.py) !== a.key) { this._junk(ws); return; }
     if (!isGateDay(m.d) || !riteHeard(m.d, now)) return;   // outside its window: nothing read, kept or said
+    // AUDIT SCALE II R3-3 (c): NO CIRCLE IN A LAYER (the serpent's and the raid's law). A circle's ledger is its cell
+    // object's, and a layer is another object for the same cell (SCALE5d): it kept a circle of its own and told the hub
+    // RITE_INTERNAL_BROKEN, which said the rite broken to everyone online while the place's stood. A layer's word is
+    // nothing at all - the rite has no refusal word (RITE_OUT_KINDS: a break and a cage, both the hub's), and the cell
+    // never answers its speaker; an honest client says it there, so nobody is struck
+    if (a.ly) return;   // the place's circle alone
     if (!a.pose || !riteNear(m.d, m.px, m.py, a.pose.x, a.pose.z)) return;   // not at its circle
     if (typeof a.sub !== 'string' || !a.sub) return;
     const led = await this._riteLedgerOf(m.d);
@@ -7019,7 +8070,7 @@ export class Room {
   async _wildBlow(a, d, now) {
     if (!a.sub) return;
     const st = await this._wildSt();
-    const target = [...this._all()].find(([, b]) => b.id === d.to) ?? null;
+    const target = this._idFirst(d.to);   // SCALE5b: by the id index
     const tb = target?.[1];
     const fa = st.fighters.get(a.sub), ft = tb?.sub ? st.fighters.get(tb.sub) : null;
     // INT9 (AUDIT): what the referee refuses anyway is refused before the hub is asked (a blow a frame asked it)
@@ -7171,14 +8222,25 @@ export class Room {
       this._wdunFanCrows(now, acct);
     }
   }
-  /** A hall's world room wiped (the hub asks the room; the room refuses while anyone stands in it). */
+  /** A hall's world room wiped (the hub asks the room; the room refuses while anyone stands in it).
+   *  AUDIT SCALE II R3-9: AND EVERY LAYER OF IT. A hall's room layers (SCALE5d - `dungeon:m<id>` is a world room), and the
+   *  wipe reached the place alone: a layer's slain foes and looted piles were kept WORLD_TTL_MS (30 days), and a player
+   *  standing in a layer was never seen. Each layer is asked, at once (one round trip, not eight), and any layer's
+   *  refusal (409, someone stands in it) or silence answers that the hall was not wiped whole; each layer nobody stands
+   *  in is wiped either way - its memory is its own. Nothing cheaper is correct: the place cannot know which of its
+   *  layers ever held anything (a layer's drain sweeps every trace of who stood in it, and a later layer may keep a
+   *  memory while an earlier one keeps none), and a layer never used answers from an empty object, which writes
+   *  nothing and so is never kept. */
   async _wdunWipe(h) {
     const key = wdunRoomKey(h), rooms = this.env?.ROOMS;
     if (!key || !rooms?.idFromName || !rooms?.get) return false;
-    try {
-      const res = await rooms.get(rooms.idFromName(key)).fetch(new Request(`https://relay.internal${WDUN_INTERNAL_RESET}`, { method: 'POST', body: '{}', signal: AbortSignal.timeout(ROOM_CALL_MS) }));
-      return !!res?.ok;
-    } catch (e) { console.warn('[wdun] wipe', h, e?.message ?? e); return false; }
+    const wipe = async (ly) => {
+      try {
+        const res = await rooms.get(rooms.idFromName(layerName(key, ly))).fetch(new Request(`https://relay.internal${WDUN_INTERNAL_RESET}`, { method: 'POST', body: '{}', signal: AbortSignal.timeout(ROOM_CALL_MS) }));
+        return !!res?.ok;
+      } catch (e) { console.warn('[wdun] wipe', h, ly, e?.message ?? e); return false; }
+    };
+    return (await Promise.all(Array.from({ length: LAYERS_MAX }, (_, ly) => wipe(ly)))).every(Boolean);
   }
   /** The room's side of the wipe: its stored world forgotten, unless someone is hello'd in it. */
   async _wdunResetInternal(_request) {
@@ -7288,6 +8350,14 @@ export class Room {
   async _owWord(ws, a, m, now) {
     const junk = m.k === 'sp' ? !m.ids.every((id) => owIdInCell(id, a.key)) : !m.rows.every((r) => owRowSane(r) && owRowInCell(r, a.key));
     if (junk) { this._junk(ws); return; }
+    // AUDIT SCALE II R3-3 (c): A LAYER KEEPS NO LEDGER - every band and raider spent, and every spawned dungeon's clock,
+    // is the place's (SCALE5d: a layer is another object for the same cell, and its ledger was one of its own, so a band
+    // spent in one copy stood in the others and a dungeon's clocks forked). A layer's word is nothing: nothing written,
+    // nothing said (no refusal word - the session counts it said, so it is not owed again). The speaker's own game keeps
+    // what it spent (world.js bandSpend), and its foes frame spends it for every player in the layer who hears that
+    // (TV7b's band word); one who comes into the layer later meets the band standing again, and the layer's welcome
+    // carries no ledger
+    if (a.ly) return;   // the place's ledger alone
     const led = await this._owLedger(now);
     const moved = m.k === 'sp' ? owFoldSpent(led, m.ids, now) : owFoldRows(led, m.rows, sharedClassicMinutes(now));
     if (moved.length) {
@@ -7590,7 +8660,7 @@ export class Room {
   /** The account an act names: `acct` as given, `peer` through the hub socket that holds that id; never oneself. */
   _targetOf(me, m) {
     if (m.acct) return m.acct === me ? { error: 'that is you' } : { acct: m.acct };
-    for (const [, b] of this._all()) if (b.id === m.peer) { if (!b.acct) return { error: 'they have no account' }; return b.acct === me ? { error: 'that is you' } : { acct: b.acct }; }
+    for (const [, b] of this._withId(m.peer, null)) { if (!b.acct) return { error: 'they have no account' }; return b.acct === me ? { error: 'that is you' } : { acct: b.acct }; }
     return { error: 'they are not online' };
   }
   /** An account out of a party - by choice, by the leader's hand, by a yes to another, by a lapsed seat: the seat passes to

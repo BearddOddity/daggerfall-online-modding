@@ -41,7 +41,7 @@ test('GATE-RELOAD the relay: its `no` says the gate is closed for ONE reason - t
   assert.match(relay, /if \(!\(m\.bv >= GATE_BRAIN_MIN\)\) \{ this\._send\(ws, JSON\.stringify\(\{ t: 'gate', k: 'no', m: 'the gate is closed' \}\)\); return; \}/, 'and it is the brain\'s door');
   assert.match(relay, /const no = f\.fell \|\| f\.wrath \? 'the gate is closing' : Object\.keys\(f\.players\)\.length >= GATE_FIGHTERS_MAX \? 'the court is full' : 'the gate is sealed';/, 'the join\'s refusals name the other words');
   assert.match(relay, /if \(!gateHolds\(day, now\)\) return 'the gate is closed';/, 'the window\'s end is the hello\'s word...');
-  assert.match(relay, /if \(isGateRoom\(a\.key\)\) \{ const no = await this\._gateAdmit\(a\.key, who\.subject, now\); if \(no\) \{ this\._refuse\(ws, no\); return; \} \}/, '...refused as an error, the socket closed');
+  assert.match(relay, /if \(isGateRoom\(a\.key\)\) \{ const no = a\.ly \? \(gateHolds\(gateDayOfRoom\(a\.key\), now\) \? null : 'the gate is closed'\) : await this\._gateAdmit\(a\.key, who\.subject, now\); if \(no\) \{ this\._refuse\(ws, no\); return; \} \}/, '...refused as an error, the socket closed');   // SCALE5d part two (PIN MOVED): a court's copy asks the clock alone, the court the rest
 
   const DAY = 200, TT = gateTimes(DAY);
   const realNow = Date.now; let clock = TT.openAt + 1000; Date.now = () => clock;

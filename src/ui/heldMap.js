@@ -3685,9 +3685,13 @@ export class HeldMapWindow {
     // region-under-cursor law; the sea answers nothing
     const politic = this.deps.maps?.getPoliticIndex?.(px, py) ?? -1;
     const region = politic - 128;
+    // ORE-MAP (ui/oreMapTip.js): bare ground answers with its ore card where the host has one - online, the professions
+    // open (deps.oreAt) - and the card is asked again when the ground's witnessed state arrives
+    const ore = readTip(this.deps.oreAt?.(px, py, () => this._refreshTip()) ?? null);
     return {
       label: (region >= 0 && region < (this.deps.maps?.regionCount ?? 0)) ? (REGION_NAMES[region] ?? '') : '',
       cursor: '',
+      ...(ore ? { tip: ore } : {}),
     };
   }
 

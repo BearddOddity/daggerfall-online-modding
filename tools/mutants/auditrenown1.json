@@ -229,11 +229,12 @@
   {
     "name": "AUDIT-RENOWN1-tracker-no-backoff",
     "file": "src/net/renownTracker.js",
-    "old": "  const waitMs = () => (refused ? Math.min(RENOWN_BACKOFF_MAX_MS, RENOWN_REPORT_MS * 2 ** (refused - 1)) : RENOWN_REPORT_MS);",
-    "new": "  const waitMs = () => RENOWN_REPORT_MS;",
+    "old": "  const waitMs = () => (refused ? Math.min(RENOWN_BACKOFF_MAX_MS, RENOWN_REPORT_MS * 2 ** (refused - 1)) : soonNow() ? RENOWN_REPORT_MS : RENOWN_COALESCE_MS);",
+    "new": "  const waitMs = () => (soonNow() ? RENOWN_REPORT_MS : RENOWN_COALESCE_MS);",
     "tests": [
       "test/auditrenown1.test.js"
-    ]
+    ],
+    "note": "SCALE4h (re-aimed by content): the coalescing's pace beside it."
   },
   {
     "name": "AUDIT-RENOWN1-tracker-early-after-a-refusal",

@@ -4,7 +4,7 @@ Five threads from the Discord's bug-reports, handed over as screenshots.
 
 | | Report | What it was | Done |
 |---|---|---|---|
-| 1 | "Card Table blocking" - "This table is oddly placed, it's in 'The Gold Dungeon' in Menakat. I've seen this in other locations aswell. (same tavern layout)" (æther) | the table stood at the walk's nearest clear cell - past an entry room too small for its ring, the mouth of the doorway the walk left it by | fixed (WALK-WHOLE) - not seen in Menakat, below |
+| 1 | "Card Table blocking" - "This table is oddly placed, it's in 'The Gold Dungeon' in Menakat. I've seen this in other locations aswell. (same tavern layout)" (æther) | the table stood at the walk's nearest clear cell - past an entry room too small for its ring, the mouth of the doorway the walk left it by | WALK-WHOLE, which moved no table in Menakat - fixed by WAY-ROUND (`Field-Bugs-2026-10-11e.md`) |
 | 2 | "Some ingredients won't let you store them" - Troll's Blood and Orc's Blood from a dungeon, and ingredients traded to a friend (axelento; Cayoken: "I also don't understand how it works") | law 3: the Stores take back only what the service handed this character - a looted, shop-bought or traded unit is held and never counted. The page listed none of them and said nothing | the law kept; the page names them (UNCOUNTED) |
 | 3 | "Ghost companion isn't showing health bar - clipping into ceiling" (BigOOF) | a following flyer's floor lift read a leader a hair below it as a descent and climbed it into the ceiling; its bar stood over the ceiling and the sight test hid it | fixed (CEIL-GHOST) |
 | 4 | "Stuff pvp zone" - died in the zone, crashed on the way back, "my gear was no longer visible on the map ... ended up losing all of my equipment" (hamzon) | the room held the pile its twelve minutes; the client's one record of it was memory alone, and a crash took the map's mark, the pile's claim and the hall's way back in with it | fixed for the next crash (WILD-KEEP); the lost gear cannot be read back - below |
@@ -17,16 +17,18 @@ by the walk's own steps, whose table and ring are clear floor. A closed door sto
 small or too cluttered for the ring the walk goes on only through an open doorway - and the nearest cell that fits is
 the doorway's mouth, the ring touching it, the stools across the way (the screenshot). A spot is passed over now when
 its table, its ring and a lane of one cell round them (`PLACE_LANE_CELLS`), taken out of the walk, leave a walked cell
-outside them unreachable from the entrance (`world/placedCardTable.js` cutsWalk) - the walk again on its own grid, so
-every client stands the same table. The first spot that leaves the walk whole stands it; a room with no such spot
-stands it where it stood, so no tavern loses its table. In the report's shape (a 4 m entry room, a 1.2 m doorway into a
-hall) it stands 1.38 m from the doorway's wall to its nearest stool, where it stood 0.38 m - square in the doorway's
-mouth, narrower than a body (0.7 m).
+outside them unreachable from the entrance - the walk again on its own grid, so every client stands the same table.
+In the report's shape (a 4 m entry room, a 1.2 m doorway into a hall) it stands 1.38 m from the doorway's wall to its
+nearest stool, where it stood 0.38 m - square in the doorway's mouth, narrower than a body (0.7 m).
 
-NOT SEEN IN MENAKAT: there is no ARENA2 data here, so the walk is pinned on built rooms. The Gold Dungeon's own layout,
-and every tavern whose table moved, is the owner's first eye. A peer on an older build sees a moved table where it
-stood. Pinned by `test/fb1009c_walkwhole.test.js` (the real prop, the player's capsule flooded round it to the hall's
-far end) and four spots moved in `test/taverntable.test.js`; `tools/mutants/fb1009c_walkwhole.json` (5, all dead).
+IT MOVED NOTHING IN MENAKAT (WAY-ROUND, `Field-Bugs-2026-10-11e.md`, read on the freeware ARENA2 two days on). The
+Gold Dungeon's only floor for the ring is the corridor its two halves meet by, every spot there cut the walk, and a
+room with no such spot stood the table where it stood - the fallback, "so no tavern loses its table", RETIRED there:
+the Gold Dungeon stood its table in that corridor before WALK-WHOLE and after, to the millimetre. WAY-ROUND passes a
+spot over when the cells round it fall apart, and a room with no spot left whole stands none. A peer on an older
+build sees a moved table where it stood. Pinned by `test/fb1009c_walkwhole.test.js` (the real prop, the player's
+capsule flooded round it to the hall's far end; its second test, which held the fallback, moved at WAY-ROUND) and four
+spots moved in `test/taverntable.test.js`; `tools/mutants/fb1009c_walkwhole.json` (5, all dead; 4 since WAY-ROUND).
 
 ## UNCOUNTED: the Stores name what they will not take (2)
 
