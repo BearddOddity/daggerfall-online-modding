@@ -48,6 +48,13 @@
           "menuPad.js"
         ]
       },
+      {
+        "from": "../src/assets/branding",
+        "to": "launcher",
+        "filter": [
+          "dfo-online.png"
+        ]
+      },
       "lib/**",
       {
         "from": "../dist",

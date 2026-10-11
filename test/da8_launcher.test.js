@@ -141,7 +141,8 @@ test('DA8: the notes a player reads are the patch notes - never the list of pull
 test('DA8: the page - its own files only, no inline code, every word as text, the brand\'s own colours and faces', () => {
   const html = rd('app/launcher/index.html');
   const csp = html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1];
-  assert.equal(csp, "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self' data:", 'nothing remote, nothing inline');
+  // PIN MOVED: AUDIT BR5 - and its own images, which is the logo
+  assert.equal(csp, "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self'", 'nothing remote, nothing inline');
   assert.doesNotMatch(html, /<script>|<style>|\son\w+=|https?:\/\//i, 'no inline script or style, no handler attribute, no remote URL');
   const js = rd('app/launcher/launcher.js');
   // AUDIT INSTALL L5-21: every HTML sink, not three of them - createContextualFragment and setHTMLUnsafe took markup too
@@ -200,7 +201,11 @@ test('DA8: the shell - a sandboxed window on its own origin, two words of bridge
   assert.match(win, /win\.loadURL\(LAUNCHER_URL\)/);
   assert.match(main, /const LAUNCHER_URL = 'dagger:\/\/launcher\/index\.html';/, 'its own origin - no storage shared with dagger://game');
   const serve = main.slice(main.indexOf('async function serveLauncherFile'), main.indexOf('function handleDagger'));
-  assert.match(serve, /if \(p !== MENU_PAD && !p\.startsWith\(LAUNCHER_DIR \+ path\.sep\)\) return new Response\('forbidden', \{ status: 403 \}\);/, 'the same traversal law as dist/ - DA12: the pad module by its one name the only exception');
+  // PIN MOVED: AUDIT BR5 - and the logo by its one name, the game's own file (src/assets/branding), packed beside the page
+  assert.match(main, /const LAUNCHER_LOGO = app\.isPackaged \? path\.join\(LAUNCHER_DIR, 'dfo-online\.png'\) : path\.join\(__dirname, '\.\.', 'src', 'assets', 'branding', 'dfo-online\.png'\);/);
+  assert.match(serve, /: parts\.length === 1 && parts\[0\] === 'dfo-online\.png'\s*\? LAUNCHER_LOGO/);
+  assert.deepEqual(JSON.parse(rd('app/package.json')).build.files.find((f) => f?.from === '../src/assets/branding'), { from: '../src/assets/branding', to: 'launcher', filter: ['dfo-online.png'] });
+  assert.match(serve, /if \(p !== MENU_PAD && p !== LAUNCHER_LOGO && !p\.startsWith\(LAUNCHER_DIR \+ path\.sep\)\) return new Response\('forbidden', \{ status: 403 \}\);/, 'the same traversal law as dist/ - DA12: the pad module by its one name the only exception');
   assert.match(main, /if \(url\.host === 'launcher'\) return serveLauncherFile\(parts\);/);
   // the IPC hears ONLY the launcher's window, and a link is a NAME
   assert.match(main, /ipcMain\.on\('launcher:act', async \(e, msg\) => \{\s*if \(!fromLauncher\(e\)\) return;/);
@@ -212,7 +217,8 @@ test('DA8: the shell - a sandboxed window on its own origin, two words of bridge
   // REL5: and it is THIS copy's own file by the name that never moves - the dmg, the portable exe
   const latest = main.slice(main.indexOf('async function fetchLatestRelease()'), main.indexOf('/** The notice transport\'s check'));
   assert.match(latest, /const file = manualDownloadFile\(\{ platform: process\.platform, portable: !!process\.env\.PORTABLE_EXECUTABLE_DIR, packaged: app\.isPackaged \}\);/);
-  assert.match(latest, /download: file \? latestDownloadUrl\(file\) : url/, 'the release page only where there is no one file to name');
+  // PIN MOVED: BR5 (AUDIT BR5) - the release's own link to the file first, the name that never moves after it
+  assert.match(latest, /download: file \? listed \?\? latestDownloadUrl\(file\) : url/, 'the release page only where there is no one file to name');
   // the handover: the game shows at its first paint, THEN the launcher closes (window-all-closed would quit)
   const hand = main.slice(main.indexOf('function launchGame()'), main.indexOf('/** The launch check, inside DA6'));
   assert.match(hand, /createWindow\(\{\s*onShown: \(\) => \{\s*if \(lw && !lw\.isDestroyed\(\)\) lw\.close\(\);/);

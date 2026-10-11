@@ -312,11 +312,17 @@ const LAUNCHER_URL = 'dagger://launcher/index.html';
 // DA12: the controller loop is the game's own front door's (src/ui/menuPad.js) - ONE module, packed beside the
 // launcher's page (package.json build.files) and read from the source tree when the shell runs unpacked.
 const MENU_PAD = app.isPackaged ? path.join(LAUNCHER_DIR, 'menuPad.js') : path.join(__dirname, '..', 'src', 'ui', 'menuPad.js');
+// AUDIT BR5: the launcher's wordmark is the product's logo, and the logo is the GAME's own file
+// (src/assets/branding/dfo-online.png, BR5) - packed beside the launcher's page as the pad module is and read from
+// the source tree unpacked, so the launcher can never draw a logo the game does not.
+const LAUNCHER_LOGO = app.isPackaged ? path.join(LAUNCHER_DIR, 'dfo-online.png') : path.join(__dirname, '..', 'src', 'assets', 'branding', 'dfo-online.png');
 async function serveLauncherFile(parts) {
   const p = parts.length === 1 && parts[0] === 'menuPad.js'
     ? MENU_PAD
-    : path.normalize(path.join(LAUNCHER_DIR, parts.length ? parts.join('/') : 'index.html'));
-  if (p !== MENU_PAD && !p.startsWith(LAUNCHER_DIR + path.sep)) return new Response('forbidden', { status: 403 });
+    : parts.length === 1 && parts[0] === 'dfo-online.png'
+      ? LAUNCHER_LOGO
+      : path.normalize(path.join(LAUNCHER_DIR, parts.length ? parts.join('/') : 'index.html'));
+  if (p !== MENU_PAD && p !== LAUNCHER_LOGO && !p.startsWith(LAUNCHER_DIR + path.sep)) return new Response('forbidden', { status: 403 });
   try {
     const body = await fs.promises.readFile(p);
     return new Response(body, { headers: { 'Content-Type': MIME[path.extname(p).toLowerCase()] ?? 'application/octet-stream' } });
@@ -410,7 +416,7 @@ const RELEASES_PAGE = 'https://github.com/Lattymoy/daggerfall-js-source/releases
 const { isNewerRelease } = require('./lib/updateCheck.cjs');
 const { updateTransport } = require('./lib/autoUpdate.cjs');
 const { UNLOAD_ASK, leaves, restartAsk, reinstallAsk, installFailedAsk, goesAhead } = require('./lib/shellDialogs.cjs');
-const { latestDownloadUrl, manualDownloadFile } = require('./lib/downloads.cjs');
+const { latestDownloadUrl, releaseAssetUrl, manualDownloadFile } = require('./lib/downloads.cjs');
 const {
   CHECK_TIMEOUT_MS, RECHECK_MS, INSTALL_NOTICE_MS, INSTALL_GIVEUP_MS, DOWNLOAD_STALL_MS, DETECT_DEADLINE_MS, JUDGE_DEADLINE_MS, PICK_DEADLINE_MS,
   initialState, reduce, nextStep, viewOf, newsFrom, cachedNews, notArena2Detail, installAttemptFor, directPlay,
@@ -650,9 +656,16 @@ function installFailed() {
     .then(({ response }) => { if (goesAhead(response)) shell.openExternal(ownDownloadUrl()); });
 }
 
+/** BR5: this copy's own download as the latest release last LISTED it
+ *  (fetchLatestRelease) - so Reinstall follows a file the product's name
+ *  was taken off, which the name this copy was built with cannot. */
+let listedDownload = null;
+
 /** This copy's own installer, the newest, by the name that never moves
- *  (REL5) - or the release page where there is no one file to name. */
+ *  (REL5) - or the release page where there is no one file to name. BR5:
+ *  the release's own link to it first, where one was read. */
 function ownDownloadUrl() {
+  if (listedDownload) return listedDownload;
   const file = manualDownloadFile({ platform: process.platform, portable: !!process.env.PORTABLE_EXECUTABLE_DIR, packaged: app.isPackaged });
   return file ? latestDownloadUrl(file) : RELEASES_PAGE;
 }
@@ -722,9 +735,9 @@ async function checkForUpdatesViaUpdater() {
 }
 
 /** { tag, url, download } of the latest release, or null on any failure.
- *  `download` is this copy's own installer by the name that never moves
- *  (REL5) - the dmg, the portable exe - or the release page where there
- *  is no one file to name. */
+ *  `download` is this copy's own installer - the dmg, the portable exe -
+ *  as the release lists it (BR5), else by the name that never moves
+ *  (REL5), or the release page where there is no one file to name. */
 async function fetchLatestRelease() {
   try {
     const res = await net.fetch(RELEASES_LATEST_API, {
@@ -737,7 +750,10 @@ async function fetchLatestRelease() {
     const url = typeof json?.html_url === 'string' && /^https:\/\/github\.com\//.test(json.html_url)
       ? json.html_url : RELEASES_PAGE;
     const file = manualDownloadFile({ platform: process.platform, portable: !!process.env.PORTABLE_EXECUTABLE_DIR, packaged: app.isPackaged });
-    return tag ? { tag, url, download: file ? latestDownloadUrl(file) : url } : null;
+    // BR5: the file as the release itself lists it, by its name or by the way it runs - a rename of the product reaches this copy
+    const listed = file ? releaseAssetUrl(json, file) : null;
+    if (tag && listed) listedDownload = listed;
+    return tag ? { tag, url, download: file ? listed ?? latestDownloadUrl(file) : url } : null;
   } catch { return null; }
 }
 

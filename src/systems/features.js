@@ -778,7 +778,7 @@ export const FEATURES = Object.freeze([
     group: 'interface',
     title: 'Tamriel on the map',
     note: 'The enhanced map zooms out past the Iliac Bay to the whole of Tamriel, hand-drawn: the provinces, their '
-      + 'capitals, the mountains and the seas, joined to the classic coast. Nothing beyond the Bay can be travelled to.',
+      + 'capitals, the mountains and the seas, joined to the Bay’s own coast. Nothing beyond the Bay can be travelled to.',
     effect: 'Takes effect the next time a map is opened.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'tamrielMap', initial: true, online: 'player' }),
@@ -1162,7 +1162,7 @@ export const FEATURES = Object.freeze([
     id: 'combat-voices',
     group: 'sound',   // FT18: was combat
     title: 'Combat Voices',
-    note: 'You and your enemies grunt when swinging and cry out when hit. The sounds ship with the game but '
+    note: 'You and your enemies grunt when swinging and cry out when hit. The sounds are in the original game but '
       + 'go unused. On by default in Daggerfall Unity.',
     effect: 'Takes effect at once.',
     kinds: Object.freeze(['classic']),

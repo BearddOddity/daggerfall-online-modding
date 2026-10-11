@@ -33,11 +33,11 @@ import { createRequire } from 'node:module';
 import {
   EXPECTED_RELEASE_FILES, missingReleaseFiles, composeReleaseNotes, NO_NOTES_TEXT, shouldMarkLatest,
   previousReleaseTag, pullRequestsSince, patchNotesOf, pullRequestNotesSince, githubApi, NOTES_AUTHORS, NOTES_MAX,
-  PATCH_NOTES_PATH_RE,
+  PATCH_NOTES_PATH_RE, ALIAS_COPIES,
 } from '../scripts/desktopRelease.mjs';
 
 const require = createRequire(import.meta.url);
-const { DOWNLOAD_FILES, RELEASES_URL, latestDownloadUrl, manualDownloadFile } = require('../app/lib/downloads.cjs');
+const { DOWNLOAD_FILES, LEGACY_DOWNLOAD_FILES, RELEASES_URL, latestDownloadUrl, releaseAssetUrl, manualDownloadFile } = require('../app/lib/downloads.cjs');
 const rd = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
 /** electron-builder's artifactName macros, as the three release runners
@@ -88,12 +88,15 @@ test('REL4: a release is the four downloads, the three manifests and two blockma
     'DFO-Online-win-x64-portable.exe',
     'DFO-Online-win-x64-setup.exe', 'DFO-Online-win-x64-setup.exe.blockmap',
     'latest-linux.yml', 'latest-mac.yml', 'latest.yml',
-  ]);
+    // PIN MOVED: BR5 (AUDIT BR5) - and the four again, under the names a copy from before the rename asks for
+    ...Object.values(LEGACY_DOWNLOAD_FILES),
+  ].sort());
   assert.deepEqual(missingReleaseFiles([...EXPECTED_RELEASE_FILES, 'extra.txt']), [], 'a whole set passes');
   // app-v0.1.4605's first eighty-five seconds: the Linux and macOS legs were in, Windows was not
   const early = EXPECTED_RELEASE_FILES.filter((f) => !/win-x64|^latest\.yml$/.test(f));
-  assert.deepEqual(missingReleaseFiles(early), [DOWNLOAD_FILES.winSetup, `${DOWNLOAD_FILES.winSetup}.blockmap`, DOWNLOAD_FILES.winPortable, 'latest.yml']);
-  // the OLD names do not count - a build that still stamps its version into a name fails the release
+  assert.deepEqual(missingReleaseFiles(early), [DOWNLOAD_FILES.winSetup, `${DOWNLOAD_FILES.winSetup}.blockmap`, DOWNLOAD_FILES.winPortable, 'latest.yml',
+    LEGACY_DOWNLOAD_FILES.winSetup, LEGACY_DOWNLOAD_FILES.winPortable]);
+  // a name with its version stamped in does not count - a build that still stamps one fails the release
   assert.ok(missingReleaseFiles(['DFO-Online-0.1.4684-win-x64-setup.exe']).includes(DOWNLOAD_FILES.winSetup));
 });
 
@@ -382,4 +385,56 @@ test('REL6: patch notes live on the pull request - no file in the tree is one, a
   assert.equal(patchNotesOf(template), '', 'the template as it stands is no notes - its guidance is a comment');
   assert.equal(patchNotesOf(template.replace(/^## Patch notes$/m, '## Patch notes: The Sea\n\n- Boats.')), '# Patch Notes: The Sea\n\n- Boats.',
     'filled in, its section is the notes, and the template\'s next section ends them');
+});
+
+test('BR5: a copy from before the rename still finds its download, and a copy from BR5 on finds it however the next rename names it (AUDIT BR5)', () => {
+  // The old names, one per new name and for the same way to run it - a copy built before BR5 asks for exactly these
+  // at releases/latest/download/<name> (REL5), so each release carries its downloads under them too.
+  assert.deepEqual(Object.keys(LEGACY_DOWNLOAD_FILES), Object.keys(DOWNLOAD_FILES));
+  const tail = (f) => f.slice(f.search(/-(?:win|mac|linux)-/));
+  for (const k of Object.keys(DOWNLOAD_FILES)) {
+    assert.equal(tail(LEGACY_DOWNLOAD_FILES[k]), tail(DOWNLOAD_FILES[k]), `${k}: the same way to run it`);
+    assert.notEqual(LEGACY_DOWNLOAD_FILES[k], DOWNLOAD_FILES[k]);
+  }
+  assert.ok(Object.isFrozen(LEGACY_DOWNLOAD_FILES));
+  assert.deepEqual(ALIAS_COPIES.map(([from, to]) => [from, to]), Object.keys(DOWNLOAD_FILES).map((k) => [DOWNLOAD_FILES[k], LEGACY_DOWNLOAD_FILES[k]]),
+    'each download is copied under ITS old name, never another\'s');
+  // the alias step runs on the collected files, before the set is checked - a release short of one publishes nothing
+  const wf = rd('.github/workflows/release-desktop.yml');
+  const collect = wf.indexOf('- name: Collect every leg\'s files'), aliasStep = wf.indexOf('run: node scripts/desktopRelease.mjs alias release'),
+    check = wf.indexOf('run: node scripts/desktopRelease.mjs check release');
+  assert.ok(collect > 0 && aliasStep > collect && check > aliasStep, 'collected, then copied, then checked');
+  // and it really copies: a folder of the four, aliased, is a folder of eight with the same bytes
+  const dir = mkdtempSync(join(tmpdir(), 'br5-alias-'));
+  try {
+    for (const f of Object.values(DOWNLOAD_FILES)) writeFileSync(join(dir, f), `bytes of ${f}`);
+    const alias = (d) => spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/desktopRelease.mjs', import.meta.url)), 'alias', d], { encoding: 'utf8' });
+    assert.equal(alias(dir).status, 0);
+    for (const k of Object.keys(DOWNLOAD_FILES)) {
+      assert.equal(readFileSync(join(dir, LEGACY_DOWNLOAD_FILES[k]), 'utf8'), `bytes of ${DOWNLOAD_FILES[k]}`);
+    }
+    // a leg's file missing is no release: the step fails rather than publish a set with a hole the check would name late
+    rmSync(join(dir, DOWNLOAD_FILES.mac));
+    const short = alias(dir);
+    assert.equal(short.status, 1);
+    assert.match(short.stderr, new RegExp(`nothing to copy under its old name: ${DOWNLOAD_FILES.mac.replaceAll('.', '\\.')}`));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+
+  // A copy from BR5 on reads its download off the release itself: by its own name first...
+  const at = (name, url = `${RELEASES_URL}/download/app-v0.1.9000/${name}`) => ({ name, browser_download_url: url });
+  const release = { assets: [at(LEGACY_DOWNLOAD_FILES.mac), at(`${DOWNLOAD_FILES.mac}.blockmap`), at(DOWNLOAD_FILES.mac)] };   // the alias listed FIRST
+  assert.equal(releaseAssetUrl(release, DOWNLOAD_FILES.mac), `${RELEASES_URL}/download/app-v0.1.9000/${DOWNLOAD_FILES.mac}`);
+  // ...else by the way it runs, whatever product name stands before it - never a blockmap, never another platform's
+  const renamed = { assets: [at('Next-Name-mac-arm64.dmg.blockmap'), at('Next-Name-win-x64-setup.exe'), at('Next-Name-mac-arm64.dmg')] };
+  assert.equal(releaseAssetUrl(renamed, DOWNLOAD_FILES.mac), `${RELEASES_URL}/download/app-v0.1.9000/Next-Name-mac-arm64.dmg`);
+  assert.equal(releaseAssetUrl(renamed, DOWNLOAD_FILES.winPortable), null, 'the setup exe is not the portable one');
+  assert.equal(releaseAssetUrl(renamed, DOWNLOAD_FILES.winSetup), `${RELEASES_URL}/download/app-v0.1.9000/Next-Name-win-x64-setup.exe`);
+  // only GitHub's own download link for this repository is followed - the answer is read off the network
+  assert.equal(releaseAssetUrl({ assets: [at(DOWNLOAD_FILES.linux, 'https://example.com/x.AppImage')] }, DOWNLOAD_FILES.linux), null);
+  assert.equal(releaseAssetUrl({ assets: [at(DOWNLOAD_FILES.linux, 'https://github.com/someone/else/releases/download/v1/x.AppImage')] }, DOWNLOAD_FILES.linux), null);
+  for (const bad of [null, {}, { assets: 'x' }, { assets: [null, 7, { name: DOWNLOAD_FILES.linux }] }]) assert.equal(releaseAssetUrl(bad, DOWNLOAD_FILES.linux), null);
+  // and the shell takes it: the notice's Download, and the launcher's Reinstall after a check has read one
+  const main = rd('app/main.cjs');
+  assert.match(main, /const listed = file \? releaseAssetUrl\(json, file\) : null;\n\s*if \(tag && listed\) listedDownload = listed;/);
+  assert.match(main, /function ownDownloadUrl\(\) \{\n {2}if \(listedDownload\) return listedDownload;/);
 });

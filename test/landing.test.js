@@ -54,16 +54,22 @@ test('U60: the root document is a page about the game, and the game is at /play/
   // while explaining why the marks are drawn in box-shadow instead of being one.
   // BR2 (2026-09-13) had put ONE raster here - Mac's uploaded logo as the
   // wordmark, under a whitelist of one; BR3 (Mac, 2026-09-14: "revert the
-  // logo to the original Daggerfall Enhanced text") took it out again, so
-  // the page is back to the U60 law whole: no image, no image file, and
-  // public/brand/ is not tracked at all.
-  assert.doesNotMatch(landing.replace(/url\(data:font\/woff2;base64,[A-Za-z0-9+/=]+\)/g, ''), /<img\s|<canvas|<video|<picture|url\(/i, 'the landing page draws nothing but CSS');
-  assert.doesNotMatch(landing, /\.(png|jpe?g|gif|webp|svg|bmp)\b/i, 'no image file is referenced at all');
-  assert.equal(execFileSync('git', ['ls-files', 'public/brand'], { cwd: root, encoding: 'utf8' }).trim(), '', 'public/brand/ went with the logo (BR3)');
+  // logo to the original Daggerfall Enhanced text") took it out again.
+  // AUDIT BR5 (Mac, 2026-10-11: "Use the new logo") brings the whitelist of
+  // one back for the product's own logo, DFO Online's: the wordmark is that
+  // picture and nothing else is one. It is the GAME's own file, which the
+  // build carries for the front door already - one copy, so public/brand/
+  // stays untracked and the site cannot show a logo the game does not.
+  const LOGO = '<h1 class="wordmark"><img src="./src/assets/branding/dfo-online.png" alt="DFO Online" width="526" height="322" /></h1>';
+  assert.equal(landing.split(LOGO).length, 2, 'the wordmark is the product\'s logo, once');
+  const drawn = landing.replace(LOGO, '').replace(/url\(data:font\/woff2;base64,[A-Za-z0-9+/=]+\)/g, '');
+  assert.doesNotMatch(drawn, /<img\s|<canvas|<video|<picture|url\(/i, 'beyond the logo, the landing page draws nothing but CSS');
+  assert.doesNotMatch(drawn, /\.(png|jpe?g|gif|webp|svg|bmp)\b/i, 'and references no other image file');
+  assert.equal(execFileSync('git', ['ls-files', 'public/brand'], { cwd: root, encoding: 'utf8' }).trim(), '', 'public/brand/ holds no second copy of the logo (BR3, AUDIT BR5)');
   assert.equal(execFileSync('git', ['ls-files', 'public/site'], { cwd: root, encoding: 'utf8' }).trim(), '',
     'public/site/ is empty - the retired pictures may not quietly return without re-earning their doctrine rows');
   assert.ok(!existsSync(join(root, 'tools/siteShots.mjs')), 'the shots tool went with its pictures');
-  assert.doesNotMatch(landing, /\/src\//, 'the landing page reaches into no game code');
+  assert.doesNotMatch(landing.replace(LOGO, ''), /\/src\//, 'the landing page reaches into no game code - only the logo\'s file, which is no code');
   assert.doesNotMatch(landing, /\.(BSA|IMG|CIF|COL|RSC|VID|DAT|PAK|SND|XMI|HMI)\b/, 'no ARENA2 file is named');
   // The door: one Play in the gate, one in the phone bar, both to ./play/.
   // U63: the door has ONE Play - the pixel face's one box, the About
@@ -378,10 +384,11 @@ test('U63: the page is the pixel face\'s own idioms, not the shell it replaced',
   assert.match(skin, /\.px-rule::before, \.px-rule::after \{ content: ''; flex: 1; height: 2px;/, '...which is the menu\'s rule');
   assert.match(css, /0 -4px 0 var\(--brass\), 0 4px 0 var\(--brass\)/, 'the gem, drawn as a box-shadow cross');
   assert.match(skin, /0 -4px 0 var\(--brass\), 0 4px 0 var\(--brass\)/, '...which is the menu\'s gem');
-  // BR3: the wordmark is TYPE again - "ENHANCED" tracked under "Daggerfall"
-  // - and no image stands in for it.
-  assert.match(css, /letter-spacing: 0\.5em; text-indent: 0\.5em/, 'the wordmark\'s tracked sub-line');
-  assert.doesNotMatch(css, /\.wordmark img/, 'no image wordmark (BR3)');
+  // AUDIT BR5: the wordmark is the product's logo again (BR3 had made it type), at the width the game's front door
+  // gives it (src/ui/enhancedStyle.js .px-wordmark:has(.brand-logo)), centred over the rule.
+  assert.match(css, /\.wordmark img \{ display: block; width: min\(321px, 64vw\); height: auto; margin: 0 auto; \}/, 'the logo, sized as the door\'s');
+  assert.ok(read('src/ui/enhancedStyle.js').includes('.px-wordmark:has(.brand-logo) { width: min(321px, 50vw);'), '...whose 321px it shares');
+  assert.doesNotMatch(css, /\.wordmark small/, 'the type wordmark\'s sub-line went with it');
   assert.match(css, /rgb\(243,239,44\)/, 'the classic shadowed-label pair, for what is live');
   assert.match(css, /text-shadow: 2px 2px 0 rgb\(93,77,12\)/);
   assert.match(skin, /color: rgb\(243,239,44\); text-shadow: 2px 2px 0 rgb\(93,77,12\)/, '...which is the menu\'s pair');
@@ -453,8 +460,8 @@ test('U63: the fi ligature is off - "files" is not "Ales", on the site AND in th
 test('U64 + PATREON1 + SUPPORT1: the corner asks are Patreon then Ko-fi, each a plaque with its mark drawn, near the top - the page\'s only asks, and every ask the project makes names the same two (Mac, 2026-10-05: "I want to add the kofi link in addition to the patron on the website")', () => {
   const css = landing.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? '';
   // THE ASKS, in the order the game's own door shows them, at SUPPORT_ASKS' addresses - and nothing else on the page
-  // asks: not a banner, not a badge, and not an <img> (an image would be the page's only raster, and a raster is the
-  // one thing this site does not carry). PATREON1 (2026-09-25, "Replace website KOFI with patreon") had made Patreon
+  // asks: not a banner, not a badge, and not an <img> (an image would be a second raster beside the logo, the one
+  // picture this site carries - AUDIT BR5). PATREON1 (2026-09-25, "Replace website KOFI with patreon") had made Patreon
   // the only one; SUPPORT1 put Ko-fi back beside it, at Mac's new page.
   const asks = [...landing.matchAll(/href="(https:\/\/(?:www\.)?(?:patreon\.com|ko-fi\.com)\/[\w/-]+)"/g)].map((m) => m[1]);
   assert.deepEqual(asks, SUPPORT_ASKS.map((a) => a.url), 'the two asks, Patreon first, and no other');
@@ -550,7 +557,7 @@ test('DISC1: the Discord is front and centre - a plaque in the door\u2019s own r
   assert.equal((css.match(/border: 2px solid #7d7460/g) ?? []).length, 2,
     'a third box rule arrived with the Discord - the page has two shapes');
   assert.doesNotMatch(css, /\.discord \{|\.dsc \{/, 'the invite grew its own rule');
-  assert.doesNotMatch(landing, /<img[^>]*discord/i, 'no badge image - this page carries no raster');
+  assert.doesNotMatch(landing, /<img[^>]*discord/i, 'no badge image - the logo is this page\'s one raster');
   // An external link opened from a page that is not ours to trust.
   assert.match(landing, /href="https:\/\/discord\.gg\/jM2JdwSM8w" rel="noopener"/, 'the invite carries rel=noopener, as the asks do');
 });

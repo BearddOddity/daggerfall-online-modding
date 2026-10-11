@@ -189,23 +189,23 @@
     "old": "DFO Online is an experimental community multiplayer project.",
     "new": "DFO Online is a community multiplayer project.",
     "tests": ["test/terms1.test.js"],
-    "note": "Words that change under a version they keep are words nobody agreed to. BR5 (re-aimed by content): the name, its file form and the legal date moved."
+    "note": "Words that change under a version they keep are words nobody agreed to. BR5 (re-aimed by content): the name and its file form moved; the date moved and was put back (AUDIT BR5: a rename is not a new version)."
   },
   {
     "name": "TERMS1-the-date-moved-alone",
     "file": "privacy/index.html",
-    "old": "<time datetime=\"2026-10-11\">",
-    "new": "<time datetime=\"2026-10-12\">",
+    "old": "<time datetime=\"2026-09-28\">",
+    "new": "<time datetime=\"2026-09-29\">",
     "tests": ["test/terms1.test.js"],
-    "note": "The date a reader sees is the version an account records. BR5 (re-aimed by content): the name, its file form and the legal date moved."
+    "note": "The date a reader sees is the version an account records. BR5 (re-aimed by content): the name and its file form moved; the date moved and was put back (AUDIT BR5: a rename is not a new version)."
   },
   {
     "name": "TERMS1-the-version-moved-alone",
     "file": "src/net/legalLaw.js",
-    "old": "export const TERMS_VERSION = '2026-10-11';",
-    "new": "export const TERMS_VERSION = '2026-10-12';",
+    "old": "export const TERMS_VERSION = '2026-09-28';",
+    "new": "export const TERMS_VERSION = '2026-09-29';",
     "tests": ["test/terms1.test.js"],
-    "note": "A version with no page dated by it is an agreement to nothing on the site. BR5 (re-aimed by content): the name, its file form and the legal date moved."
+    "note": "A version with no page dated by it is an agreement to nothing on the site. BR5 (re-aimed by content): the name and its file form moved; the date moved and was put back (AUDIT BR5: a rename is not a new version)."
   },
   {
     "name": "TERMS1-a-script-added",

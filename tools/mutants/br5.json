@@ -12,12 +12,12 @@
   {
     "name": "BR5-landing-wordmark-split",
     "file": "index.html",
-    "old": "<h1 class=\"wordmark\">DFO<small>Online</small></h1>",
-    "new": "<h1 class=\"wordmark\">Daggerfall<small>Online</small></h1>",
+    "old": "<h1 class=\"wordmark\"><img src=\"./src/assets/branding/dfo-online.png\" alt=\"DFO Online\"",
+    "new": "<h1 class=\"wordmark\"><img src=\"./src/assets/branding/dfo-online.png\" alt=\"Daggerfall Online\"",
     "tests": [
       "test/brand.test.js"
     ],
-    "note": "BR5: the rebrand to DFO Online (2026-10-11)"
+    "note": "BR5: the rebrand to DFO Online (2026-10-11). AUDIT BR5 (re-aimed by content): the wordmark is the logo, and its alt carries the name."
   },
   {
     "name": "BR5-short-name-back",
@@ -63,12 +63,12 @@
   {
     "name": "BR5-launcher-wordmark-split",
     "file": "app/launcher/index.html",
-    "old": "<h1 class=\"wordmark\">DFO<small>Online</small></h1>",
-    "new": "<h1 class=\"wordmark\">Daggerfall<small>Online</small></h1>",
+    "old": "<h1 class=\"wordmark\"><img src=\"dfo-online.png\" alt=\"DFO Online\"",
+    "new": "<h1 class=\"wordmark\"><img src=\"dfo-online.png\" alt=\"Daggerfall Online\"",
     "tests": [
       "test/brand.test.js"
     ],
-    "note": "BR5: the rebrand to DFO Online (2026-10-11)"
+    "note": "BR5: the rebrand to DFO Online (2026-10-11). AUDIT BR5 (re-aimed by content): the wordmark is the logo, and its alt carries the name."
   },
   {
     "name": "BR5-alt-names-a-game",
@@ -341,16 +341,6 @@
       "test/terms1.test.js"
     ],
     "note": "BR5: the rebrand to DFO Online (2026-10-11)"
-  },
-  {
-    "name": "BR5-legal-version-unmoved",
-    "file": "src/net/legalLaw.js",
-    "old": "export const PRIVACY_VERSION = '2026-10-11';",
-    "new": "export const PRIVACY_VERSION = '2026-09-28';",
-    "tests": [
-      "test/terms1.test.js"
-    ],
-    "note": "the operator renamed in the words, the version a new account records left behind"
   },
   {
     "name": "BR5-account-version-unmoved",

@@ -4219,8 +4219,10 @@ to the end.
 `src/net/legalLaw.js` holds `TERMS_VERSION` and `PRIVACY_VERSION` for both ends. Each page carries its date as
 `<time datetime>`, pinned equal to its version, and its words are pinned to a hash, so the text cannot change without
 somebody deciding whether that is a new version. To revise a document: edit the page, move its Last Updated date and its
-version together, and re-hash. BR5 (2026-10-11) did: the operator renamed DFO Online in both, so both are
-version 2026-10-11 and the service acct113 (`10-UI/UI-Arc.md` BR5). The site and the account Worker deploy separately, and the site's deploy waits for the
+version together, and re-hash. BR5 (2026-10-11) renamed the operator DFO Online in both and first moved both to
+2026-10-11; AUDIT BR5 put them back: a rename of the same project under the same terms is not material, and a new
+version refuses every sign-up from a build older than the service (`terms-stale`). So both stay 2026-09-28, the words
+re-hashed, and the account service is acct115 for the Patreon page's title alone (`10-UI/UI-Arc.md` BR5). The site and the account Worker deploy separately, and the site's deploy waits for the
 account service to serve the version the tree names (AUDIT PRE-MERGE 0929 T2), so the form never meets a Worker older
 than itself; a desktop build older than the service is told the documents changed, and to reload the game or update
 the app.

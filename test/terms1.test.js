@@ -72,9 +72,10 @@ test('TERMS1: the words are held to a hash - editing a document means deciding w
   // this reddens: if the change is material, move the Last Updated date
   // and its version in src/net/legalLaw.js; either way, re-hash.
   const HASH = {
-    // BR5 (2026-10-11): the operator renamed DFO Online in both - a new version of each, 2026-10-11
-    terms: 'b42e28f663f71eea1c28b41edecb80c04c9d9c9168792a1303647739efdac381',
-    privacy: '5cb5b57831612fed453f471022daf4cd0669ddadf7afd3838745be9e60c5f113',
+    // BR5 (2026-10-11): the operator renamed DFO Online in both, and nothing else - not material, so the
+    // version stands and only the words are re-hashed (AUDIT BR5: a new version refuses every older build's sign-up)
+    terms: '9fbea67600a32daa47db64e3d5bbe35f920e4c2b682b9db7728a3944f6487ee0',
+    privacy: 'a217d15dba6ba6ee121c0e8705940aeb2a55b5dec953a68ae0d189cca56ded95',
   };
   for (const [name, d] of Object.entries(DOCS)) {
     const words = wordsOf(read(d.file));

@@ -316,11 +316,16 @@ without cutting a release. Artifact names are
 ~~`DaggerfallJS-...`~~ ~~`DaggerfallEnhanced-...`~~ ~~`DaggerfallOnline-<version>-<os>-<arch>.<ext>`~~
 ~~`DaggerfallOnline-<os>-<arch>.<ext>`~~ `DFO-Online-<os>-<arch>.<ext>` and the two Windows names
 (BR1, 2026-09-13; BR4, 2026-09-27; REL5, 2026-09-29: no version in any; BR5, 2026-10-11 - the release that
-first carries the new names publishes about half an hour after the site that links them);
+first carries the new names publishes about half an hour after the site that links them). AUDIT BR5: every
+release also carries its four downloads under their `DaggerfallOnline-...` names (`scripts/desktopRelease.mjs
+alias`, before the set is checked), because a copy built before BR5 asks for its download by the name it was
+built with and can learn no other; and a copy from BR5 on reads its download off the release's own asset list
+(`releaseAssetUrl`: by its name, else by the platform part of it), so the next rename needs no alias;
 ~~bump `app/package.json`'s version with the tag~~ (REL3 derives it).
 ~~The update check reads the release TAG and its html_url, never an asset
 name~~ - the check reads the TAG; since REL5 the notice's Download is
-this copy's own asset by its name that never moves (`app/lib/downloads.cjs`)
+this copy's own asset by its name that never moves (`app/lib/downloads.cjs`; AUDIT BR5: as the release
+lists it first, and Reinstall follows the link the last check read)
 - and the appId is deliberately unchanged, or every installed copy would
 stop seeing updates. ~~The landing page's "On your desktop" section points
 at `releases/latest`~~ (REL5: each installer under
