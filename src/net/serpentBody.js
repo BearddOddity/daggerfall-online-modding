@@ -33,9 +33,15 @@ export const SEG_LEN = 7;
 export const BODY_LEN = SEG_N * SEG_LEN;
 /** The head's length (the jaws to the back of the skull), metres - segment 0 is the head. */
 export const HEAD_LEN = 9;
+/** SERPENT4 (2026-10-11, the players: "and make it huge", "It could be bigger too as hitting with slow projectiles + lag
+ *  is a challenge"): ITS GIRTH, its first build's times this - the great coils 12 m through where they were under 8, the
+ *  skull a carrack's beam - so it looms over every deck and a ball flown a wire's time late still meets its hide (every
+ *  segment's box is its radius square: segmentBox). Its length and its path are as they were: every swim, coil and attack
+ *  shape is laid as before. */
+export const SERPENT_GIRTH = 1.6;
 /** Its girth along its length: [s metres behind the snout, radius metres] - the jaws, the skull, a neck, the great
- *  coils a third of the way down, the taper to the tail. */
-export const RADII = Object.freeze([[0, 2.2], [4, 3.4], [9, 3.0], [14, 2.9], [40, 3.9], [90, 3.4], [140, 1.9], [BODY_LEN, 0.7]].map((p) => Object.freeze(p)));
+ *  coils a third of the way down, the taper to the tail (its first build's radii, times SERPENT_GIRTH). */
+export const RADII = Object.freeze([[0, 2.2], [4, 3.4], [9, 3.0], [14, 2.9], [40, 3.9], [90, 3.4], [140, 1.9], [BODY_LEN, 0.7]].map(([s, r]) => Object.freeze([s, Math.round(r * SERPENT_GIRTH * 100) / 100])));
 /** The radius `s` metres behind the snout. */
 export function radiusAt(s) {
   if (!(s > 0)) return RADII[0][1];

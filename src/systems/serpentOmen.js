@@ -77,7 +77,7 @@ export function createSerpentOmen({ now, site, say, localTime = () => null, fell
         saidDay = t.day; saidRank = rank;
         const words = { near: s.near, boss: serpentBossOf(t.day).name };
         if (line === 'omen') say(sightingLine({ ...words, near: s.place, at: at(t.day, SERPENT_RISE_MINUTE) }));
-        else if (line === 'rise') say(risingLine({ ...words, left: serpentClock(t.sealAt - now()) }));
+        else if (line === 'rise') say(risingLine({ ...words, left: serpentClock(t.soundAt - now()) }));   // SERPENT4: to its dive - its waters open till then
         else if (line === 'seal') say(sealLine({ ...words, at: at(t.day, SERPENT_SOUND_MINUTE) }));
         else if (line === 'sound') say(soundLine(words));
       }
