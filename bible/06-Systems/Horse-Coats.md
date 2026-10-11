@@ -237,7 +237,7 @@ second. The rig has no canter, so between a quick trot and Daggerfall's ride the
 A horse alone is drawn as the Morrowind body is - a picture through the sprite pass at the arm's dial
 (`characterSprite.js` drawRigSpriteBox, MW_ARM_PIXEL). A horse under a rider is in the RIDER's picture: `also`, more
 meshes in the one picture under one depth (`renderer.js` _renderCharacterSprite and the batch's tiles; each its own
-quad would cut the horse's neck by the rider's plane), the window the union of the two boxes (`fpArm.js` unionBox),
+quad would cut the horse's neck by the rider's plane), the window the union of the two boxes (`fpArm.js` spriteBoxUnion),
 the anchor the horse's middle.
 
 ### The look on the 3D horse
@@ -262,7 +262,7 @@ width). The pinto's field is blended before it is cut, so its edges stay crisp.
 
 A look's picture is dyed DYE_ROWS (32) rows a frame (`dyeHorseTexelRows` - a whole picture is 50-120 ms) and uploaded
 with its mips once whole, the texel map itself built once before the first, a slice a frame (`startTexelMap`, ten
-steps - whole it is 40-85 ms); a horse wears the bay's until its look is up; past HORSE_LOOKS_KEPT (12) the one longest
+steps - whole it is 40-85 ms); a horse wears the bay's until its look is up; past HORSE3D_LOOKS_KEPT (12) the one longest
 undrawn is let go. The appaloosa's spots were made rounder for both sets at this slice (stretched up to 1.45 a side,
 not 1.9): at the 3D horse's detail the old ovals read as brush strokes.
 

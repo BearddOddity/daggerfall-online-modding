@@ -10,7 +10,7 @@
 //  - ONE PICTURE A LOOK. The body's picture is dyed per look (systems/horseCoats.js dyeHorseTexelRows, the sprites'
 //    law on the horse's own surface - world/horseModel.js startTexelMap, built once a slice a frame), DYE_ROWS a frame
 //    so no frame pays a look's whole 50-120 ms, and uploaded with its mips once done; a horse whose look is not up yet wears the bay's. Past
-//    HORSE_LOOKS_KEPT looks, the one longest undrawn is let go. The mane and tail's picture is the art's on every look.
+//    HORSE3D_LOOKS_KEPT looks, the one longest undrawn is let go. The mane and tail's picture is the art's on every look.
 //  - THE DRAWS. A horse alone is a Morrowind mesh in the world, so it draws as the Morrowind body does - a picture
 //    through the sprite pass at the arm's dial (render/characterSprite.js drawRigSpriteBox, MW_ARM_PIXEL); a horse under
 //    a rider is in the RIDER's picture (`also`, fpArm.js drawThird); in first person the rider's eye is on its back, so
@@ -26,7 +26,7 @@ import { decodePng } from '../systems/textureReplacement.js';
 import { multiply, trs, transformPoint } from './mat4.js';
 
 /** Dyed looks kept on the GPU (the bay's is always kept). */
-export const HORSE_LOOKS_KEPT = 12;
+export const HORSE3D_LOOKS_KEPT = 12;
 /** Rows of the body's picture a frame's dye takes: 32 of 256, some 6-15 ms - a look up in eight frames. */
 export const DYE_ROWS = 32;
 /** The horse's Z-up frame into the pass's Y-up one - fpArm.js NIF_TO_PASS, the Morrowind body's own basis change. */
@@ -93,7 +93,7 @@ export function createHorseRig({ renderer, fetchJson = (u) => fetch(u).then((r) 
   }
 
   /** One frame's dye: DYE_ROWS of the oldest look asked for, uploaded when its last row is in; then the kept looks
-   *  trimmed to HORSE_LOOKS_KEPT, the longest undrawn let go. */
+   *  trimmed to HORSE3D_LOOKS_KEPT, the longest undrawn let go. */
   function tick() {
     frame++;
     if (!base || !body) return;
@@ -112,7 +112,7 @@ export function createHorseRig({ renderer, fetchJson = (u) => fetch(u).then((r) 
         job = null;
       }
     }
-    while (looks.size > HORSE_LOOKS_KEPT + 1) {
+    while (looks.size > HORSE3D_LOOKS_KEPT + 1) {
       let worst = null, at = Infinity;
       for (const [c, l] of looks) if (c && l.last < at) { at = l.last; worst = c; }
       if (worst == null) break;

@@ -40,6 +40,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { readFbx, childrenNamed, childNamed, objectName, property70 } from './fbxRead.mjs';
 import { polygonsOf, blenderTessellate } from './fbxMesh.mjs';
+import { isMain } from './lib/isMain.mjs';
 
 const TICKS_PER_SECOND = 46186158000;   // FBX's KTime
 export const HORSE_FPS = 30;
@@ -435,7 +436,7 @@ export function bakeHorse(buf) {
   };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3) ?? d;
   const fbx = arg('fbx', 'src/assets/horse/source/courser.fbx');
   const out = arg('out', 'src/assets/horse/courser.json');

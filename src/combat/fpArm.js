@@ -483,7 +483,7 @@ export const NIF_TO_PASS = trs(0, 0, 0, -90, 0, 0);
 
 /** COATS3D: two sprite-law boxes ({ center, halfW, halfH } - a vertical half-height and an azimuth-safe horizontal
  *  radius about the centre) as the one box that holds both: the rider's and the horse's, for the one picture. */
-export function unionBox(a, b) {
+export function spriteBoxUnion(a, b) {
   const lo = Math.min(a.center[1] - a.halfH, b.center[1] - b.halfH), hi = Math.max(a.center[1] + a.halfH, b.center[1] + b.halfH);
   // the horizontal centre: midway along the line through both, the radius that reaches the far side of each
   const dx = b.center[0] - a.center[0], dz = b.center[2] - a.center[2], d = Math.hypot(dx, dz);
@@ -5891,7 +5891,7 @@ export function createFpArm() {
       // the body's own picture, under the same depth: the window grows to hold the horse's box as well, and the picture
       // is OF the horse - its middle is the anchor, so the figure is the rider on it, sized where the horse stands
       if (horse && horse.mesh && horse.model && horse.box) {
-        const u = unionBox({ center, halfW, halfH }, horse.box);
+        const u = spriteBoxUnion({ center, halfW, halfH }, horse.box);
         drawRigSpriteBox(renderer, canvas, thirdMesh, model, { ...u, anchor: horse.box.anchor, hitFlash, conceal, up, fx, also: [{ mesh: horse.mesh, model: horse.model }] }, proj, view, eye, MW_ARM_PIXEL);
         return true;
       }

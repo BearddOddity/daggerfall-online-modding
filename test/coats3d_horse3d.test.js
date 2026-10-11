@@ -14,7 +14,7 @@ import {
   HORSE_GAITS, HORSE_GAIT_FROM, GAIT_HOLD, GAIT_RATES, GAIT_FADE, gaitFor, gaitRate, horseGait, stepHorseGait, gaitShare, gaitLocals,
   horsePaletteShape, horsePoseScratch, writeHorsePalette, horseSkinStream, horseHide, horseTexelMap, startTexelMap, TEXEL_GUTTER, TEXEL_MAP_STEPS, rgbaMips,
 } from '../src/world/horseModel.js';
-import { createHorseRig, horseRigFor, HORSE_LOOKS_KEPT, DYE_ROWS, HORSE_SEAT, HORSE_SEAT_BONE } from '../src/world/horseRig.js';
+import { createHorseRig, horseRigFor, HORSE3D_LOOKS_KEPT, DYE_ROWS, HORSE_SEAT, HORSE_SEAT_BONE } from '../src/world/horseRig.js';
 import { horseLookCode, recolorHorse, recolorHorseTexels, dyeHorseTexelRows, texelPlanes, PLANE_SHARPNESS, LEG_BANDS, WHITE_FLOOR_3D, isCoatPixel } from '../src/systems/horseCoats.js';
 import { skinStreamFloats, SKIN_STATIC_FLOATS } from '../src/formats/mwGpuSkin.js';
 import { saddleRigInput, saddleRequestFor, seatedCamera, STIRRUP_SIDE, STIRRUP_DROP, STIRRUP_AHEAD, REIN_AHEAD, REIN_UP, REIN_SIDE, SADDLE_LEAN_GALLOP, SEAT_PELVIS_HEIGHT } from '../src/player/seatPose.js';
@@ -22,7 +22,7 @@ import { parseNif } from '../src/formats/mwNifFile.js';
 import { buildSkeleton, poseSkeleton, skeletonSpaceMatrices, GRAPH_ROOT } from '../src/formats/mwSkin.js';
 import { applyClimbRig, climbBones } from '../src/combat/climbRig.js';
 import { MW_UNITS_PER_METER } from '../src/formats/mwFirstPerson.js';
-import { unionBox } from '../src/combat/fpArm.js';
+import { spriteBoxUnion } from '../src/combat/fpArm.js';
 
 const rd = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const bytes = (p) => readFileSync(new URL(`../${p}`, import.meta.url));
@@ -273,7 +273,7 @@ const RIG_DEPS = {
   decode: async (b) => { const p = PNG.sync.read(Buffer.from(b)); return { width: p.width, height: p.height, data: new Uint8Array(p.data) }; },
 };
 
-test('COATS3D the GL half: one stream, a palette a horse; a look dyed DYE_ROWS a frame and uploaded once whole, the bay\'s worn meanwhile; past HORSE_LOOKS_KEPT the longest undrawn let go', async () => {
+test('COATS3D the GL half: one stream, a palette a horse; a look dyed DYE_ROWS a frame and uploaded once whole, the bay\'s worn meanwhile; past HORSE3D_LOOKS_KEPT the longest undrawn let go', async () => {
   const r = recordingRenderer();
   const rig = createHorseRig({ renderer: r, ...RIG_DEPS });
   assert.equal(rig.ready(), false); assert.equal(rig.horse(), null, 'no horse before the rig is up');
@@ -296,10 +296,10 @@ test('COATS3D the GL half: one stream, a palette a horse; a look dyed DYE_ROWS a
   assert.equal(rig.dyeing(), null); assert.ok(rig.kept().includes(pinto), `up in ${frames} frames`);
   rig.step(a, { feet: [0, 0, 0], yaw: 0, look: pinto });
   assert.notEqual(a.mesh.ranges[0].tex, bay, 'and worn');
-  // the kept looks: the bay always, and HORSE_LOOKS_KEPT more
-  assert.equal(HORSE_LOOKS_KEPT, 12);
-  for (let s = 1; s <= HORSE_LOOKS_KEPT + 3; s++) { rig.lookTex(code(2, 0, 0, s)); for (let f = 0; f < frames; f++) rig.tick(); }
-  assert.equal(rig.kept().length, HORSE_LOOKS_KEPT + 1); assert.ok(rig.kept().includes(0));
+  // the kept looks: the bay always, and HORSE3D_LOOKS_KEPT more
+  assert.equal(HORSE3D_LOOKS_KEPT, 12);
+  for (let s = 1; s <= HORSE3D_LOOKS_KEPT + 3; s++) { rig.lookTex(code(2, 0, 0, s)); for (let f = 0; f < frames; f++) rig.tick(); }
+  assert.equal(rig.kept().length, HORSE3D_LOOKS_KEPT + 1); assert.ok(rig.kept().includes(0));
   assert.ok(r.released.textures >= 3, 'the longest undrawn let go');
   rig.release(a);
   assert.equal(a.mesh.skin.tex, null, 'a horse let go gives its palette back');
@@ -368,12 +368,12 @@ test('COATS3D THE BODY ASTRIDE: the saddle\'s request - hips on the seat, the st
 
 test('COATS3D one picture, rider and horse: the union of the two boxes holds both, whichever holds which', () => {
   const a = { center: [0, 1, 0], halfW: 0.5, halfH: 1 }, b = { center: [2, 1, 0], halfW: 1.5, halfH: 1.2 };
-  const u = unionBox(a, b);
+  const u = spriteBoxUnion(a, b);
   for (const x of [a, b]) {
     assert.ok(Math.hypot(x.center[0] - u.center[0], x.center[2] - u.center[2]) + x.halfW <= u.halfW + 1e-9);
     assert.ok(x.center[1] - x.halfH >= u.center[1] - u.halfH - 1e-9 && x.center[1] + x.halfH <= u.center[1] + u.halfH + 1e-9);
   }
-  assert.deepEqual(unionBox({ center: [0, 0, 0], halfW: 3, halfH: 1 }, { center: [1, 0, 0], halfW: 0.5, halfH: 0.5 }), { center: [0, 0, 0], halfW: 3, halfH: 1 });
+  assert.deepEqual(spriteBoxUnion({ center: [0, 0, 0], halfW: 3, halfH: 1 }, { center: [1, 0, 0], halfW: 0.5, halfH: 0.5 }), { center: [0, 0, 0], halfW: 3, halfH: 1 });
 });
 
 test('COATS3D by source: the view keeps the saddle and lifts RIDE-POV astride; the hosts hand it the horse and the body the saddle; the riding sprite stands down; the peers, the pool and the road ride it; the pass takes the horse in the rider\'s picture', () => {
