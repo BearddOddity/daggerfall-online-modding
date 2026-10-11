@@ -24,6 +24,7 @@ import { TRANSPORT, WAGON_MODE, HORSE_MODE } from '../src/systems/horseCartLaw.j
 import { makeWorld } from './hccWorld.mjs';
 import { FEATURES } from '../src/systems/features.js';
 import { itemStatRows } from '../src/systems/itemInfo.js';
+import { repairsObjectsTarget } from '../src/systems/enchantments.js';
 
 const rd = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const wagon = (kind = 'cart', condition = null) => { const w = mintCondition(setItemFields(newWagonItem(kind))); if (condition != null) w.currentCondition = condition; return w; };
@@ -227,4 +228,24 @@ test('WAGONS4 THE SWITCH AND THE HOSTS: a Features row beside horse care, on by 
   // the item law: wear is condition alone - a marked wagon's value never falls under its kind's floor
   const worn = wagon('caravan', 0);
   assert.equal(worn.value, WAGON_KINDS.caravan.value);
+});
+
+test('AUDIT WAGONS4 BROKEN, GOING NOWHERE, EVERY LANE: a broken wagon\'s pace is none (the motor rolls it nowhere); with Horse Cart and Cargo off the classic cart broken under its driver puts them afoot beside it (the mod\'s own reconcileTeam does it with the mod on); and no held Repairs Objects ever mends a wagon or a horse - the Wagon Yard\'s and the kit\'s alone (mutants: AUDIT-WAGONS4-broken-rolls, AUDIT-WAGONS4-classic-bench, AUDIT-WAGONS4-enchantment-mends)', () => {
+  const w = wagon('cart', 0);
+  const items = [w, { group: 'Transportation', templateIndex: 94, horseSeed: 7 }];
+  const u = createUpkeep({ items: () => items, now: () => 1_000_000, wagonUpkeep: () => true });
+  assert.equal(u.rideScale('Cart', 0), 0, 'broken: no pace');
+  w.currentCondition = 50;
+  assert.ok(u.rideScale('Cart', 0) > 0, 'failing: slow, but it rolls');
+  for (const [host, set] of [['src/scenes/world.js', 'setTransportModeHere'], ['src/scenes/exterior.js', 'mountRig.setMode']]) {
+    const src = rd(host);
+    const at = src.indexOf('saddleHost.motion(gamePaused() ? 0 : dt, metres, galloping);');
+    const line = src.indexOf(`if (mode === TRANSPORT_MODES.Cart && !hccRuntimeOn() && upkeep.brokenWhy()) ${set}(TRANSPORT_MODES.Foot);`);
+    assert.ok(at > 0 && line > at && line - at < 400, `${host}: the classic bench, in the frame's upkeep`);
+  }
+  const sword = { group: 'Weapons', templateIndex: 113, currentCondition: 900, maxCondition: 1000 };
+  const broken = wagon('caravan', 0);
+  const sore = { group: 'Transportation', templateIndex: 94, currentCondition: 10, maxCondition: 100 };
+  assert.equal(repairsObjectsTarget([broken, sore, sword]), sword, 'past the wagon and the horse, to the sword');
+  assert.equal(repairsObjectsTarget([broken, sore]), null);
 });

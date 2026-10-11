@@ -266,8 +266,12 @@ function makeButtons(doc, list, hooks) {
     n.dataset.act = b.act;
     const label = span(doc, 'saddlepanel-label'), key = span(doc, 'saddlepanel-key');
     n.append(label, key);
+    // AUDIT STEED-UI: a button never keeps the keyboard's focus - a focused one is clicked again by the next Space or
+    // Enter the look's keys send through (a Jump's keyup spent a second kit, an hour with it), so a press never takes it
+    n.addEventListener('mousedown', (e) => e.preventDefault?.());
     n.addEventListener('click', (e) => {
       e.preventDefault?.();
+      n.blur?.();
       if (n.disabled) return;
       hooks[b.act]?.();
     });

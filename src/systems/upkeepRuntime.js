@@ -104,7 +104,7 @@ export function createUpkeep({ items, now, horseCare = () => false, wagonUpkeep 
         }
       }
       wasRiding = riding;
-    } else { breaths.clear(); wasRiding = false; wasWinded = false; }
+    } else { breaths.clear(); wasRiding = false; wasWinded = false; tendedAt = null; }   // AUDIT STEED1: off, no keep ran - none to catch up when it is on again
     if (wagonUpkeep()) {
       const w = activeWagonItem(its);
       if (w !== lastWagon) { lastWagon = w; lastState = w ? wagonState(w).key : null; }
@@ -129,7 +129,7 @@ export function createUpkeep({ items, now, horseCare = () => false, wagonUpkeep 
     if (mode === 'Cart') {
       let k = 1;
       const w = activeWagonItem(its);
-      if (wagonUpkeep() && w) k *= wagonPace(w) || 1;
+      if (wagonUpkeep() && w) k *= wagonPace(w);   // AUDIT WAGONS4: a broken wagon's is none - it goes nowhere
       if (horseCare() && w) {
         const team = horsesIn(its).slice(0, wagonHorsesOf(wagonKindOf(w)));
         const strengths = team.map((h) => steedStats(h, t)?.stats.strength).filter((v) => Number.isFinite(v));

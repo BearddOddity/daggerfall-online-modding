@@ -213,12 +213,16 @@ export function tendHorses(items, now, { since = null, where = 'with', stores = 
   if (!Array.isArray(items) || !Number.isFinite(now)) return { changed, ate };
   for (const horse of items.filter(isHorseItem)) {
     if (fedUntil(horse) == null) { horse.horseFed = Math.max(1, Math.round(now + NEW_HORSE_FED)); changed = true; continue; }
+    // AUDIT STEED1 (2026-10-11): a horse grazing or in the stable never starved across the span the keep last ran
+    // before (`since` - an inn's rest, a dungeon: no frame ticks indoors) - only a fade owed BEFORE it is taken; with no
+    // span known, all of it to now
+    const owedTo = since != null && since < now ? since : now;
     if (where === 'stabled') {
-      if (/** @type {number} */ (fedUntil(horse)) < now + STABLE_TOP_UNDER) { setFed(horse, now + STABLE_FED, now); changed = true; }
+      if (/** @type {number} */ (fedUntil(horse)) < now + STABLE_TOP_UNDER) { setFed(horse, now + STABLE_FED, owedTo); changed = true; }
       continue;
     }
     if (where === 'waiting') {
-      if (now - /** @type {number} */ (fedUntil(horse)) > GRAZED_BACK) { setFed(horse, now - GRAZED_BACK, now); changed = true; }
+      if (now - /** @type {number} */ (fedUntil(horse)) > GRAZED_BACK) { setFed(horse, now - GRAZED_BACK, owedTo); changed = true; }
       continue;
     }
     if (since == null || now - since < SKIP_MINUTES) continue;

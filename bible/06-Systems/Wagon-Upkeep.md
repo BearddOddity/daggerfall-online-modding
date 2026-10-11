@@ -45,7 +45,9 @@ A wagon left parked does not wear.
 A broken wagon's word (`wagonBrokenWhy`) is the hosts' `teamShort` beside WAGONS3's short team (`wagonTeamShort ??
 upkeep.brokenWhy()`), so every door a short team is refused at, a broken wagon is: the Transport window's Cart row
 dark, the press and the hotkey refused, a hitch refused, and a team pulling when it breaks stops where it is - the
-wagon parked, its horse left in harness, its driver afoot beside it (`horseCart.js` reconcileTeam). Its horse is still
+wagon parked, its horse left in harness, its driver afoot beside it (`horseCart.js` reconcileTeam) - and with the mod
+off, the classic cart broken under its driver puts them afoot beside it too (the hosts' frame; its pace is none,
+`upkeepRuntime.js` rideScale - AUDIT WAGONS4). Its horse is still
 ridden away (the horse answers as a horse with no wagon), and its load is still reached where it stands. With Horse
 Cart and Cargo off, the classic Transport window's Cart row is dark too (`player/mountRig.js` cartRefusal), and a
 journey's fare counts no cart (`scenes/world.js` travelFareDeps hasCart).
@@ -65,6 +67,9 @@ journey's fare counts no cart (`scenes/world.js` travelFareDeps hasCart).
   world with it - so a smith refuses a horse and a wagon first, in their own words, at both counters
   (`systems/repairService.js` repairRefusal 'transport', TRANSPORT_CANNOT_BE_REPAIRED_TEXT). Before WAGONS4 no wagon
   was ever damaged, so the counter's "does not need repair" had stood in the way.
+- **Never a held Repairs Objects** (AUDIT WAGONS4): the enchantment's pick passes a wagon and a horse by
+  (`systems/enchantments.js` repairsObjectsTarget) - DFU's wagon never wore, so its mend never reached one; here it
+  would have mended a broken Caravan free and whole, past the yard's price and the kit's ceiling.
 
 ## The Stable page
 

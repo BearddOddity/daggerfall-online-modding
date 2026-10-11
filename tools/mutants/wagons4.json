@@ -46,5 +46,14 @@
     "tests": ["test/wagons4_upkeep.test.js"] },
   { "name": "WAGONS4-the-hour-unpassed", "file": "src/systems/upkeepRuntime.js",
     "old": "      pass(60);\n", "new": "\n",
+    "tests": ["test/wagons4_upkeep.test.js"] },
+  { "name": "AUDIT-WAGONS4-broken-rolls", "file": "src/systems/upkeepRuntime.js",
+    "old": "k *= wagonPace(w);", "new": "k *= wagonPace(w) || 1;",
+    "tests": ["test/wagons4_upkeep.test.js"] },
+  { "name": "AUDIT-WAGONS4-classic-bench", "file": "src/scenes/exterior.js",
+    "old": "if (mode === TRANSPORT_MODES.Cart && !hccRuntimeOn() && upkeep.brokenWhy()) mountRig.setMode(TRANSPORT_MODES.Foot);", "new": "if (false) mountRig.setMode(TRANSPORT_MODES.Foot);",
+    "tests": ["test/wagons4_upkeep.test.js"] },
+  { "name": "AUDIT-WAGONS4-enchantment-mends", "file": "src/systems/enchantments.js",
+    "old": "    if (it.templateIndex === TRANSPORT_SMALL_CART || it.templateIndex === TRANSPORT_HORSE) continue;", "new": "",
     "tests": ["test/wagons4_upkeep.test.js"] }
 ]

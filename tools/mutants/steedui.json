@@ -76,5 +76,11 @@
     "tests": ["test/steedui_saddle.test.js"] },
   { "name": "STEEDUI-host-feed-lead", "file": "src/scenes/saddleHost.js",
     "old": "feed: () => act('feed', shown?.horse?.feed ?? 0)", "new": "feed: () => act('feed', 0)",
+    "tests": ["test/steedui_saddle.test.js"] },
+  { "name": "STEEDUI-focus-taken", "file": "src/ui/enhancedSaddle.js",
+    "old": "    n.addEventListener('mousedown', (e) => e.preventDefault?.());\n    n.addEventListener('click', (e) => {", "new": "    n.addEventListener('click', (e) => {",
+    "tests": ["test/steedui_saddle.test.js"] },
+  { "name": "STEEDUI-focus-kept", "file": "src/ui/enhancedSaddle.js",
+    "old": "      e.preventDefault?.();\n      n.blur?.();\n      if (n.disabled) return;\n      hooks[b.act]?.();", "new": "      e.preventDefault?.();\n      if (n.disabled) return;\n      hooks[b.act]?.();",
     "tests": ["test/steedui_saddle.test.js"] }
 ]

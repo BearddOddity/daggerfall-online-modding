@@ -31,7 +31,9 @@ held to [1, 100] (`steedStats`).
 Grown by feeding: a day's food is three points (DAY_BOND_TENTHS 30), times the food's love. Its word: Wary (0),
 Accepting (15), Familiar (35), Trusting (55), Devoted (75), Kindred (95). A Kindred horse is twenty points better on
 every stat than the one bought. The bond is its OWNER's: `net/realmTradeLaw.js` RECEIVER_MARKS strips it from a
-traded horse, so it comes to its next owner a stranger.
+traded horse, so it comes to its next owner a stranger. So is its food's clock (`horseFed` is a minute of its owner's
+character's clock, AUDIT STEED1 - a buyer a year behind would have had it fed a year ahead): it comes fed as a horse
+first seen, and a minute's grazing never makes an offered horse's record mismatch its checkpoint.
 
 ### Hunger (`horseFed`, the minute of the character's clock its food runs out)
 
@@ -67,6 +69,11 @@ Where a horse is decides who feeds it (`systems/upkeepRuntime.js` horseWhereOf, 
   counts read the wagon's load the same way.
 - **Waiting** in the world (left loose, or in the harness of a parked wagon): it grazes - hungry, never starving.
 - **Stabled** (out of the world, where the Stable page says it is): the stable feeds it.
+
+Grazing or stabled, a span the keep did not run across (an inn's rest, a dungeon: no frame ticks indoors) costs it no
+bond - only a fade owed before the span is taken (AUDIT STEED1). The keep's clock is the character's: a load and a new
+character start it afresh (`upkeepRuntime.js` reset, at every door the world host loads through), and so does the
+switch turned off - a horse is never fed back a span from a minute another character or session last kept it.
 
 ### Breath (`stepBreath`, kept in memory by the horse's seed - a gallop's breath is not a thing to save)
 

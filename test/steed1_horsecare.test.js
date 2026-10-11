@@ -24,7 +24,7 @@ import { activeHorseItem, birthHorses } from '../src/systems/horseCoats.js';
 import { stableHorses, yardStock, STABLE_HORSES_OFFERED } from '../src/systems/merchantYards.js';
 import { itemFindings } from '../src/systems/itemLaw.js';
 import { validItemField } from '../src/systems/itemFields.js';
-import { RECEIVER_MARKS } from '../src/net/realmTradeLaw.js';
+import { RECEIVER_MARKS, TRADE_VOLATILE_FIELDS } from '../src/net/realmTradeLaw.js';
 import { itemStatRows } from '../src/systems/itemInfo.js';
 import { itemUseHandler } from '../src/systems/itemTemplates.js';
 import { HORSE_MODE, WAGON_MODE, TRANSPORT } from '../src/systems/horseCartLaw.js';
@@ -141,6 +141,16 @@ test('STEED1 THE KEEP: a horse first seen comes fed; the stable feeds its own; a
   tendHorses([w], T0, { where: 'waiting' });
   assert.equal(hungerOf(w, T0), 'hungry');
   assert.ok(T0 - w.horseFed < STARVING_AFTER);
+  // AUDIT STEED1: a span the keep did not run across (an inn's rest, a dungeon - no frame ticks indoors) while it grazed
+  // or was stabled: it never starved there - only a fade owed BEFORE the span is taken
+  for (const where of ['waiting', 'stabled']) {
+    const g = horse(9, { horseFed: T0, horseBond: 500 });
+    tendHorses([g], T0 + 5 * MINUTES_A_DAY, { since: T0, where });
+    assert.equal(g.horseBond, 500, `${where}: no fade for the span it grazed or was stabled`);
+    const late = horse(10, { horseFed: T0 - 4 * MINUTES_A_DAY, horseBond: 500 });
+    tendHorses([late], T0 + 5 * MINUTES_A_DAY, { since: T0, where });
+    assert.equal(late.horseBond, 460, `${where}: the two days it starved before the span still fade it`);
+  }
   // with its owner: a span skipped (a rest, a journey) - the packs' oats, eaten each time its food runs out
   const h = horse(8, { horseFed: T0 });
   const pack = [h, oats(3)];
@@ -370,7 +380,11 @@ test('STEED1 THE ITEM: `horseBond` (tenths, 1..1000) and `horseFed` (a minute, 1
   assert.deepEqual(itemFindings(horse(5, { horseBond: 420, horseFed: T0, value: 1000 })), []);
   assert.deepEqual(itemFindings({ group: 'Weapons', templateIndex: 113, horseBond: 30 }), ['horse']);
   assert.deepEqual(itemFindings({ group: 'Transportation', templateIndex: 93, horseFed: T0 }), ['horse']);
-  assert.ok(RECEIVER_MARKS.includes('horseBond') && !RECEIVER_MARKS.includes('horseFed'), 'the bond its owner\'s; the belly travels with the horse');
+  // PIN MOVED (AUDIT STEED1): `horseFed` is a minute of its OWNER's character's clock - carried to a buyer a year behind
+  // it came fed a year ahead (and one ahead, starving); so it is the owner's mark too, and the horse comes fed as a horse
+  // first seen (NEW_HORSE_FED) - and a minute's grazing never makes an offered record mismatch its checkpoint
+  assert.ok(RECEIVER_MARKS.includes('horseBond') && RECEIVER_MARKS.includes('horseFed'), 'the bond and the belly\'s clock its owner\'s');
+  assert.ok(TRADE_VOLATILE_FIELDS.includes('horseFed'));
   const rows = itemStatRows(horse(77, { horseBond: 420 }));
   const born = bornStats(77);
   assert.deepEqual(rows.filter((r) => ['Speed', 'Stamina', 'Endurance', 'Strength', 'Bond'].includes(r.label)).map((r) => [r.label, r.text]),
@@ -448,4 +462,28 @@ test('STEED1 THE HOSTS (world.js, exterior.js): the upkeep built before the mod\
   assert.match(rd('src/ui/enhancedHud.js'), /const gr = opts\.grip \?\? opts\.steed \?\? null;\n\s*const gripWord = opts\.grip \? 'Grip' : 'Horse';/, 'the enhanced HUD: under the horse\'s word');
   for (const host of ['src/scenes/worldModes.js', 'src/scenes/dungeonContext.js']) assert.equal(/upkeep\.(tick|rideScale|bar)\(/.test(rd(host)), false, `${host}: no transport indoors`);
   assert.match(rd('src/systems/transport.js'), /dismountOnTransition = \(mode, transition\) =>\n\s*\(transition === 'ToBuildingInterior' \|\| transition === 'ToDungeonInterior' \? TRANSPORT_MODES\.Foot : mode\);/);
+});
+
+test('AUDIT STEED1 THE KEEP\'S CLOCK: a load and a new character start it afresh (upkeep.reset, at every door the hosts load through), and so does the switch turned off - a horse is never fed back the span from a minute another character, or another session, last kept it (mutants: AUDIT-STEED1-off-keeps-clock, AUDIT-STEED1-load-no-reset)', () => {
+  let t = T0, on = true;
+  const h = horse(12, { horseFed: T0 + 60 });
+  const items = [h, oats(9)];
+  const said = [];
+  const u = createUpkeep({ items: () => items, now: () => t, horseCare: () => on, say: (l) => said.push(l) });
+  u.tick(0.016, {});
+  // the switch off six days, then on: nothing kept meanwhile, nothing to catch up
+  on = false; t = T0 + 6 * MINUTES_A_DAY; u.tick(0.016, {});
+  on = true; t += 1; u.tick(0.016, {});
+  assert.equal(items[1].stackCount, 9, 'no sack eaten for the days the switch was off');
+  // a load six days on: reset - its first frame keeps from now
+  u.tick(0.016, {});
+  u.reset();
+  t += 6 * MINUTES_A_DAY;
+  u.tick(0.016, {});
+  assert.equal(items[1].stackCount, 9, 'no sack eaten back across the load');
+  assert.deepEqual(said.filter((l) => /ate|sack/i.test(l)), [], 'and none said');
+  const world = rd('src/scenes/world.js');
+  assert.match(world, /hccRuntime\.handleStartLoad\(\);[^\n]*\n\s*upkeep\.reset\(\);/, 'the load\'s OnStartLoad');
+  assert.ok(world.includes('horseCartLoad: (rec) => { hccRuntime.handleStartLoad(); upkeep.reset();'), 'a same-dungeon load');
+  assert.ok(world.includes('  if (!_loadedGame) upkeep.reset();'), 'a new character');
 });

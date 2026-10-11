@@ -311,8 +311,8 @@ test('STEED-UI the four hosts: world.js and exterior.js build the one glue over 
   assert.ok(world.includes('    saddleDrawPanel();   // STEED-UI: the saddle panel, as the helm\'s below - every mode, so a door takes it down\n    csaDrawHelmPanel();'), 'world.js: beside the helm, every mode');
   assert.match(world, /canView: \(\) => mwViewCanTogglePerspective\(\), toggleView: \(\) => \{ mwViewTogglePerspective\(\); \}, foot: \(\) => setTransportModeHere\(TRANSPORT_MODES\.Foot\)/);
   assert.ok(world.includes("_mode() === 'exterior' && !(townTalk.overlay instanceof DeathScreen)"), 'world.js: outdoors, alive');
-  const extTop = ext.indexOf('    gamepad?.tick(dt);   // GP1'), extFrame = ext.indexOf('saddleHost.frame({'), extModal = ext.indexOf("hccTick(dt, now);   // AUDIT HCC H1: the runtime's LateUpdate indoors too");
-  assert.ok(extTop > 0 && extTop < extFrame && extFrame < extModal, 'exterior.js: at the top of the frame, before the modal branch returns');
+  const extTop = ext.indexOf('    tickAmbientText();\n'), extFrame = ext.indexOf('saddleHost.frame({'), extModal = ext.indexOf('if (modes.frame(dt, now)) {');
+  assert.ok(extTop > 0 && extTop < extFrame && extFrame < extModal, 'exterior.js: above the modal gate (the ambient text\'s law), every mode');
   assert.match(ext, /canView: \(\) => false, toggleView: \(\) => \{\}, foot: \(\) => mountRig\.setMode\(TRANSPORT_MODES\.Foot\)/);
   for (const p of ['src/scenes/worldModes.js', 'src/scenes/dungeonContext.js']) assert.ok(!rd(p).includes('saddleHost'), `${p}: no transport indoors - named, not wired`);
   assert.ok(rd('src/scenes/saddleHost.js').includes('scenes/worldModes.js (interiors) and scenes/dungeonContext.js (dungeons) stand no transport'), 'the glue names them');
@@ -363,4 +363,31 @@ test('STEED-UI the Stable page, polished: the bond a bar to the next word with t
   assert.equal(hungerLine({ hungerKey: 'fed', fedHours: 0 }), 'Fed.');
   assert.equal(hungerLine({ hungerKey: 'hungry', fedHours: 0 }), 'Hungry - every stat ten lower, and its breath slower back.');
   assert.equal(mendLine({ mend: 0 }), 'A town’s Wagon Yard mends it.');
+});
+
+test('AUDIT STEED-UI no button keeps the keyboard\'s focus: a press is never a focus (mousedown\'s default refused) and a click lets it go - a focused button was clicked again by the next Space or Enter the look\'s keys sent through, a second kit and its hour spent; the helm\'s tap buttons the same (mutants: STEEDUI-focus-taken, STEEDUI-focus-kept)', async () => {
+  const doc = fakeDoc();
+  const calls = [];
+  try {
+    drawEnhancedSaddle({ saddle: S({ mode: 'Cart', wagon: { name: 'Small Cart', state: 'Worn', stateKey: 'worn', share: 0.4, kitWorks: true }, kits: 2 }) }, { kit: () => calls.push('kit') }, { doc });
+    const btn = all(doc.body, 'saddlepanel-btn').find((b) => b.dataset.act === 'kit');
+    let refused = false;
+    btn.fire('mousedown', { preventDefault: () => { refused = true; } });
+    assert.equal(refused, true, 'a press never takes the focus');
+    let blurred = false;
+    btn.blur = () => { blurred = true; };
+    btn.fire('click');
+    assert.deepEqual([blurred, calls], [true, ['kit']], 'a click lets it go');
+  } finally { hideEnhancedSaddle(); }
+  const { drawEnhancedHelm, hideEnhancedHelm } = await import('../src/ui/enhancedHelm.js');
+  const hdoc = fakeDoc();
+  try {
+    drawEnhancedHelm({ helm: { hull: 1, hasSails: true, sailsUp: false, light: false, timeScaleIndex: 0, timeScaleMax: 4, timeScale: 1 } }, { press: () => {} }, { doc: hdoc });
+    const sails = all(hdoc.body, 'helmpanel-btn').find((b) => b.dataset.act === 'sails');
+    let refused = false, blurred = false;
+    sails.blur = () => { blurred = true; };
+    sails.fire('mousedown', { preventDefault: () => { refused = true; } });
+    sails.fire('click');
+    assert.deepEqual([refused, blurred], [true, true], 'the helm\'s the same');
+  } finally { hideEnhancedHelm(); }
 });

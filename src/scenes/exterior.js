@@ -5049,15 +5049,6 @@ export async function bootExterior(canvas, renderer, params, status) {
     // ApplySmoothing pays it out at the setting's fraction. Before the
     // camera is read.
     gamepad?.tick(dt);   // GP1: the pad's frame - its keys, its stick, its look - before the paused gate, so a window still sees Back and a lifted thumb still releases
-    {   // STEED-UI: the saddle panel (world.js saddleDrawPanel's twin) - every mode, so a door takes it down
-      const show = isEnhancedPlus() && typeof document !== 'undefined' && walkMode && modeNow() === 'exterior' && !(townTalk.overlay instanceof DeathScreen);
-      saddleHost.frame({
-        show, mode: player.transportMode,
-        covered: townTalk.hudCovered || (modes?.hudCovered ?? false) || gamePaused() || !hudRenderEnabled(),
-        touch: !!touch, mouseFree: show && (cursorActive() || !document.pointerLockElement),
-        freeKey: saddleKeyLabel('FreeMouse'), keyOf: saddleKeyLabel,
-      });
-    }
     if (!gamePaused()) {
       if (swingSuppressesLook({ swingHeld: rightHeld || swipeHeld || swingKeyLatch, weaponIsBow: weaponRig.playerWeapon.machine?.isBow }) && walkMode && modeNow() === 'exterior') lookFilter.settle();   // MAC-O2: the law is lookFilter.js's one seam (:246-248, WeaponSwingMode included); `walkMode` and the mode are this host's own - the mode host owns another screen weapon
       else lookFilter.tick(dt, cam);
@@ -5153,6 +5144,15 @@ export async function bootExterior(canvas, renderer, params, status) {
     // AT2: AmbientTextMod.Update, above the modal gate - see the note
     // at the same line in scenes/world.js.
     tickAmbientText();
+    {   // STEED-UI: the saddle panel (world.js saddleDrawPanel's twin) - above the modal gate, every mode, so a door takes it down
+      const show = isEnhancedPlus() && typeof document !== 'undefined' && walkMode && modeNow() === 'exterior' && !(townTalk.overlay instanceof DeathScreen);
+      saddleHost.frame({
+        show, mode: player.transportMode,
+        covered: townTalk.hudCovered || (modes?.hudCovered ?? false) || gamePaused() || !hudRenderEnabled(),
+        touch: !!touch, mouseFree: show && (cursorActive() || !document.pointerLockElement),
+        freeKey: saddleKeyLabel('FreeMouse'), keyOf: saddleKeyLabel,
+      });
+    }
     arenaFrame(dt);   // ARENA-FIX 12: the bout on the city's floor or the instance's - before the modal return, as the world host's
     player.arena = arenaBouts.ring();   // my bout's ring on the sand (the duel's clamp) - this host holds no other
     // AUDIT 66 F11: the torch sweep runs HERE, above the modal
@@ -5365,6 +5365,7 @@ export async function bootExterior(canvas, renderer, params, status) {
           wagonGoes: mode === TRANSPORT_MODES.Cart || !!hccRuntimeOn()?.view?.()?.teamFollowing,
         });
         saddleHost.motion(gamePaused() ? 0 : dt, metres, galloping);   // STEED-UI: the saddle panel's pace and gait
+        if (mode === TRANSPORT_MODES.Cart && !hccRuntimeOn() && upkeep.brokenWhy()) mountRig.setMode(TRANSPORT_MODES.Foot);   // AUDIT WAGONS4: world.js's twin - the classic cart broken under its driver
       }
       // PlayerHeightChanger's sink reads `OnExteriorWater == Swimming`
       // alone (:127, :294, :326, :550) - WaterWalking splashes but
