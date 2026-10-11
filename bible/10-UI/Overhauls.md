@@ -479,5 +479,14 @@ and the files named below.
 - **NOT THE DRESS'S, ON THE SAME THREAD**: HOTBAR-LAG (`ui/enhancedHotbar.js`, `test/ui1_slots.test.js`) - a press plays
   the caption's fade through the browser's animation instead of a class off, a forced layout and the class back (two
   restyles a press, ~10 ms under the dress's wood); NOTE-KEYS (`ui/questJournal.js`, `test/audit26_uiwindows2.test.js`)
-  - the journal's note field takes its letters by the native route (`typedChar`), as a native window is handed raw
-  codes, and the move/remove box its Y and N.
+  - the journal's note field takes its letters by the native route, as a native window is handed raw codes, and the
+  move/remove box its Y and N.
+
+Two gates the drop-in's own tree did not pass were met on the merge:
+- **THE ROSTER** (`test/classicinputbox.test.js`, CM3-CM11): the drop-in's NOTE-KEYS typed the journal's note into the
+  journal's own art through `typedChar` - the inline field CM3-CM11 retired everywhere else. EnterNote now PUSHES the
+  one `InputMessageBoxWindow` (the prompt above `" > "`, MaxLineLenth 70, WidthOverride 318), which reads both hosts'
+  spellings; the confirm box's Y and N read the shortcut table (`hotkeyHit`); the roster names the journal
+  (`10-UI/UI-Arc.md` NOTE-KEYS).
+- **DISC25-A A7** (`test/disc25a_dungeon_map.test.js`): FINDME-SHEET's stamp stood between a sheet's mount and the foot's
+  `_writeHint`, the pair the pin reads as one; it stands after them.

@@ -1416,8 +1416,8 @@ export class HeldMapWindow {
     if (!this._slot.select(id, this._view)) return false;
     leaving?.unmount?.();
     this._sheets.get(id)?.mount?.();
-    if (this._chrome?.root?.dataset) this._chrome.root.dataset.hmSheet = this._slot.live ?? id;   // FINDME-SHEET
     this._writeHint();           // DISC25-A: the foot says the new sheet's keys
+    if (this._chrome?.root?.dataset) this._chrome.root.dataset.hmSheet = this._slot.live ?? id;   // FINDME-SHEET: which sheet is up, for the dress
     this._layoutKey = '';        // the new sheet's own coordinate space
     this._staticKey = '';
     this._layout();

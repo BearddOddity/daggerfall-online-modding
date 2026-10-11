@@ -4,11 +4,14 @@
 // prompt DFU pushes over an existing window whenever it needs one line
 // of text or a number: optional text tokens above, a LABEL and a
 // TextBox on one row, Return raises OnGotUserInput, Escape (the base
-// popup's close) raises nothing. Eleven sites in DFU raise one - the
+// popup's close) raises nothing. Twelve sites in DFU raise one - the
 // action system's ShowTextWithInput, the spell maker's and the item
 // maker's name buttons, the spellbook's rename, the travel map's find,
 // the automap's note, the inventory's split popup and drop-gold prompt,
-// the save window's rename, the guild donation, the tavern's day count -
+// the save window's rename, the guild donation, the tavern's day count,
+// the quest journal's note (NOTE-KEYS, 2026-10-11: the twelfth, missed
+// by CM3-CM11 because its field read the dungeon's `char:` actions and
+// never typedChar - so it took no letter on the native-window hosts) -
 // and before this class each of the port's windows typed the field into
 // its own art with its own key router (Ledger A row TB1, retired by
 // CM3-CM11). This is the one home: the field's law lives here once, and
