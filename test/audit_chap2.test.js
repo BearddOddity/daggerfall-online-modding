@@ -626,7 +626,7 @@ test('AUDIT CHAP2 T23/C5: a hall writ\'s card under the guild\'s seal, named, it
   for (let i = 0; i < 3; i++) await tick();
   const [card] = byClass(host, 'notice-writ');
   assert.ok(card.className.includes('seal-guild') && !card.className.includes('seal-court'), card.className);
-  assert.equal(byClass(card, 'writ-kind')[0].textContent, 'Hall writ');
+  assert.equal(byClass(card, 'writ-kind')[0].textContent, 'Chapter writ');   // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - "hall" is a guild's hall, never a card's kind
   assert.equal(byClass(card, 'writ-need')[0].textContent, 'Wanted: 30 Red Roses, for the Mages Guild in Anticlere');
   assert.equal(byClass(card, 'writ-pay')[0].textContent, 'Pays 72 silver, 150 Renown and standing with the Mages Guild');
   assert.equal(byClass(host, 'notice-worktoday')[0].textContent, 'Writs today: 0 of 3');

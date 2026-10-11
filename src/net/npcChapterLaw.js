@@ -439,6 +439,30 @@ export function receiptCreditsOf({ kind, id, day, members, chapters }) {
   return out;
 }
 
+/** GUILD3d (bible/11-Multiplayer/Guilds-Made-Plain.md): a duty in words. */
+const DUTY_WORDS = Object.freeze({ gate: 'hold a gate', raid: 'defend a raided town' });
+/**
+ * GUILD3d: A CHAPTER'S DUTIES, the line its card on the board says - what its guild asks of its members in the region
+ * (hallReceiptKindsOf) and what each earns (receiptCreditsOf: RECEIPT_REP each time, HALL_WRIT_REP more for the day's first
+ * of the kind; meritOfReceipt), with the reader's first of each today where it is a member (`asks`, the board's
+ * `receipts` - `{ faction, kind, member, done }`): "Duties here: hold a gate (done today), defend a raided town - standing
+ * each time, more for the day's first of each, and Merit." To a reader not of the guild, "Its members' duties here: ...".
+ * Null for a guild that asks none (the Thieves Guild). The receipts' asks were cards with no Take ("Hall writ"); a card
+ * that cannot be taken is no writ, so they are this line now. AUDIT GUILD3 L2: a member is promised Merit only where its
+ * Merit row here (`merit`, the board's) says it earns some (meritEarnsOf - AUDIT CHAP3 C8's rule, the writ card's): not
+ * before its week in the guild, at the week's cap, nor with the week's Merit another chapter's.
+ * @param {number} faction @param {unknown} asks @param {any} [merit]
+ */
+export function chapterDutiesLine(faction, asks, merit = null) {
+  const kinds = hallReceiptKindsOf(faction);
+  if (!kinds.length) return null;
+  const mine = (Array.isArray(asks) ? asks : []).filter((a) => a?.faction === faction);
+  const member = mine.some((a) => a.member === true);
+  const said = kinds.map((k) => `${DUTY_WORDS[/** @type {'gate' | 'raid'} */ (k)]}${member && mine.some((a) => a.kind === k && a.done === true) ? ' (done today)' : ''}`);
+  const earned = `standing each time, more for the day's first of ${kinds.length > 1 ? 'each' : 'it'}`;
+  return `${member ? 'Duties here' : 'Its members\' duties here'}: ${said.join(', ')} - ${earned}${!member || meritEarnsOf(merit) ? ', and Merit' : ''}.`;
+}
+
 /** The orders as DFU captions their halls (Internal_Strings en id 63 - systems/topicTree.js REGIONAL_BUILDING_NAMES). */
 const ORDER_NAMES = Object.freeze({
   Raven: 'Order of the Raven', Dragon: 'Knights of the Dragon', Owl: 'Knights of the Owl', Candle: 'Order of the Candle',
@@ -581,6 +605,10 @@ export const isChapterWrit = (/** @type {unknown} */ kind) => kind === 'hall' ||
  * max, elsewhere, from }`) - "Merit with the Fighters Guild here this week: 150 of 600", or why it earns none here.
  * @param {{ faction: number, merit: number, max: number, elsewhere: boolean, from: number | null }} m @param {number} nowS
  */
+/** AUDIT CHAP3 C8 (AUDIT GUILD3 L2 moved it here, one rule for the writ card and the Duties line): whether an account's
+ *  Merit row `m` here (the board's) earns Merit now - counted (`from` none: its week in the guild served), not at the
+ *  week's cap, and not this week's Merit another chapter's. */
+export const meritEarnsOf = (/** @type {any} */ m) => !!m && m.from == null && !m.elsewhere && Number(m.merit) < Number(m.max);
 export function meritLineOf(m, nowS) {
   const name = hallPosterName(m?.faction) ?? 'guild';
   if (m.from != null && m.from > nowS) {
@@ -629,13 +657,31 @@ export function strengthAfter(prev, merit, target) {
 }
 /** A Season's end (Seats-Arc 9.1's soft reset): halfway back toward 50, rounded toward 50. */
 export const strengthSeasonEnd = (/** @type {number} */ s) => STRENGTH_START + Math.trunc((Number(s) - STRENGTH_START) / 2);
-/** THE BANDS (5.2's table), each from its floor: Failing 0-19, Steady 20-69, Thriving 70-89, Ascendant 90-100. */
+/** THE BANDS (5.2's table), each from its floor: Failing 0-19, Steady 20-69, Thriving 70-89, Ascendant 90-100.
+ *  GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md): Ascendant is its own - a fifth off, where it stood at Thriving's
+ *  tenth and the Season's Ascendancy event said the rest (the event folded into the band it repeated). */
 export const CHAPTER_BANDS = Object.freeze([
   Object.freeze({ band: 'failing', name: 'Failing', from: 0, price: 1.25, writs: 0.5, shelf: -4 }),
   Object.freeze({ band: 'steady', name: 'Steady', from: 20, price: 1, writs: 1, shelf: 0 }),
   Object.freeze({ band: 'thriving', name: 'Thriving', from: 70, price: 0.9, writs: 1.5, shelf: 4 }),
-  Object.freeze({ band: 'ascendant', name: 'Ascendant', from: 90, price: 0.9, writs: 1.5, shelf: 4 }),
+  Object.freeze({ band: 'ascendant', name: 'Ascendant', from: 90, price: 0.8, writs: 1.5, shelf: 4 }),
 ]);
+/** AUDIT GUILD3 R1: THE FAILING BAND'S FALL - the Decline's (2 Strength a week unless the week's Merit met twice the target),
+ *  folded into the band GUILD3e said it repeated, as the Ascendancy's tenth and High Master were into the Ascendant band
+ *  (CUT A DUPLICATE, NEVER DEPTH: what a cut said that the other did not moves to the other - GUILD3e had dropped it). */
+export const CHAPTER_FAILING_FALL = 2;
+/** ... unless the week's Merit lifts the chapter by this many steps (Merit at this many times the week's target). */
+export const CHAPTER_FAILING_MEETS = 2;
+/** A FAILING WEEK: Strength `s` after the week's own step (strengthAfter), for a chapter that stood at `prev` as the week
+ *  began - CHAPTER_FAILING_FALL more where `prev` is Failing, unless `merit` meets CHAPTER_FAILING_MEETS times `target`. */
+export function failingWeekAfter(/** @type {number} */ prev, /** @type {number} */ s, /** @type {number} */ merit, /** @type {number} */ target) {
+  if (chapterBandOf(prev).band !== 'failing') return s;
+  return Number(merit) >= CHAPTER_FAILING_MEETS * Math.max(1, Number(target) || 0) ? s : Math.max(STRENGTH_MIN, s - CHAPTER_FAILING_FALL);
+}
+/** GUILD3e: the Strength a chapter stands Ascendant from - its Master is High Master while it does. */
+export const CHAPTER_ASCENDANT_FROM = /** @type {{ from: number }} */ (CHAPTER_BANDS.find((b) => b.band === 'ascendant')).from;
+/** A band's name ("Thriving") by its id. */
+const chapterBandNamed = (/** @type {string} */ id) => CHAPTER_BANDS.find((b) => b.band === id)?.name ?? id;
 /** A Strength's band (CHAPTER_BANDS' row) - Steady's for a number that is none. */
 export function chapterBandOf(/** @type {unknown} */ strength) {
   if (typeof strength !== 'number' || !Number.isFinite(strength)) return CHAPTER_BANDS[1];
@@ -649,6 +695,45 @@ export const hallWritCountIn = (/** @type {unknown} */ active, /** @type {unknow
  *  the chapter the subject - "The Knights of the Dragon here is" was no sentence). */
 export function chapterLineOf(/** @type {{ faction: number, strength: number }} */ c) {
   return `The chapter of the ${hallPosterName(c?.faction) ?? 'guild'} here is ${chapterBandOf(c?.strength).name} (Strength ${Number(c?.strength)})`;
+}
+/** A price factor as a player reads it: "a fifth cheaper", "a quarter dearer" - the bands' own fractions, else a share. */
+const priceWords = (/** @type {number} */ f) => {
+  const off = Math.round((1 - f) * 100);
+  const named = /** @type {Record<number, string>} */ ({ 10: 'a tenth cheaper', 20: 'a fifth cheaper', 25: 'a quarter cheaper', [-25]: 'a quarter dearer', [-10]: 'a tenth dearer' });
+  return named[off] ?? (off > 0 ? `${off}% cheaper` : `${-off}% dearer`);
+};
+/** GUILD3d (Guilds-Made-Plain.md): WHAT A BAND DOES to chapter `faction`'s halls, in one sentence the board puts under
+ *  the chapter's line - read off CHAPTER_BANDS and off what the guild's DFU hall sells (chapterDoctrinesFor: training
+ *  where it trains, a shelf where it keeps one, writs everywhere; spells at the Mages Guild and Kynareth's temple alone,
+ *  guildNpcServices.js), so the words never drift from the law nor promise a service the hall has not: "Training and
+ *  spells a tenth cheaper, a richer shelf, half again the writs." A hidden guild's halls are DFU's own on every sheet -
+ *  its band moves its writs alone. An Ascendant chapter's Master is High Master (never a hidden guild's: no title). */
+export function chapterBandEffectsLine(/** @type {unknown} */ strength, /** @type {unknown} */ faction, { shut = false } = {}) {
+  /** @type {{ band: string, price: number, shelf: number, writs: number }} */
+  const b = chapterBandOf(strength);
+  const sold = chapterDoctrinesFor(faction);
+  const sells = sold.includes('training')
+    ? (faction === GUILD_FACTION_IDS.MagesGuild || faction === DIVINES.Kynareth ? 'training and spells' : 'training') : null;
+  // AUDIT GUILD3 R1: a Failing chapter's fall, said where it stands; L5/W8: the High Master a rule of the band - said
+  // whether or not the chair is held this week (the roll says who holds it: chapterRollLines)
+  const fall = b.band === 'failing' ? `it loses ${CHAPTER_FAILING_FALL} Strength more each week its members' Merit lifts it by less than ${CHAPTER_FAILING_MEETS}` : null;
+  const high = b.band === 'ascendant' && isRollFaction(faction) && !hallHidden(faction) ? 'whoever holds its Master\'s chair is its High Master' : null;
+  const cap = (/** @type {string} */ t) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
+  // AUDIT GUILD3 L3: halls shut this Season (a Crackdown's) sell nothing and post no writs - the band says none of them
+  if (shut) return fall || high ? `${cap(/** @type {string} */ (fall ?? high))}.` : null;
+  if (b.band === 'steady') {
+    // AUDIT GUILD3 L4: the usual of what the hall HAS - never a shelf or prices it keeps none of
+    const kept = [sells ? 'prices' : null, sold.includes('shelf') ? 'shelf' : null, 'chapter writs'].filter(Boolean);   // W12: the chapter's writs - a Court's move by no band
+    return `Its halls keep their usual ${kept.length > 1 ? `${kept.slice(0, -1).join(', ')} and ${kept[kept.length - 1]}` : kept[0]}.`;
+  }
+  const parts = [
+    sells && b.price !== 1 ? `${sells} ${priceWords(b.price)}` : null,
+    sold.includes('shelf') && b.shelf !== 0 ? (b.shelf > 0 ? 'a richer shelf' : 'a poorer shelf') : null,
+    b.writs > 1 ? 'half again the chapter writs' : b.writs < 1 ? 'half the chapter writs' : null,   // AUDIT GUILD3 W12
+  ].filter(Boolean);
+  const said = /** @type {string[]} */ (parts).join(', ');
+  const and = fall ?? high;
+  return `${cap(said)}${and ? ` - and ${and}` : ''}.`;
 }
 
 // ─── CHAP3c: THE BANDS ON THE HALLS (Chapters-Arc 5.2) ──────────────
@@ -817,12 +902,14 @@ export function rollBookCap(/** @type {any} */ store) {
   return [...held].sort((a, b) => a - b);
 }
 
-const SEAT_WORDS = Object.freeze({ master: 'the Master\'s seat', officer: 'an officer\'s seat' });
+/** GUILD3a (Guilds-Made-Plain.md, ONE WORD, ONE THING): a chapter's rank 9 is its Master's CHAIR and its rank 8 a COUNCIL
+ *  chair - "seat" is a town's Charter alone, "officer" a player guild's rank. The ids (`master`, `officer`) stand. */
+const SEAT_WORDS = Object.freeze({ master: 'the Master\'s chair', officer: 'a council chair' });
 const listed = (/** @type {string[]} */ names) => (names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
-/** A seat said - "You hold the Master's seat of the Fighters Guild in Anticlere." - or, `held` false, no longer held.
+/** A seat said - "You hold the Master's chair of the Fighters Guild in Anticlere." - or, `held` false, no longer held.
  *  Worded without gender (Seats-Arc 7.4: nothing about a player is guessed). */
 export function seatLineOf(/** @type {{ f: number, region: number, seat: string }} */ s, held = true) {
-  const words = /** @type {Record<string, string>} */ (SEAT_WORDS)[s?.seat] ?? 'a seat';
+  const words = /** @type {Record<string, string>} */ (SEAT_WORDS)[s?.seat] ?? 'a chair';   // AUDIT GUILD3 W14: never the retired word
   return `You ${held ? 'hold' : 'no longer hold'} ${words} of the ${hallPosterName(s?.f) ?? 'guild'} in ${REGION_NAMES[s?.region] ?? 'its region'}.`;
 }
 /** What the tab says of its seats: every seat held at the page's first word (`before` null); after it, each seat newly
@@ -836,13 +923,13 @@ export function seatLinesOf(/** @type {unknown} */ before, /** @type {unknown} *
   const nowAt = new Set(now.map(k));
   return [...now.filter((s) => wasAt.get(k(s)) !== s.seat).map((s) => seatLineOf(s)), ...was.filter((s) => !nowAt.has(k(s))).map((s) => seatLineOf(s, false))];
 }
-/** The book's cap said, once a hold: "The Fighters Guild keeps ranks 8 and 9 as its chapters' seats, won by Merit - your
- *  rank there is 7." Null for no guild. */
+/** The book's cap said, once a hold: "The Fighters Guild keeps ranks 8 and 9 for its chapters' Masters and councils, won
+ *  by Merit - your rank there is 7." Null for no guild. */
 export function bookCappedLine(/** @type {unknown} */ factions) {
   const names = [...new Set(Array.isArray(factions) ? factions : [])].map(hallPosterName).filter(Boolean).map((n) => `the ${n}`);
   if (!names.length) return null;
   const one = names.length === 1, said = listed(names);
-  return `${said.charAt(0).toUpperCase()}${said.slice(1)} ${one ? 'keeps' : 'keep'} ranks 8 and 9 as ${one ? 'its' : 'their'} chapters' seats, won by Merit - your rank there is 7.`;
+  return `${said.charAt(0).toUpperCase()}${said.slice(1)} ${one ? 'keeps' : 'keep'} ranks 8 and 9 for ${one ? 'its' : 'their'} chapters' Masters and councils, won by Merit - your rank there is 7.`;
 }
 
 // ─── CHAP4c: THE CHAPTERS' TITLES (Chapters-Arc 6) ──────────────────
@@ -851,13 +938,14 @@ export function bookCappedLine(/** @type {unknown} */ factions) {
 // player is guessed), so not the guild's own rank titles (Archmage, Matriarch), which the hall's own window keeps.
 // A Master who loses the seat is its Former Master for the rest of the Season. A hidden guild's seat gives no title.
 // CHAP6e (Chapters-Arc 7): a Master in its chapter's Ascendancy is its High Master for the Season, and a Master who held
-// the seat a whole Season keeps "Master of the Fighters Guild, Anticlere, Season 3" for good.
+// the seat a whole Season keeps "Master of the Fighters Guild, Anticlere, Season 3" for good. GUILD3e: High Master while
+// its chapter stands Ascendant (CHAPTER_ASCENDANT_FROM) - the Ascendancy event retired into the band.
 
 /** A chapter's key on a title's claim: its guild faction x 100 + its region (both whole, the region under 100). */
 export const chapterTitleKey = (/** @type {number} */ f, /** @type {number} */ region) => f * 100 + region;
 /** The chapter a title's key names, or null. */
 export const chapterOfTitleKey = (/** @type {unknown} */ k) => (typeof k === 'number' && Number.isSafeInteger(k) && k >= 0 ? { f: Math.floor(k / 100), region: k % 100 } : null);
-const CHAPTER_TITLE_WORDS = Object.freeze({ chaptermaster: 'Master', chapterofficer: 'Officer', formermaster: 'Former Master', highmaster: 'High Master', seasonmaster: 'Master' });
+const CHAPTER_TITLE_WORDS = Object.freeze({ chaptermaster: 'Master', chapterofficer: 'Councillor', formermaster: 'Former Master', highmaster: 'High Master', seasonmaster: 'Master' });   // GUILD3a: rank 8 a Councillor
 /** CHAP6e: the Season a kept title names - a counted Season's, never Season 0's (which crowns no one), inside the claim's bound. */
 const keptSeasonOk = (/** @type {unknown} */ n) => Number.isSafeInteger(n) && /** @type {number} */ (n) >= 1 && /** @type {number} */ (n) <= 9999;
 /** A chapter's title worded off its claim - "Master of the Fighters Guild, Anticlere"; CHAP6e "High Master of the
@@ -875,7 +963,8 @@ export function chapterTitleText(/** @type {unknown} */ title, /** @type {unknow
  * the chapters whose Master's seat it lost this Season - `[{ title, ts }]`, best first: a Master's seat's
  * ('chaptermaster'), an officer's ('chapterofficer'), a Master's seat lost and not held again ('formermaster'), each by
  * guild then region; never a hidden guild's. `season` the Season on the claim. CHAP6e: a Master's seat at a chapter in
- * its Ascendancy (`high`) is marked `high` - the mint signs it 'highmaster' in its place - and first among the Masters';
+ * its Ascendancy (`high` - GUILD3e: a chapter standing Ascendant) is marked `high` - the mint signs it 'highmaster' in
+ * its place - and first among the Masters';
  * `kept` `[{ f, region, season }]` the Seasons it held a Master's seat whole, each 'seasonmaster' with that Season on its
  * claim, last, the newest Season first.
  * @param {Iterable<any>} seats @param {Iterable<any>} lost @param {number} season @param {Iterable<any>} [kept]
@@ -910,10 +999,11 @@ export function chapterFocusesOf(/** @type {unknown} */ faction) {
 export const chapterFocusOk = (/** @type {unknown} */ faction, /** @type {unknown} */ focus) => typeof focus === 'string' && chapterFocusesOf(faction).includes(focus);
 /** The board's line for a chapter's Focus: "The Fighters Guild's Master asks for metals this week." - null for none. */
 export function chapterFocusLineOf(/** @type {unknown} */ faction, /** @type {unknown} */ focus) {
-  return chapterFocusOk(faction, focus) ? `The ${hallPosterName(/** @type {number} */ (faction))}'s Master asks for ${focus} this week.` : null;
+  // AUDIT GUILD3 W7: the CHAPTER's Master - a temple's DFU titles call its rank 8 "Master" (guildVariants.js TEMPLE_RANK_TITLES)
+  return chapterFocusOk(faction, focus) ? `The ${hallPosterName(/** @type {number} */ (faction))} chapter's Master asks for ${focus} this week.` : null;
 }
 /** A CHRONICLE ROW IN WORDS: `{ faction, week, kind, data: { from, to }, name }` - "In the third week of the Season of
- *  Morning Star, Alda took the Master's seat of the Fighters Guild." - null for a row it has no words for or a hidden
+ *  Morning Star, Alda took the Master's chair of the Fighters Guild." - null for a row it has no words for or a hidden
  *  guild's. A character gone since is "A member since gone". Worded without gender. `zero` the Season's (seasonOf). */
 export function chapterChronicleLine(/** @type {any} */ row, /** @type {number | null} */ zero = null) {
   if (row?.kind === 'event' || row?.kind === 'season') return chapterSeasonLine(row);   // CHAP6a: a Season's own lines
@@ -924,8 +1014,8 @@ export function chapterChronicleLine(/** @type {any} */ row, /** @type {number |
   const words = (/** @type {string} */ s) => /** @type {Record<string, string>} */ (SEAT_WORDS)[s];
   let did = null;
   if (!from && words(to)) did = `took ${words(to)} of ${guild}`;
-  else if (from === 'officer' && to === 'master') did = `rose to the Master's seat of ${guild}`;
-  else if (from === 'master' && to === 'officer') did = `gave the Master's seat of ${guild} up, and kept an officer's`;
+  else if (from === 'officer' && to === 'master') did = `rose to the Master's chair of ${guild}`;
+  else if (from === 'master' && to === 'officer') did = `gave the Master's chair of ${guild} up, and kept a council chair`;
   else if (words(from) && !to) did = `lost ${words(from)} of ${guild}`;
   if (!did) return null;
   const who = typeof row?.name === 'string' && row.name ? row.name : 'A member since gone';
@@ -952,7 +1042,7 @@ export function chapterRollTitle(/** @type {unknown} */ faction, /** @type {unkn
   return `The Roll of the ${hallPosterName(/** @type {number} */ (faction))}, ${REGION_NAMES[/** @type {number} */ (region)]}`;
 }
 const namesListed = (/** @type {string[]} */ n) => (n.length < 2 ? n.join('') : `${n.slice(0, -1).join(', ')} and ${n[n.length - 1]}`);
-/** The roll's lines: the chapter's state (the board's chapterLineOf), its Master, its officers - or the seats empty.
+/** The roll's lines: the chapter's state (the board's chapterLineOf), its Master, its council - or the chairs empty.
  *  `chapter` `{ strength, seats }` as the sheet holds it. */
 export function chapterRollLines(/** @type {unknown} */ faction, /** @type {any} */ chapter) {
   const seats = chapterRollSeatsOf(chapter?.seats);
@@ -960,31 +1050,32 @@ export function chapterRollLines(/** @type {unknown} */ faction, /** @type {any}
   const officers = seats.filter((s) => s.seat === 'officer').map((s) => s.name);
   return [
     ...(Number.isFinite(chapter?.strength) ? [`${chapterLineOf({ faction: /** @type {number} */ (faction), strength: chapter.strength })}.`] : []),
-    master ? `Master of the chapter: ${master.name}.` : 'The Master\'s seat stands empty.',
-    officers.length ? `${officers.length > 1 ? 'Its officers' : 'Its officer'}: ${namesListed(officers)}.` : 'No officer\'s seat is held.',
+    // AUDIT GUILD3 W8: an Ascendant chapter's Master is its High Master - the roll says it as the band line does
+    master ? `${chapterBandOf(chapter?.strength).band === 'ascendant' ? 'High Master' : 'Master'} of the chapter: ${master.name}.` : 'The Master\'s chair stands empty.',
+    officers.length ? `Its council: ${namesListed(officers)}.` : 'No council chair is held.',   // GUILD3a: its council, never its "officers"
   ];
 }
 
 // ─── CHAP6a: THE SEASON'S EVENT (Chapters-Arc 7) ────────────────────
 // At the Turning that opens a Season every confirmed chapter draws one event - a pure function of the Season, the
 // chapter's key and a salt, as a Tide is (tideLaw.js) - from weights its last Season moved. The event holds the whole
-// Season: a Decline costs 2 Strength a week unless the week's Merit meets twice the target, a Crackdown's members' own
-// writs earn half again Merit (AUDIT CHAP5 E1) and a chapter under 30 at the Season's end shuts its halls for the next, a Rivalry races two chapters of one
-// region on the Season's Merit and the winner takes 10 Strength from the loser. The Schism's and the Succession's
-// choices are CHAP6b's; what the client shows of every event (an Ascendancy's prices among it) CHAP6c's. No Season
-// counted, no event: every chapter is Calm, as every land's Tide is.
+// Season: a Crackdown's members' own writs earn half again Merit (AUDIT CHAP5 E1) and a chapter under 30 at the Season's
+// end shuts its halls for the next, a Rivalry races two chapters of one region on the Season's Merit and the winner takes
+// 10 Strength from the loser. The Schism's and the Succession's choices are CHAP6b's; what the client shows of every
+// event CHAP6c's. No Season counted, no event: every chapter is Calm, as every land's Tide is.
+// GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md, CUT A DUPLICATE, NEVER DEPTH): five events, where there were seven -
+// the Decline (2 Strength a week) said what the Failing band says, and the Ascendancy (a tenth off, a High Master) what
+// the Ascendant band should; the Ascendant band carries both now (CHAPTER_BANDS, chapterTitlesOf's `high`).
 
 /** The events' own salt, beside the hall writs' and the member writs'. */
 export const CHAPTER_EVENT_SALT = 0x5ea6;
-/** THE EVENTS and their base weights (section 7's table), in the table's order. */
+/** THE EVENTS and their base weights (section 7's table), in the table's order - five (GUILD3e). */
 export const CHAPTER_EVENTS = Object.freeze([
   Object.freeze({ id: 'calm', name: 'Calm', weight: 30 }),
   Object.freeze({ id: 'schism', name: 'Schism', weight: 15 }),
   Object.freeze({ id: 'succession', name: 'Succession', weight: 10 }),
   Object.freeze({ id: 'crackdown', name: 'Crackdown', weight: 10 }),
   Object.freeze({ id: 'rivalry', name: 'Rivalry', weight: 15 }),
-  Object.freeze({ id: 'decline', name: 'Decline', weight: 10 }),
-  Object.freeze({ id: 'ascendancy', name: 'Ascendancy', weight: 10 }),
 ]);
 const EVENT_IDS = CHAPTER_EVENTS.map((e) => e.id);
 /** Whether `v` names an event. */
@@ -1003,10 +1094,6 @@ export const CHAPTER_EVENT_EFFECTS = Object.freeze({
   crackdownHidden: 2, crackdownCurfew: 10, crackdownMerit: 1.5, crackdownShut: 30,
   /** Rivalry: +10 where a rival chapter of the region is Thriving (or Ascendant); the winner takes 10 from the loser. */
   rivalryThriving: 10, rivalrySwing: 10,
-  /** Decline: +15 where Failing; 2 a week unless the week's Merit meets twice the target. */
-  declineFailing: 15, declineFall: 2, declineMeets: 2,
-  /** Ascendancy: +15 where Ascendant; its halls' prices a further tenth off (CHAP6d, the client's). */
-  ascendancyAscendant: 15, ascendancyPrice: 0.9,
 });
 
 /** THE RIVALS (section 8, CALL 5 - the port's own table, never FACTION.TXT): each pair is a Rivalry's draw where both
@@ -1036,12 +1123,11 @@ export function chapterEventWeights({ faction, band = 'steady', masters = 0, riv
   const w = Object.fromEntries(CHAPTER_EVENTS.map((e) => [e.id, e.weight]));
   if (masters >= E.schismMasters) w.schism += E.schismMoved;
   if (chapterDoctrinesFor(faction).length < 2) { w.calm += w.schism; w.schism = 0; }   // AUDIT CHAP5 D3: no two doctrines, no Schism
-  if (band === 'ascendant') { w.succession += E.successionAscendant; w.ascendancy += E.ascendancyAscendant; }
+  if (band === 'ascendant') w.succession += E.successionAscendant;
   if (hallHidden(faction)) w.crackdown *= E.crackdownHidden;
   if (curfew) w.crackdown += E.crackdownCurfew;
   if (rivalBand === null) { w.calm += w.rivalry; w.rivalry = 0; }
   else if (rivalBand === 'thriving' || rivalBand === 'ascendant') w.rivalry += E.rivalryThriving;
-  if (band === 'failing') w.decline += E.declineFailing;
   return CHAPTER_EVENTS.map((e) => w[e.id]);
 }
 
@@ -1071,12 +1157,6 @@ export function chapterRivalPick(/** @type {{ faction: number, strength: number 
   return list.reduce((a, b) => (b.strength > a.strength || (b.strength === a.strength && b.faction < a.faction) ? b : a)).faction;
 }
 
-/** A DECLINE'S WEEK: Strength `s` after the week's own step falls 2 more unless the week's Merit meets twice the target. */
-export function declineAfter(/** @type {number} */ s, /** @type {number} */ merit, /** @type {number} */ target) {
-  const E = CHAPTER_EVENT_EFFECTS;
-  return Number(merit) >= E.declineMeets * Math.max(1, Number(target) || 0) ? s : Math.max(STRENGTH_MIN, s - E.declineFall);
-}
-
 /** A RIVALRY'S END: `[a, b]` the two chapters' Strengths, `[ma, mb]` their Season's Merit - the winner (more Merit)
  *  takes 10 Strength from the loser, never past 100 nor below 0; a tie moves neither. Answers `{ a, b, won }` - `won`
  *  'a', 'b' or null. */
@@ -1099,9 +1179,10 @@ export const crackdownShuts = (/** @type {number} */ s) => Number(s) < CHAPTER_E
 const rivalWords = (/** @type {unknown} */ f) => (isRollFaction(f) && !hallHidden(f) ? `the ${hallPosterName(/** @type {number} */ (f))}` : 'its rival in the shadows');
 /** CHAP6a: A SEASON'S LINE IN WORDS - an 'event' row `{ faction, data: { season, event, ... } }` ("At the end of the Season
  *  of Morning Star, the Fighters Guild won its rivalry with the Thieves Guild.") or a 'season' row, the Master who held the
- *  seat the whole Season ("Through the Season of Morning Star, Alda held the Master's seat of the Fighters Guild.") -
+ *  chair the whole Season ("Through the Season of Morning Star, Alda held the Master's chair of the Fighters Guild.") -
  *  null for a row it has no words for or a hidden guild's. CHAP6b: and the Schism's doctrine, the Succession's heir (the
- *  heir's name is the hall's census's, read in its town - CHAP6c). */
+ *  heir's name is the hall's census's, read in its town - CHAP6c). GUILD3e: a Decline's and an Ascendancy's rows keep
+ *  their words - the two events are retired, and a row written before is history. */
 export function chapterSeasonLine(/** @type {any} */ row) {
   if (!isRollFaction(row?.faction) || hallHidden(row.faction)) return null;
   const season = seatSeasonName(row?.data?.season);
@@ -1109,7 +1190,7 @@ export function chapterSeasonLine(/** @type {any} */ row) {
   const guild = `the ${hallPosterName(row.faction)}`;
   if (row.kind === 'season') {
     const who = typeof row?.name === 'string' && row.name ? row.name : 'A member since gone';
-    return `Through ${season}, ${who} held the Master's seat of ${guild}.`;
+    return `Through ${season}, ${who} held the Master's chair of ${guild}.`;
   }
   const d = row.data;
   const did = d.event === 'decline' ? (d.fell > 0 ? `${guild}'s decline cost it ${d.fell} Strength` : `${guild} held against its decline`)
@@ -1206,24 +1287,25 @@ export function chapterSeasonOf(c) {
 }
 
 // ─── CHAP6d: THE SEASON ON THE HALLS (Chapters-Arc 7) ───────────────
-// What a chapter's Season does to its halls, online, laid over the band (CHAP3c) as the band is laid over DFU: an
-// Ascendancy's halls a further tenth off their training, a spell bought and a spell made; "cheaper training" a further
-// tenth off the training; "a deeper shelf" two qualities more on the shelf (DFU's stock law reads a hall's quality for the
-// count alone - more items, never better ones). Shut halls serve nothing for the Season. Offline, and for a chapter the
-// sheet does not name, the hall is DFU's own.
+// What a chapter's Season does to its halls, online, laid over the band (CHAP3c) as the band is laid over DFU: "cheaper
+// training" a further tenth off the training; "a deeper shelf" two qualities more on the shelf (DFU's stock law reads a
+// hall's quality for the count alone - more items, never better ones). Shut halls serve nothing for the Season. Offline,
+// and for a chapter the sheet does not name, the hall is DFU's own. GUILD3e: an Ascendancy's further tenth is the
+// Ascendant band's own now (CHAPTER_BANDS), never the Season's.
 
 /** The services a Season prices: training, and a spell bought or made. */
 export const CHAPTER_HALL_SERVICES = Object.freeze(['training', 'spells']);
 /** A HALL'S PRICE FACTOR for `service` ('training' or 'spells') by its chapter as the sheet says it (`{ strength, event,
- *  doctrine }` - chapterSheet.js chapterOf's), or 1 for none: its band's (chapterPriceFactor), an Ascendancy's tenth, the
- *  training's doctrine's tenth. CHAP7b: `guildId` the reader's player guild - its patron's members pay the Thriving
- *  band's price whatever the chapter's Strength (Chapters-Arc 8), the Season's tenths on it as on anyone's. */
+ *  doctrine }` - chapterSheet.js chapterOf's), or 1 for none: its band's (chapterPriceFactor), the training's doctrine's
+ *  tenth. CHAP7b: `guildId` the reader's player guild - its patron's members pay the Thriving band's price whatever the
+ *  chapter's Strength (Chapters-Arc 8), the Season's tenth on it as on anyone's. GUILD3e: the BETTER of the two - an
+ *  Ascendant chapter's fifth off is its patron's too, never a patron charged more than a stranger. */
 export function chapterHallFactor(/** @type {any} */ chapter, /** @type {string} */ service, /** @type {string | null} */ guildId = null) {
   if (!chapter) return 1;
   const s = chapterSeasonOf(chapter);
-  const band = chapterPatronMember(chapter, guildId) ? CHAPTER_PATRON_PRICE : chapterPriceFactor(chapter.strength);
-  return band * (s.event === 'ascendancy' ? CHAPTER_EVENT_EFFECTS.ascendancyPrice : 1)
-    * (service === 'training' && s.doctrine === 'training' ? CHAPTER_DOCTRINE_EFFECTS.training : 1);
+  const own = chapterPriceFactor(chapter.strength);
+  const band = chapterPatronMember(chapter, guildId) ? Math.min(own, CHAPTER_PATRON_PRICE) : own;
+  return band * (service === 'training' && s.doctrine === 'training' ? CHAPTER_DOCTRINE_EFFECTS.training : 1);
 }
 /** A HALL'S SHELF QUALITY by its chapter as the sheet says it: its band's step and "a deeper shelf"'s two
  *  (chapterShelfQuality's bounds) - DFU's own quality with no chapter. */
@@ -1294,9 +1376,13 @@ export function chapterPatronBidsOf(/** @type {any} */ bid) {
 }
 const silverOf = (/** @type {number} */ n) => `${n.toLocaleString('en-US')} silver`;
 /** The board's line for a chapter's patron this Season: "Its patron this Season: Grey Lanterns [GLN]." - null for none. */
-export function chapterPatronSheetLine(/** @type {any} */ patron) {
+export function chapterPatronSheetLine(/** @type {any} */ patron, /** @type {unknown} */ faction = null) {
   const p = chapterPatronOf(patron);
-  return p ? `Its patron this Season: ${p.name}${p.tag ? ` [${p.tag}]` : ''}.` : null;
+  if (!p) return null;
+  // AUDIT GUILD3 L6: what the patronage buys, where the hall sells training (chapterHallFactor - the better of the band's
+  // price and Thriving's); W12: its tag as guildTagText writes every guild's, <TAG>
+  const priced = faction != null && chapterDoctrinesFor(faction).includes('training');
+  return `Its patron this Season: ${p.name}${p.tag ? ` <${p.tag}>` : ''}${priced ? ` - its members pay ${chapterBandNamed(CHAPTER_PATRON_BAND)}'s prices here, or the band's where better` : ''}.`;
 }
 /** The board's line for a guildmaster's own bid: "Your guild bids 1,500 silver for its patronage in the Season of First
  *  Seed." - or that it has not bid; null for no bid to say. */
