@@ -289,7 +289,7 @@ test('STEED-UI Cargo, Horse Cart and Cargo\'s door: the wagon\'s load opened as 
 test('STEED-UI the view\'s own word: the toggle turns only where mwViewCanTogglePerspective says - the panel\'s View stands on the same word (mutants: STEEDUI-view-unguarded)', () => {
   const src = rd('src/player/mwView.js');
   assert.match(src, /export function mwViewTogglePerspective\(\) \{\n {2}if \(!mwViewCanTogglePerspective\(\)\) return false;/);
-  assert.match(src, /export function mwViewCanTogglePerspective\(\) \{\n {2}if \(heldThird\) return false;\n {2}if \(eotbLane\(\) \|\| mwCamera\.thirdPerson\(\)\) return true;\n {2}return !!fpArm\.canThirdPerson\(\) && !mounted;\n\}/);
+  assert.match(src, /export function mwViewCanTogglePerspective\(\) \{\n {2}if \(heldThird \|\| heldFirst\) return false;[^\n]*\n {2}if \(eotbLane\(\) \|\| mwCamera\.thirdPerson\(\)\) return true;\n {2}return !!fpArm\.canThirdPerson\(\) && !mounted;\n\}/);
 });
 
 test('STEED-UI dressed by the Plus kit: the bar a small window, the buttons the kit\'s presses', () => {
