@@ -275,8 +275,14 @@ export const RENOWN_XP_HOUR_MAX = 15_000;
 export const RENOWN_TRACKS_MAX = 60;
 /** A character's name as the service keeps it for the account card - display only, bounded. */
 export const RENOWN_NAME_MAX = 32;
-/** How often the client sends what it has earned. */
+/** How often the client sends what it has earned - while its answer would say something the page cannot (SCALE4h,
+ *  net/renownTracker.js renownReportSoon: a rise, the hour's bound, a total or a room not yet said). */
 export const RENOWN_REPORT_MS = 60_000;
+/** SCALE4h (2026-10-11, the plan's "10k writes"; bible/11-Multiplayer/Scale-Arc.md SCALE4h): HOW OFTEN IT GOES
+ *  OTHERWISE. A fighter's report every minute was half the statements and half the rows a fighting player-hour wrote to
+ *  the one primary (tools/hotWritesBench.mjs), and most of its answers said nothing the page did not know: the bar draws
+ *  what is earned and not yet answered (ui/hudRenown.js, the ghost), so the answer only moves the ghost into the fill. */
+export const RENOWN_COALESCE_MS = 5 * 60_000;
 /** AUDIT RENOWN1 DATA-4/GAME-9: A REPORT'S OWN NAME - sixteen hex digits the client draws once per report and sends
  *  again, unchanged, with every retry of that same report, so a report the service took whose answer was lost is
  *  answered again rather than credited twice. */

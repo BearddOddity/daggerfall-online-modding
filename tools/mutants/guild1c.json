@@ -65,11 +65,12 @@
   {
     "name": "GUILD1c-mint-guild-off-the-body",
     "file": "server-account/src/index.js",
-    "old": "const guild = renownCharacterOk(body.character) && body.guild === true ? await guildBadgeOf(ctx, who.player.id, body.character) : null;",
-    "new": "const guild = typeof body.gi === 'string' ? { gi: body.gi, gt: body.gt, gm: body.gm } : renownCharacterOk(body.character) && body.guild === true ? await guildBadgeOf(ctx, who.player.id, body.character) : null;",
+    "old": "const guild = renownCharacterOk(body.character) && body.guild === true ? await guildBadgeOf(ctx, who.player.id, body.character, member) : null;",
+    "new": "const guild = typeof body.gi === 'string' ? { gi: body.gi, gt: body.gt, gm: body.gm } : renownCharacterOk(body.character) && body.guild === true ? await guildBadgeOf(ctx, who.player.id, body.character, member) : null;",
     "tests": [
       "test/guild1c.test.js"
-    ]
+    ],
+    "note": "SCALE4f part two (2026-10-10) re-aimed it by content: the mint reads the membership once (guilds.js mintMemberOf)."
   },
   {
     "name": "GUILD1c-mint-tag-unanswered",
@@ -92,11 +93,12 @@
   {
     "name": "GUILD1c-every-character-the-accounts-guild",
     "file": "server-account/src/guilds.js",
-    "old": "WHERE m.player = ? AND m.char_id = ?')\n    .bind(playerId, character).first();",
-    "new": "WHERE m.player = ?')\n    .bind(playerId).first();",
+    "old": "WHERE m.player = ? AND m.char_id = ?').bind(playerId, character).first()) ?? null;",
+    "new": "WHERE m.player = ?').bind(playerId).first()) ?? null;",
     "tests": [
       "test/guild1c.test.js"
-    ]
+    ],
+    "note": "SCALE4f part two (2026-10-10) re-aimed it by content: the mint reads the membership once (guilds.js mintMemberOf)."
   },
   {
     "name": "GUILD1c-removal-names-the-remover",
@@ -209,12 +211,12 @@
   {
     "name": "GUILD1c-guild-line-to-everyone",
     "file": "server/src/index.js",
-    "old": "for (const [other, b] of this._all()) if (b.id && b.gi === a.gi) this._send(other, line);",
+    "old": "for (const other of [...(this._byGuild().get(a.gi) ?? [])]) this._send(other, line);",
     "new": "for (const [other, b] of this._all()) if (b.id) this._send(other, line);",
     "tests": [
       "test/guild1c.test.js"
     ],
-    "note": "SCALE5a (re-aimed by content): the fans walk the index in place (`_fanBut`, `_sayLine`)."
+    "note": "SCALE5a (re-aimed by content): the fans walk the index in place (`_fanBut`, `_sayLine`). SCALE5c (re-aimed by content): the guild line off the guild index"
   },
   {
     "name": "GUILD1c-guild-line-from-no-guild",

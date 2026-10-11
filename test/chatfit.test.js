@@ -167,7 +167,7 @@ test('CHAT-FIT: by source - the host hands the panel a `badgeOf` read off the AC
   // Local's) are built over that same session, so one session still answers the badge and the row
   assert.match(w, /badgeOf: \(id\) => chatSessionOf\(chatLog\?\.active\)\?\.badgeOf\?\.\(id\) \?\? null,/);
   assert.match(w, /roster: \(\) => chatRosterOf\(chatLog\?\.active\),/, 'the same session the roster reads');
-  assert.match(w, /const chatRosterOf = \(tabId\) => \{\s*const s = chatSessionOf\(tabId\);[^\n]*\n\s*if \(tabId === 'party'\) return partyRosterSource\(social\?\.party, s, [^\n]*\n\s*if \(tabId === 'guild'\) return guildRosterSource\(s, [^\n]*\n\s*if \(tabId === 'local'\) return localRosterSource\(s, /, 'every roster over the one session');   // GUILD1c: the Guild's over it too
+  assert.match(w, /const chatRosterOf = \(tabId\) => \{\s*const s = chatSessionOf\(tabId\);[^\n]*\n\s*if \(tabId === 'party'\) return partyRosterSource\(social\?\.party, s, [^\n]*\n\s*if \(tabId === 'guild'\) \{ s\?\.sendGuildWho\?\.\(\); return guildRosterSource\(s, [^\n]*\n\s*if \(tabId === 'local'\) return localRosterSource\(s, /, 'every roster over the one session');   // GUILD1c: the Guild's over it too
   const p = rd('src/ui/chatPanel.js');
   assert.match(p, /const paintNames = \(\) => \{\s*if \(nameColor\) \{[\s\S]*?\}\s*paintBadges\(\);\s*\};/);
   assert.match(p, /if \(r\.badgeKey === key\) continue;/, 'a line is re-laid only on a change');

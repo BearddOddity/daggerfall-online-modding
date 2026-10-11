@@ -101,12 +101,25 @@ async function memberRow(db, playerId, charId) {
   return db.prepare('SELECT rowid AS rid, * FROM guild_members WHERE player = ? AND char_id = ?').bind(playerId, charId).first();
 }
 
-/** GUILD1c: THE CHARACTER'S GUILD AS A TOKEN CARRIES IT - `{ gi, gt, gm }` (the guild's id, its tag, the member row)
- *  or null for a character in none. The mint's one read, so the tag beside a name is the roster's own row. */
-export async function guildBadgeOf({ db }, playerId, character) {
+/** SCALE4f part two (2026-10-10; bible/11-Multiplayer/Scale-Arc.md SCALE4f): THE NAMED CHARACTER'S MEMBERSHIP AS THE
+ *  MINT READS IT, ONCE - its member row (its rowid, its guild, its rank, when it joined) and its guild's (id, tag and
+ *  heraldry; null where the guild's row is gone) - which guildBadgeOf, seatTurning.js seatBadgeOf and seatRibbons.js
+ *  ribbonOf each read again for themselves, three statements of one row. Each takes it as `member` and keeps its own
+ *  law; asked without it, each reads as it always has. Null for a character in no guild. */
+export async function mintMemberOf({ db }, playerId, character) {
   if (!charOk(character)) return null;
-  const r = await db.prepare('SELECT m.rowid AS rid, g.id AS gid, g.tag AS tag FROM guild_members m JOIN guilds g ON g.id = m.guild_id WHERE m.player = ? AND m.char_id = ?')
-    .bind(playerId, character).first();
+  return (await db.prepare('SELECT m.rowid AS rid, m.guild_id AS guild_id, m.rank AS rank, m.joined_at AS joined_at, g.id AS gid, g.tag AS tag, g.heraldry AS heraldry'
+    + ' FROM guild_members m LEFT JOIN guilds g ON g.id = m.guild_id WHERE m.player = ? AND m.char_id = ?').bind(playerId, character).first()) ?? null;
+}
+
+/** GUILD1c: THE CHARACTER'S GUILD AS A TOKEN CARRIES IT - `{ gi, gt, gm }` (the guild's id, its tag, the member row)
+ *  or null for a character in none. The mint's one read, so the tag beside a name is the roster's own row. SCALE4f part
+ *  two: or the row mintMemberOf read (`member`), its guild there or not. */
+export async function guildBadgeOf({ db }, playerId, character, member = undefined) {
+  if (!charOk(character)) return null;
+  const r = member !== undefined ? (member && member.gid != null ? member : null)
+    : await db.prepare('SELECT m.rowid AS rid, g.id AS gid, g.tag AS tag FROM guild_members m JOIN guilds g ON g.id = m.guild_id WHERE m.player = ? AND m.char_id = ?')
+      .bind(playerId, character).first();
   return r ? { gi: r.gid, gt: r.tag, gm: `m${r.rid}` } : null;
 }
 /** GUILD1c: a member row as a badge. */

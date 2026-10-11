@@ -328,5 +328,6 @@ test('DISCORD-GATES config: the webhook is a Worker SECRET the repository never 
   assert.ok(!/discord(?:app)?\.com\/api\/webhooks\/\d/.test(toml), 'and no webhook URL is written down');
   const idx = rd('server/src/index.js');
   assert.match(idx, /heraldWebhook\(this\.env\?\.GATE_DISCORD_WEBHOOK\)/);
-  assert.match(idx, /heraldRole\(this\.env\?\.GATE_DISCORD_ROLE\)/);
+  assert.match(idx, /role: heraldRole\(role\('gateRole'\)\)/);   // PIN MOVED (SCALE5b): the role through relayCfgValue - the hub's setting when it holds one, else GATE_DISCORD_ROLE (net/relayCfg.js RELAY_CFG_VARS, test/scale5b.test.js)
+  assert.match(idx, /const cfg = this\._relayCfg, role = \(k\) => relayCfgValue\(cfg, this\.env, k\);/);
 });

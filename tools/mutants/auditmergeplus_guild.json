@@ -263,11 +263,12 @@
   {
     "name": "A6-the-mint-signs-a-guild-unasked",
     "file": "server-account/src/index.js",
-    "old": "const guild = renownCharacterOk(body.character) && body.guild === true ? await guildBadgeOf(ctx, who.player.id, body.character) : null;",
-    "new": "const guild = renownCharacterOk(body.character) ? await guildBadgeOf(ctx, who.player.id, body.character) : null;",
+    "old": "const guild = renownCharacterOk(body.character) && body.guild === true ? await guildBadgeOf(ctx, who.player.id, body.character, member) : null;",
+    "new": "const guild = renownCharacterOk(body.character) ? await guildBadgeOf(ctx, who.player.id, body.character, member) : null;",
     "tests": [
       "test/guild1c.test.js"
-    ]
+    ],
+    "note": "SCALE4f part two (2026-10-10) re-aimed it by content: the mint reads the membership once (guilds.js mintMemberOf)."
   },
   {
     "name": "A6-the-client-never-asks-for-the-guild",

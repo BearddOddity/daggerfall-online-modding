@@ -365,11 +365,12 @@
   {
     "name": "SD9A-the-hello-hands-nothing",
     "file": "server/src/index.js",
-    "old": "        if (isSocialRoom(a.key) && who.subject) { try { await this._sdReceiptTo(ws, who.subject, now); }",
-    "new": "        if (false) { try { await this._sdReceiptTo(ws, who.subject, now); }",
+    "old": "    if (sub) { try { await this._sdReceiptTo(ws, sub, now); }",
+    "new": "    if (false) { try { await this._sdReceiptTo(ws, sub, now); }",
     "tests": [
       "test/sd9a_receipt.test.js"
-    ]
+    ],
+    "note": "SCALE5c (re-aimed by content): the hub hello words moved into _hubHelloWords"
   },
   {
     "name": "SD9A-an-expired-one-handed",

@@ -60,8 +60,9 @@ export const SESSION_IDLE_S = 365 * 24 * 60 * 60;
 /** SCALE1 (2026-09-30, the scaling audit - Mac: "set the stage for a larger player base"): HOW STALE `last_seen` MAY
  *  GROW before a request writes it again. Every authenticated call wrote both rows, two of its three D1 writes, and
  *  D1 has one writer for the whole service. Nothing reads the column finer than this: the idle bound is a year, and
- *  the device list orders by it. */
-export const SESSION_TOUCH_S = 10 * 60;
+ *  the device list orders by it. SCALE4h (2026-10-11, "10k writes"): an hour, not ten minutes - still nothing reads it
+ *  finer, and a session's touch is one hot row the plan named (bible/11-Multiplayer/Scale-Arc.md SCALE4h). */
+export const SESSION_TOUCH_S = 60 * 60;
 
 const b64url = (bytes) => {
   let bin = '';

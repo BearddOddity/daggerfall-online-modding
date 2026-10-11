@@ -151,42 +151,48 @@ export async function listRealm({ db, nowS }, /** @type {string} */ playerId) {
   return (r?.results ?? []).map((row) => view(row, nowS));
 }
 
-/** REALM-DOOR (2026-09-29, the field): IS THIS ONE OF THE ACCOUNT'S REALM CHARACTERS? The identity mint asks it of the
- *  character a client names and signs the answer (`rc`), and the relay's door refuses a no - so online is the realm's at
- *  the servers, not only in the new build's boot. A realm id of this account's own, standing; anything else is not: an
- *  offline character's id (what a build from before the realm names), another account's character, one deleted, none. */
-export async function realmCharacterHeld({ db }, /** @type {string} */ playerId, /** @type {unknown} */ id) {
-  if (typeof id !== 'string' || !REALM_ID_RE.test(id)) return false;
-  // INT9 (AUDIT): AND IN PLAY - a lease held. The token's `ci` is whose record a death in the zone drops from, and its `cl`
-  // and `wa` what a referee reads: a tab playing one character named a poor other (its lease freed at the join) and its
-  // deaths dropped the other's record
-  return !!(await db.prepare('SELECT 1 FROM realm_characters WHERE id = ? AND player = ? AND dead_at IS NULL AND lease IS NOT NULL').bind(id, playerId).first());   // LEGACY7: never a tombstone
-}
-
 /** ARENA4b: the highest level a token's `cl` claim says - the summary's own bound (realmSummaryOf's `level`). */
 export const REALM_LEVEL_CLAIM_MAX = 1000;
-/** ARENA4b: THE LEVEL ON A REALM CHARACTER'S TILE - which the identity mint signs as `cl` beside `rc`. INT7: THE LEVEL
- *  THE JUDGE TRUSTS (`level_seen` - verdict.js trustedLevel: the save's own, never risen faster than play allows) once a
- *  checkpoint was judged; before one, its summary's `level`, the word its client's checkpoint wrote (realmSummaryOf
- *  projects it - AUDIT PRE-MERGE 1003 S2's "never read against the save", now read against it). Null for anything else:
- *  not one of this account's realm characters, no summary yet, a level outside 1..REALM_LEVEL_CLAIM_MAX. */
-export async function realmLevelOf({ db }, /** @type {string} */ playerId, /** @type {unknown} */ id) {
-  if (typeof id !== 'string' || !REALM_ID_RE.test(id)) return null;
-  const row = await db.prepare('SELECT summary, level_seen FROM realm_characters WHERE id = ? AND player = ?').bind(id, playerId).first();
-  let summary = null;
-  try { summary = row?.summary ? JSON.parse(row.summary) : null; } catch { summary = null; }
-  const lv = row?.level_seen ?? summary?.level;
-  return Number.isSafeInteger(lv) && lv >= 1 && lv <= REALM_LEVEL_CLAIM_MAX ? lv : null;
-}
 
-/** INT7: A REALM CHARACTER'S ARMS as its last judged checkpoint found them (verdict.js, `arms_top` and `arms_bow` - the
- *  most reach of its pack's lawful weapons, a lawful bow) - which the identity mint signs as `wa` beside `rc`. Null
- *  before its first judged checkpoint since INT7, and for anything that is not one of this account's realm characters. */
-export async function realmArmsOf({ db }, /** @type {string} */ playerId, /** @type {unknown} */ id) {
-  if (typeof id !== 'string' || !REALM_ID_RE.test(id)) return null;
-  const row = await db.prepare('SELECT arms_top, arms_bow FROM realm_characters WHERE id = ? AND player = ?').bind(id, playerId).first();
-  const wa = row && row.arms_top != null ? [row.arms_top, row.arms_bow === 1 ? 1 : 0] : null;
-  return armsIssuable(wa) ? /** @type {[number, 0|1]} */ (wa) : null;
+/** WHAT THE IDENTITY MINT SIGNS OF THE CHARACTER IT IS MINTED FOR - `{ rc, cl, wa, house }`, one read of its row.
+ *  - `rc` REALM-DOOR (2026-09-29, the field): IS THIS ONE OF THE ACCOUNT'S REALM CHARACTERS? The relay's door refuses a
+ *    0, so online is the realm's at the servers, not only in the new build's boot. A realm id of this account's own,
+ *    standing - LEGACY7: never a tombstone - and INT9 (AUDIT): IN PLAY, a lease held (the token's `ci` is whose record a
+ *    death in the zone drops from, and its `cl` and `wa` what a referee reads: a tab playing one character named a poor
+ *    other, its lease freed at the join, and its deaths dropped the other's record). Anything else is 0: an offline
+ *    character's id (what a build from before the realm names), another account's, one deleted, none.
+ *  - `cl` ARENA4b: THE LEVEL ON ITS TILE. INT7: the level the judge trusts (`level_seen` - verdict.js trustedLevel: the
+ *    save's own, never risen faster than play allows) once a checkpoint was judged; before one, its summary's `level`,
+ *    the word its client's checkpoint wrote. Null outside 1..REALM_LEVEL_CLAIM_MAX, or with no summary yet.
+ *  - `wa` INT7: ITS ARMS as its last judged checkpoint found them (verdict.js `arms_top` and `arms_bow`: the most reach of
+ *    its pack's lawful weapons, a lawful bow), within the claim's law (identityToken.js armsIssuable). Null before its
+ *    first judged checkpoint since INT7.
+ *  - `house` LEGACY7 part two: ITS HOUSE (src/net/houseLaw.js) - its line's surname, the member's given name, a
+ *    Bloodline's mark, the generation's numeral (legacy.js houseOn: null for a character of no line, and for a name the
+ *    name filter refuses - a house is shown to every player, as an account's name is).
+ *  The three are read only for a character that is the realm's (`rc` 1), as the mint signs them only then.
+ *  SCALE4f (2026-10-10, Mac: "really future proof our archetecture while also increasing performance"; bible
+ *  11-Multiplayer/Scale-Arc.md SCALE4f): THE FOUR READS OF ONE ROW, IN ONE. These were four functions and four
+ *  statements of the same realm_characters row (realmCharacterHeld, realmLevelOf, realmArmsOf, legacy.js realmHouseOf),
+ *  asked by every mint - and a relay deploy's wave asks the mint of every player at once. One statement answers exactly
+ *  what the four answered: test/scale4f.test.js holds it to them, as they stood at acct106, over every state a row can be
+ *  in. */
+export async function realmMintFacts({ db }, /** @type {string} */ playerId, /** @type {unknown} */ id) {
+  const none = { rc: 0, cl: null, wa: null, house: null };
+  if (typeof id !== 'string' || !REALM_ID_RE.test(id)) return none;
+  const row = await db.prepare('SELECT r.dead_at, r.lease, r.summary, r.level_seen, r.arms_top, r.arms_bow, r.person_id AS person, l.record AS record'
+    + ' FROM realm_characters r LEFT JOIN lineages l ON l.player = r.player AND l.id = r.lineage_id WHERE r.id = ? AND r.player = ?').bind(id, playerId).first();
+  if (!row || row.dead_at != null || row.lease == null) return none;
+  let summary = null;
+  try { summary = row.summary ? JSON.parse(row.summary) : null; } catch { summary = null; }
+  const lv = row.level_seen ?? summary?.level;
+  const arms = row.arms_top != null ? [row.arms_top, row.arms_bow === 1 ? 1 : 0] : null;
+  return {
+    rc: 1,
+    cl: Number.isSafeInteger(lv) && lv >= 1 && lv <= REALM_LEVEL_CLAIM_MAX ? lv : null,
+    wa: armsIssuable(arms) ? /** @type {[number, 0|1]} */ (arms) : null,
+    house: houseOn(row.record, row.person),   // no line, no record: none (houseOn's own null)
+  };
 }
 
 /** ONE CHARACTER IN PLAY AN ACCOUNT: every lease of this account but `keep`'s is dropped. */

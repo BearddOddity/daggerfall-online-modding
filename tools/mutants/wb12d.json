@@ -2339,17 +2339,18 @@
   {
     "name": "AUDIT-WB12d-T-relay-hello-word-in-every-room",
     "file": "server/src/index.js",
-    "old": "        if (isSocialRoom(a.key)) {\n          try {\n            const r = await this._riteOf();",
-    "new": "        if (true) {\n          try {\n            const r = await this._riteOf();",
+    "old": "        if (isSocialRoom(a.key)) await this._hubHelloWords(ws, m, who.subject, now);",
+    "new": "        await this._hubHelloWords(ws, m, who.subject, now);",
     "tests": [
       "test/wb12d_rite_relay.test.js",
       "test/wb12d_rite_law.test.js",
       "test/wb12d_rite_world.test.js",
       "test/wb12d_rite_host.test.js",
-      "test/brokercage.test.js"
+      "test/brokercage.test.js",
+      "test/soc1_hub.test.js",
+      "test/sd3_relay.test.js"
     ],
-    "equivalent": true,
-    "why": "the replay runs in a chat room's hello alone (the `if (chat)` block): the hub keeps the circles, and a region's channel keeps no rite key - a cell, whose ledger keeps `cl` (BROKER-CAGE), never reaches it"
+    "note": "SCALE5c (re-aimed by content): the hub hello words, rite among them, moved into _hubHelloWords - said in every channel AUDIT SCALE II D-5: recorded equivalent until the audit found pins that kill it - test/soc1_hub.test.js, test/sd3_relay.test.js; it said: the replay runs in a chat room's hello alone (the `if (chat)` block): the hub keeps the circles, and a region's channel keeps no rite key - a cell, whose ledger keeps `cl` (BROKER-CAGE), never reaches it"
   },
   {
     "name": "AUDIT-WB12d-T-relay-hello-word-past-collapse",

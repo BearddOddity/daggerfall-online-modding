@@ -110,11 +110,12 @@
   {
     "name": "HALOTHIN-halos-every-pose",
     "file": "src/net/online.js",
-    "old": "      if (!whole && !haloPoseDue(this._haloPosed.get(h.ws), out, now) && !this._haloAlone(room, out)) { this.stats.haloThinned++; continue; }",
+    "old": "      if (!whole && !this._rfOn.get(h.ws) && !haloPoseDue(this._haloPosed.get(h.ws), out, now) && !this._haloAlone(room, out)) { this.stats.haloThinned++; continue; }",
     "new": "      if (false) { this.stats.haloThinned++; continue; }",
     "tests": [
       "test/halothin.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content at the merge): the relay's referee word (`rf`) is one more reason a halo goes whole."
   },
   {
     "name": "HALOTHIN-last-not-kept",
@@ -137,11 +138,12 @@
   {
     "name": "HALOTHIN-last-per-room",
     "file": "src/net/online.js",
-    "old": "      if (!whole && !haloPoseDue(this._haloPosed.get(h.ws), out, now) && !this._haloAlone(room, out)) { this.stats.haloThinned++; continue; }\n      try { h.ws.send(s ??= JSON.stringify({ t: 'pose', p: out })); this.stats.sent++; went = true; this._haloPosed.set(h.ws, { x: out.x, z: out.z, mv: out.mv | 0, at: now }); } catch { /* the close will say */ }",
-    "new": "      if (!whole && !haloPoseDue(this._haloPosed.get(h), out, now) && !this._haloAlone(room, out)) { this.stats.haloThinned++; continue; }\n      try { h.ws.send(s ??= JSON.stringify({ t: 'pose', p: out })); this.stats.sent++; went = true; this._haloPosed.set(h, { x: out.x, z: out.z, mv: out.mv | 0, at: now }); } catch { /* the close will say */ }",
+    "old": "      if (!whole && !this._rfOn.get(h.ws) && !haloPoseDue(this._haloPosed.get(h.ws), out, now) && !this._haloAlone(room, out)) { this.stats.haloThinned++; continue; }\n      try { h.ws.send(s ??= JSON.stringify({ t: 'pose', p: out })); this.stats.sent++; went = true; this._haloPosed.set(h.ws, { x: out.x, z: out.z, mv: out.mv | 0, at: now }); } catch { /* the close will say */ }",
+    "new": "      if (!whole && !this._rfOn.get(h.ws) && !haloPoseDue(this._haloPosed.get(h), out, now) && !this._haloAlone(room, out)) { this.stats.haloThinned++; continue; }\n      try { h.ws.send(s ??= JSON.stringify({ t: 'pose', p: out })); this.stats.sent++; went = true; this._haloPosed.set(h, { x: out.x, z: out.z, mv: out.mv | 0, at: now }); } catch { /* the close will say */ }",
     "tests": [
       "test/halothin.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content at the merge): the relay's referee word (`rf`) is one more reason a halo goes whole."
   },
   {
     "name": "HALOTHIN-whole-unread",
