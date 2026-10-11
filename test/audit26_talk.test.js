@@ -56,7 +56,9 @@ test('F016: the static NPC name bank is the REGION\'s, and the race path is gone
   assert.equal((wm.match(/nameBank: currentNameBank\(\)/g) ?? []).length, 1, 'the one static-NPC name derivation');
   // DISC29-H added the SEVENTH, PresentNPCInfo again: a quest stand's Person looked at in Info mode says "You see
   // <name>" off the layout data its click would stamp, so the look and the click call one person one thing.
-  assert.equal((wm.match(/npcDisplayName\(/g) ?? []).length, 7, 'every static-NPC name site calls it');
+  // FIELD BUGS 2026-10-11g QUEST-NAME added the EIGHTH (PIN MOVED): the plaque names a quest stand's Person (World
+  // Tooltips' StaticNPC arm) off the same layout data, through the same helper - the plaque, Info and the click one name.
+  assert.equal((wm.match(/npcDisplayName\(/g) ?? []).length, 8, 'every static-NPC name site calls it');
   // (WORLD-HOVER added three: the dungeon plaque's, the interior
   // plaque's and the street's. Every hover arm reads the same bank as
   // the click beside it, or the two would call one person two things.)

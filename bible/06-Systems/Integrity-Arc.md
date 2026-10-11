@@ -224,6 +224,14 @@ and the bucket keeps no debt while it only measures, so the line staff set start
 held; `budget-set` writes the line and `enforce: true`. From then a gain past the bucket holds the trade ('budget') until
 play pays it back. The first numbers (`BUDGET_DEFAULT`) are a guess the measure exists to replace - **OPEN**, every one.
 
+**HELD-SIDE (FIELD BUGS 2026-10-11g, the Discord's "Cant trade after yesterdays character lockout").** The trade's hold
+refusal named "a character in this trade" to both sides, and a player whose partner was held read it as their own. The
+service keeps the held side with the word (`realm_trades.why` `trade-held:a`) and tells each side `held` ('mine' or
+'theirs', the word itself unchanged for an older client); the client says whose, and mine in the words of my own hold's
+notice (`TRADE_HELD_NOTICES`, now in `net/realmTradeLaw.js`, re-exported by `systems/itemIds.js`). No road from
+shoplifting to a hold was found - the budget is the one measure that sees theft, and it holds only under `enforce`.
+The record and staff's check: `01-Overview/Field-Bugs-2026-10-11g.md` HELD-SIDE.
+
 ### INT6 - the review (`server-account/src/review.js`, `tools/realmReview.mjs`)
 
 A developer's alone: `/v1/mod/realm-holds` (the held and flagged, each with its last finding), `realm-findings` (a
