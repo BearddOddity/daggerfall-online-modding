@@ -13,7 +13,7 @@ import {
   cellRoomOfWire, PIXEL_UNITS,
 } from '../src/net/wire.js';
 import { serpentTimes, serpentSiteKey, sameSerpentSite, SERPENT_BRAIN_V, SERPENT_NATIVE_PER_M } from '../src/net/serpentLaw.js';
-import { SERPENT_TICK_MS, SERPENT_OPENING_MS, FAN_R, ADMIT_R, ENGAGE_R, SERPENT_WAKE_SEQ, serpentWoke } from '../src/net/serpentBrain.js';
+import { SERPENT_TICK_MS, SERPENT_OPENING_MS, FAN_R, ADMIT_R, ENGAGE_R, SERPENT_WAKE_SEQ, SERPENT_FIGHTERS_MAX, serpentWoke } from '../src/net/serpentBrain.js';
 import { readSerpentReceipt, SERPENT_RECEIPT_TTL_S } from '../src/net/serpentReceipt.js';
 import { fakeRooms } from './fakeRoom.mjs';
 
@@ -31,6 +31,11 @@ const words = (ws, k) => ws.sent.filter((m) => m.t === 'serpent' && (!k || m.k =
 const IN = (s, o = {}) => ({ k: 'in', d: DAY, bv: SERPENT_BRAIN_V, lv: 20, hl: 4, sx: s.sx, sz: s.sz, ...o });
 const idOf = (s) => serpentFightId(DAY, serpentSiteKey(s.sx, s.sz));
 const fightAt = (r, s) => r.room._serpents?.get(idOf(s)) ?? null;
+/** SERPENT4: a fight filled to SERPENT_FIGHTERS_MAX with wrecks that each had a part in it - the refusal left a newcomer
+ *  while it swims, now that no storm closes its waters (they stood after the seal; `from` a fighter's record to copy). */
+function fillFight(f, from) {
+  for (let i = 0; Object.keys(f.players).length < SERPENT_FIGHTERS_MAX; i++) f.players[`acct-fill-${i}`] = { ...from, name: `F${i}`, dealt: 1e6, wreck: true, retired: true };
+}
 /** A fight swum where a blow from its waters lands, its next attack held off. */
 function surfaced(f, now) {
   f.legs = [{ k: 1, at: now - 30_000, x: -60, z: 0, yw: 0, v: 11, r: 60, sd: 1, j: 1 }];
@@ -114,12 +119,12 @@ test('AUDIT SERPENT S1: a ship refused a seat, between two fights, watches the o
     const a = r.connect(), x = r.connect();
     await r.hello(a, 'peer-0001', at(A, 120, 0)); await r.hello(x, 'peer-0005', at(B, 120, 0));
     await say(a, IN(A)); await say(x, IN(B));
-    set(TT.sealAt + 1);
+    fillFight(fightAt(r, A), fightAt(r, A).players['acct-peer-0001']);   // PIN MOVED: SERPENT4 - its waters full, never closed
     const late = r.connect();
     await r.hello(late, 'peer-0007', at(A, -1000, 0));   // 1000 m off the true site, toward the forged one
     assert.ok(1000 < ADMIT_R && Math.hypot(A.sx - B.sx, 0) / SERPENT_NATIVE_PER_M - 1000 < FAN_R, 'about both');
     await say(late, IN(A));
-    assert.equal(words(late).at(-1).m, 'the storm has closed its waters');
+    assert.equal(words(late).at(-1).m, 'the waters are full');
     fanned.clear();
     const n = words(late).length;
     for (let i = 0; i < 40; i++) { set(now() + SERPENT_TICK_MS); if (r.alarm.at != null && now() >= r.alarm.at) await r.fire(); }
@@ -162,13 +167,18 @@ test('AUDIT SERPENT S1: AT MOST SERPENT_SITES_MAX SITES A DAY, ONE AN ACCOUNT - 
     assert.equal(fightAt(r, site(2)), null);
     assert.equal(r.store.has(`${SERPENT_FIGHT_KEY}:${idOf(site(2))}`), false, 'and forgotten in storage');
     assert.deepEqual(r.store.get(SERPENT_FIGHTS_KEY).sort(), [0, 1, 3].map((k) => idOf(site(k))).sort());
-    // a site after the storm has closed its waters stands nothing
+    // a site after it has dived stands nothing (PIN MOVED: SERPENT4 - once the storm closed its waters; they are open
+    // until it dives now)
     r.room._serpents.delete(idOf(site(0)));
     const g = r.connect(); await r.hello(g, 'peer-0008', at(site(5), 0, 40));
     set(TT.sealAt + 1);
     await say(g, IN(site(5)));
-    assert.deepEqual(words(g).map((w) => w.k), ['no']);
-    assert.equal(words(g)[0].m, 'the storm has closed its waters');
+    assert.ok(fightAt(r, site(5))?.players['acct-peer-0008'], 'SERPENT4: a site after the storm stands - its waters open');
+    r.room._serpents.delete(idOf(site(5)));
+    set(TT.soundAt + 1);
+    await say(g, IN(site(5)));
+    assert.deepEqual(words(g).filter((w) => w.k === 'no').map((w) => w.m), ['the serpent is gone']);
+    assert.equal(fightAt(r, site(5)), null, 'no fight born that nobody may join');
     assert.equal(fightAt(r, site(5)), null, 'no fight born that nobody may join');
   });
 });
@@ -267,11 +277,13 @@ test('AUDIT SERPENT S7/B8/S9/E4/S8/T2: the relay\'s smaller laws - a refused sho
     assert.ok(Math.abs(f.max - (max - share)) < 1e-6, 'her share out');
     await say(free, { k: 'wr', w: 0 });
     assert.ok(Math.abs(f.max - max) < 1e-6, 'and back');
-    // S7: a ship refused a seat goes on firing - not heard, never junk
+    // S7: a ship refused a seat goes on firing - not heard, never junk (PIN MOVED: SERPENT4 - refused a full fight's seat;
+    // after the seal she joins)
     set(TT.sealAt + 1);
     const late = r.connect(); await r.hello(late, 'peer-0003', at(A, 150, 0));
+    fillFight(f, f.players['acct-peer-0001']);
     await say(late, IN(A));
-    assert.equal(words(late).at(-1).m, 'the storm has closed its waters');
+    assert.equal(words(late).at(-1).m, 'the waters are full');
     for (let i = 0; i < 40; i++) await say(late, { k: 'hit', d: 10, z: 0 });
     assert.equal(late.closed, null, 'never closed for it');
     assert.equal(r.room._meterOf(late).junk ?? 0, 0, 'never counted junk');
