@@ -85,9 +85,11 @@ export function createShotField(deps) {
   }
   /** A cask of a sunk ship's cargo, worth `lot` (NAV-D's); `owner` (AUDIT NAV1, online #15) the player whose sea it
    *  floats in, when another's - hauled in here, it is only claimed of them. CAPT-WATERS: `deep` a ship of the deep
-   *  waters' - her casks rolled richer (navalHost.js pickFlotsam). */
-  function dropFlotsam({ id, pos, lot = 0, from = null, owner = null, deep = false }) {
-    floaters.push({ kind: 'flotsam', id, from, lot, owner, deep: !!deep, pos: [...pos], born: clock, life: FLOTSAM_LIFE, phase: random() * Math.PI * 2 });
+   *  waters' - her casks rolled richer (navalHost.js pickFlotsam). CAPT-BOARD: a contract's wreck's cask a string lot
+   *  of its own (navalHost.js SITE_LOT) and its own `life`.
+   *  @param {{ id: string, pos: number[], lot?: number|string, from?: string|null, owner?: string|null, deep?: boolean, life?: number }} f */
+  function dropFlotsam({ id, pos, lot = 0, from = null, owner = null, deep = false, life = FLOTSAM_LIFE }) {
+    floaters.push({ kind: 'flotsam', id, from, lot, owner, deep: !!deep, pos: [...pos], born: clock, life, phase: random() * Math.PI * 2 });   // CAPT-BOARD: a wreck's casks their own `life`
   }
 
   const nearestHit = (targets, a, b, radius, shooter) => {

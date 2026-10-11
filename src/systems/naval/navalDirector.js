@@ -183,7 +183,8 @@ export function createNavalDirector({ random = Math.random } = {}) {
    *  RELIEF_SALT stream - on the ring about them, facing them, her class the navy's at the level - or null. */
   function reliefSpawn(seed, ctx, nearest, at) {
     const r = mulberry32(((seed >>> 0) ^ RELIEF_SALT) >>> 0);
-    if (!(r() < RELIEF_CHANCE)) return null;
+    const roll = r();
+    if (!ctx.reliefSure && !(roll < RELIEF_CHANCE)) return null;   // CAPT-BOARD: an Admiral's crown always answers (the draw taken either way)
     const cls = classFor('navy', ctx.level ?? 1, r());
     if (!cls) return null;
     for (let i = 0; i < SPAWN_TRIES; i++) {

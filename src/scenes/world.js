@@ -593,7 +593,11 @@ import { windWidgetFrameUrl as csaWindWidgetFrameUrl, waveDerivedUrl as csaWaveD
 import { WAVE_FRAME_COUNT as CSA_WAVE_FRAME_COUNT, waveDitherOf as csaWaveDitherOf } from '../systems/comeSailAwayWaves.js';   // CSA-F
 import { ComeSailAwayRenderer, softParticleTexture as csaSoftParticleTexture } from '../render/comeSailAwayRender.js';   // CSA-F: the waves' and the particles' passes
 import { createNavalHost, hullBoxOf as navalHullBoxOf, NAVAL_SAVE_VENDOR, NAVAL_TAG_RANGE } from './navalHost.js';   // NAV-H: the sea fight - the Iliac Bay's ships, the guns, boarding, the law and the word
-import { createCaptainLedger, CAPTAIN_SAVE_VENDOR, perksOf, PERKS_REFUSED_AT, logLines } from '../systems/naval/captainLedger.js';   // CAPT-LOG: the captain's ledger - the log, the crowns' regard, the ranks, the letter of marque
+import { createCaptainLedger, CAPTAIN_SAVE_VENDOR, perksOf, PERKS_REFUSED_AT, logLines } from '../systems/naval/captainLedger.js';
+import { createHarbourOffice } from './harbourOffice.js';
+import { mulberry32 } from '../combat/bloodArt.js';   // CAPT-BOARD: a site's point off its seed
+import { CHART_TEMPLATE } from '../systems/naval/treasureCharts.js';   // CAPT-CHARTS: a treasure chart read   // CAPT-BOARD: the harbourmaster's board, the contracts, the letters
+import { mintDeed } from '../systems/comeSailAwayItems.js';   // CAPT-BOARD: the Admiralty's carrack's deed, the shelf's own mint   // CAPT-LOG: the captain's ledger - the log, the crowns' regard, the ranks, the letter of marque
 import { navalLootWorth } from '../systems/naval/navalTransfer.js';   // CAPT-LOG: what plunder is worth to the log
 import { watersOf } from '../systems/naval/navalDirector.js';   // CAPT-WATERS: the coast's waters, the open and the deep
 import { draftOf as navalDraftOf } from '../systems/naval/shipLife.js';   // AUDIT GN2-PF6: a hull's draft, hull 2's off her keel as she stands
@@ -9745,6 +9749,46 @@ export async function bootWorld(canvas, renderer, params, status) {
     _navalPortPxAt = { key, d: Number.isFinite(d) ? d : null };
     return _navalPortPxAt.d;
   };
+  /** CAPT-BOARD: every port of the map (Travel Options' - travelPorts.js) as the harbour board reads them - `{ key (its
+   *  map pixel), name, px, py, region, crown }` - found once the map's directory stands. */
+  let _navalPortList = null;
+  const navalPortList = () => {
+    if (!mapDict) return [];
+    if (_navalPortList) return _navalPortList;
+    const out = new Map();
+    for (const id of new Set(PORT_LOCATION_IDS)) {
+      const s = mapDict.get(id & 0x000fffff);
+      if (!s) continue;
+      const at = getPixelFromPixelID(s.id);
+      const name = maps.getRegion(s.regionIndex)?.mapNames?.[s.mapIndex];
+      const key = `${at.x},${at.y}`;
+      if (!name || out.has(key)) continue;
+      out.set(key, { key, name, px: at.x, py: at.y, region: s.regionIndex, crown: navalCrownOf(at.x, at.y, navalCapitals(), s.regionIndex).name });
+    }
+    _navalPortList = [...out.values()];
+    return _navalPortList;
+  };
+  /** CAPT-BOARD: the map's port within a pixel of the player (the nearest), or null - asked once a pixel. */
+  let _navalPortHereAt = null;
+  const navalPortHere = () => {
+    const p = playerTravelPixel(), key = `${p.x},${p.y}`;
+    if (_navalPortHereAt?.key === key) return _navalPortHereAt.port;
+    let port = null, best = Infinity;
+    for (const q of navalPortList()) { const d = Math.max(Math.abs(q.px - p.x), Math.abs(q.py - p.y)); if (d <= 1 && d < best) { best = d; port = q; } }
+    _navalPortHereAt = { key, port };
+    return port;
+  };
+  /** CAPT-BOARD: a held contract's waters in the scene - open water within map pixel (px, py), a point of nine off its
+   *  seed (the pixel's middle third first), or null where none of them is open water or the pixel is not near. */
+  const navalSitePoint = (px, py, seed) => {
+    const r = mulberry32((seed >>> 0) ^ 0x517e);
+    for (let i = 0; i < 9; i++) {
+      const fx = i === 0 ? 0.35 + r() * 0.3 : r(), fz = i === 0 ? 0.35 + r() * 0.3 : r();
+      const [x, z] = state.localFromWorld((px + fx) * RAID_NATIVE_PIXEL, (499 - py + fz) * RAID_NATIVE_PIXEL);
+      if (Number.isFinite(x) && Number.isFinite(z) && navalIsWater(x, z, 0)) return [x, tvSeaY(), z];
+    }
+    return null;
+  };
   /** SHIP-LIFE (systems/naval/shipLife.js): the port town within a pixel of the player - its location's key and its
    *  footprint in the scene NOW (the native rect, locationWorldRect, through the floating origin's localFromWorld), which
    *  the naval host finds its harbour off - or null where no port stands near. The town asked once a pixel. */
@@ -9980,6 +10024,8 @@ export async function bootWorld(canvas, renderer, params, status) {
   }
   /** AUDIT NAV1 (the helm): the shipwright's window over the world (navalPlunderDoor.js's yard door). */
   function navalOpenYard(model) {
+    model.office = () => harbourOffice.model({ uid: model.uid ?? null });   // CAPT-BOARD: the harbourmaster's tab
+    model.exchange = () => harbourOffice.exchange({ uid: model.uid ?? null, cargo: model.cargo?.() ?? null });   // CAPT-TRADE: the exchange's tab
     const win = createNavalYardOverlay({ model });
     if (!win) return false;
     townTalk.showOverlay(win);
@@ -9999,6 +10045,35 @@ export async function bootWorld(canvas, renderer, params, status) {
   const captainSay = () => {
     for (const c of captainLedger.takeRankChanges()) setMidScreenText(c.to.rank > c.from.rank ? `The crown of ${c.crown} names you ${c.to.title}!` : `The crown of ${c.crown} no longer counts you ${c.from.title}.`, 4);
   };
+  // CAPT-BOARD (bible/03-World/Captains-Sea.md): THE HARBOUR OFFICE - the board of the port the captain lies at, the
+  // contracts held and what the sea did to them, the letters a rank buys; the boards on the world's day, the terms on
+  // the captain's own clock
+  const harbourOffice = createHarbourOffice({
+    ledger: captainLedger,
+    now: () => Math.floor(playerTicker.ownMinutes),
+    day: () => Math.floor(worldMinutes() / 1440),
+    level: () => playerEntity.level ?? 1,
+    gold: () => totalGoldAmount(playerEntity),
+    pay: (n) => { deductGold(playerEntity, n); surfacePlayer(); },
+    credit: (n) => { addGold(playerEntity, n); surfacePlayer(); },
+    say: (text, s) => townTalk.say(text, s),
+    mid: (text, s) => setMidScreenText(text, s),
+    notorietyOf: (crown) => naval?.notorietyOf?.(crown) ?? 0,
+    port: () => navalPortHere(),
+    ports: () => navalPortList(),
+    seaAt: (x, y) => seaPixel(x, y),
+    waters: () => { const p = playerTravelPixel(); return navalCrownOf(p.x, p.y, navalCapitals(), _questRegionIndex()).name; },
+    carrack: (price, port) => { const deed = mintDeed(4, 0, csaNewItemUid(), price); return !!titleDeed(deed, { port: { name: port.name } }); },
+    stow: (hold, item) => addItem(hold, item),   // CAPT-TRADE: goods into her hold
+  });
+  // CAPT-CHARTS: a treasure chart USED is read - its cache marked on the captain's charts and the chart spent (its words
+  // on the pack's line either way)
+  registerItemUseHandler(CHART_TEMPLATE, (item, collection) => {
+    const r = harbourOffice.readChart(item);
+    const i = r.ok && Array.isArray(collection) ? collection.indexOf(item) : -1;
+    if (i >= 0) collection.splice(i, 1);
+    return { kind: 'treasureChart', text: r.text };
+  });
   const captainDeps = {
     deed: (act, cls, o) => { const r = captainLedger.deed(act, cls, o); captainSay(); return r; },
     regard: (crown, n) => { const r = captainLedger.regard(crown, n); captainSay(); return r; },
@@ -10007,9 +10082,19 @@ export async function bootWorld(canvas, renderer, params, status) {
     prize: (name, worth) => captainLedger.prize(name, worth),
     marque: () => captainLedger.marque(Math.floor(playerTicker.ownMinutes)),
     tearMarque: () => captainLedger.tearMarque(),
+    // CAPT-BOARD: what the sea did to the contracts held, their waters, and a rank's favours at sea
+    event: (ev) => { const r = harbourOffice.event(ev); captainSay(); return r; },
+    sites: () => harbourOffice.sites(),
+    yardDiscount: () => harbourOffice.perksHere().yard,
+    seasonedHires: () => harbourOffice.perksHere().seasoned,
+    reliefSure: (crown) => harbourOffice.perksAt(crown).relief,
+    chartFor: (cls, seed, deep) => harbourOffice.chartFor(cls, seed, deep),   // CAPT-CHARTS: a chart among a pirate's papers
+    raiseCache: (id) => harbourOffice.raiseCache(id),   // CAPT-CHARTS: a cache raised and paid
   };
   naval = createNavalHost({
     captain: captainDeps,   // CAPT-LOG: the ledger's door
+    bountyOf: (e) => (e?.bounty ? harbourOffice.bountyWords(e.bounty) : null),   // CAPT-BOARD: a bounty's purse on the glass's card
+    sitePoint: (px, py, seed) => navalSitePoint(px, py, seed),   // CAPT-BOARD: a held contract's waters in the scene
     worth: (items) => navalLootWorth(items),   // CAPT-LOG: plunder's worth to the log
     packedItems: packedItemsCodec,   // COMPANION-KIT: the companions' packs saved as the cargo's are - AUDIT WK-D11: the one codec
     pool: csa,
@@ -10027,7 +10112,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       dir: [Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)],
     }),
     level: () => playerEntity.level ?? 1,
-    where: () => { const p = playerTravelPixel(); const nearPort = navalNearPort(); return { px: p.x, py: p.y, region: _questRegionIndex(), day: Math.floor(worldMinutes() / 1440), nearPort, waters: watersOf({ nearPort, portPx: navalPortPx() }), capitals: navalCapitals(), cityLights: isCityLightsOn(minuteNow()), night: isNight(minuteNow()) }; },   // AUDIT WK-N5: the lanterns' hours and the dark's, apart - CAPT-WATERS: the deep waters
+    where: () => { const p = playerTravelPixel(); const nearPort = navalNearPort(); return { px: p.x, py: p.y, region: _questRegionIndex(), day: Math.floor(worldMinutes() / 1440), nearPort, port: nearPort ? navalPortHere() : null, waters: watersOf({ nearPort, portPx: navalPortPx() }), capitals: navalCapitals(), cityLights: isCityLightsOn(minuteNow()), night: isNight(minuteNow()) }; },   // CAPT-BOARD: the port lain at   // AUDIT WK-N5: the lanterns' hours and the dark's, apart - CAPT-WATERS: the deep waters
     say: (text, seconds) => townTalk.say(text, seconds),
     mid: (text, seconds) => setMidScreenText(text, seconds),
     shake: (amount) => betterAmbience.weaponKick(amount),   // FIELD-GUN6's door: a shake that is not a wound, under the player's own maxShake
@@ -10159,7 +10244,8 @@ export async function bootWorld(canvas, renderer, params, status) {
       crowns: captainLedger.crowns().map((c) => { const n = naval?.notorietyOf?.(c.crown) ?? 0; return { ...c, notoriety: n, perks: perksOf(c.rank.rank, n) }; }),
       refusedAt: PERKS_REFUSED_AT,
       marque: mq ? { crown: mq.crown, days: Math.max(1, Math.ceil((mq.until - at) / 1440)) } : null,
-      contracts: [],
+      contracts: harbourOffice.pageContracts(),   // CAPT-BOARD: the contracts held
+      charts: harbourOffice.pageCharts(),   // CAPT-CHARTS: the caches marked
       log: logLines(captainLedger.log),
     };
   }
@@ -10172,7 +10258,10 @@ export async function bootWorld(canvas, renderer, params, status) {
   const navalStow = () => { if (!_loading) naval?.stowPlunder?.(); };
   let _navalWasOn = null;
   /** The frame: the switch read, the sounds loaded at the first sea, the host's step, the flames' clock. */
+  let _officeTickT = 0;   // CAPT-BOARD: the contracts' terms asked after every OFFICE_TICK_S
   function navalFrame(dt) {
+    _officeTickT -= dt;
+    if (_officeTickT <= 0 && !gamePaused() && !_loading) { _officeTickT = 2; harbourOffice.tick(); captainSay(); }   // CAPT-BOARD: a term run out
     const on = navalOn();
     if (on !== _navalWasOn) { _navalWasOn = on; naval.setEnabled(on); if (!on) { navalFlames.clear(); closeNavalPlunder(); closeNavalYard(); drawNavalHud(null); drawNavalTags([]); } }
     if (!on) return;

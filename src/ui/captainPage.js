@@ -73,6 +73,18 @@ export function drawCaptainPage(detail, rerender, { el, divider, meter = null } 
     }
     detail.append(cl);
   }
+  // CAPT-CHARTS: the caches marked from treasure charts
+  if (m.charts?.length) {
+    detail.append(divider(`Treasure charts (${m.charts.length})`));
+    const ch = el('div', 'hld-list');
+    for (const k of m.charts) {
+      const row = el('div', 'hld-refit');
+      row.append(el('span', 'hld-name', k.title));
+      if (k.line) row.append(el('span', 'hld-sub', k.line));
+      ch.append(row);
+    }
+    detail.append(ch);
+  }
   detail.append(divider('The log'));
   const log = el('div', 'hld-list');
   for (const [label, value] of m.log ?? []) {

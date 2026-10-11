@@ -24,6 +24,7 @@
 // the letter is torn up.
 
 import { CROWNS } from './navalShips.js';
+import { CONTRACT_KINDS, CONTRACTS_MAX, STANDING_FAILED, STANDING_ABANDONED, advance, expired, restoreContract } from './harbourBoard.js';
 
 export const CAPTAIN_SAVE_VENDOR = 'Captain';
 export const CAPTAIN_SAVE_VERSION = 1;
@@ -81,8 +82,12 @@ export const LEGEND_STANDING = 10;
 export const LEAGUE_M = 4828;
 /** The trades a log counts ships by - the Bay's three, and the Etheric Sea's two. */
 export const LOG_TRADES = Object.freeze(['pirate', 'merchant', 'navy', 'ether', 'legend']);
-/** The contracts a log counts by kind (the harbour board's - systems/naval/harbourBoard.js). */
-export const LOG_CONTRACTS = Object.freeze(['bounty', 'hunt', 'delivery', 'escort', 'salvage', 'survey']);
+/** The contracts a log counts by kind (the harbour board's - systems/naval/harbourBoard.js CONTRACT_KINDS). */
+export const LOG_CONTRACTS = CONTRACT_KINDS;
+/** The board's offers taken, remembered (so a taken one is off its board for the rest of its day) - the newest this many. */
+export const BOARD_TAKEN_MAX = 64;
+/** CAPT-CHARTS: the treasure charts a captain keeps marked at once. */
+export const CHARTS_MAX = 8;
 /** The legends a log keeps by name, and its other lists, at most this many. */
 export const LOG_LIST_MAX = 32;
 
@@ -130,6 +135,13 @@ export function createCaptainLedger() {
   let standing = zeros(crownNames());
   /** @type {{ crown: string, until: number } | null} */
   let marque = null;
+  /** CAPT-BOARD: the contracts held (harbourBoard.js takeContract's), and the board's offers taken. */
+  let contracts = [];
+  let taken = [];
+  /** CAPT-TRADE: the day's dealing at the last exchange dealt with - `{ port, day, bought: { id: n }, sold: { id: n } }`. */
+  let dealt = null;
+  /** CAPT-CHARTS: the treasure charts read and marked, their caches not yet raised (treasureCharts.js chartSite's). */
+  let charts = [];
 
   const rankChanges = [];
   /** A crown's regard moved by `n`, kept in its band - the rank it crossed into said back (a promotion or a fall). */
@@ -195,13 +207,83 @@ export function createCaptainLedger() {
     marque: (now) => (marque && Number.isFinite(now) && now < marque.until ? { ...marque } : null),
     setMarque(crown, until) { if (crownNames().includes(crown) && Number.isFinite(until)) marque = { crown, until: Math.floor(until) }; },
     tearMarque() { const was = marque; marque = null; return was; },
+    // ── CAPT-BOARD: the contracts ──
+    /** The contracts held. */
+    contracts: () => contracts.slice(),
+    /** The board's offers taken (their ids). */
+    taken: () => taken.slice(),
+    /** A contract taken on (harbourBoard.js takeContract's) - refused past CONTRACTS_MAX, or one held already. */
+    holdContract(c) {
+      if (!c || contracts.length >= CONTRACTS_MAX || contracts.some((x) => x.id === c.id)) return false;
+      contracts.push(c);
+      taken.push(c.id);
+      if (taken.length > BOARD_TAKEN_MAX) taken.splice(0, taken.length - BOARD_TAKEN_MAX);
+      return true;
+    },
+    /**
+     * WHAT HAPPENED AT SEA, TO THE CONTRACTS HELD (harbourBoard.js advance's events): each one done or failed off the
+     * list - done, its crown's regard (its `standing`), its kind's count and its purse in the log; failed,
+     * STANDING_FAILED - answered `{ done, failed, moved }` (`moved` the ones come further) for the host to pay and say.
+     */
+    contractEvent(ev) {
+      const done = [], failed = [], moved = [];
+      for (const c of [...contracts]) {
+        const was = c.done | 0;
+        const r = advance(c, ev);
+        if (r === 'done') { finish(c, true); done.push(c); } else if (r === 'failed') { finish(c, false); failed.push(c); } else if ((c.done | 0) !== was) moved.push(c);
+      }
+      return { done, failed, moved };
+    },
+    /** Every contract whose term is out at `now` (the captain's clock) failed and off the list. */
+    expireContracts(now) {
+      const failed = contracts.filter((c) => expired(c, now));
+      for (const c of failed) finish(c, false);
+      return failed;
+    },
+    /** A contract given up: off the list, STANDING_ABANDONED with its crown. Answers it, or null. */
+    abandonContract(id) {
+      const c = contracts.find((x) => x.id === id);
+      if (!c) return null;
+      contracts = contracts.filter((x) => x !== c);
+      regard(c.crown, STANDING_ABANDONED);
+      return c;
+    },
+    // ── CAPT-CHARTS: the charts marked ──
+    /** The charts marked. */
+    charts: () => charts.slice(),
+    /** A chart read, marked - never one twice, never past CHARTS_MAX. */
+    markChart(c) {
+      if (!c || typeof c.id !== 'string' || charts.some((x) => x.id === c.id) || charts.length >= CHARTS_MAX) return false;
+      charts.push({ ...c });
+      return true;
+    },
+    /** A chart's cache raised: off the charts, and the log's `maps`. Answers it, or null. */
+    raiseChart(id) {
+      const c = charts.find((x) => x.id === id);
+      if (!c) return null;
+      charts = charts.filter((x) => x !== c);
+      ledger.note('maps');
+      return c;
+    },
+    // ── CAPT-TRADE: the exchange's dealing ──
+    /** The captain's dealing at `port`'s exchange on `day` - `{ bought, sold }`, none at another port or another day. */
+    dealtAt(port, day) { return dealt && dealt.port === port && dealt.day === day ? { bought: { ...dealt.bought }, sold: { ...dealt.sold } } : { bought: {}, sold: {} }; },
+    /** `n` of a good bought from (`side` 'bought') or sold to ('sold') `port`'s exchange on `day`. */
+    deal(port, day, id, n, side) {
+      if (!(dealt && dealt.port === port && dealt.day === day)) dealt = { port, day, bought: {}, sold: {} };
+      if (side === 'bought' || side === 'sold') dealt[side][id] = (dealt[side][id] | 0) + Math.max(0, n | 0);
+    },
     // ── the save ──
-    newSaveData: () => ({ v: CAPTAIN_SAVE_VERSION, log: newLog(), standing: zeros(crownNames()), marque: null }),
-    getSaveData: () => ({ v: CAPTAIN_SAVE_VERSION, log: JSON.parse(JSON.stringify(log)), standing: { ...standing }, marque: marque ? { ...marque } : null }),
+    newSaveData: () => ({ v: CAPTAIN_SAVE_VERSION, log: newLog(), standing: zeros(crownNames()), marque: null, contracts: [], taken: [], dealt: null, charts: [] }),
+    getSaveData: () => ({ v: CAPTAIN_SAVE_VERSION, log: JSON.parse(JSON.stringify(log)), standing: { ...standing }, marque: marque ? { ...marque } : null, contracts: JSON.parse(JSON.stringify(contracts)), taken: taken.slice(), dealt: dealt ? JSON.parse(JSON.stringify(dealt)) : null, charts: JSON.parse(JSON.stringify(charts)) }),
     restoreSaveData(r) {
       log = newLog();
       standing = zeros(crownNames());
       marque = null;
+      contracts = [];
+      taken = [];
+      dealt = null;
+      charts = [];
       rankChanges.length = 0;
       if (!r || typeof r !== 'object') return;
       const l = r.log && typeof r.log === 'object' ? r.log : {};
@@ -216,8 +298,26 @@ export function createCaptainLedger() {
         standing[c] = Number.isFinite(v) ? Math.max(STANDING_MIN, Math.min(STANDING_MAX, Math.round(v))) : 0;
       }
       if (r.marque && crownNames().includes(r.marque.crown) && Number.isFinite(r.marque.until)) marque = { crown: r.marque.crown, until: Math.floor(r.marque.until) };
+      contracts = (Array.isArray(r.contracts) ? r.contracts : []).map(restoreContract).filter((c) => c && crownNames().includes(c.crown)).slice(0, CONTRACTS_MAX);
+      taken = (Array.isArray(r.taken) ? r.taken : []).filter((id) => typeof id === 'string').slice(-BOARD_TAKEN_MAX);
+      const d = r.dealt;
+      if (d && typeof d.port === 'string' && Number.isFinite(d.day)) {
+        const counts = (o) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([, n]) => Number.isFinite(n) && n > 0).map(([k, n]) => [k, Math.floor(n)]));
+        dealt = { port: d.port, day: Math.floor(d.day), bought: counts(d.bought), sold: counts(d.sold) };
+      }
+      charts = (Array.isArray(r.charts) ? r.charts : []).filter((c) => c && typeof c.id === 'string' && Number.isFinite(c.px) && Number.isFinite(c.py) && Number.isFinite(c.seed))
+        .map((c) => ({ id: c.id, seed: c.seed >>> 0, px: Math.floor(c.px), py: Math.floor(c.py), near: String(c.near ?? ''), words: String(c.words ?? '') })).slice(0, CHARTS_MAX);
     },
   };
+  /** CAPT-BOARD: a contract ended - off the list; done, its crown's regard, its kind's count and its purse; failed, the
+   *  crown's regard lost. */
+  function finish(c, ok) {
+    contracts = contracts.filter((x) => x !== c);
+    if (!ok) { regard(c.crown, STANDING_FAILED); return; }
+    regard(c.crown, c.standing);
+    ledger.note(c.kind);
+    ledger.note('earned', c.pay);
+  }
   return ledger;
 }
 

@@ -97,9 +97,9 @@ test('CAPT-LOG the ledger: a deed logged by her trade and her crown\'s regard mo
 test('CAPT-LOG the log\'s counts: the notes, the leagues (a frame\'s nonsense refused), the richest prize kept while none richer comes, the deepest Etheric waters; a letter of marque held on the captain\'s own clock until its end, torn up at will (mutants: each count, the prize\'s keep, the letter\'s end)', () => {
   const l = createCaptainLedger();
   for (const f of ['claimed', 'maps', 'islands']) l.note(f);
-  l.note('plunder', 1250.7); l.note('earned', 900); l.note('traded', 400); l.note('bounty'); l.note('bounty'); l.note('escort');
+  l.note('plunder', 1250.7); l.note('earned', 900); l.note('traded', 400); l.note('bounty'); l.note('bounty'); l.note('salvage');
   l.note('plunder', -50); l.note('plunder', NaN);
-  assert.deepEqual([l.log.claimed, l.log.maps, l.log.islands, l.log.plunder, l.log.earned, l.log.traded, l.log.contracts.bounty, l.log.contracts.escort], [1, 1, 1, 1250, 900, 400, 2, 1]);
+  assert.deepEqual([l.log.claimed, l.log.maps, l.log.islands, l.log.plunder, l.log.earned, l.log.traded, l.log.contracts.bounty, l.log.contracts.salvage], [1, 1, 1, 1250, 900, 400, 2, 1]);
   l.sailed(LEAGUE_M * 2); l.sailed(-5); l.sailed(1e9);
   assert.equal(leagueWords(l.log.sailed), '2.0 leagues');
   l.prize('The Red Wake', 800); l.prize('The Gilded Cog', 500); l.prize('The Sea Hag', 1200); l.prize('A Sloop', 300);
@@ -124,7 +124,7 @@ test('CAPT-LOG the save: its own slot (Captain, v1) - the log, the crowns\' rega
   const b = createCaptainLedger();
   b.restoreSaveData(JSON.parse(JSON.stringify(a.getSaveData())));
   assert.deepEqual(b.getSaveData(), a.getSaveData());
-  assert.deepEqual(b.newSaveData(), { v: 1, log: newLog(), standing: { Daggerfall: 0, Wayrest: 0, Sentinel: 0 }, marque: null });
+  assert.deepEqual(b.newSaveData(), { v: 1, log: newLog(), standing: { Daggerfall: 0, Wayrest: 0, Sentinel: 0 }, marque: null, contracts: [], taken: [], dealt: null, charts: [] });   // CAPT-BOARD: and the contracts held, the board's taken; CAPT-TRADE: the day's dealing
   const c = createCaptainLedger();
   c.restoreSaveData({ log: { sunk: { pirate: -4, merchant: 'x' }, plunder: 1e20, legends: [5, 'Ok'], best: { name: 3 } }, standing: { Wayrest: 5000, Daggerfall: 'q', Morrowind: 9 }, marque: { crown: 'Morrowind', until: 10 } });
   assert.deepEqual([c.log.sunk.pirate, c.log.sunk.merchant, c.log.legends, c.log.best], [0, 0, ['Ok'], null]);

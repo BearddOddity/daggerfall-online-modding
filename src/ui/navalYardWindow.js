@@ -14,6 +14,16 @@
 // deps = { model, onExit(reason) } - `model` the host's (navalHost.js yardModel): { name, ship() -> { hull, maxHull,
 // sail, maxSail, crew, maxCrew, barrels, wrecked, barrelsAboard? }, offer() -> navalYard.js yardOffer's, buy(id) ->
 // { ok, id, n, cost, whole, short? }, buyAll() -> { ok, cost, bought, whole }, prices, hasBarrels? }.
+//
+// CAPT-BOARD (2026-10-11, bible/03-World/Captains-Sea.md): THE HARBOURMASTER'S TAB beside the shipwright's, where the
+// world hands an `office()` (scenes/harbourOffice.js model): the port and the captain's rank with its crown, today's
+// board - each contract's words, purse, term and the crown's regard it is worth, and its Take - the contracts held, how
+// far each has come and its term left, and Give up; the letters a rank buys (a letter of marque, the Admiralty's
+// carrack). Each press says its word under the title, as the yard's do.
+//
+// CAPT-TRADE: THE EXCHANGE'S TAB, where the world hands an `exchange()` (scenes/harbourOffice.js exchange): each good
+// the port deals in - what it is to the port (made here, wanted here), its price to buy and to sell today, how many more
+// the exchange deals in, what the boat at the quay carries of it - and Buy 1, Buy 10, Sell 1, Sell all.
 import { closeOnOutsideTap } from './enhancedOverlays.js';
 import { overlayAction } from './input.js';
 import { injectEnhancedStyle, injectEnhancedFonts } from './enhancedStyle.js';
@@ -28,6 +38,16 @@ export const NAVAL_YARD_CSS = `
 .dfnaval-yardrow span { font-size: 12px; color: #b9ab93; }
 .dfnaval-yardrow .dfnaval-btn { min-width: 0; font-size: 13px; padding: 4px 10px; }
 @media (max-width: 560px) { .dfnaval-yardrow { grid-template-columns: 1fr; gap: 4px; } }
+.dfnaval-tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.dfnaval-tabs .dfnaval-btn { min-width: 0; font-size: 13px; padding: 4px 12px; }
+.dfnaval-tabs .dfnaval-btn.on { color: #f3cf86; }
+.dfnaval-officerow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; white-space: normal; }
+.dfnaval-officerow b { display: block; font-weight: normal; letter-spacing: 0.04em; color: #efe8d6; }
+.dfnaval-officerow span { display: block; font-size: 12px; color: #b9ab93; }
+.dfnaval-officerow i { display: block; font-style: normal; font-size: 12px; color: #f3cf86; }
+.dfnaval-officerow .dfnaval-btn { min-width: 0; font-size: 13px; padding: 4px 10px; }
+.dfnaval-officerow .dfnaval-presses { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 560px) { .dfnaval-officerow { grid-template-columns: 1fr; gap: 4px; } }
 `;
 
 const WORDS = Object.freeze({
@@ -89,6 +109,46 @@ export function yardText(model) {
     whole: bill === 0 ? null : paid >= bill ? `Make her whole - ${gold(bill)}` : paid > 0 ? `Make good what your purse pays - ${gold(paid)}` : `Make her whole - ${gold(bill)}`,
     canWhole: paid > 0,
   };
+}
+
+/**
+ * CAPT-BOARD: THE HARBOURMASTER'S TAB's words for an office model (scenes/harbourOffice.js model) - pure, the pins'
+ * reading: `{ lede, board: [{ id, title, words, terms, press, can, why }], held: [{ id, title, words, state }], letters:
+ * [{ id, title, words, press, can }] }`.
+ * @param {any} o
+ */
+export function officeText(o) {
+  if (!o) return null;
+  const lede = o.hunted ? `${o.port} - ${o.crown}'s navy hunts you: its harbourmaster grants no favours until your notoriety falls.`
+    : `${o.port} - ${o.crown}'s harbourmaster. You are ${o.rank === 'Unsworn' ? 'Unsworn' : `a ${o.rank}`} of ${o.crown} (standing ${o.standing}).`;
+  const board = (o.board ?? []).map((b) => ({ id: b.id, title: b.title, words: b.words, terms: `${b.pay} - ${b.term} - ${b.standing}`, press: 'Take', can: !!b.can, why: b.why ?? '' }));
+  const held = (o.held ?? []).map((h) => ({ id: h.id, title: h.title, words: h.progress, state: `${h.left} - ${h.pay}` }));
+  const letters = [];
+  const mq = o.marque;
+  if (mq?.held) letters.push({ id: 'marque', title: 'Letter of marque', words: `You sail under ${mq.held.crown}'s letter.`, press: 'Held', can: false });
+  else if (mq) letters.push({ id: 'marque', title: 'Letter of marque', words: mq.can ? `${o.crown}'s commission against its rivals' shipping for ${mq.days}.` : mq.why, press: `Buy - ${mq.price}`, can: !!mq.can });
+  if (o.admiralty?.open || o.admiralty?.can) letters.push({ id: 'admiralty', title: 'The Admiralty\'s carrack', words: o.admiralty.can ? 'The only carrack the Bay sells - her title to your Fleet.' : o.admiralty.why, press: `Buy - ${o.admiralty.price}`, can: !!o.admiralty.can });
+  else if (o.admiralty) letters.push({ id: 'admiralty', title: 'The Admiralty\'s carrack', words: o.admiralty.why, press: 'Commodores only', can: false });
+  return { lede, board, held, letters };
+}
+
+/**
+ * CAPT-TRADE: THE EXCHANGE'S TAB's words for an exchange model (scenes/harbourOffice.js exchange) - pure: `{ lede, rows:
+ * [{ id, title, words, extra, canBuy, canSell }] }`.
+ * @param {any} x
+ */
+export function exchangeText(x) {
+  if (!x) return null;
+  const g = (n) => `${Math.round(n).toLocaleString('en-US')} gold`;
+  const lede = x.weight == null ? `${x.port}'s exchange - deal from your helm, into her hold.`
+    : `${x.port}'s exchange. Her hold carries ${Math.round(x.weight)} kg of goods; your purse ${g(x.gold)}.`;
+  const STAND = { makes: 'Made here - cheap', wants: 'Wanted here - dear', neither: '' };
+  const rows = (x.rows ?? []).map((r) => ({
+    id: r.id, title: r.name, canBuy: r.sells > 0 && x.weight != null, canSell: r.have > 0 && r.buys > 0,
+    words: [STAND[r.stand], r.sells > 0 ? `buy at ${g(r.sell)} a ${r.unit} (${r.sells} left today)` : 'none to buy today', r.buys > 0 ? `sell at ${g(r.buy)} (${r.buys} wanted)` : 'none wanted today'].filter(Boolean).join(' - '),
+    extra: r.have > 0 ? `In her hold: ${r.have} ${r.have === 1 ? r.unit : r.units}` : '',
+  }));
+  return { lede, rows };
 }
 
 /** What a press did, in a line. */
@@ -173,12 +233,95 @@ export function mountNavalYardWindow(host, deps) {
   pHead.append(el('span', null, 'Provisions'), el('span', 'dfnaval-count', 'for the voyage'));
   const pList = el('ul', 'dfnaval-holdlist');
   pSec.append(pHead, pList);
-  body.append(lede, sec, pSec);
+  // CAPT-BOARD: the harbourmaster's tab - the board, the contracts held, the letters
+  const office = () => (typeof m.office === 'function' ? m.office() : null);
+  let tab = 'yard';
+  const tabs = el('div', 'dfnaval-tabs');
+  const yardTab = button('Shipwright', 'dfnaval-btn', () => { tab = 'yard'; note = null; render(); });
+  const officeTab = button('Harbourmaster', 'dfnaval-btn', () => { tab = 'office'; note = null; render(); });
+  const tradeTab = button('Exchange', 'dfnaval-btn', () => { tab = 'trade'; note = null; render(); });
+  tabs.append(yardTab, officeTab, tradeTab);
+  const exchange = () => (typeof m.exchange === 'function' ? m.exchange() : null);
+  const tLede = el('p', 'dfnaval-lede');
+  const tradeSec = el('section', 'dfnaval-sec'), tradeHead = el('h3', 'dfnaval-sechead'), tradeList = el('ul', 'dfnaval-holdlist');
+  tradeHead.append(el('span', null, 'The exchange'), el('span', 'dfnaval-count', 'today\'s prices'));
+  tradeSec.append(tradeHead, tradeList);
+  const oLede = el('p', 'dfnaval-lede');
+  const boardSec = el('section', 'dfnaval-sec'), boardHead = el('h3', 'dfnaval-sechead'), boardList = el('ul', 'dfnaval-holdlist');
+  boardHead.append(el('span', null, 'The board'), el('span', 'dfnaval-count', 'today\'s contracts'));
+  boardSec.append(boardHead, boardList);
+  const heldSec = el('section', 'dfnaval-sec'), heldHead = el('h3', 'dfnaval-sechead'), heldList = el('ul', 'dfnaval-holdlist');
+  heldHead.append(el('span', null, 'Your contracts'), el('span', 'dfnaval-count', 'under way'));
+  heldSec.append(heldHead, heldList);
+  const lettersSec = el('section', 'dfnaval-sec'), lettersHead = el('h3', 'dfnaval-sechead'), lettersList = el('ul', 'dfnaval-holdlist');
+  lettersHead.append(el('span', null, 'Letters'), el('span', 'dfnaval-count', 'a rank\'s favours'));
+  lettersSec.append(lettersHead, lettersList);
+  const officeRow = (title, words, extra, press, can, onPress) => {
+    const li = el('li', 'dfnaval-item dfnaval-officerow');
+    const text = el('div');
+    text.append(el('b', null, title), el('span', null, words));
+    if (extra) text.append(el('i', null, extra));
+    const b = button(press, 'dfnaval-btn dfnaval-officebuy', onPress);
+    able(b, can);
+    li.append(text, b);
+    return li;
+  };
+  body.append(tabs, lede, sec, pSec, oLede, boardSec, heldSec, lettersSec, tLede, tradeSec);
   win.append(head, body);
 
   let alive = true;
+  const renderOffice = (o) => {
+    const ot = officeText(o);
+    h2.textContent = 'The harbourmaster';
+    oLede.textContent = ot.lede;
+    for (const c of [...boardList.children]) c.remove();
+    for (const b of ot.board) {
+      boardList.append(officeRow(b.title, b.words, b.can ? b.terms : `${b.terms} - ${b.why}`, b.press, b.can, () => { const r = o.take(b.id); note = r?.text ? { text: r.text, warn: !r.ok } : null; render(); }));
+    }
+    if (!ot.board.length) boardList.append(el('li', 'dfnaval-item more', 'Nothing more on the board today.'));
+    for (const c of [...heldList.children]) c.remove();
+    for (const h of ot.held) heldList.append(officeRow(h.title, h.words, h.state, 'Give up', true, () => { const r = o.abandon(h.id); note = r?.text ? { text: r.text, warn: true } : null; render(); }));
+    heldSec.style.display = ot.held.length ? '' : 'none';
+    for (const c of [...lettersList.children]) c.remove();
+    for (const x of ot.letters) lettersList.append(officeRow(x.title, x.words, null, x.press, x.can, () => { const r = x.id === 'marque' ? o.buyMarque() : o.buyCarrack(); note = r?.text ? { text: r.text, warn: !r.ok } : null; render(); }));
+    lettersSec.style.display = ot.letters.length ? '' : 'none';
+  };
+  const renderTrade = (x) => {
+    const xt = exchangeText(x);
+    h2.textContent = 'The exchange';
+    tLede.textContent = xt.lede;
+    for (const c of [...tradeList.children]) c.remove();
+    const press = (r, fn) => { note = r?.text ? { text: r.text, warn: !r.ok } : null; render(); return fn; };
+    for (const r of xt.rows) {
+      const li = el('li', 'dfnaval-item dfnaval-officerow');
+      li.setAttribute('data-row', r.id);
+      const text = el('div');
+      text.append(el('b', null, r.title), el('span', null, r.words));
+      if (r.extra) text.append(el('i', null, r.extra));
+      const presses = el('div', 'dfnaval-presses');
+      const mk = (label, can, fn) => { const b = button(label, 'dfnaval-btn dfnaval-tradebuy', fn); able(b, can); presses.append(b); };
+      mk('Buy 1', r.canBuy, () => press(x.buy(r.id, 1)));
+      mk('Buy 10', r.canBuy, () => press(x.buy(r.id, 10)));
+      mk('Sell 1', r.canSell, () => press(x.sell(r.id, 1)));
+      mk('Sell all', r.canSell, () => press(x.sell(r.id, Infinity)));
+      li.append(text, presses);
+      tradeList.append(li);
+    }
+  };
   const render = () => {
     if (!alive) return;
+    const o = office(), x = exchange();
+    tabs.style.display = o || x ? '' : 'none';
+    officeTab.style.display = o ? '' : 'none';
+    tradeTab.style.display = x ? '' : 'none';
+    if ((tab === 'office' && !o) || (tab === 'trade' && !x)) tab = 'yard';
+    yardTab.className = `dfnaval-btn${tab === 'yard' ? ' on' : ''}`;
+    officeTab.className = `dfnaval-btn${tab === 'office' ? ' on' : ''}`;
+    tradeTab.className = `dfnaval-btn${tab === 'trade' ? ' on' : ''}`;
+    const onYard = tab === 'yard';
+    for (const n of [lede, sec, pSec]) n.style.display = onYard ? '' : 'none';
+    for (const n of [oLede, boardSec, heldSec, lettersSec]) n.style.display = tab === 'office' ? '' : 'none';
+    for (const n of [tLede, tradeSec]) n.style.display = tab === 'trade' ? '' : 'none';
     const t = yardText(m);
     h2.textContent = t.title;
     sub.textContent = t.sub;
@@ -204,10 +347,12 @@ export function mountNavalYardWindow(host, deps) {
       li.append(el('b', null, r.label), el('span', null, r.state), press);
       pList.append(li);
     }
-    pSec.style.display = t.provisions.length ? '' : 'none';
+    pSec.style.display = onYard && t.provisions.length ? '' : 'none';
     whole.style.display = t.whole ? '' : 'none';
     whole.textContent = t.whole ?? '';
     able(whole, t.canWhole);
+    if (tab === 'office') renderOffice(o);
+    if (tab === 'trade') renderTrade(x);
   };
   render();
   host.append(shell);
