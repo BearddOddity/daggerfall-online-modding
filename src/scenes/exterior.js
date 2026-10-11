@@ -98,6 +98,7 @@ import { timeScale as hccTimeScale } from '../systems/timeScale.js';   // AUDIT 
 import { horseNameTooltip } from '../ui/horseNameTooltip.js';   // AUDIT HCC U6: the mod's HUD label, both skins
 import { createHorseCartPool } from './horseCartPool.js';   // HCC: the presentation, world.js's twin on this host
 import { wagonPoolDeps } from '../world/wagonModels.js';   // WAGONS1: the pool's two words, one seam for both hosts
+import { birthHorses } from '../systems/horseCoats.js';   // COATS1: the horses born
 import { createHorseCartRuntime } from '../systems/horseCart.js';   // HCC: TrailingWagonRuntime over this host's seams
 import { setHoldingsProvider, stableProviderFor } from '../ui/holdingsPages.js';   // HOLDINGS: the Stable page over this host's horse and wagon (no boats here)
 import { isQualifyingThreatState } from '../systems/horseFollow.js';   // HCC: CollectThreats' qualification
@@ -1769,6 +1770,7 @@ export async function bootExterior(canvas, renderer, params, status) {
   });
   /** AUDIT HCC H1: LateUpdate once a frame in every mode, before the world pass draws the wagon (world.js's twin). */
   const hccTick = (dt, nowMs) => {
+    birthHorses(playerEntity.items);   // COATS1: world.js's twin - a horse born its own look before anything draws it
     hcc.setEnabled(hccOn()); if (hcc.enabled) hccPollSettings(nowMs); hcc.frame(dt, cam.pos, gamePaused() ? 0 : dt * hccTimeScale());   // AUDIT HCC (branch audit): the runtime's Time.deltaTime - held by the pause, scaled with the world
     const tipOn = hcc.enabled && walkMode && modeNow() === 'exterior' && !worldPlaqueOn() && !gamePaused();   // AUDIT HCC U6: world.js's twin
     horseNameTooltip.set(tipOn ? hcc.tooltipText(cam.pos, [Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)], collider) : '');

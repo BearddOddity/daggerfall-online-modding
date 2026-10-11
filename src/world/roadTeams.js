@@ -17,6 +17,7 @@
 import { mat4FromQuatPos, quatLookRotation } from './quat.js';
 import { usableBounds } from '../systems/wagon41214.js';
 import { boxTriangles, HORSE_ARCHIVE, horseStillRecord, HORSE_BILLBOARD_WIDTH, HORSE_BILLBOARD_HEIGHT } from '../scenes/horseCartPool.js';
+import { strangerHorseLook } from '../systems/horseCoats.js';   // COATS1: the road's horses, each its own look
 import { stepHorseWalk, freshHorseWalk, NORMAL_GROUND_OFFSET } from '../systems/horseCartLaw.js';
 import { wheelAngleAt, HITCH_N } from '../systems/livingWorld/wagons.js';
 import { NATIVE_PER_M } from '../systems/travelDungeons.js';
@@ -43,7 +44,7 @@ export const wagonBucket = (key) => `lwWagon:${key}`;
  *   while there is none)
  */
 export function createRoadTeams({ renderer, presentation, collider = () => null }) {
-  /** @type {Map<string, { batch: any, walk: any }>} */
+  /** @type {Map<string, { batch: any, walk: any, look: number }>} */
   const horses = new Map();
   /** @type {Map<string, Float64Array>} the boxes standing, by wagon key */
   const boxes = new Map();
@@ -88,12 +89,12 @@ export function createRoadTeams({ renderer, presentation, collider = () => null 
       if (!s) {
         const batch = renderer?.createBillboardBatch?.(HORSE_ARCHIVE, horseStillRecord(0), { w: HORSE_BILLBOARD_WIDTH, h: HORSE_BILLBOARD_HEIGHT }, [[0, 0, 0]]) ?? null;
         if (batch) batch.origin = [0, 0, 0];
-        s = { batch, walk: freshHorseWalk() };
+        s = { batch, walk: freshHorseWalk(), look: strangerHorseLook(h.key) };   // COATS1: a stranger's horse, its own look off its key
         horses.set(h.key, s);
       }
       s.walk = stepHorseWalk(s.walk, h.moving ? h.speed : 0, dt, !!art?.hasWalk?.());
       if (!s.batch || !pres?.poseHorse) continue;
-      pres.poseHorse(s.batch, eye, { position: h.feet, forward: [Math.sin(h.yaw), 0, Math.cos(h.yaw)], frame: s.walk.animationFrame ?? 0 });
+      pres.poseHorse(s.batch, eye, { position: h.feet, forward: [Math.sin(h.yaw), 0, Math.cos(h.yaw)], frame: s.walk.animationFrame ?? 0 }, 1, s.look);   // COATS1: in its look
       if (grow > 1 && s.batch.size) s.batch.size = { w: s.batch.size.w * grow, h: s.batch.size.h * grow };
       drawn.push(s.batch);
     }

@@ -41,7 +41,7 @@ import { validItemField, ITEM_FIELDS } from './itemFields.js';
 import { ITEM_TEMPLATES, templateByIndex, itemBaseValue, isAmmunition } from './itemTemplates.js';
 import { GROUP_TEMPLATE_INDICES } from './itemTemplatesData.js';
 import { WAGON_KINDS, validWagonKind } from './wagonKinds.js';   // WAGONS2 (AUDIT): a wagon's kind and its price
-import { TRANSPORT_SMALL_CART } from './itemTemplates.js';
+import { TRANSPORT_SMALL_CART, TRANSPORT_HORSE } from './itemTemplates.js';
 import {
   AFFIX_KINDS, AFFIX_RANGES, AFFIX_COUNTS, RARE_FLAVOURS, kindParams, validAffix, legendaryById, legendariesFor, isGarment,
   CLOTHING_GROUPS, validImprint, validCurse, validSocket, isCursed, affixesWorth, RARE_ENCHANT_WORTH, EXALTED_WORTH, rarityOf,
@@ -233,6 +233,7 @@ export function itemFindings(v, opts = {}) {
   //    (WAGON-PRICE: one bought before the price rose stays lawful) ──
   if ((has(item, 'wagonKind') || has(item, 'wagonLook') || has(item, 'wagonEntry')) && item.templateIndex !== TRANSPORT_SMALL_CART) out.add('wagon');
   if (has(item, 'wagonKind') && item.wagonKind !== 'cart' && !(item.value >= (WAGON_KINDS[item.wagonKind]?.floor ?? Infinity))) out.add('wagon');
+  if (['horseCoat', 'horsePattern', 'horseLegs', 'horseSeed'].some((k) => has(item, k)) && item.templateIndex !== TRANSPORT_HORSE) out.add('horse');   // COATS1: a horse's look on DFU's Horse alone
   // ── the Broker's binding ────────────────────────────────────────────
   if (has(item, 'stonesPaid') && !(item.bound === true && BROKER_STONES.has(item.stonesPaid))) out.add('bound');
   // ── the ladder, the records, the sigil and the enchantments ──────────

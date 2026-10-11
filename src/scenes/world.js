@@ -648,7 +648,8 @@ import { totalWeight } from '../systems/inventory.js';   // HCC: PlayerEntity.Wa
 import { planTake, CANNOT_CARRY_TEXT } from '../systems/itemTransfer.js';   // SET7: the Broker's sale asks the pack's own carry gate
 import { wagonKgFor, activeWagonItem, activeWagonKind, WAGON_KINDS, horseCountOf, wagonTeamShort } from '../systems/wagonKinds.js';   // WAGONS1: HCC's ItemHelper.WagonKgLimit, the driven wagon's
 import { SEATED_EYE_HEIGHT } from '../player/seatPose.js';   // WAGONS3: the driver's seated eye
-import { wagonLookOf, paintDrivenWagon } from '../systems/wagonLooks.js';   // WAGONS2: the driven wagon's paint
+import { wagonLookOf, paintDrivenWagon } from '../systems/wagonLooks.js';
+import { riddenHorseLook, birthHorses } from '../systems/horseCoats.js';   // COATS1: the ridden horse's look - the pool's, the pose's; and the horses born   // WAGONS2: the driven wagon's paint
 import { giveNavalItems } from '../systems/naval/navalTransfer.js';
 import { InputMessageBoxWindow } from '../ui/inputMessageBox.js';   // HCC: the horse's name (DaggerfallInputMessageBox)
 import { getBool, getInt, getFloat } from '../systems/settings.js';   // U31: StartCellX/Y + StartInDungeon, the classic start's own three keys   // F-slice: worldCoordToMapPixel for the travel start pixel
@@ -10825,6 +10826,7 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  Called from the modal branch (a building, a dungeon) and from the exterior frame after the motor and the
    *  recentre and BEFORE the world pass draws the wagon, so the mesh and the horse billboard show the same frame. */
   const hccTick = (dt, nowMs) => {
+    birthHorses(playerEntity.items);   // COATS1: a horse bought, found or carried in from an older save is born its own look, before anything draws it
     hcc.setEnabled(hccOn()); if (hcc.enabled) hccPollSettings(nowMs); hcc.frame(dt, cam.pos, gamePaused() ? 0 : dt * worldTimeScale());   // AUDIT HCC (branch audit): the runtime's Time.deltaTime - held by the pause, scaled with the world
     // AUDIT HCC U6: HorseNameTooltipController, set right after the LateUpdate that stood the horse - outdoors, walking,
     // IsPlayingGame (no window, no surface holding the mouse), and only where the enhanced plaque is not already naming it
@@ -25186,7 +25188,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     toScene: campToScene, groundAt: (x, z) => surfaceAt(x, z),
     showWagon: (r, texRemap, position, rotation, kind, look, tier, turn, hitched) => hcc.drawShowWagon(r, texRemap, position, rotation, kind, look, tier, turn, hitched),
     wagonBox: (kind) => hcc.partsOf(kind)?.box ?? null,
-    horseArt: () => !!hcc.presentation.horseArt.ensureStationary(),
+    horseArt: (look = 0) => !!hcc.presentation.horseArt.ensureLook(look),   // COATS1: a thrown team's look's pictures too (the bay's: the art's)
     hold: (owner, on, lone) => hcc.holdTeam(owner, on, lone),
     sound: (what, at) => { const d = Math.hypot(cam.pos[0] - at[0], cam.pos[2] - at[2]); if (d < 120) audio.playOneShot(WARDEN_CLIPS[what], 0.7 * (1 - d / 120)); },
     now: () => performance.now() / 1000,
@@ -28222,6 +28224,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       // mounted sprite sets this player chose, so the others draw the rider they drew themselves
       rd: !riding ? 0 : player.transportMode === TRANSPORT_MODES.Cart ? 2 : 1,
       rv: Math.max(0, Math.min(4, (() => { try { return modSetting('eye-of-the-beholder', 'Graphics.OnHorse') | 0; } catch { return 0; } })())),   // AUDIT RIDE: the one key, not the mod's whole settings object every frame
+      rc: riding ? riddenHorseLook(playerEntity.items ?? []) || undefined : undefined,   // COATS1: the look the horse under them wears (wire.js rideOf) - absent for the bay as drawn
       hs: riding && moved && _hsLatch ? 1 : undefined,   // DISC7: the motor's half-speed flag, the one fact the peers' clop swaps on (wire.js rideOf) - latched off a moving frame (AUDIT DISC7 B2), and absent rather than 0 (B8: the wire omits it at 0)
       // DISC12: the hand in use (the look carries both hands' weapons; the others drew the right one always, so a
       // left-handed fighter was a fist to them) and the beast form (LycanthropyEffect's isTransformed - the others saw

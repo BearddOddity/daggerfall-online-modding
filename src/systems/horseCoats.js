@@ -1,0 +1,448 @@
+// @ts-check
+// COATS1 (2026-10-11, a player: "can we take the current horse sprite thats used for placement, riding and even the
+// character riding the horse and give the sprite different color types and colors. Like a variation of horse sprites";
+// then "What about also different patterns? The goal is for every person's horse to be unique" - asked, every horse BORN
+// unique and re-dyable on the Stable card, with pinto, appaloosa, dapples, socks and roan): THE HORSE'S LOOK - THE LAW.
+//
+// Every horse the port draws is one bay horse: Daggerfall's riding sprite (MRED00I0.CFA, the player's own data), Horse
+// Cart and Cargo's standing and walking views (vendor/horse-cart-and-cargo) and Eye Of The Beholder's five riders
+// (vendor/eye-of-the-beholder, archives 112382-112386, horse and rider in one picture). A look is not new art: it is the
+// same pictures re-dyed as they are uploaded, by `recolorHorse` below - so no picture of the player's data is ever
+// written anywhere but the renderer (Port-Doctrine: A RENDER OF GAME DATA IS GAME DATA), and a set the port gains later
+// takes every look for free.
+//
+// A HORSE'S LOOK is four things, and it is its own, so it rides the horse item (TRANSPORT_HORSE, template 94):
+//  - its COAT (`horseCoat`, HORSE_COATS - the colour), its PATTERN (`horsePattern`, HORSE_PATTERNS - the white or the
+//    spots laid over it) and its LEGS (`horseLegs`, HORSE_LEGS - white socks or stockings), each absent for the first;
+//  - and its SEED (`horseSeed`, 1..HORSE_SEED_MAX), which is the horse itself: where its patches, spots, dapples and
+//    flecks fall, the ragged top of its socks, and a shade of its coat a touch off any other's (`shadeOf`). Two horses
+//    of one coat, pattern and legs are still two horses.
+// A horse is BORN with all four (`birthHorses`, rolled once, the first time a host sees it without a seed: a horse
+// bought, found, or carried in from an older save), weighted to the common coats and patterns (BIRTH_WEIGHTS). Its
+// owner may change the coat, the pattern and the legs on the Stable card (ui/holdingsPages.js), free and any time - the
+// wagon's paint's law (systems/wagonLooks.js), for the horse - but never the seed: the markings stay where they fell.
+// A save carries the fields as it carries any item field; a sold horse takes its look with it.
+//
+// ON THE WIRE a look is one number (`horseLookCode`: coat + 7 pattern + 35 legs + 105 seed), 0 the bay as drawn.
+//
+// THE DYE. The art is a bay: a warm brown hide, a black mane, tail and hooves, a brown leather saddle, and on Eye Of The
+// Beholder's sets a rider of any colour astride. The dye moves the HIDE alone:
+//  - a hide pixel is a warm one (hue 345-50 degrees) with some colour in it (saturation 0.2 or more) - the mane, the
+//    tail, the hooves, steel and cloth are none of them;
+//  - but not the TACK: the saddle and the bridle's leather are yellower, duller and darker than the hide around them
+//    (hue 28-48, saturation 0.36-0.58, value 0.24-0.5 - measured off horse3.png's saddle against its flank);
+//  - and only where the warm pixels are the HORSE's: a rider's face, hands and leathers are warm too, but they stand
+//    apart from the hide - small islands, cut off by steel and shadow. So the warm pixels are gathered into their
+//    8-connected regions and a region is dyed only when it is at least COAT_REGION_SHARE of the largest (the body; a
+//    leg the shading cut from it is still a few percent of it, a face is under one) - or when it is a scrap of SHADOW
+//    beside one (a belly's or a far leg's dark speckle, cut off by the outline: mean value under COAT_SHADOW_VALUE and
+//    within COAT_SHADOW_REACH pixels of a dyed region). A rider's skin is lit (a mean value of 0.4 and more on all
+//    five sets); their dark hair, where it is warm, stands further off the horse's back.
+// A dyed pixel takes the coat's hue, a saturation off its own (so the art's shading stays its shading) and a value
+// `lift + scale * v` - the art's light, re-keyed for a darker or a paler horse - nudged by the seed's shade. Then the
+// pattern and the legs lay their white (and the appaloosa its spots) over it, each white the hide's own light, so a
+// patch in shadow is a shadowed white. The markings are placed in the HIDE's own frame - from its left, down from its
+// top, in PATTERN_SCALE_PX - so a walk frame carries them with the body; a mirrored view mirrors them, as the other
+// flank. A sprite is one picture a side, so a flank's patches and the chest's are not one body's - each side is its own.
+//
+// Pure: no DOM, no renderer, no clock. Not a DFU member: Daggerfall has one horse. Ledger A (COATS1).
+import { TRANSPORT_HORSE } from './itemTemplates.js';
+
+/** The coats, in the order the Stable lists them and the item keeps them (`horseCoat`); the first the bay as drawn. */
+export const HORSE_COATS = Object.freeze(['bay', 'chestnut', 'black', 'grey', 'dun', 'buckskin', 'palomino']);
+export const HORSE_COAT_MAX = HORSE_COATS.length - 1;
+/** The patterns (`horsePattern`), the first none. */
+export const HORSE_PATTERNS = Object.freeze(['solid', 'pinto', 'appaloosa', 'dapples', 'roan']);
+export const HORSE_PATTERN_MAX = HORSE_PATTERNS.length - 1;
+/** The legs (`horseLegs`), the first the coat's own. */
+export const HORSE_LEGS = Object.freeze(['plain', 'socks', 'stockings']);
+export const HORSE_LEGS_MAX = HORSE_LEGS.length - 1;
+/** The highest seed (`horseSeed`); 0 is no seed - a horse not yet born, or the art as drawn. */
+export const HORSE_SEED_MAX = 65535;
+/** What each is called on the Stable card. */
+export const HORSE_LOOK_NAMES = Object.freeze({
+  bay: 'Bay', chestnut: 'Chestnut', black: 'Black', grey: 'Grey', dun: 'Dun', buckskin: 'Buckskin', palomino: 'Palomino',
+  solid: 'Solid', pinto: 'Pinto', appaloosa: 'Appaloosa', dapples: 'Dapples', roan: 'Roan',
+  plain: 'Plain', socks: 'Socks', stockings: 'Stockings',
+});
+/** The Stable's rows, in order: the part, the item's field, its list. */
+export const HORSE_LOOK_PARTS = Object.freeze([
+  Object.freeze({ part: 'coat', field: 'horseCoat', list: HORSE_COATS, name: 'Coat' }),
+  Object.freeze({ part: 'pattern', field: 'horsePattern', list: HORSE_PATTERNS, name: 'Pattern' }),
+  Object.freeze({ part: 'legs', field: 'horseLegs', list: HORSE_LEGS, name: 'Legs' }),
+]);
+/** The words the card says. */
+export const COAT_TEXT = Object.freeze({
+  changed: (desc) => `Your horse is now a ${desc}.`,
+  noHorse: 'You do not own a horse.',
+});
+
+/**
+ * Each coat's dye: `hue` in degrees (null: the art's own, the bay); `sat` either `['mul', k]` (the art's own saturation
+ * times k) or `['abs', s]` (s, eased by the art's own: s * min(1, own / 0.6 + 0.3), so a highlight stays paler than a
+ * flank); `val` `[lift, scale]`. Tuned by eye against all three sets (a black mane and points on every coat but the
+ * palomino's, whose mane the art cannot tell from the rider's steel - so it keeps the art's dark one).
+ */
+export const COAT_DYES = Object.freeze({
+  bay: Object.freeze({ hue: null, sat: Object.freeze(['mul', 1]), val: Object.freeze([0, 1]) }),
+  chestnut: Object.freeze({ hue: 13, sat: Object.freeze(['mul', 1.12]), val: Object.freeze([0.05, 1.05]) }),
+  black: Object.freeze({ hue: 25, sat: Object.freeze(['abs', 0.14]), val: Object.freeze([0, 0.45]) }),
+  grey: Object.freeze({ hue: 30, sat: Object.freeze(['abs', 0.05]), val: Object.freeze([0.25, 0.95]) }),
+  dun: Object.freeze({ hue: 33, sat: Object.freeze(['abs', 0.36]), val: Object.freeze([0.18, 0.95]) }),
+  buckskin: Object.freeze({ hue: 37, sat: Object.freeze(['abs', 0.58]), val: Object.freeze([0.14, 1.1]) }),
+  palomino: Object.freeze({ hue: 40, sat: Object.freeze(['abs', 0.5]), val: Object.freeze([0.25, 1.05]) }),
+});
+/** A warm region is the horse's when it is at least this share of the largest one (see THE DYE). */
+export const COAT_REGION_SHARE = 0.03;
+/** And a smaller one is when it is SHADOW on the hide: its mean value under COAT_SHADOW_VALUE and within
+ *  COAT_SHADOW_REACH pixels of a region that is the horse's (see THE DYE). */
+export const COAT_SHADOW_VALUE = 0.3;
+export const COAT_SHADOW_REACH = 2;
+/** How far a seed turns a coat: up to SHADE_HUE degrees of hue and SHADE_VALUE of its light, either way. */
+export const SHADE_HUE = 4;
+export const SHADE_VALUE = 0.075;
+/** The markings' measure: a pattern is laid in units of this many pixels (or the hide's width, if wider) - the side
+ *  view's width - so a spot is one size from every side, though a front view is a third as wide. */
+export const PATTERN_SCALE_PX = 100;
+/** How high the white climbs from the hooves, as a share of the hide's height: socks, then stockings. */
+export const LEG_BANDS = Object.freeze([0, 0.1, 0.2]);
+
+/**
+ * A HORSE'S BIRTH: the odds of each coat, pattern and legs (in their lists' order) a horse is born with - the bays and
+ * chestnuts most, a solid coat more often than a marked one, bare legs more often than white.
+ */
+export const BIRTH_WEIGHTS = Object.freeze({
+  coat: Object.freeze([5, 4, 2, 2, 1, 1, 1]),
+  pattern: Object.freeze([6, 2, 1, 2, 1]),
+  legs: Object.freeze([5, 3, 2]),
+});
+/** The stranger's seeds (`strangerHorseLook`): sixteen, so the road's horses share a few dyed sets between them. */
+export const STRANGER_SEEDS = 16;
+
+const index = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : 0);
+const pick = (weights, r) => {
+  const total = weights.reduce((a, b) => a + b, 0);
+  let x = r * total;
+  for (let i = 0; i < weights.length; i++) { if (x < weights[i]) return i; x -= weights[i]; }
+  return 0;
+};
+
+/** A look, checked: `{ coat, pattern, legs, seed }`, each a value the law knows, else 0. */
+export function readHorseLook(v) {
+  const o = v && typeof v === 'object' ? v : {};
+  return { coat: index(o.coat, HORSE_COAT_MAX), pattern: index(o.pattern, HORSE_PATTERN_MAX), legs: index(o.legs, HORSE_LEGS_MAX), seed: index(o.seed, HORSE_SEED_MAX) };
+}
+const C = HORSE_COATS.length, P = HORSE_PATTERNS.length, L = HORSE_LEGS.length;
+/** The look as the wire says it: one number, 0 the bay as drawn. */
+export const horseLookCode = (look) => { const l = readHorseLook(look); return l.coat + C * (l.pattern + P * (l.legs + L * l.seed)); };
+/** The highest code a look can be. */
+export const HORSE_LOOK_CODE_MAX = C * P * L * (HORSE_SEED_MAX + 1) - 1;
+/** The look a code names - the bay as drawn for anything the law does not know. */
+export function horseLookOfCode(code) {
+  if (!Number.isInteger(code) || code < 0 || code > HORSE_LOOK_CODE_MAX) return readHorseLook(null);
+  return readHorseLook({ coat: code % C, pattern: Math.floor(code / C) % P, legs: Math.floor(code / (C * P)) % L, seed: Math.floor(code / (C * P * L)) });
+}
+/** A look or its code, as a look. */
+const lookOf = (v) => (typeof v === 'number' ? horseLookOfCode(v) : readHorseLook(v));
+/** A look in words: "chestnut", "black pinto with socks", "dapple grey with stockings". */
+export function describeHorseLook(v) {
+  const l = lookOf(v);
+  const coat = HORSE_LOOK_NAMES[HORSE_COATS[l.coat]].toLowerCase();
+  const pattern = HORSE_PATTERNS[l.pattern];
+  const body = pattern === 'solid' ? coat : pattern === 'dapples' ? `dapple ${coat}` : `${coat} ${pattern}`;
+  return l.legs ? `${body} with ${HORSE_LEGS[l.legs]}` : body;
+}
+
+/** Whether an item is a horse (DFU's one Transportation.Horse template). */
+export const isHorseItem = (item) => item?.templateIndex === TRANSPORT_HORSE;
+/** The horse a player rides: the first in the pack (inventorySession.js hasHorse's own find). */
+export const activeHorseItem = (items) => (Array.isArray(items) ? items.find(isHorseItem) ?? null : null);
+/** A horse item's look (its four fields, checked) - the bay as drawn for anything else. */
+export const horseLookOf = (item) => readHorseLook(isHorseItem(item) ? { coat: item.horseCoat, pattern: item.horsePattern, legs: item.horseLegs, seed: item.horseSeed } : null);
+/** The look of the horse a player rides, as its code (0, the bay as drawn, with none). */
+export const riddenHorseLook = (items) => horseLookCode(horseLookOf(activeHorseItem(items)));
+
+/** A look rolled at a horse's birth (BIRTH_WEIGHTS; `rand` () => [0, 1)). */
+export function rollHorseLook(rand = Math.random) {
+  return {
+    coat: pick(BIRTH_WEIGHTS.coat, rand()), pattern: pick(BIRTH_WEIGHTS.pattern, rand()), legs: pick(BIRTH_WEIGHTS.legs, rand()),
+    seed: 1 + Math.min(HORSE_SEED_MAX - 1, Math.floor(rand() * HORSE_SEED_MAX)),
+  };
+}
+/**
+ * THE HORSES BORN: every horse in `items` without a seed is given its look, in place (the item keeps its place and its
+ * identity - an open window's hold on it is still good); a horse with one is left as it is. Answers how many were born.
+ */
+export function birthHorses(items, rand = Math.random) {
+  if (!Array.isArray(items)) return 0;
+  let n = 0;
+  for (const item of items) {
+    if (!isHorseItem(item) || index(item.horseSeed, HORSE_SEED_MAX) > 0) continue;
+    const l = rollHorseLook(rand);
+    for (const { part, field } of HORSE_LOOK_PARTS) { if (l[part]) item[field] = l[part]; else delete item[field]; }
+    item.horseSeed = l.seed;
+    n++;
+  }
+  return n;
+}
+
+/** The item a part's choice makes: a new object, the old one untouched; a field dropped for its list's first. Null for
+ *  anything not a horse, or a part the law does not know. The seed is never touched. */
+export function restyledHorse(item, part, i) {
+  const p = HORSE_LOOK_PARTS.find((x) => x.part === part);
+  if (!isHorseItem(item) || !p) return null;
+  const v = index(i, p.list.length - 1);
+  const { [p.field]: _drop, ...rest } = item;
+  return v ? { ...rest, [p.field]: v } : rest;
+}
+/**
+ * THE RIDDEN HORSE RESTYLED: in the pack `items` (the host's own list - the horse's place in it taken by its restyled
+ * self), the horse a player rides given choice `i` of `part` ('coat', 'pattern' or 'legs'). `{ ok, text }` - what the
+ * Stable says.
+ */
+export function restyleRiddenHorse(items, part, i) {
+  const item = activeHorseItem(items);
+  if (!item || !Array.isArray(items)) return { ok: false, text: COAT_TEXT.noHorse };
+  const styled = restyledHorse(item, part, i);
+  if (!styled) return { ok: false, text: 'Not here.' };
+  items[items.indexOf(item)] = styled;
+  return { ok: true, text: COAT_TEXT.changed(describeHorseLook(horseLookOf(styled))) };
+}
+/** The ridden horse's look as the Stable lists it: a row a part - its name, its choices' names, the one worn - with its
+ *  words; null with no horse. */
+export function horseLookRows(items) {
+  const item = activeHorseItem(items);
+  if (!item) return null;
+  const l = horseLookOf(item);
+  return {
+    desc: describeHorseLook(l),
+    rows: HORSE_LOOK_PARTS.map(({ part, list, name }) => ({ part, name, choices: list.map((k) => HORSE_LOOK_NAMES[k]), current: l[part] })),
+  };
+}
+
+/** FNV-1a, 32-bit, of a string. */
+function fnv(k) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < k.length; i++) { h ^= k.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h >>> 0;
+}
+/**
+ * A STRANGER'S HORSE: the look a horse nobody owns wears - the road's teams (world/roadTeams.js) - off its own key, so
+ * it keeps it every frame and every client sees the same one: born by BIRTH_WEIGHTS on the key's hash, on one of
+ * STRANGER_SEEDS seeds (a road shows many horses at once, and each look is its own dyed pictures). As a code.
+ */
+export function strangerHorseLook(key) {
+  let h = fnv(String(key ?? ''));
+  const next = () => { h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0; h = Math.imul(h ^ (h >>> 12), 0x297a2d39) >>> 0; return (h >>> 0) / 4294967296; };
+  const l = { coat: pick(BIRTH_WEIGHTS.coat, next()), pattern: pick(BIRTH_WEIGHTS.pattern, next()), legs: pick(BIRTH_WEIGHTS.legs, next()), seed: 1 + Math.floor(next() * STRANGER_SEEDS) };
+  return horseLookCode(l);
+}
+
+/** The suffix a dyed picture's record wears on the renderer (`''` for the bay as drawn - the art's own record). */
+export const lookSuffix = (v) => { const c = typeof v === 'number' ? horseLookCode(horseLookOfCode(v)) : horseLookCode(v); return c ? `~${c}` : ''; };
+
+// ── the dye ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** RGB bytes -> [hue degrees, saturation, value]. */
+function hsv(r, g, b) {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0;
+  if (d > 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return [h, max > 0 ? d / max : 0, max / 255];
+}
+/** [hue degrees, saturation, value] -> RGB bytes, written into `out` at `o`. */
+function rgbInto(out, o, h, s, v) {
+  const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+  const k = Math.floor((((h % 360) + 360) % 360) / 60) % 6;
+  const [r, g, b] = k === 0 ? [c, x, 0] : k === 1 ? [x, c, 0] : k === 2 ? [0, c, x] : k === 3 ? [0, x, c] : k === 4 ? [x, 0, c] : [c, 0, x];
+  out[o] = Math.round((r + m) * 255); out[o + 1] = Math.round((g + m) * 255); out[o + 2] = Math.round((b + m) * 255);
+}
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const fract = (v) => v - Math.floor(v);
+
+/** A seed's integer hash of a lattice point - [0, 1). */
+function hash3(x, y, s) {
+  let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(s | 0, 0x27d4eb2f)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+/** Smooth value noise at (x, y) - [0, 1). */
+function noise(x, y, s) {
+  const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+  const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+  const a = hash3(ix, iy, s), b = hash3(ix + 1, iy, s), c = hash3(ix, iy + 1, s), d = hash3(ix + 1, iy + 1, s);
+  return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+}
+/** The nearest of a jittered lattice's points to (x, y), in cells: [its distance, its cell's hash]. */
+function nearest(x, y, s) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  let best = 9, bh = 0;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const cx = ix + dx, cy = iy + dy;
+    const px = cx + 0.15 + 0.7 * hash3(cx, cy, s), py = cy + 0.15 + 0.7 * hash3(cy, cx, s + 1);
+    const d = Math.hypot(px - x, py - y);
+    if (d < best) { best = d; bh = hash3(cx, cy, s + 2); }
+  }
+  return [best, bh];
+}
+/** A seed's own [0, 1) for its `k`th question. */
+const seedRand = (seed, k) => hash3(seed, k, 0x5eed);
+
+/** A seed's shade of its coat: [hue degrees, light factor] - none for no seed. */
+export function shadeOf(seed) {
+  if (!seed) return [0, 1];
+  return [(seedRand(seed, 1) * 2 - 1) * SHADE_HUE, 1 + (seedRand(seed, 2) * 2 - 1) * SHADE_VALUE];
+}
+
+/**
+ * The marking a pattern lays at a hide pixel: `[white, dark]` - how far toward white it goes (0..1), and how far its
+ * light falls (0..1, the appaloosa's spots and the dapples' rings). `u` from the hide's left and `v` down from its top,
+ * in PATTERN_SCALE_PX units (so the frame is square), `px` the pixel's place in the hide's own grid (the roan's flecks).
+ */
+function markingAt(pattern, seed, u, v, px, py) {
+  const s = seed | 0, ox = seedRand(s, 3) * 61, oy = seedRand(s, 4) * 47;
+  switch (HORSE_PATTERNS[pattern]) {
+    case 'pinto': {   // tobiano: broad white across the back and down the flanks, ragged where it meets the colour
+      const n = 0.65 * noise(u * 2.6 + ox, v * 2.6 + oy, s) + 0.35 * noise(u * 6 + oy, v * 6 + ox, s + 7);
+      const t = 0.5 + (seedRand(s, 5) - 0.5) * 0.16;
+      return [n > t ? 1 : 0, 0];
+    }
+    case 'appaloosa': {   // half are leopards (white, the coat in spots), half snowflakes (the coat, flecked in white)
+      const cell = 0.07 + seedRand(s, 6) * 0.03;
+      const [d, h] = nearest(u / cell + ox, v / cell + oy, s);
+      const spot = d < 0.22 + 0.16 * h;
+      if (seedRand(s, 7) < 0.5) return spot ? [0, 0.15] : [1, 0];
+      return [spot && h < 0.55 ? 1 : 0, 0];
+    }
+    case 'dapples': {   // lighter rounds in darker rings
+      const cell = 0.085 + seedRand(s, 8) * 0.025;
+      const [d] = nearest(u / cell + ox, v / cell + oy, s);
+      if (d < 0.3) return [0.45, 0];
+      if (d < 0.44) return [0, 0.18];
+      return [0, 0];
+    }
+    case 'roan': {   // white hairs through the coat
+      const density = 0.3 + seedRand(s, 9) * 0.15;
+      return [hash3(px, py, s + 11) < density ? 0.6 : 0, 0];
+    }
+    default: return [0, 0];
+  }
+}
+
+/** Whether a pixel is the hide's (THE DYE's first two rules): warm, coloured, and not the tack's leather. */
+export function isCoatPixel(r, g, b) {
+  const [h, s, v] = hsv(r, g, b);
+  if (!((h <= 50 || h >= 345) && s >= 0.2)) return false;
+  return !(h >= 28 && h <= 48 && s >= 0.36 && s < 0.58 && v >= 0.24 && v < 0.5);
+}
+
+/**
+ * THE DYE: `image` (`{ width, height, colors }`, RGBA bytes - a Uint8Array, a Uint8ClampedArray or a Uint32Array over
+ * them) in look `look` (a look or its code) - a NEW image of the same shape, the old one untouched; the image itself for
+ * the bay as drawn (code 0), which is no pass at all. `bottomFirst` whether row 0 is the picture's bottom (the world's
+ * billboards' order, formats/color32Order.js - the pool's and Eye Of The Beholder's pictures; the legs' white climbs
+ * from the hooves, and the markings hang from the top); `legs` false where no hoof is drawn (the riding sprite's head
+ * and neck), so no white is laid along the picture's lower edge.
+ * @template {{ width: number, height: number, colors: ArrayLike<number> & { buffer: ArrayBufferLike, byteOffset: number, byteLength: number } }} T
+ * @param {T} image
+ * @param {any} look
+ * @param {{ bottomFirst?: boolean, legs?: boolean }} [opts]
+ * @returns {T}
+ */
+export function recolorHorse(image, look, { bottomFirst = true, legs = true } = {}) {
+  const l = lookOf(look);
+  if (!horseLookCode(l) || !image?.colors) return image;
+  const dye = COAT_DYES[HORSE_COATS[l.coat]];
+  const { width: w, height: h } = image;
+  const src = new Uint8Array(image.colors.buffer, image.colors.byteOffset, image.colors.byteLength);
+  const n = w * h;
+  if (src.length < n * 4) return image;
+  // the hide's pixels, and their 8-connected regions
+  const coatMask = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * 4;
+    if (src[o + 3] && isCoatPixel(src[o], src[o + 1], src[o + 2])) coatMask[i] = 1;
+  }
+  const region = new Int32Array(n).fill(-1);
+  const sizes = [], light = [];
+  const stack = [];
+  for (let i = 0; i < n; i++) {
+    if (!coatMask[i] || region[i] >= 0) continue;
+    const id = sizes.length;
+    let size = 0, sum = 0;
+    region[i] = id; stack.push(i);
+    while (stack.length) {
+      const p = /** @type {number} */ (stack.pop());
+      size++;
+      sum += Math.max(src[p * 4], src[p * 4 + 1], src[p * 4 + 2]) / 255;
+      const px = p % w, py = (p - px) / w;
+      for (let dy = -1; dy <= 1; dy++) {
+        const y = py + dy;
+        if (y < 0 || y >= h) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const x = px + dx;
+          if (x < 0 || x >= w) continue;
+          const q = y * w + x;
+          if (coatMask[q] && region[q] < 0) { region[q] = id; stack.push(q); }
+        }
+      }
+    }
+    sizes.push(size); light.push(sum / size);
+  }
+  const out = new Uint8Array(src);   // a copy
+  if (sizes.length) {
+    // the horse's regions: the large, then the small shadowed ones within COAT_SHADOW_REACH of a large one
+    const floor = Math.max(...sizes) * COAT_REGION_SHARE;
+    const dyed = sizes.map((z) => z >= floor);
+    const near = new Uint8Array(n), R = COAT_SHADOW_REACH;
+    for (let i = 0; i < n; i++) {
+      if (region[i] < 0 || !dyed[region[i]]) continue;
+      const px = i % w, py = (i - px) / w;
+      for (let y = Math.max(0, py - R); y <= Math.min(h - 1, py + R); y++) for (let x = Math.max(0, px - R); x <= Math.min(w - 1, px + R); x++) near[y * w + x] = 1;
+    }
+    for (let i = 0; i < n; i++) { const id = region[i]; if (id >= 0 && !dyed[id] && near[i] && light[id] < COAT_SHADOW_VALUE) dyed[id] = true; }
+    // the hide's frame: its width from its left, its top and its hooves
+    let x0 = w, x1 = -1, r0 = h, r1 = -1;
+    for (let i = 0; i < n; i++) {
+      if (region[i] < 0 || !dyed[region[i]]) continue;
+      const x = i % w, r = (i - x) / w;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (r < r0) r0 = r; if (r > r1) r1 = r;
+    }
+    const hideW = Math.max(1, x1 - x0 + 1), hideH = Math.max(1, r1 - r0 + 1), unit = Math.max(PATTERN_SCALE_PX, hideW);
+    const [mode, k] = dye.sat, [lift, scale] = dye.val;
+    const [hueJ, valJ] = shadeOf(l.seed);
+    const band = legs ? LEG_BANDS[l.legs] * hideH : 0;
+    for (let i = 0; i < n; i++) {
+      const id = region[i];
+      if (id < 0 || !dyed[id]) continue;
+      const o = i * 4;
+      const [h0, s, v] = hsv(src[o], src[o + 1], src[o + 2]);
+      const hue = (dye.hue ?? h0) + hueJ;
+      const ns = clamp01(mode === 'mul' ? s * k : k * Math.min(1, s / 0.6 + 0.3));
+      let nv = clamp01((lift + scale * v) * valJ);
+      const x = i % w, r = (i - x) / w;
+      const down = bottomFirst ? r1 - r : r - r0, up = bottomFirst ? r - r0 : r1 - r;
+      let [white, dark] = l.pattern ? markingAt(l.pattern, l.seed, (x - x0) / unit, down / unit, x - x0, down) : [0, 0];
+      if (band > 0 && up < band * (0.8 + 0.4 * hash3(x - x0, 0, l.seed + 13))) white = 1;   // the legs' white, its top ragged
+      if (dark) nv *= 1 - dark;
+      rgbInto(out, o, hue, ns, nv);
+      if (white > 0) {   // the hide's own light, in white: a patch in shadow is a shadowed white
+        const wv = clamp01(0.4 + 0.85 * v);
+        const tmp = [0, 0, 0];
+        rgbInto(tmp, 0, hue, 0.04, wv);
+        out[o] = Math.round(out[o] + (tmp[0] - out[o]) * white);
+        out[o + 1] = Math.round(out[o + 1] + (tmp[1] - out[o + 1]) * white);
+        out[o + 2] = Math.round(out[o + 2] + (tmp[2] - out[o + 2]) * white);
+      }
+    }
+  }
+  const Ctor = /** @type {any} */ (image.colors).constructor;
+  const colors = Ctor === Uint8Array ? out : new Ctor(out.buffer, 0, Ctor.BYTES_PER_ELEMENT === 4 ? n : n * 4);
+  return /** @type {T} */ ({ ...image, colors });
+}

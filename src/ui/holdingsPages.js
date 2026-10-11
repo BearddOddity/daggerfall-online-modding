@@ -19,6 +19,7 @@
 
 import { stableWagonName, WAGON_KINDS } from '../systems/wagonKinds.js';   // WAGONS1: the Stable's card names the wagon driven
 import { paintDrivenWagon, outsidePaintRow, LOOK_TEXT } from '../systems/wagonLooks.js';   // WAGONS2: and paints it
+import { restyleRiddenHorse, horseLookRows, birthHorses, HORSE_LOOK_PARTS } from '../systems/horseCoats.js';   // COATS1: and the horse's look
 import { requestFittedIcon, fittedImg } from './textureCanvas.js';
 import { WAGON_MODE, HORSE_MODE, TRANSPORT, HORSE_NAME_MAX } from '../systems/horseCartLaw.js';
 import { optionPath } from './settingsMap.js';   // ORG2: a switch named in a window says where it lives
@@ -40,10 +41,11 @@ export function _setHoldingsIconForTests(fn) { _icon = fn ?? ((p, box, onReady) 
  * @property {any} [view]   the runtime's stableView() while `hcc`
  * @property {string|null} [kind]   WAGONS1: the wagon driven ('cart', 'openWagon', 'caravan' - systems/wagonKinds.js)
  * @property {{ choices: string[], current: number }|null} [paint]   WAGONS2: its outside's paints, and its paint now
+ * @property {{ desc: string, rows: Array<{ part: string, name: string, choices: string[], current: number }> }|null} [look]   COATS1: the ridden horse's look - in words, and a row of choices a part (coat, pattern, legs)
  *
  * @typedef {Object} HoldingsProvider
  * @property {() => StableModel} [stable]   the horse and the wagon
- * @property {(verb: 'summon'|'away'|'rename'|'paint', arg?: any) => { ok: boolean, text: string }} [stableAct]
+ * @property {(verb: 'summon'|'away'|'rename'|'paint'|'coat'|'pattern'|'legs', arg?: any) => { ok: boolean, text: string }} [stableAct]
  * @property {any} [fleet]   the fleet's model and acts (ui/fleetPage.js)
  */
 let _provider = /** @type {HoldingsProvider|null} */ (null);
@@ -54,13 +56,16 @@ export const holdingsProvider = () => _provider;
  * THE ONE CONSTRUCTION SEAM (Home.md) for the two hosts that stand Horse Cart and Cargo (scenes/world.js,
  * scenes/exterior.js): the Stable's half of the provider over a host's runtime - `on()` the mod's switch, `hasHorse()`
  * and `hasCart()` the pack's two items. WAGONS2: `items()` the pack (the driven wagon painted in it - systems/
- * wagonLooks.js paintDrivenWagon) and `onPainted()` the host told (its word moved).
+ * wagonLooks.js paintDrivenWagon) and `onPainted()` the host told (its word moved). COATS1: the ridden horse's look
+ * (systems/horseCoats.js restyleRiddenHorse - its coat, its pattern, its legs) the same way, in the same pack, the host
+ * told the same; and a horse not yet born is born before the card reads it (birthHorses).
  */
 export function stableProviderFor({ runtime, on, hasHorse, hasCart, wagonKind = () => null, items = () => [], onPainted = () => {} }) {
   return {
-    stable: () => ({ hcc: !!on(), hasHorse: !!hasHorse(), hasCart: !!hasCart(), view: on() ? runtime.stableView() : null, kind: wagonKind() ?? null, paint: outsidePaintRow(items()) }),   // WAGONS1: which wagon; WAGONS2: its paint
+    stable: () => { birthHorses(items()); return { hcc: !!on(), hasHorse: !!hasHorse(), hasCart: !!hasCart(), view: on() ? runtime.stableView() : null, kind: wagonKind() ?? null, paint: outsidePaintRow(items()), look: horseLookRows(items()) }; },   // WAGONS1: which wagon; WAGONS2: its paint; COATS1: the horse's look
     stableAct: (verb, arg) => {
       if (verb === 'paint') { const r = paintDrivenWagon(items(), 'outside', Number(arg) | 0); if (r.ok) onPainted(); return r; }   // WAGONS2: free, any time, the mod on or off - the paint is the wagon's
+      if (HORSE_LOOK_PARTS.some((p) => p.part === verb)) { const r = restyleRiddenHorse(items(), verb, Number(arg) | 0); if (r.ok) onPainted(); return r; }   // COATS1: the same - the look is the horse's
       if (!on()) return { ok: false, text: `Turn on Horse Cart and Cargo (${optionPath('feat:mod-horse-cart-and-cargo')}) to call your horse and wagon.` };   // ORG2: where it lives, from the map
       if (verb === 'summon') return runtime.summonTransport();
       if (verb === 'away') return runtime.sendTransportAway();
@@ -176,6 +181,19 @@ let _said = null;   // { who: 'horse'|'wagon'|'both', ok, text } - the last act'
 let _renaming = false;   // the horse's name field open
 let _draft = '';
 
+/** WAGONS2/COATS1: a card's row of choices - its word, then a button a choice, the one worn pressed. */
+function choiceRow(el, word, { choices, current }, choose) {
+  const row = el('div', 'hld-acts');
+  row.append(el('span', 'hld-sub', `${word}:`));
+  choices.forEach((name, i) => {
+    const b = el('button', i === current ? 'act primary' : 'act', name);
+    b.setAttribute('aria-pressed', i === current ? 'true' : 'false');
+    b.onclick = () => choose(i);
+    row.append(b);
+  });
+  return row;
+}
+
 function card(el, { art, glyph, name, words, sub, extra, rerender }) {
   const item = el('div', 'hld-row');
   item.append(holdingArt(el, art, glyph, rerender));
@@ -228,22 +246,16 @@ export function drawStablePage(detail, rerender, { el, divider, meter = null } =
       row.append(ok, no);
       extra.push(row);
     }
+    if (m.look) {   // COATS1: its look in words, then its coats, patterns and legs, a button each - pressed, worn
+      extra.push(el('span', 'hld-sub', `${m.look.desc[0].toUpperCase()}${m.look.desc.slice(1)}.`));
+      for (const row of m.look.rows) extra.push(choiceRow(el, row.name, row, (i) => act(/** @type {any} */ (row.part), i)));
+    }
     list.append(card(el, { art: HORSE_ART, glyph: '♞', name, words: words.horse, sub: v?.horseName ? 'Your horse' : null, extra, rerender }).item);
   }
   if (words.wagon) {
     const extra = [];
     if (v && v.limit > 0) extra.push(holdingMeter(el, meter, 'Load', v.kg, v.limit, 'thin'));
-    if (m.paint) {   // WAGONS2: its outside's paints, a button each - pressed, painted
-      const row = el('div', 'hld-acts');
-      row.append(el('span', 'hld-sub', `${LOOK_TEXT.paint}:`));
-      m.paint.choices.forEach((name, i) => {
-        const b = el('button', i === m.paint.current ? 'act primary' : 'act', name);
-        b.setAttribute('aria-pressed', i === m.paint.current ? 'true' : 'false');
-        b.onclick = () => act('paint', i);
-        row.append(b);
-      });
-      extra.push(row);
-    }
+    if (m.paint) extra.push(choiceRow(el, LOOK_TEXT.paint, m.paint, (i) => act('paint', i)));   // WAGONS2: its outside's paints, a button each - pressed, painted
     list.append(card(el, { art: WAGON_ART, glyph: '☸', name: stableWagonName(m.kind), words: words.wagon, sub: m.kind && m.kind !== 'cart' ? WAGON_KINDS[m.kind]?.name ?? null : null, extra, rerender }).item);   // WAGONS1: the wagon driven, by its kind
   }
   detail.append(list);
