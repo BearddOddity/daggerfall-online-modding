@@ -271,8 +271,10 @@ and CHART_PINCH_STEP, the board's BOARD_PAY_MAX and BOARD_STANDING_MAX. G2's lan
 Its word, said once the player stands, first stood inside the arrival's statements, which `partyBoatTeleportFix` runs
 over stand-ins of its own: nine of its tests threw, and the whole suite over the merged tree found it. The word now
 stands below them (after `questBridge?.onInitWorld()`), and the arrival's statements are main's again, line for line.
-Main merged in moved one more: `fb1011c_seatown` runs world.js's `navalHud` over stand-ins, and the plate is handed the
-glass's state (SPYGLASS's `glassUp`), so the glass stands among them - and the pin now asks it, down and up.
+Main merged in moved two more: `fb1011c_seatown` runs world.js's `navalHud` over stand-ins, and the plate is handed the
+glass's state (SPYGLASS's `glassUp`), so the glass stands among them - and the pin now asks it, down and up; and F212's
+window (`audit26_dungeonfoes`), 7,800 characters of the teleport to 8,100 - G2's landing beside the resets and main's
+own new lines above its needles each fitted it, both together did not.
 
 ## Mutants
 
