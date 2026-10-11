@@ -776,6 +776,8 @@ export function createHomeYards(deps) {
     },
     /** The yards' flats and the flat being placed, for the world's billboard pass. */
     batches: () => [...[...yards.values()].flatMap((y) => y.pool.batches()), ...tool.batches()],
+    /** MWNPC18: the yards' figures (one of Daggerfall's people set down outside), for the street's people lane. */
+    figures: () => [...yards.values()].flatMap((y) => y.pool.figures()),
     /** DECOR-LPT: the yards' 3D trees, for the world's near set (scenes/world.js lowPolyTreesFrame). */
     treeSets,
     /** YARD-LIGHT: the yards' lamps, for the world's lanterns. */

@@ -192,7 +192,7 @@ export function createNpcBodies({ renderer, enabled = () => true, generation = (
     if (want !== standing) {
       bodies?.destroy();
       const limits = tiers[want] ?? null;
-      bodies = limits ? new PeerBodies({ renderer, enabled, generation, limits: budget ? { ...limits, buildInRange: true, hysteresis: NPC_BUDGET_HYSTERESIS } : limits, gate: BODY_BUILD_GATE, ...(createRig ? { createRig } : {}), ...(now ? { now } : {}), ...(warn ? { warn } : {}), ...(collider ? { collider } : {}) }) : null;
+      bodies = limits ? new PeerBodies({ renderer, enabled, generation, limits: budget ? { ...limits, buildInRange: true, hysteresis: NPC_BUDGET_HYSTERESIS } : limits, gate: BODY_BUILD_GATE, casts: true, ...(createRig ? { createRig } : {}), ...(now ? { now } : {}), ...(warn ? { warn } : {}), ...(collider ? { collider } : {}) }) : null;   // MWNPC16: an NPC's body casts its own shadow (its flat casts none)
       standing = want;
     }
     return bodies;
@@ -313,8 +313,8 @@ export function createHostNpcBodies({ renderer, collider = () => null, tiers = N
  * MWNPC7: A POPULATION'S LANE AT ITS HOST - the shape the foe pools grew (dungeonContext.js, exteriorFoes.js,
  * cityGuards.js) for a host that walks its population inline: the lane made the first frame it is wanted and let go the
  * frame it is not; each actor `offer`ed with the billboard its host would draw for it, that billboard's `castOnly`
- * reset at the offer; `draw` syncs the lane, marks each offered billboard cast-only where its body stands (it casts the
- * shadow the body does not) and draws the bodies in one bind - after the sync, so a body arriving or leaving is never a
+ * reset at the offer; `draw` syncs the lane, marks each offered billboard cast-only where its body stands (MWNPC16: it
+ * draws nothing and casts nothing - the body casts its own shape) and draws the bodies in one bind - after the sync, so a body arriving or leaving is never a
  * frame drawn twice or not at all, and nothing if nothing was offered since the last draw.
  * @param {{ laneName: string, renderer: any, collider?: () => any, tiers?: any, want?: () => boolean, make?: (() => any) | null }} p
  */

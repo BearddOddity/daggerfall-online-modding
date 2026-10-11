@@ -41,7 +41,8 @@ import { RAY_DISTANCE, DEFAULT_ACTIVATION_DISTANCE } from '../player/activate.js
 import { billboardSize } from '../world/rmbFlats.js';
 import { armFlatAnim } from '../render/flatAnimation.js';
 import { collectInteriorLights } from '../world/interiorLights.js';
-import { decorIsMount, decorMountFrame, DECOR_MOUNT_LIFT, decorFlatMirrored, decorDrawnScale } from '../net/decorLaw.js';   // DECOR-FIGURE: a figure at its own size
+import { decorIsMount, decorMountFrame, DECOR_MOUNT_LIFT, decorFlatMirrored, decorDrawnScale, decorIsFigure } from '../net/decorLaw.js';   // DECOR-FIGURE: a figure at its own size; MWNPC18: and in its body
+import { figureLook, personActor } from '../characters/peopleBodies.js';   // MWNPC18: a placed figure, read for its Morrowind body
 import { decorMountDye, decorMountDyeTarget, decorMountItem } from '../systems/decorItems.js';
 import { toColor32 } from '../formats/color32Order.js';   // MW-MOUNT: a rendered picture's rows, as the upload reads them
 import { preloadTextureRecord } from '../systems/textureReplacement.js';   // MOUNT-LAZY: the record's own replacement, decoded before its upload
@@ -462,6 +463,9 @@ export function createDecorRoom({
   }
   /** The flats' batches, for the host's billboard pass. */
   const batches = () => [...standing.values()].map((e) => e.batch).filter(Boolean);
+  /** MWNPC18: the figures standing (decorIsFigure - one of Daggerfall's people), each its entry - its piece and the batch
+   *  that draws it - for the host's people lane (offerDecorFigures). */
+  const figures = () => { const out = []; for (const e of standing.values()) if (e.batch && decorIsFigure(e.piece)) out.push(e); return out; };
   /** DECOR2c: the mounts, on the host's decal pass (after the room's solid geometry, as the blood marks go). */
   function drawMounts(r = renderer) {
     let n = 0;
@@ -601,10 +605,30 @@ export function createDecorRoom({
   }
 
   return {
-    put, remove, set, restand, destroyAll, draw, batches, drawMounts, lights, pushLights, targets, pieceOf, list, size: () => standing.size,
+    put, remove, set, restand, destroyAll, draw, batches, figures, drawMounts, lights, pushLights, targets, pieceOf, list, size: () => standing.size,
     itemsOf, holdsAny, itemsSnapshot, setItems, keep, kept: () => kept,
     ownOf, keepOwn, takeOwn, ownSnapshot, setOwn, ownIds, refreshMounts, mountPicture, standPicture, onRefresh,
   };
+}
+
+/**
+ * MWNPC18 (bible/04-Characters/Morrowind-NPCs.md section 26): THE FIGURES A PLAYER PLACED, OFFERED THEIR BODIES - on the
+ * host's people lane (characters/npcBodies.js createPopulationLane: `lane.offer(actor, batch)`), as its own standing
+ * people are, before the flats draw (cast-only where one stands - and since MWNPC16 casting nothing: the body casts).
+ * Each stands where its picture stands (its batch's base), turned to the eye at a person's pace (peopleBodies.js
+ * personActor); its look figureLook's - `flats` FLATS.CFG, `race` the region's. A figure with no look draws its picture.
+ * @param {any[]} figs the figures (decorRoom figures()) @param {{ offer: Function }} lane @param {boolean} on the lane's frame
+ * @param {{ flats?: any, race?: any } | null} ctx @param {number[]} eye @param {number} dt @returns {number} how many were offered
+ */
+export function offerDecorFigures(figs, lane, on, ctx, eye, dt) {
+  let n = 0;
+  for (const e of figs) {
+    const look = on ? figureLook(e, ctx) : null;
+    if (!look) { e.batch.castOnly = false; continue; }
+    lane.offer(personActor(e, look, e.batch.origin, eye, dt), e.batch);
+    n++;
+  }
+  return n;
 }
 
 /** AUDIT DECOR-SHELL 2: how long after an online home's list did not stand it is asked again - twice as long each time

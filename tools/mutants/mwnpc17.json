@@ -1,0 +1,146 @@
+[
+ {
+  "name": "MWNPC17-cut-ignored",
+  "file": "src/characters/wardrobe.js",
+  "old": "  const prefer = cut === 'robe' ? ['robe', 'skirt', 'pants'] : cut === 'skirt' ? ['skirt', 'pants', 'robe'] : cut === 'pants' ? ['pants', 'skirt', 'robe'] : null;",
+  "new": "  const prefer = null;",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-one-metal-for-a-fighter",
+  "file": "src/characters/wardrobe.js",
+  "old": "    one: false,",
+  "new": "    one: true,",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-chain-helm",
+  "file": "src/characters/wardrobe.js",
+  "old": "    if (material === MAT.Chain && !CHAIN_PIECES.has(templateIndex)) material = MAT.Iron;",
+  "new": "",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-pauldron-alone",
+  "file": "src/characters/wardrobe.js",
+  "old": "  if (l && !r) out.push(",
+  "new": "  if (false) out.push(",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-noble-in-common",
+  "file": "src/characters/wardrobe.js",
+  "old": "tiers: [0, 35, 45, 20]",
+  "new": "tiers: [10, 35, 45, 20]",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-boots-and-shoes",
+  "file": "src/characters/wardrobe.js",
+  "old": "  if (!armor.some((it) => it.equipSlot === EQUIP_SLOTS.Feet)) items.push(",
+  "new": "  if (true) items.push(",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-rung-ignored",
+  "file": "src/formats/mwItemMap.js",
+  "old": "  if (Number.isInteger(tier) && tier >= 0 && tier <= 3) {",
+  "new": "  if (false) {",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-pick-over-every-colour",
+  "file": "src/formats/mwItemMap.js",
+  "old": "      const k = Math.min(CLOTH_PICK_NEAREST, near.length), chosen = near[pick % k];",
+  "new": "      const k = near.length, chosen = near[pick % k];",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-higher-rung-first",
+  "file": "src/formats/mwItemMap.js",
+  "old": "    for (const d of [0, -1, 1, -2, 2, -3, 3]) {",
+  "new": "    for (const d of [0, 1, -1, 2, -2, 3, -3]) {",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-blind-pick-ignored",
+  "file": "src/formats/mwItemMap.js",
+  "old": "  if (picking) return { record: pool[pick % pool.length], row,",
+  "new": "  if (false) return { record: pool[pick % pool.length], row,",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-composer-drops-the-pick",
+  "file": "src/formats/mwItemMap.js",
+  "old": "colourOf, tier: piece.tier ?? null, pick: piece.pick ?? null });   // MWNPC17",
+  "new": "colourOf });   // MWNPC17",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-picks-dropped",
+  "file": "src/net/peerBodies.js",
+  "old": "    armor: npc ? withNpcPicks(worn, npc) : worn,",
+  "new": "    armor: worn,",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-face-one-hash",
+  "file": "src/characters/wardrobe.js",
+  "old": "hair: wmix(n.seed ^ 0x4a12b0b5) });",
+  "new": "hair: wmix(n.seed ^ 0x4ead5eed) });",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-key-without-hint",
+  "file": "src/net/peerBodies.js",
+  "old": ": `${bodyLookKey(look)}${npcKeyOf(look)}`;   // SHADOW-FANG",
+  "new": ": bodyLookKey(look);   // SHADOW-FANG",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-walk-ignored",
+  "file": "src/formats/mwFirstPerson.js",
+  "old": "    if (sorted.length && Number.isInteger(step) && step >= 0) {",
+  "new": "    if (false) {",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC17-player-hint-read",
+  "file": "src/characters/wardrobe.js",
+  "old": "  if (!n || typeof n !== 'object' || !Number.isInteger(n.seed) || n.seed < 0 || n.seed > 0xffffffff",
+  "new": "  if (!n || typeof n !== 'object' || !Number.isInteger(n.seed)",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ }
+]

@@ -368,7 +368,7 @@ import { FORGE_FEE, WORKBENCH_FEE, LOOM_FEE, MASON_FEE, COOK_FIRE, JEWEL_FEE, AL
 const DECOR_STATION_NOT_READY = 'The station is not ready yet - try again in a moment.';
 /** AUDIT HOME-STATIONS S7: a maker's refusal whose TEXT.RSC record did not answer. */
 const DECOR_STATION_REFUSED = 'You cannot use the station right now.';
-import { createDecorRoom, decorIdOfKey, askDecorList } from './decorRoom.js';
+import { createDecorRoom, decorIdOfKey, askDecorList, offerDecorFigures } from './decorRoom.js';   // MWNPC18: a placed figure in its body
 // DECOR1d: the decorator itself - the button, the panel, the free camera - and what its catalogue scan reads
 import { createDecorTool } from './decorTool.js';
 import { decorScanDeps } from '../systems/decorScan.js';   // DECOR-DUNGEON: the scan's deps, one constructor for both hosts
@@ -1824,6 +1824,8 @@ export function createWorldModes(host) {
   // 'people' lane under the switch's tier; a person's look read once (their StaticNPC data and their faction's row),
   // never while the faction table is still loading; let go with the room
   const peopleBodies = createPopulationLane({ laneName: 'people', renderer });
+  // MWNPC18: what a placed figure is read by - FLATS.CFG and the region's race, asked only when a figure is first looked at
+  const figureCtx = { get flats() { return pipeline?.flatsFile?.() ?? null; }, get race() { return questSceneCtx?.()?.raceOfCurrentRegion?.() ?? null; } };
   const standingLook = (pn) => {
     if (pn._mwLook !== undefined) return pn._mwLook;
     const dict = townTalk?.factionDict ?? null;
@@ -10760,6 +10762,7 @@ export function createWorldModes(host) {
       else pn.standBatch.castOnly = false;
     }
     offerQuestStands(questFlats, peopleBodies, _peopleOn, interiorBuilding?.buildingKey ?? 0, mwv.eye, dt);   // MWNPC8c: and the quest's
+    offerDecorFigures(interiorDecor.figures(), peopleBodies, _peopleOn, figureCtx, mwv.eye, dt);   // MWNPC18: and the figures the home's owner placed
     peopleBodies.draw(canvas, proj, view, mwv.eye, dt);
     host.drawLivingBodies?.(canvas, proj, view, mwv.eye, dt);   // MWNPC10c: the residents the day has in here, in their bodies (their batches ride livingBillboards)
     // BLOOD1 AUDIT (2026-09-20): THE INTERIOR'S OWN MARKS, and they

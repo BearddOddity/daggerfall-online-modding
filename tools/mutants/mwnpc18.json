@@ -1,0 +1,92 @@
+[
+ {
+  "name": "MWNPC18-sex-off-the-record",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  const gender = row ? flatGender(row.gender) : null;",
+  "new": "  const gender = 'male';",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC18-seed-off-the-picture",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  const seed = textSeed(`decor:${piece.id}`);",
+  "new": "  const seed = textSeed(`decor:${a}.${r}`);",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC18-miss-cached",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  const flats = ctx?.flats ?? null;\n  if (!flats) return null;",
+  "new": "  const flats = ctx?.flats ?? null;\n  if (!flats) return (fig._mwLook = null);",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC18-azura-dressed",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  if (a === DAEDRA_PRINCES_ARCHIVE || isChildNPCTexture(a, r)) return (fig._mwLook = null);",
+  "new": "  if (isChildNPCTexture(a, r)) return (fig._mwLook = null);",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC18-knight-unread",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  ['knight', /knight|guard|soldier|captain|sentry|paladin|sergeant/i],\n",
+  "new": "",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC18-offer-skipped",
+  "file": "src/scenes/decorRoom.js",
+  "old": "    lane.offer(personActor(e, look, e.batch.origin, eye, dt), e.batch);\n",
+  "new": "",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC18-cast-only-left",
+  "file": "src/scenes/decorRoom.js",
+  "old": "    if (!look) { e.batch.castOnly = false; continue; }",
+  "new": "    if (!look) continue;",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC18-every-flat-a-figure",
+  "file": "src/scenes/decorRoom.js",
+  "old": "if (e.batch && decorIsFigure(e.piece)) out.push(e);",
+  "new": "if (e.batch) out.push(e);",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC18-room-unoffered",
+  "file": "src/scenes/worldModes.js",
+  "old": "    offerDecorFigures(interiorDecor.figures(), peopleBodies, _peopleOn, figureCtx, mwv.eye, dt);",
+  "new": "",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC18-yard-unoffered",
+  "file": "src/scenes/world.js",
+  "old": "    if (yards && _mode() === 'exterior') offerDecorFigures(yards.figures(), streetPeople, _peopleOn, yardFigureCtx, mwv.eye,",
+  "new": "    if (false) offerDecorFigures(yards.figures(), streetPeople, _peopleOn, yardFigureCtx, mwv.eye,",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ }
+]

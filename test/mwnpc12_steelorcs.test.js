@@ -36,7 +36,12 @@ test('MWNPC12-1 every steel look is worn: the street\'s guard, a knightly order\
   const guard = folkLook({ archive: GUARD_TEXTURE, gender: GENDERS.Male, personFaceRecordId: 0, nameNPC: 'Gaius' }, 'Breton');
   const knight = personLook({}, { race: RACES.Nord, gender: GENDERS.Male, nameSeed: 77, hash: 5, factionID: 0, billboardArchiveIndex: 182, billboardRecordIndex: 1 },
     { type: FACTION_TYPES.Generic, sgroup: SOCIAL_GROUPS.Commoners, ggroup: GUILD_GROUPS.KnightlyOrder });
-  const looks = { guard, knight, warrior: rosterLook({}, { mobileType: M.Warrior, seed: 3 }), watch: rosterLook({}, { mobileType: M.Knight_CityWatch, seed: 3 }) };
+  // PIN MOVED (MWNPC17, section 25): a knightly order's person wears a KNIGHT's plate - one metal, by his rank
+  // (characters/wardrobe.js ARMOR_KITS.knight), steel among them; the guard, the roster's steel class and the watch steel
+  const kp = armour(knight);
+  assert.ok(kp.length >= 5 && new Set(kp.map((it) => it.material)).size === 1, 'the knight: whole plate, one metal');
+  for (const it of kp) assert.doesNotMatch(mwArmorRecords([], it.templateIndex, it.material).note, /no MW material/, 'a metal Morrowind names');
+  const looks = { guard, warrior: rosterLook({}, { mobileType: M.Warrior, seed: 3 }), watch: rosterLook({}, { mobileType: M.Knight_CityWatch, seed: 3 }) };
   for (const [who, look] of Object.entries(looks)) {
     const plate = armour(look);
     assert.ok(plate.length >= 6, `${who}: in plate`);
