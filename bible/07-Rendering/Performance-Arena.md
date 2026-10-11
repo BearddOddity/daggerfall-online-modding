@@ -1,4 +1,4 @@
-# PERF-ARENA + PERF-ALLOC1/2 — the exterior's frame in the real game (2026-10-10)
+# PERF-ARENA + PERF-ARENA2 + PERF-ALLOC1/2 — the exterior's frame in the real game (2026-10-10)
 
 *The owner: "Exterior performance is really bad" - "Interior is fine. It's exterior that's the issue" - "If you need
 to, pull the freeware online and do it yourself".*
@@ -96,6 +96,25 @@ Mutants: `tools/mutants/perfarena.json` (15, all dead). Pins moved: `test/hard3_
 (a two-flat call 107 -> 30 GL calls, one VAO bind fewer), `test/blood1_decals.test.js` (the move's write), and three
 harnesses that named a draw by its VAO alone and now name it by VAO and offset (`test/perfexta.test.js`,
 `test/perfextb.test.js`, `test/lpt1_lowpolytrees.test.js`).
+
+## PERF-ARENA2 — the arenas grown, and a record's batches together (2026-10-11)
+
+After PERF-ARENA the main pass still bound a VAO on most of its flats. Read back from the real game through
+`window.__renderer` (Knightstale by night, once ready): the stream stood **619,833 quads in 38 arenas** of
+BB_ARENA_QUADS (16,384) each, every one full. The pass draws its flats sorted by texture key (`billboardKey.js`
+sortByKey - one key's batches in a run, in the order they came, LA-COST2's exact order), and one key's batches lay
+scattered over the 38: the pass hopped between arenas on nearly every draw.
+
+- EACH ARENA TWICE THE LAST, to BB_ARENA_MAX_QUADS (262,144 quads: 21 MB of corners, 6 MB of indices) - a town that
+  size stands in six arenas, an interior's few hundred flats in the first.
+- A RECORD'S BATCHES TOGETHER: `_bbArenaFor` takes the batch's key (`${archive}_${record}`, the run the main pass
+  sorts it into) and tries the arena that key's last batch went to first, then the first fit anywhere, then a new
+  arena - so a run stays in one arena and the pass binds where the key changes anyway. A deleted arena takes its keys'
+  homes with it.
+
+The draws are the same draws in the same order; only where a batch's corners live moved. Pins: `test/perfarena.test.js`
+(the spill test's growth and the record's home; the growth's bound, its sixth); mutants PERFARENA2-no-growth,
+PERFARENA2-unbounded, PERFARENA2-no-home (dead), PERFARENA-no-spill re-aimed by content.
 
 ## PERF-ALLOC1 — the lanterns' face matrices made in place
 
