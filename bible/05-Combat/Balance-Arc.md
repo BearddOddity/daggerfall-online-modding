@@ -1,4 +1,4 @@
-# The Balance arc - the place sets the threat, one rule for every striker (BAL1-BAL4)
+# The Balance arc - the place sets the threat, one rule for every striker (BAL1-BAL5)
 
 > Design page, written from the measurement before the code (2026-10-10). The slices ship in one pull request, in this
 > order, each verifiable without the next. Where this page and a shipped slice disagree, the slice's own record
@@ -280,6 +280,7 @@ thirteen. The simulation leaves out the formulas' tail (an elite, the mentor, a 
 | BAL2 | one rule for every striker | the hit and the crit |
 | BAL3 | the place sets the threat | one law, two seams |
 | BAL4 | the offline defaults | three switches and the death's cost |
+| BAL5 | the blow paid back (section 11, 2026-10-11) | one law at the door, one cap, one flavour retired |
 
 ## 10. What shipped
 
@@ -356,3 +357,63 @@ was checked against the code before it was fixed:
   "wall clock" this page first said was wrong, the clock is the foes' own time; `pref1_shelf`'s All off. The docs
   (lane D): the builds stated whole, the 18%-through figure, a rat's 62, the Port-Ledger's PROJECT LEGACY and PCO1
   rows, the PCAAO page's counts and the fourth departure's arms, the patch notes' paths and their "up to".
+## 11. BAL5 - the blow paid back (2026-10-11)
+
+A player's report (feature-feedback, 2026-10-11, with a clip): *"the Ancient Lich is an endgame mob in OG Daggerfall
+and I can just give it the light skin stare and let it attack me until thorns damage kills him"*, and of Troll's
+Blood held on a Rare: *"in the original you had to activate the item for and you couldn't repair it, which served as a
+form of balance"*. Mac: *"Make the best balancing decisions"*.
+
+THE CAUSE THE MEASUREMENT COULD NOT SEE. Section 2's builds wore plain steel or ebony - no loot line, no set. Two
+things the loot ladder hands out decide a fight without the player in it:
+
+1. **The thorns** (LOOT4, `systems/lootPowers.js`) paid back every worn line, summed to at most 25, on every foe's
+   blow that took health - flat, with no roll to hit, past the foe's armour and past the metal it asks of a weapon (an
+   Ancient Lich's is Mithril). Section 7's player deals an Ancient Lich in a Dragon's Den 13.35 a swing, so 25 was
+   nearly two swings paid back for every blow it landed, and the kill with it: Meaner Monsters' 80-210 health at the
+   Den's x2 is 7 to 17 of its own landed blows, the player never swinging. Three Legendary lines or five Rares reached
+   the cap. Spite of the Spurned (Malacath's four) pays back 10-30% of what a blow took, the same way.
+2. **Troll's Blood, held**, one Rare armour flavour in nine (LR2's `RARE_FLAVOURS`): a Regenerate every magic round
+   for as long as the piece is worn. DFU makes it at the item maker for 920 points and charges for it in the piece's
+   life - CastWhenHeld's 1 condition every 4 rounds, and no smith mends a magic piece (AllowMagicRepairs, False). The
+   port mends one by default and online (DISC22-A, Mac's), so a random drop handed out a regeneration that never
+   ended. (The player's "you had to activate it" is DFU's Cast When Used; Cast When Held: Troll's Blood is in DFU's
+   own catalogue - the cost DFU puts on it is the piece's wear.)
+
+THE LAW. **A blow paid back never kills.** Damage a foe's own blow turns back on it - the thorns, Spite - takes what
+it would, but never the foe's last point (`systems/playerDoor.js` paidBack: `min(n, ceil(health) - 1)`, a whole
+point left whatever a shared foe's toughness divides it by; a record that carries no health is taken at its word).
+The kill is the player's to take: standing still wins no fight and farms no corpse, at any gear and under any later
+tuning of the numbers. **The thorns pay back at most 10 a blow** (`THORNS_CAP`, 25): the top of a Legendary line's
+band and a Legendary sear's own most - 0.75 of section 7's swing, not 1.87. The bands (1-3, 3-6, 6-10) stand, so
+every line already rolled stays lawful (`itemLaw.js` reads its band). **Troll's Blood is retired from the Rare draw**:
+it stays in `RARE_FLAVOURS.Armor` marked `retired` - the law and the market (`smithItems.js` asMinted) still read a
+piece that drew it as minted, so a player who has one keeps it - and `rareFlavour` draws among the eight others. The
+item maker still sells it at DFU's price.
+
+What moves: the thorns at the cap pay back 2/5 of what they did; neither power ends a fight on its own; one Rare
+armour flavour in eight is each of the others (it was one in nine). Not moved: a Legendary, which carries its
+record's enchantment, never a flavour.
+
+RECORDED, NOT CHANGED:
+
+- **The drop rates.** The report asks whether Rares and Legendaries come too often. The ladder's odds are LR1's table
+  as LOOT13 (luck a nudge), FOE-CAP (a plain foe's own table) and CHAMP-LOOT tuned it, each on Mac's word; the clip's
+  fight is lost to two powers, not to the number of pieces. Taking pieces away would leave both powers where they were.
+- **The Ring of Namira** reflects an undead foe's blow doubled and can kill with it (`artifactEffects.js`
+  onPlayerStruckByEnemy). It is DFU's own (FormulaHelper.cs:702-719), a Daedric Prince's quest reward, and 1:1.
+- **The repair defaults** (DISC22-A's AllowMagicRepairs, REPAIR-EASE's InstantRepairs) are Mac's; BAL5 retires the
+  one flavour they made endless instead of taking the mending back.
+- **The other held flavours** (jewellery's Chameleon, Shadow Form, Tongues, Spell Resistance; armour's Slowfalling and
+  the two waters) are utility or a resistance, not a heal.
+- **The Legendaries' guards** (Unyielding, Divine Grace, Dawnward, Raven's Evasion, Hex, Bedrock, Hist-Sap) stack, and
+  a player wearing many of them takes little from any one foe. Without a blow paid back that is a long fight, not a
+  won one; they are a watch item for the next measurement, which should wear the loot.
+- **A puppet's health** is the owner's record as last mirrored; a paid-back blow on another client's foe is held
+  under that copy's last point, and the owner lands it on its own. A copy that lags its owner's a hit behind could let
+  one through - a two-client edge, not the report's lane.
+
+Pinned: `test/bal5_blowback.test.js` (5) by execution - the real Ancient Lich's row struck at a player in Rare thorns
+lines through the real damage door, worn to its last point and never killed; Spite alone and both together the same;
+3,000 seeded Rare cuirasses never drawing Troll's Blood and drawing every other armour flavour; a piece that drew it
+lawful to `itemFindings`. `tools/mutants/bal5.json` (12, all dead).

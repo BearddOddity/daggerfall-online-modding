@@ -71,7 +71,7 @@ import { registerSpellCostMod } from './spellcost.js';
 import { healMine } from './playerHeal.js';   // SERPENT-SET: Shed Skin heals through the loot's own heal
 import { registerAbsorptionChance } from './absorption.js';
 import { registerMagicRoundHook } from './worldTick.js';
-import { playerDoor } from './playerDoor.js';
+import { playerDoor, paidBack } from './playerDoor.js';   // BAL5: a blow paid back never kills
 import { hudText } from './notify.js';
 import { weaponSkillUsed } from '../characters/weapons.js';
 import { friendlyProtected } from '../combat/playerWeapon.js';
@@ -305,13 +305,15 @@ function landedBlow() {
   _blow = null;
   return b && _now() - b.at <= BLOW_WINDOW_S ? b : null;
 }
-/** Spite of the Spurned: the foe that struck me takes its share of what its blow took from me. */
+/** Spite of the Spurned: the foe that struck me takes its share of what its blow took from me - never its last point
+ *  (BAL5, bible/05-Combat/Balance-Arc.md section 11: the kill is mine to take, never the Spite's). */
 function spite(entity, blow, took) {
   const v = tierOf(entity, 'malacath', 1);
   if (!v || !(took > 0)) return;
   const door = playerDoor();
   const f = door?.foes().find((x) => x.entity === blow.attacker);
-  if (f) door.hurtFoe(f, Math.max(1, Math.round((took * v.back) / 100)));
+  const back = f ? paidBack(f, Math.max(1, Math.round((took * v.back) / 100))) : 0;
+  if (back > 0) door.hurtFoe(f, back);
 }
 
 // ── the damage I take: Unbroken's halving, Hold the Line, Iron Hide ──
