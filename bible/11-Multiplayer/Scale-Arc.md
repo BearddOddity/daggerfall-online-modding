@@ -1633,6 +1633,8 @@ reads `last_seen` finer: the idle bound is a year, and the device list orders by
 
 SCALE3's fleet (half of it fighting) wrote 172 rows a bot-hour; Renown was a third of them.
 
+`npm run test:changed`: 23,899 pass; its two failures were pins this slice moved (below).
+
 **Mac's decision 1, considered: a token bound to a key.** A reconnect's token is spent once (`server/src/index.js`
 `_spent`, a room's own memory), so every reconnect after a relay deploy is a mint. A token bound to a key the page
 holds could be presented again until it expires, proven by a signature over the room and the moment. What it costs:
@@ -1675,7 +1677,8 @@ the plan for that point, built when `/v1/auth/token`'s D1 wait (`double5`, SCALE
   no pin asked it against a spent room; the pin now does.
 
 PIN MOVED:
-- `renown1`'s and `auditrenown1`'s answers carry `room`;
+- `renown1`'s, `auditrenown1`'s and `renown_char`'s answers carry `room`, and `renown4`'s reading of the host's answer
+  keeps the room between the total and the level;
 - `scale1`'s bound on the touch (an hour, from fifteen minutes);
 - `scale4f`'s metrics pins: a `first()`'s wait and rows are now its `all()`'s, and the point's first seven doubles
   are SCALE4f's;
