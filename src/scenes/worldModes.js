@@ -84,7 +84,7 @@ import { DUNGEON_LIGHT_COLOR, DUNGEON_LIGHT_BLOCK_RANGE } from '../world/dungeon
 import { createCamps } from './camps.js';   // HEARTH1: not to STAND a camp indoors - nothing may be - but to answer the room's own fires
 import { CAMP_TEXT } from '../systems/survival/camp.js';   // AUDIT REST II H4: the carried-out word, said on the HUD outside
 import { collectHearths } from '../systems/survival/hearth.js';   // AUDIT HEARTH1 F4: the law's own collection, rather than a fourth hand-written copy of its test
-import { lanternColor, dungeonAmbient, dungeonTrilight, dungeonFog } from '../render/enhancedLighting.js';   // EL1: the world host installed the lane; this reads it; EL4: the dark; AUDIT-EL F6: the fog with it
+import { lanternColor, dungeonAmbient, dungeonTrilight, dungeonFog, interiorLightColor, interiorGrade } from '../render/enhancedLighting.js';   // EL1: the world host installed the lane; this reads it; EL4: the dark; AUDIT-EL F6: the fog with it; INTERIOR-DIM: a room's lamps and its grade
 import { INTERIOR_AMBIENT, INTERIOR_NIGHT_AMBIENT, INTERIOR_LIGHT_DIR } from '../world/interiorLights.js';
 import { isNight } from '../world/worldClock.js';   // AUDIT 23 (C12)
 import { worldMinutes, skyMinutes, setWorldMinutes, ownMinutes, ownTimeLeftText, ownTimeLeftShort, sharedClockOn, trustedWorldMinutes, worldSpanRealWords, tickInFlight } from '../systems/worldTick.js';   // AUDIT 23 (C12): the one clock; G4's probe moves it; LIVED1: the character's own clock, and its deadlines said in their time; AUDIT LIVED1b K1: the collapse box's guard is online's; AUDIT CARDS-6 B4: a round of damage over time stands nobody up from the cards
@@ -10597,7 +10597,7 @@ export function createWorldModes(host) {
       _iilIt
         ? nearestLights(_iilIt.lights, cam.pos, renderer.maxPointLights, _iilIt.ranges, _iilIt.colorOf)
         : nearestLights(interiorCtx.lights, cam.pos, renderer.maxPointLights, interiorCtx.lights.map((l) => l.range),   // EL1: the installed set's cap
-          (l) => [l.color[0] * l.intensity, l.color[1] * l.intensity, l.color[2] * l.intensity]),
+          (l) => interiorLightColor(!!renderer.lightingLane, l.color, l.intensity)),   // INTERIOR-DIM: on the lane the room's lamps burn lower, the white ones in the flame
       magic?.candleLight(), (_iilOnIt ? iilTorch : (l) => l)(playerTorchLight(playerEntity, player.feetAt(), cam.yaw)), thunderlockMuzzleLight(playerEntity, player.feetAt(), cam.yaw), ...(host.modeLights?.() ?? []), ...(host.peerLights?.() ?? []), ...interiorTorches.lights());   // PEERLIGHT1: the others' torches   // X11 candle; T1 torch; HT1 the dropped lights; FIELD-GUN13 the muzzle flash; DISC13-A the hand lights ride the render feet (feetAt), as the camera does
     renderer.setPointLights(_itLit.data, null, _itLit.colors);
     renderer.everyLightCasts();   // DISC15: the building is drawn whole below (no view cull) - every lamp keeps a shadow map, none lights through the ceiling as the nearest eight change
@@ -10612,6 +10612,7 @@ export function createWorldModes(host) {
     // CheckForNewlyDiscoveredMeshes runs on IsPlayerInsideBuilding
     // exactly as it runs in a dungeon (Automap.cs:1155).
     if (!overlayHeld) interiorCtx.automapTick?.(dt, cam.pos, fwd);
+    renderer.setSceneGrade?.(interiorGrade(!!renderer.lightingLane));   // INTERIOR-DIM: the room's grade - the eye aimed darker and held at 1.2; set after the view out, which shows any world image still owed (a resolve takes the grade); above the clear and the rect, which E5 keeps on its beginFrame
     renderer.setClearColor(INTERIOR_CLEAR);   // REVIEW 2026-09-05 (PR #55 review): the world-hosted dungeon/interior frame is THIS one - the host's own setClearColor sits after its `modes.frame` return
     renderer.setWorldViewport(worldViewportRect(canvas.clientWidth, canvas.clientHeight));   // E5: ViewportChanger.Update, every frame
     renderer.beginFrame(proj, view, INTERIOR_LIGHT_DIR, WORLD_FRAME);   // AUDIT-EL F5: a WORLD frame - the lane replays its records for this one
