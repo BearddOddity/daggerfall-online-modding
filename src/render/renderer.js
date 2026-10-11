@@ -1148,19 +1148,22 @@ export const bbCornerX = (x, scale = 1) => x * scale;
 // the freeware ARENA2): 942 bindVertexArray a frame by day, 905 by night, for ~1,000 draws, and the costliest WebGL
 // call the frame makes (1.5 us each on the main thread, 1.4 ms a frame - more than the draws themselves). A town's
 // flats are all one shape (a quad: four corners, six indices, the same twenty bytes a corner), so a batch built still
-// takes a RANGE of quads in an arena - one VAO, one vertex buffer and one index buffer for thousands of batches -
-// and its draw names its range by the index offset. The arena's indices are written ONCE at its birth, every quad's
-// the very six createBillboardBatch writes for its own (b, b+2, b+1, b, b+3, b+2 from the quad's first corner), and
+// takes a RANGE of quads in an arena - one VAO and one vertex buffer for thousands of batches, and one index buffer
+// for every arena (AUDIT PERF-ARENA A4, _bbArenaIndices) - and its draw names its range by the index offset. The
+// indices are written ONCE, every quad's the very six createBillboardBatch writes for its own (b, b+2, b+1, b, b+3, b+2 from the quad's first corner), and
 // a batch's corners are the very floats it wrote: the same triangles, in the same order, from the same vertices. A
 // batch built DYNAMIC (a gib, a blood drop: its centres move every frame) keeps buffers of its own, as before.
 /** Quads in the first arena (1.3 MB of corners, 393 KB of indices); each arena after it holds twice the last, to
  *  BB_ARENA_MAX_QUADS. */
 export const BB_ARENA_QUADS = 16384;
-/** PERF-ARENA2 (2026-10-11): the most quads a grown arena holds (21 MB of corners, 6 MB of indices). Knightstale's stream
+/** PERF-ARENA2 (2026-10-11): the most quads a grown arena holds (21 MB of corners; the arenas' one index buffer is 6 MB at
+ *  this size). Knightstale's stream
  *  stood 620,000 quads in 38 arenas of BB_ARENA_QUADS each - the real game read back through `window.__renderer` - and
  *  the main pass, its batches sorted by texture, hopped between them on nearly every draw; doubling to this, a town that
  *  size stands in six. An interior's few hundred flats stay in the first. */
 export const BB_ARENA_MAX_QUADS = 262144;
+/** AUDIT PERF-ARENA A5: the record homes kept before they start over (a home is a placement hint; a doll mints a key for good). */
+export const BB_ARENA_HOMES_MAX = 4096;
 /** The bytes a quad's four corners take (five floats a corner) and its six indices take. */
 const BB_QUAD_VERT_BYTES = 4 * 5 * 4, BB_QUAD_INDEX_BYTES = 6 * 4;
 /**
@@ -1944,6 +1947,7 @@ export class Renderer {
     this._bbArenas = [];
     /** PERF-ARENA2: a record's arena - `${archive}_${record}` -> the arena its last still batch went to */
     this._bbArenaOfKey = new Map();
+    this._bbIndex = null;   // AUDIT PERF-ARENA A4: the arenas' one index buffer { ib, cap }, made with the first arena
     // PERF-VAO1 (PERF-NEXT item 6): ONE bindVao FOR THE LIFE OF THE RENDERER. _renderPasses minted this closure every
     // frame and handed it to the shadow and air passes - a new call target at their `f.bindVao(vao)` every frame (in node,
     // once, V8 deoptimized the shadow replay on it: "wrong call target" - PERF-NEXT 6; no gain measured). The same call,
@@ -6205,6 +6209,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     // PERF-ARENA2: A RECORD'S BATCHES TOGETHER. The main pass draws its flats sorted by texture key (billboardKey.js
     // sortByKey) - one key's batches in a run - so a batch goes first to the arena its key's last batch went to: a run
     // stays in one arena, and the pass binds where the key changes anyway. Then the first fit anywhere, then a new arena.
+    if (this._bbArenaOfKey.size > BB_ARENA_HOMES_MAX) this._bbArenaOfKey.clear();   // AUDIT PERF-ARENA A5: a hint, never a law - and a key a doll (remotePlayers' doll_N) mints for good
     const home = key != null ? this._bbArenaOfKey.get(key) : undefined;
     if (home) {
       const at = arenaTake(home.free, quads);
@@ -6217,12 +6222,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     }
     const last = this._bbArenas.length ? this._bbArenas[this._bbArenas.length - 1].cap : 0;
     const gl = this.gl, cap = Math.max(last ? Math.min(BB_ARENA_MAX_QUADS, last * 2) : BB_ARENA_QUADS, quads);   // PERF-ARENA2: each arena twice the last
-    const indices = new Uint32Array(cap * 6);
-    for (let q = 0; q < cap; q++) {
-      const b = q * 4, io = q * 6;
-      indices[io] = b; indices[io + 1] = b + 2; indices[io + 2] = b + 1;
-      indices[io + 3] = b; indices[io + 4] = b + 3; indices[io + 5] = b + 2;
-    }
+    const ib = this._bbArenaIndices(cap);   // AUDIT PERF-ARENA A4: the arenas' one index buffer, grown to this arena first
     const vao = gl.createVertexArray();
     this._bindVao(vao);
     const vb = gl.createBuffer();
@@ -6232,15 +6232,43 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 20, 0);
     gl.enableVertexAttribArray(1);
     gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 20, 12);
-    const ib = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
     this._bindVao(null);
-    const a = { vao, vb, ib, cap, free: [0, cap], taken: 0 };
+    const a = { vao, vb, cap, free: [0, cap], taken: 0 };
     this._bbArenas.push(a);
     a.taken = arenaTake(a.free, quads);
     if (key != null) this._bbArenaOfKey.set(key, a);
     return a;
+  }
+
+  /**
+   * AUDIT PERF-ARENA A4 (2026-10-11): ONE INDEX BUFFER FOR EVERY ARENA. Quad q's six indices (b, b+2, b+1, b, b+3, b+2
+   * from its first corner b = 4q) are the same in every arena, so a smaller arena reads a prefix of a larger one's - and
+   * each arena uploaded its own copy: 6.3 MB of GPU memory an arena of the most, and ~6 ms of the frame that opened it
+   * filling the array (a streamed walk at Knightstale's density opened fourteen, ten of the most). The arenas share one
+   * now, as large as the largest; an arena larger than it grows it - the new buffer is filled once, bound into every
+   * standing arena's array (an element buffer is the bound array's state) and the old one let go. A deleted arena takes
+   * nothing with it. The same indices at the same offsets: the same triangles.
+   */
+  _bbArenaIndices(cap) {
+    const had = this._bbIndex;
+    if (had && had.cap >= cap) return had.ib;
+    const gl = this.gl;
+    const indices = new Uint32Array(cap * 6);
+    for (let q = 0; q < cap; q++) {
+      const b = q * 4, io = q * 6;
+      indices[io] = b; indices[io + 1] = b + 2; indices[io + 2] = b + 1;
+      indices[io + 3] = b; indices[io + 4] = b + 3; indices[io + 5] = b + 2;
+    }
+    const ib = gl.createBuffer();
+    this._bindVao(null);   // STRAY ARRAY STATE: the upload's bind goes to no arena's array
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    for (const a of this._bbArenas) { this._bindVao(a.vao); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); }
+    this._bindVao(null);
+    if (had) gl.deleteBuffer(had.ib);
+    this._bbIndex = { ib, cap };
+    return ib;
   }
 
   /**
@@ -6472,12 +6500,13 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     batch.vao = null;
     // an arena emptied whole (every batch in it freed) is let go - all but the first, which the next pixel fills - so a
     // long road through dense woods holds no more GPU memory than the woods it stands in now
-    if (a.free.length === 2 && a.free[1] === a.cap && a !== this._bbArenas[0]) {
+    const at = this._bbArenas.indexOf(a);
+    if (at > 0 && a.free.length === 2 && a.free[1] === a.cap) {   // AUDIT PERF-ARENA A6: an arena not standing (-1) is never spliced
       const gl = this.gl;
-      this._bbArenas.splice(this._bbArenas.indexOf(a), 1);
+      this._bbArenas.splice(at, 1);
       for (const [k, home] of this._bbArenaOfKey) if (home === a) this._bbArenaOfKey.delete(k);   // PERF-ARENA2: no record homes in a deleted arena
       if (this._lastVao === a.vao) this._bindVao(null);
-      gl.deleteVertexArray(a.vao); gl.deleteBuffer(a.vb); gl.deleteBuffer(a.ib);
+      gl.deleteVertexArray(a.vao); gl.deleteBuffer(a.vb);   // AUDIT PERF-ARENA A4: the index buffer is every arena's
     }
   }
 
@@ -6503,6 +6532,8 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     if (batch._arena) { this._bbArenaFree(batch); return; }   // PERF-ARENA: its range back to its arena
     for (const b of batch.buffers) gl.deleteBuffer(b);
     if (batch.vao) gl.deleteVertexArray(batch.vao);   // PERF-ARENA: an arena's batch freed already has none
+    batch.vao = null;   // AUDIT PERF-ARENA A7: as destroyBillboardBatch - a list still holding it skips it (no VAO), never draws a deleted one
+    batch.buffers = [];
   }
 
   /** Lazily create the shared 129x129 terrain index buffer. */

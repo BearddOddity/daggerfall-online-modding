@@ -271,7 +271,12 @@ test('PERF-SHADOW1: A WOOD IS ASKED OF ITS QUADS ONCE A LANTERN, NOT ONCE A FACE
     } finally { SHADOW_TUNING.override = false; SHADOW_TUNING.facePrepass = undefined; }
     return { walks, binds, draws, faces };
   };
-  const base = run(false), now = run(true);
+  // PIN MOVED (PERF-VOL; AUDIT PERF-ARENA O2): BOTH arms ask every face afresh, as before the planes were named - with
+  // the answers kept (bounds.js placementsInVolumeOf) a still lantern's faces walk the wood once, on the frame they
+  // are named, so the kept answers would hide a dead pre-pass on every frame after; this pin holds the pre-pass, perfvol the memo
+  SHADOW_TUNING.volumeMemo = false;
+  let base, now;
+  try { base = run(false); now = run(true); } finally { SHADOW_TUNING.volumeMemo = true; }
   assert.deepEqual(now.draws, base.draws, 'the same draws');
   assert.ok(base.faces >= 4 * 6 * 5, `the lanterns drew their faces every frame (${base.faces})`);
   assert.ok(base.walks >= 4 * 6 * 4, `the base walked the wood's placements from every face (${base.walks} in four frames)`);
