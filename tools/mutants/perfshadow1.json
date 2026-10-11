@@ -41,8 +41,8 @@
   {
     "name": "PERF-SHADOW1-d-a-placed-batch-asked-by-the-far-alone",
     "file": "src/render/shadowPass.js",
-    "old": "lim[o + 3] + cubeReach(rad) - rad + lim[o + 4])) continue;",
-    "new": "lim[o + 3])) continue;",
+    "old": "cube[4] = lim[o + 3] + cubeReach(rad) - rad + lim[o + 4];",
+    "new": "cube[4] = lim[o + 3];",
     "tests": [
       "test/perfshadow1.test.js"
     ],
@@ -60,8 +60,8 @@
   {
     "name": "PERF-SHADOW1-f-a-nan-radius-asked-of-its-quads",
     "file": "src/render/shadowPass.js",
-    "old": "if (rad === rad && !placementsInCube(",
-    "new": "if (!placementsInCube(",
+    "old": "              if (rad === rad) {   // PERF-ALLOC2",
+    "new": "              if (true) {   // PERF-ALLOC2",
     "tests": [
       "test/perfshadow1.test.js"
     ]

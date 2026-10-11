@@ -130,6 +130,7 @@ export const REFUSALS = Object.freeze({
   // deserves a sentence as much as one who mistyped a password.
   'not-found': 'The account service does not know that request. The game may need updating.',
   'no-database': 'The account service is starting up. Try again in a moment.',
+  queue: 'Many players are signing in at once - you are in line. Try again in a few seconds.',   // ADMIT-LINE (server-account/src/admit.js): the sign-in line
   // ACC2, the cloud saves. Every one of these is a sentence a player
   // can act on, which is the whole rule of this table - "too-large" is
   // not a thing to read and "that save is too big to back up" is.

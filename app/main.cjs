@@ -61,6 +61,22 @@ else app.setPath('userData', path.join(app.getPath('appData'), 'Daggerfall JavaS
 const FRAME_SWITCHES = frameRateSwitches(app.getPath('userData'));
 for (const s of FRAME_SWITCHES) app.commandLine.appendSwitch(s);
 
+// PERF-GPU1 (2026-10-10, a player via Mac: 5 fps in every room "with the graphics all low", playable only at 800x600):
+// THE DISCRETE GPU. On a laptop with two GPUs Chromium draws on whichever the system hands a browser - the integrated
+// one, as often as not - and the game drew there at a fraction of the card's speed, with nothing on screen saying
+// so but the FPS counter's GPU line. Chromium's own switch asks for the high-performance GPU wherever there are two
+// (one GPU: no change); the page's context asks for it too (render/renderer.js, powerPreference), for the browser
+// build. Before the app is ready, as every switch.
+app.commandLine.appendSwitch('force_high_performance_gpu');
+
+// PERF-GC1 (2026-10-10, Dudey: "big problems are caused by many players causing severe stutter"): THE YOUNG
+// GENERATION'S ROOM. A crowd's frame leaves about a megabyte of short-lived garbage (bible/07-Rendering/
+// Performance-Crowd.md), and V8's default 16 MB semi-space fills - and is swept - several times a second. 32 MB halves
+// the sweeps; a sweep's cost is what survives it, not the room. The peer lab, forty peers, steady frames: the layers'
+// mean 2.2-2.6 ms -> 2.0 (64 MB: 1.8, kept smaller for the low-memory machines). The picture is untouched; the browser
+// build keeps the browser's own. Before the app is ready, as every switch.
+app.commandLine.appendSwitch('js-flags', '--max-semi-space-size=32');
+
 // ONE instance per userData. Two shells over the same Saves folder
 // hold two independent storage indexes that go mutually stale (the
 // tmp names are pid-scoped so nothing corrupts, but each window shows

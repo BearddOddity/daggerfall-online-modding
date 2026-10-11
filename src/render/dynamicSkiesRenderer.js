@@ -524,8 +524,15 @@ void main() {
   // End of Unity Code
 
   // Stars
+  // PERF-SKY1 (2026-10-10, the stars' part alone): THE STARS ARE A NIGHT'S. Their weight below is night * horizonValue,
+  // and by day night is 0: mix(col, stars, 0) is col exactly for any stars a texture gives (saturated, so finite) - yet
+  // every sky pixel paid three taps and the twinkle to be multiplied by nothing. night is the sun's light position's
+  // alone, so the branch is the same in every fragment of the draw (dynamically the same: the taps' implicit
+  // derivatives stay defined), and the picture is the mod's to the bit.
+  vec3 stars = vec3(0.0);
+  if (night > 0.0) {
   vec2 starsUV = normWorldPos.xz / (normWorldPos.y + _StarBending);
-  vec3 stars = texture(_StarTex, starsUV * _StarTex_ST.xy + _StarTex_ST.zw).rgb;
+  stars = texture(_StarTex, starsUV * _StarTex_ST.xy + _StarTex_ST.zw).rgb;
   float starsAlpha = texture(_StarTwinkleTex, (starsUV * _StarTwinkleTex_ST.xy) + _StarTwinkleTex_ST.zw).r;
 
   float twinkle = texture(_TwinkleTex, (starsUV * _TwinkleTex_ST.xy) + _TwinkleTex_ST.zw + vec2(1.0, 0.0) * _WorldTime * _TwinkleSpeed).r;
@@ -533,6 +540,7 @@ void main() {
   twinkle *= _TwinkleBoost;
   stars.rgb -= twinkle;
   stars = saturate(stars);
+  }
 
   vec3 finalStarsColor;
   if (normWorldPos.y > 0.0) {
