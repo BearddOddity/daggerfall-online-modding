@@ -178,7 +178,10 @@ test('PERF2 pins: the sky passes, the clouds\' composite and the ring sit AT the
   assert.match(vc, /void main\(\) \{ vNdc = aPos; gl_Position = vec4\(aPos, 1\.0, 1\.0\); \}`;/, 'the clouds\' quad at the far plane');
   assert.match(vc, /gl\.useProgram\(this\.compositeProgram\);\n\s+gl\.enable\(gl\.DEPTH_TEST\); gl\.depthFunc\(gl\.LEQUAL\); gl\.depthMask\(false\);/, 'the composite tests');
   const ring = read('src/render/farRing.js');
-  assert.match(ring, /void main\(\) \{\n\s+gl_FragDepth = 1\.0;/, 'the ring\'s fragments at the far plane - the "streamed world repaints everything nearer" law, by depth');
+  // PIN MOVED (AUDIT FAR-SEA1 P1): at the far plane by the pass's depthRange(1, 1), not by a depth write - a shader that
+  // writes its depth runs before its depth test, for every fragment the streamed world already covers
+  assert.ok(!/gl_FragDepth/.test(ring), 'no depth write left in the ring');
+  assert.match(ring, /gl\.depthMask\(false\);\n\s+gl\.depthRange\(1, 1\);[\s\S]*?gl\.drawElements\([\s\S]*?gl\.depthRange\(0, 1\);/, 'the ring\'s fragments at the far plane - the "streamed world repaints everything nearer" law, by depth');
   assert.match(ring, /gl\.enable\(gl\.DEPTH_TEST\); gl\.depthFunc\(gl\.LEQUAL\);[^\n]*\n\s+gl\.depthMask\(false\);/);
   // the hosts: terrain, then the sky block, then the water
   const w = read('src/scenes/world.js');
