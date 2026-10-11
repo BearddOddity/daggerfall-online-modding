@@ -39,7 +39,7 @@ import {
   weaponSocketPass,   // GEM1
   techniquePass,   // TECH1
 } from './lootRarity.js';
-import { isGoldPieces } from './inventory.js';
+import { isGoldPieces, ARROW_TEMPLATE } from './inventory.js';   // STUCK-ARROWS: the quiver rides past the cap
 import { wildFoeLoot } from './wildZone.js';   // WILD1: a foe of the open zone carries twice as much past its cap
 import { isPotion } from './useItem.js';   // CAP-SUPPLIES: a potion IS the glass bottle - DFU's IsPotion, its one export (AUDIT 625 L7)
 import { ENEMY_BASICS } from '../characters/enemyBasics.js';   // KIT-ROLL: the row every host hands its spawn
@@ -125,15 +125,24 @@ const GARMENT_UNDER_SUPPLY = 0.5;
 const garmentRank = (it) => (lootRarityOn() && isGarment(it) && rarityRank(it) > 0 && rarityRank(it) < RARITIES.legendary.rank ? GARMENT_UNDER_SUPPLY : null);
 const capRank = (it) => { if (isCardRecord(it)) return CARD_CAP_RANK; const r = rarityRank(it); const g = garmentRank(it); if (g != null) return g; return r > 0 ? 1 + r : (isLootSupply(it) ? 1 : 0); };
 
+/** STUCK-ARROWS (bible/05-Combat/Arrow-Supply.md, Mac: "Allow arrows to sometimes be retrieved from enemies"): AN ARROW
+ *  IS NO FIND. The shafts the player put into a body (combat/arrowFlight.js playerArrowHitFoe) and an archer's own quiver
+ *  are ammunition, not the body's loot - and the cheapest Common thing on it, so the cap threw them away FIRST: a plain
+ *  foe at its three pieces gave back none of the arrows it was shot with. They ride past the cap now, uncounted. */
+const isQuiverArrow = (it) => it?.group === 'Weapons' && it.templateIndex === ARROW_TEMPLATE;
+
 /**
  * CAP A LIST IN PLACE: gold first (every coin stack folded into the first - one item, its count the sum), then a quest's
  * items (never thrown away, even past the cap), then the rest best first until the cap: a Magic-or-better piece by its
- * tier, then a supply (CAP-SUPPLIES), then the rest - the dearer first within each. Answers the items dropped.
+ * tier, then a supply (CAP-SUPPLIES), then the rest - the dearer first within each. Arrows are kept and not counted
+ * (STUCK-ARROWS, above). Answers the items dropped.
  * @param {any[]} items
  * @param {number} cap
  */
 export function capLootList(items, cap) {
-  if (!Array.isArray(items) || !(cap >= 0) || items.length <= cap) return [];
+  if (!Array.isArray(items) || !(cap >= 0)) return [];
+  const quiver = items.filter(isQuiverArrow);   // STUCK-ARROWS: kept, uncounted
+  if (items.length - quiver.length <= cap) return [];
   let gold = null;
   for (const it of items) {
     if (!isGoldPieces(it)) continue;
@@ -141,13 +150,13 @@ export function capLootList(items, cap) {
     else gold.stackCount = (gold.stackCount | 0) + (it.stackCount | 0);
   }
   const quest = items.filter((it) => it?.questItem && it !== gold);
-  const rest = items.filter((it) => it && it !== gold && !isGoldPieces(it) && !it.questItem)
+  const rest = items.filter((it) => it && it !== gold && !isGoldPieces(it) && !it.questItem && !isQuiverArrow(it))
     .map((it, i) => ({ it, i }))
     .sort((a, b) => (capRank(b.it) - capRank(a.it)) || ((b.it.value ?? 0) - (a.it.value ?? 0)) || (a.i - b.i))
     .map((r) => r.it);
   const keep = [...(gold ? [gold] : []), ...quest];
   for (const it of rest) { if (keep.length >= cap) break; keep.push(it); }
-  const kept = new Set(keep);
+  const kept = new Set([...keep, ...quiver]);
   const dropped = items.filter((it) => !kept.has(it));
   // in place, in the list's own order (the inventory window reads it as it stands)
   const order = items.filter((it) => kept.has(it));

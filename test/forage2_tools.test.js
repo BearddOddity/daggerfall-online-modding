@@ -20,6 +20,7 @@ import { FT, FORAGING_REFUSALS, FORAGING_COMMAND, fishTemplate } from '../src/sy
 import { RaiseTime, ReducePlayerFatigue, PlayerPossesses, PlayerHandsover, questActionsExtensionTemplates, lengthOrStackCount } from '../src/systems/quest/questActionsExtension.js';
 import { applyForageFix } from '../src/systems/foragingLaw.js';
 import { itemUseHandler, registerItemUseHandler } from '../src/systems/itemTemplates.js';
+import { fletch } from '../src/systems/fletching.js';   // FLETCH: the Wood Bundle's one Use
 import { registerPresenter } from '../src/systems/notify.js';
 import { setModSetting, _resetModSettings } from '../src/systems/modSettings.js';
 import { survivalOn } from '../src/systems/survival/switch.js';
@@ -177,7 +178,7 @@ test('FORAGE1: the switch off - every tool and food inert, its Use not offered, 
   assert.ok(!registeredQuestLists().includes('ForagingQuests'));
   _resetModSettings();
   for (const t of [1600, 1601, 1602, 1603, 1606, 1607, 1605, 1608, 1609, 1610, 1611]) assert.equal(typeof itemUseHandler(t), 'function', `${t}`);
-  assert.equal(itemUseHandler(FT.WoodBundle), null, 'the Wood Bundle has no UseItem');
+  assert.equal(itemUseHandler(FT.WoodBundle), fletch, 'the Wood Bundle has no UseItem of the mod\'s - PIN MOVED (FLETCH, 2026-10-11): its one Use is the fletching\'s, the port\'s own (systems/fletching.js)');
   _resetForagingInstall();
 });
 
