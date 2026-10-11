@@ -33672,11 +33672,12 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       // uniform per pass), so a far flat that draws still turns.
       const ring = Math.max(Math.abs(p.px - state.current.x), Math.abs(p.py - state.current.y));
       // AUDIT REACH: a pixel neither seen nor reached has nothing to walk (the first cut asked the far-flat rule, an
-      // object a batch, of every batch of every streamed pixel); the rule runs after the cull again, for the batches it can keep
+      // object a batch, of every batch of every streamed pixel); the rule runs inside the pixel's gate, asked of every batch of
+      // a pixel seen or in a shadow's reach (PERF-ORDER: ahead of each batch's own box, the cheaper test first)
       if (pixelVisible || pixelCasts) for (const b of p.batches) {
+        if (!farFlatVisibleAt(ring, b.farH ?? b.size?.h ?? 0, b.frame != null)) continue;   // MAC1 (a far flat the rule drops casts nothing either); PERF-EXT12: positional, no object a batch a frame (flatDistance.js); PERF-ORDER (2026-10-11): asked FIRST - three compares, where the box and the reach were asked of every batch it then dropped (Knightstale by night: 655 of the 1,361 a frame); each test only skips, so the batches kept are the same
         const off = !pixelVisible || (cullOn && aabbOutside(_planes, b._box, t[0], t[1], t[2]));   // EV3
         if (off && !renderer.shadowReach(b._box, t[0], t[1], t[2])) continue;   // SHADOW-REACH: off screen and out of every shadow's reach
-        if (!farFlatVisibleAt(ring, b.farH ?? b.size?.h ?? 0, b.frame != null)) continue;   // MAC1 (a far flat the rule drops casts nothing either); PERF-EXT12: positional, no object a batch a frame (flatDistance.js)
         b.origin = t;
         (off ? castBatches : allBatches).push(b);   // SHADOW-REACH: the maps alone, or the frame
       }
