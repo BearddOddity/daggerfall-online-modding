@@ -83,11 +83,12 @@
   {
     "name": "LEGACY7-mint-no-house",
     "file": "server-account/src/index.js",
-    "old": "        const house = rc ? await realmHouseOf(ctx, who.player.id, body.character) : null;",
+    "old": "        const house = facts.house;",
     "new": "        const house = null;",
     "tests": [
       "test/legacy7_house.test.js"
-    ]
+    ],
+    "note": " SCALE4f (2026-10-10) re-aimed it by content: the four reads of the realm row are one (realm.js realmMintFacts)."
   },
   {
     "name": "LEGACY7-house-unfiltered",
@@ -100,12 +101,14 @@
   },
   {
     "name": "LEGACY7-tomb-wears-house",
-    "file": "server-account/src/legacy.js",
-    "old": "    + ' WHERE r.id = ? AND r.player = ? AND r.dead_at IS NULL').bind(id, playerId).first();",
-    "new": "    + ' WHERE r.id = ? AND r.player = ?').bind(id, playerId).first();",
+    "file": "server-account/src/realm.js",
+    "old": "  if (!row || row.dead_at != null || row.lease == null) return none;",
+    "new": "  if (!row || (row.lease == null && row.dead_at == null)) return none;",
     "tests": [
-      "test/legacy7_house.test.js"
-    ]
+      "test/legacy7_house.test.js",
+      "test/scale4f.test.js"
+    ],
+    "note": "SCALE4f (2026-10-10) re-aimed it by content: the four reads of the realm row are one (realm.js realmMintFacts)."
   },
   {
     "name": "LEGACY7-tile-no-house",

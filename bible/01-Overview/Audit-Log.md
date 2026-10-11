@@ -8,6 +8,15 @@
 
 Newest first.
 
+**2026-10-11 - AUDIT SCALE II.** Mac: *"Lets do an audit on everything. Ensure perfection"* - PR #757, every slice of
+the Scale arc past 2,000. Seven lenses: live in real workerd, and six adversarial reviewers on the frozen head. Two
+critical (a stranger's hello taking a shard player's peer id on the bus, R2-1; a court's copy fighting a boss of its own
+and telling the hub it fell, R3-1), a dozen high and medium (the mint's stale bookmark, the new client closing its hub
+link on the relay before it, mutes and guild removals lost to a shard, woken shards and buses, lost batches, a private
+empty layer on demand, Renown lost at the hour's turn), the record's deploy claim, and ADMIT-LINE's line holding a
+reconnect's mints at 5 a second (put to Mac). Every finding reproduced, fixed and pinned red on the head as it stood; 169
+mutants, 168 dead and 1 equivalent as recorded. Record: `Audit-Scale-II.md` (AUDIT SCALE II).
+
 **2026-10-09 - AUDIT QUEST-SHELF.** Mac: *"Audit this"* - QUEST-SHELF (`06-Systems/Quest-Arc.md`). One review over
 its commit (fifteen findings), every one read against the tree, the tree untouched while it read (17l's rule). FIXED:
 - **The same quest taken again** (the abandon opens its questor's door) was shadowed by the copy set aside: every

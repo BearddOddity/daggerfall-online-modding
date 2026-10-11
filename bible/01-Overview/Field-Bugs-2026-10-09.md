@@ -61,7 +61,8 @@ A building's ground is now what its models' faces cover seen from above - roofs,
 asked by their ground; a piece whose middle sits on any rect is on it, so the seams between rects let nothing through.
 Of the desert's 5,166, 3,389 now stand, 847 are the road (its own rule), and 930 are still the house: their door is
 under their own roof or eaves - whether a porch is a yard is a design question, not this bug. No point inside a door is
-let through (11,701 of 11,701). A stranger's door within the owner's lot may still be decorated before: the lot's rule.
+let through (11,701 of 11,701). A stranger's door within the owner's lot is the stranger's: the ground between two
+houses is split down its middle (HOME-LINE, `01-Overview/Field-Bugs-2026-10-11b.md`).
 
 `test/fb1009_yardfoot.test.js` (5, one over ARENA2, skipped without it); `tools/mutants/fb1009_yardfoot.json` (14, all
 dead), and FB1001's three YARD-CORNER and HOUSING's two HOME-YARD records re-aimed.

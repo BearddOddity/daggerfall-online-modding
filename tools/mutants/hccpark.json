@@ -20,7 +20,7 @@
   {
     "name": "PARK-registry-skipped",
     "file": "server/src/index.js",
-    "old": "      await this._parkRegister(k, cell, now);\n",
+    "old": "      await this._parkRegister(k, cell, now, m.data.r && cell === here ? a.ly | 0 : undefined);   // AUDIT SCALE II R3-8: the layer it is kept in, when it is kept here\n",
     "new": "      void cell;\n",
     "tests": [
       "test/hcc_park.test.js"
@@ -137,8 +137,8 @@
   {
     "name": "PARK-D4-stale-cell-kept",
     "file": "server/src/index.js",
-    "old": "      if (cell && cell !== prev.cell) await this._parkTellDrop(cell, k, at);",
-    "new": "      void cell;",
+    "old": "      if (where && where !== was) await this._parkTellDrop(where, k, at);",
+    "new": "      void where;",
     "tests": [
       "test/hcc_park.test.js"
     ]

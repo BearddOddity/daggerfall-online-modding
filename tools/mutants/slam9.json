@@ -120,14 +120,15 @@
   {
     "name": "Q10-budget-after-scan",
     "file": "server/src/index.js",
-    "old": "      const budget = tokenGate(this._roomWho, now, WHO_ROOM_HZ_MAX);\n      this._roomWho = budget.bucket;\n      if (!budget.pass) return;\n      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === id) ?? null;\n      if (!target) return;",
-    "new": "      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === id) ?? null;\n      if (!target) return;\n      const budget = tokenGate(this._roomWho, now, WHO_ROOM_HZ_MAX);\n      this._roomWho = budget.bucket;\n      if (!budget.pass) return;",
+    "old": "      const budget = tokenGate(this._roomWho, now, WHO_ROOM_HZ_MAX);\n      this._roomWho = budget.bucket;\n      if (!budget.pass) return;\n      const target = this._idFirst(id, ws);\n      if (!target) return;",
+    "new": "      const target = this._idFirst(id, ws);\n      if (!target) return;\n      const budget = tokenGate(this._roomWho, now, WHO_ROOM_HZ_MAX);\n      this._roomWho = budget.bucket;\n      if (!budget.pass) return;",
     "tests": [
       "test/slam9.test.js",
       "test/slam6.test.js",
       "test/world6biiie.test.js",
       "test/auditworld6biiie.test.js",
       "test/online.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): the target by the id index."
   }
 ]

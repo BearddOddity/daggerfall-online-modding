@@ -340,7 +340,9 @@ Every record keeps LR2's law (`test/lr1_lootrarity.test.js` reads them all - its
 now, not the amulet and the ring it was written with, so a bracer's, a mark's and a torc's record are each shown to
 land). A held spell is a cheap one - Slowfalling (240), Shadow Form (150), Water Breathing (170) - since DFU bills a
 CastWhenHeld's casting cost in condition at the first equip (LR4's watch item 9); the first ten's Aegis of Dawn keeps
-its Spell Resistance as LR2 shipped it.
+its Spell Resistance as LR2 shipped it. LEGEND-HELD (FIELD BUGS 2026-10-11b, a departure): a Legendary's equip now bills
+nothing at all - the Aegis's Spell Resistance cost a leather Buckler a third of its condition the first time it went on
+(`01-Overview/Field-Bugs-2026-10-11b.md`); every other held piece keeps DFU's bill.
 
 What moved with the pool: the Sigil Broker's Legendaries are drawn from the thirty (`baseLegendaries` - the port's
 own records, the same on every machine, so the stock is still the day's alone), and the gate's spoils and a town's
