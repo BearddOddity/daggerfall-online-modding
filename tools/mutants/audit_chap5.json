@@ -321,7 +321,7 @@
   {
     "name": "AUDIT-CHAP5-E4-WORD",
     "file": "server-account/src/guilds.js",
-    "old": "  if (g && await db.prepare(\"SELECT 1 FROM npc_chapter_patron_bids WHERE guild_id = ?1 AND state = 'open'\").bind(guildId).first()) return 'guild-patron';",
+    "old": "  holds(r.patron, 'guild-patron');",
     "new": "",
     "tests": [
       "test/audit_chap5.test.js"

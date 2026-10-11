@@ -336,7 +336,7 @@ test('CHAP3a the member\'s own card: "Your writ", yours to fill for the guild, i
   byClass(host, 'notice-tab')[1].click();
   for (let i = 0; i < 3; i++) await tick();
   const [card] = byClass(host, 'notice-writ');
-  assert.equal(byClass(card, 'writ-kind')[0].textContent, 'Your writ');
+  assert.equal(byClass(card, 'writ-kind')[0].textContent, 'Your chapter writ');   // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - a chapter's writ, the member's own
   assert.equal(byClass(card, 'writ-need')[0].textContent, `Yours to fill: 4 ${materialCountLabel('p1:23', 4)}, for the Fighters Guild in Anticlere`);
   assert.equal(byClass(card, 'writ-pay')[0].textContent, 'Pays 24 silver, 37 Renown, standing and Merit with the Fighters Guild');
   assert.ok(card.className.includes('seal-guild'));
@@ -358,6 +358,8 @@ test('CHAP3a the wiring: the writs\' kind and owner in the rebuild, Merit\'s tab
   assert.match(src('server-account/src/professions.js'), /merit: await meritAsks\(db, player\.id, character, region, nowS, members\),/);
   const world = src('src/scenes/world.js');
   assert.match(world, /const merit = hall && Number\(d\.merit\) > 0 \? `, \$\{Number\(d\.merit\)\.toLocaleString\('en-US'\)\} Merit to its chapter here` : '';/);
-  assert.match(src('src/ui/noticeWindow.js'), /for \(const m of writs\?\.merit \?\? \[\]\) body\.append\(el\('p', 'notice-merit', meritLineOf\(m, nowS\(\)\)\)\);/);
+  // PIN MOVED: GUILD3d - a Merit line on its chapter's card; above the cards only for a chapter the board draws none for
+  assert.match(src('src/ui/noticeWindow.js'), /for \(const m of writs\?\.merit \?\? \[\]\) if \(!carded\.has\(m\.faction\)\) body\.append\(el\('p', 'notice-merit', meritLineOf\(m, nowS\(\)\)\)\);/);
+  assert.match(src('src/ui/noticeWindow.js'), /if \(merit\) card\.append\(el\('p', 'notice-merit', meritLineOf\(merit, nowS\(\)\)\)\);/);
   assert.match(src('server-account/src/service.js'), /CHAP3a \(Mac: "Keep going with the arc\/slices"; migration 0101_npc_merit/);
 });

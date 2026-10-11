@@ -142,7 +142,7 @@ Stores, the rank names and leaving, every section under the one before. It is pa
 | Vault | the pieces, Take and Take one, Put in from the pack, the lines |
 | Stores | the guild Stores and the writ budget - where the professions are this account's |
 | Arms | the arms, and the guildmaster's choosing |
-| Settings | a new name, the rank names, leaving and disbanding |
+| Settings | a new name, the rank names, leaving and disbanding (GUILD3c: and, before the press, everything that still holds the guild) |
 
 Each page keeps every control and sentence the section it took over had, so a refusal still says its reason beside its
 button. `openGuild(page)` opens the tab at a page (the hall's chest: the Vault). A page turned keeps the keyboard's
@@ -158,6 +158,12 @@ focus on its own tab (the second audit's U9).
 | A take lands on a slot filled again under it | The take holds the very record it read |
 | A name that reads as a slur or as the server's | The name filter, word by word, at a founding and a rename |
 | A name changed to dodge a siege's record | Refused in a week the guild fights for a seat; a fortnight between renames |
+
+**GUILD3 (2026-10-11, `Guilds-Made-Plain.md`) grew the pages, each said there:** the Members page folds what each rank
+may do (the four power tables in words); the Treasury page says which of its gold buys a hall or a new name, and its
+silver lines say which way they went (a Tribute, an upkeep, a patron's bid never "put in"); the Settings page lists
+everything that holds a guild that would go before the press, the guildmaster's view carrying it (one read); the Overview says where the
+rest is run; a character in no guild is told what a guild is for.
 
 ## Pins
 

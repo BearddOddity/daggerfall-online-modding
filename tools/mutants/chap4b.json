@@ -146,8 +146,8 @@
   {
     "name": "CHAP4B-WORDS",
     "file": "src/net/npcChapterLaw.js",
-    "old": "const SEAT_WORDS = Object.freeze({ master: 'the Master\\'s seat', officer: 'an officer\\'s seat' });",
-    "new": "const SEAT_WORDS = Object.freeze({ master: 'the Master\\'s seat', officer: 'the officer\\'s seat' });",
+    "old": "const SEAT_WORDS = Object.freeze({ master: 'the Master\\'s chair', officer: 'a council chair' });",
+    "new": "const SEAT_WORDS = Object.freeze({ master: 'the Master\\'s chair', officer: 'the council chair' });",
     "tests": [
       "test/chap4b_seats.test.js"
     ]
@@ -155,8 +155,8 @@
   {
     "name": "CHAP4B-CAPPED-ONE",
     "file": "src/net/npcChapterLaw.js",
-    "old": "${one ? 'keeps' : 'keep'} ranks 8 and 9 as ${one ? 'its' : 'their'} chapters' seats",
-    "new": "keep ranks 8 and 9 as their chapters' seats",
+    "old": "${one ? 'keeps' : 'keep'} ranks 8 and 9 for ${one ? 'its' : 'their'} chapters' Masters and councils",
+    "new": "keep ranks 8 and 9 for their chapters' Masters and councils",
     "tests": [
       "test/chap4b_seats.test.js"
     ]

@@ -60,16 +60,16 @@ test('CHAP4b the book held at 7: each Roll guild\'s row above 7, in both books, 
 });
 
 test('CHAP4b the seats said, worded without gender: every seat at the page\'s first word; then each one gained or moved, each one lost; the book\'s hold said by guild (mutants: each arm, the words)', () => {
-  assert.equal(seatLineOf({ f: FIGHTERS, region: ANTICLERE, seat: 'master' }), 'You hold the Master\'s seat of the Fighters Guild in Anticlere.');
-  assert.equal(seatLineOf({ f: MAGES, region: DAGGERFALL, seat: 'officer' }, false), 'You no longer hold an officer\'s seat of the Mages Guild in Daggerfall.');
+  assert.equal(seatLineOf({ f: FIGHTERS, region: ANTICLERE, seat: 'master' }), 'You hold the Master\'s chair of the Fighters Guild in Anticlere.');
+  assert.equal(seatLineOf({ f: MAGES, region: DAGGERFALL, seat: 'officer' }, false), 'You no longer hold a council chair of the Mages Guild in Daggerfall.');
   const m = { f: FIGHTERS, region: ANTICLERE, seat: 'master' }, o = { f: MAGES, region: DAGGERFALL, seat: 'officer' };
   assert.deepEqual(seatLinesOf(null, [m, o]), [seatLineOf(m), seatLineOf(o)]);
   assert.deepEqual(seatLinesOf(null, []), []);
   assert.deepEqual(seatLinesOf([m, o], [m, o]), [], 'nothing moved, nothing said');
   assert.deepEqual(seatLinesOf([{ ...m, seat: 'officer' }, o], [m]), [seatLineOf(m), seatLineOf(o, false)]);
   assert.deepEqual(seatLinesOf([], [o]), [seatLineOf(o)]);
-  assert.equal(bookCappedLine([FIGHTERS]), 'The Fighters Guild keeps ranks 8 and 9 as its chapters\' seats, won by Merit - your rank there is 7.');
-  assert.equal(bookCappedLine([MAGES, FIGHTERS]), 'The Mages Guild and the Fighters Guild keep ranks 8 and 9 as their chapters\' seats, won by Merit - your rank there is 7.');
+  assert.equal(bookCappedLine([FIGHTERS]), 'The Fighters Guild keeps ranks 8 and 9 for its chapters\' Masters and councils, won by Merit - your rank there is 7.');
+  assert.equal(bookCappedLine([MAGES, FIGHTERS]), 'The Mages Guild and the Fighters Guild keep ranks 8 and 9 for their chapters\' Masters and councils, won by Merit - your rank there is 7.');
   assert.deepEqual([bookCappedLine([]), bookCappedLine(null), bookCappedLine([99])], [null, null, null]);
 });
 

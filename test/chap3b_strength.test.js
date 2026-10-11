@@ -45,8 +45,8 @@ test('CHAP3b a week\'s Strength: + min(10, merit / target) rounded down, -3 for 
 
 test('CHAP3b the bands: Failing 0-19, Steady 20-69, Thriving 70-89, Ascendant 90-100 - their prices and their writs; half the writs (never none) Failing, half again Thriving (mutants: each floor, each number)', () => {
   assert.deepEqual(CHAPTER_BANDS.map((b) => [b.band, b.name, b.from, b.price, b.writs]), [
-    ['failing', 'Failing', 0, 1.25, 0.5], ['steady', 'Steady', 20, 1, 1], ['thriving', 'Thriving', 70, 0.9, 1.5], ['ascendant', 'Ascendant', 90, 0.9, 1.5],
-  ]);
+    ['failing', 'Failing', 0, 1.25, 0.5], ['steady', 'Steady', 20, 1, 1], ['thriving', 'Thriving', 70, 0.9, 1.5], ['ascendant', 'Ascendant', 90, 0.8, 1.5],
+  ]);   // PIN MOVED: GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md) - Ascendant its own, a fifth off: the Ascendancy event folded into it
   assert.deepEqual([0, 19, 20, 69, 70, 89, 90, 100, null, NaN, '80'].map((s) => chapterBandOf(s).band),
     ['failing', 'failing', 'steady', 'steady', 'thriving', 'thriving', 'ascendant', 'ascendant', 'steady', 'steady', 'steady']);
   assert.deepEqual([[0, 10], [0, 50], [0, 75], [0, 95], [150, 10], [150, 50], [150, 75], [450, 10], [450, 75]].map(([a, s]) => hallWritCountIn(a, s)),
@@ -269,7 +269,9 @@ test('CHAP3b the wiring: the sheet\'s route, the client\'s door, the board\'s ch
   assert.match(src('server-account/src/service.js'), /'\/v1\/chapters\/list'/);
   assert.match(src('server-account/src/index.js'), /path === '\/v1\/chapters\/list' \? await chapterSheet\(ctx, who\.player, env\)/);
   assert.match(src('src/net/accountClient.js'), /list: \(\) => post\('\/v1\/chapters\/list', \{\}\),/);
-  assert.match(src('src/ui/noticeWindow.js'), /for \(const c of writs\?\.chapters \?\? \[\]\) \{\n\s+body\.append\(el\('p', 'notice-chapter', chapterLineOf\(c\)\)\);/);   // PIN MOVED (CHAP4d): the line, then its Focus
+  // PIN MOVED: GUILD3d - each chapter one card, its line first under its heading, then what its band does
+  assert.match(src('src/ui/noticeWindow.js'), /for \(const c of writs\?\.chapters \?\? \[\]\) body\.append\(chapterCard\(c\)\);/);
+  assert.match(src('src/ui/noticeWindow.js'), /card\.append\(el\('p', 'notice-chapter', chapterLineOf\(c\)\)\);[^\n]*\n\s+card\.append\(el\('p', 'notice-chapter notice-band', chapterBandEffectsLine\(c\.strength, c\.faction\)\)\);/);
   const mig = src('server-account/migrations/0102_npc_chapters.sql');
   assert.match(mig, /week\s+INTEGER PRIMARY KEY/);
   assert.match(mig, /strength\s+INTEGER NOT NULL CHECK \(strength BETWEEN 0 AND 100\)/);

@@ -256,6 +256,6 @@ test('CAP-OFF the words: the four refusals the service says no more keep their w
   assert.equal(accountRefusalText('prof-fish-cap'), 'Your account has hauled all the nets a day allows, across your characters. The water rests until midnight UTC.');
   assert.equal(accountRefusalText('prof-hunt-high'), `Your account has taken all the rare hides a day allows (${HIGH_HIDES_PER_DAY}, across your characters).`);
   const daily = eventTimerRows({ now: Date.UTC(2026, 9, 7, 12) }).find((r) => r.id === 'daily');
-  assert.equal(daily.detail, 'The day\'s nodes stand anew; rare hides, Marks and Court writs: their daily limits start again');
+  assert.equal(daily.detail, 'The day\'s nodes stand anew; rare hides, silver and Court writs: their daily limits start again');
   assert.match(eventTimerRows({ now: Date.UTC(2026, 9, 7, 12), seatsOpen: true }).find((r) => r.id === 'daily').detail, /Court writs, and the Watch: their daily limits/);
 });

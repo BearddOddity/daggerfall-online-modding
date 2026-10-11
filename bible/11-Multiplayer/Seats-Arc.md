@@ -634,7 +634,7 @@ hall's rule are the holder's hall's (GUILD1d's halls; the palace interior as the
 Throne).
 
 BUILT (SEAT-HALL, 2026-10-02; Online-Arc SEAT-HALL): the palace interior as the holder's guild hall - its cupboards the
-guild Stores chest and its beds the members', the hall's board where a keeper stands it, the court as DFU stands it; the
+guild Stores chest (GUILD3a: the guild's vault since GUILD2b, the Stores a page beside it) and its beds the members', the hall's board where a keeper stands it, the court as DFU stands it; the
 Charter Room in the palace's largest room, furnished by the holder's Officers from DECOR's catalogue off their own
 records, at most 100 pieces over the seat, the 2 m rule in the decorator's bar, its pieces cleared whenever the seat
 changes hands or lapses. The crown's throne room is CROWN-HALL's, below.
@@ -642,7 +642,8 @@ changes hands or lapses. The crown's throne room is CROWN-HALL's, below.
 BUILT (CROWN-HALL, 2026-10-02; Online-Arc CROWN-HALL): the crown's castle as its holder's hall - the throne room found by
 its ruler (the region's Province faction's first child, an Individual, standing among the castle's people), the
 holder's two banners on the wall behind the throne, Daggerfall's board and chest a few paces into the room, one each
-side of the aisle: the board the guild's notes and the chest its Stores, to the holder's members; no decor. DECIDED:
+side of the aisle: the board the guild's notes and the chest its Stores, to the holder's members (GUILD3a: since GUILD2b
+the chest opens the guild's vault, the Stores a page beside it - `worldModes.js` `openCrownPiece`); no decor. DECIDED:
 placed by the dungeon's own collider about the ruler, so no castle's layout is written down; a castle where the ruler
 stands nowhere, or no floor is found under them, stands none of it.
 
@@ -934,7 +935,8 @@ the part of the treasury realm records paid in (`realm_gold`), and the sale pays
 pieces' cost back there; a hall's entries are `guild` (the default) and `public` (a party is not a guild's), and
 `guild` joined private/party/public for every home; decor by Officers - off their own records, a piece's half back to
 the treasury, the catalogue's pieces alone; the guild Stores chest is every cupboard of the hall (the Guild tab's guild
-Stores to a member). NOT YET: a hall's outside and yard (HOME-LOOK and HOME-YARD name a character) - BUILT by
+Stores to a member) - GUILD3a (`Guilds-Made-Plain.md`): since GUILD2b every chest of a hall opens the guild's VAULT, the
+Stores a page beside it (`scenes/world.js` `openStores`); this sentence said the Stores until then. NOT YET: a hall's outside and yard (HOME-LOOK and HOME-YARD name a character) - BUILT by
 GUILD-YARD (2026-10-02, below); a seat's palace as a second hall (7.2) - BUILT by SEAT-HALL (2026-10-02, 7.2's BUILT),
 its own table and not a home's row.
 

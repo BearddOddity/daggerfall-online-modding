@@ -148,8 +148,8 @@
   {
     "name": "CHAP4C-BADGE-WORD",
     "file": "src/ui/playerBadge.js",
-    "old": "  chapterofficer: 'Chapter Officer',\n",
-    "new": "  chapterofficer: 'Officer',\n",
+    "old": "  chapterofficer: 'Chapter Councillor',",
+    "new": "  chapterofficer: 'Councillor',",
     "tests": [
       "test/chap4c_titles.test.js"
     ]

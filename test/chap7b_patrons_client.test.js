@@ -28,7 +28,7 @@ const tick = () => new Promise((r) => setImmediate(r));
 
 // ── THE LAW ─────────────────────────────────────────────────────────
 
-test('CHAP7b a patron\'s members pay the Thriving band\'s price whatever the chapter\'s Strength - an Ascendancy\'s and the training doctrine\'s tenths on it as on anyone\'s; another guild, none, the band\'s own (mutants: the band, the member, the guards)', () => {
+test('CHAP7b a patron\'s members pay the Thriving band\'s price whatever the chapter\'s Strength - GUILD3e: or the band\'s own where it is better, an Ascendant chapter\'s fifth; the training doctrine\'s tenth on it as on anyone\'s; another guild, none, the band\'s own (mutants: the band, the member, the better, the guards)', () => {
   assert.equal(CHAPTER_PATRON_BAND, 'thriving');
   assert.equal(CHAPTER_PATRON_PRICE, CHAPTER_BANDS.find((b) => b.band === 'thriving').price);
   assert.equal(CHAPTER_PATRON_PRICE, 0.9);
@@ -40,7 +40,10 @@ test('CHAP7b a patron\'s members pay the Thriving band\'s price whatever the cha
   assert.equal(chapterHallFactor(c(10), 'training', IW), chapterPriceFactor(10), 'another guild: the band\'s');
   assert.equal(chapterHallFactor(c(10), 'spells'), chapterPriceFactor(10), 'no guild: the band\'s');
   assert.equal(chapterHallFactor(c(50), 'spells', GL), 0.9, 'a Steady chapter too');
-  assert.equal(chapterHallFactor(c(10, { event: 'ascendancy' }), 'spells', GL), 0.9 * 0.9);
+  // PIN MOVED: GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md) - the Ascendancy's tenth is the Ascendant band's own: a
+  // retired Ascendancy on a sheet adds nothing, and an Ascendant chapter's patron pays its fifth, never Thriving's dearer tenth
+  assert.equal(chapterHallFactor(c(10, { event: 'ascendancy' }), 'spells', GL), 0.9);
+  assert.deepEqual([chapterHallFactor(c(95), 'spells', GL), chapterHallFactor(c(95), 'spells', IW)], [0.8, 0.8], 'the better of the two');
   assert.equal(chapterHallFactor(c(10, { doctrine: 'training' }), 'training', GL), 0.9 * 0.9);
   assert.equal(chapterHallFactor(c(10, { doctrine: 'training' }), 'spells', GL), 0.9);
   assert.equal(chapterHallFactor(null, 'training', GL), 1, 'no chapter: DFU\'s own');

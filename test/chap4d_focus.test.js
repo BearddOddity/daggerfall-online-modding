@@ -60,27 +60,27 @@ test('CHAP4d the Chronicle in words: a seat taken, risen to, given up for an off
     chapterChronicleLine(row({ from: 'officer', to: 'master' })), chapterChronicleLine(row({ from: 'master', to: 'officer' })),
     chapterChronicleLine(row({ from: 'master', to: null })), chapterChronicleLine(row({ from: 'officer', to: null }, { name: null, faction: 368 })),
   ], [
-    'In week 40, Alda took the Master\'s seat of the Fighters Guild.', 'In week 40, Alda took an officer\'s seat of the Fighters Guild.',
-    'In week 40, Alda rose to the Master\'s seat of the Fighters Guild.', 'In week 40, Alda gave the Master\'s seat of the Fighters Guild up, and kept an officer\'s.',
-    'In week 40, Alda lost the Master\'s seat of the Fighters Guild.', 'In week 40, A member since gone lost an officer\'s seat of the Knights of the Dragon.',
+    'In week 40, Alda took the Master\'s chair of the Fighters Guild.', 'In week 40, Alda took a council chair of the Fighters Guild.',
+    'In week 40, Alda rose to the Master\'s chair of the Fighters Guild.', 'In week 40, Alda gave the Master\'s chair of the Fighters Guild up, and kept a council chair.',
+    'In week 40, Alda lost the Master\'s chair of the Fighters Guild.', 'In week 40, A member since gone lost a council chair of the Knights of the Dragon.',
   ]);
-  assert.equal(chapterChronicleLine(row({ from: null, to: 'master' }), 36), 'In the first week of the Season of Morning Star, Alda took the Master\'s seat of the Fighters Guild.', 'the Season\'s words where one is counted (Season 0 four weeks from 36)');
+  assert.equal(chapterChronicleLine(row({ from: null, to: 'master' }), 36), 'In the first week of the Season of Morning Star, Alda took the Master\'s chair of the Fighters Guild.', 'the Season\'s words where one is counted (Season 0 four weeks from 36)');
   for (const [why, r] of [['a hidden guild', row({ from: null, to: 'master' }, { faction: 42 })], ['no change', row({ from: 'master', to: 'master' })],
     ['another kind', { ...row({ from: null, to: 'master' }), kind: 'strike' }], ['no seat', row({ from: null, to: null })], ['no guild', row({ from: null, to: 'master' }, { faction: 99 })]]) {
     assert.equal(chapterChronicleLine(r), null, why);
   }
-  assert.equal(chapterChronicleLine({ kind: 'seat', faction: FIGHTERS, data: { from: null, to: 'officer' }, name: 'Bryn' }), 'Bryn took an officer\'s seat of the Fighters Guild.', 'no week, no when');
+  assert.equal(chapterChronicleLine({ kind: 'seat', faction: FIGHTERS, data: { from: null, to: 'officer' }, name: 'Bryn' }), 'Bryn took a council chair of the Fighters Guild.', 'no week, no when');
 });
 
 test('CHAP4d the Hall of Records: the region\'s chapters after the seat\'s own, under their own heading, each row a paragraph; none offline (mutants: the section, the heading, the lines)', () => {
   const seat = { key: 3021, name: 'Anticlere', region: ANTICLERE, tier: 'palace' };
   const chapters = { rows: [{ kind: 'seat', faction: FIGHTERS, week: 40, data: { from: null, to: 'master' }, name: 'Alda' }, { kind: 'seat', faction: 42, week: 40, data: { from: null, to: 'master' }, name: 'Thief' }], zero: null };
   assert.equal(hallOfRecordsChaptersTitle(seat), 'The Chapters of Anticlere');
-  assert.deepEqual(hallOfRecordsChapterLines(chapters), ['In week 40, Alda took the Master\'s seat of the Fighters Guild.']);
-  assert.deepEqual(hallOfRecordsChapterLines({ ...chapters, zero: 36 }), ['In the first week of the Season of Morning Star, Alda took the Master\'s seat of the Fighters Guild.'], 'the Season the service counts');
+  assert.deepEqual(hallOfRecordsChapterLines(chapters), ['In week 40, Alda took the Master\'s chair of the Fighters Guild.']);
+  assert.deepEqual(hallOfRecordsChapterLines({ ...chapters, zero: 36 }), ['In the first week of the Season of Morning Star, Alda took the Master\'s chair of the Fighters Guild.'], 'the Season the service counts');
   const texts = (t) => t.filter((x) => typeof x.text === 'string').map((x) => x.text);
   const withChapters = texts(hallOfRecordsTokens(seat, [], null, null, chapters));
-  assert.deepEqual(withChapters.slice(1), ['Nothing is written here yet.', 'The Chapters of Anticlere', 'In week 40, Alda took the Master\'s seat of the Fighters Guild.'], 'the seat\'s own Chronicle empty, its region\'s chapters still said');
+  assert.deepEqual(withChapters.slice(1), ['Nothing is written here yet.', 'The Chapters of Anticlere', 'In week 40, Alda took the Master\'s chair of the Fighters Guild.'], 'the seat\'s own Chronicle empty, its region\'s chapters still said');
   assert.deepEqual(texts(hallOfRecordsBook(seat, [], null, null, chapters).getPageTokens()), texts(hallOfRecordsTokens(seat, [], null, null, chapters)), 'the book the window reads');
   assert.equal(texts(hallOfRecordsTokens(seat, [], null, null, null)).includes('The Chapters of Anticlere'), false);
   assert.equal(texts(hallOfRecordsTokens(seat, [], null, null, { rows: [], zero: null })).includes('The Chapters of Anticlere'), false, 'none to say, no heading');

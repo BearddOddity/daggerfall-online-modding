@@ -43,7 +43,7 @@ import { seatWeekStartMs, SEAT_WEEK_MS, seasonEndingAt, seasonZeroOf, seasonOf, 
 import {
   STRENGTH_START, strengthAfter, strengthTarget, strengthSeasonEnd, chapterBandOf, meritWeekOf, hallHidden, chaptersSwitchOf,
   SEAT_MERIT_WEEKS, seatEligibleAt, chapterSeatPlan, seatChangesOf, chapterTitlesOf, chapterFocusOk, HIDDEN_HALL_FACTIONS,
-  chapterEventWeights, chapterEventOf, chapterEventOk, chapterRivalsOf, chapterRivalPick, declineAfter, rivalryEnd, crackdownShuts,
+  chapterEventWeights, chapterEventOf, chapterEventOk, chapterRivalsOf, chapterRivalPick, rivalryEnd, crackdownShuts, CHAPTER_ASCENDANT_FROM,
   schismDoctrinesOf, schismWinner, successionHeir, chapterBackOk, chapterDoctrineOk, SUCCESSION_TURNING,
   patronBidOk, patronEscrowId, patronWinnerOf,
 } from '../../src/net/npcChapterLaw.js';
@@ -117,17 +117,11 @@ export async function settleChapterWeek(db, week, nowS, zero = null, open = 'on'
   for (const r of merits) at(Number(r.faction), Number(r.region)).merit += Number(r.n);
   const ends = seasonEndingAt(week, zero);
   const keys = new Set(confirmed.map((c) => `${c.faction}|${c.region}`));
-  // CHAP6a: the week's step, and a Decline's 2 more where the Season's event is one (Chapters-Arc 7)
+  // CHAP6a: the week's step (Chapters-Arc 7). GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md): a Decline's 2 more
+  // are gone with the event - the Failing band says it - and a row still holding one reads as none (heldEvent)
   const season = seasonOf(week, zero);
   const live = (/** @type {Chapter} */ c) => (season && c.eventSeason === season.n ? c.event : null);
-  for (const c of all.values()) {
-    c.s = strengthAfter(c.prev, c.merit, target);
-    if (live(c) === 'decline') {
-      const d = declineAfter(c.s, c.merit, target);
-      c.data = { ...c.data, fell: Number(c.data.fell ?? 0) + (c.s - d) };
-      c.s = d;
-    }
-  }
+  for (const c of all.values()) c.s = strengthAfter(c.prev, c.merit, target);
   // CHAP6b: a Succession named at the Season's third Turning (or the first after it a sleeping service settles)
   if (season && week >= season.start + SUCCESSION_TURNING - 1) await successionNamed(db, season, week, all, live);
   /** @type {any[]} */
@@ -615,8 +609,9 @@ const seasonStartOf = (/** @type {number} */ week, /** @type {number | null} */ 
  * first (npcChapterLaw.js chapterTitlesOf): its seats now, and the Masters' seats it lost this Season (the Chronicle's
  * rows from the Season's first week). `character` narrows it to one. AUDIT CHAP4 E3: only a chapter confirmed now - a
  * struck chapter's seats and its Masters' loss title nobody. CHAP6e: a Master's seat at a chapter whose Ascendancy is
- * this counted Season's is marked `high`; and every Season a character held a Master's seat whole (the Chronicle's
- * 'season' rows) is its 'seasonmaster' for good - a chapter struck since or not.
+ * this counted Season's is marked `high` - GUILD3e: at a chapter standing Ascendant (its Strength from
+ * CHAPTER_ASCENDANT_FROM, as the sheet carries it), the event retired into the band; and every Season a character held a
+ * Master's seat whole (the Chronicle's 'season' rows) is its 'seasonmaster' for good - a chapter struck since or not.
  * @param {any} db @param {string} playerId @param {number} nowS @param {number | null} [zero] @param {string | null} [character]
  */
 export async function chapterTitlesOfAccount(db, playerId, nowS, zero = null, character = null) {
@@ -631,8 +626,11 @@ export async function chapterTitlesOfAccount(db, playerId, nowS, zero = null, ch
   const season = counted ?? 0;
   if (!seats.length && !lost.length && !whole.length) return [];
   const confirmed = new Set((await allChapters(db, nowS)).map((c) => `${c.faction}|${c.region}`));
-  const { results: rising = [] } = counted != null && seats.some((r) => r.seat === 'master')
-    ? await db.prepare("SELECT faction, region FROM npc_chapters WHERE event = 'ascendancy' AND event_season = ?1").bind(counted).all() : { results: [] };
+  // GUILD3e: only the chapters whose Master's seat the account holds are asked - never every Ascendant chapter's row
+  const led = seats.filter((r) => r.seat === 'master').map((r) => [Number(r.faction), Number(r.region)]);
+  const { results: rising = [] } = led.length
+    ? await db.prepare(`SELECT faction, region FROM npc_chapters WHERE strength >= ?1 AND (faction, region) IN
+        (SELECT json_extract(value, '$[0]'), json_extract(value, '$[1]') FROM json_each(?2))`).bind(CHAPTER_ASCENDANT_FROM, JSON.stringify(led)).all() : { results: [] };
   const ascendant = new Set(rising.map((/** @type {any} */ c) => `${c.faction}|${c.region}`));
   const kept = (/** @type {any[]} */ rows) => rows.filter((r) => confirmed.has(`${r.faction}|${r.region}`));
   const seatsHere = kept(seats), lostHere = kept(lost);

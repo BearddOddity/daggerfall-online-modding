@@ -49,6 +49,15 @@ page reuses rather than rebuilds), `06-Systems/Professions-Arc.md` (PROF0 - Mark
 (LW0 - the residents), `06-Systems/Standing-Arc.md` (REP1-REP6 - the law's own overhaul) and
 `11-Multiplayer/Guild-Overhaul.md` (GUILD2 - the players' own guilds, which this page does not touch).
 
+**GUILD3 (2026-10-11, the owner: "Keeping depth, but making it easier to understand"; "These are all of your
+decisions") - `11-Multiplayer/Guilds-Made-Plain.md` changed this record, each change said where it stands below:** the
+Season's events are FIVE (GUILD3e - the Decline and the Ascendancy folded into the Failing and Ascendant bands they
+repeated; section 7's table, Appendix A); the Ascendant band is its own, a fifth off, and its Master the High Master
+while it stands (section 6, CHAP6e); a patron pays the better of its band and Thriving's (section 8); a chapter's ranks 8
+and 9 are its Master's CHAIR and its council chairs in every sentence a player reads, rank 8 a Councillor - "seat" is a
+town's Charter alone, the code's `seat` ids unmoved (GUILD3a); the board draws each chapter as one card, its band's
+effects said and its Duties (the receipts' asks) on it (GUILD3d).
+
 ## Mac's words
 
 - "Curious but how could we split away from DFU, completely overhaul the NPC guild system and reputation system to not
@@ -710,15 +719,15 @@ and a salt, as a Tide is (`net/tideLaw.js`) - from weights its last Season moved
 | **Succession** | 10 | +10 if the chapter was Ascendant | The hall's head steps down. The Master names the successor from the hall's residents at the Season's third Turning; with no Master, the most-Merit member's choice stands |
 | **Crackdown** | 10 | Thieves and Brotherhood x2; +10 if the region's seat holder's Edict is Curfew | The watch or a rival hunts the chapter: its members' own writs earn half again Merit (AUDIT CHAP5 E1 - its writs pay as any), and a chapter under 30 Strength at the Season's end shuts its halls for the next |
 | **Rivalry** | 15 | +10 if a rival chapter (section 8) in the region is Thriving; with no rival chapter in the region its weight is Calm's (AUDIT CHAP R9: a weight of 0 spread its share over every event, where CALL 5 gives it to Calm) | Two chapters in one region race on Merit; the winner takes 10 Strength from the loser at the Season's end |
-| **Decline** | 10 | +15 if Failing | Strength falls 2 more each week unless the week's Merit meets twice the target |
-| **Ascendancy** | 10 | +15 if Ascendant | The halls' prices a further tenth off; the Master's title gains "High" for the Season |
+| ~~**Decline**~~ | ~~10~~ | ~~+15 if Failing~~ | RETIRED (GUILD3e): it said what the Failing band says - its town's talk is Failing's now |
+| ~~**Ascendancy**~~ | ~~10~~ | ~~+15 if Ascendant~~ | RETIRED (GUILD3e) into the Ascendant band: its prices a fifth off (where Thriving's tenth stood), its Master the High Master while the band holds |
 
 - **At the Season's end** (the Turning that closes week 8): the event resolves; Strength moves halfway back toward 50;
   the seats stand; the Master who held all eight weeks keeps "Master of the <Region> Chapter, Season N" for good; the
   Chronicle writes the Season's line.
 
 BUILT (CHAP6a, 2026-10-09, Mac: "continue"), the roll and the weeks - `src/net/npcChapterLaw.js` (`CHAPTER_EVENTS`,
-`CHAPTER_EVENT_EFFECTS`, `CHAPTER_RIVAL_PAIRS`, `chapterEventWeights`, `chapterEventOf`, `declineAfter`, `rivalryEnd`,
+`CHAPTER_EVENT_EFFECTS`, `CHAPTER_RIVAL_PAIRS`, `chapterEventWeights`, `chapterEventOf`, `declineAfter` (retired by GUILD3e), `rivalryEnd`,
 `crackdownMerit` - `crackdownPay` until AUDIT CHAP5 E1 -, `crackdownShuts`, `chapterSeasonLine`), `server-account/src/npcChapters.js` (`seasonEnded`, `seasonDrawn`,
 `regionEvents`), migration `0102` grown in place:
 
@@ -831,7 +840,7 @@ BUILT (CHAP6c, 2026-10-09, Mac: "continue"), the words and the choices on the cl
   Season's Master's title for good (CHAP6e, a relay change) - BUILT, below.
 
 BUILT (CHAP6d, 2026-10-09, Mac: "continue"), the Season on the halls - `src/net/npcChapterLaw.js` (`chapterHallFactor`,
-`chapterHallShelf`, `chapterHallShut`, `CHAPTER_HALL_SHUT_LINE`, `CHAPTER_EVENT_EFFECTS.ascendancyPrice`), the hall's
+`chapterHallShelf`, `chapterHallShut`, `CHAPTER_HALL_SHUT_LINE`, `CHAPTER_EVENT_EFFECTS.ascendancyPrice` - retired by GUILD3e into the Ascendant band), the hall's
 services window (`src/scenes/worldModes.js`), the host's `chapterHere` (`src/scenes/world.js`), the living world's
 `hallGuildDays` (`src/systems/livingWorld/dayPlan.js`):
 
@@ -1210,20 +1219,20 @@ is Mac's to overrule.
 | The Turnings a read settles | 8 at most (`CHAPTER_WEEKS_MAX`, `server-account/src/npcChapters.js`); every region's chapters read from their computed rows (`npc_hall_regions`, AUDIT CHAP3 S3), one row a region (AUDIT CHAP4 R3: this named `ALL_CHAPTERS_KEPT_MS`, gone with S3); the weeks the Chapters are shut recorded `off`, nothing moved (AUDIT CHAP4 S2) | 5.2 |
 | Bands | Failing 0-19, Steady 20-69, Thriving 70-89, Ascendant 90-100 (`CHAPTER_BANDS`, `chapterBandOf`) | 5.2 |
 | Failing price | x1.25 on training, a spell bought, a spell made (`CHAPTER_BANDS`, `chapterPriceFactor`, `chapterPriced`) | 5.2 |
-| Thriving and Ascendant price | x0.9 on the same | 5.2 |
+| Thriving and Ascendant price | x0.9 Thriving on the same; x0.8 Ascendant (GUILD3e: the Ascendancy's further tenth, the band's own - `CHAPTER_ASCENDANT_FROM` 90) | 5.2 |
 | The shelf by band | 4 qualities poorer Failing, 4 richer Thriving and Ascendant, inside 1-20 (`HALL_QUALITY_MIN`, `HALL_QUALITY_MAX`, `chapterShelfQuality`) | 5.2 |
 | The sheet held by the tab | 10 minutes (`SHEET_KEPT_MS`, `src/net/chapterSheet.js`) | 5.3 |
 | A week's grace before it settles | 300 seconds (`CHAPTER_TURNING_GRACE_S`, `server-account/src/npcChapters.js`, AUDIT CHAP3 S1) | 5.2 |
 | A kept gate claim's wait for the scan | 90 seconds at most (`GATE_SCAN_WAIT_MS`, `src/scenes/world.js`, AUDIT CHAP3 C3) | 3.3 |
-| Seats | 1 Master, 3 officers a chapter | 6 |
+| Seats | 1 Master, 3 officers a chapter (GUILD3a: said to a player as the Master's chair and three council chairs) | 6 |
 | Seat eligibility | 14 days in the guild, account 7 days old | 6 |
 | Merit window | 4 weeks | 6 |
 | Unearned seat | vacant | 6 |
 | Patron | one a chapter a Season, highest Marks bid, burnt, every other home; at least 1,000, sealed, raised never lowered (`CHAPTER_PATRON_MIN`, `patronBidOk`, `patronWinnerOf`; CHAP7a); the board's offers 1,000, 2,000 or 5,000 for a first bid, 500, 1,000 or 5,000 more on a standing one (`CHAPTER_PATRON_RAISES`, `chapterPatronBidsOf`; CHAP7b); its members' price the Thriving band's, 0.9 (`CHAPTER_PATRON_BAND`, `CHAPTER_PATRON_PRICE`; CHAP7b - AUDIT CHAP5 R17); every open bid home at the opening (AUDIT CHAP5 S6) | 8 |
 | Holder's Merit | no carry - a sitting holder keeps an EQUAL standing (`chapterSeatPlan`'s first tie-break; AUDIT CHAP4 E1, decided: the x1.2 it carried made a holder at 2000 of the four weeks' 2400 unbeatable) | 6 |
-| Event weights | Calm 30, Schism 15, Succession 10, Crackdown 10, Rivalry 15, Decline 10, Ascendancy 10; moved as section 7's table says (AUDIT CHAP R11; `CHAPTER_EVENTS`, `chapterEventWeights`, drawn on `CHAPTER_EVENT_SALT`, scaled over the sum - `drawOf`, AUDIT CHAP5 E3); a Schism's weight Calm's for a guild of one doctrine (AUDIT CHAP5 D3) | 7 |
-| Decline's weekly fall | 2 Strength, unless the week's Merit meets twice the target (`CHAPTER_EVENT_EFFECTS.declineFall`, `declineMeets`) | 7 |
-| Ascendancy's prices | a further tenth off training, a spell bought and a spell made (`CHAPTER_EVENT_EFFECTS.ascendancyPrice`, `chapterHallFactor`) | 7 |
+| Event weights | Calm 30, Schism 15, Succession 10, Crackdown 10, Rivalry 15 (GUILD3e: five - the Decline's 10 and the Ascendancy's 10 retired); moved as section 7's table says (AUDIT CHAP R11; `CHAPTER_EVENTS`, `chapterEventWeights`, drawn on `CHAPTER_EVENT_SALT`, scaled over the sum - `drawOf`, AUDIT CHAP5 E3); a Schism's weight Calm's for a guild of one doctrine (AUDIT CHAP5 D3) | 7 |
+| ~~Decline's weekly fall~~ | RETIRED with the Decline (GUILD3e) | 7 |
+| ~~Ascendancy's prices~~ | RETIRED into the Ascendant band's x0.8 (GUILD3e) | 7 |
 | Rivalry's swing | 10 Strength, the loser's whole, the winner's never past 100 (`rivalrySwing`); one race a chapter a Season, any other rivalry even (AUDIT CHAP5 E5) | 7 |
 | Crackdown's Merit | a member's own writ's, half again, whole (`crackdownMerit`; AUDIT CHAP5 E1 - its writs pay as any, `crackdownPay` retired) | 7 |
 | Crackdown's shut line | Strength 30 - under it, the halls shut for the next Season (`crackdownShut`) | 7 |

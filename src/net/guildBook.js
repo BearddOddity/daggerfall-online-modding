@@ -216,7 +216,9 @@ export class GuildBook {
       if (r?.ok && typeof r.data?.outOrder === 'string') this._hand({ outOrder: r.data.outOrder });
       // AUDIT2 GUILD2 S2/S7: a refusal's own reason kept - the word the name filter caught (`why`), and when a refused act may
       // come again (`at`, a rename's fortnight) - so the page can say them
-      return r?.ok ? { ok: true, data: r.data } : { ok: false, error: r?.error ?? 'server', ...(typeof r?.why === 'string' ? { why: r.why } : {}), ...(Number.isSafeInteger(r?.at) ? { at: r.at } : {}) };
+      // GUILD3c (bible/11-Multiplayer/Guilds-Made-Plain.md): and a leave's or a disbanding's whole list of what holds it
+      return r?.ok ? { ok: true, data: r.data } : { ok: false, error: r?.error ?? 'server', ...(typeof r?.why === 'string' ? { why: r.why } : {}), ...(Number.isSafeInteger(r?.at) ? { at: r.at } : {}),
+        ...(Array.isArray(r?.keeps) ? { keeps: [...r.keeps] } : {}) };
     } finally {
       this.busy = false;
       // AUDIT MERGE-PLUS A5: a look already out read the guild BEFORE this act - `refresh` would have handed back that

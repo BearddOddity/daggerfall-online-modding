@@ -204,30 +204,27 @@ test('CHAP2b a realm character\'s delete takes what its receipts gave (mutants: 
 
 // ── THE BOARD AND THE WIRING ────────────────────────────────────────
 
-test('CHAP2b the ask\'s card: under the guild\'s seal, the gate held or the town defended for the guild, its pay the guild\'s standing, a member\'s state; no Take (mutants: the text, the state)', async () => {
+test('CHAP2b the asks on the board - GUILD3d (bible/11-Multiplayer/Guilds-Made-Plain.md): each chapter\'s Duties on its card, the gate held and the town defended, what each earns, a member\'s first of each today; never a card, which had no Take (mutants: the text, the state)', async () => {
   const tick = () => new Promise((r) => setImmediate(r));
   const receipts = [
     { faction: 41, kind: 'gate', member: true, done: true }, { faction: 41, kind: 'raid', member: true, done: false },
-    { faction: 368, kind: 'raid', member: false, done: false },
+    { faction: 368, kind: 'gate', member: false, done: false }, { faction: 368, kind: 'raid', member: false, done: false },
   ];
+  const chapters = [{ faction: 41, strength: 50, band: 'steady' }, { faction: 368, strength: 50, band: 'steady' }];
   const book = { state: { open: true, writs: { today: 0, max: 3 } }, held: () => 0,
-    writs: async () => ({ data: { writs: [], receipts, today: { filled: 0, max: 3 } }, error: null, stale: false }), deliver: async () => ({ ok: true, data: {} }) };
+    writs: async () => ({ data: { writs: [], receipts, chapters, today: { filled: 0, max: 3 } }, error: null, stale: false }), deliver: async () => ({ ok: true, data: {} }) };
   const notices = { seenAt: () => null, read: async () => ({ board: { notes: [], notices: [], me: {} } }), markSeen() {}, cached: () => null, draft: () => ({ subject: '', body: '', days: 7, button: '' }), noticeDraft: () => ({ subject: '', body: '', days: 3 }) };
   const host = document.createElement('div');
   mountNoticeBoard(host, { town: { name: 'Anticlere', mapId: 5 }, book: notices, work: { book, region: 21, regionName: 'Anticlere', countName: (k, n) => materialCountLabel(k, n) } });
   await tick();
   byClass(host, 'notice-tab')[1].click();
   for (let i = 0; i < 3; i++) await tick();
-  const cards = byClass(host, 'notice-writ');
-  assert.equal(cards.length, 3);
-  assert.deepEqual(cards.map((c) => byClass(c, 'writ-need')[0].textContent), [
-    'Hold the gate in Anticlere, for the Fighters Guild', 'Defend a raided town of Anticlere, for the Fighters Guild',
-    'Defend a raided town of Anticlere, for the Knights of the Dragon',
+  assert.deepEqual(byClass(host, 'notice-duties').map((p) => p.textContent), [
+    'Duties here: hold a gate (done today), defend a raided town - standing each time, more for the day\'s first of each, and Merit.',
+    'Its members\' duties here: hold a gate, defend a raided town - standing each time, more for the day\'s first of each, and Merit.',
   ]);
-  assert.deepEqual(cards.map((c) => byClass(c, 'writ-left')[0].textContent), ['Done today', 'Your next one here fills it', 'For members of the Knights of the Dragon']);
-  assert.equal(byClass(cards[0], 'writ-pay')[0].textContent, 'Pays standing with the Fighters Guild, once a day a member');
-  assert.ok(cards.every((c) => c.className.includes('seal-guild')) && cards[0].className.includes('done'));
-  assert.equal(byClass(host, 'notice-take').length, 0, 'no Take: the receipt is the relay\'s');
+  assert.equal(byClass(host, 'notice-writ').length, 0, 'no card: the receipt is the relay\'s, and a card that cannot be taken is no writ');
+  assert.equal(byClass(host, 'notice-take').length, 0);
 });
 
 test('CHAP2b the wiring: both routes credit after the receipt\'s row, the raid by its key\'s region; the board lists the asks; the host refreshes the Roll and says the guilds\' memory on a credited claim (mutants: the routes, the refresh)', () => {
@@ -241,5 +238,6 @@ test('CHAP2b the wiring: both routes credit after the receipt\'s row, the raid b
   // PIN MOVED (AUDIT CHAP3 C3: a kept gate claim waits for the gate's scan; C4: a raid's said on the fighting character's page)
   assert.match(world, /claim: \(r\) => \(gateClaimReady\(\) \? _accountGates\.claim\(r, gateSeatWord\(r\)\)\.then\(rollHeard\) : Promise\.resolve\(\{ ok: false, error: 'offline' \}\)\),/);
   assert.match(world, /claim: \(r, ch, \.\.\.a\) => _accountRaids\.claim\(r, ch, \.\.\.a\)\.then\(\(x\) => \(ch === characterIdOf\(playerEntity\) \? rollHeard\(x\) : x\)\),/);
-  assert.match(src('src/ui/noticeWindow.js'), /for \(const a of writs\?\.receipts \?\? \[\]\) grid\.append\(receiptNode\(a\)\);/);
+  // PIN MOVED: GUILD3d - the asks are each chapter's Duties line on its card
+  assert.match(src('src/ui/noticeWindow.js'), /const duties = chapterDutiesLine\(c\.faction, writs\?\.receipts\);\n\s+if \(duties\) card\.append\(el\('p', 'notice-chapter notice-duties', duties\)\);/);
 });

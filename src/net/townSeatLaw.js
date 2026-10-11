@@ -571,7 +571,7 @@ export function chronicleLine(row, seat, zero = null) {
     // AUDIT-SEATS S4 (16: "the Charter voids, the claim fee is refunded ... if struck within the Season"): a held seat's
     // strike names the Charter it voided and the fee it refunded
     case 'strike': return d.guild
-      ? `${when}, ${seat.name} was struck from the registry, and ${guildWords(d.guild)}'s Charter with it${Number(d.refund) > 0 ? ` - its claim fee of ${Number(d.refund).toLocaleString('en-US')} Marks refunded` : ''}.`
+      ? `${when}, ${seat.name} was struck from the registry, and ${guildWords(d.guild)}'s Charter with it${Number(d.refund) > 0 ? ` - its claim fee of ${marksText(Number(d.refund))} refunded` : ''}.`   // GUILD3a: silver, as every sentence says it
       : `${when}, ${seat.name} was struck from the registry.`;
     // AUDIT-SEATS S4: a Charter whose seat the registry no longer confirms, lapsed at the Turning
     case 'unregistered': return `${when}, ${c} lapsed - ${seat.name} is no longer confirmed in the registry.`;
