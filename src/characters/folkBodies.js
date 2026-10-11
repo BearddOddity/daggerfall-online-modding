@@ -18,7 +18,7 @@ import { ARMOR_MATERIAL } from '../systems/armorMaterials.js';   // MWNPC12: ste
 import { dressPerson, npcHint } from './wardrobe.js';   // MWNPC17
 
 /** MWNPC17: what each outfit variant is, by gender, in PERSON_TEXTURES' variant order - the wardrobe's role and the cut
- *  their sprite shows (characters/wardrobe.js ROLES, SILHOUETTES). */
+ *  their sprite shows (characters/wardrobe.js WARDROBE_ROLES, SILHOUETTES). */
 export const FOLK_DRESS = Object.freeze({
   male: Object.freeze([
     Object.freeze({ role: 'commoner', cut: 'pants' }),    // a short shirt and casual pants - the commoner

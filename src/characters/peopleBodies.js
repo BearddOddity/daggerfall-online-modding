@@ -24,7 +24,7 @@ import { dressPerson } from './wardrobe.js';   // MWNPC17: the wardrobe's roles
 
 const RACE_NAME = Object.freeze(Object.fromEntries(Object.entries(RACES).map(([k, v]) => [v, k])));
 
-/** MWNPC17: the wardrobe's role (characters/wardrobe.js ROLES) each kind of person is dressed by. */
+/** MWNPC17: the wardrobe's role (characters/wardrobe.js WARDROBE_ROLES) each kind of person is dressed by. */
 export const KIND_ROLE = Object.freeze({
   priest: 'priest', mage: 'mage', knight: 'knight', fighter: 'fighter', noble: 'noble', merchant: 'merchant',
   underworld: 'rogue', scholar: 'scholar', common: 'commoner',
@@ -112,7 +112,7 @@ export function figureLook(fig, ctx = null) {
 export const DAEDRA_PRINCES_ARCHIVE = 175;
 /** MWNPC18: a race the host names (a RACES id, or a name) as the look spells it - the Bay's Breton when it names none. */
 const raceNameOf = (race) => (typeof race === 'number' ? RACE_NAME[race] : typeof race === 'string' && race in RACES ? race : null) ?? 'Breton';
-/** MWNPC18: THE CAPTION'S WORDS, to a wardrobe role (characters/wardrobe.js ROLES) - the first that matches, in this
+/** MWNPC18: THE CAPTION'S WORDS, to a wardrobe role (characters/wardrobe.js WARDROBE_ROLES) - the first that matches, in this
  *  order (a "noble knight" is a knight); none, the street's. A judgement over FLATS.CFG's own words, recorded here. */
 /** @type {ReadonlyArray<[string, RegExp]>} */
 export const FIGURE_ROLE_WORDS = Object.freeze([

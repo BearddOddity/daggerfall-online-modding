@@ -41,7 +41,7 @@ export function rosterActor(rec, { id, look, feet, yaw, moving = false, running 
  *  palace, a priest at the temple's door, a stall-keeper at their stall); a beggar and the rest the street's outfit.
  *  Keyed by the resident's job - a street's still picture is their job's kind (looks.js stillRoleOf: a priest's, a
  *  stall's merchant's), a room's flat their job's too (world/travellerSprites.js). MWNPC17: the wardrobe's role
- *  (characters/wardrobe.js ROLES) each is dressed by. */
+ *  (characters/wardrobe.js WARDROBE_ROLES) each is dressed by. */
 export const STILL_WARDROBE = Object.freeze({ courtier: 'noble', priest: 'priest', keeper: 'merchant', merchant: 'merchant' });
 
 /**

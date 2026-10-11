@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  dressPerson, ROLES, ROLE_NAMES, ARMOR_KITS, armorKit, npcHint, npcHintOf, npcKeyOf, npcGarmentPick, withNpcPicks, npcFaceOf,
+  dressPerson, WARDROBE_ROLES, ROLE_NAMES, ARMOR_KITS, armorKit, npcHint, npcHintOf, npcKeyOf, npcGarmentPick, withNpcPicks, npcFaceOf,
   wornByRole, weighted, MENS, WOMENS,
 } from '../src/characters/wardrobe.js';
 import { mwClothingRecord, clothingTierOf, CLOTH_PICK_NEAREST, CLOTHING_NAME, MW_CLOTHING_TYPE, dfWornEquipment, composeWornArmor, ARMO_PART } from '../src/formats/mwItemMap.js';
@@ -36,7 +36,7 @@ test('MWNPC17a dressPerson: one seed one person, every role dressed by its own t
         assert.equal(chest.length, 1, 'one top or one robe');
         assert.equal(legs.length, d.cut === 'robe' ? 0 : 1, 'a robe hides the legs - nothing under it');
         assert.equal(feet.length, 1, 'one pair on the feet - the kit\'s boots or the cut\'s shoes, never both');
-        assert.ok(d.tier >= 0 && d.tier <= 3 && ROLES[role].tiers[d.tier] > 0, 'a rung the role climbs to');
+        assert.ok(d.tier >= 0 && d.tier <= 3 && WARDROBE_ROLES[role].tiers[d.tier] > 0, 'a rung the role climbs to');
         assert.deepEqual(d.npc, npcHint(s, d.tier));
       }
     }

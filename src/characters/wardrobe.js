@@ -55,7 +55,7 @@ const M = MENS, W = WOMENS;
 
 /** The dyes (characters/dyes.js DYE_COLORS: Blue 0, Grey 1, Red 2, Dark Brown 3, Purple 4, Light Brown 5, White 6,
  *  Aquamarine 7, Yellow 8, Green 9), as a role wears them. */
-export const DYES = Object.freeze({
+export const WARDROBE_DYES = Object.freeze({
   street: Object.freeze([1, 3, 5, 0, 2, 9, 6, 7, 8, 4]),
   earth: Object.freeze([3, 5, 1, 9, 6, 2]),
   fine: Object.freeze([4, 2, 0, 6, 9, 7, 8]),
@@ -70,7 +70,7 @@ export const DYES = Object.freeze({
 export const SILHOUETTES = Object.freeze(['pants', 'skirt', 'robe']);
 
 /**
- * THE ROLES - who wears what. Per role: `tiers` the wealth ladder's weights (common, expensive, extravagant,
+ * THE ROLES (WARDROBE_ROLES) - who wears what. Per role: `tiers` the wealth ladder's weights (common, expensive, extravagant,
  * exquisite), `dyes` the palette, `match` the odds the lower half takes the top's dye, `cloak` the odds of a cloak and
  * `formal` the odds it is the formal one; per gender each silhouette's weight and its garments (`top`, `legs`, `robe`,
  * `feet` - a list to draw one from); `armor` a kit (below), or none.
@@ -79,10 +79,10 @@ export const SILHOUETTES = Object.freeze(['pants', 'skirt', 'robe']);
  * @typedef {{ tiers: number[], dyes: readonly number[], match: number, cloak: number, formal: number, male: Cut, female: Cut, armor?: string }} Role
  */
 /** @type {Readonly<Record<string, Role>>} */
-export const ROLES = Object.freeze({
+export const WARDROBE_ROLES = Object.freeze({
   // the street: a shirt or a vest, breeches or a wrap, shoes or sandals; a skirt or a plain dress for a woman
   commoner: {
-    tiers: [92, 8, 0, 0], dyes: DYES.street, match: 0.2, cloak: 0.08, formal: 0,
+    tiers: [92, 8, 0, 0], dyes: WARDROBE_DYES.street, match: 0.2, cloak: 0.08, formal: 0,
     male: {
       pants: { w: 86, top: [...M.shortShirts, ...M.longShirts, M.vest, M.openTunic, M.reversibleTunic, M.straps], legs: [M.casualPants, M.casualPants, M.breeches, M.loincloth], feet: [M.shoes, M.shoes, M.sandals, M.boots] },
       skirt: { w: 10, top: [...M.shortShirts, M.vest], legs: [M.wrap, M.shortSkirt], feet: [M.sandals, M.shoes] },
@@ -96,7 +96,7 @@ export const ROLES = Object.freeze({
   },
   // a tradesman: a tunic, breeches, boots - the walker's second outfit, a merchant's hand
   tradesman: {
-    tiers: [78, 20, 2, 0], dyes: DYES.earth, match: 0.3, cloak: 0.1, formal: 0.1,
+    tiers: [78, 20, 2, 0], dyes: WARDROBE_DYES.earth, match: 0.3, cloak: 0.1, formal: 0.1,
     male: { pants: { w: 100, top: [M.shortTunic, M.reversibleTunic, M.openTunic, ...M.longShirts, M.vest, M.eodoric], legs: [M.breeches, M.casualPants], feet: [M.boots, M.boots, M.tallBoots, M.shoes] } },
     female: {
       pants: { w: 70, top: [...W.longShirts, W.vest, W.eodoric, W.openTunic], legs: [W.casualPants, W.tights], feet: [W.boots, W.tallBoots, W.shoes] },
@@ -105,7 +105,7 @@ export const ROLES = Object.freeze({
   },
   // a traveller: a long shirt, breeches, tall boots and, more often than not, a cloak
   traveller: {
-    tiers: [80, 18, 2, 0], dyes: DYES.earth, match: 0.25, cloak: 0.6, formal: 0.05,
+    tiers: [80, 18, 2, 0], dyes: WARDROBE_DYES.earth, match: 0.25, cloak: 0.6, formal: 0.05,
     male: { pants: { w: 100, top: [...M.longShirts, M.shortTunic, M.openTunic, M.vest], legs: [M.breeches, M.casualPants], feet: [M.tallBoots, M.tallBoots, M.boots] } },
     female: {
       pants: { w: 75, top: [...W.longShirts, W.vest, W.openTunic], legs: [W.casualPants, W.tights], feet: [W.tallBoots, W.tallBoots, W.boots] },
@@ -114,7 +114,7 @@ export const ROLES = Object.freeze({
   },
   // a scholar: a plain robe, or a long shirt under a cloak
   scholar: {
-    tiers: [70, 26, 4, 0], dyes: DYES.plain, match: 0.6, cloak: 0.35, formal: 0.2,
+    tiers: [70, 26, 4, 0], dyes: WARDROBE_DYES.plain, match: 0.6, cloak: 0.35, formal: 0.2,
     male: {
       robe: { w: 70, robe: [M.plainRobes, M.plainRobes, M.kimono, M.toga], feet: [M.shoes, M.sandals] },
       pants: { w: 30, top: [...M.longShirts, M.formalTunic], legs: [M.breeches], feet: [M.shoes, M.boots] },
@@ -126,7 +126,7 @@ export const ROLES = Object.freeze({
   },
   // a merchant: a fine tunic or a long shirt, breeches, boots; now and then a cloak
   merchant: {
-    tiers: [45, 45, 9, 1], dyes: DYES.earth.concat([0, 4]), match: 0.35, cloak: 0.18, formal: 0.3,
+    tiers: [45, 45, 9, 1], dyes: WARDROBE_DYES.earth.concat([0, 4]), match: 0.35, cloak: 0.18, formal: 0.3,
     male: { pants: { w: 100, top: [M.shortTunic, M.formalTunic, M.reversibleTunic, ...M.longShirts, M.vest, M.eodoric], legs: [M.breeches, M.breeches, M.casualPants], feet: [M.boots, M.tallBoots, M.shoes] } },
     female: {
       pants: { w: 35, top: [...W.longShirts, W.eodoric, W.vest], legs: [W.casualPants, W.tights], feet: [W.boots, W.tallBoots, W.shoes] },
@@ -136,7 +136,7 @@ export const ROLES = Object.freeze({
   },
   // the nobility and the courts: a formal tunic, breeches or tights, tall boots, a formal cloak; a gown
   noble: {
-    tiers: [0, 35, 45, 20], dyes: DYES.fine, match: 0.45, cloak: 0.4, formal: 0.85,
+    tiers: [0, 35, 45, 20], dyes: WARDROBE_DYES.fine, match: 0.45, cloak: 0.4, formal: 0.85,
     male: {
       pants: { w: 85, top: [M.formalTunic, M.formalTunic, M.eodoric, M.shortTunic, ...M.longShirts], legs: [M.breeches, M.breeches, M.casualPants], feet: [M.tallBoots, M.tallBoots, M.boots, M.shoes] },
       robe: { w: 15, robe: [M.kimono, M.toga, M.dwynnenSurcoat, M.anticlereSurcoat], feet: [M.tallBoots, M.shoes] },
@@ -149,7 +149,7 @@ export const ROLES = Object.freeze({
   },
   // a temple's: the priest's robes most of all, a plain robe else
   priest: {
-    tiers: [40, 45, 13, 2], dyes: DYES.temple, match: 0.7, cloak: 0.1, formal: 0.3,
+    tiers: [40, 45, 13, 2], dyes: WARDROBE_DYES.temple, match: 0.7, cloak: 0.1, formal: 0.3,
     male: {
       robe: { w: 85, robe: [M.priestRobes, M.priestRobes, M.plainRobes, M.toga], feet: [M.sandals, M.shoes] },
       pants: { w: 15, top: [...M.longShirts], legs: [M.breeches], feet: [M.sandals, M.shoes] },
@@ -161,7 +161,7 @@ export const ROLES = Object.freeze({
   },
   // a mage: robes of every cut, or a long shirt under a cloak
   mage: {
-    tiers: [35, 45, 16, 4], dyes: DYES.arcane, match: 0.6, cloak: 0.35, formal: 0.4,
+    tiers: [35, 45, 16, 4], dyes: WARDROBE_DYES.arcane, match: 0.6, cloak: 0.35, formal: 0.4,
     male: {
       robe: { w: 70, robe: [M.plainRobes, M.plainRobes, M.kimono, M.toga], feet: [M.shoes, M.sandals, M.boots] },
       pants: { w: 30, top: [...M.longShirts, M.formalTunic, M.eodoric], legs: [M.breeches, M.casualPants], feet: [M.boots, M.tallBoots, M.shoes] },
@@ -174,7 +174,7 @@ export const ROLES = Object.freeze({
   },
   // the underworld: dark clothes, boots, a cloak half the time, and a rogue's leathers now and then
   rogue: {
-    tiers: [75, 22, 3, 0], dyes: DYES.dark, match: 0.5, cloak: 0.5, formal: 0, armor: 'rogue',
+    tiers: [75, 22, 3, 0], dyes: WARDROBE_DYES.dark, match: 0.5, cloak: 0.5, formal: 0, armor: 'rogue',
     male: { pants: { w: 100, top: [M.vest, ...M.shortShirts, ...M.longShirts, M.openTunic], legs: [M.casualPants, M.breeches], feet: [M.boots, M.tallBoots] } },
     female: {
       pants: { w: 80, top: [W.vest, ...W.shortShirts, ...W.longShirts], legs: [W.casualPants, W.tights], feet: [W.boots, W.tallBoots] },
@@ -183,20 +183,20 @@ export const ROLES = Object.freeze({
   },
   // a fighter: the clothes of the road under whatever armour came to hand
   fighter: {
-    tiers: [80, 18, 2, 0], dyes: DYES.earth, match: 0.3, cloak: 0.2, formal: 0, armor: 'fighter',
+    tiers: [80, 18, 2, 0], dyes: WARDROBE_DYES.earth, match: 0.3, cloak: 0.2, formal: 0, armor: 'fighter',
     male: { pants: { w: 100, top: [...M.shortShirts, ...M.longShirts, M.vest, M.shortTunic], legs: [M.casualPants, M.breeches], feet: [M.boots, M.tallBoots] } },
     female: { pants: { w: 100, top: [...W.shortShirts, ...W.longShirts, W.vest], legs: [W.casualPants, W.tights], feet: [W.boots, W.tallBoots] } },
   },
   // a knight of an order, a court's guard: the whole plate of one metal, by rank
   knight: {
-    tiers: [20, 50, 25, 5], dyes: DYES.fine, match: 0.5, cloak: 0.35, formal: 0.6, armor: 'knight',
+    tiers: [20, 50, 25, 5], dyes: WARDROBE_DYES.fine, match: 0.5, cloak: 0.35, formal: 0.6, armor: 'knight',
     male: { pants: { w: 100, top: [...M.longShirts, M.formalTunic], legs: [M.breeches], feet: [M.boots] } },
     female: { pants: { w: 100, top: [...W.longShirts, W.formalEodoric], legs: [W.tights, W.casualPants], feet: [W.boots] } },
   },
 });
 
 /** The roles' names. */
-export const ROLE_NAMES = Object.freeze(Object.keys(ROLES));
+export const ROLE_NAMES = Object.freeze(Object.keys(WARDROBE_ROLES));
 
 /** A list's member by a hash. @template T @param {readonly T[]} list @param {number} h @returns {T} */
 const pickOf = (list, h) => list[h % list.length];
@@ -305,15 +305,15 @@ export function withNpcPicks(worn, n) {
 export const npcFaceOf = (n) => ({ head: wmix(n.seed ^ 0x4ead5eed), hair: wmix(n.seed ^ 0x4a12b0b5) });
 
 /**
- * DRESS A PERSON: `role` one of ROLES (an unknown one the commoner's), `gender` 'male' or 'female', `seed` theirs
+ * DRESS A PERSON: `role` one of WARDROBE_ROLES (an unknown one the commoner's), `gender` 'male' or 'female', `seed` theirs
  * (32-bit), `cut` a silhouette their picture already shows (a walker's sprite - 'robe' a robe, 'pants' or 'skirt'
  * their legs), honoured where the role has it. Answers `{ items, npc, role, cut, tier }` - the items a look wears
  * (Daggerfall's garments and armour, in their equip slots), the hint the build reads.
  * @param {{ role?: string, gender?: string, seed: number, cut?: string|null }} o
  */
 export function dressPerson({ role = 'commoner', gender = 'male', seed, cut = null }) {
-  const name = Object.prototype.hasOwnProperty.call(ROLES, role) ? role : 'commoner';
-  const R = ROLES[name];
+  const name = Object.prototype.hasOwnProperty.call(WARDROBE_ROLES, role) ? role : 'commoner';
+  const R = WARDROBE_ROLES[name];
   const female = gender === 'female';
   const C = female ? R.female : R.male;
   const group = female ? 'WomensClothing' : 'MensClothing';
@@ -353,7 +353,7 @@ export function dressPerson({ role = 'commoner', gender = 'male', seed, cut = nu
  * seed's roll (the pins, the census). @param {any} look @param {string} role
  */
 export function wornByRole(look, role) {
-  const R = ROLES[role];
+  const R = WARDROBE_ROLES[role];
   if (!R || !look) return false;
   const female = look.gender === 'female';
   const C = female ? R.female : R.male;

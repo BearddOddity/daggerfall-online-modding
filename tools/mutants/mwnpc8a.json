@@ -138,7 +138,7 @@
   "name": "MWNPC8a-dyes-ignore-kind",
   "file": "src/characters/wardrobe.js",
   "old": "  const dye = (salt) => pickOf(R.dyes, wmix(s ^ salt));",
-  "new": "  const dye = (salt) => pickOf(DYES.street, wmix(s ^ salt));",
+  "new": "  const dye = (salt) => pickOf(WARDROBE_DYES.street, wmix(s ^ salt));",
   "tests": [
    "test/mwnpc8_people.test.js"
   ]

@@ -11,7 +11,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { figureLook, figureRole, DAEDRA_PRINCES_ARCHIVE, FIGURE_ROLE_WORDS } from '../src/characters/peopleBodies.js';
 import { offerDecorFigures } from '../src/scenes/decorRoom.js';
-import { wornByRole, ROLES } from '../src/characters/wardrobe.js';
+import { wornByRole, WARDROBE_ROLES } from '../src/characters/wardrobe.js';
 import { decorIsFigure } from '../src/net/decorLaw.js';
 
 const ROOT = new URL('../', import.meta.url).pathname;
@@ -77,7 +77,7 @@ test('MWNPC18b figureRole: the caption\'s words to a role, the first that matche
   assert.equal(figureRole('old scholar'), 'scholar');
   assert.equal(figureRole('drunk'), 'commoner');
   assert.equal(figureRole(null), 'commoner');
-  for (const [role] of FIGURE_ROLE_WORDS) assert.ok(ROLES[role], role);
+  for (const [role] of FIGURE_ROLE_WORDS) assert.ok(WARDROBE_ROLES[role], role);
 });
 
 test('MWNPC18c offerDecorFigures: each figure with a look offered on the lane at its picture\'s base, turned to the eye; one without draws its picture (its cast-only cleared); the lane off offers none (mutants: the offer skipped; the castOnly left)', () => {

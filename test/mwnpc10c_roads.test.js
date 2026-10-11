@@ -117,6 +117,8 @@ test('MWNPC10c-3 the sprites: each body on the ground offered as its sprite show
   assert.ok(by('d').dead > 0, 'the fallen dead');
   assert.equal(by('a').dead, 0);
   assert.ok(wornByRole(by('c').look, 'noble'), 'the courtier at home a noble');
+  assert.deepEqual(by('c').look, residentLook({}, court.res, { still: true }), 'dressed as the still picture is - their kind\'s look, off their own id');
+  assert.notDeepEqual(by('c').look, residentLook({}, court.res), 'never the outfit they walk the street in');
   assert.equal(by('c').dead, 0, 'a still picture someone talks to is alive');
   assert.equal(by('a').feet, sp.bodyOf('a').batch.origin, 'its feet its billboard\'s');
   assert.ok(lane.offered.every((o) => o.lane === 'roads'));

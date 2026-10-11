@@ -1941,7 +1941,7 @@ mwClothingRecord: a Short Shirt, a Long Shirt and a Tunic are one Morrowind
 shirt), the head and hair by the face index's ten. A street was ten shirts in
 ten colours over ten faces.
 
-- WHO WEARS WHAT (`characters/wardrobe.js` ROLES). A person is dressed from a
+- WHO WEARS WHAT (`characters/wardrobe.js` WARDROBE_ROLES). A person is dressed from a
   ROLE - the street's commoner, a tradesman, a traveller, a scholar, a
   merchant, a noble, a priest, a mage, the underworld (`rogue`), a fighter, a
   knight - each holding weighted SILHOUETTES (a top over breeches, a top over
@@ -2069,3 +2069,13 @@ stands; the decor rooms' hosts enumerated and wired before their draws, by
 source. `tools/mutants/mwnpc18.json`: 10 mutants, 10 dead. The yards'
 figures are offered before the yards' keepers, so AUDIT MW-NPC II P1's pin
 (the keepers' offer just before the street's draw) stands as it was.
+
+THE RECORDS, RE-JUDGED (the three slices together). Every older mutant record
+re-aimed by content (30) and every record an edited test file is a killer of
+(412 in all) was judged again on the slices' tree (`tools/mutate.mjs --jobs
+4`): 408 dead, 3 equivalent as recorded (AUDIT MW-NPC II K1's uniform flag,
+PERF-EXT11's belt and braces, PR-BOW1b's portrait depth), and one survivor -
+MWNPC10c's still picture on the roads (`{ still: false }`), which this
+slice's own rewrite of its pin let through (a walker's outfit can be one a
+noble's garments and dyes allow): the pin now holds the courtier at home to
+the still look exactly, never the street outfit, and the record dies.

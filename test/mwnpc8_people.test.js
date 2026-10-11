@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { ARMOR_MATERIAL } from '../src/systems/armorMaterials.js';
 import { readFileSync } from 'node:fs';
 import { wardrobeOf, personLook, personActor, KIND_ROLE, PERSON_TURN_RATE } from '../src/characters/peopleBodies.js';
-import { wornByRole, ARMOR_KITS, ROLES } from '../src/characters/wardrobe.js';   // PIN MOVED (MWNPC17, section 25): a look is its role's, dressed off the seed - no one outfit to compare
+import { wornByRole, ARMOR_KITS, WARDROBE_ROLES } from '../src/characters/wardrobe.js';   // PIN MOVED (MWNPC17, section 25): a look is its role's, dressed off the seed - no one outfit to compare
 import { SOCIAL_GROUPS, GUILD_GROUPS, FACTION_TYPES } from '../src/formats/factionFile.js';
 import { RACES } from '../src/systems/races.js';
 import { GENDERS } from '../src/characters/nameHelper.js';
@@ -35,7 +35,7 @@ test('MWNPC8a-1 the wardrobe a faction gives: a temple\'s priest, a mage, a knig
   assert.equal(wardrobeOf(fac({ type: FACTION_TYPES.WitchesCoven })), 'mage');
   assert.equal(wardrobeOf(fac({ ggroup: GUILD_GROUPS.Necromancers })), 'mage');
   assert.equal(wardrobeOf(fac({ ggroup: GUILD_GROUPS.DarkBrotherHood })), 'underworld');
-  for (const k of ['priest', 'mage', 'knight', 'fighter', 'noble', 'merchant', 'underworld', 'scholar', 'common']) assert.ok(ROLES[KIND_ROLE[k]], `${k} dresses by a role`);
+  for (const k of ['priest', 'mage', 'knight', 'fighter', 'noble', 'merchant', 'underworld', 'scholar', 'common']) assert.ok(WARDROBE_ROLES[KIND_ROLE[k]], `${k} dresses by a role`);
   assert.equal(wardrobeOf(fac({ sgroup: SOCIAL_GROUPS.Nobility })), 'noble');
   assert.equal(wardrobeOf(fac({ type: FACTION_TYPES.Courts })), 'noble');
   assert.equal(wardrobeOf(fac({ sgroup: SOCIAL_GROUPS.Merchants })), 'merchant');
