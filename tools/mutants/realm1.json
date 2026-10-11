@@ -139,11 +139,12 @@
   {
     "name": "REALM1-cors-shut",
     "file": "server-account/src/index.js",
-    "old": "'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary'",
+    "old": "'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary, x-d1-bookmark'",
     "new": "'content-type, authorization'",
     "tests": [
       "test/realm1.test.js"
-    ]
+    ],
+    "note": "SCALE4g (2026-10-10) re-aimed it by content."
   },
   {
     "name": "REALM1-seq-hidden",

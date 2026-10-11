@@ -381,11 +381,12 @@
   {
     "name": "RAID3-relay-hello-list-unsaid",
     "file": "server/src/index.js",
-    "old": "        if (isSocialRoom(a.key)) { try { const l = await this._raidCleansOf(now); if (l.length) this._send(ws, JSON.stringify({ t: 'raid', k: 'cls', l })); } catch (e) { console.warn('[hub] raid word failed', e?.message ?? e); } }\n",
+    "old": "    { try { const l = await this._raidCleansOf(now); if (l.length) this._send(ws, JSON.stringify({ t: 'raid', k: 'cls', l })); } catch (e) { console.warn('[hub] raid word failed', e?.message ?? e); } }\n",
     "new": "",
     "tests": [
       "test/raid3_raidLedger.test.js"
-    ]
+    ],
+    "note": "SCALE5c (re-aimed by content): the hub hello words moved into _hubHelloWords"
   },
   {
     "name": "RAID3-relay-hub-keeps-too-long",

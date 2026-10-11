@@ -905,11 +905,12 @@
   {
     "name": "AUDIT-SERPENT-S5-hello-receipt",
     "file": "server/src/index.js",
-    "old": "if (isSocialRoom(a.key) && who.subject) { try { await this._serpentReceiptTo(ws, who.subject, now); }",
-    "new": "if (false) { try { await this._serpentReceiptTo(ws, who.subject, now); }",
+    "old": "    if (sub) { try { await this._serpentReceiptTo(ws, sub, now); }",
+    "new": "    if (false) { try { await this._serpentReceiptTo(ws, sub, now); }",
     "tests": [
       "test/serpent1_auditrelay.test.js"
-    ]
+    ],
+    "note": "SCALE5c (re-aimed by content): the hub hello words moved into _hubHelloWords"
   },
   {
     "name": "AUDIT-SERPENT-S5-hello-expired",

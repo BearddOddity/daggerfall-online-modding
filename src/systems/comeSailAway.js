@@ -1600,7 +1600,12 @@ export function createComeSailAwayRuntime(deps) {
     }
   }
 
-  /** CSA-E: every boat's Animators, one step on Time.deltaTime (zero while paused - Unity's scale is nought then). */
+  /** CSA-E: every boat's Animators, one step on Time.deltaTime (zero while paused - Unity's scale is nought then).
+   *  SEA-TOWN (FIELD BUGS 2026-10-11c): AllBoats is every boat the player has placed, wherever it lies, and each one's
+   *  tree was walked here every frame to find its Animators - a fleet moored in three ports, on every frame of a town
+   *  far inland. The list is kept (boatAnimators). A boat standing nowhere is still asked: an Animator asked while its
+   *  object is inactive notes it (world/unityAnimator.js animatorUpdate - its first test, and all it costs), so it
+   *  starts over from its default state when she stands again (Port-Ledger, Come Sail Away row, (18)). */
   function animate() {
     const d = dt();
     for (const boat of state.AllBoats) for (const a of boatAnimators(boat)) a.update(d);

@@ -62,12 +62,12 @@
   {
     "name": "SCALE5a-adopt-unplaced",
     "file": "server/src/index.js",
-    "old": "if (!this._idx.has(ws)) this._enter(ws); this._idx.set(ws, att); }",
-    "new": "this._idx.set(ws, att); }",
+    "old": "if (!was) this._enter(ws); this._idx.set(ws, att); this._reindex(ws, was, att); if (this._idx.size",
+    "new": "this._idx.set(ws, att); this._reindex(ws, was, att); if (this._idx.size",
     "tests": [
       "test/scale5a.test.js"
     ],
-    "note": "a socket adopted takes no place in the order - it sorts first"
+    "note": "a socket adopted takes no place in the order - it sorts first SCALE5b (re-aimed by content): the adopt now also reindexes. SCALE5b (re-aimed by content): the adopt also notes the peak."
   },
   {
     "name": "SCALE5a-subject-not-moved",
@@ -142,12 +142,12 @@
   {
     "name": "SCALE5a-last-only-when-unlisted",
     "file": "server/src/index.js",
-    "old": "const last = listed.length === 0 || (listed.length === 1 && listed[0] === ws);",
-    "new": "const last = listed.length === 0;",
+    "old": "const last = (listed.length === 0 || (listed.length === 1 && listed[0] === ws)) && !this._vsocks.size;",
+    "new": "const last = listed.length === 0 && !this._vsocks.size;",
     "tests": [
       "test/scale5a.test.js"
     ],
-    "note": "the last one out, still listed by a runtime whose close is not complete, is not the drain - the room's leftovers never swept"
+    "note": "the last one out, still listed by a runtime whose close is not complete, is not the drain - the room's leftovers never swept SCALE5c (re-aimed by content): and no ShardSocket held"
   },
   {
     "name": "SCALE5a-serpent-none-not-kept",
@@ -232,24 +232,24 @@
   {
     "name": "AUDIT-SCALE5a-n-off-the-join",
     "file": "server/src/index.js",
-    "old": "sub: who.subject, n: others.length + 1 }, who));",
+    "old": "sub: who.subject, ...(jn != null ? { n: jn } : {}) }, who));",
     "new": "sub: who.subject }, who));",
     "tests": [
       "test/scale5a.test.js",
       "test/rosterg.test.js"
     ],
-    "note": "a channel's join says no count - a reconnect past the cut (C3) counted again"
+    "note": "a channel's join says no count - a reconnect past the cut (C3) counted again SCALE5c (re-aimed by content): the join n reads the hub count on a shard"
   },
   {
     "name": "AUDIT-SCALE5a-n-off-the-leave",
     "file": "server/src/index.js",
-    "old": "...(isChatRoom(a.key) ? { n: this._namedCount() } : {})",
+    "old": "...(isChatRoom(a.key) && !(isChannelShard(a.key) && this._hubTotal == null) ? { n: isChannelShard(a.key) ? this._hubN(this._namedCount()) : this._vsocks.size ? this._busCount() : this._namedCount() } : {})",
     "new": "...({})",
     "tests": [
       "test/scale5a.test.js",
       "test/rosterg.test.js"
     ],
-    "note": "a channel's leave says no count - a claim's closed tab (C1) and a failed welcome's leave (C2) taken off twice"
+    "note": "a channel's leave says no count - a claim's closed tab (C1) and a failed welcome's leave (C2) taken off twice SCALE5c (re-aimed by content): the leave n reads the hub count SCALE5c (re-aimed by content): a region shard too (part two)"
   },
   {
     "name": "AUDIT-SCALE5a-n-counts-the-dead",

@@ -110,11 +110,12 @@
   {
     "name": "GATE-HEAL-the-peer-never-read",
     "file": "server/src/index.js",
-    "old": "[...this._all()].find(([, b]) => b.id === by)?.[1]?.sub ?? null;",
+    "old": "this._courtIdFirst(by)?.[1]?.sub ?? null;",
     "new": "null;",
     "tests": [
       "test/gateheal.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): the healer by the id index. SCALE5d part two (re-aimed by content): the court's copies beside it."
   },
   {
     "name": "GATE-HEAL-the-fallen-word-refused",

@@ -10,12 +10,20 @@
 //
 //   node tools/hubWaveModel.mjs                 players 500, 1000 and 2000, twenty seeds each
 //   N=500 SEEDS=50 node tools/hubWaveModel.mjs
+//   SPREAD=1 node tools/hubWaveModel.mjs        SCALE2c: each page first waits its one offset in the wave's spread
+//
+// SCALE2c (2026-10-10): it also counts the MINTS - a page's first hello after the drop is its one mint (its sockets
+// share it, TOKEN_REUSE_MS) - and says the busiest second's, the figure the account database feels. With SPREAD=1 the
+// drop's retry waits for the page's slot (net/reconnectWave.js: uniform over waveSpreadMs(n)), as a page that sees the
+// wave does; the busy ladder after it is unchanged.
 import { tokenGate, CHAT_HELLO_HZ_MAX } from '../src/net/wire.js';
 import { BACKOFF_MIN_MS, BACKOFF_MAX_MS } from '../src/net/online.js';
+import { waveSpreadMs } from '../src/net/reconnectWave.js';
 import { isMain } from './lib/isMain.mjs';
 
 const PLAYERS = (process.env.N || '500,1000,2000').split(',').map(Number);
 const SEEDS = Number(process.env.SEEDS || 20);
+const SPREAD = process.env.SPREAD === '1';
 
 /** A seeded roll (mulberry32), so a run is the same run. */
 function roll(seed) {
@@ -23,14 +31,20 @@ function roll(seed) {
   return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-/** One wave: N players dropped at 0. Answers the busy refusals and each player's welcome time (ms). */
-export function wave(n, seed) {
+/** One wave: N players dropped at 0. Answers the busy refusals, each player's welcome time (ms), and the mints of the
+ *  busiest second (each page's first hello). `spread`: SCALE2c's page slot before the drop's retry. */
+export function wave(n, seed, { spread = false } = {}) {
   const rand = roll(seed);
   const at = [], backoff = [];
-  for (let i = 0; i < n; i++) {   // the drop's own retry (`_scheduleRetry` with the backoff at its floor)
-    at.push(BACKOFF_MIN_MS + rand() * BACKOFF_MIN_MS);
+  const window = spread ? waveSpreadMs(n) : 0;
+  for (let i = 0; i < n; i++) {   // the drop's own retry (`_scheduleRetry` with the backoff at its floor), held to the page's slot
+    const retry = BACKOFF_MIN_MS + rand() * BACKOFF_MIN_MS;
+    at.push(window ? Math.max(retry, rand() * window) : retry);
     backoff.push(Math.min(BACKOFF_MAX_MS, BACKOFF_MIN_MS * 2));
   }
+  const mintsBySecond = new Map();
+  for (const t of at) { const s = Math.floor(t / 1000); mintsBySecond.set(s, (mintsBySecond.get(s) ?? 0) + 1); }
+  const mintPeak = Math.max(...mintsBySecond.values());
   let bucket = null, refused = 0;
   const welcomed = [];
   const queue = at.map((t, i) => [t, i]);
@@ -47,16 +61,17 @@ export function wave(n, seed) {
     backoff[i] = Math.min(BACKOFF_MAX_MS, backoff[i] * 2);
   }
   welcomed.sort((x, y) => x - y);
-  return { refused, median: welcomed[Math.floor(n / 2)], p90: welcomed[Math.floor(n * 0.9)], last: welcomed[n - 1] };
+  return { refused, median: welcomed[Math.floor(n / 2)], p90: welcomed[Math.floor(n * 0.9)], last: welcomed[n - 1], mintPeak };
 }
 
 const mid = (a) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
 if (isMain(import.meta.url)) {
-  process.stdout.write('players   busy refusals (min / median / max of seeds)   welcomed, s (median / p90 / last, median seed)\n');
+  process.stdout.write(`${SPREAD ? '(each page waits its slot in the spread - SCALE2c)' : '(every page retries at once)'}\n`);
+  process.stdout.write('players   busy refusals (min / median / max of seeds)   welcomed, s (median / p90 / last, median seed)   mints in the busiest second\n');
   for (const n of PLAYERS) {
-    const runs = Array.from({ length: SEEDS }, (_, s) => wave(n, s + 1));
+    const runs = Array.from({ length: SEEDS }, (_, s) => wave(n, s + 1, { spread: SPREAD }));
     const r = runs.map((x) => x.refused).sort((a, b) => a - b);
     const s = (k) => (mid(runs.map((x) => x[k])) / 1000).toFixed(1);
-    process.stdout.write(`${String(n).padStart(7)}   ${`${r[0]} / ${mid(r)} / ${r[r.length - 1]}`.padStart(40)}   ${`${s('median')} / ${s('p90')} / ${s('last')}`.padStart(35)}\n`);
+    process.stdout.write(`${String(n).padStart(7)}   ${`${r[0]} / ${mid(r)} / ${r[r.length - 1]}`.padStart(40)}   ${`${s('median')} / ${s('p90')} / ${s('last')}`.padStart(35)}   ${String(mid(runs.map((x) => x.mintPeak))).padStart(27)}\n`);
   }
 }

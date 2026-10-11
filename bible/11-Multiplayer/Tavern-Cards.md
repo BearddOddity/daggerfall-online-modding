@@ -480,7 +480,7 @@ holds every card.
   `holdemGate`), sent only to a relay at `HOLDEM_RELAY_MIN` (a relay before it closes on it); the relay's words checked by
   `validHoldemOut`. The table's state rides a frame as `state`, never a second `table` (the frame's `table` is its index -
   found by the first pin, a spread would have written the one over the other).
-- **The relay** (`server/src/index.js`): only an interior's room keeps a table; the tables checkpointed to storage (a
+- **The relay** (`server/src/index.js`): only an interior's room keeps a table (AUDIT SCALE II R3-3 (c), SCALE5d: its place's object alone - a layer of a crowded interior seats nobody and stakes nothing); the tables checkpointed to storage (a
   hibernated room keeps its hands) and the alarm armed for the soonest clock or deal; a socket's leave stands it up.
 - **The client** (`src/systems/cardRemoteTable.js`): the relay's frames folded into the very shapes the offline evening
   offers (`view`, `legal`, `drain`), the relay's clock moved onto this one, a hand already under way told as the events
@@ -685,7 +685,10 @@ Mac: **"2 and 3"** - section 23's "Not yet", built after AUDIT CARDS-4 (section 
   N" between hands (the most from the purse to the table's most); the log says it.
 - **GOLD OWED ELSEWHERE** (`net/cardStakes.js` `elsewhere`, worldModes `cardElsewhereSay`): the device keeps a sat stake
   (AUDIT CARDS-4 C4) and the words for where it was staked (the building and its town). Each room keeps its own spends
-  and its own cash-outs, so only that room hands a cash-out over or voids a stake back; on each visit to a card room the
+  and its own cash-outs, so only that room hands a cash-out over or voids a stake back (AUDIT SCALE II R3-3 (c): a room's
+  spends are its PLACE's - a void said in any layer is spent there, HOLDEM_INTERNAL_VOID, and its receipt owed in both;
+  one order seated in the place and voided in a layer paid twice before; a layer keeps telling what it already owes, at a
+  look or a sit, Iliac's at a hello); on each visit to a card room the
   host says what other rooms still owe this character ("Gold you staked waits at card tables elsewhere - 500 at The
   Bilge, Wayrest. Each table hands it over when you return."). What nothing can bring home any more (past a receipt's
   life) the device lets go (`prune`).
@@ -698,7 +701,7 @@ service at once over about 14,000 gold evenings - the record is `01-Overview/Aud
 
 - **A stake asked again** after a lost answer is paid from the purse when the service takes it then (C1 - it was paid
   twice); kept on any word but the service's own refusal (C2); its repeat is the SAME order (A1).
-- **Another room's order** is left unspent and nothing is handed back; its own room voids it (A2/B1). The table is read
+- **Another room's order** is left unspent and nothing is handed back; its own room voids it (A2/B1; AUDIT SCALE II R3-3 (c): its own room's place). The table is read
   again after an order's await (B2); a room that cannot sign a receipt seats and voids no stake (B3); a cash-out leaves
   the queue only once kept (B4); a void reaches a receipt's life (C6).
 - **A receipt** is acked only once kept (C3), filed to the character that staked it (C4), paid whenever it is brought

@@ -44,23 +44,26 @@
   {
     "name": "OWN1-relay-no-record-bound",
     "file": "server/src/index.js",
-    "old": "if (!Array.isArray(m.data.f) || m.data.f.length > CELL_FRAME_RECORDS_MAX) { this._junk(ws); return; }\n      const listeners = [...this._all()].filter(([other, b]) => other !== ws && b.id);\n      const budget = byteGate(this._roomOwn,",
-    "new": "if (!Array.isArray(m.data.f)) { this._junk(ws); return; }\n      const listeners = [...this._all()].filter(([other, b]) => other !== ws && b.id);\n      const budget = byteGate(this._roomOwn,",
-    "tests": ["test/own1.test.js"]
+    "old": "if (!Array.isArray(m.data.f) || m.data.f.length > CELL_FRAME_RECORDS_MAX) { this._junk(ws); return; }\n      this._roomOwn = this._foesFan(",
+    "new": "if (!Array.isArray(m.data.f)) { this._junk(ws); return; }\n      this._roomOwn = this._foesFan(",
+    "tests": ["test/own1.test.js"],
+    "note": "SCALE5b (re-aimed by content): the fan in `_foesFan`."
   },
   {
     "name": "OWN1-relay-records-optional",
     "file": "server/src/index.js",
-    "old": "if (!Array.isArray(m.data.f) || m.data.f.length > CELL_FRAME_RECORDS_MAX) { this._junk(ws); return; }\n      const listeners = [...this._all()].filter(([other, b]) => other !== ws && b.id);\n      const budget = byteGate(this._roomOwn,",
-    "new": "if (Array.isArray(m.data.f) && m.data.f.length > CELL_FRAME_RECORDS_MAX) { this._junk(ws); return; }\n      const listeners = [...this._all()].filter(([other, b]) => other !== ws && b.id);\n      const budget = byteGate(this._roomOwn,",
-    "tests": ["test/own1.test.js"]
+    "old": "if (!Array.isArray(m.data.f) || m.data.f.length > CELL_FRAME_RECORDS_MAX) { this._junk(ws); return; }\n      this._roomOwn = this._foesFan(",
+    "new": "if (Array.isArray(m.data.f) && m.data.f.length > CELL_FRAME_RECORDS_MAX) { this._junk(ws); return; }\n      this._roomOwn = this._foesFan(",
+    "tests": ["test/own1.test.js"],
+    "note": "SCALE5b (re-aimed by content): the fan in `_foesFan`."
   },
   {
     "name": "OWN1-relay-echo",
     "file": "server/src/index.js",
-    "old": "const listeners = [...this._all()].filter(([other, b]) => other !== ws && b.id);\n      const budget = byteGate(this._roomOwn,",
-    "new": "const listeners = [...this._all()].filter(([other, b]) => b.id);\n      const budget = byteGate(this._roomOwn,",
-    "tests": ["test/own1.test.js"]
+    "old": "    for (const [other, b] of this._all()) if (other !== ws && b.id && (!reach || reach(b.pose))) listeners.push(other);",
+    "new": "    for (const [other, b] of this._all()) if ((other !== ws || kind === 'own') && b.id && (!reach || reach(b.pose))) listeners.push(other);",
+    "tests": ["test/own1.test.js"],
+    "note": "SCALE5b (re-aimed by content): the own arm's listeners, in `_foesFan`."
   },
   {
     "name": "OWN1-relay-own-hit-to-host",
