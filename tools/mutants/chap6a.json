@@ -369,7 +369,8 @@
     "old": "(season && c.eventSeason === season.n ? c.event : null)",
     "new": "(c.event)",
     "tests": [
-      "test/chap6a_events.test.js"
+      "test/chap6a_events.test.js",
+      "test/audit_guild3.test.js"
     ]
   },
   {

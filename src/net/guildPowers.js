@@ -56,7 +56,7 @@ export const GUILD_RANK_ACTS = Object.freeze([
   Object.freeze({ table: 'writ', power: 'postWrit', words: 'post guild writs and contracts - an Officer within the weekly budget the guildmaster sets - and withdraw the ones they posted' }),
   Object.freeze({ table: 'writ', power: 'storesWithdraw', words: 'take any materials out of the guild Stores' }),
   Object.freeze({ table: 'seat', power: 'pledge', words: 'pledge the guild to a seat in the Muster' }),
-  Object.freeze({ table: 'levers', power: 'levers', words: 'run a held seat - its Tithe, its Edict, its battle window, its works, its fealty and Pacts' }),
+  Object.freeze({ table: 'levers', power: 'levers', words: 'run a held seat - its Tithe, its Edict, its battle window, its Works, its fealty and Pacts' }),
   Object.freeze({ table: 'guild', power: 'withdraw', words: 'take gold and silver out of the treasuries' }),
   Object.freeze({ table: 'writ', power: 'writBudget', words: 'set the Officers\' weekly budget - the silver they may post guild writs and contracts with' }),
   Object.freeze({ master: true, words: 'withdraw any guild writ or contract' }),
@@ -86,7 +86,7 @@ export function guildActRanks(/** @type {any} */ row) {
 /** A rank's place at the vault by default (VAULT_RANK_DEFAULTS), `{ level, limit }`, or null. */
 const vaultDefaultOf = (/** @type {number} */ rank) => /** @type {Record<number, { level: string, limit: number }>} */ (VAULT_RANK_DEFAULTS)[rank] ?? null;
 /** A take's limit in words: "10 a day", "as many as they like" (0, none). */
-const takeWords = (/** @type {number} */ limit) => (limit > 0 ? `${limit} a day` : 'as many as they like');
+const takeWords = (/** @type {number} */ limit) => (limit > 0 ? `${limit} a day` : 'any number');   // AUDIT GUILD3 W11: the vault grant's own words (guildVaultLaw.js vaultStandingText)
 /** @typedef {{ key: string, words: string, limit?: number }} Act */
 /** A RANK'S PLACE AT THE VAULT BY DEFAULT, as acts: `put pieces into the vault` where it puts in or takes out, and `take
  *  pieces out of the vault, 10 a day` where it takes out - none for a rank with no place (C5: said on its own line, so a

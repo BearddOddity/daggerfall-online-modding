@@ -198,7 +198,7 @@
     ]
   },
   {
-    "name": "CHAP6E-SVC-ASC-SEASON",
+    "name": "CHAP6E-SVC-ASC-NARROWED",
     "file": "server-account/src/npcChapters.js",
     "old": "WHERE strength >= ?1 AND (faction, region) IN",
     "new": "WHERE strength >= ?1 AND (faction, region) NOT IN",

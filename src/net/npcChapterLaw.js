@@ -723,13 +723,13 @@ export function chapterBandEffectsLine(/** @type {unknown} */ strength, /** @typ
   if (shut) return fall || high ? `${cap(/** @type {string} */ (fall ?? high))}.` : null;
   if (b.band === 'steady') {
     // AUDIT GUILD3 L4: the usual of what the hall HAS - never a shelf or prices it keeps none of
-    const kept = [sells ? 'prices' : null, sold.includes('shelf') ? 'shelf' : null, 'writs'].filter(Boolean);
+    const kept = [sells ? 'prices' : null, sold.includes('shelf') ? 'shelf' : null, 'chapter writs'].filter(Boolean);   // W12: the chapter's writs - a Court's move by no band
     return `Its halls keep their usual ${kept.length > 1 ? `${kept.slice(0, -1).join(', ')} and ${kept[kept.length - 1]}` : kept[0]}.`;
   }
   const parts = [
     sells && b.price !== 1 ? `${sells} ${priceWords(b.price)}` : null,
     sold.includes('shelf') && b.shelf !== 0 ? (b.shelf > 0 ? 'a richer shelf' : 'a poorer shelf') : null,
-    b.writs > 1 ? 'half again the writs' : b.writs < 1 ? 'half the writs' : null,
+    b.writs > 1 ? 'half again the chapter writs' : b.writs < 1 ? 'half the chapter writs' : null,   // AUDIT GUILD3 W12
   ].filter(Boolean);
   const said = /** @type {string[]} */ (parts).join(', ');
   const and = fall ?? high;
@@ -909,7 +909,7 @@ const listed = (/** @type {string[]} */ names) => (names.length === 1 ? names[0]
 /** A seat said - "You hold the Master's chair of the Fighters Guild in Anticlere." - or, `held` false, no longer held.
  *  Worded without gender (Seats-Arc 7.4: nothing about a player is guessed). */
 export function seatLineOf(/** @type {{ f: number, region: number, seat: string }} */ s, held = true) {
-  const words = /** @type {Record<string, string>} */ (SEAT_WORDS)[s?.seat] ?? 'a seat';
+  const words = /** @type {Record<string, string>} */ (SEAT_WORDS)[s?.seat] ?? 'a chair';   // AUDIT GUILD3 W14: never the retired word
   return `You ${held ? 'hold' : 'no longer hold'} ${words} of the ${hallPosterName(s?.f) ?? 'guild'} in ${REGION_NAMES[s?.region] ?? 'its region'}.`;
 }
 /** What the tab says of its seats: every seat held at the page's first word (`before` null); after it, each seat newly
@@ -999,7 +999,8 @@ export function chapterFocusesOf(/** @type {unknown} */ faction) {
 export const chapterFocusOk = (/** @type {unknown} */ faction, /** @type {unknown} */ focus) => typeof focus === 'string' && chapterFocusesOf(faction).includes(focus);
 /** The board's line for a chapter's Focus: "The Fighters Guild's Master asks for metals this week." - null for none. */
 export function chapterFocusLineOf(/** @type {unknown} */ faction, /** @type {unknown} */ focus) {
-  return chapterFocusOk(faction, focus) ? `The ${hallPosterName(/** @type {number} */ (faction))}'s Master asks for ${focus} this week.` : null;
+  // AUDIT GUILD3 W7: the CHAPTER's Master - a temple's DFU titles call its rank 8 "Master" (guildVariants.js TEMPLE_RANK_TITLES)
+  return chapterFocusOk(faction, focus) ? `The ${hallPosterName(/** @type {number} */ (faction))} chapter's Master asks for ${focus} this week.` : null;
 }
 /** A CHRONICLE ROW IN WORDS: `{ faction, week, kind, data: { from, to }, name }` - "In the third week of the Season of
  *  Morning Star, Alda took the Master's chair of the Fighters Guild." - null for a row it has no words for or a hidden

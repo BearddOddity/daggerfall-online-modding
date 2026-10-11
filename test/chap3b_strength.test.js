@@ -273,7 +273,7 @@ test('CHAP3b the wiring: the sheet\'s route, the client\'s door, the board\'s ch
   // PIN MOVED: GUILD3d - each chapter one card, its line first under its heading, then what its band does
   assert.match(src('src/ui/noticeWindow.js'), /for \(const c of writs\?\.chapters \?\? \[\]\) body\.append\(chapterCard\(c\)\);/);
   // PIN MOVED: AUDIT GUILD3 L3 - the band's line none where the halls are shut this Season
-  assert.match(src('src/ui/noticeWindow.js'), /card\.append\(el\('p', 'notice-chapter', chapterLineOf\(c\)\)\);[^\n]*\n(?:\s+[^\n]*\n){1,2}?\s+const band = chapterBandEffectsLine\(c\.strength, c\.faction, \{ shut: !!chapterSeasonOf\(c\)\?\.shut \}\);\n\s+if \(band\) card\.append\(el\('p', 'notice-chapter notice-band', band\)\);/);
+  assert.match(src('src/ui/noticeWindow.js'), /card\.append\(el\('p', 'notice-chapter', `\$\{chapterLineOf\(c\)\}\.`\)\);[^\n]*\n(?:\s+[^\n]*\n){1,2}?\s+const band = chapterBandEffectsLine\(c\.strength, c\.faction, \{ shut: !!chapterSeasonOf\(c\)\?\.shut \}\);\n\s+if \(band\) card\.append\(el\('p', 'notice-chapter notice-band', band\)\);/);
   const mig = src('server-account/migrations/0102_npc_chapters.sql');
   assert.match(mig, /week\s+INTEGER PRIMARY KEY/);
   assert.match(mig, /strength\s+INTEGER NOT NULL CHECK \(strength BETWEEN 0 AND 100\)/);

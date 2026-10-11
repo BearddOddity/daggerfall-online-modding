@@ -629,10 +629,11 @@
   {
     "name": "CHAP3A-CARD-LINES",
     "file": "src/ui/noticeWindow.js",
-    "old": "    if (merit) card.append(el('p', 'notice-merit', meritLineOf(merit, nowS())));   // CHAP3a: the account's Merit here\n",
+    "old": "    if (merit) card.append(el('p', 'notice-merit', `${meritLineOf(merit, nowS())}.`));   // CHAP3a: the account's Merit here (W12: a sentence)\n",
     "new": "",
     "tests": [
-      "test/chap3a_merit.test.js"
+      "test/chap3a_merit.test.js",
+      "test/guild3_plain.test.js"
     ]
   },
   {

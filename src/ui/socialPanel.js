@@ -118,24 +118,23 @@ export const GUILD_HALL_NONE_TEXT = `Your guild has no hall. The guildmaster buy
 /** HALL-GOLD (FIELD BUGS 2026-10-03): what of the treasury buys a hall, said where a hall is bought - only the gold realm
  *  characters put in counts (halls.js buyHall), and a guild whose gold came in before the realm could not see why it was
  *  refused. Absent from an older service's answer: nothing said. */
-export const guildHallGoldText = (hallGold, treasury) => (Number.isFinite(hallGold)
-  ? `${hallGold.toLocaleString('en-US')} gold of the treasury's ${Number(treasury ?? 0).toLocaleString('en-US')} can buy a hall - the gold realm characters put in. A bank account's gold never does.`
-  : null);
+export const guildHallGoldText = (hallGold, treasury) => guildRealmGoldText(hallGold, treasury, false);   // AUDIT GUILD3 W15: one rule, one sentence (GUILD3c's)
 /** GUILD3c (bible/11-Multiplayer/Guilds-Made-Plain.md, EVERY RULE BEFORE THE PRESS): THE TREASURY'S TWO GOLDS, said
  *  where the gold is - the Treasury page's top - and not only where a hall is bought: only the gold realm characters put
- *  in buys a hall or a new name (halls.js buyHall, guilds.js renameGuild). Absent from an older service's answer: null. */
-export const guildRealmGoldText = (hallGold, treasury) => (Number.isFinite(hallGold)
-  ? `${hallGold.toLocaleString('en-US')} gold of the treasury's ${Number(treasury ?? 0).toLocaleString('en-US')} can buy a hall or a new name - the gold realm characters put in. A bank account's gold never does.`
+ *  in buys a hall or a new name or tag (halls.js buyHall, guilds.js renameGuild - AUDIT GUILD3 W15: the rename's own words);
+ *  a guild with its hall already, the name alone (C10). Absent from an older service's answer: null. */
+export const guildRealmGoldText = (hallGold, treasury, hall = false) => (Number.isFinite(hallGold)
+  ? `${hallGold.toLocaleString('en-US')} gold of the treasury's ${Number(treasury ?? 0).toLocaleString('en-US')} can ${hall ? 'pay for a new name or tag' : 'buy a hall, or a new name or tag'} - the gold realm characters put in. A bank account's gold never does.`
   : null);
 /** GUILD3c: A GUILD IN ONE LOOK, for a character in none - what one is for, before the invitations and the founding. */
-export const GUILD_PRIMER_LINES = Object.freeze([
-  'A guild shares two treasuries - gold, and silver - a vault for its members\' pieces and, once it buys one, a hall under its own arms.',
-  'Together its members can win the towns of the Iliac Bay: a seat\'s Charter, contested from that town\'s Notice Board.',
+export const GUILD_PRIMER_LINES = Object.freeze([   // AUDIT GUILD3 W10: one reading each, and no town promised that is no seat
+  'A guild\'s members share two treasuries, one of gold and one of silver, a vault for their pieces and, once the guild buys one, a hall under its own arms.',
+  'Together they can hold the seats of the Iliac Bay - a palace\'s or a crown\'s Charter, contested from that town\'s Notice Board.',
 ]);
 /** GUILD3c: where the rest of a guild is run - said on the Overview, so a member is never left to find the boards. */
-export const GUILD_ELSEWHERE_TEXT = 'Seats, sieges and the Chronicle are run from a seat town\'s Notice Board, on its Seat tab; guild writs and contracts from any Notice Board\'s Work tab.';
+export const GUILD_ELSEWHERE_TEXT = 'Seats and sieges are run from a seat town\'s Notice Board, on its Seat tab, where its Chronicle is read; guild writs and contracts are posted from any Notice Board\'s Work tab.';   // AUDIT GUILD3 W9: a Chronicle is read, never run
 /** GUILD3c: the Settings page's list of what still holds a guild that would go - its heading. */
-export const GUILD_KEEPS_HEAD = 'Before the guild can go';
+export const GUILD_KEEPS_HEAD = 'Before the guild can be disbanded';   // AUDIT GUILD3 W13: the act the page names
 /** GUILD3c: the codes the service's view reads of what holds a guild (server-account/src/guilds.js guildHolds) - where
  *  the view carries its list, its word stands for these; a refusal's older word for one of them is not repeated. */
 export const GUILD_HOLD_CODES = Object.freeze(['guild-treasury', 'guild-stores', 'guild-writs', 'guild-writ-escrow', 'guild-contracts', 'guild-hall',
@@ -149,14 +148,16 @@ export const GUILD_KEEPS_WORDS = Object.freeze({
  * GUILD3c: EVERYTHING THAT STILL HOLDS A GUILD THAT WOULD GO, as refusal codes in the service's order: the guildmaster's
  * view's own list (`v.keeps`, the service's guildHolds - read fresh after every act), what the service's last refusal
  * said beside it (`said`, its `keeps` - a code the view does not read, or every code from an older service whose view
- * carries none), and what the page knows itself (`v` - its gold, its hall, its vault's pieces; and, for a leave, others
- * still in it), less what the page can see is cleared since. Before GUILD3c the service said the FIRST thing alone, and
- * the page three: a guildmaster cleared one, pressed again, and was told the next.
- * @param {any} v @param {readonly string[] | null} said @param {{ leave?: boolean }} [o]
+ * carries none), and what the page knows itself (`v` - its gold, its hall, its vault's pieces), less what the page can see
+ * is cleared since. Before GUILD3c the service said the FIRST thing alone, and the page three: a guildmaster cleared one,
+ * pressed again, and was told the next. With `said` null, what the page can SEE again - the view's and its own - which
+ * alone holds its buttons (AUDIT GUILD3 C1/T2: a refusal's word nothing re-reads is listed, never a lock). AUDIT GUILD3
+ * C10/T15: the leave's hand-over, which the page never asked here, is gone from it.
+ * @param {any} v @param {readonly string[] | null} said
  */
-export function guildKeepsOf(v, said, { leave = false } = {}) {
+export function guildKeepsOf(v, said) {
   const known = new Map([
-    ['guild-master-leaves', leave && (v?.members?.length ?? 1) > 1],
+    ['guild-master-leaves', false],   // a leave's hand-over: the Leave button says it ("hand the guild on first") - never a disbanding's
     ['guild-treasury', Number(v?.treasury ?? 0) > 0],
     ['guild-hall', !!v?.hall],
     ['guild-vault', (v?.vault?.used ?? 0) > 0],
@@ -210,7 +211,7 @@ export const GUILD_SILVER_LINE_WORDS = Object.freeze({
   'contract-escrow': 'put up a contract of', 'contract-return': 'had a contract\'s unpaid pay come home:',
   'writ-escrow': 'set aside a guild writ\'s pay of', 'writ-return': 'had a guild writ\'s unpaid pay come home:',
   tribute: 'paid Tribute of', 'seat-claim': 'paid a Charter\'s claim fee of', 'seat-upkeep': 'paid a Charter\'s upkeep of',
-  'seat-edict': 'paid for an Edict:', fort: 'paid for a fortification:', 'seat-strike-refund': 'had a struck Charter\'s fee refunded:',
+  'seat-edict': 'paid for an Edict:', fort: 'paid for the Works:', 'seat-strike-refund': 'had a struck Charter\'s fee refunded:',
   tithe: 'collected a Tithe of', 'bounty-escrow': 'set a Bounty aside:', 'bounty-return': 'had a Bounty\'s unpaid silver come home:',
   'sellsword-escrow': 'hired a Sellsword for', 'sellsword-return': 'had a Sellsword\'s unpaid fee come home:',
   'royal-escrow': 'put up a Royal Tourney prize of', 'royal-return': 'had a Royal Tourney prize come home:',
@@ -1239,6 +1240,7 @@ export function createSocialPanel({ social, send = null, mail = null, guild = nu
         if (guildUi.page === id) return;
         guildUi.page = id; guildUi.arm = null;
         if (id === 'vault') guildUi.vaultAsked = false;   // AUDIT GUILD2 M2: the vault read again at each turn to its page
+        if (id === 'settings') guild?.refresh?.();   // AUDIT GUILD3 C8: what holds the guild read again at each turn to its page - a hold cleared elsewhere (a battle fought, a writ withdrawn by an Officer) no longer waits on the tab
         ui++; if (open) repaint();
         // AUDIT2 GUILD2 U9: the keyboard's focus on the page turned to - the strip is drawn again, and the focus fell to
         // the body with the old button
@@ -1364,7 +1366,7 @@ export function createSocialPanel({ social, send = null, mail = null, guild = nu
     const out = [];
     const d = guildUi.draft;
     out.push(el('div', 'dfsocial-sec', 'Treasury'));
-    const realm = guildRealmGoldText(v.hallGold, v.treasury);   // GUILD3c: which of the gold buys a hall or a new name
+    const realm = guildRealmGoldText(v.hallGold, v.treasury, !!v.hall);   // GUILD3c: which of the gold buys a hall or a new name; C10: the name alone once it holds one
     if (realm) out.push(el('div', 'dfsocial-note', realm));
     const tform = el('div', 'dfsocial-form');
     guildField(tform, 'Gold', d.gold, 7, (x) => { d.gold = x; });
@@ -1649,6 +1651,10 @@ export function createSocialPanel({ social, send = null, mail = null, guild = nu
     if (guildUi.keepsFor !== v.id) { guildUi.keepsFor = v.id; guildUi.keeps = null; }
     // (a guildmaster with members is asked no hand-over here: a disbanding takes them with it - the Leave button says its own)
     const holding = guildMay(me, 'disband') ? guildKeepsOf(v, guildUi.keeps) : [];
+    // AUDIT GUILD3 C1/T2: only what the page can see again holds its buttons - the view's list and its own gold, hall and
+    // vault; a code a past refusal said that nothing re-reads is listed above, never a lock (one 'marks-full' held both
+    // buttons for the session: the press that would have asked again was the one it disabled)
+    const seen = guildMay(me, 'disband') ? guildKeepsOf(v, null) : [];
     if (holding.length) {
       out.push(el('div', 'dfsocial-empty', `${GUILD_KEEPS_HEAD}:`));
       const list = el('ul', 'dfsocial-keeps');
@@ -1660,7 +1666,7 @@ export function createSocialPanel({ social, send = null, mail = null, guild = nu
     const alone = v.members.length === 1;
     const master = guildMay(me, 'disband');
     const keeps = (v.vault?.used ?? 0) > 0;   // GUILD2b: a vault holding pieces holds the guild too
-    const listed = holding.length > 0;   // GUILD3c: the rest of what holds it, listed above
+    const listed = seen.length > 0;   // GUILD3c: the rest of what holds it, listed above - what the page sees of it (C1)
     const leaveWhy = master && !alone ? 'hand the guild on first' : master && v.treasury > 0 ? 'take the gold out first' : master && v.hall ? 'sell the hall first' : master && keeps ? 'empty the vault first' : master && listed ? 'what is listed above first' : 'a moment';
     // GUILD1d: a guild holding a hall never goes; GUILD3c: the list holds the page's own (gold, hall, vault) and the service's
     const canLeave = !busy && (!master || (alone && !listed));

@@ -32,7 +32,7 @@ test('CHAP4d the Focus\'s families: a guild\'s own, where it has more than one t
   assert.deepEqual([chapterFocusesOf(FIGHTERS), chapterFocusesOf(MAGES), chapterFocusesOf(42), chapterFocusesOf(108), chapterFocusesOf(99)],
     [['metals', 'wood'], ['herbs', 'metals'], ['metals', 'herbs', 'wood', 'stone'], [], []]);
   assert.deepEqual([chapterFocusOk(FIGHTERS, 'wood'), chapterFocusOk(FIGHTERS, 'herbs'), chapterFocusOk(108, 'herbs'), chapterFocusOk(FIGHTERS, null)], [true, false, false, false]);
-  assert.equal(chapterFocusLineOf(FIGHTERS, 'metals'), 'The Fighters Guild\'s Master asks for metals this week.');
+  assert.equal(chapterFocusLineOf(FIGHTERS, 'metals'), 'The Fighters Guild chapter\'s Master asks for metals this week.');   // PIN MOVED: AUDIT GUILD3 W7 - the CHAPTER's Master (a temple's DFU rank 8 is its "Master")
   assert.deepEqual([chapterFocusLineOf(FIGHTERS, 'herbs'), chapterFocusLineOf(FIGHTERS, null)], [null, null]);
 });
 
@@ -199,7 +199,7 @@ test('CHAP4d the board\'s Work tab: a chapter\'s Focus said under its line; its 
   await tick();
   byClass(host, 'notice-tab')[1].click();
   for (let i = 0; i < 3; i++) await tick();
-  assert.deepEqual(byClass(host, 'notice-focus').map((n) => n.textContent), ['The Fighters Guild\'s Master asks for wood this week.']);
+  assert.deepEqual(byClass(host, 'notice-focus').map((n) => n.textContent), ['The Fighters Guild chapter\'s Master asks for wood this week.']);   // PIN MOVED: AUDIT GUILD3 W7
   const pick = byClass(host, 'notice-focus-pick');
   assert.equal(pick.length, 1, 'its Master alone is offered the choice');
   const buttons = [...pick[0].querySelectorAll('button')];

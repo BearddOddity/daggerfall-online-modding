@@ -9,9 +9,18 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 
-import { guildSilverLineText, GUILD_SILVER_LINE_WORDS, GUILD_SILVER_MEMBER_KINDS, GUILD_KEEPS_WORDS, GUILD_HOLD_CODES } from '../src/ui/socialPanel.js';
-import { GUILD_HOLDS_SQL } from '../server-account/src/guilds.js';
+import {
+  guildSilverLineText, GUILD_SILVER_LINE_WORDS, GUILD_SILVER_MEMBER_KINDS, GUILD_KEEPS_WORDS, GUILD_HOLD_CODES, GUILD_PRIMER_LINES, GUILD_ELSEWHERE_TEXT, GUILD_KEEPS_HEAD,
+} from '../src/ui/socialPanel.js';
+import { GUILD_HOLDS_SQL, GUILD_HOLD_KEEP_CODES, guildKeepsSql } from '../server-account/src/guilds.js';
+import { accountGuilds } from '../src/net/accountClient.js';
+import { seatRealm } from './realmSeat.mjs';
 import { rankLinesOf } from '../src/net/guildPowers.js';
+import { GUILD_RANK_NAMES } from '../src/net/guildLaw.js';
+import { createSocialPanel } from '../src/ui/socialPanel.js';
+import { GuildBook } from '../src/net/guildBook.js';
+import { SocialState } from '../src/net/social.js';
+import { accountRefusalText } from '../src/net/accountClient.js';
 import { MARKS_MAX } from '../src/net/marksLaw.js';
 import {
   meritWeekOf, strengthSeasonEnd, failingWeekAfter, CHAPTER_FAILING_FALL, CHAPTER_FAILING_MEETS, chapterBandEffectsLine, chapterDutiesLine, meritEarnsOf,
@@ -32,6 +41,7 @@ async function guildService(extra = {}) {
   assert.equal(found.status, 200, JSON.stringify(found.body));
   return { ...s, raw, gm, gid: found.body.guild.id };
 }
+const tick = () => new Promise((r) => setImmediate(r));
 const keepsOf = async (s) => (await s.call('/v1/guilds/mine', { character: s.gm.character }, s.gm.secret)).body.guild.keeps;
 
 test('AUDIT GUILD3 W1: an OPEN writ or contract holds its pay in escrow by right - the list names it "guild-writs"/"guild-contracts" alone, never also a closed one\'s pay waiting on a full treasury; a CLOSED one whose pay has not come home is that (mutants: either escrow read open again)', async () => {
@@ -245,4 +255,180 @@ test('AUDIT GUILD3 C5: the rank list never lies, whatever the tables - each line
       claimed.set(i, truth);
     }
   }
+});
+
+// ─── THE PINS (lane T) ──────────────────────────────────────────────
+
+test('AUDIT GUILD3 T1: the gate and the guildmaster\'s view read ONE list of holds - seeded in every state that holds and every state that does not, the view\'s list and guildKeepsSql agree (mutants: each hold\'s read, its state, its pending battle, its escrow, the dedupe)', async () => {
+  const s = await guildService();
+  const gate = () => s.raw.prepare(`SELECT ${guildKeepsSql('?1')} AS k`).get(s.gid).k;
+  s.raw.prepare("INSERT INTO guilds (id, name, name_key, tag, ranks, treasury, founded_at) VALUES ('gother', 'The Other', 'the other', 'OTH', '[]', 0, 1)").run();
+  const writ = (id, state, returned, escrow) => s.raw.prepare(`INSERT INTO guild_writs (id, guild_id, poster, poster_char, officer, week, region, material, units, left_units, pay, escrow, at, expires_at, state, returned, rid, n)
+    VALUES (?, ?, NULL, 'c', 0, 1, 21, 'iron', 10, 10, 5, ?, ?, ?, ?, ?, ?, 'n')`).run(id, s.gid, escrow, T0, T0 + DAY, state, returned, `rid-${id}`);
+  const contract = (id, state, returned, escrow) => s.raw.prepare(`INSERT INTO guild_contracts (id, guild_id, poster, poster_char, officer, week, region, kind, deeds, left_deeds, pay, escrow, at, expires_at, state, returned, rid, n)
+    VALUES (?, ?, NULL, 'c', 0, 1, 21, 'raid', 10, 10, 5, ?, ?, ?, ?, ?, ?, 'n')`).run(id, s.gid, escrow, T0, T0 + DAY, state, returned, `rid-${id}`);
+  // every table seeded in a state that holds NOTHING: an empty Store, closed writs and contracts paid home or with nothing
+  // left, a battle past, a patron's bid decided
+  s.raw.prepare("INSERT INTO guild_prof_stores (guild_id, material, dep_player, dep_char, qty, moved_by, moved_at) VALUES (?, 'iron', '', '', 0, 'seed', ?)").run(s.gid, T0);
+  writ('w-home', 'filled', 1, 0); writ('w-none', 'expired', 0, 0);
+  contract('c-home', 'withdrawn', 1, 0); contract('c-none', 'filled', 0, 0);
+  s.raw.prepare('INSERT INTO town_seat_weeks (week, settled_at) VALUES (9, 0)').run();
+  s.raw.prepare("INSERT INTO town_seat_rights (week, key, kind, guild_id, against, at) VALUES (8, 901, 'siege', 'gother', ?, ?)").run(s.gid, T0);
+  s.raw.prepare("INSERT INTO npc_chapter_patron_bids (faction, region, season, guild_id, amount, at, state) VALUES (41, 21, 3, ?, 1000, ?, 'won')").run(s.gid, T0);
+  assert.deepEqual([await keepsOf(s), gate()], [[], 0], 'nothing holds it - the page and the gate agree');
+  // and each in a state that holds
+  s.raw.prepare('UPDATE guild_prof_stores SET qty = 1').run();
+  writ('w-open', 'open', 0, 50); writ('w-wait', 'withdrawn', 0, 50);
+  contract('c-open', 'open', 0, 50);
+  s.raw.prepare("INSERT INTO town_seat_rights (week, key, kind, guild_id, against, at) VALUES (10, 902, 'siege', 'gother', ?, ?)").run(s.gid, T0);
+  s.raw.prepare("INSERT INTO npc_chapter_patron_bids (faction, region, season, guild_id, amount, at, state) VALUES (41, 21, 4, ?, 1000, ?, 'open')").run(s.gid, T0);
+  assert.deepEqual([await keepsOf(s), gate()], [['guild-stores', 'guild-writs', 'guild-writ-escrow', 'guild-contracts', 'guild-battle', 'guild-patron'], 1]);
+  // a closed contract's pay alone, the writs' gone: its own word, once
+  s.raw.prepare('DELETE FROM guild_writs').run();
+  s.raw.prepare("UPDATE guild_contracts SET state = 'expired' WHERE id = 'c-open'").run();
+  s.raw.prepare('UPDATE guild_prof_stores SET qty = 0').run();
+  s.raw.prepare("DELETE FROM town_seat_rights WHERE week = 10").run();
+  s.raw.prepare("UPDATE npc_chapter_patron_bids SET state = 'lost'").run();
+  assert.deepEqual([await keepsOf(s), gate()], [['guild-writ-escrow'], 1]);
+  assert.deepEqual(GUILD_HOLD_KEEP_CODES, ['guild-stores', 'guild-writs', 'guild-writ-escrow', 'guild-contracts', 'guild-hall', 'guild-vault', 'guild-seat', 'guild-battle', 'guild-patron']);
+});
+
+test('AUDIT GUILD3 T4, T5: a guildmaster with members who would leave is told the hand-over and the rest; the gold before the hall, as ever; an Officer\'s view carries no list (mutants: the list stopped at the hand-over, the order, an Officer asked)', async () => {
+  const s = await guildService();
+  const bryn = await s.registered('Bryn');
+  const B = await seatRealm(s.env, bryn.secret, 'Bryn');
+  assert.equal((await s.call('/v1/guilds/invite', { character: s.gm.character, handle: 'Bryn' }, s.gm.secret)).status, 200);
+  assert.equal((await s.call('/v1/guilds/answer', { character: B.id, guild: s.gid, accept: true }, bryn.secret)).status, 200);
+  s.raw.prepare("UPDATE guilds SET treasury = 500, moved_by = 'seed', moved_at = ? WHERE id = ?").run(T0, s.gid);
+  assert.deepEqual((await s.call('/v1/guilds/leave', { character: s.gm.character }, s.gm.secret)).body, { error: 'guild-master-leaves', keeps: ['guild-master-leaves', 'guild-treasury'] });
+  s.raw.prepare(`INSERT INTO homes (map_id, building_key, player, char_id, owner_name, region, entry, price, bought_at, paid, guild_id)
+    VALUES (1, 2, ?, ?, 'Aldric', 21, 'guild', 9000, ?, 9000, ?)`).run(s.gm.id, s.gm.character, T0, s.gid);
+  assert.deepEqual((await s.call('/v1/guilds/disband', { character: s.gm.character }, s.gm.secret)).body.keeps, ['guild-treasury', 'guild-hall'], 'the gold first, the hall after it');
+  s.raw.prepare('UPDATE guild_members SET rank = 1 WHERE player = ?').run(bryn.id);
+  assert.equal('keeps' in (await s.call('/v1/guilds/mine', { character: B.id }, bryn.secret)).body.guild, false, 'an Officer is asked nothing of the guild\'s going');
+});
+
+test('AUDIT GUILD3 T6, T7: the client\'s hold codes are the service\'s, its gold and its silver\'s room among them; the door keeps sixteen of a refusal\'s codes, strings alone (mutants: a code dropped, the bound)', async () => {
+  assert.deepEqual([...GUILD_HOLD_CODES].sort(), ['guild-treasury', ...GUILD_HOLD_KEEP_CODES, 'marks-full'].sort());
+  const door = accountGuilds({
+    fetch: async () => ({ ok: false, status: 409, json: async () => ({ error: 'guild-treasury', keeps: [...Array.from({ length: 20 }, (_, i) => `code-${i}`), 3] }) }),
+    storage: { getItem: () => JSON.stringify({ id: 'a', secret: 's'.repeat(43) }), setItem() {}, removeItem() {} },
+  });
+  const d = await door.disband('rabc');
+  assert.deepEqual(d.keeps, Array.from({ length: 16 }, (_, i) => `code-${i}`));
+});
+
+test('AUDIT GUILD3 T9: the words, each a literal - the primer, the Overview\'s Elsewhere and its heading, every silver line\'s kind (mutants: each)', () => {
+  assert.deepEqual([...GUILD_PRIMER_LINES], [
+    'A guild\'s members share two treasuries, one of gold and one of silver, a vault for their pieces and, once the guild buys one, a hall under its own arms.',
+    'Together they can hold the seats of the Iliac Bay - a palace\'s or a crown\'s Charter, contested from that town\'s Notice Board.',
+  ]);
+  assert.equal(GUILD_ELSEWHERE_TEXT, 'Seats and sieges are run from a seat town\'s Notice Board, on its Seat tab, where its Chronicle is read; guild writs and contracts are posted from any Notice Board\'s Work tab.');
+  assert.match(src('src/ui/socialPanel.js'), /out\.push\(el\('div', 'dfsocial-sec', 'Elsewhere'\), el\('div', 'dfsocial-empty', GUILD_ELSEWHERE_TEXT\)\);/);
+  assert.equal(GUILD_KEEPS_HEAD, 'Before the guild can be disbanded');
+  assert.deepEqual(JSON.parse(JSON.stringify(GUILD_SILVER_LINE_WORDS)), {
+    'guild-deposit': 'put in', 'guild-withdraw': 'took out',
+    heraldry: 'changed the guild\'s arms for', 'guild-deed': 'completed a guild deed:',
+    'contract-escrow': 'put up a contract of', 'contract-return': 'had a contract\'s unpaid pay come home:',
+    'writ-escrow': 'set aside a guild writ\'s pay of', 'writ-return': 'had a guild writ\'s unpaid pay come home:',
+    tribute: 'paid Tribute of', 'seat-claim': 'paid a Charter\'s claim fee of', 'seat-upkeep': 'paid a Charter\'s upkeep of',
+    'seat-edict': 'paid for an Edict:', fort: 'paid for the Works:', 'seat-strike-refund': 'had a struck Charter\'s fee refunded:',
+    tithe: 'collected a Tithe of', 'bounty-escrow': 'set a Bounty aside:', 'bounty-return': 'had a Bounty\'s unpaid silver come home:',
+    'sellsword-escrow': 'hired a Sellsword for', 'sellsword-return': 'had a Sellsword\'s unpaid fee come home:',
+    'royal-escrow': 'put up a Royal Tourney prize of', 'royal-return': 'had a Royal Tourney prize come home:',
+    'patron-escrow': 'bid for a chapter\'s patronage:', 'patron-return': 'had a patronage bid come home:',
+    conscription: { in: 'received Conscription of', out: 'paid Conscription of' },
+    'fealty-tribute': { in: 'received a vassal\'s fealty share of', out: 'paid its liege a fealty share of' },
+  });
+});
+
+// ─── THE TAB (lane C) - test/guild3_plain.test.js's fake page ─────────
+
+function fakeNode(tag, doc) {
+  const n = {
+    tagName: tag.toUpperCase(), children: [], parent: null, className: '', textContent: '', id: '', value: '', disabled: false, open: false,
+    style: {}, dataset: {}, attrs: {}, listeners: new Map(),
+    append(...cs) { for (const c of cs) { if (typeof c === 'object') { c.parent = n; n.children.push(c); } } },
+    replaceChildren(...cs) { n.children = []; n.append(...cs); },
+    setAttribute(k, v) { n.attrs[k] = v; }, getAttribute(k) { return n.attrs[k]; },
+    addEventListener(t, fn) { if (!n.listeners.has(t)) n.listeners.set(t, []); n.listeners.get(t).push(fn); },
+    removeEventListener() {},
+    fire(t, e = {}) { const ev = { type: t, target: n, preventDefault() {}, stopPropagation() {}, ...e }; for (const fn of n.listeners.get(t) ?? []) fn(ev); return ev; },
+    focus() { doc.activeElement = n; }, remove() {},
+  };
+  return n;
+}
+function fakeDocument() {
+  const doc = { activeElement: null };
+  doc.createElement = (tag) => fakeNode(tag, doc);
+  doc.head = fakeNode('head', doc); doc.body = fakeNode('body', doc);
+  doc.getElementById = () => null;
+  return doc;
+}
+const find = (n, cls, out = []) => { if (String(n.className).split(/\s+/).includes(cls)) out.push(n); for (const c of n.children) find(c, cls, out); return out; };
+const texts = (n) => [n.textContent, ...n.children.flatMap(texts)].filter(Boolean);
+const btn = (root, label) => find(root, 'dfsocial-btn').find((b) => b.textContent === label || b.children[0]?.textContent === label);
+const view = (over = {}) => ({
+  id: 'g0123456789', name: 'The Hand', tag: 'HND', ranks: [...GUILD_RANK_NAMES], treasury: 30_000, hallGold: 12_000, foundedAt: 1, rank: 0,
+  members: [{ member: 'm1', name: 'Aldric', rank: 0, joinedAt: 1, you: true, vault: { level: 'withdraw', limit: 0, granted: false } }],
+  invites: [], ledger: [], hall: null, heraldry: null, renamedAt: null, renameAt: null, vault: { used: 0, max: 50, me: { level: 'withdraw', limit: 0, granted: false, taken: 0 } }, ...over,
+});
+async function tab(guild, page = null, door = {}) {
+  const book = new GuildBook({ door: { mine: async () => ({ ok: true, data: { guild } }), invites: async () => ({ ok: true, data: { invites: [] } }), ...door },
+    character: () => 'rabc', wallet: () => ({ gold: () => 0, pay() {}, credit() {} }) });
+  const doc = fakeDocument();
+  const panel = createSocialPanel({ social: new SocialState({ acct: 'a' }), guild: book, doc, win: { addEventListener() {}, removeEventListener() {} }, overlay: () => false, touch: false });
+  const go = async (p) => { panel.openGuild(p); for (let i = 0; i < 4; i++) { await tick(); panel.render(); } };
+  await go(page);
+  return { panel, go, book };
+}
+
+test('AUDIT GUILD3 C1/T2: a refusal\'s word nothing re-reads is LISTED, never a lock - a \'marks-full\' from an older service leaves Disband and Leave pressable, so the press that asks again is never the one it disabled (mutants: the gate read from the told list)', async () => {
+  let n = 0;
+  const t = await tab(view({ treasury: 0, hallGold: 0 }), 'settings', { disband: async () => { n++; return { ok: false, error: 'marks-full', keeps: ['marks-full', 'guild-some-new-hold'] }; } });
+  btn(t.panel.root, 'Disband').fire('click'); t.panel.render();
+  btn(t.panel.root, 'Sure?').fire('click');
+  for (let i = 0; i < 4; i++) { await tick(); t.panel.render(); }
+  assert.equal(n, 1);
+  assert.deepEqual(find(t.panel.root, 'dfsocial-keeps')[0]?.children.map((li) => li.textContent), [GUILD_KEEPS_WORDS['marks-full'], accountRefusalText('guild-some-new-hold')], 'said');
+  assert.equal(btn(t.panel.root, 'Disband').disabled, false, 'and the press still asks again');
+  assert.equal(btn(t.panel.root, 'Leave').disabled, false);
+  btn(t.panel.root, 'Disband').fire('click'); t.panel.render();
+  btn(t.panel.root, 'Sure?').fire('click');
+  for (let i = 0; i < 4; i++) { await tick(); t.panel.render(); }
+  assert.equal(n, 2, 'asked again');
+});
+
+test('AUDIT GUILD3 C8, C9/T8: the Settings page reads the guild again as it is turned to; the rank list folded until opened; a lone guildmaster\'s Leave says the list; a refusal\'s list kept for its own guild alone and gone once a press goes through (mutants: the read, the fold, the why, the guild\'s reset, the clearing)', async () => {
+  let looks = 0;
+  const t = await tab(view({ treasury: 0, hallGold: 0, keeps: ['guild-seat'] }), null, { disband: async () => ({ ok: true, data: {} }) });
+  const mine = t.book.door.mine;
+  t.book.door.mine = async (c) => { looks++; return mine(c); };
+  find(t.panel.root, 'dfsocial-subtab').find((b) => b.dataset.page === 'settings').fire('click');
+  for (let i = 0; i < 4; i++) { await tick(); t.panel.render(); }
+  assert.equal(looks, 1, 'read again at the turn to Settings');
+  assert.equal(btn(t.panel.root, 'Leave').attrs?.title ?? btn(t.panel.root, 'Leave').title, 'what is listed above first');
+  // the rank list folded
+  await t.go('members');
+  assert.equal(find(t.panel.root, 'dfsocial-ranks')[0].open, false);
+  // a refusal's list is its guild's: another guild's page says none of it
+  const a = await tab(view({ id: 'gaaaaaaaaaa', treasury: 0, hallGold: 0 }), 'settings', { disband: async () => ({ ok: false, error: 'guild-some-new-hold', keeps: ['guild-some-new-hold'] }) });
+  btn(a.panel.root, 'Disband').fire('click'); a.panel.render();
+  btn(a.panel.root, 'Sure?').fire('click');
+  for (let i = 0; i < 4; i++) { await tick(); a.panel.render(); }
+  assert.equal(find(a.panel.root, 'dfsocial-keeps').length, 1);
+  a.book.door.mine = async () => ({ ok: true, data: { guild: view({ id: 'gbbbbbbbbbb', treasury: 0, hallGold: 0 }) } });
+  await a.book.refresh();
+  for (let i = 0; i < 4; i++) { await tick(); a.panel.render(); }
+  assert.equal(find(a.panel.root, 'dfsocial-keeps').length, 0, 'another guild: the old list gone');
+  assert.match(src('src/ui/socialPanel.js'), /guildUi\.keeps = r\?\.ok \? null : \(Array\.isArray\(r\?\.keeps\) \? r\.keeps : null\);/, 'a press that goes through clears it');
+});
+
+test('AUDIT GUILD3 T11: the High Master\'s read asks only the chapters whose Master\'s chair the account holds - by the chapters\' key, never every Ascendant chapter\'s row, and not at all for an account that holds none (mutants: the narrowing, the skip)', () => {
+  const svc = src('server-account/src/npcChapters.js');
+  const m = /const \{ results: rising = \[\] \} = led\.length\n\s+\? await db\.prepare\(`(SELECT faction, region FROM npc_chapters WHERE strength >= \?1 AND \(faction, region\) IN\n\s+\(SELECT json_extract\(value, '\$\[0\]'\), json_extract\(value, '\$\[1\]'\) FROM json_each\(\?2\)\))`\)\.bind\(CHAPTER_ASCENDANT_FROM, JSON\.stringify\(led\)\)\.all\(\) : \{ results: \[\] \};/.exec(svc);
+  assert.ok(m, 'the read, narrowed and skipped');
+  const plan = planOf(m[1].replace('?2', "'[[41,21]]'"));
+  assert.ok(plan.some((p) => /SEARCH npc_chapters USING .*\(faction=\? AND region=\?\)/.test(p)), plan.join(' | '));
+  assert.ok(!plan.some((p) => /^SCAN npc_chapters/.test(p)), plan.join(' | '));
 });

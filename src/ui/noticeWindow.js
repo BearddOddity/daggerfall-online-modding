@@ -506,12 +506,12 @@ export function mountNoticeBoard(host, deps) {
   function chapterCard(c) {
     const card = el('section', 'notice-panel notice-chapter-card');
     card.append(el('h3', null, `${hallPosterName(c.faction) ?? 'Guild'} - ${chapterBandOf(c.strength).name}`));
-    card.append(el('p', 'notice-chapter', chapterLineOf(c)));   // CHAP3b: the chapter here, its Strength
+    card.append(el('p', 'notice-chapter', `${chapterLineOf(c)}.`));   // CHAP3b: the chapter here, its Strength (AUDIT GUILD3 W12: a sentence, as the card's others)
     const merit = (writs?.merit ?? []).find((m) => m.faction === c.faction);
     // GUILD3d: what the band does - AUDIT GUILD3 L3: none of its halls' where they are shut this Season (its season line says so)
     const band = chapterBandEffectsLine(c.strength, c.faction, { shut: !!chapterSeasonOf(c)?.shut });
     if (band) card.append(el('p', 'notice-chapter notice-band', band));
-    if (merit) card.append(el('p', 'notice-merit', meritLineOf(merit, nowS())));   // CHAP3a: the account's Merit here
+    if (merit) card.append(el('p', 'notice-merit', `${meritLineOf(merit, nowS())}.`));   // CHAP3a: the account's Merit here (W12: a sentence)
     // CHAP4d: and its Master's Focus this week - and, for its Master, the families to choose it from
     const focusLine = chapterFocusLineOf(c.faction, c.focus);
     if (focusLine) card.append(el('p', 'notice-chapter notice-focus', focusLine));

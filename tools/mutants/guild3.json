@@ -154,7 +154,7 @@
   {
     "name": "GUILD3c-the-vault-limit-unsaid",
     "file": "src/net/guildPowers.js",
-    "old": "const takeWords = (/** @type {number} */ limit) => (limit > 0 ? `${limit} a day` : 'as many as they like');",
+    "old": "const takeWords = (/** @type {number} */ limit) => (limit > 0 ? `${limit} a day` : 'any number');",
     "new": "const takeWords = (/** @type {number} */ limit) => '';",
     "tests": [
       "test/guild3_plain.test.js"
@@ -423,15 +423,6 @@
     "name": "GUILD3e-the-ascendancy-talk-lost",
     "file": "src/systems/livingWorld/lines.js",
     "old": "    Object.freeze(['The chapter of {guild} here is in its ascendancy, they say.', 'Everyone wants to be seen in that hall.']),   // GUILD3e: an Ascendancy's, the band's now\n",
-    "new": "",
-    "tests": [
-      "test/guild3_plain.test.js"
-    ]
-  },
-  {
-    "name": "GUILD3e-the-ascendant-succession-gone",
-    "file": "src/net/npcChapterLaw.js",
-    "old": "  if (band === 'ascendant') w.succession += E.successionAscendant;\n",
     "new": "",
     "tests": [
       "test/guild3_plain.test.js"
