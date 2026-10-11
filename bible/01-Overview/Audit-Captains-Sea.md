@@ -311,13 +311,13 @@ instead of a pin (V1).
 
 ## What stands
 
-- THE TOUCHED RUN. Every mutation record of every list that names a file the fixes changed - 7,755 records across main's
-  four merges, run with the player's own data (ARENA2_PATH) so its pins run too. The six chunks ran over the heads as
-  the merges and lane V's fixes came (8cf4a1804, 91adbd916, 1c740918d, 589fce136, eb60441ad); at eb60441ad no touched
-  record is left without a verdict. In the chunks: 7,704 dead, 27 equivalent as recorded, 2 without a verdict and 22
-  survivors. The two without a verdict were V3 (CW-host-temper, re-aimed) and V5's record
-  (FIELD-CSA2-host-reads-the-drawn-ground, its test mended): both dead now. One survivor was this PR's, SEA-rim-unkept
-  (V4): mended, dead.
+- THE TOUCHED RUN. Every mutation record of every list that names a file the fixes changed - 7,762 records across main's
+  five merges, run with the player's own data (ARENA2_PATH) so its pins run too. Six chunks ran over the heads as the
+  merges and lane V's fixes came (8cf4a1804, 91adbd916, 1c740918d, 589fce136, eb60441ad), and the seven records the
+  fifth merge brought at cb55f109e; there no touched record is left without a verdict. In all: 7,711 dead, 27 equivalent
+  as recorded, 2 without a verdict and 22 survivors. The two without a verdict were V3 (CW-host-temper, re-aimed) and
+  V5's record (FIELD-CSA2-host-reads-the-drawn-ground, its test mended): both dead now. One survivor was this PR's,
+  SEA-rim-unkept (V4): mended, dead.
 - The other 21 survive without this PR. Twenty survive at the base (118313d436), and at 4aec81c85 and main wherever
   their text stands: ACC1d-14-the-chat-link-sends-no-token, AD28Q-J-host-no-party-word, the four AUDIT-GN2-GN1 (the
   berths sounded for the carrack alone, the shallowest keel sounding them, the galleon not among the berthers, sounded
