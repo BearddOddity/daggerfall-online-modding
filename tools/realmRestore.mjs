@@ -50,6 +50,11 @@ export function lit(/** @type {unknown} */ v) {
   if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`;
   throw new Error(`realmRestore: a value no restore writes: ${typeof v}`);
 }
+/** AUDIT HOME-VOTE II A6: a home's row as it is put back - every column of the snapshot's but its `score`. */
+export const homeRowOf = (/** @type {Record<string, unknown>} */ home) => {
+  const { score: _score, ...row } = home;
+  return row;
+};
 const insert = (/** @type {string} */ table, /** @type {Record<string, unknown>} */ row) => {
   const cols = Object.keys(row);
   return `INSERT OR IGNORE INTO ${table} (${cols.join(', ')}) VALUES (${cols.map((c) => lit(row[c])).join(', ')});`;
@@ -119,7 +124,9 @@ export function planRestore({ then, now, handles = new Map() }) {
           taken.push({ player, handle: who(player), origin, building: place, by: who(nowHome.player) });
           continue;
         }
-        if (!nowHome) sql.push(insert('homes', home));
+        // AUDIT HOME-VOTE II A6: never its score - the votes behind it are no table of this tool's, and a score with no
+        // votes brought a home back hidden for good (migration 0107's triggers keep it from the votes alone)
+        if (!nowHome) sql.push(insert('homes', homeRowOf(home)));
         // the house back - or, bought again by the same account since, its pieces and hidden list back into it
         const pieces = all(then, 'SELECT * FROM home_decor WHERE map_id = ? AND building_key = ?', home.map_id, home.building_key);
         for (const p of pieces) sql.push(insert('home_decor', p));

@@ -68,16 +68,10 @@ const EDITOR_FLATS_ARCHIVE = 199;
 import { RANDOM_TREASURE_ARCHIVE as FIXED_TREASURE_FLATS_ARCHIVE } from '../systems/loot.js';   // single source (DaggerfallLootDataTables; audit 2026-07-06b)
 
 // DFBlock.RdbActionFlags, defined members only (Enum.IsDefined parity).
-/** RDBLayout.NPCFlatArchives / IsNPCFlat (RDBLayout.cs:1250-1254).
- *  A flat in one of these archives is a PERSON: AddFlat gives it a
- *  StaticNPC with SetLayoutData(obj) (:1226-1231) - the overload that
- *  stamps Context.Dungeon - and DaggerfallBillboard.cs:318-319 gives
- *  it FlatTypes.NPC, which is the only reason it carries a trigger
- *  BoxCollider at all (:343-349), i.e. the only reason the activation
- *  ray can hit it. */
-export const NPC_FLAT_ARCHIVES = Object.freeze([334, 346, 357, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184]);
-const NPC_FLAT_ARCHIVE_SET = new Set(NPC_FLAT_ARCHIVES);
-export const isNpcFlat = (archive) => NPC_FLAT_ARCHIVE_SET.has(archive);
+// RDBLayout.NPCFlatArchives / IsNPCFlat (RDBLayout.cs:1250-1254) - their one home is the leaf world/npcFlatArchives.js
+// (DECOR-FIGURE: the decor law, which the account service reads, names a person's flat by them).
+import { isNpcFlat } from './npcFlatArchives.js';
+export { NPC_FLAT_ARCHIVES, isNpcFlat } from './npcFlatArchives.js';
 
 export const ACTION_FLAGS = Object.freeze({
   None: 0x00, Translation: 0x01,

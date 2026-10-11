@@ -41,7 +41,7 @@ import { RAY_DISTANCE, DEFAULT_ACTIVATION_DISTANCE } from '../player/activate.js
 import { billboardSize } from '../world/rmbFlats.js';
 import { armFlatAnim } from '../render/flatAnimation.js';
 import { collectInteriorLights } from '../world/interiorLights.js';
-import { decorIsMount, decorMountFrame, DECOR_MOUNT_LIFT, decorFlatMirrored } from '../net/decorLaw.js';
+import { decorIsMount, decorMountFrame, DECOR_MOUNT_LIFT, decorFlatMirrored, decorDrawnScale } from '../net/decorLaw.js';   // DECOR-FIGURE: a figure at its own size
 import { decorMountDye, decorMountDyeTarget, decorMountItem } from '../systems/decorItems.js';
 import { toColor32 } from '../formats/color32Order.js';   // MW-MOUNT: a rendered picture's rows, as the upload reads them
 import { preloadTextureRecord } from '../systems/textureReplacement.js';   // MOUNT-LAZY: the record's own replacement, decoded before its upload
@@ -382,7 +382,9 @@ export function createDecorRoom({
       Promise.all([flatOf(a, r), mw]).then(([f, pic]) => {
         if (standing.get(piece.id) !== entry || !f || !renderer?.createBillboardBatch) return;
         const [da, dr, seen] = pic ? [MW_STAND_ARCHIVE, pic.key, pic] : [a, r, f];   // MW-ASSIGN: its own picture, its own size
-        entry.size = { w: seen.w * piece.scale, h: seen.h * piece.scale };
+        // DECOR-FIGURE: one of Daggerfall's people at its own size - one grown or shrunk before stands as it was made
+        const k = decorDrawnScale(piece);
+        entry.size = { w: seen.w * k, h: seen.h * k };
         // the renderer bottom-anchors every batch (rmbFlats.js AlignToBase): the base goes in, as the room's flats' do.
         // DECOR-FLIP: turned half round, the picture faces the other way - the renderer's flip is the sign of its width
         // (the size the eye's box reads stays whole)

@@ -65,6 +65,7 @@ import { onPathTile } from '../player/exteriorSurface.js';   // FB1001 ROAD-LOT:
 import { RMB_TILE_SIDE } from '../world/locationEntrance.js';   // FB1001 ROAD-LOT: RMBLayout.RMBTileSide, a ground tile's side
 import { TERRAIN_TILE_DIM } from '../world/terrainSurface.js';
 import { homeOutsideKept, homeYardWhere } from '../systems/onlineHomes.js';   // GUILD-YARD: a hall's keepers keep its outside
+import { homeDecorShown } from '../net/homeVoteLaw.js';   // HOME-VOTE: a shunned home's yard stands for its insiders alone
 import { createYardNature, isNaturePiece, yardNatureFlat, yardTreeSet } from './yardNature.js';   // DECOR-OUTDOOR: a yard's trees and plants, in its town's season; DECOR-LPT: as Low Poly Trees' own
 import { remapSubMeshes } from '../world/texRemap.js';   // DECOR-OUTDOOR: a yard's models in its town's climate
 import { applyClimate } from '../world/climateSwaps.js';
@@ -526,7 +527,9 @@ export function createHomeYards(deps) {
       const town = towns.get(p.homeTown);
       for (const [bk, frame] of p.homeFrames) {
         const home = deps.homes?.homeAt?.(p.homeTown, bk) ?? null;
-        const pieces = town?.byKey.get(bk) ?? null;
+        // HOME-VOTE: a home the town voted below zero stands no yard but for its insiders (net/homeVoteLaw.js) - its
+        // pieces taken down where they stood, and stood again the moment its votes climb
+        const pieces = homeDecorShown(home) ? town?.byKey.get(bk) ?? null : null;
         if (!home || (!pieces?.length && !homeOutsideKept(home))) continue;   // a yard stands for a home with pieces, or for its owner (GUILD-YARD: a hall's keeper)
         const key = `${pk}:${bk}`;
         live.add(key);
