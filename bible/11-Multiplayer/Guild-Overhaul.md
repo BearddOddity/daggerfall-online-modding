@@ -137,7 +137,7 @@ Stores, the rank names and leaving, every section under the one before. It is pa
 | Page | What it holds |
 |---|---|
 | Overview | the arms in words, where the reader stands at the vault, the hall |
-| Members | the roster and what the reader's rank may do to each; the guildmaster's grants; invitations |
+| Members | the roster - each member's rank and when they were last online (GUILD-SEEN, below) - and what the reader's rank may do to each; the guildmaster's grants; invitations |
 | Treasury | the gold and its ledger, the silver and its lines |
 | Vault | the pieces, Take and Take one, Put in from the pack, the lines |
 | Stores | the guild Stores and the writ budget - where the professions are this account's |
@@ -147,6 +147,43 @@ Stores, the rank names and leaving, every section under the one before. It is pa
 Each page keeps every control and sentence the section it took over had, so a refusal still says its reason beside its
 button. `openGuild(page)` opens the tab at a page (the hall's chest: the Vault). A page turned keeps the keyboard's
 focus on its own tab (the second audit's U9).
+
+## GUILD-SEEN - when each member was last online (2026-10-11)
+
+The owner: "the guild member list needs a 'last online' info, just like the friend list does". Each row of the Members
+page says it the way a friend's row does (SOC3): a dot, lit while the member is at play, and under the rank a line -
+"Online", or "Last online 3 h ago" in the friends list's own words (`net/social.js` lastOnlineText, the one ladder).
+
+- **The stamp is the play beat's, and nothing new is written.** The guild's view (`server-account/src/guilds.js`
+  viewOf) says each member's `seenAt`, in the service's seconds: the account's last play beat (ACC4's `played_at`,
+  knocked once at entry and every PLAY_BEAT_S, five minutes, while a tab is in the world and visible), or - for an
+  account that has never beaten - its last authenticated call (`last_seen`, touched hourly: SCALE4h). It is read in
+  the roster's own statement, the players row found by its key; no write, no migration (acct113).
+- **Online is the service's sitting.** A member is online while no wider gap than PLAY_GRACE_S (ten minutes) has
+  passed since their beat - the gap `creditPlay` counts as one sitting - and the reader's own row always: they are
+  playing it (`net/guildBook.js` guildMemberOnline, guildSeenText). The service's seconds are read against this
+  machine's clock, as the letterbox reads its stamps. A row the service said no stamp for (a Worker before acct113)
+  says nothing of presence.
+- **Read on the live pass, painted never.** "Last online 5 min ago" moves on the clock alone, and a sitting that
+  lapses puts the dot out without a look: both are read again each frame (AUDIT SOC B8's law), off the book's
+  freshest roster by the member's id. A look that moved only stamps moves no version (`pictureOf`), so the page is
+  not painted again under the Invite field or a grant being chosen - every member's beat moves a stamp every five
+  minutes.
+- **What it is not.** The friends list's presence is the hub's, to the second; a guild member's is the beat's - a
+  member who quits reads Online until their sitting lapses (up to ten minutes after their last beat), and "last
+  online" is their last beat, up to five minutes before they left. The account's, not the character's: the roster
+  names each member by the account's handle, and a member playing another character of theirs is at play. A guild's
+  members are each other's by an invitation accepted, which is what a friendship grants presence on (AUDIT ONLINE A6).
+
+Pins: `test/guildseen.test.js` (the service through the real Worker, the law, the book, the page);
+`tools/mutants/guildseen.json`, 14 of 14 dead.
+
+| Host | GUILD-SEEN |
+|---|---|
+| `scenes/world.js` | the Guild tab's book and panel, unchanged: the rows read what the book holds |
+| `scenes/worldModes.js` | nothing to wire: an interior opens the same panel (the hall's chest, the Vault page) |
+| `scenes/exterior.js` | FLAGGED, nothing to wire: the single-location dev host has no online guild |
+| `scenes/dungeonContext.js` | nothing to wire: the Guild tab is world.js's on every face |
 
 ## The threats, and the answers
 
