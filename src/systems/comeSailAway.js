@@ -1705,7 +1705,11 @@ export function createComeSailAwayRuntime(deps) {
     if (paused) return;
     latchTravelling();
     if (isSailing()) lateUpdateSailing();
-    else if (state.placing && activateComplete && f(f(deps.time()) - f(state.placeTime)) > PLACE_CLICK_DELAY) {
+    else if (state.placing && activateComplete && f(f(deps.time()) - f(state.placeTime)) > PLACE_CLICK_DELAY && !holdsItem(state.placeItemCollection, state.placeItem)) {
+      // AUDIT SHIPYARDS L1-1 (the port's own): the item the placing was armed with is no longer the player's - sold at a
+      // shipyard, dropped, taken by a load - so its click stands no boat: the boat it would stand was a ship twice
+      StopPlacing();
+    } else if (state.placing && activateComplete && f(f(deps.time()) - f(state.placeTime)) > PLACE_CLICK_DELAY) {
       const hullFromMessage_ = hullFromMessage(state.placeItem.message);
       const variantFromMessage_ = variantFromMessage(state.placeItem.message);
       log(`COME SAIL AWAY - ITEM HULL IS ${hullFromMessage_}`);
@@ -2423,6 +2427,13 @@ export function createComeSailAwayRuntime(deps) {
     const key = cargoKey(uid);
     if (!state.PackedCargoes.has(key)) state.PackedCargoes.set(key, []);
     return state.PackedCargoes.get(key);
+  };
+  /** SHIPYARDS (systems/shipyards.js): a sold ship's hold let go - her entry under her number, only while it holds
+   *  nothing (a shipyard buys no ship with cargo aboard). Answers whether it went. */
+  const forgetHold = (uid) => {
+    const key = cargoKey(uid), held = state.PackedCargoes.get(key);
+    if (held?.length) return false;
+    return state.PackedCargoes.delete(key);
   };
   /** PlaceBoat(Boat, Vector3, Vector3, Terrain) (6171-6178). */
   function PlaceBoatOnTerrain(newBoat, position, direction, terrain = null) {
@@ -3207,7 +3218,7 @@ export function createComeSailAwayRuntime(deps) {
     LaunchFromParts, nodeReadingAt,   // OWS2: the Overworld's crossing - a launch aimed by the journey, and the node's law it probes with
     sailWayOf, oarWayOf,   // AUDIT SHIPS A4: her way under sail as she lies, and under oars - the journey's hand weighs one against the other
     LaunchFromDeed,   // SHIP-CLAIM: a claimed prize's deed, her boat stood where she lies
-    SummonBoat, LayUpBoat, laidUpHold,   // HOLDINGS: the Fleet page's summon and send away, and a laid-up hold
+    SummonBoat, LayUpBoat, laidUpHold, forgetHold,   // HOLDINGS: the Fleet page's summon and send away, and a laid-up hold; SHIPYARDS: a sold ship's let go
     activate, OnStartLoad, OnPreFastTravel, OnPreJump, OnPostFastTravel, OnPlayerDeath, OnNewMagicRound,   // HELM-JUMP: OnPreJump
     UpdateWind, OnNewHour, OnWeatherChange,
     GetSailPower, ToggleSails, RaiseSails, LowerSails, ToggleSquareSails, HasLargeSquareSailWithGaff,
@@ -3275,6 +3286,13 @@ function swapItem(list, item, by) {
 }
 /** HOLDINGS: `item` out of the list - itself, else the one of its template and UID (a ship's parts and her deed share
  *  her number, and removeItem's UID alone would take whichever came first). */
+/** AUDIT SHIPYARDS L1-1: whether a placing's collection still holds its item - by the object, or its number and kind as
+ *  removeExact finds it; a placing armed with no collection (none to ask) holds it. */
+function holdsItem(list, item) {
+  const l = typeof list === 'function' ? list() : list;
+  if (!l || !item) return !!item;
+  return l.includes(item) || (item.UID != null && l.some((it) => it?.UID === item.UID && it?.templateIndex === item.templateIndex));
+}
 function removeExact(list, item) {
   const l = typeof list === 'function' ? list() : list;
   if (!l) return;
