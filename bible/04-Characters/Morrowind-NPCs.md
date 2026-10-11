@@ -1878,7 +1878,9 @@ still do - below.)
   between two of them (PERF-EXT2's law for a static batch): a hidden range (a
   sheathed blade, an unlit torch, rule 57) breaks the run; a range with a
   cut-out picture (`alphaCut`, hair) is its own draw through its picture's
-  cut. A body is one to three depth draws a replay, not one a piece.
+  cut. A body is one depth draw a run between its hidden and cut-out ranges
+  (a sheathed blade and a head of hair: four), not one a piece. (AMENDED BY
+  THE AUDIT, section 27 E6: this said "one to three".)
 - THE BODY ASKS IT (`combat/fpArm.js`). `drawThird`'s `cast` records the body
   for the maps alone (`renderer.recordShadowBody`: its mesh, its world model -
   `thirdModel`, the draw's own - and a sphere about its posed box, `thirdBox`,
@@ -1887,6 +1889,10 @@ still do - below.)
   OUT OF THE VIEW where it stands, in the pose its skin last took, where its
   sphere reaches a map this frame draws (`renderer.shadowReachSphere`) -
   SHADOW-REACH's law, which an NPC's flat had (world.js's castBatches).
+  (AMENDED BY THE AUDIT, section 27: only a body posed for who it stands for
+  now - B F2; asked first about its feet - N3; a body that never walks says
+  so, for the lo tier's lamps - A3; a lamp whose movers are bodies that did
+  not change keeps its faces - A2.)
 - THE LANE ASKS IT OF AN NPC'S BODY (`net/peerBodies.js` `casts`, set by
   `characters/npcBodies.js` for every NPC lane): seen, drawn casting; unseen,
   cast where it stands; veiled, neither; grown by the travel view (OW-BIG),
@@ -1907,8 +1913,10 @@ createHostNpcBodies lanes (every NPC lane is a casting one).
 
 NOT HERE. The player's own Morrowind body and the peers' cast no shadow - a
 self body's lamps have DISC24-C's cadence law to meet first (a frame-late
-silhouette trails the player), and this report is the NPCs'. The first-person
-arm casts none.
+silhouette trails the player), and this report is the NPCs'. Nor do the
+household family's and the card table's bodies (their lanes are PeerBodies
+without `casts`, as their dolls cast nothing). The first-person arm casts
+none.
 
 PROVEN. `test/mwnpc16_bodyshadow.test.js` (6): the pass on a recording GL - a
 skinned body recorded, under its sphere, through the skinned depth program off
@@ -1920,7 +1928,8 @@ body (`test/fixtures/mw/bodyRig.mjs`) recording its mesh, model and sphere only
 when asked, never veiled, castThird the same place and only in reach; PeerBodies
 asking the cast of a casting lane's seen, unseen, veiled and grown bodies and
 never of the peers', every NPC lane casting; the renderer's door by source.
-`tools/mutants/mwnpc16.json`: 18 mutants, 18 dead. Pins moved: EL2's and
+`tools/mutants/mwnpc16.json`: 18 mutants, 18 dead (41 after the audit,
+section 27). Pins moved: EL2's and
 LA-COST3's shadow-pass construction, MWNPC1g's and MWNPC1h's door (the sprite
 target still records nothing - drawCharacter's gate, now the law MWNPC1's
 record aims at), EOTB-BODY's noShadow line, OW-PEERS' cull, PR-BOW1 and
@@ -1959,7 +1968,9 @@ ten colours over ten faces.
 - WHO IS WHICH ROLE. A standing person by their faction (`peopleBodies.js`
   wardrobeOf, KIND_ROLE): the old `steel` split - a knightly order's and a
   court's guard `knight`, a fighters' guild's `fighter`; a coven's witch and a
-  necromancer `mage`; the Dark Brotherhood the underworld's. A walker by the
+  necromancer `mage` (where FACTION.TXT does not count their faction
+  supernatural - wardrobeOf turns those away first; section 27's NOT HERE);
+  the Dark Brotherhood the underworld's. A walker by the
   outfit their sprite shows (`folkBodies.js` FOLK_DRESS: the commoner, the
   tradesman, the traveller and the robed scholar - and the CUT their picture
   shows, a robe, a skirt or breeches, so the body that replaces a picture at
@@ -1969,14 +1980,19 @@ ten colours over ten faces.
 - HOW WELL. A wealth TIER per role, on Morrowind's own clothing ladder - the
   CLOT ids' prefixes, common_, expensive_, extravagant_, exquisite_
   (`mwItemMap.js` clothingTierOf): a noble from expensive up, a commoner
-  common and one in twelve expensive.
-- WHICH ONE. The look carries `npc` - its seed and its tier (`npcHint`); a
+  common and one in twelve expensive - and every garment within its role's
+  rungs (AMENDED BY THE AUDIT, section 27 C F1: a garment's stray could pass
+  them).
+- WHICH ONE. The look carries `npc` - its seed, its tier and its role's
+  rungs `lo`..`hi` (`npcHint`; the rungs since the audit, section 27); a
   player's carries none, so the player and every peer resolve exactly as
   before. The build reads it (`net/peerBodies.js` peerBuildOpts): each
   garment its rung (the person's, one down for a garment in four and up for
-  one in eight - `npcGarmentPick`) and its PICK, which mwClothingRecord takes
-  among the CLOTH_PICK_NEAREST (3) nearest the dye's colour on that rung where
-  colours are measured, else among the rung (a rung the data lacks: the
+  one in eight, never past the role's rungs - `npcGarmentPick`) and its
+  PICK, which mwClothingRecord takes among the CLOTH_PICK_NEAREST (3) nearest
+  the dye's colour on that rung that lie within CLOTH_PICK_BAND of the
+  nearest (the band since the audit, section 27 C F2) where colours are
+  measured, else among the rung (a rung the data lacks: the
   nearest that has records, the lower first; a pool with no rung at all - a
   mod's ids - whole); and the HEAD and the HAIR walked each on its own off the
   seed (`npcFaceOf` -> fpArm.js buildFpArm `npcFace` -> formats/mwFirstPerson.js
@@ -1989,12 +2005,14 @@ ten colours over ten faces.
   head, hair, the records of the clothes under it - off the seed every
   machine shares (K3/K4's), so a copy is the same man.
 
-MEASURED (`test/mwnpc17_wardrobe.test.js` 17e's harness at 1,000): one race,
-one sex, one role, resolved as the build resolves them over a retail-shaped
-clothing set (each type on every rung, measured colours) and a race's 8 heads
-and 6 hairs - commoners 987 distinct of 1,000, merchants 997, nobles 999,
-priests 966 (the robed cut is one garment); without the hint, the same
-people resolve to 692, 577, 818 and 294.
+MEASURED: one race, one sex, one role, resolved as the build resolves them
+over a retail-shaped clothing set (each type on every rung, measured
+colours) and a race's 8 heads and 6 hairs - commoners 987 distinct of 1,000,
+merchants 997, nobles 999, priests 966 (the robed cut is one garment);
+without the hint, 692, 577, 818 and 294. (AMENDED BY THE AUDIT, section 27
+E5: those baselines were taken with unsalted seeds and no cut, not 17e's
+harness as this said; measured again on the audited tree by the method
+stated there.)
 
 THE FOUR HOSTS (rule 17e). The looks are the populations' adapters, read by
 every host: scenes/world.js, scenes/worldModes.js, scenes/dungeonContext.js
@@ -2021,7 +2039,7 @@ reached; and the 200-person street (196 or more distinct). Pins moved: MWNPC7a,
 MWNPC8a-1/-2, MWNPC8b-d (a coven's witch now a mage), MWNPC10c-2, MWNPC12-1 (a
 knightly person's plate one metal of his rank), AUDIT MW-NPC II K1's priest,
 MW-D27's thread (and `walk`). `tools/mutants/mwnpc17.json`: 16 mutants, 16
-dead; mutant records re-aimed by content: MWNPC7's three, MWNPC8a's seven,
+dead (26 after the audit, section 27); mutant records re-aimed by content: MWNPC7's three, MWNPC8a's seven,
 MWNPC10c's, MWNPC12's, MWNPC14's three and MW-CROWD's.
 
 ## 26. MWNPC18 - THE FIGURES A PLAYER PLACED (SHIPPED 2026-10-11)
@@ -2046,16 +2064,22 @@ figure is a flat - nothing named a decor room.
   is no person in clothes) and a figure no row sexes keep their pictures.
   FLATS.CFG not read yet is asked again, never cached as a picture.
 - OFFERED (`scenes/decorRoom.js` figures, offerDecorFigures) on the host's
-  people lane before its bodies draw, at the picture's base, turned to the
-  eye at a person's pace (personActor) - cast-only where a body stands, and
-  since MWNPC16 casting nothing. The ROOMS': worldModes.js on the building's
-  people lane (`figureCtx`: FLATS.CFG and the quest context's region race,
-  read only when a figure is first looked at). The YARDS': world.js on the
+  people lane before its bodies draw, at its piece's base (the room's origin
+  and its place in it - AMENDED BY THE AUDIT, section 27 D1: this read the
+  batch's origin, which a room's batch never has), turned to the eye at a
+  person's pace (personActor) - cast-only where a body stands, and since
+  MWNPC16 casting nothing. The ROOMS': worldModes.js on the building's
+  people lane (`figureCtx`: FLATS.CFG and the race of the building's region,
+  REGION_RACES - section 27 D2: the quest context it asked names none - read
+  only when a figure is first looked at). The YARDS': world.js on the
   street's people lane, through homeYards.js `figures` (`yardFigureCtx`).
   The piece being placed is the decorator's preview and stays a picture.
 - THE CENSUS'S BLIND SPOT, CLOSED: every source that stands a decor room is
   enumerated (`test/mwnpc18_decorfigures.test.js` 18d) - homeYards.js and
   worldModes.js - and each must offer its figures before its people draw.
+  (AMENDED BY THE AUDIT, section 27 D5: for the decor rooms; Come Sail Away's
+  crews were a second blind spot, now declared, and 18e sweeps every host
+  that draws one of Daggerfall's people.)
 
 THE FOUR HOSTS (rule 17e). scenes/worldModes.js WIRED (the rooms) and
 scenes/world.js WIRED (the yards); scenes/exterior.js FLAGGED by name - the
@@ -2066,7 +2090,8 @@ PROVEN. `test/mwnpc18_decorfigures.test.js` (4): figureLook's sex, role, race
 (by name and by id), seed, its pictures kept and its file asked again; the
 caption's roles in order; the offer and the drawn picture where no look
 stands; the decor rooms' hosts enumerated and wired before their draws, by
-source. `tools/mutants/mwnpc18.json`: 10 mutants, 10 dead. The yards'
+source. `tools/mutants/mwnpc18.json`: 10 mutants, 10 dead (16 after the
+audit, section 27). The yards'
 figures are offered before the yards' keepers, so AUDIT MW-NPC II P1's pin
 (the keepers' offer just before the street's draw) stands as it was.
 
@@ -2079,3 +2104,177 @@ MWNPC10c's still picture on the roads (`{ still: false }`), which this
 slice's own rewrite of its pin let through (a walker's outfit can be one a
 noble's garments and dyes allow): the pin now holds the courtier at home to
 the still look exactly, never the street outfit, and the record dies.
+
+## 27. THE AUDIT OF MWNPC16-18 (2026-10-11)
+
+Mac, of the pull request: "Audit this". Five cold lenses over the three
+slices at 6e1091be - the shadow pass and the GL (A), the rig and the lanes
+(B), the wardrobe (C), the placed figures (D) and the proof (E: the tests,
+the records, this page and the patch notes) - each finding refuted by its
+finder before it was reported, reproduced here before it was fixed, and
+pinned by a record that dies.
+
+THE FIGURES (D).
+- D1, THE BLOCKER. offerDecorFigures stood a figure's body at its batch's
+  origin, and a room's batch is minted with none (createBillboardBatch: its
+  base in its vertices). With bodies on, every frame a placed figure stood
+  threw a TypeError out of the host's frame (personActor reading null); and
+  a yard's restand() writes only the recentre's step into an origin, so its
+  body stood a whole recentre off. 18c's fixture had handed the batch an
+  origin no room mints. The body stands at its piece's base now - the
+  room's origin and its place in it (`e.o` plus `piece.pos`, put's own sum),
+  made again every frame as the street's people's are. 18c runs through a
+  real createDecorRoom whose batches have no origin, across a restand and a
+  lane that moved the feet it holds.
+- D2. A room's figure was always a Breton: `figureCtx` asked the quest
+  scene's context for its region's race, and that context is { mapId,
+  locationIndex }. It reads the building's region now (REGION_RACES, as the
+  yards' read does).
+- D3. The caption's words matched inside other words: "good-looking" and
+  "walking" held a king, "country" a count, "overseer" a seer, "image" a
+  mage, "relaxed" an axe, "monkey" a monk. Each word is read from its start
+  and a short one whole; a guard and a smith are still read inside a word (a
+  bodyguard, a blacksmith).
+- D4. figures() walked every piece of every yard, every frame, into new
+  arrays, to find the few that are people. A room keeps its figures as they
+  are put and taken down, into one list; the yards into one.
+- D5. Come Sail Away's crews (her prefabs' BillboardHelper people, drawn by
+  `scenes/comeSailAwayPool.js`) stood in no body and nothing said so, under
+  section 26's "blind spot, closed". They keep their pictures (NOT HERE,
+  below), and 18e sweeps every host that draws one of Daggerfall's people:
+  each offers them to a people lane, or is named with the reason it keeps
+  the picture.
+
+THE SHADOW (A, B).
+- A1 / B F3. A CPU-skinned body's hair (`?gpuskin=off`, or a layout the
+  shader refused) cast as solid cards: the cut program was built only once
+  a skinned body cast. A cut-out range asks for it too.
+- A2. Every body record is a mover, so a lamp in reach of one redrew its six
+  dynamic faces every frame - for a body out of the view, never posed, ten
+  face operations a frame where its flat had cost none. Each body's record
+  now carries its LOOK: its mesh, its pose's generation (`_poseGen`, bumped
+  by the renderer at every pose upload - updateSkinPalette, updateSkinStream,
+  updateCharacterMesh), its matrix and its hidden ranges. A lamp whose only
+  movers are bodies (`DYN_BODY`) keeps its live faces while their looks are
+  the ones it drew, and draws again when one is posed, turned, hides a
+  range, comes or goes, or a mover stands beside them (a swaying wood
+  beside a body makes it a mover's cadence, as a body always had). A body
+  in the view
+  idles, so it is posed and redrawn every frame, as the idling flat it
+  replaces was (IDLER-STICKY). It is never baked into a static cache: a body
+  comes into the view and leaves it as the camera turns, and IDLER-STICKY's
+  churn is the reason. A voxel rig (EL7) is the mover it always was.
+- A3 / B F1. Past the twelve full maps, a room drawn whole casts from its lo
+  maps (DISC15), which take the still and a flat animating in place
+  (DISC29-E). A body is a mover and its flat now casts nothing, so a
+  standing person cast into none of them (DISC29-E's Mages Guild: nine
+  people in a hall of lamps past the twelve). A body that NEVER WALKS is now taken by the lo replay and
+  folded into the lo signature by its id and its place: a new pose is no
+  rebuild (the lo map holds the pose it was drawn in, as it holds an idler's
+  frame), while its coming, its going and a move are. "Never walks" is
+  DISC29-E's own test - its flat has no origin and is not moved by its
+  vertices - read by the population lane at its offer (createPopulationLane,
+  `anchored`).
+- B F2. An unseen body cast whatever its skin last held. A spare taken out
+  of the view wears the last wearer's skin (a corpse's for a living skeleton
+  - every creature of a kind shares a key), and a death out of the view is
+  not posed. An unseen body now casts only once posed for who it stands for
+  (`posedAt`: 0 for a spare until it is posed, and again when a life flips).
+- N2. A body program that would not link threw out of render(), skipping the
+  frame's discard and its viewport. It is null now, and the replay's null
+  tests cast nothing for it.
+- N3. castThird made a matrix and a middle for every body out of the view
+  before asking whether it reached a map. It asks first of a sphere about
+  its feet that holds the box's own wherever it turns.
+- B N1. thirdModel's doc comment sat over thirdUnit.
+- NOT TAKEN.
+  - N1: the cut programs use the flats' half-alpha, where the lit draw cuts
+    at the range's own threshold. DEPTH_BB_FS is the flats' shader, and a
+    uniform there is every flat's; the difference is the shadow of hair
+    whose threshold is far from a half.
+  - N3's other two: a cut range's extra program binds, and the caster
+    pre-passes walking cast-only flats that every replay then drops. Left.
+
+THE WARDROBE (C).
+- F1. A garment strayed a rung from its wearer's, past the role's own. A
+  noble's top fell to the common rung about one time in eleven (one
+  nobleman in five wore a common garment), and a commoner's rose to
+  extravagant about one time in a hundred - under the header's "never". The
+  hint carries the role's rungs (`lo`, `hi`: the tiers its table ever
+  draws), and the stray stops at them; npcKeyOf and npcHintOf read them.
+- F2. On a thin rung the dye was ignored. Retail's extravagant and exquisite
+  rungs hold one to three records of a type, so "the three nearest" were the
+  whole rung, and a red dye drew a blue shirt as often as a red one. The
+  pick is now among the three nearest that lie within CLOTH_PICK_BAND of the
+  nearest (1.5 times its distance, plus 32).
+- F3. The comment's template ranges were wrong; they are now the men's
+  141-181 and the women's 182-216.
+- F4. The body key added the hint after the memo: a new string per body per
+  wanting peer every frame. The hint is in the memo now.
+- THE BEASTS (older than these slices; exposure up with the knights' and
+  fighters' helms). No Khajiit or Argonian NPC wears shoes, boots or a helm
+  now. wardrobe.js beastWorn drops them from an NPC's worn list in the build
+  (peerBuildOpts), which covers every producer's look: the wardrobe's, the
+  watch's plate and a foe's own table. A player's look is never asked.
+
+THE PROOF (E).
+- E1 was D1.
+- E2: the body programs were built by hand in the tests; 16a and 16b now run
+  render().
+- E3: the hint on foes, rosters, the watch and residents is pinned (17f).
+- E4: the patch note said everyone in a body casts; it now names who does.
+- E5: section 25's baselines came from another harness than it said.
+- E6: "one to three depth draws" was wrong (16a's own fixture is four).
+- E7:
+  - Titles brought into step (MWNPC1h, MWNPC12-1, 17e).
+  - 17d pins exactly 48 pairs.
+  - MWNPC17-boots-and-shoes (MWNPC8a-shoes-over-boots a second time) is
+    gone.
+  - The rig's `_dead` mark and the palette door's selector reset are driven,
+    not read.
+
+MEASURED AGAIN with 17e's harness at 1,000: its clothing set and colours, a
+Breton man's 8 heads and 6 hairs, `seeds(1000, 77)`, and each role's own
+weighted cut.
+
+| | commoners | merchants | nobles | priests |
+|---|---|---|---|---|
+| distinct | 988 | 993 | 996 | 960 |
+| without the hint | 679 | 583 | 796 | 298 |
+
+Section 25's 987/997/999/966 were measured before F1 and F2.
+
+THE FOUR HOSTS (rule 17e).
+- The figures' fix and the race read are worldModes.js's and world.js's
+  (WIRED; the yards' race read unchanged).
+- The anchored word and the body's look ride every host's NPC lanes:
+  scenes/world.js, scenes/worldModes.js, scenes/dungeonContext.js and
+  scenes/exterior.js are WIRED through createPopulationLane.
+- The lanes that call `stand` themselves (the dungeon's and the encounter
+  pool's foes, the watch) pass no word: their people walk, and their bodies
+  are the twelve's alone, as a flat an origin places is (E1's law,
+  DISC29-E).
+
+NOT HERE.
+- Come Sail Away's crews keep their pictures: the vendored prefabs' people,
+  drawn by the pool as the mod lays them, with no look a lane could read.
+- Witches and necromancers dress as mages only where FACTION.TXT does not
+  count their faction supernatural (wardrobeOf turns those away first).
+  There is no FACTION.TXT here to say which.
+- A body that walks casts into no lo map.
+
+PROVEN.
+- `test/mwnpc16_bodyshadow.test.js` (9):
+  - 16a and 16b through render(), the CPU-skinned hair, a link that throws.
+  - 16d the anchored word and the reach asked first.
+  - 16f the door and the release driven.
+  - 16g the held faces.
+  - 16h the lo tier and the lane's word.
+  - 16i the unseen pose.
+- `test/mwnpc17_wardrobe.test.js` (6): 17b every garment's rung, 17c the
+  band, 17d the beasts and the memo, 17f every producer's hint.
+- `test/mwnpc18_decorfigures.test.js` (5): 18c through a real room and its
+  kept list, 18b the words read whole, 18d the race read, 18e the sweep.
+- Mutant records: `tools/mutants/mwnpc16.json` 41 and `mwnpc17.json` 26,
+  all dead; `mwnpc18.json` 16, 15 dead and one equivalent as recorded (the
+  figures' set let go at a take-down: memory, which no pin sees).

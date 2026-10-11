@@ -220,6 +220,10 @@ export function clothingTierOf(id) {
 /** MWNPC17: how many of a dye's nearest garments a person's `pick` chooses among - near enough that a red shirt is
  *  still red, wide enough that two red shirts are two shirts. */
 export const CLOTH_PICK_NEAREST = 3;
+/** AUDIT MWNPC16-18 C F2: and only those whose colour is within this of the nearest's - its distance times
+ *  CLOTH_PICK_BAND[0] plus CLOTH_PICK_BAND[1] (RGB units): on a thin rung (retail's extravagant and exquisite hold one
+ *  to three of a type) the three nearest were the whole rung, so a red dye drew a blue shirt as often as a red one. */
+export const CLOTH_PICK_BAND = Object.freeze([1.5, 32]);
 
 /** Resolve one DF garment against the CLOT records: BY TYPE, id-sorted,
  *  enchanted excluded - and on retail the id sort puts common_ ahead of
@@ -227,7 +231,8 @@ export const CLOTH_PICK_NEAREST = 3;
  *  right wardrobe for a derived outfit. Null-honest.
  *  MWNPC17: `tier` (0..3) a person's rung - the pool narrowed to its records (the nearest rung that has any, the lower
  *  first; a pool with no rung at all - a mod's ids - kept whole); `pick` (a uint) a person's choice - among the
- *  CLOTH_PICK_NEAREST nearest the dye where colours are measured, else among the pool. Neither, the resolution it
+ *  CLOTH_PICK_NEAREST nearest the dye that lie within CLOTH_PICK_BAND of the nearest, where colours are measured, else
+ *  among the pool. Neither, the resolution it
  *  always was: a player's garment, every peer's. */
 export function mwClothingRecord(clothes, name, { dye = null, colourOf = null, tier = null, pick = null } = {}) {
   const row = DF_CLOTHING_ROWS[name];
@@ -272,7 +277,10 @@ export function mwClothingRecord(clothes, name, { dye = null, colourOf = null, t
     if (picking && near.length) {
       // MWNPC17: the nearest few by colour, then the pool's own order for a tie - one of them the person's
       near.sort((a, b) => a.d - b.d || (a.c.id < b.c.id ? -1 : a.c.id > b.c.id ? 1 : 0));
-      const k = Math.min(CLOTH_PICK_NEAREST, near.length), chosen = near[pick % k];
+      const band = near[0].d * CLOTH_PICK_BAND[0] + CLOTH_PICK_BAND[1];
+      let k = Math.min(CLOTH_PICK_NEAREST, near.length);
+      while (k > 1 && near[k - 1].d > band) k--;   // AUDIT MWNPC16-18 C F2: the dye's colour, not merely the nearest few
+      const chosen = near[pick % k];
       return { record: chosen.c, row, note: `picked by dye (distance ${Math.round(chosen.d)}, ${pick % k + 1} of the ${k} nearest)` };
     }
     if (best) return { record: best, row, note: `resolved by dye (distance ${Math.round(bestD)})` };

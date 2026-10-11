@@ -7,11 +7,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { ShadowPass, DEPTH_FS, DEPTH_BB_FS } from '../src/render/shadowPass.js';
+import { ShadowPass, DEPTH_FS, DEPTH_BB_FS, SHADOW_TUNING } from '../src/render/shadowPass.js';
+import { Renderer } from '../src/render/renderer.js';
 import { SKIN_PALETTE_UNIT } from '../src/render/skinPalette.js';
 import { ortho, perspective, lookAt, multiply } from '../src/world/mat4.js';
 import { PeerBodies } from '../src/net/peerBodies.js';
-import { createNpcBodies } from '../src/characters/npcBodies.js';
+import { createNpcBodies, createPopulationLane } from '../src/characters/npcBodies.js';
 import { createFpArm } from '../src/combat/fpArm.js';
 import { fixtureBodyDeps, countingRenderer } from './fixtures/mw/bodyRig.mjs';
 
@@ -20,7 +21,7 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 const settle = async (n = 8) => { for (let i = 0; i < n; i++) await flush(); };
 
 /** A GL that records every call, and a pass whose programs say which shaders built them. */
-function pass() {
+function pass({ throwOn = null } = {}) {
   const calls = [];
   const gl = new Proxy({}, { get: (_, k) => {
     if (k === 'getProgramParameter' || k === 'getShaderParameter') return () => true;
@@ -31,13 +32,18 @@ function pass() {
     return (...a) => { calls.push([k, ...a]); };
   } });
   const names = { mesh: 'MESH', bb: 'BB', terrain: 'TERRAIN', char: 'CHAR', charSkin: 'SKIN' };
-  const build = (vs, fs) => ({ name: `${vs}/${fs === DEPTH_FS ? 'depth' : fs === DEPTH_BB_FS ? 'cut' : 'other'}` });
+  const build = (vs, fs) => {
+    if (vs === throwOn) throw new Error('link failed');   // AUDIT MWNPC16-18 N2: buildProgram throws on a failed link
+    return { name: `${vs}/${fs === DEPTH_FS ? 'depth' : fs === DEPTH_BB_FS ? 'cut' : 'other'}` };
+  };
   const sp = new ShadowPass(gl, { build, vs: names });
   const held = [];
   const f = { bindVao: (v) => calls.push(['bindVao', v]), textures: new Map(), isSpectral: () => false, holdSkin: (t) => held.push(t) };
   return { sp, gl, calls, f, held };
 }
 const VP = multiply(ortho(50, 50, -100, 100), lookAt([0, 50, 0], [0, 0, 0], [0, 0, -1]));   // a sun looking straight down on a 100 m square
+/** AUDIT MWNPC16-18 E2: a frame render() takes - a lamp 8 m about [0, 2, 0], night (no sun); `everyLight` a room drawn whole */
+const lampFrame = (f, lights = new Float32Array([0, 2, 0, 8]), everyLight = false) => ({ ...f, eye: [0, 1.6, 4], lightDir: [0, -1, 0], sunScale: 0, pointLights: lights, carried: null, cascadeScale: 1, everyLight, cut: false });
 const IDENTITY = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 const draws = (calls) => calls.filter((c) => c[0] === 'drawArrays').map((c) => [c[2], c[3]]);
 const usedProgram = (calls) => calls.filter((c) => c[0] === 'useProgram').map((c) => c[1].name);
@@ -54,16 +60,18 @@ const five = () => [
   { first: 120, count: 30 },
 ];
 
-test('MWNPC16a the shadow pass replays a skinned body through the skinned depth program off its own palette - a run of ranges one draw, a hidden range a break, a cut-out range its own draw through its picture\'s cut; the programs built in the pass\'s own time, the first frame a body casts (mutants: the skin turned away; the runs drawn one by one; the cut range in the run)', () => {
+test('MWNPC16a the shadow pass replays a skinned body through the skinned depth program off its own palette - a run of ranges one draw, a hidden range a break, a cut-out range its own draw through its picture\'s cut; the programs built in the pass\'s own time (render), the first frame a body casts, never at its record (AUDIT MWNPC16-18 E2: driven through render(), not by hand. Mutants: the skin turned away; the runs drawn one by one; the cut range in the run; render never builds them; a body never asks)', () => {
   const { sp, calls, f, held } = pass();
   assert.equal(sp.programs.body, undefined, 'nothing built before a body casts');
   const mesh = skinnedBody(five());
-  sp.recordCharacter(mesh, IDENTITY, [0, 1, 0, 1.2]);
+  sp.recordCharacter(mesh, IDENTITY, [0, 1, 0, 1.2], true);
   assert.equal(sp.count, 1, 'a skinned body is recorded - the door no longer turns it away');
   assert.equal(sp.records[0].bounded, true);
   assert.deepEqual([...sp.records[0].sphere], [0, 1, 0, Math.fround(1.2)], 'under the sphere it was handed (its posed box)');
   assert.equal(sp.records[0].dynamic, true, 'a body is never still');
-  sp._ensureBodyPrograms();
+  assert.equal(sp.programs.body, undefined, 'not at the record - inside the world pass, behind the renderer\'s back');
+  sp.render(lampFrame(f));   // the pass's own GL time: built before its first replay
+  held.length = 0;   // (the lamp's own faces drew it)
   assert.equal(sp.programs.body.p.name, 'SKIN/depth', 'the world\'s skinned VS over the plain depth');
   assert.equal(sp.programs.bodyCut.p.name, 'SKIN/cut', 'and over the flats\' half-alpha cut');
   assert.equal(sp.programs.charCut.p.name, 'CHAR/cut');
@@ -81,14 +89,14 @@ test('MWNPC16a the shadow pass replays a skinned body through the skinned depth 
   assert.ok(calls.some((c) => c[0] === 'bindTexture' && c[2]?.hair === 1), 'the hair\'s own picture for its cut');
   // nothing hidden and nothing cut: the whole body in one draw
   const one = pass();
-  one.sp.recordCharacter(skinnedBody([{ first: 0, count: 50 }, { first: 50, count: 40 }, { first: 90, count: 60 }]), IDENTITY, [0, 1, 0, 1.2]);
-  one.sp._ensureBodyPrograms();
+  one.sp.recordCharacter(skinnedBody([{ first: 0, count: 50 }, { first: 50, count: 40 }, { first: 90, count: 60 }]), IDENTITY, [0, 1, 0, 1.2], true);
+  one.sp.render(lampFrame(one.f));
   one.calls.length = 0;
   one.sp.replay(one.f, VP, null);
   assert.deepEqual(draws(one.calls), [[0, 150]], 'three pieces end to end: one depth draw');
 });
 
-test('MWNPC16b a body let go casts nothing - its palette deleted or its mesh dead since the record; a body out of the replay\'s frustum is culled by its sphere; an unskinned rig keeps CHAR_VS (mutants: the palette test gone; the sphere ignored)', () => {
+test('MWNPC16b a body let go casts nothing - its palette deleted or its mesh dead since the record; a body out of the replay\'s frustum is culled by its sphere; an unskinned rig keeps CHAR_VS - and a CPU-skinned body\'s cut-out hair casts through its picture\'s cut, never as a solid card (AUDIT MWNPC16-18 A1 / B F3: the cut program was built only for a skinned body. Mutants: the palette test gone; the sphere ignored; a cut range never asks)', () => {
   const { sp, calls, f } = pass();
   sp.recordCharacter(skinnedBody(five(), { tex: null }), IDENTITY, [0, 1, 0, 1.2]);
   const dead = skinnedBody(five()); dead._dead = true;
@@ -106,6 +114,24 @@ test('MWNPC16b a body let go casts nothing - its palette deleted or its mesh dea
   assert.deepEqual(draws(rig.calls), [[0, 36]]);
   assert.deepEqual(rig.held, [], 'no palette asked for');
   assert.equal(rig.sp.programs.body, undefined, 'and no skinned program built for it');
+  // ?gpuskin=off, or a layout the shader refused: the packed body, its hair a cut-out range
+  const cpu = pass();
+  cpu.sp.recordCharacter({ vao: { packed: 1 }, count: 90, ranges: [{ first: 0, count: 30 }, { first: 30, count: 30, alphaCut: 0.5, tex: { hair: 1 } }, { first: 60, count: 30 }] }, IDENTITY, [0, 1, 0, 1.2], true);
+  cpu.sp.render(lampFrame(cpu.f));
+  assert.equal(cpu.sp.programs.charCut?.p.name, 'CHAR/cut', 'the plain rig\'s cut, built for its hair');
+  cpu.calls.length = 0;
+  cpu.sp.replay(cpu.f, VP, null);
+  assert.deepEqual(draws(cpu.calls), [[0, 30], [30, 30], [60, 30]], 'the hair its own draw');
+  assert.deepEqual(usedProgram(cpu.calls), ['CHAR/depth', 'CHAR/cut', 'CHAR/depth'], 'through its picture\'s cut');
+  // AUDIT MWNPC16-18 N2: a body program that will not link never escapes render() - the frame goes on, the body casts nothing
+  const bad = pass({ throwOn: 'SKIN' });
+  bad.sp.recordCharacter(skinnedBody(five()), IDENTITY, [0, 1, 0, 1.2], true);
+  const warn = console.warn; console.warn = () => {};
+  try { bad.sp.render(lampFrame(bad.f)); } finally { console.warn = warn; }
+  assert.equal(bad.sp.programs.body, null, 'none made');
+  assert.equal(bad.sp.programs.charCut?.p.name, 'CHAR/cut', 'the others built as ever');
+  bad.calls.length = 0;
+  assert.equal(bad.sp.replay(bad.f, VP, null), 0, 'and the body casts nothing');
 });
 
 test('MWNPC16c a cast-only flat casts nothing - not drawn into a map, never a mover that redraws a lantern, never in a cache\'s signature - while its neighbour casts as ever (mutants: castOnly dropped from the replay; from the movers)', () => {
@@ -133,7 +159,7 @@ test('MWNPC16d the rig: drawThird records its body for the maps where it is aske
   let reach = true;
   const r = countingRenderer();
   const quads = [];
-  const renderer = { ...r, drawCharacterSpriteQuad: (_t, at, halfW, halfH) => quads.push({ at: [...at], halfW, halfH }), recordShadowBody: (mesh, model, sphere) => cast.push({ mesh, model: [...model], sphere: [...sphere] }), shadowReachSphere: () => reach };
+  const renderer = { ...r, drawCharacterSpriteQuad: (_t, at, halfW, halfH) => quads.push({ at: [...at], halfW, halfH }), recordShadowBody: (mesh, model, sphere, anchored) => cast.push({ mesh, model: [...model], sphere: [...sphere], anchored }), shadowReachSphere: () => reach };
   const arm = createFpArm();
   arm.attach(renderer, () => ({ pos: [0, 0, 0], yaw: 0, pitch: 0, move: { forward: 0, speed: 0, grounded: true } }));
   assert.equal((await arm.build({ race: 'fprace', deps: fixtureBodyDeps() })).ok, true);
@@ -158,21 +184,41 @@ test('MWNPC16d the rig: drawThird records its body for the maps where it is aske
   assert.equal(cast.length, 2);
   assert.deepEqual(cast[1].model, c.model, 'out of the view: the same place, the same model');
   assert.deepEqual(cast[1].sphere, c.sphere, 'and the same sphere');
+  assert.equal(cast[1].anchored, false);
+  assert.equal(arm.castThird({ feet: [2, 0, -1], yaw: 0.7, anchored: true }), true);
+  assert.equal(cast[2].anchored, true, 'one that never walks says so (the lo tier\'s lamps take it)');
+  assert.equal(arm.drawThird({}, { ...at, cast: true, anchored: true }), true);
+  assert.equal(cast[3].anchored, true, 'drawn as well');
+  cast.length = 2;
   reach = false;
   assert.equal(arm.castThird({ feet: [2, 0, -1], yaw: 0.7 }), false, 'past every map\'s reach: not recorded');
   assert.equal(cast.length, 2);
+  // AUDIT MWNPC16-18 N3: asked first about its feet, in a sphere that holds its box's wherever it turns - the exact one
+  // only for a body that may reach
+  const asked = [];
+  renderer.shadowReachSphere = (x, y, z, rad) => { asked.push([x, y, z, rad]); return false; };
+  assert.equal(arm.castThird({ feet: [2, 0, -1], yaw: 0.7 }), false);
+  assert.equal(asked.length, 1, 'one question, about its feet');
+  assert.deepEqual(asked[0].slice(0, 3), [2, 0, -1]);
+  assert.ok(asked[0][3] >= Math.hypot(c.sphere[0] - 2, c.sphere[1], c.sphere[2] + 1) + c.sphere[3] - 1e-6, 'and wide enough to hold the box\'s own sphere');
+  asked.length = 0;
+  renderer.shadowReachSphere = (x, y, z, rad) => { asked.push([x, y, z, rad]); return y === 0; };   // the feet's sphere reaches, the box's does not
+  assert.equal(arm.castThird({ feet: [2, 0, -1], yaw: 0.7 }), false, 'the box\'s own sphere asked last, and it decides');
+  assert.equal(asked.length, 2);
+  assert.equal(cast.length, 2);
+  renderer.shadowReachSphere = () => reach;
   arm.setViewMode('first');
   assert.equal(arm.castThird({ feet: [2, 0, -1], yaw: 0.7 }), false, 'no third body standing: nothing');
 });
 
 /** a rig that records how it was drawn and cast */
 const recording = (rigs) => () => {
-  const r = { mode: 'first', draws: [], casts: [], skinned: false,
+  const r = { mode: 'first', draws: [], anchors: [], casts: [], skinned: false,
     attach() {}, async build() { await flush(); return { ok: true }; },
     canThirdPerson: () => true, raceHeightScale: () => 1, setViewMode(m) { r.mode = m; return true; },
     thirdActive: () => r.mode === 'third' && r.skinned,
     update(dt, opts) { if (opts?.pose !== false) r.skinned = true; },
-    drawThird(_c, o) { r.draws.push(o.cast); return r.thirdActive(); },
+    drawThird(_c, o) { r.draws.push(o.cast); r.anchors.push(o.anchored); return r.thirdActive(); },
     castThird(o) { r.casts.push(o); return true; },
     unload() {}, setSheathed() {}, revive() {},
   };
@@ -195,7 +241,7 @@ test('MWNPC16e PeerBodies asks the cast of a lane that casts: a seen body drawn 
   assert.equal(front.casts.length, 0, 'and not cast a second time');
   assert.equal(back.draws.length, 0, 'behind the eye: not drawn');
   assert.ok(back.casts.length > 0, 'but cast where it stands');
-  assert.deepEqual(back.casts.at(-1), { feet: [0, 0, 5], yaw: 0, grow: 1 });
+  assert.deepEqual(back.casts.at(-1), { feet: [0, 0, 5], yaw: 0, grow: 1, anchored: false });
   const peers = await run(false);
   assert.ok(peers[0].draws.every((c) => c === false), 'a peer\'s body: no cast asked');
   assert.equal(peers[1].casts.length, 0, 'nor out of the view');
@@ -220,15 +266,156 @@ test('MWNPC16e PeerBodies asks the cast of a lane that casts: a seen body drawn 
   lane.destroy();
 });
 
-test('MWNPC16f the wiring, by source: the renderer hands the pass the skinned VS and its palette door, records a body for the maps alone, and keeps the unit\'s word; the rig marks a released mesh dead', () => {
+test('MWNPC16f the wiring: the renderer hands the pass the skinned VS and its palette door, records a body for the maps alone (a body\'s record, and whether it never walks), and its door binds the palette on its unit even when the selector\'s word says the unit is selected - the pass selects units raw - keeping the unit\'s word; the rig marks a released mesh dead (AUDIT MWNPC16-18 E7: the door and the release driven, not read. Mutants: the selector not forgotten; the unit\'s word not kept; the release not marked)', async () => {
   const r = rd('src/render/renderer.js');
-  assert.match(r, /recordShadowBody\(mesh, modelMatrix, sphere\) \{ if \(this\._casting && mesh\?\.vao\) this\._shadows\.recordCharacter\(mesh, modelMatrix, sphere\); \}/);
+  assert.match(r, /recordShadowBody\(mesh, modelMatrix, sphere, anchored = false\) \{ if \(this\._casting && mesh\?\.vao\) this\._shadows\.recordCharacter\(mesh, modelMatrix, sphere, true, anchored\); \}/);
   assert.match(r, /holdSkin: this\._holdSkinFn,/, 'the palette door in the frame the pass is handed');
-  const hold = r.slice(r.indexOf('  _holdSkin(tex) {'), r.indexOf('  _holdSkin(tex) {') + 500);
-  assert.match(hold, /this\._activeUnit = null;\n    this\._activeTexture\(gl\.TEXTURE0 \+ SKIN_PALETTE_UNIT\);/, 'the selector forgotten first - the pass selects its units raw');
-  assert.match(hold, /this\._skinUnitHolds = want;/, 'the unit\'s word kept, so a palette let go is never left on it');
   assert.match(r, /shadowReachSphere\(x, y, z, r\) \{ return this\._casting && this\._shadows\.reachesSphere\(x, y, z, r\); \}/);
-  const arm = rd('src/combat/fpArm.js');
-  assert.match(arm, /if \(m\.skin\) renderer\.releaseCharacterSkin\(m\);[^\n]*\n {6}m\._dead = true;/, 'a released mesh casts nothing from a record made before it went');
+  // the door, on a real renderer over a recording GL
+  const glCalls = [];
+  let ids = 0;
+  const consts = { TEXTURE0: 1000, TEXTURE_2D: 3553 };
+  const gl = new Proxy({}, { get(_, k) {
+    if (k in consts) return consts[k];
+    if (k === 'getProgramParameter' || k === 'getShaderParameter') return () => true;
+    if (k === 'getUniformLocation') return (_p, n) => n;
+    if (k === 'getAttribLocation') return () => 0;
+    if (typeof k === 'string' && k.startsWith('create')) return () => ({ id: ++ids });
+    if (k === 'getParameter') return () => new Float32Array(4);
+    if (typeof k === 'string' && k.toUpperCase() === k) return 1;
+    return (...a) => { glCalls.push([k, ...a]); };
+  } });
+  const ren = new Renderer({ getContext: () => gl, clientWidth: 320, clientHeight: 200, width: 320, height: 200 });
+  const palette = { id: 'palette' };
+  ren._activeTexture(1000 + SKIN_PALETTE_UNIT);   // the renderer's own word: the palette unit is selected...
+  ren._skinUnitHolds = null;
+  glCalls.length = 0;   // ...and the pass then selected unit 0 raw, behind it (gl.activeTexture(gl.TEXTURE0))
+  ren._holdSkin(palette);
+  const seq = glCalls.filter((c) => c[0] === 'activeTexture' || c[0] === 'bindTexture');
+  assert.deepEqual(seq, [['activeTexture', 1000 + SKIN_PALETTE_UNIT], ['bindTexture', 3553, palette], ['activeTexture', 1000]], 'the unit selected again, whatever the word said, its palette bound, unit 0 back');
+  assert.equal(ren._skinUnitHolds, palette, 'the unit\'s word kept');
+  glCalls.length = 0;
+  ren._holdSkin(palette);
+  assert.deepEqual(glCalls.filter((c) => c[0] === 'bindTexture'), [], 'held already: nothing bound twice');
+  // the release, on the fixture body
+  const cast = [];
+  const counting = countingRenderer();
+  const renderer = { ...counting, gl: { deleteVertexArray() {}, deleteBuffer() {}, deleteTexture() {} }, releaseCharacterTexture() {}, releaseParticleEffect() {}, recordShadowBody: (mesh) => cast.push(mesh), shadowReachSphere: () => true };
+  const arm = createFpArm();
+  arm.attach(renderer, () => ({ pos: [0, 0, 0], yaw: 0, pitch: 0, move: { forward: 0, speed: 0, grounded: true } }));
+  assert.equal((await arm.build({ race: 'fprace', deps: fixtureBodyDeps() })).ok, true);
+  arm.setViewMode('third');
+  arm.update(1 / 60, { pose: true });
+  assert.equal(arm.castThird({ feet: [0, 0, 0], yaw: 0 }), true);
+  const mesh = cast[0];
+  assert.ok(mesh && !mesh._dead, 'standing: alive');
+  arm.unload();
+  assert.equal(mesh._dead, true, 'let go: a record made before it went casts nothing');
   assert.match(rd('src/characters/npcBodies.js'), /gate: BODY_BUILD_GATE, casts: true,/);
+});
+
+test('MWNPC16g A LAMP WHOSE ONLY MOVERS ARE BODIES THAT DID NOT CHANGE KEEPS THE FACES IT DREW - a body out of the view is never posed, and it held its lamps\' six dynamic faces redrawn every frame to draw it as it was; posed, turned, a range hidden, gone, or with a mover beside it, the lamp draws again (AUDIT MWNPC16-18 A2: a still body cost 10 face operations a frame where its flat cost none. Mutants: the look blind to the pose; to the matrix; to a hidden range; held through a mover; the generation never bumped)', () => {
+  SHADOW_TUNING.override = true;   // Steady shadows, the default: every lamp with a mover redraws every frame
+  try {
+    const run = (frames, rec) => {
+      const { sp, f } = pass();
+      const wall = { vao: { w: 1 }, subMeshes: [{ startIndex: 0, primitiveCount: 2 }], bounds: null };
+      const per = [];
+      for (let i = 0; i < frames; i++) { sp.recordMesh(wall, IDENTITY, null, 0); rec(sp, i); sp.render(lampFrame(f)); per.push(sp.stats.dynFaces); sp.discard(); }
+      return per;
+    };
+    const body = () => skinnedBody([{ first: 0, count: 90 }]);
+    const still = body();
+    assert.deepEqual(run(6, (sp) => sp.recordCharacter(still, IDENTITY, [1, 1, 0, 1], true)), [6, 0, 0, 0, 0, 0], 'drawn once, then held');
+    const posing = body();
+    assert.deepEqual(run(4, (sp) => { posing._poseGen = (posing._poseGen ?? 0) + 1; sp.recordCharacter(posing, IDENTITY, [1, 1, 0, 1], true); }), [6, 6, 6, 6], 'a new pose every frame: drawn every frame');
+    const turning = body();
+    assert.deepEqual(run(4, (sp, i) => { const m = new Float32Array(IDENTITY); m[0] = Math.cos(i); m[2] = Math.sin(i); sp.recordCharacter(turning, m, [1, 1, 0, 1], true); }), [6, 6, 6, 6], 'turned to the eye: drawn');
+    const sheathing = body();
+    assert.deepEqual(run(4, (sp, i) => { sheathing.ranges[0].hidden = i === 2; sp.recordCharacter(sheathing, IDENTITY, [1, 1, 0, 1], true); }), [6, 0, 6, 6], 'a range hidden, and shown again: drawn');
+    const leaving = body();
+    assert.deepEqual(run(4, (sp, i) => sp.recordCharacter(leaving, IDENTITY, i < 2 ? [1, 1, 0, 1] : [400, 1, 0, 1], true)), [6, 0, 0, 0], 'gone out of reach: the cache again (no dynamic draw)');
+    const crowd = body();
+    const walker = { vao: { walker: 1 }, archive: 182, record: 1, size: { w: 1, h: 1.8 }, origin: [0, 0, 0], bounds: null, indexCount: 6, _dyn: true };
+    assert.deepEqual(run(5, (sp, i) => { sp.recordCharacter(crowd, IDENTITY, [1, 1, 0, 1], true); if (i < 2) sp.recordBillboards([walker], new Float32Array(4), new Float32Array([1, 0, 0]), new Float32Array([0, 1, 0])); }), [6, 6, 6, 0, 0], 'a walker beside it: drawn while it walks, and once more to take it out');
+    // beside a swaying wood (off Steady shadows, the sway's cadence is every fourth frame): a mover's cadence, as before
+    SHADOW_TUNING.override = false;
+    const swaying = body();
+    const tree = { vao: { tree: 1 }, archive: 504, record: 1, size: { w: 2, h: 4 }, origin: [0, 0, 1], bounds: new Float32Array([0, 0, 0, 2.3]), indexCount: 6, sway: 1 };
+    const wind = new Float32Array([0, 5, 12.5, 0.4]);   // shadowreach's blowing wind: the tree leans past the floor
+    const swayRun = run(8, (sp) => { swaying._poseGen = (swaying._poseGen ?? 0) + 1; sp.recordCharacter(swaying, IDENTITY, [1, 1, 0, 1], true); sp.recordBillboards([tree], wind, new Float32Array([1, 0, 0]), new Float32Array([0, 1, 0])); });
+    assert.ok(swayRun.slice(1).every((n) => n === 6), `posed beside a swaying tree: drawn every frame (${swayRun})`);
+    SHADOW_TUNING.override = true;
+    const rig = { vao: { voxel: 1 }, count: 36, bounds: null };
+    assert.deepEqual(run(3, (sp) => sp.recordCharacter(rig, IDENTITY, [1, 1, 0, 1])), [6, 6, 6], 'a voxel rig (EL7\'s) is the mover it always was');
+  } finally { SHADOW_TUNING.override = undefined; }
+  // the renderer's every pose upload is a new generation
+  const r = rd('src/render/renderer.js');
+  for (const fn of ['  updateSkinPalette(mesh, data) {', '  updateSkinStream(mesh, offset, data) {', '  updateCharacterMesh(mesh, packed) {']) {
+    const at = r.indexOf(fn);
+    assert.ok(at > 0 && /mesh\._poseGen = \(mesh\._poseGen \?\? 0\) \+ 1;/.test(r.slice(at, r.indexOf('\n  }\n', at))), `${fn.trim()} bumps the pose's generation`);
+  }
+});
+
+test('MWNPC16h THE LO TIER\'S LAMPS TAKE A BODY THAT NEVER WALKS - past the twelve full maps a room drawn whole casts from its lo maps, and a standing person in a body cast into none of them (the body a mover, its flat cast-only); one whose flat has no origin now casts there, by its id and its place (a new pose is no rebuild, a move is); a body that walks still does not (AUDIT MWNPC16-18 A3 / B F1. Mutants: the lo replay blind to it; the lo signature blind to it; the lane\'s word dropped; a flat with an origin taken)', async () => {
+  const { sp, calls, f } = pass();
+  const anchored = skinnedBody([{ first: 0, count: 30 }]), walking = skinnedBody([{ first: 30, count: 30 }]);
+  sp.recordCharacter(anchored, IDENTITY, [0, 0.9, 0, 1], true, true);
+  sp.recordCharacter(walking, IDENTITY, [0, 0.9, 0, 1], true, false);
+  sp.render(lampFrame(f));
+  const pos = [2, 1, 0], vp = multiply(perspective(Math.PI / 2, 1, 0.05, 20), lookAt(pos, [0, 1, 0], [0, 1, 0]));
+  calls.length = 0;
+  assert.equal(sp.replay(f, vp, pos, false, 0, 0, 3), 1, 'the lo tier (REPLAY_LO) draws the one that never walks');
+  assert.deepEqual(draws(calls), [[0, 30]]);
+  calls.length = 0;
+  assert.equal(sp.replay(f, vp, pos, false, 0, 0, 1), 0, 'the static replay neither - a body is never baked into a full map\'s cache');
+  // the lo signature: by its id and place
+  const sig = () => [...sp._staticSignature(pos, 8)];
+  const with1 = sig();
+  sp.discard();
+  sp.recordCharacter(walking, IDENTITY, [0, 0.9, 0, 1], true, false);
+  assert.notDeepEqual(sig(), with1, 'its coming and going rebuilds the lo map');
+  sp.discard();
+  anchored._poseGen = 99;
+  sp.recordCharacter(anchored, IDENTITY, [0, 0.9, 0, 1], true, true);
+  sp.recordCharacter(walking, IDENTITY, [0, 0.9, 0, 1], true, false);
+  assert.deepEqual(sig(), with1, 'a new pose: no rebuild (the lo map holds the pose it was drawn in, as a flat animating in place)');
+  sp.discard();
+  const moved = new Float32Array(IDENTITY); moved[12] = 1;
+  sp.recordCharacter(anchored, moved, [1, 0.9, 0, 1], true, true);
+  sp.recordCharacter(walking, IDENTITY, [0, 0.9, 0, 1], true, false);
+  assert.notDeepEqual(sig(), with1, 'moved: rebuilt');
+  // the word, from the lane: a flat with no origin (its centre in its vertices, never moved by them) never walks
+  const rigs = [];
+  const lane = createPopulationLane({ laneName: 'people', renderer: {}, want: () => true, make: () => createNpcBodies({ renderer: {}, createRig: recording(rigs), now: () => 1000 }) });
+  const look = { race: 'Breton', gender: 'male', faceIndex: 0, items: [] };
+  const flats = { still: { origin: null }, walker: { origin: [0, 0, 0] }, moved: { origin: null, _dyn: true } };
+  for (let i = 0; i < 4; i++) {
+    lane.frame();
+    lane.offer({ id: 'still', look, feet: [0, 0, -4] }, flats.still);
+    lane.offer({ id: 'walker', look, feet: [1, 0, -4] }, flats.walker);
+    lane.offer({ id: 'moved', look, feet: [-1, 0, -4] }, flats.moved);
+    await settle();
+    lane.draw({}, PROJ, VIEW, [0, 1.6, 0], 1 / 60);
+  }
+  assert.deepEqual(rigs.map((r) => r.anchors.at(-1)), [true, false, false], 'the still one\'s body never walks; an origin\'s, or a batch its vertices move, may');
+  lane.destroy();
+});
+
+test('MWNPC16i AN UNSEEN BODY CASTS ONLY THE POSE OF WHO IT STANDS FOR - a spare taken out of the view wears the last wearer\'s skin until it is seen, and a death out of the view is not yet posed: neither casts until posed for its actor (AUDIT MWNPC16-18 B F2: a living skeleton cast its spare\'s corpse. Mutants: the posed test dropped; a flip left posed)', async () => {
+  const rigs = [];
+  const pb = new PeerBodies({ renderer: {}, createRig: recording(rigs), buildOpts: () => ({}), now: () => 1000, casts: true });
+  const seen = (z) => [peer('a', z)];
+  for (let i = 0; i < 4; i++) { pb.sync(seen(5), toScene, 1 / 60, [0, 0, 0]); await settle(); pb.draw({}, { proj: PROJ, view: VIEW, eye: [0, 1.6, 0] }); }
+  const [a] = rigs;
+  assert.ok(a.casts.length > 0, 'posed at its build, out of the view: cast');
+  const b = pb._bodies.get('a');
+  b.posedAt = 0;   // as a spare is taken (its record new), or a life flips (_react)
+  a.casts.length = 0;
+  pb.draw({}, { proj: PROJ, view: VIEW, eye: [0, 1.6, 0] });
+  assert.equal(a.casts.length, 0, 'not posed for its actor: no cast');
+  const dead = { ...peer('a', 5), shown: { ...peer('a', 5).shown, dd: 1 } };
+  b.posedAt = 7;
+  pb._react(b, dead.shown);
+  assert.equal(b.posedAt, 0, 'a death flips it unposed');
 });

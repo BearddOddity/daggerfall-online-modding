@@ -146,8 +146,8 @@
  {
   "name": "MWNPC5-lane-drops-fxof",
   "file": "src/net/peerBodies.js",
-  "old": ", fx: this._cam?.fxOf ? this._cam.fxOf(b.id) : null, cast })",
-  "new": ", fx: null, cast })",
+  "old": ", fx: this._cam?.fxOf ? this._cam.fxOf(b.id) : null, cast, anchored })",
+  "new": ", fx: null, cast, anchored })",
   "tests": [
    "test/mwnpc5_bodyfx.test.js"
   ]

@@ -10,9 +10,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   dressPerson, WARDROBE_ROLES, ROLE_NAMES, ARMOR_KITS, armorKit, npcHint, npcHintOf, npcKeyOf, npcGarmentPick, withNpcPicks, npcFaceOf,
-  wornByRole, weighted, MENS, WOMENS,
+  wornByRole, weighted, MENS, WOMENS, beastWorn, WARDROBE_BEAST_RACES,
 } from '../src/characters/wardrobe.js';
-import { mwClothingRecord, clothingTierOf, CLOTH_PICK_NEAREST, CLOTHING_NAME, MW_CLOTHING_TYPE, dfWornEquipment, composeWornArmor, ARMO_PART } from '../src/formats/mwItemMap.js';
+import { foeLook, rosterLook } from '../src/characters/foeBodies.js';
+import { folkLookOf } from '../src/characters/folkBodies.js';
+import { residentLook } from '../src/characters/rosterBodies.js';
+import { personLook, figureLook } from '../src/characters/peopleBodies.js';
+import { createEquipTable } from '../src/characters/equipTable.js';
+import { SOCIAL_GROUPS, GUILD_GROUPS, FACTION_TYPES } from '../src/formats/factionFile.js';
+import { mwClothingRecord, clothingTierOf, CLOTH_PICK_NEAREST, CLOTH_PICK_BAND, CLOTHING_NAME, MW_CLOTHING_TYPE, dfWornEquipment, composeWornArmor, ARMO_PART } from '../src/formats/mwItemMap.js';
 import { playerBodyRows } from '../src/formats/mwFirstPerson.js';
 import { peerBuildOpts, peerBodyKey } from '../src/net/peerBodies.js';
 import { peerStubEntity } from '../src/net/remotePlayers.js';
@@ -23,6 +29,8 @@ import { ARMOR_MATERIAL } from '../src/systems/armorMaterials.js';
 const rd = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const seeds = (n, salt = 0) => Array.from({ length: n }, (_, i) => ((i + 1) * 2654435761 + salt) >>> 0);
 const slotOf = (look, slot) => look.items.filter((it) => it.equipSlot === slot);
+/** A role's rungs - the tiers it ever draws (its hint's `lo`..`hi`). */
+const rungsOf = (role) => { const t = WARDROBE_ROLES[role].tiers; return [t.findIndex((w) => w > 0), t.length - 1 - [...t].reverse().findIndex((w) => w > 0)]; };
 
 test('MWNPC17a dressPerson: one seed one person, every role dressed by its own table - its cut, its garments and dyes, a cloak at its odds; the cut a sprite shows honoured; robes cover the legs; armour\'s boots are the feet (mutants: the cut ignored; legs under a robe; shoes beside boots)', () => {
   for (const role of ROLE_NAMES) {
@@ -37,7 +45,7 @@ test('MWNPC17a dressPerson: one seed one person, every role dressed by its own t
         assert.equal(legs.length, d.cut === 'robe' ? 0 : 1, 'a robe hides the legs - nothing under it');
         assert.equal(feet.length, 1, 'one pair on the feet - the kit\'s boots or the cut\'s shoes, never both');
         assert.ok(d.tier >= 0 && d.tier <= 3 && WARDROBE_ROLES[role].tiers[d.tier] > 0, 'a rung the role climbs to');
-        assert.deepEqual(d.npc, npcHint(s, d.tier));
+        assert.deepEqual(d.npc, npcHint(s, d.tier, ...rungsOf(role)), 'its seed, its rung and its role\'s rungs');
       }
     }
   }
@@ -53,10 +61,22 @@ test('MWNPC17a dressPerson: one seed one person, every role dressed by its own t
   assert.ok(cloaks('traveller') > 0.45 && cloaks('commoner') < 0.2, `a traveller's cloak (${cloaks('traveller')}) and the street's rare one (${cloaks('commoner')})`);
 });
 
-test('MWNPC17b who wears what: a noble never on the common rung and a commoner hardly ever past expensive; a priest in robes, a scholar mostly; a knight\'s whole plate of one metal by his rank, a fighter\'s pieces mismatched and no chain Morrowind cannot draw, a rogue in leather alone; the street and the court never armoured (mutants: one metal for a fighter; a chain helm; a noble in common clothes)', () => {
+test('MWNPC17b who wears what: a noble never on the common rung and a commoner never past expensive - the person and EVERY GARMENT (a garment strays a rung from its wearer\'s, never past the role\'s own); a priest in robes, a scholar mostly; a knight\'s whole plate of one metal by his rank, a fighter\'s pieces mismatched and no chain Morrowind cannot draw, a rogue in leather alone; the street and the court never armoured (AUDIT MWNPC16-18 C F1: a noble\'s top fell to common one time in eleven, a commoner\'s garment to extravagant one in a hundred. Mutants: one metal for a fighter; a chain helm; a noble in common clothes; the stray unbounded; the role\'s rungs unread)', () => {
   const many = (role, gender = 'male', n = 300) => seeds(n, role.charCodeAt(0)).map((s) => dressPerson({ role, gender, seed: s }));
   assert.ok(many('noble').every((d) => d.tier >= 1), 'a noble: expensive and up');
   assert.ok(many('commoner').every((d) => d.tier <= 1), 'a commoner: common, now and then expensive');
+  // every garment, as the build picks it (peerBuildOpts - each its rung)
+  const rungs = (role, gender) => many(role, gender, 600).flatMap((d) => peerBuildOpts({ race: 'Breton', gender, faceIndex: 0, items: d.items, npc: d.npc }).armor.filter((p) => p.kind === 'clothing').map((p) => p.tier));
+  for (const gender of ['male', 'female']) {
+    const noble = rungs('noble', gender), common = rungs('commoner', gender);
+    assert.ok(noble.every((t) => t >= 1), `a noble's garments never common (${gender})`);
+    assert.ok(new Set(noble).size === 3, 'and still strays among the noble rungs');
+    assert.ok(common.every((t) => t <= 1), `a commoner's never past expensive (${gender})`);
+    assert.ok(common.includes(1), 'a commoner\'s good coat now and then');
+  }
+  // a hint whose role names no rungs (a foe's, the watch's: npcHint(seed, 0)) strays over the whole ladder's bottom
+  assert.deepEqual(npcHint(5, 0), { seed: 5, tier: 0, lo: 0, hi: 3 });
+  assert.deepEqual(npcHint(5, 2, 3, 1), { seed: 5, tier: 2, lo: 2, hi: 2 }, 'a range that leaves out its own tier is widened to it');
   assert.ok(many('priest').filter((d) => d.cut === 'robe').length > 220, 'a priest in robes most of all');
   for (const role of ['commoner', 'tradesman', 'traveller', 'scholar', 'merchant', 'noble', 'priest', 'mage']) assert.ok(many(role).every((d) => !d.items.some((it) => it.group === 'Armor')), `${role}: no armour`);
   for (const d of many('knight')) {
@@ -123,16 +143,24 @@ test('MWNPC17c the item map: a person\'s rung narrows the pool (the nearest rung
   const modded = [{ id: 'tm_shirt_a', type: MW_CLOTHING_TYPE.Shirt, model: 'x' }, { id: 'tm_shirt_b', type: MW_CLOTHING_TYPE.Shirt, model: 'y' }];
   assert.equal(mwClothingRecord(modded, 'Short Shirt', { tier: 2, pick: 1 }).record.id, 'tm_shirt_b', 'ids with no rung: the pool whole');
   assert.ok(CLOTHING_NAME[MENS.priestRobes] === 'Priest Robes' && CLOTHING_NAME[WOMENS.eveningGown] === 'Evening Gown', 'the wardrobe names Daggerfall\'s own templates');
+  // AUDIT MWNPC16-18 C F2: ON A THIN RUNG THE DYE STILL CHOOSES - two extravagant shirts, one red and one blue: a red dye
+  // wears the red one whatever the pick (the three nearest were the whole rung), while two reds are both worn
+  const rich = [{ id: 'extravagant_shirt_01', type: MW_CLOTHING_TYPE.Shirt, model: 'a' }, { id: 'extravagant_shirt_02', type: MW_CLOTHING_TYPE.Shirt, model: 'b' }, { id: 'extravagant_shirt_03', type: MW_CLOTHING_TYPE.Shirt, model: 'c' }];
+  const hue = { extravagant_shirt_01: [200, 40, 40], extravagant_shirt_02: [40, 40, 200], extravagant_shirt_03: [185, 50, 45] };
+  const worn = new Set();
+  for (let p = 0; p < 40; p++) worn.add(mwClothingRecord(rich, 'Short Shirt', { dye: 2, colourOf: (c) => hue[c.id], tier: 2, pick: p }).record.id);
+  assert.deepEqual([...worn].sort(), ['extravagant_shirt_01', 'extravagant_shirt_03'], 'the reds, both - never the blue');
+  assert.deepEqual(CLOTH_PICK_BAND, [1.5, 32]);
   // and the composer hands a garment's rung and pick to the resolver - the worn body's own path
   const chest = ARMO_PART.findIndex((r) => r.name === 'cuirass');   // a shirt's part is the cuirass slot's (PRT_Cuirass)
-  const worn = C.filter((c) => c.type === MW_CLOTHING_TYPE.Shirt).map((c) => ({ ...c, parts: [{ part: chest, male: `b_${c.id}` }] }));
-  const bodyPool = worn.map((c) => ({ id: `b_${c.id}`, model: `${c.id}.nif` }));
-  const put = (extra) => composeWornArmor({ pieces: [{ kind: 'clothing', templateIndex: MENS.shortShirts[0], name: 'Short Shirt', dye: 2, ...extra }], armors: [], clothes: worn, bodyPool, female: false, colourOf }).adds[0].recordId;
+  const shirts = C.filter((c) => c.type === MW_CLOTHING_TYPE.Shirt).map((c) => ({ ...c, parts: [{ part: chest, male: `b_${c.id}` }] }));
+  const bodyPool = shirts.map((c) => ({ id: `b_${c.id}`, model: `${c.id}.nif` }));
+  const put = (extra) => composeWornArmor({ pieces: [{ kind: 'clothing', templateIndex: MENS.shortShirts[0], name: 'Short Shirt', dye: 2, ...extra }], armors: [], clothes: shirts, bodyPool, female: false, colourOf }).adds[0].recordId;
   for (let t = 0; t < 4; t++) assert.equal(clothingTierOf(put({ tier: t, pick: 1 }).slice(2)), t, `composed: the person's rung (${t})`);
-  assert.equal(put({}), `b_${mwClothingRecord(worn, 'Short Shirt', { dye: 2, colourOf }).record.id}`, 'composed with neither: as it always was');
+  assert.equal(put({}), `b_${mwClothingRecord(shirts, 'Short Shirt', { dye: 2, colourOf }).record.id}`, 'composed with neither: as it always was');
 });
 
-test('MWNPC17d the build reads the hint: each garment its rung and pick, the head and the hair walked each on its own; a player\'s look and a wolf\'s take none; two people in one outfit are two bodies (mutants: the picks dropped; the face walked off one hash; the key without the hint)', () => {
+test('MWNPC17d the build reads the hint: each garment its rung and pick, the head and the hair walked each on its own - every one of a race\'s 8 x 6 pairs reached; a player\'s look and a wolf\'s take none; two people in one outfit are two bodies, the hint in the body key\'s memo (AUDIT MWNPC16-18 C F4: it was a new string per body a frame); a beast NPC stands barefoot and bareheaded, a beast player as dressed (AUDIT MWNPC16-18 C, the beasts. Mutants: the picks dropped; the face walked off one hash; the key without the hint; the beast\'s boots worn)', () => {
   const d = dressPerson({ role: 'merchant', gender: 'male', seed: 0xbeef });
   const look = { race: 'Breton', gender: 'male', faceIndex: 3, items: d.items, npc: d.npc };
   const o = peerBuildOpts(look);
@@ -151,7 +179,23 @@ test('MWNPC17d the build reads the hint: each garment its rung and pick, the hea
   assert.notEqual(peerBodyKey(look), peerBodyKey({ ...look, npc: npcHint(0xbeef + 1, d.npc.tier) }), 'two people in one outfit: two bodies');
   assert.equal(peerBodyKey(player), peerBodyKey({ ...player }), 'a player\'s key as it was');
   assert.equal(npcKeyOf(player), '');
-  for (const bad of [{ seed: -1, tier: 0 }, { seed: 1.5, tier: 0 }, { seed: 1, tier: 4 }, { seed: 2 ** 32, tier: 0 }, 'x', null]) assert.equal(npcHintOf({ npc: bad }), null, `a hint read as data: ${JSON.stringify(bad)}`);
+  for (const bad of [{ seed: -1, tier: 0, lo: 0, hi: 3 }, { seed: 1.5, tier: 0, lo: 0, hi: 3 }, { seed: 1, tier: 4, lo: 0, hi: 3 }, { seed: 2 ** 32, tier: 0, lo: 0, hi: 3 }, { seed: 1, tier: 0 }, { seed: 1, tier: 1, lo: 2, hi: 3 }, { seed: 1, tier: 2, lo: 0, hi: 1 }, { seed: 1, tier: 1, lo: -1, hi: 3 }, 'x', null]) assert.equal(npcHintOf({ npc: bad }), null, `a hint read as data: ${JSON.stringify(bad)}`);
+  assert.match(rd('src/net/peerBodies.js'), /: lookKey\(look\)\) \+ npcKeyOf\(look\);\n {4}_bodyLookKeys\.set\(look, k\);/, 'the hint in the memo: one key a look, never a string a frame');
+  // a beast: Morrowind dresses no Khajiit or Argonian in shoes, boots or a helm
+  const kit = dressPerson({ role: 'knight', gender: 'male', seed: 4 });
+  const helmed = { ...kit, items: [...kit.items.filter((it) => it.equipSlot !== EQUIP_SLOTS.Head), { templateIndex: ARMOR_ENUM.Helm, group: 'Armor', equipSlot: EQUIP_SLOTS.Head, material: ARMOR_MATERIAL.Steel }] };
+  const street = dressPerson({ role: 'commoner', gender: 'female', seed: 9 });
+  for (const race of WARDROBE_BEAST_RACES) {
+    const knight = peerBuildOpts({ race, gender: 'male', faceIndex: 0, items: helmed.items, npc: kit.npc }).armor;
+    assert.ok(!knight.some((p) => p.templateIndex === ARMOR_ENUM.Helm || p.templateIndex === ARMOR_ENUM.Boots), `a ${race} knight: no helm, no boots`);
+    assert.ok(knight.some((p) => p.templateIndex === ARMOR_ENUM.Cuirass), 'the rest of his plate');
+    const woman = peerBuildOpts({ race, gender: 'female', faceIndex: 0, items: street.items, npc: street.npc }).armor;
+    assert.ok(!woman.some((p) => p.kind === 'clothing' && [WOMENS.shoes, WOMENS.boots, WOMENS.tallBoots, WOMENS.sandals].includes(p.templateIndex)), `a ${race} woman: barefoot`);
+    const playerOwn = peerBuildOpts({ race, gender: 'male', faceIndex: 0, items: helmed.items }).armor;
+    assert.ok(playerOwn.some((p) => p.templateIndex === ARMOR_ENUM.Helm), 'a player\'s look is never asked');
+  }
+  assert.ok(peerBuildOpts({ race: 'Nord', gender: 'male', faceIndex: 0, items: helmed.items, npc: kit.npc }).armor.some((p) => p.templateIndex === ARMOR_ENUM.Helm), 'a Nord keeps his helm');
+  assert.equal(beastWorn([1], 'Breton')[0], 1, 'no beast: the list itself');
   // the walk: each slot its own step, over the race's pools
   const parts = [];
   for (let i = 0; i < 8; i++) parts.push({ id: `b_n_breton_m_head_0${i}`, race: 'breton', slot: 'head', skin: true, playable: true, firstPerson: false, female: false });
@@ -161,11 +205,11 @@ test('MWNPC17d the build reads the hint: each garment its rung and pick, the hea
   assert.deepEqual(face({ head: 11, hair: 13 }), ['b_n_breton_m_head_03', 'b_n_breton_m_hair_01'], 'each modulo its own pool');
   assert.deepEqual(face(null), ['b_n_breton_m_head_00', 'b_n_breton_m_hair_00'], 'no walk: the face index\'s, as before');
   const pairs = new Set(seeds(400).map((s) => face(npcFaceOf(npcHint(s, 0))).join()));
-  assert.ok(pairs.size >= 44, `a race's heads times its hairs reached (${pairs.size} of 48)`);
+  assert.equal(pairs.size, 48, 'a race\'s heads times its hairs, every pair reached');
   assert.match(rd('src/combat/fpArm.js'), /\} else if \(npcFace\) \{\n {6}faceMatch = \{ head: null, hair: null, reasons: \['an NPC: its head and hair walked off its seed'\] \};/, 'an NPC is no portrait: nothing measured');
 });
 
-test('MWNPC17e BARELY ANY TWO ALIKE: two hundred of one street - one race, one sex, one sprite - resolved as the build resolves them, garment records, head and hair; and the classic tables kept the face index\'s ten (mutants: the pick off; the walk off)', () => {
+test('MWNPC17e BARELY ANY TWO ALIKE: two hundred of one street - one race, one sex, one sprite - resolved as the build resolves them, garment records, head and hair; the same two hundred without the hint (the resolution before MWNPC17: a garment by its type and dye, a face by its index) are far fewer (mutants: the pick off; the walk off)', () => {
   const C = clothes();
   const parts = [];
   for (let i = 0; i < 8; i++) parts.push({ id: `h${i}`, race: 'breton', slot: 'head', skin: true, playable: true, firstPerson: false, female: false });
@@ -182,4 +226,17 @@ test('MWNPC17e BARELY ANY TWO ALIKE: two hundred of one street - one race, one s
   // the same two hundred without the hint - the resolution before this slice: far fewer
   const plain = new Set(people.map((l) => seen({ ...l, npc: undefined })));
   assert.ok(plain.size < distinct.size, `without it: ${plain.size}`);
+});
+
+test('MWNPC17f EVERY PRODUCER\'S LOOK CARRIES ITS HINT - a class foe\'s and a roster\'s off their shared seed, the watch\'s man in his uniform, a resident\'s still picture and a walker, a standing person and a placed figure - each a hint the build reads (npcHintOf), the same person the same hint (AUDIT MWNPC16-18 E3: only the wardrobe\'s own were pinned. Mutants: each producer\'s hint dropped)', () => {
+  const hinted = (look, who) => { assert.ok(look && npcHintOf(look), `${who}: a hint`); return look.npc; };
+  const foe = (marker) => ({ mobileType: 130, marker, gender: 'male', entity: { isClass: true, race: undefined, equip: createEquipTable(), items: [] }, ai: { feet: [0, 0, 0], yaw: 0 } });
+  const a = hinted(foeLook(foe([3, 0, 7])), 'a class foe');
+  assert.deepEqual(hinted(foeLook(foe([3, 0, 7])), 'its copy'), a, 'the same foe, the same man');
+  hinted(rosterLook({}, { mobileType: 130, gender: 'female', seed: 77 }), 'a roster\'s');
+  hinted(folkLookOf({ guard: true, archive: 0, gender: 0 }, 'Nord', 5), 'the watch');
+  hinted(folkLookOf({ archive: 182, gender: 0, personFaceRecordId: 2 }, 'Breton', 6), 'a walker');
+  hinted(residentLook({}, { id: 'r1', sex: 'male', job: 'priest', race: 'Breton', archive: 182 }, { still: true }), 'a still picture');
+  hinted(personLook({}, { race: 1, gender: 0, nameSeed: 3, hash: 4, factionID: 0, billboardArchiveIndex: 182, billboardRecordIndex: 1 }, { type: FACTION_TYPES.Generic, sgroup: SOCIAL_GROUPS.Commoners, ggroup: GUILD_GROUPS.None }), 'a standing person');
+  hinted(figureLook({ piece: { id: 'f1', flat: [182, 3] } }, { flats: { getFlatData: () => ({ gender: '1', caption: 'merchant' }) } }), 'a placed figure');
 });

@@ -2577,7 +2577,7 @@ export class Renderer {
   /** MWNPC16: A MORROWIND BODY'S OWN SHADOW - its mesh (GPU-skinned or packed), its world model matrix and a world
    *  sphere [x, y, z, r] about its posed box, for the maps alone: the body is drawn only through the sprite target,
    *  which records nothing (drawCharacter's `_spriteDepth`), so its draw (combat/fpArm.js drawThird) records it here. */
-  recordShadowBody(mesh, modelMatrix, sphere) { if (this._casting && mesh?.vao) this._shadows.recordCharacter(mesh, modelMatrix, sphere); }
+  recordShadowBody(mesh, modelMatrix, sphere, anchored = false) { if (this._casting && mesh?.vao) this._shadows.recordCharacter(mesh, modelMatrix, sphere, true, anchored); }   // AUDIT MWNPC16-18: a body's record (A2), and whether it never walks (A3)
   /** MWNPC16: the shadow pass's palette on SKIN_PALETTE_UNIT - `tex` a body's, null the identity - with the unit's word
    *  kept (`_skinUnitHolds`), so the lit draws after it bind what they need and a palette let go is never left on the
    *  unit. The pass selects its units raw, so the selector's shadow is forgotten before this one selects. */
@@ -3348,6 +3348,7 @@ export class Renderer {
     if (!mesh || !mesh.skin || !mesh.vbo) return;
     gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
     gl.bufferSubData(gl.ARRAY_BUFFER, offset * 4, data);
+    mesh._poseGen = (mesh._poseGen ?? 0) + 1;   // AUDIT MWNPC16-18 A2: a new shape - the shadow pass's body look (shadowPass.js recordCharacter)
   }
 
   /** MWNPC1: a pose - the palette re-uploaded, and nothing else (`data` is the layout's palette, width x height
@@ -3361,6 +3362,7 @@ export class Renderer {
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, skin.width, skin.height, gl.RGBA, gl.FLOAT, data);
     this._skinUnitHolds = skin.tex;
     this._activeTexture(gl.TEXTURE0);
+    mesh._poseGen = (mesh._poseGen ?? 0) + 1;   // AUDIT MWNPC16-18 A2: a new pose - the shadow pass's body look (shadowPass.js recordCharacter)
   }
 
   /** MWNPC1: the palette's owner lets it go - with the identity put back on the unit first, so no draw after it
@@ -3561,6 +3563,7 @@ export class Renderer {
     const gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, packed);
+    mesh._poseGen = (mesh._poseGen ?? 0) + 1;   // AUDIT MWNPC16-18 A2: a new pose - the shadow pass's body look (shadowPass.js recordCharacter)
     if (mesh.bounds) boundsOf(packed, null, 0, -1, mesh.floats).forEach((v, i) => { mesh.bounds[i] = v; });   // EL7: an animated rig's sphere follows it
   }
 

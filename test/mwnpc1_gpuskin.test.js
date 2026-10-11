@@ -357,7 +357,7 @@ test('MWNPC1g the GLSL says what its JS law says: the blend, the post composed o
   assert.equal(SKIN_PALETTE_UNIT, 21);
 });
 
-test('MWNPC1h drawCharacter: the palette sampler always reads a complete texture, the body\'s for its draw and the identity after; a skinned body never records a shadow', () => {
+test('MWNPC1h drawCharacter: the palette sampler always reads a complete texture, the body\'s for its draw and the identity after; drawCharacter records no shadow under the sprite target - a body casts through recordShadowBody (MWNPC16, section 24)', () => {
   const src = rd('src/render/renderer.js');
   const draw = src.slice(src.indexOf('  drawCharacter(mesh, modelMatrix) {'), src.indexOf('  _charSpriteRT() {'));
   // PIN MOVED (MWNPC16): the shadow door no longer turns a skinned body away - it casts through its own skinned depth

@@ -431,6 +431,7 @@ export function createHomeYards(deps) {
   const failed = new Map();
   /** @type {Map<string, {pool: any, px: number, py: number, mapId: number, bk: number, t: number[], sig: string, lot: any, frame: any, entry: any, trees: Map<string, any>, treeSet: any}>} */
   const yards = new Map();
+  const yardFigs = [];   // MWNPC18 (AUDIT MWNPC16-18 D4): figures()'s one list
   let syncIn = 0;
   /** @type {any} the owner's own yard the decorator stands in, or null */
   let cur = null;
@@ -776,8 +777,9 @@ export function createHomeYards(deps) {
     },
     /** The yards' flats and the flat being placed, for the world's billboard pass. */
     batches: () => [...[...yards.values()].flatMap((y) => y.pool.batches()), ...tool.batches()],
-    /** MWNPC18: the yards' figures (one of Daggerfall's people set down outside), for the street's people lane. */
-    figures: () => [...yards.values()].flatMap((y) => y.pool.figures()),
+    /** MWNPC18: the yards' figures (one of Daggerfall's people set down outside), for the street's people lane - into one
+     *  list kept (AUDIT MWNPC16-18 D4: a frame's new arrays, two a yard). */
+    figures: () => { yardFigs.length = 0; for (const y of yards.values()) for (const e of y.pool.figures()) yardFigs.push(e); return yardFigs; },
     /** DECOR-LPT: the yards' 3D trees, for the world's near set (scenes/world.js lowPolyTreesFrame). */
     treeSets,
     /** YARD-LIGHT: the yards' lamps, for the world's lanterns. */

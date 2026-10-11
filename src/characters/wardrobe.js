@@ -15,8 +15,9 @@
 //     plate of one metal by rank, a fighter's mismatched pieces, a rogue's leathers. The garments are Daggerfall's, so
 //     the classic paperdoll and the item map read them as they read the player's.
 //   - HOW WELL. A wealth TIER per role - Morrowind's own clothing ladder (common, expensive, extravagant, exquisite: the
-//     records' ids say it) - so a noble is never in a peasant's shirt and a farmhand never in silk.
-//   - WHICH ONE. The look carries `npc` - its seed and its tier - and the build (net/peerBodies.js peerBuildOpts) reads
+//     records' ids say it) - so a noble is never in a peasant's shirt and a farmhand never in silk: a garment's rung
+//     strays one from the person's, but never past the role's own (the hint's `lo` and `hi`; AUDIT MWNPC16-18 C F1).
+//   - WHICH ONE. The look carries `npc` - its seed, its tier and its role's range - and the build (net/peerBodies.js peerBuildOpts) reads
 //     it per garment: the tier's records of the garment's type, the few nearest the dye's colour, one picked off the
 //     seed (mwClothingRecord's `pick` and `tier`); and the head and the hair WALKED off the seed, each on its own (a
 //     race's heads times its hairs, where the face index named one pair of ten). A player's look carries no `npc`: the
@@ -36,7 +37,7 @@ export function wmix(h) {
 /** Morrowind's clothing ladder, by the record ids' own prefixes (mwItemMap.js clothingTierOf reads them). */
 export const CLOTHING_TIERS = Object.freeze(['common', 'expensive', 'extravagant', 'exquisite']);
 
-/** Daggerfall's garments by name (itemTemplates.json, 141-185 the men's, 186-216 the women's). */
+/** Daggerfall's garments by name (itemTemplates.json, 141-181 the men's, 182-216 the women's). */
 export const MENS = Object.freeze({
   straps: 141, armbands: 142, kimono: 143, sash: 145, eodoric: 146, shoes: 147, tallBoots: 148, boots: 149, sandals: 150,
   casualPants: 151, breeches: 152, shortSkirt: 153, casualCloak: 154, formalCloak: 155, dwynnenSurcoat: 157,
@@ -275,27 +276,53 @@ export function armorKit(kit, tier, seed) {
   return out;
 }
 
-/** The `npc` hint a dressed look carries - its seed and its tier, for the build (peerBuildOpts). */
-export const npcHint = (seed, tier) => Object.freeze({ seed: seed >>> 0, tier: Math.max(0, Math.min(3, tier | 0)) });
-/** A look's hint, read as relay-shaped data is: a seed and a tier in range, else null. @param {any} look */
+const rung = (t) => Math.max(0, Math.min(3, t | 0));
+/** The `npc` hint a dressed look carries - its seed, its tier and the rungs its role dresses in (`lo`..`hi`, the
+ *  role's tiers that are ever drawn - AUDIT MWNPC16-18 C F1), for the build (peerBuildOpts). */
+export const npcHint = (seed, tier, lo = 0, hi = 3) => {
+  const t = rung(tier), l = Math.min(rung(lo), t), h = Math.max(rung(hi), t);
+  return Object.freeze({ seed: seed >>> 0, tier: t, lo: l, hi: h });
+};
+/** A look's hint, read as relay-shaped data is: a seed, a tier and its range in range (lo <= tier <= hi), else null.
+ *  @param {any} look */
 export function npcHintOf(look) {
   const n = look?.npc;
-  if (!n || typeof n !== 'object' || !Number.isInteger(n.seed) || n.seed < 0 || n.seed > 0xffffffff || !Number.isInteger(n.tier) || n.tier < 0 || n.tier > 3) return null;
+  if (!n || typeof n !== 'object' || !Number.isInteger(n.seed) || n.seed < 0 || n.seed > 0xffffffff) return null;
+  const ok = (t) => Number.isInteger(t) && t >= 0 && t <= 3;
+  if (!ok(n.tier) || !ok(n.lo) || !ok(n.hi) || n.lo > n.tier || n.tier > n.hi) return null;
   return n;
 }
 /** The key a hint adds to a body's (net/peerBodies.js peerBodyKey): two people in the same garments are two bodies. */
-export const npcKeyOf = (look) => { const n = npcHintOf(look); return n ? `|npc${n.seed}.${n.tier}` : ''; };
+export const npcKeyOf = (look) => { const n = npcHintOf(look); return n ? `|npc${n.seed}.${n.tier}.${n.lo}${n.hi}` : ''; };
 
 /**
  * THE PICKS a hint asks of one worn garment (mwItemMap.js mwClothingRecord `pick` and `tier`): the person's tier, one
- * rung down for a garment in four and up for one in eight (a merchant's good coat over common breeches), and the record
- * among its candidates, each off the seed and the garment. @param {any} n @param {any} piece
+ * rung down for a garment in four and up for one in eight (a merchant's good coat over common breeches) - never past
+ * the rungs the role dresses in (`lo`..`hi`: a noble's garment never on the common rung, a farmhand's never in silk -
+ * AUDIT MWNPC16-18 C F1, a noble's top fell to common one time in eleven) - and the record among its candidates, each
+ * off the seed and the garment. @param {any} n @param {any} piece
  */
 export function npcGarmentPick(n, piece) {
   const h = wmix((n.seed ^ wmix(((piece.templateIndex | 0) * 0x9e37) + 0x51ed)) >>> 0);
   const step = h & 7;
-  const tier = Math.max(0, Math.min(3, n.tier + (step < 2 ? -1 : step === 2 ? 1 : 0)));
+  const tier = Math.max(n.lo ?? 0, Math.min(n.hi ?? 3, n.tier + (step < 2 ? -1 : step === 2 ? 1 : 0)));
   return { pick: h >>> 8, tier };
+}
+/** Daggerfall's footwear (MENS/WOMENS): what a beast's feet refuse. */
+const FOOTWEAR = new Set([M.shoes, M.tallBoots, M.boots, M.sandals, W.shoes, W.tallBoots, W.boots, W.sandals]);
+/** The races Morrowind builds on the beast skeleton (fpArm.js tpSkeletonPath `beast`). */
+export const WARDROBE_BEAST_RACES = Object.freeze(['Khajiit', 'Argonian']);
+/**
+ * A BEAST'S WORN LIST (AUDIT MWNPC16-18 C, the beasts): Morrowind dresses no Khajiit or Argonian in shoes, boots or a
+ * closed helm - its own equip refuses them, and they sit on no beast's digitigrade feet or muzzle - so an NPC of a
+ * beast race (every producer's - the wardrobe's, the watch's plate, a foe's own equip table) stands without them:
+ * footwear, armoured boots and a helm dropped from the worn list (mwItemMap.js dfWornEquipment's) before the build.
+ * Which Daggerfall helm would be an open one is the item map's call, not the look's: none is worn. A player's look is
+ * never asked (the caller's: an NPC's alone). @param {any[]} worn @param {any} [race]
+ */
+export function beastWorn(worn, race) {
+  if (!WARDROBE_BEAST_RACES.includes(race)) return worn;
+  return worn.filter((p) => (p.kind === 'clothing' ? !FOOTWEAR.has(p.templateIndex) : p.templateIndex !== A.Helm && p.templateIndex !== A.Boots));
 }
 /** The worn list (mwItemMap.js dfWornEquipment's) with each garment's picks - the armour as it was. @param {any[]} worn @param {any} n */
 export function withNpcPicks(worn, n) {
@@ -319,6 +346,7 @@ export function dressPerson({ role = 'commoner', gender = 'male', seed, cut = nu
   const group = female ? 'WomensClothing' : 'MensClothing';
   const s = seed >>> 0;
   const tier = weighted(R.tiers, wmix(s ^ 0x7e1e));
+  const lo = R.tiers.findIndex((w) => w > 0), hi = R.tiers.length - 1 - [...R.tiers].reverse().findIndex((w) => w > 0);
   // the cut: the one asked for where the role has it, else the nearest it has (a robe's picture never stands in
   // breeches); none asked for, the role's own weighted draw
   const cuts = SILHOUETTES.filter((x) => C[x]);
@@ -344,7 +372,7 @@ export function dressPerson({ role = 'commoner', gender = 'male', seed, cut = nu
     items.push({ templateIndex: cloak, group, equipSlot: EQUIP_SLOTS.Cloak1, dye: chance(0.4, wmix(s ^ 0xc1d)) ? topDye : dye(0xd4) });
   }
   items.push(...armor);
-  return { items, npc: npcHint(s, tier), role: name, cut: k, tier };
+  return { items, npc: npcHint(s, tier, lo, hi), role: name, cut: k, tier };
 }
 
 /**

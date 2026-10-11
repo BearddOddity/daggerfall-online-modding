@@ -101,7 +101,7 @@
  {
   "name": "MWNPC14-peer-key-shared",
   "file": "src/net/peerBodies.js",
-  "old": "  if (look?.vampire && !peerIsWolf(shown)) return `vamp|${bodyLookKey(look)}${npcKeyOf(look)}`;",
+  "old": "  if (look?.vampire && !peerIsWolf(shown)) return `vamp|${bodyLookKey(look)}`;",
   "new": "  void 0;",
   "tests": [
    "test/mwnpc14_vampires.test.js"

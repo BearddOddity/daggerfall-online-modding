@@ -113,17 +113,20 @@ export const DAEDRA_PRINCES_ARCHIVE = 175;
 /** MWNPC18: a race the host names (a RACES id, or a name) as the look spells it - the Bay's Breton when it names none. */
 const raceNameOf = (race) => (typeof race === 'number' ? RACE_NAME[race] : typeof race === 'string' && race in RACES ? race : null) ?? 'Breton';
 /** MWNPC18: THE CAPTION'S WORDS, to a wardrobe role (characters/wardrobe.js WARDROBE_ROLES) - the first that matches, in this
- *  order (a "noble knight" is a knight); none, the street's. A judgement over FLATS.CFG's own words, recorded here. */
+ *  order (a "noble knight" is a knight); none, the street's. A judgement over FLATS.CFG's own words, recorded here.
+ *  AUDIT MWNPC16-18 D3: each word from its start (`\b`), and a short one whole - "good-looking" and "walking" held a
+ *  king, "country" a count, "overseer" a seer, "image" a mage, "relaxed" an axe and "monkey" a monk. A guard and a smith
+ *  are read inside a word (a bodyguard, a blacksmith). */
 /** @type {ReadonlyArray<[string, RegExp]>} */
 export const FIGURE_ROLE_WORDS = Object.freeze([
-  ['priest', /priest|monk|\bnuns?\b|cleric|healer|acolyte|templar|abbot|holy/i],
-  ['mage', /mage|wizard|sorcer|witch|warlock|necromanc|magician|enchant|seer|mystic|alchemist/i],
-  ['knight', /knight|guard|soldier|captain|sentry|paladin|sergeant/i],
-  ['fighter', /warrior|fighter|barbarian|mercenar|swordsm|archer|spear|axe|crossbow|amazon|gladiator/i],
-  ['noble', /noble|\blord|\blady|king|queen|prince|baron|duke|duchess|count|regent|courtier|elegant|royal|emperor|empress|aristocra/i],
-  ['rogue', /thief|rogue|assassin|cutthroat|bandit|brotherhood|smuggler|pirate|cowl/i],
-  ['merchant', /merchant|shopkeep|trader|vendor|innkeep|barkeep|bartender|smith|banker|tailor|grocer/i],
-  ['scholar', /scholar|sage|librarian|scribe|teacher|professor|clerk|historian/i],
+  ['priest', /\b(?:priest|monks?\b|nuns?\b|cleric|healer|acolyte|templar|abbot|abbess|holy\b)/i],
+  ['mage', /\b(?:mages?\b|wizard|sorcer|witch|warlock|necromanc|magician|enchant|seers?\b|mystic|alchemist)/i],
+  ['knight', /\b(?:knight|soldier|captain|sentry|sentries|paladin|sergeant)|guard/i],
+  ['fighter', /\b(?:warrior|fighter|barbarian|mercenar|swordsm|archer|spear|axes?\b|axe-?m[ae]n|crossbow|amazon|gladiator)/i],
+  ['noble', /\b(?:noble|lords?\b|lady|ladies|kings?\b|queen|prince|baron|duke|duchess|count(?:ess)?\b|regent|courtier|elegant|royal|emperor|empress|aristocra)/i],
+  ['rogue', /\b(?:thief|thieves|rogue|assassin|cutthroat|bandit|brotherhood|smuggler|pirate|cowl)/i],
+  ['merchant', /\b(?:merchant|shopkeep|trader|vendor|innkeep|barkeep|bartender|banker|tailor|grocer)|smith/i],
+  ['scholar', /\b(?:scholar|sages?\b|librarian|scribe|teacher|professor|clerk|historian)/i],
 ]);
 /** MWNPC18: the role a caption names, or the street's. @param {any} caption @returns {string} */
 export function figureRole(caption) {

@@ -3564,10 +3564,10 @@ export function createFpArm() {
   }
 
   function releaseThirdMesh() { releaseGpu(thirdMesh); thirdMesh = null; thirdSkin = null; }   // MWNPC1: a rebuilt mesh lays its pieces out again
-  /** MW-D24 / MWNPC16: the third body's world model matrix at `feet` facing `yaw`, `grow` times its size about its feet
-   *  (drawThird's own placement, one home for the draw and the cast). */
   /** AUDIT OW3 J6 / MWNPC16: metres a Morrowind unit, `grow` times (the travel view's OW-BIG, MWNPC10's larger body). */
   const thirdUnit = (grow) => (grow > 1 ? grow : 1) / MW_UNITS_PER_METER;
+  /** MW-D24 / MWNPC16: the third body's world model matrix at `feet` facing `yaw`, `grow` times its size about its feet
+   *  (drawThird's own placement, one home for the draw and the cast). */
   function thirdModel(feet, yaw, grow = 1) {
     const u = thirdUnit(grow);
     const yawDeg = (yaw * 180 / Math.PI) + 180;
@@ -3584,11 +3584,12 @@ export function createFpArm() {
   const castSphere = new Float32Array(4);   // MWNPC16: the body's world sphere, one a rig, rewritten per cast
   /** MWNPC16: THE BODY CASTS ITS OWN SHAPE - its mesh, posed as last drawn or skinned, recorded for the shadow maps alone
    *  (renderer.recordShadowBody) under a sphere about its box, `center` that box's middle in the world and `half` the
-   *  box's half-width and half-height. */
-  function castBody(model, center, halfW, halfH) {
+   *  box's half-width and half-height. AUDIT MWNPC16-18 A3: `anchored` - a body that never walks (the lane's word), which
+   *  the lo tier's lamps take. */
+  function castBody(model, center, halfW, halfH, anchored = false) {
     castSphere[0] = center[0]; castSphere[1] = center[1]; castSphere[2] = center[2];
     castSphere[3] = Math.hypot(halfW, halfH);
-    renderer.recordShadowBody(thirdMesh, model, castSphere);
+    renderer.recordShadowBody(thirdMesh, model, castSphere, anchored);
   }
   /** Pack the posed third-person pieces and put them on the GPU - the
    *  ONE upload both the wheel (update) and the inventory figure use.
@@ -5831,7 +5832,7 @@ export function createFpArm() {
      * (chirality-true by MW-D23's measurement) already shows it.
      * Winding is safe: drawCharacter disables CULL_FACE.
      */
-    drawThird(canvas, { proj, view, eye, feet, yaw, hitFlash = 0, conceal = null, grow = 1, up = null, fx = null, cast = false }) {   // MWNPC5: `fx` a foe's tells (renderer.js drawCharacterSpriteQuad); MWNPC16: `cast` - the body's own shadow
+    drawThird(canvas, { proj, view, eye, feet, yaw, hitFlash = 0, conceal = null, grow = 1, up = null, fx = null, cast = false, anchored = false }) {   // MWNPC5: `fx` a foe's tells (renderer.js drawCharacterSpriteQuad); MWNPC16: `cast` - the body's own shadow (AUDIT MWNPC16-18 A3: `anchored` one that never walks)
       if (!thirdActive() || !canvas || !feet) return false;
       const t = thirdBuilt;
       // AUDIT OW3 J6: `grow` - the travel view's OW-BIG, the body drawn that many times its size ABOUT ITS FEET (the root
@@ -5868,7 +5869,7 @@ export function createFpArm() {
       // MWNPC16: the shape it casts, where it is asked (an NPC's lane - net/peerBodies.js `casts`, which never asks it of a
       // body the travel view grows: OW-BIG's law, no giant's shadow), at its size (MWNPC10's boss stands larger, and casts
       // so); never a veiled body's - a concealed foe and a ghost cast nothing, as their flats never did
-      if (cast && !conceal && renderer.recordShadowBody) castBody(model, center, halfW, halfH);
+      if (cast && !conceal && renderer.recordShadowBody) castBody(model, center, halfW, halfH, anchored);
       // PR-BOW1: THE PICTURE IS OF THE BODY. The sprite is true world
       // size, so its size on screen is set by where its quad stands -
       // and that was the box centre, which is not the body: a longsword
@@ -5899,20 +5900,26 @@ export function createFpArm() {
      *  cull rejected was recorded for the maps alone), kept for the body that stands where it stood: at `feet` facing
      *  `yaw`, in the pose its skin last took (a body out of the view skins nothing - WB9h), recorded only where its
      *  sphere reaches a map this frame draws (renderer.shadowReachSphere), `grow` times its size as drawThird's. Answers
-     *  whether it was recorded. */
-    castThird({ feet, yaw, grow = 1 }) {
+     *  whether it was recorded. AUDIT MWNPC16-18 N3: asked first of a sphere about its FEET that holds the box's own
+     *  wherever the yaw turns it (the box's reach plus its middle's distance from the feet) - the matrix and the middle
+     *  are made only for a body that may reach, never a frame's garbage for each body standing out of every map.
+     *  `anchored` drawThird's. */
+    castThird({ feet, yaw, grow = 1, anchored = false }) {
       if (!thirdActive() || !feet || !renderer || !renderer.recordShadowBody) return false;
       const box = thirdBox();
       if (!box) return false;
       const rs = (built && built.raceScale) || { weight: 1, height: 1 };
       const u = thirdUnit(grow);
-      const model = thirdModel(feet, yaw, grow);
       const { minX, minY, minZ, maxX, maxY, maxZ } = box;
       const halfH = ((maxZ - minZ) * u * rs.height) / 2;
       const halfW = (Math.hypot(maxX - minX, maxY - minY) * u * rs.weight) / 2;
+      const reach = renderer.shadowReachSphere;
+      const mid = Math.hypot(((minX + maxX) / 2) * u * rs.weight, ((minY + maxY) / 2) * u * rs.weight, ((minZ + maxZ) / 2) * u * rs.height);
+      if (reach && !renderer.shadowReachSphere(feet[0], feet[1], feet[2], Math.hypot(halfW, halfH) + mid)) return false;
+      const model = thirdModel(feet, yaw, grow);
       const center = transformPoint(model, (minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2);
-      if (renderer.shadowReachSphere && !renderer.shadowReachSphere(center[0], center[1], center[2], Math.hypot(halfW, halfH))) return false;
-      castBody(model, center, halfW, halfH);
+      if (reach && !renderer.shadowReachSphere(center[0], center[1], center[2], Math.hypot(halfW, halfH))) return false;
+      castBody(model, center, halfW, halfH, anchored);
       return true;
     },
 

@@ -32,7 +32,7 @@ const MW_ARMOUR = ['steel_cuirass', 'steel_greaves', 'steel_boots', 'steel_pauld
 const armour = (look) => look.items.filter((it) => it.group === 'Armor');
 const resolved = (it) => mwArmorRecords(MW_ARMOUR, it.templateIndex, it.material);
 
-test('MWNPC12-1 every steel look is worn: the street\'s guard, a knightly order\'s person, a roster\'s steel class and the watch - each piece resolves to Morrowind\'s steel; the 1 they wore named no material at all', () => {
+test('MWNPC12-1 every steel look is worn: the street\'s guard, a roster\'s steel class and the watch - each piece resolves to Morrowind\'s steel - and a knightly order\'s person a knight\'s whole plate of one metal Morrowind names (MWNPC17); the 1 they wore named no material at all', () => {
   const guard = folkLook({ archive: GUARD_TEXTURE, gender: GENDERS.Male, personFaceRecordId: 0, nameNPC: 'Gaius' }, 'Breton');
   const knight = personLook({}, { race: RACES.Nord, gender: GENDERS.Male, nameSeed: 77, hash: 5, factionID: 0, billboardArchiveIndex: 182, billboardRecordIndex: 1 },
     { type: FACTION_TYPES.Generic, sgroup: SOCIAL_GROUPS.Commoners, ggroup: GUILD_GROUPS.KnightlyOrder });

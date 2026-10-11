@@ -32,7 +32,8 @@ const FLATS = flatsOf({
   '177.1': { gender: '2', caption: 'female sorcerer' },
   '334.5': { gender: '0', caption: 'figure of no sex the column names' },
 });
-const fig = (id, a, r) => ({ piece: { id, flat: [a, r], pos: [0, 0, 0] }, batch: { origin: [1, 2, 3], castOnly: true } });
+// the shape decorRoom.js put() mints: a batch with no origin (its base in its vertices), the room's origin `o` beside it
+const fig = (id, a, r) => ({ piece: { id, flat: [a, r], pos: [0, 0, 0] }, o: [0, 0, 0], batch: { origin: null, castOnly: true } });
 
 test('MWNPC18a figureLook: a placed figure\'s sex FLATS.CFG\'s, its role its caption\'s, its race the region\'s, its seed its piece\'s id; a child, the Daedra Princes and a figure no row sexes keep their pictures; FLATS.CFG not read yet is asked again (mutants: the sex off the record; the seed off the picture; the cache of a miss)', () => {
   const maiden = figureLook(fig('a1', 182, 11), { flats: FLATS, race: 'Redguard' });
@@ -66,7 +67,7 @@ test('MWNPC18a figureLook: a placed figure\'s sex FLATS.CFG\'s, its role its cap
   assert.equal(figureLook(early, null), early._mwLook, 'kept on the piece - one build while it stands');
 });
 
-test('MWNPC18b figureRole: the caption\'s words to a role, the first that matches - a knight before a noble, the street\'s for words it does not know; every role it names a wardrobe role (mutants: the order turned)', () => {
+test('MWNPC18b figureRole: the caption\'s words to a role, the first that matches - a knight before a noble, the street\'s for words it does not know; each word from its start and a short one whole (AUDIT MWNPC16-18 D3: "good-looking" and "walking" held a king, "country" a count, "overseer" a seer, "image" a mage, "relaxed" an axe, "monkey" a monk); every role it names a wardrobe role (mutants: the order turned; a word read inside another)', () => {
   assert.equal(figureRole('noble knight'), 'knight');
   assert.equal(figureRole('Priestess of Mara'), 'priest');
   assert.equal(figureRole('witch'), 'mage');
@@ -77,18 +78,65 @@ test('MWNPC18b figureRole: the caption\'s words to a role, the first that matche
   assert.equal(figureRole('old scholar'), 'scholar');
   assert.equal(figureRole('drunk'), 'commoner');
   assert.equal(figureRole(null), 'commoner');
+  for (const c of ['good-looking whore', 'walking man', 'country girl', 'overseer', 'image of a man', 'relaxed woman', 'monkey trainer', 'message boy', 'landlord']) assert.equal(figureRole(c), 'commoner', `"${c}": no word of a role in it`);
+  for (const [c, role] of [['bodyguard', 'knight'], ['blacksmith', 'merchant'], ['axeman', 'fighter'], ['King of Worms', 'noble'], ['count', 'noble'], ['monks', 'priest'], ['sage', 'scholar'], ['seer', 'mage'], ['mages', 'mage'], ['lords', 'noble']]) assert.equal(figureRole(c), role, `"${c}"`);
   for (const [role] of FIGURE_ROLE_WORDS) assert.ok(WARDROBE_ROLES[role], role);
 });
 
-test('MWNPC18c offerDecorFigures: each figure with a look offered on the lane at its picture\'s base, turned to the eye; one without draws its picture (its cast-only cleared); the lane off offers none (mutants: the offer skipped; the castOnly left)', () => {
+test('MWNPC18c offerDecorFigures, through a real decor room: each figure with a look offered on the lane at its piece\'s base - the room\'s origin and its place in it, never its batch\'s origin (a room\'s batch is minted with none; a restand() writes only its step there) - after a recentre where it stands now, and made again over a lane that moved it; turned to the eye; one without draws its picture (its cast-only cleared); the lane off offers none (AUDIT MWNPC16-18 D1: the batch\'s origin was read - a TypeError every frame a placed figure stood with bodies on, or a body a whole room off after a recentre. Mutants: the offer skipped; the castOnly left; the place in the room dropped; the base made once)', async () => {
+  const { createDecorRoom } = await import('../src/scenes/decorRoom.js');
+  const settle = () => new Promise((res) => setImmediate(res));
+  const o = [10, 0, 10];
+  const made = [];
+  const room = createDecorRoom({
+    meshes: {}, collider: () => null, origin: () => o, uploadRecord() {},
+    renderer: { createBillboardBatch: (a, rec, size, centers) => { const bb = { a, rec, centers, origin: null }; made.push(bb); return bb; }, destroyBillboardBatch() {} },
+    getTexture: async () => ({ recordCount: 64, getSize: () => ({ width: 16, height: 32 }), getScale: () => ({ width: 0, height: 0 }) }),
+  });
+  const piece = (id, a, r, pos) => ({ id, model: null, flat: [a, r], pos, rot: [0, 0, 0], scale: 1, light: null, storage: false, paid: 10 });
+  room.put(piece('o1', 182, 11, [1, 0, 2]));
+  room.put(piece('o2', 182, 4, [3, 0, 0]));   // no FLATS.CFG row: no look
+  room.put(piece('o3', 183, 4, [0, 0, 5]));
+  await settle(); await settle();
+  const figs = room.figures();
+  assert.deepEqual(figs.map((e) => e.piece.id), ['o1', 'o2', 'o3']);
+  assert.ok(made.every((b) => b.origin === null), 'the shape the room mints: no origin on the batch');
   const offered = [];
-  const lane = { offer: (a, b) => offered.push({ a, b }) };
-  const figs = [fig('o1', 182, 11), fig('o2', 182, 4), fig('o3', 183, 4)];
-  assert.equal(offerDecorFigures(figs, lane, true, { flats: FLATS, race: 'Breton' }, [1, 2, 10], 1 / 60), 2);
-  assert.deepEqual(offered.map((o) => o.b), [figs[0].batch, figs[2].batch], 'the people, with the batches that draw them');
-  assert.equal(offered[0].a.feet, figs[0].batch.origin, 'standing where the picture stands');
+  const lane = { offer: (a, b) => offered.push({ a, b, feet: [...a.feet] }) };
+  for (const f of figs) f.batch.castOnly = true;
+  assert.equal(offerDecorFigures(figs, lane, true, { flats: FLATS, race: 'Breton' }, [11, 0, 22], 1 / 60), 2);
+  assert.deepEqual(offered.map((x) => x.b), [figs[0].batch, figs[2].batch], 'the people, with the batches that draw them');
+  assert.deepEqual(offered.map((x) => x.feet), [[11, 0, 12], [10, 0, 15]], 'standing where each picture stands');
   assert.ok(Math.abs(offered[0].a.yaw) < 1e-9, 'facing the eye (+z of it)');
-  assert.equal(figs[1].batch.castOnly, false, 'the child: its picture drawn');
+  assert.equal(figs[1].batch.castOnly, false, 'the one with no look: its picture drawn');
+  // the world recentres: the room stands again where its origin is now - and so do its people
+  o[0] -= 819.2;
+  room.restand();
+  assert.ok(Math.abs(made[0].origin[0] + 819.2) < 1e-9, 'the batch carries the recentre\'s step, not a base');
+  offered.length = 0;
+  offerDecorFigures(figs, lane, true, { flats: FLATS }, [11 - 819.2, 0, 22], 1 / 60);
+  assert.ok(Math.abs(offered[0].feet[0] - (11 - 819.2)) < 1e-9 && offered[0].feet[2] === 12, 'where it stands now');
+  // the lane moved the feet it holds (its offsetAll aliases them): made again from the room, never drifted
+  offered[0].a.feet[0] += 5;
+  offered.length = 0;
+  offerDecorFigures(figs, lane, true, { flats: FLATS }, [11 - 819.2, 0, 22], 1 / 60);
+  assert.ok(Math.abs(offered[0].feet[0] - (11 - 819.2)) < 1e-9, 'made again every frame');
+  // AUDIT MWNPC16-18 D4: the figures the room keeps - a piece that is no person never in, one taken down gone at once
+  room.put({ ...piece('chair', 182, 11, [0, 0, 0]), model: 41000 });   // a model: no person
+  room.put(piece('lamp', 254, 3, [2, 0, 2]));   // a flat that is no person (a lamp's picture), its batch stood as theirs are
+  await settle(); await settle();
+  assert.ok(made.some((b) => b.a === 254), 'the lamp stands its picture');
+  const kept = room.figures();
+  assert.equal(kept, room.figures(), 'one list, the room\'s');
+  assert.deepEqual(kept.map((e) => e.piece.id), ['o1', 'o2', 'o3']);
+  room.remove('o2');
+  assert.deepEqual(room.figures().map((e) => e.piece.id), ['o1', 'o3'], 'taken down: gone');
+  room.put(piece('o1', 183, 4, [1, 0, 2]));   // put again (a turn, a station): the new entry, never the old
+  await settle(); await settle();
+  assert.equal(room.figures().filter((e) => e.piece.id === 'o1').length, 1);
+  room.put(piece('o2', 182, 4, [3, 0, 0]));
+  await settle(); await settle();
+  // the lane off: every picture drawn, none offered
   offered.length = 0;
   for (const f of figs) f.batch.castOnly = true;
   assert.equal(offerDecorFigures(figs, lane, false, { flats: FLATS }, [0, 0, 0], 0), 0);
@@ -96,15 +144,40 @@ test('MWNPC18c offerDecorFigures: each figure with a look offered on the lane at
   assert.ok(figs.every((f) => f.batch.castOnly === false), 'the lane off: every picture drawn');
 });
 
+test('MWNPC18e EVERY HOST THAT DRAWS DAGGERFALL\'S PEOPLE stands them in bodies (it offers them to a people lane) or keeps their pictures, and says why - a new host of people fails here until it does one or the other (AUDIT MWNPC16-18 D5: Come Sail Away\'s crews were neither, under section 26\'s "blind spot, closed")', () => {
+  // a host draws a person through nudeFlats.js drawnFlat (NUDE-FLATS: every person's picture asks it); Come Sail Away's
+  // crews are its prefabs' BillboardHelper people (nudedecor.test.js holds them to the table)
+  const hosts = walk('src').filter((p) => p !== 'src/characters/nudeFlats.js' && /\bdrawnFlat\(/.test(rd(p).replace(/^\s*\/\/.*$/gm, ''))).concat('src/scenes/comeSailAwayPool.js').sort();
+  const BODIES = {
+    'src/scenes/decorRoom.js': 'offerDecorFigures(',   // the placed figures, for its hosts (section 26)
+    'src/scenes/dungeonContext.js': '_peopleLane.offer(personActor(',
+    'src/scenes/exterior.js': 'standPeople.offer(personActor(',
+    'src/scenes/world.js': 'streetPeople.offer(personActor(',
+    'src/scenes/worldModes.js': 'peopleBodies.offer(personActor(',
+  };
+  const PICTURES = {
+    'src/scenes/arenaBouts.js': 'the arena\'s seated crowd - up to 420 flats (section 4)',
+    'src/scenes/decorTool.js': 'the decorator\'s ghost - a picture being placed, not a person standing',
+    'src/scenes/interiorContext.js': 'a building\'s people, stood as flats here and offered by its host (worldModes.js)',
+    'src/scenes/comeSailAwayPool.js': 'a ship\'s crew (the prefabs\' BillboardHelper people) - NOT HERE, section 27',
+  };
+  assert.deepEqual(hosts, [...Object.keys(BODIES), ...Object.keys(PICTURES)].sort(), 'every host that draws a person, named once');
+  for (const [f, call] of Object.entries(BODIES)) assert.ok(rd(f).includes(call), `${f} offers its people`);
+  assert.match(rd('bible/04-Characters/Morrowind-NPCs.md'), /Come Sail Away's crews/, 'the crews\' pictures declared');
+});
+
 test('MWNPC18d EVERY DECOR ROOM\'S FIGURES ARE OFFERED - the rooms\' on the interior host\'s people lane, the yards\' on the street\'s, before the bodies draw; a new host of decor rooms fails here until it does the same (the census never saw a decor room: its people are flats, not mobiles)', () => {
   const hosts = walk('src').filter((p) => /[=(,]\s*createDecorRoom\(/.test(rd(p))).sort();   // a call, not its definition
   assert.deepEqual(hosts, ['src/scenes/homeYards.js', 'src/scenes/worldModes.js'], 'the hosts that stand decor rooms');
-  assert.match(rd('src/scenes/decorRoom.js'), /const figures = \(\) => \{ const out = \[\]; for \(const e of standing\.values\(\)\) if \(e\.batch && decorIsFigure\(e\.piece\)\) out\.push\(e\); return out; \};/);
-  const modes = rd('src/scenes/worldModes.js');
+  assert.match(rd('src/scenes/decorRoom.js'), /const figures = \(\) => \{ figOut\.length = 0; for \(const e of figs\) if \(e\.batch\) figOut\.push\(e\); return figOut; \};/);
+  const modes = rd('src/scenes/worldModes.js'), world = rd('src/scenes/world.js');
   const o = modes.indexOf('offerDecorFigures(interiorDecor.figures(), peopleBodies, _peopleOn, figureCtx, mwv.eye, dt);');
   assert.ok(o > 0 && o < modes.indexOf('    peopleBodies.draw(canvas, proj, view, mwv.eye, dt);'), 'a room\'s, before its people draw');
-  assert.match(rd('src/scenes/homeYards.js'), /figures: \(\) => \[\.\.\.yards\.values\(\)\]\.flatMap\(\(y\) => y\.pool\.figures\(\)\),/);
-  const world = rd('src/scenes/world.js');
+  assert.match(rd('src/scenes/homeYards.js'), /figures: \(\) => \{ yardFigs\.length = 0; for \(const y of yards\.values\(\)\) for \(const e of y\.pool\.figures\(\)\) yardFigs\.push\(e\); return yardFigs; \},/);
+  // AUDIT MWNPC16-18 D2: a room's figure is of the race its building's region names (the yards' read) - the quest scene's
+  // context names none, and every room's figure stood a Breton
+  assert.match(modes, /get race\(\) \{ const i = interiorBuilding\?\.regionIndex \?\? host\.currentRegionIndex\?\.\(\) \?\? -1; return REGION_RACES\[i\] != null \? REGION_RACES\[i\] \+ 1 : null; \},/);
+  assert.match(world, /get race\(\) \{ return REGION_RACES\[_questRegionIndex\(\)\] \+ 1; \} \};/);
   const y = world.indexOf("    if (yards && _mode() === 'exterior') offerDecorFigures(yards.figures(), streetPeople, _peopleOn, yardFigureCtx, mwv.eye,");
   assert.ok(y > 0 && y < world.indexOf('    streetPeople.draw(canvas, proj, view, mwv.eye,'), 'a yard\'s, before the street\'s people draw');
   assert.equal(decorIsFigure({ model: null, flat: [182, 11] }), true, 'a person\'s flat is a figure');

@@ -210,6 +210,8 @@ export function createDecorRoom({
 }) {
   /** @type {Map<string, {piece: any, o: number[], gpu: any, box: any, wbox?: number[] | null, cpu: any, matrix: Float32Array, batch: any, anims: any, size: any, light: any, mount: any, door: any, release?: any}>} */
   const standing = new Map();
+  /** MWNPC18 (AUDIT MWNPC16-18 D4): the standing entries that are figures - one of Daggerfall's people */
+  const figs = new Set();
   const models = new Map();   // model id -> Promise<{gpu, cpu, box}>
   const flats = new Map();    // "a.r" -> Promise<{t, w, h} | null>
   const arts = new Map();     // DECOR2c: "a.r|t.g.m.v.a" -> Promise<{tex, w, h} | null>, a mount's picture (MW-MOUNT: its Morrowind one, or its pack's)
@@ -293,6 +295,7 @@ export function createDecorRoom({
   }
   function unmount(entry) {
     if (!entry) return;
+    figs.delete(entry);   // MWNPC18
     if (entry.door) { doors?.remove?.(entry.piece.id); entry.door = null; }   // HOME-DOORS: the room's door, taken down
     collider?.()?.removeBucket?.(decorKeyOf(entry.piece.id));
     if (entry.mount) { renderer?.destroyDecalBatch?.(entry.mount.batch); entry.mount = null; }   // DECOR2c
@@ -341,6 +344,7 @@ export function createDecorRoom({
     // FB1001 YARD-RECENTRE: `o`, the origin it stands from, and `cpu`, its model's (once stood) - restand() moves it
     const entry = { piece, o: [o[0], o[1], o[2]], gpu: null, box: null, cpu: null, matrix: decorMatrix(piece, o), batch: null, anims: null, size: null, light: null, mount: null, door: null };
     standing.set(piece.id, entry);
+    if (decorIsFigure(piece)) figs.add(entry);   // MWNPC18: one of Daggerfall's people - the people lane's
     if (decorIsMount(piece)) {   // DECOR2c: hung flat on its surface, as its pack picture (MW-MOUNT: or its Morrowind one)
       artOf(piece).then((art) => {
         if (standing.get(piece.id) !== entry || !art || !renderer?.createDecalBatch) return;
@@ -464,8 +468,11 @@ export function createDecorRoom({
   /** The flats' batches, for the host's billboard pass. */
   const batches = () => [...standing.values()].map((e) => e.batch).filter(Boolean);
   /** MWNPC18: the figures standing (decorIsFigure - one of Daggerfall's people), each its entry - its piece and the batch
-   *  that draws it - for the host's people lane (offerDecorFigures). */
-  const figures = () => { const out = []; for (const e of standing.values()) if (e.batch && decorIsFigure(e.piece)) out.push(e); return out; };
+   *  that draws it - for the host's people lane (offerDecorFigures). AUDIT MWNPC16-18 D4: kept as they are put and
+   *  taken down (`figs`), into one list the room keeps - every piece of every room walked a frame, into a new array,
+   *  to find the few that are people; the answer is the room's until its next asking. */
+  const figOut = [];
+  const figures = () => { figOut.length = 0; for (const e of figs) if (e.batch) figOut.push(e); return figOut; };
   /** DECOR2c: the mounts, on the host's decal pass (after the room's solid geometry, as the blood marks go). */
   function drawMounts(r = renderer) {
     let n = 0;
@@ -615,7 +622,7 @@ export function createDecorRoom({
  * MWNPC18 (bible/04-Characters/Morrowind-NPCs.md section 26): THE FIGURES A PLAYER PLACED, OFFERED THEIR BODIES - on the
  * host's people lane (characters/npcBodies.js createPopulationLane: `lane.offer(actor, batch)`), as its own standing
  * people are, before the flats draw (cast-only where one stands - and since MWNPC16 casting nothing: the body casts).
- * Each stands where its picture stands (its batch's base), turned to the eye at a person's pace (peopleBodies.js
+ * Each stands where its picture stands (its piece's base: the room's origin and its place in it), turned to the eye at a person's pace (peopleBodies.js
  * personActor); its look figureLook's - `flats` FLATS.CFG, `race` the region's. A figure with no look draws its picture.
  * @param {any[]} figs the figures (decorRoom figures()) @param {{ offer: Function }} lane @param {boolean} on the lane's frame
  * @param {{ flats?: any, race?: any } | null} ctx @param {number[]} eye @param {number} dt @returns {number} how many were offered
@@ -625,7 +632,12 @@ export function offerDecorFigures(figs, lane, on, ctx, eye, dt) {
   for (const e of figs) {
     const look = on ? figureLook(e, ctx) : null;
     if (!look) { e.batch.castOnly = false; continue; }
-    lane.offer(personActor(e, look, e.batch.origin, eye, dt), e.batch);
+    // AUDIT MWNPC16-18 D1: the piece's base - where it stands from (`o`, a restand()'s) and its place in it, made again
+    // every frame as the street's people's are (world.js). The batch's origin is no base: a room's batch is minted
+    // without one (its base in its vertices), and a restand() writes only the recentre's step into it
+    const f = e._mwFeet ??= [0, 0, 0];
+    f[0] = e.o[0] + e.piece.pos[0]; f[1] = e.o[1] + e.piece.pos[1]; f[2] = e.o[2] + e.piece.pos[2];
+    lane.offer(personActor(e, look, f, eye, dt), e.batch);
     n++;
   }
   return n;

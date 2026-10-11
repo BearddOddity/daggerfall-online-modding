@@ -2,8 +2,8 @@
  {
   "name": "MWNPC16-skin-turned-away",
   "file": "src/render/shadowPass.js",
-  "old": "  recordCharacter(mesh, matrix, sphere = null) {\n    if (!mesh) return;",
-  "new": "  recordCharacter(mesh, matrix, sphere = null) {\n    if (!mesh || mesh.skin) return;",
+  "old": "  recordCharacter(mesh, matrix, sphere = null, body = false, anchored = false) {\n    if (!mesh) return;",
+  "new": "  recordCharacter(mesh, matrix, sphere = null, body = false, anchored = false) {\n    if (!mesh || mesh.skin) return;",
   "tests": [
    "test/mwnpc16_bodyshadow.test.js"
   ]
@@ -92,7 +92,7 @@
  {
   "name": "MWNPC16-unseen-past-reach",
   "file": "src/combat/fpArm.js",
-  "old": "      if (renderer.shadowReachSphere && !renderer.shadowReachSphere(center[0], center[1], center[2], Math.hypot(halfW, halfH))) return false;\n",
+  "old": "      if (reach && !renderer.shadowReachSphere(center[0], center[1], center[2], Math.hypot(halfW, halfH))) return false;\n",
   "new": "",
   "tests": [
    "test/mwnpc16_bodyshadow.test.js"
@@ -110,7 +110,7 @@
  {
   "name": "MWNPC16-unseen-not-cast",
   "file": "src/net/peerBodies.js",
-  "old": "          if (cast) { try { b.rig.castThird?.(",
+  "old": "          if (cast && b.posedAt > 0) { try { b.rig.castThird?.(",
   "new": "          if (false) { try { b.rig.castThird?.(",
   "tests": [
    "test/mwnpc16_bodyshadow.test.js"
@@ -157,6 +157,213 @@
   "file": "src/render/renderer.js",
   "old": "    this._activeUnit = null;\n    this._activeTexture(gl.TEXTURE0 + SKIN_PALETTE_UNIT);",
   "new": "    this._activeTexture(gl.TEXTURE0 + SKIN_PALETTE_UNIT);",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-render-never-builds",
+  "file": "src/render/shadowPass.js",
+  "old": "    if (this._bodyWanted) this._ensureBodyPrograms();   // MWNPC16: before the first replay binds its own\n",
+  "new": "",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-body-never-asks",
+  "file": "src/render/shadowPass.js",
+  "old": "    if (mesh.skin || (!this._bodyBuilt && ranges && ranges.some((rg) => rg.alphaCut > 0 && rg.tex))) this._bodyWanted = true;",
+  "new": "    if (false) this._bodyWanted = true;",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-cut-range-never-asks",
+  "file": "src/render/shadowPass.js",
+  "old": "    if (mesh.skin || (!this._bodyBuilt && ranges && ranges.some((rg) => rg.alphaCut > 0 && rg.tex))) this._bodyWanted = true;",
+  "new": "    if (mesh.skin) this._bodyWanted = true;",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-build-throw-escapes",
+  "file": "src/render/shadowPass.js",
+  "old": "      try { p = build(); } catch (e) { console.warn(`[shadow] a body's depth program would not build - ${e?.message ?? e}`); return null; }",
+  "new": "      p = build();",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-look-blind-to-pose",
+  "file": "src/render/shadowPass.js",
+  "old": "    let h = Math.imul(shId(mesh) ^ 0x2f0b3e5d, 0x9e3779b1) ^ (mesh._poseGen | 0);",
+  "new": "    let h = Math.imul(shId(mesh) ^ 0x2f0b3e5d, 0x9e3779b1);",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-look-blind-to-matrix",
+  "file": "src/render/shadowPass.js",
+  "old": "    for (let i = 0; i < 16; i++) h = (Math.imul(h ^ mb[i], 0x85ebca6b) + i) | 0;\n",
+  "new": "",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-look-blind-to-hidden",
+  "file": "src/render/shadowPass.js",
+  "old": "    if (ranges) for (let i = 0; i < ranges.length; i++) if (ranges[i].hidden) h = Math.imul(h ^ (i + 1), 0xc2b2ae35);\n",
+  "new": "",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-bodies-never-redrawn",
+  "file": "src/render/shadowPass.js",
+  "old": ": dynNear === DYN_BODY ? !bodiesHeld : due;",
+  "new": ": dynNear === DYN_BODY ? false : due;",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-bodies-always-redrawn",
+  "file": "src/render/shadowPass.js",
+  "old": ": dynNear === DYN_BODY ? !bodiesHeld : due;",
+  "new": ": due;",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-held-through-mover",
+  "file": "src/render/shadowPass.js",
+  "old": "this._slotBodySig[k * 2 + 1] = dynNear === DYN_BODY ? this._bodySig[1] : -1;",
+  "new": "this._slotBodySig[k * 2 + 1] = dynNear === DYN_BODY ? this._bodySig[1] : 1;",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-rig-a-body",
+  "file": "src/render/shadowPass.js",
+  "old": "      if (r.kind !== REC_CHAR || !r.body) return DYN_MOVER;",
+  "new": "      if (r.kind !== REC_CHAR) return DYN_MOVER;",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-pose-gen-never-bumped",
+  "file": "src/render/renderer.js",
+  "old": "    this._activeTexture(gl.TEXTURE0);\n    mesh._poseGen = (mesh._poseGen ?? 0) + 1;",
+  "new": "    this._activeTexture(gl.TEXTURE0);",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-lo-blind",
+  "file": "src/render/shadowPass.js",
+  "old": " && !(filter === REPLAY_LO && r.kind === REC_CHAR && r.anchored)) continue;",
+  "new": ") continue;",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-lo-sig-blind",
+  "file": "src/render/shadowPass.js",
+  "old": "      if (r.dynamic && !(anim && r.kind === REC_CHAR && r.anchored)) continue;",
+  "new": "      if (r.dynamic) continue;",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-lane-word-dropped",
+  "file": "src/characters/npcBodies.js",
+  "old": "lane.stand(laneName, actor, conceal, flash, fx, !!batch && batch.origin == null && batch._dyn !== true);",
+  "new": "lane.stand(laneName, actor, conceal, flash, fx);",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-origin-taken",
+  "file": "src/characters/npcBodies.js",
+  "old": "lane.stand(laneName, actor, conceal, flash, fx, !!batch && batch.origin == null && batch._dyn !== true);",
+  "new": "lane.stand(laneName, actor, conceal, flash, fx, !!batch && batch._dyn !== true);",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-anchored-not-passed",
+  "file": "src/net/peerBodies.js",
+  "old": "      const anchored = cast && !!this._cam?.anchoredOf?.(b.id);",
+  "new": "      const anchored = false;",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-posed-test-dropped",
+  "file": "src/net/peerBodies.js",
+  "old": "          if (cast && b.posedAt > 0) { try",
+  "new": "          if (cast) { try",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-flip-left-posed",
+  "file": "src/net/peerBodies.js",
+  "old": "b.dead = dd; b.posedAt = 0; if (dd)",
+  "new": "b.dead = dd; if (dd)",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-prefilter-gone",
+  "file": "src/combat/fpArm.js",
+  "old": "      if (reach && !renderer.shadowReachSphere(feet[0], feet[1], feet[2], Math.hypot(halfW, halfH) + mid)) return false;\n",
+  "new": "",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-cast-anchored-dropped",
+  "file": "src/combat/fpArm.js",
+  "old": "    renderer.recordShadowBody(thirdMesh, model, castSphere, anchored);",
+  "new": "    renderer.recordShadowBody(thirdMesh, model, castSphere);",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-word-not-kept",
+  "file": "src/render/renderer.js",
+  "old": "    gl.bindTexture(gl.TEXTURE_2D, want);\n    this._skinUnitHolds = want;",
+  "new": "    gl.bindTexture(gl.TEXTURE_2D, want);",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "MWNPC16-sway-cadence-for-a-body",
+  "file": "src/render/shadowPass.js",
+  "old": "    return near === DYN_SWAY ? DYN_MOVER : DYN_BODY;",
+  "new": "    return near === DYN_SWAY ? DYN_SWAY : DYN_BODY;",
   "tests": [
    "test/mwnpc16_bodyshadow.test.js"
   ]
