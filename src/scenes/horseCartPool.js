@@ -105,6 +105,8 @@ import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first tou
 export const HORSE_ARCHIVE = 'hcc';
 export const horseStillRecord = (view, look = 0) => `h${view}${lookSuffix(look)}`;
 export const horseWalkRecord = (view, frame, look = 0) => `w${view}#${frame}${lookSuffix(look)}`;
+/** COATS3D: a 3D horse's own idle phase, off its team's key. */
+const seedOfKey = (k) => { let h = 7; for (const c of k) h = (Math.imul(h, 31) + c.charCodeAt(0)) | 0; return (h >>> 0) % 65536 || 1; };
 /** COATS1: how many looks' dyed pictures stand at once - past it, the one longest undrawn is let go (every horse is its
  *  own look, and a session meets many). */
 export const HORSE_LOOKS_KEPT = 16;
@@ -266,6 +268,7 @@ export function createHorseCartPool({
   wagonKind = () => 'cart', bakedWagon = /** @type {((kind: string) => Promise<any>) | null} */ (null),
   wagonLook = /** @type {() => any} */ (() => null),
   horseLook = () => 0,   // COATS1: my horse's look (systems/horseCoats.js - its code)
+  horses3d = /** @type {() => any} */ (() => null),   // COATS3D: the Morrowind lane's 3D horse rig (world/horseRig.js), when it stands in for the billboards; null, the billboards
   enterCaravan = /** @type {(() => any) | null} */ (null),
   riders = /** @type {any} */ (null),
   wagonEntry = /** @type {() => any} */ (() => null),
@@ -654,9 +657,58 @@ export function createHorseCartPool({
     b.size = { w: (view.flip ? -HORSE_BILLBOARD_WIDTH : HORSE_BILLBOARD_WIDTH) * g, h: h * g };
     b.origin[0] = horse.position[0]; b.origin[1] = horse.position[1]; b.origin[2] = horse.position[2];
   }
-  /** WAGONS3: an owner's team posed - each horse `drawn` its billboard, the rest's taken down. `conceal` a peer's look. */
+  // ── COATS3D: the 3D horses
+  // On the Morrowind lane (the host's `horses3d`, its rig up) every horse the pool stands - mine and every peer's, alone,
+  // following, parked in harness or pulling - is the owner's 3D horse (world/horseRig.js) in the owner's look, drawn in
+  // the body pass (draw3d) in place of its billboard: posed off the same team (teamOf), its gait off how far it went
+  // this frame, its heading its `forward`, grown with the rig under the Overworld (`g`).
+  /** @type {Map<string, { horse: any, at: number[] | null, speed: number, frame: number, conceal: any }>} */
+  const _h3d = new Map();
+  let _dt3d = 0;   // the frame's real seconds (frame's `dt`), the 3D horses' gait step
+  /** A 3D horse's ground speed is eased toward the frame's over this many seconds (a stride does not flicker on a
+   *  stutter); a step past H3D_LEAP m/s is a jump - the drawn point snapped - never a gallop. */
+  const H3D_EASE = 0.15, H3D_LEAP = 40;
+  function pose3dTeam(rig, owner, team, conceal, dt) {
+    let i = 0;
+    for (const h of team) {
+      if (!h.drawn) continue;
+      const key = teamKey(owner, i++);
+      let e = _h3d.get(key);
+      if (!e) { const horse = rig.horse(seedOfKey(key)); if (!horse) continue; e = { horse, at: null, speed: 0, frame: 0, conceal: null }; _h3d.set(key, e); }
+      const g = h.g ?? 1;
+      let v = 0;
+      if (e.at && dt > 0) v = Math.hypot(h.position[0] - e.at[0], h.position[2] - e.at[2]) / dt / g;   // the stride the horse's own size covers
+      if (v > H3D_LEAP) v = e.speed;
+      if (!h.walking && !h.hitched) v = 0;   // HCC's own word: a horse that is not walking stands
+      e.speed += (v - e.speed) * (dt > 0 ? Math.min(1, dt / H3D_EASE) : 1);
+      e.at = [h.position[0], h.position[1], h.position[2]];
+      const yaw = Math.atan2(h.forward[0], h.forward[2]);
+      rig.step(e.horse, { feet: h.position, yaw, speed: e.speed, dt, look: lookOfOwner(owner) });
+      if (g !== 1) rig.place(e.horse, h.position, yaw, g);
+      e.frame = _frameNo; e.conceal = owner ? conceal : null;
+    }
+  }
+  /** The 3D horses not posed this frame let go - their team gone, a peer away, the lane left. */
+  function trim3d() {
+    const rig = horses3d?.();
+    for (const [k, e] of _h3d) if (e.frame !== _frameNo) { rig?.release(e.horse); _h3d.delete(k); }
+  }
+  /** COATS3D: the 3D horses, in the host's body pass (between its sprite batch's open and flush - every Morrowind body's
+   *  picture in one bind). Answers how many drew. */
+  function draw3d(canvas, { proj, view, eye, up = null }) {
+    const rig = horses3d?.();
+    if (!rig) return 0;
+    let n = 0;
+    for (const e of _h3d.values()) if (e.frame === _frameNo && rig.draw(e.horse, canvas, { proj, view, eye, up, conceal: e.conceal })) n++;
+    return n;
+  }
+
+  /** WAGONS3: an owner's team posed - each horse `drawn` its billboard, the rest's taken down. `conceal` a peer's look.
+   *  COATS3D: on the Morrowind lane, its 3D horses instead (pose3dTeam) - and no billboard. */
   function poseTeam(owner, team, cameraPos, conceal = null) {
     _teams.set(owner, team);
+    const rig = horses3d?.();
+    if (rig?.ready()) { pose3dTeam(rig, owner, team, conceal, _dt3d); dropTeamBatches(owner, 0); return; }
     let i = 0;
     if (_stillReady) for (const h of team) {
       if (!h.drawn) continue;
@@ -680,6 +732,7 @@ export function createHorseCartPool({
   /** PERF-TEAMS: where a peer's team stands this frame for the reach - its wagon's word, else its horse's (scene). */
   const peerTeamAt = (p) => p.wagon?.position ?? p.horse?.position ?? null;
   function frame(dt, cameraPos, gameDt = dt) {
+    trim3d(); _dt3d = dt;   // COATS3D: last frame's 3D horses not posed again let go (before the frame's count moves on); this frame's step
     _dyeBudget = 1; _frameNo++; trimLooks();   // COATS1: a set dyed a frame; the looks long undrawn let go
     _eye = cameraPos ? [cameraPos[0], cameraPos[1], cameraPos[2]] : null;
     if (!enabled) { if (_horseBatches.size || _peers.size || _bucketKey || _harness.size) destroyAll(); return; }
@@ -1435,7 +1488,7 @@ export function createHorseCartPool({
   function dropPeer(owner) { dropTeamBatches(owner); dropHarness(owner); _teams.delete(owner); _teamWalk.delete(owner); _peers.delete(owner); _grownWheels.delete(owner); }
   /** The switch off, a teardown: nothing of anyone's stands (the kept words stay as DATA, so the switch back on shows
    *  the cell's parked teams again without waiting on a welcome - HCC-PARK). */
-  function destroyAll() { _live.clear(); for (const owner of [..._peers.keys()]) dropPeer(owner); dropTeamBatches(''); dropHarness(''); _teams.delete(''); _teamWalk.delete(''); standWagonCollider(null); }
+  function destroyAll() { _live.clear(); for (const owner of [..._peers.keys()]) dropPeer(owner); dropTeamBatches(''); dropHarness(''); _teams.delete(''); _teamWalk.delete(''); standWagonCollider(null); _frameNo++; trim3d(); }   // COATS3D: and every 3D horse
 
   // ── ONLINE (HCC-ONLINE)
   /** My word, or null when nothing of mine stands. */
@@ -1680,7 +1733,7 @@ export function createHorseCartPool({
     // wagon of a KIND - its parts (`partsOf`) and its hitch (`hitchOfKind`) - never the player's driven one (`hitchOf`)
     presentation: { wagonParts, horseArt, hitchOf: () => hitchOf(myKind()), onChanged: () => onChanged?.(), drawWagon, drawWagonSeen, poseHorse: poseHorseBatch, partsOf, hitchOfKind: hitchOf },   // PERF-WAGON: the road's teams by the one verdict
     phys,
-    frame, batches, draw, targets, hoverName, tooltipText, activate, offsetAll, destroyAll, clearPeers, shown, groundMoved,
+    frame, batches, draw, draw3d, targets, hoverName, tooltipText, activate, offsetAll, destroyAll, clearPeers, shown, groundMoved,
     wireRecord, applyOwner, sweepOwners, applyKept, replaceKept, pruneKept, parkWord, parkedDoor, mySeat, peerSeat, peerRide, mySeatCount, mySeatsKnown,
     seatDrawn, seatGlue, drawnFrameOf, puppetSeatDrawn, wordSeat,   // WAGONS2: the seats as drawn - the Overworld's grown wagons
     teamOf, driverDrawn, driverSeat, benchKind, driverGlue, cameraHit, cameraFloor, harnessEnds, faceTeams,   // WAGONS3: the team, the driver, the harness, the camera's wall (BENCH-CAM: and the pivot's floor)

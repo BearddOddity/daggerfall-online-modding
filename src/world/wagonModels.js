@@ -39,6 +39,7 @@ import { CARGO_DEFINITIONS } from '../systems/wagon41214.js';
 import { WAGON_KINDS, activeWagonKind, activeWagonItem } from '../systems/wagonKinds.js';
 import { wagonLookOf } from '../systems/wagonLooks.js';   // WAGONS2: the driven wagon's paint
 import { riddenHorseLook } from '../systems/horseCoats.js';   // COATS1: the ridden horse's look
+import { mwViewHorseRig } from '../player/mwView.js';   // COATS3D: the 3D horse rig, on the Morrowind lane
 import { SEATED_HIP_HEIGHT } from '../player/seatPose.js';   // WAGONS3: the seated hips' height over the feet, the measured biped's
 
 /** Where each wagon's bake is (fetched at the load, as the ships' are - systems/comeSailAwayModels.js). */
@@ -471,6 +472,7 @@ export function wagonPoolDeps(items, fetchFn = (u) => globalThis.fetch(u)) {
     wagonKind: () => activeWagonKind(items()) ?? 'cart',
     wagonLook: () => wagonLookOf(activeWagonItem(items())),   // WAGONS2: the driven wagon's paint
     horseLook: () => riddenHorseLook(items()),   // COATS1: and the horse's look
+    horses3d: () => mwViewHorseRig(),   // COATS3D: on the Morrowind lane, every horse the pool stands is the 3D horse
     bakedWagon: (kind) => {
       if (!loads.has(kind)) loads.set(kind, Promise.resolve(fetchFn(WAGON_MODEL_URLS[kind])).then((r) => { if (!r?.ok) throw new Error(`HTTP ${r?.status}`); return r.json(); }));
       return loads.get(kind);

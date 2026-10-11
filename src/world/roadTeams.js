@@ -40,12 +40,16 @@ export const wagonBucket = (key) => `lwWagon:${key}`;
  */
 
 /**
- * @param {{ renderer: any, presentation: () => any, collider?: () => any }} deps - `presentation()` the HCC pool's (null
- *   while there is none)
+ * @param {{ renderer: any, presentation: () => any, collider?: () => any, horses3d?: () => any }} deps - `presentation()` the HCC pool's (null
+ *   while there is none); COATS3D: `horses3d()` the Morrowind lane's 3D horse rig (world/horseRig.js) while it stands
+ *   for the billboards, null otherwise
  */
-export function createRoadTeams({ renderer, presentation, collider = () => null }) {
-  /** @type {Map<string, { batch: any, walk: any, look: number }>} */
+export function createRoadTeams({ renderer, presentation, collider = () => null, horses3d = () => null }) {
+  /** @type {Map<string, { batch: any, walk: any, look: number, h3?: any }>} */
   const horses = new Map();
+  /** COATS3D: this frame's 3D horses (the Morrowind lane's - `horses3d` the rig, world/horseRig.js), for draw3d. */
+  /** @type {any[]} */
+  const drawn3d = [];
   /** @type {Map<string, Float64Array>} the boxes standing, by wagon key */
   const boxes = new Map();
   /** @type {any[]} */
@@ -56,6 +60,7 @@ export function createRoadTeams({ renderer, presentation, collider = () => null 
   function dropHorse(key) {
     const h = horses.get(key);
     if (h?.batch) renderer?.destroyBillboardBatch?.(h.batch);
+    if (h?.h3) horses3d()?.release(h.h3);   // COATS3D
     horses.delete(key);
   }
   function takeDown(key) {
@@ -71,6 +76,9 @@ export function createRoadTeams({ renderer, presentation, collider = () => null 
    */
   function sync(horseList, wagonList, { dt = 0, eye = [0, 0, 0], grow = 1, ground = true } = {}) {
     drawn.length = 0;
+    drawn3d.length = 0;
+    const rig = horses3d();
+    const in3d = !!rig?.ready();   // COATS3D: the Morrowind lane's 3D horse stands for every billboard
     const pres = presentation();
     const art = pres?.horseArt;
     if (art) { art.ensureStationary?.(); art.ensureWalk?.(); }
@@ -93,6 +101,15 @@ export function createRoadTeams({ renderer, presentation, collider = () => null 
         horses.set(h.key, s);
       }
       s.walk = stepHorseWalk(s.walk, h.moving ? h.speed : 0, dt, !!art?.hasWalk?.());
+      if (in3d) {   // COATS3D: the stranger's horse in 3D, in its own look, at its team's pace
+        s.h3 ??= rig.horse(s.look % 65536 || 1);
+        if (!s.h3) continue;
+        rig.step(s.h3, { feet: h.feet, yaw: h.yaw, speed: h.moving ? h.speed : 0, dt, look: s.look });
+        if (grow > 1) rig.place(s.h3, h.feet, h.yaw, grow);
+        drawn3d.push(s.h3);
+        continue;
+      }
+      if (s.h3) { rig?.release(s.h3); s.h3 = null; }
       if (!s.batch || !pres?.poseHorse) continue;
       pres.poseHorse(s.batch, eye, { position: h.feet, forward: [Math.sin(h.yaw), 0, Math.cos(h.yaw)], frame: s.walk.animationFrame ?? 0 }, 1, s.look);   // COATS1: in its look
       if (grow > 1 && s.batch.size) s.batch.size = { w: s.batch.size.w * grow, h: s.batch.size.h * grow };
@@ -139,6 +156,13 @@ export function createRoadTeams({ renderer, presentation, collider = () => null 
     },
     /** This frame's horse billboards (the exterior's billboard pass). */
     batches: () => drawn,
+    /** COATS3D: this frame's 3D horses, in the host's body pass (its sprite batch open). Answers how many drew. */
+    draw3d(canvas, { proj, view, eye, up = null }) {
+      const rig = horses3d();
+      let n = 0;
+      if (rig) for (const h of drawn3d) if (rig.draw(h, canvas, { proj, view, eye, up })) n++;
+      return n;
+    },
     /** The wagons, in the host's world mesh pass. PERF-WAGON: `cull` the host's view test (scenes/world.js yardCull) -
      *  each wagon by the pool's one law (horseCartPool.js drawWagonSeen: drawn, cast alone or neither); none, drawn as
      *  before. Answers how many were drawn on screen. @param {any} r @param {any} [texRemap] @param {any} [cull] */
@@ -159,6 +183,7 @@ export function createRoadTeams({ renderer, presentation, collider = () => null 
       for (const key of [...boxes.keys()]) takeDown(key);
       wagons = [];
       drawn.length = 0;
+      drawn3d.length = 0;
     },
   };
 }

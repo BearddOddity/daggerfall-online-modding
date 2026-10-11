@@ -69,6 +69,7 @@ import { mobilePersonName, lootPileName } from '../systems/worldTooltips.js';   
 import { wagonHoverName } from '../player/eotbWagon.js';   // WORLD-HOVER M6: the cart's word, beside its producer
 import { waterSourceHoverName } from '../systems/survival/items.js';   // WORLD-HOVER M6: a water source's word, beside its producer
 import { mwViewFrame, mwViewWheel, mwViewDrawBody, mwViewFootstep, mwViewAttachWagon, mwViewDrawWagon, mwViewWagonTargets, setEotbCartYields, mwViewWagonActivate, mwViewFirstPerson } from '../player/mwView.js';   // MW-D25: the Morrowind camera; AUDIT-EOTB2: the sprite's stride
+import { mwViewAttachHorse, mwViewSaddle } from '../player/mwView.js';   // COATS3D: the 3D horse under the Morrowind body - its rig, the saddle the body sits
 import { PITCH_LIMIT } from '../player/mwCamera.js';   // MW-D30: camera.cpp:323-331's own clamp
 import { getStaticDoors } from '../world/staticDoors.js';
 import { createDataPipeline } from './dataPipeline.js';
@@ -98,7 +99,7 @@ import { timeScale as hccTimeScale } from '../systems/timeScale.js';   // AUDIT 
 import { horseNameTooltip } from '../ui/horseNameTooltip.js';   // AUDIT HCC U6: the mod's HUD label, both skins
 import { createHorseCartPool } from './horseCartPool.js';   // HCC: the presentation, world.js's twin on this host
 import { wagonPoolDeps } from '../world/wagonModels.js';   // WAGONS1: the pool's two words, one seam for both hosts
-import { birthHorses } from '../systems/horseCoats.js';   // COATS1: the horses born
+import { birthHorses, riddenHorseLook } from '../systems/horseCoats.js';   // COATS1: the horses born; COATS3D: and the ridden one's look, for the 3D horse
 import { createHorseCartRuntime } from '../systems/horseCart.js';   // HCC: TrailingWagonRuntime over this host's seams
 import { setHoldingsProvider, stableProviderFor } from '../ui/holdingsPages.js';   // HOLDINGS: the Stable page over this host's horse and wagon (no boats here)
 import { isQualifyingThreatState } from '../systems/horseFollow.js';   // HCC: CollectThreats' qualification
@@ -438,6 +439,7 @@ export async function bootExterior(canvas, renderer, params, status) {
   const dataReady = ensureAudio(fetchBytes);   // SIB1: awaited before the flats, for the mod's own files
 
   const { textureFiles, getTexture, uploadRecord, uploadRecordFrame, getGpuMesh, getWindmillMeshes, getMachineryParts, gpuMeshes, cpuModels } = pipeline;
+  mwViewAttachHorse(renderer);   // COATS3D: the 3D horse under the Morrowind body
   mwViewAttachWagon({ getGpuMesh, cpuModels }); const EOTB_WAGON_PACK = Object.freeze({ dungeon: Object.freeze({ wagonPrompt: true }) });   // EOTB-IL: SpawnWagon's CreateDaggerfallMeshGameObject(41239) through this host's pipeline; CheckWagon's AllowDungeonWagonAccess() + dfuiOpenInventoryWindow (IL_228b-IL_229f). One line, so the cites below it hold
   let _surfPath = false;   // EOTB-IL: PlayerMotor.OnExteriorPath, as the frame's surface model last answered it
 
@@ -2548,6 +2550,7 @@ export async function bootExterior(canvas, renderer, params, status) {
     // MW-D10: rule 54's neck pitch; MW-D15: rule 32(a)'s sneak sink.
     camera: () => ({ pos: player.eyeAt(), yaw: cam.yaw, pitch: cam.pitch, sneaking: !!player.isSneaking, feet: player.pos, climbing: !!(player.climb?.isClimbing || player.mantling || player.onWall),   // HT1
       seat: _driverSeat ? { feet: _driverSeat.feet, yaw: _driverSeat.yaw, top: _driverSeat.top } : null,   // WAGONS3: on my wagon's bench, the body seated (still on it - combat/fpArm.js seatedCamera)
+      saddle: mwViewSaddle(),   // COATS3D: astride the 3D horse (player/mwView.js), the body's hips on its seat
       bob: [0, player.bobOffset ? player.bobOffset[1] : 0],   // IG1: the bob's vertical feeds the first-person offset
       move: motionBagOf(player),   // MW-D26: the movement-settings vector, the reference's own selection source; MW-D39 added the jump-state inputs; WW2: the one bag (a partial copy left the bob's idle gate unsent)
       climb: climbRigInput(player, cam.yaw) }),   // CLIMB6: the climb's snapshot - the body's limbs on the stone (player/climbPose.js)
@@ -5578,6 +5581,7 @@ export async function bootExterior(canvas, renderer, params, status) {
     const mwv = (!shotMode || walkMode) && !riding
       ? mwViewFrame({ fpEye: cam.pos, feet: player.feetAt(), yaw: cam.yaw, pitch: cam.pitch,
           dt, riding: !!player.riding && !_driverSeat && !(player.transportMode === TRANSPORT_MODES.Cart && hcc.benchKind()),   // AUDIT-EOTB F3/F4: the host's own clock, and the one state only it has; WAGONS3: the bench is no saddle (AUDIT WAGONS3 B2: on a frame with no seat either)
+          horse: player.transportMode === TRANSPORT_MODES.Horse ? { look: riddenHorseLook(playerEntity.items ?? []) } : null,   // COATS3D: on a horse (never the cart), the Morrowind body sits a 3D horse in this look
           ...(_driverSeat ? { seated: true, stopped: true, feet: _driverSeat.feet } : {}),   // WAGONS3: seated on it, still on it, the camera's feet the seat's (after `feet`: it wins)
           pivotFloor: _driverSeat ? hcc.cameraFloor() : null,   // BENCH-CAM: the third-person camera turns about a pivot over my wagon's roof, never in my head
           cart: player.transportMode === TRANSPORT_MODES.Cart, onExteriorPath: _surfPath,   // EOTB-IL: UpdateWagon's two host facts
@@ -5770,6 +5774,7 @@ export async function bootExterior(canvas, renderer, params, status) {
     renderer.beginFrame(proj, view, sunDirection(minute), WORLD_FRAME);   // AUDIT-EL F5: a WORLD frame - the lane replays its records for this one
     renderer.setCloudShadow(sky?.cloudShadow ?? null);   // VC4: the frame's deck, for the body and everything before the terrain
     mwViewDrawBody(canvas, { proj, view, eye, feet: player.bodyFeetAt(), yaw: player.bodyYawFor(cam.yaw), viewYaw: cam.yaw });   // MW-D24; DISC18: the body at the capsule's own feet, not the camera's smoothed ones
+    hcc.draw3d(canvas, { eye, proj, view });   // COATS3D: Horse Cart and Cargo's horses, 3D on the Morrowind lane
     mwViewDrawWagon(renderer, texRemap, streetCull);   // EOTB-IL: the cart, when the transport is the cart; PERF-WAGON: by the street's view test
     camps.draw(renderer, texRemap, streetCull);   // SURV3: the tents; PERF-WAGON: by the street's view test
     hcc.draw(renderer, texRemap, undefined, streetCull);   // HCC: the wagon and its cargo; PERF-WAGON: by the street's view test

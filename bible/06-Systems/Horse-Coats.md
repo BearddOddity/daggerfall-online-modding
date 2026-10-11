@@ -190,6 +190,113 @@ seed))`, at most `HORSE_LOOK_CODE_MAX` (6,881,279); 0 the bay as drawn.
 The last two are relay law: RELAY_VERSION `world195` (world194 on its branch, renumbered past SLIM-FRAME's world194 at the merge of main). An older client draws
 every horse a bay.
 
+## The 3D horse (COATS3D, 2026-10-11)
+
+The owner, sending a rigged horse - walk.fbx, idle.fbx, idle-1.fbx, gallop.fbx, trot.fbx - and two pictures: "The
+first image is for the horse itself and the second is for the tail. These are to be applied to horses for people
+using morrowind with the character properly rigged when riding. These also need to recieve the same texture treatment
+we gave the sprites with parity between each". Asked, every horse of the Morrowind lane - the ridden one, other
+riders', the standing and following horses and the wagon teams - with third person unlocked in the saddle and first
+person on the 3D horse.
+
+Not a DFU member: Daggerfall's horse is a sprite. Ledger A (COATS3D).
+
+### The bake (`tools/bakeHorse.mjs`)
+
+The five files are one rig, the Courser, saved five times: the same two meshes and 33 skin clusters, each a different
+slice of eight animation stacks; idle.fbx carries all eight (idle-1.fbx is the same bytes), so it is the one committed,
+`src/assets/horse/source/courser.fbx`, beside the two pictures (`body.png`, `hair.png`). `node tools/bakeHorse.mjs`
+makes `src/assets/horse/courser.json` out of it, byte for byte the committed one (pinned):
+
+- the armature's own frame - Z up, +Y forward, metres, Morrowind's basis - the FBX's Y-up centimetre wrapper taken off;
+- the 33 bones parent first, each with the clusters' bind and inverse bind (the two agree to 5e-7);
+- the body (1,185 vertices, 1,888 triangles) and the mane and tail's nine alpha cards (120, 90), triangulated as
+  Blender draws them, welded, four influences a vertex - NORMALISED: the body's were exported summing to anything
+  from 0.07 to 2.0, which Blender divides out, so the bake does;
+- the four gaits - idle (8 s, at 15 frames a second), walk (1.33 s), trot (0.87 s) and gallop (0.53 s), at the file's
+  30 - each bone's rotation a frame and its translation where the gait moves it, and each gait's SPEED, the ground it
+  covers a second: walk 0.668 and trot 1.932 m/s off their RootMotion twins, the gallop 10.31 m/s off its planted
+  hooves - Daggerfall's own ride (about 10.8 m/s at Speed 50) is a gallop at its own rate.
+
+EACH FLANK ITS OWN TEXELS. The unwrap is mirrored: the barrel's and the head's islands lay the left half over the
+right, so a texel is painted on both flanks at once - a pinto's patches came out the same on both sides, a mirror
+horse. The painting carries each island's mirror image beside it, unused (measured: a texel and its reflection a mean
+6.6 and 3.7 levels apart), so the bake moves each left triangle onto it, its corners' u reflected about the island's
+midline edge (u 0.419 and 0.620). The bay draws as it did.
+
+### The horse (`world/horseModel.js`, `world/horseRig.js`)
+
+One stream a renderer, uploaded once as the character pass's GPU skin reads it (`formats/mwGpuSkin.js`'s corner, one
+influence pair, the post the identity), and every horse a view of it with its own palette (`renderer.js`
+createSkinPalette - a picture in a sprite batch is drawn at the flush, so each horse keeps the pose it was queued
+in). Each frame a horse's GAIT is stepped (`stepHorseGait`): idle, walk from 0.2 m/s, trot from 1.3, gallop from 5,
+a gait held 15 % past its edge; it plays at the rate its stride covers the ground (`gaitRate`, clamped - past it the
+hooves slide rather than the legs blur), a new gait comes in at the old one's phase and fades in over a quarter
+second. The rig has no canter, so between a quick trot and Daggerfall's ride the gallop plays slow.
+
+A horse alone is drawn as the Morrowind body is - a picture through the sprite pass at the arm's dial
+(`characterSprite.js` drawRigSpriteBox, MW_ARM_PIXEL). A horse under a rider is in the RIDER's picture: `also`, more
+meshes in the one picture under one depth (`renderer.js` _renderCharacterSprite and the batch's tiles; each its own
+quad would cut the horse's neck by the rider's plane), the window the union of the two boxes (`fpArm.js` unionBox),
+the anchor the horse's middle.
+
+### The look on the 3D horse
+
+The same law as the sprites', through the one dye (`dyeInto`): a solid coat's texel is exactly the colour a sprite's
+pixel of that colour takes (pinned, every coat, every shade). What differs is where the markings fall, because the
+3D horse's hide is a surface: `horseTexelMap` lays the body's triangles out on its picture by their UVs and gives each
+texel its place on the horse, and `texelPlanes` lays each texel in the frame of the side it FACES - its flank as the
+side view lays it, its back and belly from above and below, its chest, face and rump from the front and behind - each
+of the six faces its own place on the pattern, a texel facing between two taking both by |n|^4, so the back's patches
+hand over to a flank's with no seam. One unit is the hide's length nose to rump, the sprites' measure (the side view's
+width). The pinto's field is blended before it is cut, so its edges stay crisp.
+
+- The horn below the hooves' CROWN keeps the art's: the crown read off the skeleton, halfway between each hoof bone's
+  joint and the fetlock's (8.75 cm - the painting's own step).
+- The legs' white climbs from the crown by the sprites' LEG_BANDS share of the hide's height: socks to the fetlock
+  and over, stockings to under the knee.
+- WHITE_FLOOR_3D: the 3D horse is lit by the world, and its painting's darkest hide is pigment - the bay's black points
+  are painted at a value of 0.1-0.22 - so a white laid by the art's own light came out mid grey. Its light is floored
+  at 0.4; a sprite's white stays its art's light (a sprite is lit by its painting alone).
+- The mane and tail's cards keep their picture, as the sprites keep the mane.
+
+A look's picture is dyed DYE_ROWS (32) rows a frame (`dyeHorseTexelRows` - a whole picture is 50-120 ms) and uploaded
+with its mips once whole; a horse wears the bay's until its look is up; past HORSE_LOOKS_KEPT (12) the one longest
+undrawn is let go. The appaloosa's spots were made rounder for both sets at this slice (stretched up to 1.45 a side,
+not 1.9): at the 3D horse's detail the old ovals read as brush strokes.
+
+### Astride (`player/seatPose.js` saddleRigInput)
+
+Morrowind has no riding animation, so the saddle is posed as CARDS2b's chair is: a world request the climb rig solves
+on the skeleton's own bones (`combat/climbRig.js`) - the hips on the horse's SEAT (`horseRig.js` HORSE_SEAT, 1.68 m
+over the ground, 0.1 m forward, carried by the Spine bone so the rider rises and falls with the back's stride), each
+foot in a stirrup 0.32 m out (the horse's width - its barrel is 0.30 either side) and 0.8 m under the hips (the
+rider's leg) with the knee forward and out round the barrel, each hand on the reins over the withers, the spine
+leaning into the gallop. Solved on retail's biped the hands and feet land to the millimetre. The body plays no stride
+under it (`seatedCamera`), and its cloak hangs behind the saddle as behind a chair.
+
+### Where it is ridden
+
+- **The player's own** (`player/mwView.js`): the hosts hand the view `horse` - the ridden horse's look, on a horse and
+  never the cart - and it keeps the player's horse, stepped at the ground the body covers, under the body's feet with
+  its seat over them, its seat handed to the body as `saddle` (the hosts' camera()). RIDE-POV holds the head only off
+  a 3D horse (the cart's seat, a rig not up yet): astride one, the wheel and the toggle take the view out as on foot,
+  and the third-person camera turns about the rider's head. In first person the horse is drawn where Daggerfall's
+  riding sprite was (`player/mountRig.js` - after the world, under the hands), taken with the world's own camera
+  from the eye on its back; the sprite stands down.
+- **Other riders** (`net/peerBodies.js`): a peer on a horse whose Morrowind body stands here sits a 3D horse of its
+  own, in the look their pose names (`rc`), stepped at the body's pace; the rider layer yields them
+  (`net/peerRiders.js` sync's `yields`, `scenes/world.js` peerRidesIn3d) - a beast stays the layer's.
+- **The pool's horses** (`scenes/horseCartPool.js`): on the Morrowind lane (`mwView.js` mwViewHorseRig, handed to the
+  pool through `world/wagonModels.js` wagonPoolDeps) every horse the pool stands - alone, following, parked in harness,
+  pulling - is a 3D horse in its owner's look, drawn in the body pass (draw3d) in place of its billboard.
+- **The road's teams** (`world/roadTeams.js`): likewise, each stranger's horse in its own look.
+
+FLAGGED: the town watch's carried team (`scenes/wagonWardenShow.js`) is still the billboards' - a throw of a few
+seconds, its own batches.
+
+`tools/horse3dProbe.mjs` draws the horse through the real renderer in a page - its looks, both flanks, every gait.
+
 ## The Stable card
 
 `ui/holdingsPages.js`: the horse's card says its look in words ("Dapple grey
@@ -198,4 +305,4 @@ a choice, the one worn pressed (`choiceRow`, the paint row's own, shared).
 Pressing one restyles the ridden horse in the pack and tells the host, as a
 paint does - Horse Cart and Cargo on or off.
 
-Pinned: `test/coats1_horsecoats.test.js`.
+Pinned: `test/coats1_horsecoats.test.js`; COATS3D, `test/coats3d_horse3d.test.js`.

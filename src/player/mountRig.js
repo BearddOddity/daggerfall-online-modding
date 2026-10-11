@@ -37,7 +37,7 @@ import { TransportWindow, transportArtLoaded } from '../ui/transportWindow.js';
 import { enhancedWindow } from '../ui/enhancedPorts.js';   // PORT4: the transport picker, in the enhanced skin
 import { ownsShip } from '../systems/banking.js';
 import { horseOffsetHeight, dockedLargeHudHeight } from '../ui/hudLarge.js';   // ROAD-D D10: LargeHUDOffsetHorse; AUDIT-RR F25: EnhancedRiding's own arm asks LargeHUDDocked (EnhancedRiding.cs:256-257)
-import { mwViewHides } from './mwView.js';   // AUDIT-EOTB2: the sprite body on screen hides the FPV horse (Eye Of The Beholder's ToggleBillboard)
+import { mwViewHides, mwViewDrawSaddle } from './mwView.js';   // AUDIT-EOTB2: the sprite body on screen hides the FPV horse (Eye Of The Beholder's ToggleBillboard); COATS3D: the 3D horse in its place
 import { SOUND } from '../systems/soundClips.js';
 import { isShipAvailable } from '../systems/ship.js';   // RR1: TransportManager.ShipAvailiable, the delegate
 import { NATIVE_SCREEN_HEIGHT } from '../systems/riding.js';   // RR2: the 200-line native screen the sprite scales by
@@ -230,6 +230,9 @@ export function createMountRig({
       }
       // COATS1: a look chosen in the saddle (the Stable card) dresses the sprite - the old one drawn until the new is up
       if (_artFor && isRiding(player.transportMode) && _artFor !== artKey(player.transportMode)) loadArt(player.transportMode);
+      // COATS3D: on the Morrowind body's 3D horse, that horse is the one in first person - drawn here, in the sprite's
+      // place (after the world, under the hands), and the sprite stands down
+      if (isRiding(player.transportMode) && !ridePaused && !mwViewHides().horse && mwViewDrawSaddle(typeof canvas === 'function' ? canvas() : canvas)) return r;
       if (art && isRiding(player.transportMode) && !ridePaused && !mwViewHides().horse) {
         // ROAD-D D10: horseOffsetHeight (TransportManager.cs :304-309)
         // - the bar the LAST drawHud drew, lifted out from under the

@@ -230,9 +230,11 @@ export function createPeerRiders({ renderer = null, urlFor = eotbSpriteUrl, deco
    * INVIS-LOOK: `conceal(id)` a concealed peer's draw (ECV1's visual, the host's) or null - read by `one`, for a
    * deferred beast too (the frame's own, kept like its placing).
    * @param {Array<any>} peers @param {(p: any) => number[]} toScene
-   * @param {{eye?: number[]|Float32Array|null, right?: number[], dt?: number, defer?: (peer: any) => boolean, conceal?: (id: string) => object|null, grow?: ((feet: number[]) => number)|null}} [opts]
+   * COATS3D: `yields(peer)` a rider another layer stands - the Morrowind lane's, its body astride the 3D horse
+   * (net/peerBodies.js): never drawn here, so never `isRiding`, and the bodies take them as a peer afoot.
+   * @param {{eye?: number[]|Float32Array|null, right?: number[], dt?: number, defer?: (peer: any) => boolean, yields?: (peer: any) => boolean, conceal?: (id: string) => object|null, grow?: ((feet: number[]) => number)|null}} [opts]
    */
-  function sync(peers, toScene, { eye = null, right = [1, 0, 0], dt = 0, defer = () => false, conceal = () => null, grow = null } = {}) {
+  function sync(peers, toScene, { eye = null, right = [1, 0, 0], dt = 0, defer = () => false, yields = () => false, conceal = () => null, grow = null } = {}) {
     const on = enabled();
     const seen = new Set();
     deferred.length = 0;
@@ -246,6 +248,7 @@ export function createPeerRiders({ renderer = null, urlFor = eotbSpriteUrl, deco
       const beast = pose.wb | 0;
       const riding = pose.rd === POSE_RIDE.Horse || pose.rd === POSE_RIDE.Cart;
       if (!beast && !riding) continue;
+      if (riding && !beast && yields(peer)) continue;   // COATS3D: on the 3D horse - the bodies' (swept here, if it stood)
       seen.add(peer.id);
       if (beast && !riding && defer(peer)) { deferred.push(peer); continue; }   // WEREWOLF1 (AUDIT E4): settled below
       one(peer, pose, beast, riding, toScene, eye, right, dt);

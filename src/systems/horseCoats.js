@@ -315,6 +315,19 @@ export function shadeOf(seed) {
   return [(seedRand(seed, 1) * 2 - 1) * SHADE_HUE, 1 + (seedRand(seed, 2) * 2 - 1) * SHADE_VALUE];
 }
 
+/** The pinto's field at (u, v): three octaves of the seed's noise over a domain the noise pushes about - and the
+ *  threshold past which it is white (`pintoCut`). Apart, so the 3D dye can blend the field before it cuts it. */
+function pintoField(s, u, v) {
+  const ox = seedRand(s, 3) * 61, oy = seedRand(s, 4) * 47;
+  const [wu, wv] = warp(u * 2.4 + ox, v * 2.4 + oy, s, 0.45, 1.1);
+  return 0.62 * noise(wu, wv, s) + 0.28 * noise(wu * 2.3 + oy, wv * 2.3 + ox, s + 7) + 0.1 * noise(wu * 7, wv * 7, s + 8);
+}
+const pintoCut = (s, n) => { const t = 0.5 + (seedRand(s, 5) - 0.5) * 0.16; return smooth(t - 0.012, t + 0.012, n); };
+/** The roan's white hairs' share at (u, v): a quarter to a half of the hide, thicker in patches. */
+const roanDensity = (s, u, v) => 0.22 + seedRand(s, 9) * 0.12 + 0.2 * noise(u * 3 + seedRand(s, 3) * 61, v * 3 + seedRand(s, 4) * 47, s + 12);
+/** ...and whether the hide's pixel or texel (`px`, `py`, its own grid) is one: white at 0.6, never a pure white. */
+const roanFleck = (s, px, py, density) => (hash3(px, py, s + 11) < density ? 0.6 : 0);
+
 /**
  * The marking a pattern lays at a hide pixel: `[white, dark]` - how far toward white it goes (0..1), and how far its
  * light falls (0..1, the appaloosa's spots and the dapples' rings). `u` from the hide's left and `v` down from its top,
@@ -323,16 +336,11 @@ export function shadeOf(seed) {
 function markingAt(pattern, seed, u, v, px, py) {
   const s = seed | 0, ox = seedRand(s, 3) * 61, oy = seedRand(s, 4) * 47;
   switch (HORSE_PATTERNS[pattern]) {
-    case 'pinto': {   // tobiano: broad white across the back and down the flanks, its edge wandering and ragged
-      const [wu, wv] = warp(u * 2.4 + ox, v * 2.4 + oy, s, 0.45, 1.1);
-      const n = 0.62 * noise(wu, wv, s) + 0.28 * noise(wu * 2.3 + oy, wv * 2.3 + ox, s + 7) + 0.1 * noise(wu * 7, wv * 7, s + 8);
-      const t = 0.5 + (seedRand(s, 5) - 0.5) * 0.16;
-      return [smooth(t - 0.012, t + 0.012, n), 0];
-    }
+    case 'pinto': return [pintoCut(s, pintoField(s, u, v)), 0];   // tobiano: broad white across the back and down the flanks, its edge wandering and ragged
     case 'appaloosa': {   // half are leopards (white, the coat in spots), half snowflakes (the coat, flecked in white)
       const cell = 0.075 + seedRand(s, 6) * 0.03;
-      const [wu, wv] = warp(u / cell + ox, v / cell + oy, s, 0.55);
-      const [f1, , h] = nearest2(wu, wv, s, 0.9);
+      const [wu, wv] = warp(u / cell + ox, v / cell + oy, s, 0.3);
+      const [f1, , h] = nearest2(wu, wv, s, 0.45);   // an oval of its own bearing: at the 3D horse's detail a spot stretched further read as a brush stroke
       const r = (0.14 + 0.2 * h) * (0.75 + 0.5 * noise(u * 40 + ox, v * 40 + oy, s + 9));   // each spot its own size, its edge ragged
       const spot = smooth(r - 0.04, r + 0.04, r * 2 - f1);
       if (seedRand(s, 7) < 0.5) return [1 - spot, spot * 0.15];   // leopard
@@ -347,11 +355,32 @@ function markingAt(pattern, seed, u, v, px, py) {
       const fade = 0.55 + 0.45 * smooth(0.25, 0.75, noise(u * 1.6 + oy, v * 1.6 + ox, s + 10));   // dapples come and go across the coat
       return [0.34 * blot * fade, (1 - blot) * 0.16 * fade];
     }
-    case 'roan': {   // white hairs through the coat, thicker on the body in patches
-      const density = 0.22 + seedRand(s, 9) * 0.12 + 0.2 * noise(u * 3 + ox, v * 3 + oy, s + 12);
-      return [hash3(px, py, s + 11) < density ? 0.6 : 0, 0];
-    }
+    case 'roan': return [roanFleck(s, px, py, roanDensity(s, u, v)), 0];   // white hairs through the coat, thicker on the body in patches
     default: return [0, 0];
+  }
+}
+
+/**
+ * ONE DYE, EVERY HORSE (COATS3D's parity): a hide pixel `o` of `src` dyed into `out` - the coat's hue (the bay keeps
+ * the art's own) turned by the seed's shade, a saturation off its own, a value `lift + scale * v` lit by the shade and
+ * darkened by `dark`, then `white` of the hide's own light in white over it - that light at least `whiteFloor` (0 for a
+ * sprite; WHITE_FLOOR_3D for the 3D horse). The sprites' dye and the 3D horse's both end here, so a coat is one colour
+ * whichever horse wears it.
+ */
+function dyeInto(out, src, o, dye, hueJ, valJ, white, dark, whiteFloor = 0) {
+  const [h0, s, v] = hsv(src[o], src[o + 1], src[o + 2]);
+  const [mode, k] = dye.sat, [lift, scale] = dye.val;
+  const hue = (dye.hue ?? h0) + hueJ;
+  const ns = clamp01(mode === 'mul' ? s * k : k * Math.min(1, s / 0.6 + 0.3));
+  let nv = clamp01((lift + scale * v) * valJ);
+  if (dark) nv *= 1 - dark;
+  rgbInto(out, o, hue, ns, nv);
+  if (white > 0) {   // the hide's own light, in white: a patch in shadow is a shadowed white
+    const tmp = [0, 0, 0];
+    rgbInto(tmp, 0, hue, 0.04, clamp01(0.4 + 0.85 * Math.max(v, whiteFloor)));
+    out[o] = Math.round(out[o] + (tmp[0] - out[o]) * white);
+    out[o + 1] = Math.round(out[o + 1] + (tmp[1] - out[o + 1]) * white);
+    out[o + 2] = Math.round(out[o + 2] + (tmp[2] - out[o + 2]) * white);
   }
 }
 
@@ -437,34 +466,130 @@ export function recolorHorse(image, look, { bottomFirst = true, legs = true, tac
       if (x < x0) x0 = x; if (x > x1) x1 = x; if (r < r0) r0 = r; if (r > r1) r1 = r;
     }
     const hideW = Math.max(1, x1 - x0 + 1), hideH = Math.max(1, r1 - r0 + 1), unit = Math.max(PATTERN_SCALE_PX, hideW);
-    const [mode, k] = dye.sat, [lift, scale] = dye.val;
     const [hueJ, valJ] = shadeOf(l.seed);
     const band = legs ? LEG_BANDS[l.legs] * hideH : 0;
     for (let i = 0; i < n; i++) {
       const id = region[i];
       if (id < 0 || !dyed[id]) continue;
-      const o = i * 4;
-      const [h0, s, v] = hsv(src[o], src[o + 1], src[o + 2]);
-      const hue = (dye.hue ?? h0) + hueJ;
-      const ns = clamp01(mode === 'mul' ? s * k : k * Math.min(1, s / 0.6 + 0.3));
-      let nv = clamp01((lift + scale * v) * valJ);
       const x = i % w, r = (i - x) / w;
       const down = bottomFirst ? r1 - r : r - r0, up = bottomFirst ? r - r0 : r1 - r;
       let [white, dark] = l.pattern ? markingAt(l.pattern, l.seed, (x - x0) / unit, down / unit, x - x0, down) : [0, 0];
       if (band > 0 && up < band * (0.8 + 0.4 * hash3(x - x0, 0, l.seed + 13))) white = 1;   // the legs' white, its top ragged
-      if (dark) nv *= 1 - dark;
-      rgbInto(out, o, hue, ns, nv);
-      if (white > 0) {   // the hide's own light, in white: a patch in shadow is a shadowed white
-        const wv = clamp01(0.4 + 0.85 * v);
-        const tmp = [0, 0, 0];
-        rgbInto(tmp, 0, hue, 0.04, wv);
-        out[o] = Math.round(out[o] + (tmp[0] - out[o]) * white);
-        out[o + 1] = Math.round(out[o + 1] + (tmp[1] - out[o + 1]) * white);
-        out[o + 2] = Math.round(out[o + 2] + (tmp[2] - out[o + 2]) * white);
-      }
+      dyeInto(out, src, i * 4, dye, hueJ, valJ, white, dark);
     }
   }
   const Ctor = /** @type {any} */ (image.colors).constructor;
   const colors = Ctor === Uint8Array ? out : new Ctor(out.buffer, 0, Ctor.BYTES_PER_ELEMENT === 4 ? n : n * 4);
   return /** @type {T} */ ({ ...image, colors });
+}
+
+// ── COATS3D: the 3D horse's dye ──────────────────────────────────────────────────────────────────────────────────────
+
+/** THE 3D HORSE'S WHITE, at least this light. A sprite's picture is lit by its painting alone, so its white is the
+ *  hide's own light (a patch in shadow, a shadowed white); the 3D horse is lit by the world, and its painting's darkest
+ *  hide is PIGMENT - the bay's black points, the lower legs painted at a value of 0.1-0.22 (measured, horseModel.js
+ *  horseTexelMap's legs) - so a sock laid by the art's light came out a mid grey (0.48-0.59). Its light is floored
+ *  here: a sock a white the world then shades. */
+export const WHITE_FLOOR_3D = 0.4;
+/** The 3D dye's planes (`texelPlanes`): how sharply the hide's facing picks its plane - a weight is |normal|^4. */
+export const PLANE_SHARPNESS = 4;
+/** ...and a plane whose weight falls under this is not asked (its share of a marking under a hundredth). */
+const PLANE_FLOOR = 0.01;
+
+/**
+ * THE 3D HIDE'S FRAME. A sprite's hide is one picture, so its markings are laid in the picture's own frame. The 3D
+ * horse's hide is a surface, so each texel is laid in the frame of the side it FACES, as the sprite's views are: its
+ * flank as the side view lays it (from the nose back, down from the top), its back and belly as seen from above and
+ * below (from the nose back, across), its chest, face and rump as from the front and behind (across, down). Each of
+ * the six faces has its own place on the pattern (a left flank is not its right's mirror), and a texel facing between
+ * two takes both, weighted by how far it faces each (|n|^PLANE_SHARPNESS) - so where the back turns into the flank the
+ * one side's patches hand over to the other's with no seam. The measure is the sprite's: one PATTERN_SCALE_PX unit is
+ * the hide's length nose to rump (the side view's width), so a spot is one size on both. Answers `[u, v, w]` thrice
+ * (the x, y and z faces, the one the normal points to), into `out` at `o`.
+ * @param {ArrayLike<number>} p the texel's bind position, metres (Z up, +Y the way the horse faces)
+ * @param {ArrayLike<number>} n its bind normal
+ * @param {{ length: number, front: number, top: number }} hide the hide's length, its nose's y and its top's z
+ */
+export function texelPlanes(p, n, hide, out = new Float32Array(9), o = 0) {
+  const L = hide.length || 1;
+  const along = (hide.front - p[1]) / L, down = (hide.top - p[2]) / L, across = p[0] / L;
+  const wx = Math.abs(n[0]) ** PLANE_SHARPNESS, wy = Math.abs(n[1]) ** PLANE_SHARPNESS, wz = Math.abs(n[2]) ** PLANE_SHARPNESS;
+  const sum = wx + wy + wz || 1;
+  // each face its own place on the pattern: the flanks, the front and back, the top and belly - six, apart
+  const fx = n[0] < 0 ? 37.3 : 0, fy = n[1] < 0 ? 53.9 : 71.1, fz = n[2] < 0 ? 89.7 : 17.9;
+  out[o] = along + fx; out[o + 1] = down; out[o + 2] = wx / sum;
+  out[o + 3] = across + fy; out[o + 4] = down; out[o + 5] = wy / sum;
+  out[o + 6] = along + fz; out[o + 7] = across; out[o + 8] = wz / sum;
+  return out;
+}
+
+/**
+ * THE 3D HORSE'S DYE (COATS3D): `image` (the body's picture, `{ width, height, colors }` RGBA bytes) in look `look` -
+ * a new image, or the image itself for the bay as drawn (code 0). `map` places each texel on the horse - built off the
+ * mesh by world/horseModel.js horseTexelMap: `hide` (1 a texel the body's hide draws, 0 one no triangle covers or a
+ * hoof's), `planes` (texelPlanes, nine a texel) and `up` (the texel's height over the hooves as a share of the hide's).
+ * The law is the sprites', to the number - the same hide test (warm and coloured: an eye's white and pupil, a
+ * nostril's black are not), the same coat, shade, markings and white through the one `dyeInto` - with the markings
+ * laid in each texel's own frame (texelPlanes), the legs' white from the hooves by the same LEG_BANDS share of the
+ * hide's height, its top ragged, and a white never darker than WHITE_FLOOR_3D's light. No tack is spared (none is painted) and no region is weighed (no rider is in the
+ * picture). A mane is not in this picture: the hair cards' is the art's, as the sprites' is.
+ * @template {{ width: number, height: number, colors: ArrayLike<number> & { buffer: ArrayBufferLike, byteOffset: number, byteLength: number } }} T
+ * @param {T} image
+ * @param {any} look
+ * @param {{ hide: Uint8Array, planes: Float32Array, up: Float32Array }} map
+ * @returns {T}
+ */
+export function recolorHorseTexels(image, look, map) {
+  const l = lookOf(look);
+  if (!horseLookCode(l) || !image?.colors || !map) return image;
+  const { width: w, height: h } = image;
+  const n = w * h;
+  const src = new Uint8Array(image.colors.buffer, image.colors.byteOffset, image.colors.byteLength);
+  if (src.length < n * 4 || map.hide.length < n) return image;
+  const out = new Uint8Array(src);
+  dyeHorseTexelRows(src, out, w, l, map, 0, h);
+  const Ctor = /** @type {any} */ (image.colors).constructor;
+  const colors = Ctor === Uint8Array ? out : new Ctor(out.buffer, 0, Ctor.BYTES_PER_ELEMENT === 4 ? n : n * 4);
+  return /** @type {T} */ ({ ...image, colors });
+}
+
+/**
+ * recolorHorseTexels's work, rows `r0` to `r1` (not including it) of a `width`-wide picture: `src`'s texels dyed into
+ * `out` (a copy of `src`, the rows outside left as they are). Apart so a renderer can spread one look's dye over a
+ * few frames (world/horseRig.js) - the whole picture is some 50-120 ms of a frame's CPU.
+ * @param {Uint8Array} src
+ * @param {Uint8Array} out
+ * @param {number} width
+ * @param {any} look
+ * @param {{ hide: Uint8Array, planes: Float32Array, up: Float32Array }} map
+ * @param {number} r0
+ * @param {number} r1
+ */
+export function dyeHorseTexelRows(src, out, width, look, map, r0, r1) {
+  const l = lookOf(look);
+  if (!horseLookCode(l)) return;
+  const dye = COAT_DYES[HORSE_COATS[l.coat]];
+  const [hueJ, valJ] = shadeOf(l.seed);
+  const s = l.seed | 0, P = map.planes;
+  const band = LEG_BANDS[l.legs];
+  const pattern = HORSE_PATTERNS[l.pattern];
+  for (let i = r0 * width, end = r1 * width; i < end; i++) {
+    const o = i * 4;
+    if (!map.hide[i] || !src[o + 3] || !isCoatPixel(src[o], src[o + 1], src[o + 2], false)) continue;
+    const x = i % width, y = (i - x) / width, q = i * 9;
+    let white = 0, dark = 0, field = 0, rag = 0;
+    for (let k = 0; k < 9; k += 3) {
+      const pw = P[q + k + 2];
+      if (pw < PLANE_FLOOR) continue;
+      const u = P[q + k], v = P[q + k + 1];
+      if (band > 0) rag += pw * noise(u * 40, v * 40, s + 13);
+      if (pattern === 'pinto') field += pw * pintoField(s, u, v);
+      else if (pattern === 'roan') field += pw * roanDensity(s, u, v);
+      else if (l.pattern) { const [mw, md] = markingAt(l.pattern, s, u, v, x, y); white += pw * mw; dark += pw * md; }
+    }
+    if (pattern === 'pinto') white = pintoCut(s, field);
+    else if (pattern === 'roan') white = roanFleck(s, x, y, field);
+    if (band > 0 && map.up[i] < band * (0.8 + 0.4 * rag)) white = 1;   // the legs' white, its top ragged
+    dyeInto(out, src, o, dye, hueJ, valJ, white, dark, WHITE_FLOOR_3D);
+  }
 }
