@@ -51,7 +51,7 @@ import { BUILDING_TYPES } from '../world/buildingNames.js';
 import { MINUTES_PER_DAY, dayOfYear } from './gameDate.js';   // X6: the soul-gem stock's daily seed; A2: CreateStockedDate's day term
 import { SOUL_TRAP_TEMPLATE } from './mysticism.js';   // X6: one home for the template id (X5 put it there with fillEmptyTrap)
 import { ILIAC_CARD_TEMPLATE, CARD_PACK_TEMPLATE } from './iliacItems.js';   // AUDIT CARDS-5 C2: the collectible card, which no shop buys; CARDS9: nor its pack
-import { OIL_TEMPLATE, addItem } from './inventory.js';   // AUDIT-RR2 G10: the shelf's AddItem   // AUDIT 58: UselessItems2.Oil (ItemEnums.cs:357) - one home for the id
+import { OIL_TEMPLATE, ARROW_TEMPLATE, addItem } from './inventory.js';   // SHOP-ARROWS: the counter's quiver   // AUDIT-RR2 G10: the shelf's AddItem   // AUDIT 58: UselessItems2.Oil (ItemEnums.cs:357) - one home for the id
 import { getBool } from './settings.js';   // AUDIT 58: DaggerfallUnity.Settings.PlayerTorchFromItems, read where DFU reads it
 import { FACTION_TYPES } from '../formats/factionFile.js';        // S41: UpdateRegionalPrices' type-7 region walk
 import { findFactionByTypeAndRegion } from './talk.js';           // S41: PersistentFactionData.FindFactionByTypeAndRegion, one home
@@ -115,15 +115,31 @@ export const SHOP_ITEM_GROUPS = Object.freeze({
  */
 export const SHOP_PELLETS_MAX = 50;
 const WEAPONS_GROUP_ID = 0x03;
-export function shopPelletStack(buildingType, quality) {
+/** THE COUNTER'S ROUNDS, one law for every ammunition (SHOP-PELLETS, SHOP-ARROWS): `max` at a quality-20 Weapon Smith,
+ *  the shop's own Weapons chance over the Weapon Smith's of it, and a poor shop half of that; nothing where no weapon is
+ *  sold. */
+export function shopAmmoStack(buildingType, quality, max) {
   const pairs = SHOP_ITEM_GROUPS[buildingType] ?? [];
   let chance = 0;
   for (let i = 0; i + 1 < pairs.length; i += 2) if (pairs[i] === WEAPONS_GROUP_ID) chance = pairs[i + 1];
   if (!(chance > 0)) return 0;
   const most = SHOP_ITEM_GROUPS[BUILDING_TYPES.WeaponSmith][3];   // the Weapon Smith's own Weapons chance, 0x46
   const q = Math.max(1, Math.min(20, Math.trunc(Number(quality)) || 1));
-  return Math.max(1, Math.round(SHOP_PELLETS_MAX * (chance / most) * (0.5 + (0.5 * (q - 1)) / 19)));
+  return Math.max(1, Math.round(max * (chance / most) * (0.5 + (0.5 * (q - 1)) / 19)));
 }
+export const shopPelletStack = (buildingType, quality) => shopAmmoStack(buildingType, quality, SHOP_PELLETS_MAX);
+
+/**
+ * SHOP-ARROWS (2026-10-11, Mac: "Buff the shop's stock of arrows"; bible/05-Combat/Arrow-Supply.md): A QUIVER ON THE
+ * COUNTER. DFU's stock law shelves arrows as any weapon - a Weapons-chance draw a shelf, rarity 1, one stack of
+ * Range(1, 21) (enemyEquipment.js createWeapon's arrow arm) - so a Weapon Smith's counter held twenty arrows at most, 70%
+ * of the time, and a General Store's one day in five. Now every shop that sells weapons also carries a quiver on its
+ * counter's shelf, from NO roll and after every draw of DFU's, sized by the pellets' law at SHOP_ARROWS_MAX: a Weapon
+ * Smith 50 to 100, an Armorer or a General Store 14 to 29, a Pawn Shop 7 to 14 - merged into the shelf's own arrows
+ * when DFU's draw put some there. It sells out and comes back with the day's restock, as the rest of the shelf does.
+ */
+export const SHOP_ARROWS_MAX = 100;
+export const shopArrowStack = (buildingType, quality) => shopAmmoStack(buildingType, quality, SHOP_ARROWS_MAX);
 
 // E3: DaggerfallTradeWindow.storeBuysItemType, verbatim - the item
 // groups each storefront BUYS from the player.
@@ -485,6 +501,9 @@ export function stockShopShelf({ buildingType, quality }, playerEntity = {}, { r
   // every tier, Climates & Calories Off and offline too - after DFU's draws, from no roll. Online a purchase stands them
   // again (restockEndless); offline they sell out until the day's restock, as the rest of the shelf does (ENDLESS-STOCK F4)
   if (shelfIndex === 0 && (buildingType === BUILDING_TYPES.GeneralStore || buildingType === BUILDING_TYPES.PawnShop)) ensureEndlessProvisions(items);
+  // SHOP-ARROWS (above): a quiver on the counter of every shop that sells weapons - after DFU's draws, from no roll; minted
+  // as the shelf mints its own (CreateWeapon's arrow arm, its stack roll answered by a constant), so the two are one stack
+  if (shelfIndex === 0) { const n = shopArrowStack(buildingType, quality); if (n > 0) add({ ...createWeapon(ARROW_TEMPLATE, 0, () => 0), stackCount: n }); }
   // SHOP-PELLETS (above): the Thunderlock's shot on the counter of every shop that sells weapons - after DFU's draws, from no roll
   if (shelfIndex === 0) { const n = shopPelletStack(buildingType, quality); if (n > 0) addItem(items, createPellets(n)); }
   // POTION-COMMON (2026-10-01, the field: "make health potions more common"): an alchemist's and a general store's day of

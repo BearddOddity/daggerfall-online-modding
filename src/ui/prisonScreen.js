@@ -59,6 +59,7 @@ import { loadImg, nativeMetrics, drawImg, drawRect, shadowText, NATIVE_W } from 
 import { DFPalette } from '../formats/dfPalette.js';
 import { isEnhanced } from '../systems/uiSkin.js';   // FONT3: the countdown in the enhanced face under that skin
 import { drawEnhancedHudLabel, midTextTopPx } from './enhancedHudText.js';   // FONT3: the mid-screen label's DOM face, one node per id
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** nativeImgName / nativeImgName2 (:31-32). */
 export const COURT_IMG = 'CORT01I0.IMG';
@@ -141,6 +142,7 @@ export function _setCourtScreenArtForTests(art) { _courtArt = art; }
  */
 export class CourtScreenWindow {
   constructor() {
+    noteFirstUse('crime');   // TUT1: the court is the law's first word to the player
     this.done = false;
     this.isChoiceWindow = true;   // the overlay slot's modal flag
   }

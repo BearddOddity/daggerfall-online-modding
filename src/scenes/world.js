@@ -1035,6 +1035,8 @@ import { createRoyalSession } from '../net/royalSession.js';   // CROWN1 part tw
 import { createRoyalClaims, createDuelClaims } from '../net/siegeClaims.js';   // CROWN1 part two: its bouts' receipts carried to the service; INT8: a duel's
 import { createSiegeHerald } from '../net/siegeHerald.js';   // AUDIT-SEATS G1: the battles announced in the server's voice
 import { siegeBlowKind, siegeCastClamp, siegeSpellNumbers, siegeSpellBarred, SIEGE_SPELL_BARRED_TEXT, SIEGE_DISMOUNT_TEXT } from '../combat/siegeCombat.js';   // AUDIT-SEATS G5: a battle's shafts, spells and saddle
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
+import { startTutorialTour } from '../ui/tutorialPopup.js';   // TUT1: the welcome tour - and the popups' handler, registered by this host (the four hosts' rule)
 
 /** Internal_Strings_en 654 / 655, the two guild map-reveal notes
  *  (ThievesGuild.cs:115, DarkBrotherhood.cs:108). %map is the
@@ -1820,7 +1822,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const carryHands = {
     held: (key) => bagHeldOf(playerEntity, key),
     room: (key) => bagRoomFor(playerEntity, key),
-    mint: (key, n) => { const got = mintCarried(playerEntity, key, n, carryOpts(key)); if (got.bag + got.pack > 0) saveSoon.changed(); return got; },
+    mint: (key, n) => { const got = mintCarried(playerEntity, key, n, carryOpts(key)); if (got.bag + got.pack > 0) saveSoon.changed(); if (got.bag > 0) noteFirstUse('materials'); return got; },   // TUT1: the first material bagged
     take: (key, n, stamp = null, order = null) => {
       const t = takeCarried(playerEntity, key, n, stamp, order);
       if (t.taken > 0) saveSoon.changed();
@@ -7763,6 +7765,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (!questBridge) { _questStartPending = true; return; }
     _questStarted = true;
     questBridge.initAtGameStart();
+    startTutorialTour();   // TUT1: DFO's welcome tour, where DFU's _TUTOR__ spoke its first page (questBridge.js GAME_START_QUESTS)
     // BA1: StartGameBehaviour.OnStartGame's two listeners in Better Ambience (the fog, the rain source), and
     // Immersive Footsteps' ModCompatibilityWarning_OnStartGame - the box a DFU player sees with both strides on.
     betterAmbience.onStartGame();
@@ -11738,7 +11741,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // modes hand their own rigs their own doors (worldModes.js).
     technique: {
       motor: () => player,
-      fireArrow: (from, dir, o) => arrows.fire(from, dir, { fromPlayer: true, weapon: o?.weapon ?? weaponRig.playerWeapon.weapon, muzzle: o?.sky ? { world: [...from] } : weaponRig.thunderlockMuzzle(fieldOfView()), technique: o?.technique ?? null, ...(o?.speedScale ? { speedScale: o.speedScale } : {}) }),
+      fireArrow: (from, dir, o) => arrows.fire(from, dir, { fromPlayer: true, weapon: o?.weapon ?? weaponRig.playerWeapon.weapon, muzzle: o?.sky ? { world: [...from] } : weaponRig.thunderlockMuzzle(fieldOfView()), technique: o?.technique ?? null, ...(o?.speedScale ? { speedScale: o.speedScale } : {}), ...(o?.summoned ? { summoned: true } : {}) }),   // STUCK-ARROWS: a conjured round's shaft is never given back
       drainFatigue: (n) => drainExteriorFatigue(n),
       face: (p, from) => { if (!Array.isArray(p)) return; const o = Array.isArray(from) ? from : player.pos; cam.yaw = Math.atan2(p[0] - o[0], p[2] - o[2]); lookFilter.settle(); },   // AUDIT TECH1: from where the body lands
       blocked: () => gamePaused(),   // AUDIT TECH1: a window holds the world - and the technique's key (the mouse's side button reaches `keys` under any window)
@@ -13590,7 +13593,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (ail) { let yes = false; townTalk.showOverlay(new DecisionBoxWindow({ rows: ail, onYes: () => { yes = true; } }), () => { if (yes) restNow(); }); return; }
     restNow();
   };
-  const arrows = new ArrowFlight({ getGpuMesh, collider: () => collider, effects: hitEffects });   // C13   // FIELD-GUN14: the orb's flat rides the host's own one-shot pool, which this frame already draws
+  const arrows = new ArrowFlight({ getGpuMesh, collider: () => collider, effects: hitEffects, loot: droppedLoot, pixelKeyAt: () => `${playerTravelPixel().x},${playerTravelPixel().y}` });   // C13   // STUCK-ARROWS: a player's shaft that meets the world sticks into this host's pile pool, on the pixel it is loosed from (it dies with it)   // FIELD-GUN14: the orb's flat rides the host's own one-shot pool, which this frame already draws
   // F-slice: FAST TRAVEL. The window collects the popup's choices;
   // the LAWS live in systems/travel.js; arrival is
   // performFastTravel's order (DaggerfallTravelPopUp:324-385):
@@ -21510,6 +21513,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // ONE notice, not one each.
     online.onRelay = onRelayVersion;
     online.onGuildGone = guildGone;   // GUILD1c
+    noteFirstUse('online');   // TUT1: the first time this device plays online
     chatPanel = createChatPanel({
       log: chatLog,
       // UNSTUCK1 (per-request): a local command, never sent to the
@@ -21989,7 +21993,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     });
     // DUEL1: the challenge at me - the newest standing one, with Accept and Decline (the F-menu's rows are the other way)
     duelPrompt = createDuelPrompt({
-      asks: () => duelMgr.asks(), now: () => performance.now(), name: (id) => peerName(id) ?? 'Someone', touch: isTouchDevice(), doc: document,
+      asks: () => { const a = duelMgr.asks(); if (a?.length) noteFirstUse('duel'); return a; }, now: () => performance.now(), name: (id) => peerName(id) ?? 'Someone', touch: isTouchDevice(), doc: document,
       accept: (id) => { const r = duelMgr.accept(id); if (!r.ok) tradeSay(r.why === 'try again' ? TRY_AGAIN_TEXT : `You cannot accept: ${r.why}.`); },
       decline: (id) => { duelMgr.decline(id); },
     });
@@ -23301,6 +23305,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         _wildWas = here;
         _wildRingWas = ring;
         const line = here ? `${WILD_TEXT.enter} ${WILD_TEXT.ring(ring)}` : WILD_TEXT.leave;
+        if (here) noteFirstUse('wild-zone');   // TUT1: the first step into the open zone
         setMidScreenText(line);
         townTalk.say(line);
         _wildLineHold = { line, until: Date.now() + WILD_LINE_HOLD_MS };   // WILD-LINE-HOLD
@@ -34644,13 +34649,14 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         // EVERY RANGED WEAPON, not only the bow: `isBowWeapon` is
         // "scored on Archery", which is what the Thunderlock is too.
         if (isBowWeapon(weaponRig.playerWeapon.weapon)) {
-          if (spendAmmoFor(playerEntity.items, weaponRig.playerWeapon.weapon)) {
+          const shot = { summoned: false };   // STUCK-ARROWS: DFU's isArrowSummoned, carried by the shaft
+          if (spendAmmoFor(playerEntity.items, weaponRig.playerWeapon.weapon, shot)) {
             // AUDIT 23 (C14): the swing fatigue + the FULL bow tally
             // arm (Archery AND CriticalStrike) - see exterior.js.
             drainExteriorFatigue(SWING_FATIGUE_COST);
             tallySwingSkills(playerEntity, weaponRig.playerWeapon.weapon);
             const fwd = [Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)];
-            arrows.fire(cam.pos, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()) }); weaponRig.noteShot?.(weaponRig.playerWeapon.weapon);   // SPELLFX1: the peers draw it   // FIELD-GUN17: the barrel's own offset when the hand holds the gun, null for every bow - the rig answers, the lane forks   // #64: LastBowUsed rides the shaft - the impact prices off it   // ROAD-H H1c: ArrowFlight.fire applies GetAimPosition's player arm (the bow hand), as DFU's missile does its own
+            arrows.fire(cam.pos, fwd, { fromPlayer: true, weapon: weaponRig.playerWeapon.weapon, muzzle: weaponRig.thunderlockMuzzle(fieldOfView()), summoned: shot.summoned }); weaponRig.noteShot?.(weaponRig.playerWeapon.weapon);   // SPELLFX1: the peers draw it   // FIELD-GUN17: the barrel's own offset when the hand holds the gun, null for every bow - the rig answers, the lane forks   // #64: LastBowUsed rides the shaft - the impact prices off it   // ROAD-H H1c: ArrowFlight.fire applies GetAimPosition's player arm (the bow hand), as DFU's missile does its own
           }
           continue;
         }

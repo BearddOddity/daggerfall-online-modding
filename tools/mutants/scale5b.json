@@ -22,7 +22,7 @@
   {
     "name": "SCALE5b-place-unrounded",
     "file": "src/net/wire.js",
-    "old": "    const r = k === 'x' || k === 'y' || k === 'z' ? Math.round(v) : ",
+    "old": "    const r = native && (k === 'x' || k === 'z') ? Math.round(v) : k === 'x' || k === 'y' || k === 'z' ? Math.round(v * SLIM_SCENE_STEPS) / SLIM_SCENE_STEPS : ",
     "new": "    const r = k === 'x' || k === 'y' || k === 'z' ? v : ",
     "tests": [
       "test/scale5b.test.js"
@@ -82,8 +82,8 @@
   {
     "name": "SCALE5b-batch-skipped",
     "file": "server/src/index.js",
-    "old": "      if (b.w2) this._owe(other, entry ??= JSON.stringify([a.id, slimPose(m.p)]));",
-    "new": "      if (b.w2) this._send(other, JSON.stringify({ t: 'poses', l: [[a.id, slimPose(m.p)]] }));",
+    "old": "      if (b.w2) this._owe(other, entry ??= JSON.stringify([a.id, slimPose(m.p, a.key)]));",
+    "new": "      if (b.w2) this._send(other, JSON.stringify({ t: 'poses', l: [[a.id, slimPose(m.p, a.key)]] }));",
     "tests": [
       "test/scale5b.test.js"
     ],
@@ -92,7 +92,7 @@
   {
     "name": "SCALE5b-entry-whole",
     "file": "server/src/index.js",
-    "old": "entry ??= JSON.stringify([a.id, slimPose(m.p)])",
+    "old": "entry ??= JSON.stringify([a.id, slimPose(m.p, a.key)])",
     "new": "entry ??= JSON.stringify([a.id, m.p])",
     "tests": [
       "test/scale5b.test.js"
@@ -103,7 +103,7 @@
     "name": "SCALE5b-legacy-slimmed",
     "file": "server/src/index.js",
     "old": "      else this._send(other, out ??= JSON.stringify({ t: 'pose', id: a.id, p: m.p }));",
-    "new": "      else this._send(other, out ??= JSON.stringify({ t: 'pose', id: a.id, p: slimPose(m.p) }));",
+    "new": "      else this._send(other, out ??= JSON.stringify({ t: 'pose', id: a.id, p: slimPose(m.p, a.key) }));",
     "tests": [
       "test/scale5b.test.js"
     ],

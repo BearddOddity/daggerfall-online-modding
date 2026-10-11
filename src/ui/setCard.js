@@ -19,6 +19,7 @@
 import { setCardView, setSleepText, wornSets, wornSetPieces, setIdOf, setById, SET_PLACES } from '../systems/sigilSets.js';
 import { SIGIL_STAGES } from '../systems/sigil.js';
 import { sigilRuneTileUrl } from './sigilRune.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** @param {string} tag @param {string|null} [cls] @param {string|null} [text] */
 const el = (tag, cls = null, text = null) => {
@@ -79,6 +80,7 @@ export function setStageText(v, nameOf = (it) => String(it?.name ?? 'piece'), { 
 export function setCard(item, wearer, nameOf = undefined, { full = false } = {}) {
   const v = setCardView(item, wearer);
   if (!v || typeof document === 'undefined') return null;
+  noteFirstUse('sigil-sets');   // TUT1: the first set piece read
   const box = el('section', full ? 'setbox' : 'setbox compact');
   box.dataset.set = v.id;
   box.dataset.stage = v.stage < 0 ? 'asleep' : String(v.stage);

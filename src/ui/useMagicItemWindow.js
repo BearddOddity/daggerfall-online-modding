@@ -52,6 +52,7 @@ import { SOUND } from '../systems/soundClips.js';
 import { bindings } from './input.js';
 import { codeMeans } from '../systems/inputActions.js';   // UXB1-S: its own key, shared or not
 import { normalizeCode } from '../systems/dialogShortcuts.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /**
  * UpdateUsableMagicItems (:58-81), verbatim: walk the pack in order;
@@ -89,6 +90,7 @@ export function createUseMagicItemWindow({ items = [], onUse = null, onClose = n
   isEnchanted = defaultIsEnchanted, nameOf = (it) => itemLongName(it) } = {}) {
   const usable = usableMagicItems(items, { isEnchanted });
   if (usable.length === 0) return null;
+  noteFirstUse('magic-items');   // TUT1
   const win = new ListPickerWindow({
     items: usable.map(nameOf),
     backdrop: 'none',   // :33 ParentPanel.BackgroundColor = Color.clear

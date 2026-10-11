@@ -95,6 +95,7 @@ export const LIFT_KEY = 'KeyL';
  *  when the popup carries the Reforge's row or LOOT16's Lift Curse in that place (an item's curse there, the blood's here). */
 export { HEAL_CURSE_ROW, HEAL_CURSE_KEY } from '../systems/healCurse.js';
 import { HEAL_CURSE_ROW, HEAL_CURSE_KEY } from '../systems/healCurse.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 const healCurseRect = (reforge) => Object.freeze([REFORGE_RECT[0], REFORGE_RECT[1] + (reforge ? REFORGE_RECT[3] + 2 : 0), REFORGE_RECT[2], REFORGE_RECT[3]]);
 
 let _art = null;
@@ -124,6 +125,7 @@ const inRect = ([rx, ry, rw, rh], x, y) => x >= rx + PANEL_X && y >= ry + PANEL_
  */
 export class GuildServiceWindow {
   constructor(hooks) {
+    noteFirstUse('guilds');   // TUT1
     this.hooks = hooks;
     this.done = false;
     this.isChoiceWindow = true;   // raw codes through the overlay seam
