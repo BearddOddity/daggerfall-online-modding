@@ -32,7 +32,7 @@ test('CARDS4 the panel at the buy-in: gold or chips, affordable or not', () => {
   const gold = cardHudModel({ phase: 'buyin', buyIn: { min: 200, max: 1000 }, stakes: TABLE_STAKES });
   assert.equal(gold.title, 'Card table - 5/10 gold');
   assert.equal(gold.note, null);
-  assert.deepEqual(gold.buyIn, { min: 200, max: 1000, value: 400 }, 'forty big blinds to start');
+  assert.deepEqual(gold.buyIn, { min: 200, max: 1000, value: 400, picks: [{ label: 'Min', value: 200 }, { label: 'Max', value: 1000 }] }, 'forty big blinds to start');   // PIN MOVED (CARDS-PANEL): the quick stakes beside the slider
   assert.deepEqual(gold.actions, [{ id: 'deal', label: 'Deal me in', enabled: true }, { id: 'stand', label: 'Stand up', enabled: true }]);
   assert.equal(cardHudModel({ phase: 'buyin', buyIn: { min: 200, max: 250 }, stakes: TABLE_STAKES }).buyIn.value, 250, 'never past the purse');
   const poor = cardHudModel({ phase: 'buyin', buyIn: null, stakes: TABLE_STAKES });
@@ -57,7 +57,7 @@ test('CARDS4 the panel in play: the seats, the cards each may see, the pot, the 
   assert.deepEqual(m.board, []);
   assert.deepEqual(m.actions, [
     { id: 'fold', label: 'Fold', enabled: true }, { id: 'call', label: 'Call 10', enabled: true },
-    { id: 'raise', label: 'Raise to', enabled: true, min: 20, max: 500, step: 5 }, { id: 'allin', label: 'All in (500)', enabled: true, to: 500 },
+    { id: 'raise', label: 'Raise to', enabled: true, min: 20, max: 500, step: 5, picks: [{ label: 'Pot', to: 35 }] }, { id: 'allin', label: 'All in (500)', enabled: true, to: 500 },   // PIN MOVED (CARDS-PANEL): the raise's quick sizes
     { id: 'stand', label: 'Stand up', enabled: true },
   ]);
   assert.equal(m.message, 'Your turn.');

@@ -2880,6 +2880,17 @@ owner's pack once she is gone, saved and said on the wire by its place on her. T
 her collider bucket) and `campDeckResolve` (where she is now), and `comeSailAwayPeers.js hasBoat` (whether another
 player's word still names her).
 
+## A jump leaves the helm (HELM-JUMP, 2026-10-11 - DEPARTURE)
+
+From the field: "If you recall from the helm of a ship, you get sent to the void." The helm is let go by the events the
+mod hears - a load's start, a fast travel, a death - and of a teleport it hears only OnTeleportToCoordinates, its waves.
+A Recall, a guild's teleport, an unstuck, a quest's respawn and the staff's jumps raise nothing else, so `updateSailing`
+stood the jumper back at the drive position of the boat the jump had left at sea and hidden. The runtime's `OnPreJump`
+(the port's own event) ends a disembark in flight, as OnStartLoad does, and lets the helm go as OnPreFastTravel does -
+the sail stopped, a packable boat packed - and `world.js` `_teleportToPixel` raises it for every jump that names no
+event of its own, before anything it awaits (Port-Ledger A, HELM-JUMP; `01-Overview/Field-Bugs-2026-10-11.md`). An
+anchor set on a deck is still the deck's world point. `test/csa_sailing.test.js`, `test/fb1011_helmjump.test.js`.
+
 ## What was already waiting in the port
 
 - Iliac Puddle No More's swim stands down on a boat

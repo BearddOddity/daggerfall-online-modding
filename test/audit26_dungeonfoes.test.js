@@ -536,7 +536,8 @@ test('F212: the world host collects both pools with the pixel, which is also wha
   // PIN MOVED (AUDIT CLIMB-ARC F6), 6600 -> 6800: the climb's feel resets beside the recoiler, one statement above
   // PIN MOVED (RVN10), 6800 -> 7000: a jump out of a fight routs me before the sweep, one statement above
   // PIN MOVED (AUDIT LW-II-2 H9), 7000 -> 7300: the stood hideout let go beside the camps, with its note, above the needles
-  const core = WORLD.slice(t, t + 7300);
+  // PIN MOVED (HELM-JUMP, FIELD BUGS 2026-10-11), 7300 -> 7800: a jump lets go of Come Sail Away's helm first, with its note
+  const core = WORLD.slice(t, t + 7800);
   assert.ok(core.includes('destroyPixel(bx, by);'),
     'so a fast travel or a teleport takes every corpse with it');
   assert.ok(core.includes('exteriorFoes.clearLive();') && core.includes('cityGuards.clearLive();'),
