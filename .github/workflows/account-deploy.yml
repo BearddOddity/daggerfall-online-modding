@@ -478,8 +478,19 @@ jobs:
       - name: Apply migrations
         working-directory: server-account
         run: |
-          set -euo pipefail
-          $WRANGLER d1 migrations apply "$DB_NAME" --remote
+          set -uo pipefail
+          # PATRON-LOAD (2026-10-10, the owner: "the newest update account service keeps failing"): D1 REFUSING AS
+          # OVERLOADED (7429, "Requests queued for too long") IS ASKED AGAIN, up to six times, 10 s, 20 s, 40 s... apart -
+          # the fix for an overload is the deploy this step stands in front of, and it failed here twice with the
+          # database busy under the Worker it was replacing. A migration batch D1 refused wrote nothing (D1 applies each
+          # migration whole and records it), so asking again is safe; any other failure fails the deploy at once.
+          for i in 1 2 3 4 5 6; do
+            if $WRANGLER d1 migrations apply "$DB_NAME" --remote 2>&1 | tee /tmp/migrate.log; then exit 0; fi
+            if ! grep -q '7429\|overloaded' /tmp/migrate.log; then exit 1; fi
+            echo "::warning::D1 overloaded on attempt $i - asking again in $((10 * 2 ** (i - 1))) s"
+            sleep $((10 * 2 ** (i - 1)))
+          done
+          echo "::error::D1 still overloaded after six attempts"; exit 1
 
       # ── 2b. THE READ REPLICAS (SCALE4d) ──────────────────────────
       #
@@ -842,8 +853,17 @@ jobs:
         run: |
           set -euo pipefail
           base="${{ steps.deploy.outputs.base }}"
-          guest=$(curl -fsS --max-time 15 -X POST "$base/v1/auth/guest" \
-            -H 'content-type: application/json' -d "{\"label\":\"deploy-smoke\",\"terms\":\"$LEGAL_TERMS\",\"privacy\":\"$LEGAL_PRIVACY\"}")
+          # PATRON-LOAD: the guest mint asked again on a 5xx (the password route's step below, the same) - this step's one
+          # unasked call failed a deploy whose Worker had taken, D1 still working off an overload
+          guest=""
+          for i in $(seq 1 7); do
+            ans=$(curl -sS --max-time 15 -o /tmp/guest.json -w '%{http_code}' -X POST "$base/v1/auth/guest" \
+              -H 'content-type: application/json' -d "{\"label\":\"deploy-smoke\",\"terms\":\"$LEGAL_TERMS\",\"privacy\":\"$LEGAL_PRIVACY\"}") || ans=000
+            if [ "$ans" = "200" ]; then guest=$(cat /tmp/guest.json); break; fi
+            echo "  /v1/auth/guest -> $ans (attempt $i)" >&2
+            if [ "${ans#5}" = "$ans" ] && [ "$ans" != "000" ]; then cat /tmp/guest.json >&2 || true; break; fi
+            sleep 5
+          done
           secret=$(echo "$guest" | sed -n 's/.*"secret":"\([^"]*\)".*/\1/p')
           test -n "$secret" || { echo "::error::no guest session - /v1/auth/guest did not answer a secret"; echo "$guest"; exit 1; }
           # AUDIT (the pre-merge audit, S3): one ask - a timeout or a reset is an answer to ask again (000), never the

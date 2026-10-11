@@ -540,7 +540,7 @@ test('LPT1 createBillboardBatch / moveBillboardBatch: each flat\'s scale written
   const r = new Renderer(canvas);
   calls.length = 0;
   const b = r.createBillboardBatch(504, '12#lpt', { w: 4, h: 8 }, [[0, 0, 0], [5, 0, 5]], { scales: [0.5, 1] });
-  const data = calls.find((c) => c[0] === 'bufferData' && c[2].length === 40)[2];
+  const data = calls.find((c) => c[0] === 'bufferSubData' && c[3]?.length === 40)[3];   // PIN MOVED (PERF-ARENA): a still batch's corners are written into its arena's range
   assert.equal(data[3], Math.fround(bbCornerX(-0.5, 0.5)));
   assert.equal(data[23], Math.fround(bbCornerX(-0.5, 1)));
   assert.ok('lptProto' in b && '_scales' in b && 'farH' in b && !('_tints' in b));

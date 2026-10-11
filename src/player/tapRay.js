@@ -106,8 +106,8 @@ export function rayDirFromScreen(sx, sy, w, h, proj, view, eye, rect = null) {
  * negative w, `front` still false) - the travel view holds a mark behind the
  * eye at the screen's edge, pointing its way, and needs to know which way.
  */
-export function projectToScreen(p, w, h, proj, view, rect = null, behind = false) {
-  const pv = multiply(proj, view);
+export function projectToScreen(p, w, h, proj, view, rect = null, behind = false, pvIn = null) {
+  const pv = pvIn ?? multiply(proj, view);   // PERF-PEERS2: a caller projecting many points hands the product it made once (the same float32 product)
   const [x, y, z] = p;
   let cw = pv[3] * x + pv[7] * y + pv[11] * z + pv[15];
   const front = cw > 0;

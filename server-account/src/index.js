@@ -255,6 +255,8 @@ import { listLineages, putLineage, realmDie, realmHouseOf, realmWed, listUnions,
 import { measured } from './metrics.js';   // SCALE1: every request counted (Workers Analytics Engine)
 import { runCron } from './cron.js';   // SCALE4b: the service's own clock
 import { heartbeat } from './heartbeat.js';   // SCALE4c: one request for a tab's three clocks
+import { ADMIT_ROUTES, admitWait } from './admit.js';   // ADMIT-LINE: the sign-in line
+export { AdmitGate } from './admit.js';   // ADMIT-LINE: the line's Durable Object (wrangler.toml binds it from this module)
 import {
   patreonLinkOn, openPatreon, sealPatreon, patreonExchange, patreonIdentity, linkPatreon, unlinkPatreon, patreonWebhook,
   patreonCardOf, pledgeTitles, patreonHtml, patreonPage, patreonConfirmPage, patreonLinkedPage,
@@ -610,6 +612,17 @@ const service = {
     if (!ROUTES.has(path) && !slot && !realmSlot) return no('not-found', 404, origin);
 
     if (!env.DB) return no('no-database', 503, origin);
+    // ADMIT-LINE (admit.js): A SIGN-IN TAKES ITS PLACE IN THE LINE before it costs the database a statement - the open
+    // routes' address bucket is a D1 write of its own. Told its place, it is answered 503 `queue` with the place and the
+    // wait (and Retry-After, in seconds); a gate that fails lets it in.
+    if (ADMIT_ROUTES.has(path) && request.method === 'POST') {
+      const queued = await admitWait(env, request.headers.get('cf-connecting-ip') || 'unknown');
+      if (queued) {
+        const res = json({ error: 'queue', position: queued.position, wait: queued.wait }, 503, origin);
+        res.headers.set('retry-after', String(Math.ceil(queued.wait / 1000)));
+        return res;
+      }
+    }
     // SCALE4d: the token's mint on one D1 session whose first statement (the session lookup) is the primary's and whose
     // reads after it a replica may serve - the reconnect wave's dozen reads a player off the one primary (service.js
     // REPLICA_ROUTES); every other route on the binding as before
