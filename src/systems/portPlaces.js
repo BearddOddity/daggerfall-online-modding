@@ -5,8 +5,9 @@
 // NPCs"): THE PORT'S PLACES, NAMED AND FOUND AS A YARD IS - the law of what a port town stands beside its Stable and its
 // Wagon Yard, and how the town's talk directory, its two maps and the Overworld know each one.
 //
-// THE PLACES. A port town (a city, a town or a village the port's harbour law calls a port - scenes/world.js
-// csaIsPortTown: Daggerfall's PortTownAndUnknown byte, or a harbour Travel Options' map draws) stands two of its own, on
+// THE PLACES. A port town (a city, a town or a village that is a port by its own data - `portTownByData`: Travel Options'
+// hand-written harbours or Daggerfall's PortTownAndUnknown byte, never a seat's members' harbour, which is one guild's
+// word, so every client stands the same shipyard) stands two of its own, on
 // its seaward ground (world/portSites.js - Mac chose "the town's seaward edge", placed off the town's layout like the
 // Stables): a SHIPYARD, the shipmaster's - with its CREW HALL inside its fence, where the crewmaster signs hands on -
 // and a LIGHTHOUSE, the lightkeeper's. Its DOCKS are the harbour's quays, found off the terrain (systems/naval/quays.js).
@@ -51,6 +52,10 @@ export const validPortSite = (k) => (PORT_SITE_ORDER.includes(/** @type {any} */
 export const PORT_TOWN_TYPES = Object.freeze([LOCATION_TYPES.TownCity, LOCATION_TYPES.TownHamlet, LOCATION_TYPES.TownVillage]);
 /** Whether a location stands the port's places: a town of PORT_TOWN_TYPES that `isPort` says is a port. */
 export const isPortTown = (loc, isPort) => PORT_TOWN_TYPES.includes(loc?.mapTableData?.locationType) && !!isPort;
+/** Whether a location is a port by its own data - `hasPort(mapId)` (Travel Options' hand-written harbours, travelPorts.js)
+ *  or Daggerfall's PortTownAndUnknown byte (scenes/world.js portByData; AUDIT SHIPYARDS L6-10: executed here, not read
+ *  off world.js's text). Pure. */
+export const portTownByData = (loc, hasPort) => !!hasPort?.(loc?.mapTableData?.mapId) || (loc?.exterior?.exteriorData?.portTownAndUnknown ?? 0) !== 0;
 
 /**
  * THE FOUND PLACES' ONE ORDER (YARDS-FOUND's law, widened): the town's yards (systems/merchantYards.js), then the port's
@@ -68,6 +73,13 @@ export const foundBuildingKey = (kind) => {
   const i = FOUND_KIND_ORDER.indexOf(/** @type {any} */ (kind));
   return i < 0 ? -1 : YARD_KEY_BASE + i;
 };
+/** The found places the town maps never letter - the crew hall (inside the shipyard's fence) and the docks (the harbour's
+ *  quays), by their keys. */
+const UNLETTERED = new Set(['crewhall', 'docks'].map((k) => foundBuildingKey(k)));
+/** Whether the town maps letter a building (`buildingKey`) - every one but those: asked where the crew hall or the docks
+ *  are, the answer is the way there, never "let me mark it on your map" - a mark that marks nothing (AUDIT SHIPYARDS
+ *  L7-5; scenes/townTalk.js's hint and systems/answerPipeline.js getKeySubjectBuildingHint ask it). Pure. */
+export const lettersOnMap = (buildingKey) => !UNLETTERED.has(buildingKey);
 
 /** A place's keeper: townKeeper's draw on the town's map id and the place's salt. Pure.
  *  @param {number} mapId @param {string} place @param {number} regionIndex */

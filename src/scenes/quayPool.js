@@ -80,7 +80,8 @@ export function createQuayPool(deps) {
     const col = deps.collider();
     if (!col?.addMesh || !b.model) return;
     col.removeBucket?.(b.bucket);
-    col.addMesh(b.bucket, b.model.positions, b.model.indices, trs(b.berth.pos[0], deps.seaY(), b.berth.pos[1], 0, b.plan.frame.theta * DEG, 0));
+    const c = b.model.collider ?? b.model;   // the solid part alone (world/quayModel.js - AUDIT SHIPYARDS L5-5)
+    col.addMesh(b.bucket, c.positions, c.indices, trs(b.berth.pos[0], deps.seaY(), b.berth.pos[1], 0, b.plan.frame.theta * DEG, 0));
     b.stood = true;
   }
   /** AUDIT HOLDINGS Q7: the world moved (the floating origin) - each quay's collider stood again where its berth lies now. */
@@ -163,9 +164,16 @@ export function createQuayPool(deps) {
     const seaY = deps.seaY(), out = [];
     for (const q of quays.values()) for (const b of q.berths) {
       if (!b.gpu) continue;
-      for (const p of lanternLights(b.plan, seaY)) {
-        const d = Math.hypot(p[0] - feet[0], p[1] - feet[1], p[2] - feet[2]);
-        if (d <= QUAY_LIGHT_REACH) out.push({ d, l: { x: p[0], y: p[1], z: p[2], range: QUAY_LIGHT_RANGE } });
+      // the berth's lights, made once and again only as it moves (AUDIT SHIPYARDS L5-5: made every night frame, and off
+      // the plan's place - where it was laid, not where a recentre moved it)
+      const pos = b.berth.pos;
+      if (!b.lit || b.litY !== seaY || b.litAt[0] !== pos[0] || b.litAt[1] !== pos[1]) {
+        b.lit = lanternLights(b.plan, seaY, pos).map((p) => ({ x: p[0], y: p[1], z: p[2], range: QUAY_LIGHT_RANGE }));
+        b.litY = seaY; b.litAt = [pos[0], pos[1]];
+      }
+      for (const l of b.lit) {
+        const dx = l.x - feet[0], dy = l.y - feet[1], dz = l.z - feet[2], d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (d <= QUAY_LIGHT_REACH) out.push({ d, l });
       }
     }
     return out.sort((a, b) => a.d - b.d).slice(0, QUAY_LIGHTS_MAX).map((o) => o.l);

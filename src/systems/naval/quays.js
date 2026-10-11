@@ -28,7 +28,11 @@
 // crates), and lamp posts along a long jetty, JETTY_LAMP_STEP apart (`jettyLanterns`, lit with the quay's own). Every
 // piece on the face keeps out of the gangway's lane and DRESS_LANE past it; the dress draws its few turns off its own
 // stream (PIER_SALT), so the cargo's load is the one it always was. The joists and stringers under the decks are the
-// model's (world/quayModel.js) - the plan's decks alone measure them.
+// model's (world/quayModel.js) - the plan's decks alone measure them. A piece's BODY keeps out of the lane, not its
+// middle alone (AUDIT SHIPYARDS L5-6: a fender's stood 0.055 m in it).
+//
+// THE LANTERNS' LIGHT (`lanternLights`) stands where the berth lies NOW - its live place handed in: a plan keeps the
+// berth's place as it was laid, and the world's recentre moves the berth, never the plan (AUDIT SHIPYARDS L5-5).
 //
 // DOCKING (`dockFor`, `madeFast`, `warpStep`): a ship of the player's at the helm with her sails struck and no oar
 // pulling, her way under DOCK_WAY, her alongside place (shipLife.js `alongside`) within DOCK_REACH_M and her bow within
@@ -87,6 +91,8 @@ export const BRACE_SPAN = PILE_STEP * 1.5;
 /** The face's fender piles: about every FENDER_STEP along it (m), down FENDER_DOWN under the sea's top at most (m). */
 export const FENDER_STEP = 3;
 export const FENDER_DOWN = -0.9;
+/** A fender pile's width across the face (m) - its iron cap's (world/quayModel.js). */
+export const FENDER_W = 0.26;
 /** The face's two ladders, LADDER_DOWN under the sea's top at their feet at most (m). */
 export const LADDER_DOWN = -1.8;
 /** The margin every piece of the dress on the face keeps past GANGWAY_LANE (m) - the plank's half and a step. */
@@ -322,7 +328,7 @@ export function pierDress({ frame, deck, quay, zJ, jetty, rows, bollards, cargo,
   const nF = Math.max(1, Math.round((z1 - z0 - 3) / FENDER_STEP));
   for (let k = 0; k <= nF; k++) {
     const lz = z0 + 1.5 + ((z1 - z0 - 3) * k) / nF;
-    if (inLane(lz, DRESS_LANE) || ladders.some(([lzL]) => Math.abs(lzL - lz) < 0.8)) continue;
+    if (inLane(lz, DRESS_LANE + FENDER_W / 2) || ladders.some(([lzL]) => Math.abs(lzL - lz) < 0.8)) continue;
     const g = ground(x0 - 0.15, lz);
     if (!Number.isFinite(g) || g > deck - 0.6) continue;
     fenders.push([lz, Math.max(FENDER_DOWN, g + 0.05)]);
@@ -334,7 +340,7 @@ export function pierDress({ frame, deck, quay, zJ, jetty, rows, bollards, cargo,
   for (const [, bz] of bollards) {
     const side = rd() < 0.5 ? -1 : 1, r = 0.26 + rd() * 0.1;
     for (const cz of [bz + side * 0.95, bz - side * 0.95]) {
-      if (inLane(cz, DRESS_LANE) || cz < z0 + 0.8 || cz > z1 - 0.8) continue;
+      if (inLane(cz, DRESS_LANE + r) || cz < z0 + 0.8 || cz > z1 - 0.8) continue;
       coils.push([x0 + 1.05, cz, r]);
       break;
     }
@@ -373,9 +379,11 @@ export const lanternHead = (lx, lz, deck) => [lx - LANTERN_ARM, deck + LANTERN_U
 /** SHIPYARDS (THE PIER'S DRESS): a jetty lamp's glass in the berth's frame for a post at `(lx, lz)` on the rail of
  *  `side` (+1 the z0 rail's - hung toward +z, in over the jetty; -1 the z1 rail's). */
 export const jettyLanternHead = (lx, lz, side, deck) => [lx, deck + LANTERN_UP - LANTERN_DROP, lz + side * LANTERN_ARM];
-/** The lanterns' glass in the scene: `[x, y, z]` each, the sea's top at `seaY` - the quay's two, then its jetty's. */
-export function lanternLights(plan, seaY) {
-  const at = (h) => { const [x, z] = quayToScene(plan.frame, h[0], h[2]); return [x, seaY + h[1], z]; };
+/** The lanterns' glass in the scene: `[x, y, z]` each, the sea's top at `seaY`, the berth at `origin` ([x, z], its live
+ *  place - the plan's is where it was laid) - the quay's two, then its jetty's. */
+export function lanternLights(plan, seaY, origin = plan.frame.origin) {
+  const frame = origin === plan.frame.origin ? plan.frame : { ...plan.frame, origin };
+  const at = (h) => { const [x, z] = quayToScene(frame, h[0], h[2]); return [x, seaY + h[1], z]; };
   return [
     ...plan.lanterns.map(([lx, lz]) => at(lanternHead(lx, lz, plan.deck))),
     ...(plan.jettyLanterns ?? []).map(([lx, lz, side]) => at(jettyLanternHead(lx, lz, side, plan.deck))),

@@ -103,7 +103,8 @@ export function recruitText(r) {
   const record = r.fights || r.boardings ? `${r.fights} ${r.fights === 1 ? 'fight' : 'fights'}, ${r.boardings} ${r.boardings === 1 ? 'boarding' : 'boardings'}` : 'never been in a fight';
   return {
     name: r.name, who: `${r.gradeLabel} ${r.trade} - ${r.className}, ${r.sex === 'female' ? 'she' : 'he'} has ${record}.`,
-    quote: `"${r.line}"`, press: `Sign on - ${gold(r.fee)}`, why: r.why, can: !r.why,
+    // AUDIT SHIPYARDS L2-2: the price this ship's hire comes to; L7-2: a full deck signs on in a hand's place
+    quote: `"${r.line}"`, press: `${r.swap ? 'Sign on in place' : 'Sign on'} - ${gold(r.price ?? r.fee)}`, why: r.why, can: !r.why,
   };
 }
 
@@ -134,7 +135,7 @@ function injectStyle(doc = document) {
 /**
  * Mount the window in the door's host.
  * @param {HTMLElement} host
- * @param {{ model: (view: any) => any, act: (verb: string, a?: any, b?: any) => any, page?: string, onDoor?: ((door: any) => void) | null, onExit?: ((reason?: string) => void) | null }} deps
+ * @param {{ model: (view: any) => any, act: (verb: string, a?: any, b?: any) => any, page?: string, onDoor?: ((door: any) => void) | null, onExit?: ((reason?: string) => void) | null, now?: () => number }} deps
  * @returns {{ repaint: () => void, unmount: () => void }}
  */
 export function mountShipyardWindow(host, deps) {
@@ -148,7 +149,11 @@ export function mountShipyardWindow(host, deps) {
   let note = null;
   /** a press waiting for its second: `sell:<uid>` or `payoff:<uid>:<name>` */
   let confirm = null;
+  let confirmAt = 0;
+  /** @type {Record<string, string>} the hand each recruit would sign on in place of, as the player picked it */
+  const swapPick = {};
   let draft = null;   // the name field's text, while it is being typed
+  const now = () => (deps.now ? deps.now() : performance.now());
   const exit = (reason = 'close') => deps.onExit?.(reason);
   const shell = el('div', 'dfnaval-shell');
   shell.setAttribute('role', 'dialog');
@@ -178,7 +183,16 @@ export function mountShipyardWindow(host, deps) {
     const r = deps.act(verb, a, b);
     if (r?.door) { deps.onDoor?.(r.door); exit('door'); return; }   // a summons that wants the water clicked: the window makes way for it
     said(r);
+    if (r?.ok && typeof r.page === 'string') { view.page = r.page; if (r.uid != null) view.uid = r.uid; }   // AUDIT SHIPYARDS L7-4: a bought ship's page
     render();
+  };
+  /** THE SECOND PRESS: an act that cannot be taken back (a ship bought, a ship sold, a hand paid off) asks once and is
+   *  done by the next press of the same button - never by the click that asked (AUDIT SHIPYARDS L1-5: a double click
+   *  bought two ships, and confirmed a sale in one gesture). */
+  const CONFIRM_MS = 350;
+  const twoPress = (key, ask, go) => {
+    if (confirm === key) { if (now() - confirmAt >= CONFIRM_MS) go(); return; }
+    confirm = key; confirmAt = now(); note = { text: ask, warn: true }; render();
   };
   const chooser = (m) => {
     if (!(m.choices?.length > 1)) return null;
@@ -208,7 +222,9 @@ export function mountShipyardWindow(host, deps) {
       card.append(el('b', null, t.name), el('span', 'dfyard-line', t.line), el('span', 'dfyard-figs', t.figs));
       if (t.note) card.append(el('span', 'dfyard-figs', t.note));
       if (t.why) card.append(el('span', 'dfyard-why', t.why));
-      card.append(button(t.press, 'dfnaval-btn dfnaval-take', () => press('buy', s.hull), t.can, t.why));
+      const key = `buy:${s.hull}`;
+      card.append(button(confirm === key ? `Yes - buy her for ${gold(s.asked)}` : t.press, 'dfnaval-btn dfnaval-take',
+        () => twoPress(key, `Buy the ${t.name} for ${gold(s.asked)}? Press again to buy her.`, () => press('buy', s.hull)), t.can, t.why));
       cards.append(card);
     }
     sec.append(cards);
@@ -228,9 +244,8 @@ export function mountShipyardWindow(host, deps) {
       if (t.sell) mid.append(el('br'), el('span', null, t.sell));
       const acts = el('div', 'dfyard-acts');
       const key = `sell:${r.uid}`;
-      acts.append(button(confirm === key ? `Yes - sell for ${gold(r.offer)}` : 'Sell her', 'dfnaval-btn', () => {
-        if (confirm === key) press('sell', r.uid); else { confirm = key; note = { text: `Sell ${t.name} for ${gold(r.offer)}? Press again to sell her - for good.`, warn: true }; render(); }
-      }, t.canSell, t.sell));
+      acts.append(button(confirm === key ? `Yes - sell for ${gold(r.offer)}` : 'Sell her', 'dfnaval-btn',
+        () => twoPress(key, `Sell ${t.name} for ${gold(r.offer)}? Press again to sell her - for good.`, () => press('sell', r.uid)), t.canSell, t.sell));
       acts.append(button('Bring her here', 'dfnaval-btn', () => press('summon', r.uid), !t.summon, t.summon));
       acts.append(button('Lay her up', 'dfnaval-btn', () => press('away', r.uid), !t.away, t.away));
       const named = el('div', 'dfyard-name');
@@ -295,14 +310,17 @@ export function mountShipyardWindow(host, deps) {
     const ch = chooser(m);
     if (ch) sec.append(ch);
     if (m.why) sec.append(el('p', 'dfnaval-lede', m.why));
+    body.append(sec);   // AUDIT SHIPYARDS L2-7: the hall's header and the ship chooser first, her hands under them
     if (m.ship) {
-      const crew = section(`${m.ship.label}'s hands`, m.room?.ok ? 'a place for another' : 'her deck is full');
+      const crew = section(`${m.ship.label}'s hands`, m.room?.ok ? 'a place for another' : m.room?.full ? 'her deck is full' : 'no place');
       for (const h of m.hands) {
         const row = el('div', 'dfyard-row');
         const left = el('div');
         left.append(el('b', null, h.name), el('br'), el('span', null, `${h.fights} ${h.fights === 1 ? 'fight' : 'fights'}, ${h.boardings} ${h.boardings === 1 ? 'boarding' : 'boardings'}${h.ashore ? ' - ashore with you' : ''}`));
         const post = /** @type {HTMLSelectElement} */ (el('select', 'dfyard-post'));
-        for (const role of [...CREW_ROLES, ...(h.role === 'Bard' ? ['Bard'] : [])]) {
+        // AUDIT SHIPYARDS L2-7: the Fleet page's posts (AUDIT HOLDINGS C3) - a Bard by his class keeps his calling to
+        // offer and stands no lookout
+        for (const role of [...CREW_ROLES.filter((r) => !(h.bard && r === 'Lookout')), ...(h.bard ? ['Bard'] : [])]) {
           const o = /** @type {HTMLOptionElement} */ (el('option', null, role));
           o.value = role;
           if (role === h.role) o.selected = true;
@@ -311,15 +329,18 @@ export function mountShipyardWindow(host, deps) {
         post.onchange = () => press('role', m.uid, { name: h.name, role: post.value });
         const acts = el('div', 'dfyard-acts');
         const key = `payoff:${m.uid}:${h.name}`;
-        acts.append(button(confirm === key ? 'Yes - pay him off' : 'Pay off', 'dfnaval-btn', () => {
-          if (confirm === key) press('payoff', m.uid, h.name); else { confirm = key; note = { text: `Pay off ${h.name}? He leaves her for good. Press again.`, warn: true }; render(); }
-        }, !h.ashore, h.ashore ? 'Ashore with you' : null));
+        const she = h.gender === 'female';   // AUDIT SHIPYARDS L7-9: a woman is paid off as one
+        acts.append(button(confirm === key ? `Yes - pay ${she ? 'her' : 'him'} off` : 'Pay off', 'dfnaval-btn',
+          () => twoPress(key, `Pay off ${h.name}? ${she ? 'She' : 'He'} leaves ${m.ship.label} for good. Press again.`, () => press('payoff', m.uid, h.name)),
+          !h.ashore, h.ashore ? 'Ashore with you' : null));
         row.append(left, post, acts);
         crew.append(row);
       }
       body.append(crew);
     }
-    sec.append(el('p', 'dfnaval-lede', m.recruits.length ? 'Sailors at the crewmaster\'s table, looking for a berth today:' : 'Nobody is looking for a berth today - come back tomorrow.'));
+    const hall = section('Looking for a berth', m.recruits.length ? `${m.recruits.length} at the table` : 'none');
+    hall.append(el('p', 'dfnaval-lede', m.recruits.length ? 'Sailors at the crewmaster\'s table, looking for a berth today:' : 'Nobody is looking for a berth today - come back tomorrow.'));
+    const free = m.hands.filter((h) => !h.ashore);
     for (const r of m.recruits) {
       const t = recruitText(r);
       const row = el('div', 'dfyard-row');
@@ -328,11 +349,26 @@ export function mountShipyardWindow(host, deps) {
       left.append(el('b', null, t.name), el('br'), el('span', null, t.who));
       const mid = el('span', 'dfyard-quote', t.quote);
       const acts = el('div', 'dfyard-acts');
-      acts.append(button(t.press, 'dfnaval-btn dfnaval-take', () => press('hire', m.uid, r.id), t.can, t.why));
+      if (r.swap && free.length) {
+        // AUDIT SHIPYARDS L7-2: her deck full, he signs on in the place of the hand picked here (her newest by default)
+        const pick = /** @type {HTMLSelectElement} */ (el('select', 'dfyard-post'));
+        pick.setAttribute('aria-label', 'In place of');
+        const chosen = free.some((h) => h.name === swapPick[r.id]) ? swapPick[r.id] : free[free.length - 1].name;
+        for (const h of free) {
+          const o = /** @type {HTMLOptionElement} */ (el('option', null, `in place of ${h.name}, ${h.role}`));
+          o.value = h.name;
+          if (h.name === chosen) o.selected = true;
+          pick.append(o);
+        }
+        pick.onchange = () => { swapPick[r.id] = pick.value; };
+        acts.append(pick, button(t.press, 'dfnaval-btn dfnaval-take', () => press('hire', m.uid, { id: r.id, replace: pick.value }), t.can, t.why));
+      } else {
+        acts.append(button(t.press, 'dfnaval-btn dfnaval-take', () => press('hire', m.uid, r.id), t.can, t.why));
+      }
       row.append(left, mid, acts);
-      sec.append(row);
+      hall.append(row);
     }
-    body.append(sec);
+    body.append(hall);
   }
 
   function render() {

@@ -1540,18 +1540,23 @@ AWAY - USING BOAT PARTS!" (kept).
 
 ### The shelves
 
-RegisterCustomItem's group puts both on DFU's shelves: the second loop
-of StockShopShelf (DaggerfallLoot.cs:255-287) walks every custom row of
-a group the shop sells, rarity at or under the quality and
+The mod's RegisterCustomItem group puts both on DFU's shelves, and the
+port stocked them so until SHIPYARDS retired the two rows (below; AUDIT
+SHIPYARDS L6-14 put this in the past): the second loop of
+StockShopShelf (DaggerfallLoot.cs:255-287) walked every custom row of a
+group the shop sells, rarity at or under the quality and
 chanceMod x 5 x (21 - rarity) / 100 to stock it - for these, rarity 1,
 a General Store's UselessItems2 chance of 50 in a hundred each, a Pawn
-Shop's 20. The port's shelf already walks `customItemsForGroup`, which
+Shop's 20. The port's shelf already walked `customItemsForGroup`, which
 knew Roleplay Realism: Items' rows alone; it is one table across the
 loaded mods now (`rriItems.js` registerCustomItemGroup, as DFU's
 customItemGroups is), each row answering while its mod is loaded for the
 game - the load-time answer, never the switch as it stands now (AUDIT
 PRE-MERGE 0928 S4: a mod switched on mid-game had stocked bare "Parts of"
-rows).
+rows). With the rows retired, Come Sail Away's switch feeds its one effect
+kind alone (WaterWalkingSilent's, `effects.js` registerModEffectKind) -
+pinned off, on and latched off (`csa_items`, AUDIT SHIPYARDS L6-11: its
+mutant CSA-H-group-always had survived the retirement).
 
 FOUND ON THE WAY: Iliac Puddle No More's DeepWaters.Init registers each
 fish's row into the same group (a null class) - so DFU's shelf stocks

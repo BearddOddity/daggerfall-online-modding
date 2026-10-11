@@ -15,13 +15,17 @@
 // BEARING off the map pixels round the town's (`seaBearing`: each pixel of sea within two - CLIMATE.PAK's ocean or
 // WOODS.WLD's height at sea level, overworldModel.js isWaterPixel, the one water law - weighted two near and one far),
 // and a cell's distance is how far it stands in from the town's seaward edge along it, and a quarter of its distance off
-// that edge's middle. No sea either way (the bearing's sum nought): the town's middle, as the yards'.
+// that edge's middle. No sea either way (the bearing's sum nought): the town's middle, as the yards'. A body of the
+// town's own water lying against the map's bearing - its middle on the far side of the town's from the sea the map
+// shows - is a lake or a river's reach inland, never the sea (AUDIT SHIPYARDS U2: the shipyard turned its back on the
+// sea to face it).
 //
 // THE PLACE: a rectangle (PORT_FOOT, its front - its gate's side - along its +z), turned to one of the four axes; its
 // own ground open and off every road, a ring of YARD_PAD_M round it open (a road allowed). Each BACKS ONTO THE SEA: a
 // place whose front stands no farther from the sea than its back by its own depth costs FACE_K cells for every cell it
-// falls short (FACE_K). THE SHIPYARD's score is that and the sea's distance at the middle of its back edge - its
-// slipway's end, where its hull on the stocks would go down to the water - its gate to the town; its front facing no
+// falls short (FACE_K). THE SHIPYARD's score is that and the sea's distance at the middle of its back edge - its sea
+// wall, its slipway running out through it, where its hull on the stocks would go down to the water - its gate to the
+// town; its front facing no
 // road within FRONT_ROAD_CELLS costs NO_ROAD_COST more (merchantYardSites.js, the yards' law). THE LIGHTHOUSE's is that
 // and the sea's distance at its middle (its door to the town), less
 // LIGHT_APART_K of a cell for every cell it stands from the shipyard (to LIGHT_APART_CAP): the town's light at its
@@ -33,7 +37,7 @@
 // Pure: no renderer, no GL, no clock. Not a DFU member. Ledger A (SHIPYARDS).
 import { NAV_CELL, NAV_CELLS_PER_BLOCK, tileWeight } from './cityNavigation.js';
 import { summed, frontStrip, closeSite, YARD_PAD_M, YARD_TURNS, NO_ROAD_COST } from './merchantYardSites.js';
-import { PORT_SITE_ORDER } from '../systems/portPlaces.js';
+import { PORT_SITE_ORDER, portPlaceName } from '../systems/portPlaces.js';
 
 /** Each place's ground, metres: half its width (x) and half its depth (z) - its fence or wall and the apron before its
  *  gate (world/shipyardModel.js, world/lighthouseModel.js lay both out inside it). */
@@ -41,8 +45,7 @@ export const PORT_FOOT = Object.freeze({
   shipyard: Object.freeze({ hx: 11, hz: 8 }),
   lighthouse: Object.freeze({ hx: 6.5, hz: 6.5 }),
 });
-/** The least body of water, cells, that is the sea (never a puddle or a pond), and how far from the block grid's edge
- *  it must reach. */
+/** The least body of water, cells, that is the sea (never a puddle or a pond) - a body reaching the block grid's edge. */
 export const SEA_CELLS_MIN = 48;
 /** How far the map pixels round the town's are asked for the sea, and each ring's weight (the nearest the heavier). */
 export const SEA_RING = 2;
@@ -54,8 +57,10 @@ export const LATERAL_K = 0.25;
  *  a front onto no road (NO_ROAD_COST), so a shipyard backs onto the water first and opens onto a street where it can. */
 export const FACE_K = 2;
 /** The lighthouse stands apart from the shipyard: LIGHT_APART_K of a cell of the sea's distance for every cell between
- *  them, to LIGHT_APART_CAP cells. */
-export const LIGHT_APART_K = 0.25;
+ *  them, to LIGHT_APART_CAP cells - more than LATERAL_K, which it pays along the seaward edge for every cell off its
+ *  middle (AUDIT SHIPYARDS L3-1: at LATERAL_K's own quarter the two cancelled, and on a bearing the light stood beside
+ *  the yard), less than the cell it pays for every cell inland. */
+export const LIGHT_APART_K = 0.5;
 export const LIGHT_APART_CAP = 40;
 
 /** A place's cell spans for a turn: [across x, across z]. Pure. */
@@ -69,11 +74,13 @@ export function portSpans(kind, turn) {
  * THE TOWN'S OWN SEA: a mask over its navgrid's cells (the yards' frame - rows along +z, per block flipped as
  * CityNavigation.setBlockData flips them), 1 where a cell is open water of a body reaching the block grid's edge with
  * SEA_CELLS_MIN cells at least. A cell is water where no automap byte covers it and its ground tile is of the water
- * family on the enhanced lane's table (cityNavigation.js tileWeight's nought). Pure.
- * @param {{width: number, height: number, blocks: any[]}} loc
+ * family on the enhanced lane's table (cityNavigation.js tileWeight's nought). With the map's `bearing` ([sx, sz],
+ * seaBearing's), a body whose middle lies against it - on the far side of the grid's middle from the sea the map shows -
+ * is no sea (AUDIT SHIPYARDS U2). Pure.
+ * @param {{width: number, height: number, blocks: any[]}} loc @param {number[]|null} [bearing]
  * @returns {{ width: number, height: number, sea: Uint8Array, cells: number }}
  */
-export function townSeaOf(loc) {
+export function townSeaOf(loc, bearing = null) {
   const N = NAV_CELLS_PER_BLOCK, W = (loc?.width | 0) * N, H = (loc?.height | 0) * N;
   const water = new Uint8Array(Math.max(0, W * H)), sea = new Uint8Array(Math.max(0, W * H));
   if (!(W > 0) || !(H > 0)) return { width: 0, height: 0, sea, cells: 0 };
@@ -109,9 +116,21 @@ export function townSeaOf(loc) {
         if (water[n] && !seen[n]) { seen[n] = 1; stack.push(n); }
       }
     }
-    if (edge && body.length >= SEA_CELLS_MIN) { for (const c of body) sea[c] = 1; cells += body.length; }
+    if (!edge || body.length < SEA_CELLS_MIN || againstBearing(body, W, H, bearing)) continue;
+    for (const c of body) sea[c] = 1;
+    cells += body.length;
   }
   return { width: W, height: H, sea, cells };
+}
+
+/** Whether a body of water's middle lies against the map's bearing - twice its offset off the grid's middle, along the
+ *  bearing, below nought (whole numbers: a cell's centre). No bearing: never. Pure. */
+function againstBearing(body, W, H, bearing) {
+  const sx = bearing?.[0] ?? 0, sz = bearing?.[1] ?? 0;
+  if (!sx && !sz) return false;
+  let along = 0;
+  for (const c of body) { const cx = c % W, cy = (c - cx) / W; along += (2 * cx + 1 - W) * sx + (2 * cy + 1 - H) * sz; }
+  return along < 0;
 }
 
 /**
@@ -257,4 +276,21 @@ export function portSitesOn(g, field) {
 export function siteToLocation(site, lx, lz) {
   const a = ((site.yaw ?? 0) * Math.PI) / 180, c = Math.round(Math.cos(a)), s = Math.round(Math.sin(a));
   return [site.x + lx * c + lz * s, site.z - lx * s + lz * c];
+}
+/** A scene's point [x, z] in a location's frame: its pixel's floating-origin translation `t` ([x, y, z]) and the location's
+ *  origin in its pixel `origin` ([x, y, z]) taken off - the docks' berth for the talk directory. Pure. */
+export const sceneToLocationXZ = (p, t, origin) => [p[0] - t[0] - origin[0], p[1] - t[2] - origin[2]];
+/** A PORT TOWN'S PLACES AS ROWS OF ITS TALK DIRECTORY, in the location frame (systems/portPlaces.js portDirectoryRows):
+ *  each place where its town's layout put it; the CREW HALL at `crewAt`, a point of the shipyard's own frame (the
+ *  crewmaster's table); the DOCKS at `docks` ([x, z], the first berth's quay) once there is one, named for the town.
+ *  scenes/world.js portPlacesOf hands it the sites and the docks (AUDIT SHIPYARDS L6-10: executed here, not read off
+ *  world.js's text). Pure. */
+export function portPlaceRows(sites, crewAt, docks, townName) {
+  const out = [];
+  for (const site of sites ?? []) {
+    out.push({ kind: site.kind, x: site.x, z: site.z, name: site.name });
+    if (site.kind === 'shipyard') { const [x, z] = siteToLocation(site, crewAt[0], crewAt[1]); out.push({ kind: 'crewhall', x, z, name: site.crewName }); }
+  }
+  if (docks) out.push({ kind: 'docks', x: docks[0], z: docks[1], name: portPlaceName('docks', { townName }) });
+  return out;
 }

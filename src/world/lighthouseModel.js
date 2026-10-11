@@ -4,8 +4,12 @@
 // the view"): WHAT A PORT TOWN'S LIGHTHOUSE IS MADE OF - the port's own geometry in its own frame (y up from its ground,
 // its FRONT - its gate and its doors, the town's side - along +z, the SEA behind it along -z, x across), worn in the
 // port's own art (world/portArt.js) through the yards' face kit (world/merchantYardModels.js). Every face is wound
-// outward and the collider is the same triangles - with one more: a GUARD over the gallery's railing (`guardBand`), a
-// band the eye never sees, so a step back on the gallery is never a fall.
+// outward and the collider is the same triangles - with one more: a GUARD round the gallery (`guardBand`), a closed
+// corridor the eye never sees - a band from the floor just inside the railing and a lid over it to the lantern room -
+// so neither a step back, nor a jump, nor a climb takes anyone off the gallery (AUDIT SHIPYARDS L4-1), stood by the pool
+// while someone is on the gallery under it (its lid kept nobody coming down from landing). The lantern
+// room's glass and its lens are a mesh of their own (`buildLighthouseGlass`), drawn casting no shadow: the lamp stands
+// inside them (AUDIT SHIPYARDS L5-2).
 //
 // THE COMPOUND (world/portSites.js PORT_FOOT.lighthouse, 13 m square): a low stone wall round cobbles, its gate in the
 // front. THE TOWER stands toward the sea: a stone PLINTH, then the tower whitewashed and tapering, two red bands round
@@ -44,13 +48,18 @@ const T = LIGHTHOUSE.tower, G = LIGHTHOUSE.gallery, L = LIGHTHOUSE.lantern;
 export const towerR = (y) => T.r0 + ((T.r1 - T.r0) * Math.max(0, Math.min(T.top, y) - T.plinthH)) / (T.top - T.plinthH);
 /** The gallery's floor (y). */
 export const GALLERY_Y = T.top + 0.0;
+/** How far before the door's step a climb down stands the player (m): past a body's capsule (player/motor.js
+ *  CAPSULE_RADIUS) by a hand, so the way down lands on the ground and not in the step. */
+export const STEP_CLEAR = 0.5;
+/** The door's step before the tower, in the lighthouse's frame - [x0, y0, z0, x1, y1, z1]. */
+export const STEP_BOX = Object.freeze([T.x - 0.9, 0, T.z + T.plinthR - 0.05, T.x + 0.9, T.plinthH * 0.5, T.z + T.plinthR + 0.55]);
 /** The lamp's middle, and where the people and the climb stand - [x, y, z] in the lighthouse's frame: the keeper by the
  *  tower's door; the door's foot (where a climb starts and a climb down ends, facing the town); the gallery's sea side
  *  (where the climb comes out, facing the sea); the hatch on its town side (the way down). */
 export const LIGHTHOUSE_POINTS = Object.freeze({
   lamp: Object.freeze([T.x, GALLERY_Y + L.wallH + L.glassH * 0.55, T.z]),
   keeper: Object.freeze([T.x - 1.6, 0, T.z + T.r0 + 1.25]),
-  foot: Object.freeze([T.x, 0, T.z + T.r0 + 1.0]),
+  foot: Object.freeze([T.x, 0, T.z + T.plinthR + 0.55 + STEP_CLEAR]),   // AUDIT SHIPYARDS L4-4: before the door's step, never in it
   gallery: Object.freeze([T.x, GALLERY_Y, T.z - (L.r + G.railR) / 2]),
   hatch: Object.freeze([T.x, GALLERY_Y, T.z + (L.r + G.railR) / 2]),
 });
@@ -76,11 +85,15 @@ function section(f, rec, cx, cz, sides, r0, r1, y0, y1, { cap = null, under = nu
   }
 }
 
-/** A flat panel on the tower's face square to +z or -z (its door, its windows), standing proud of it by `out`. */
+/** The tower's flat face square to +z or -z at height y, `out` proud of it (its z). */
+const faceZ = (zSide, y, out) => T.z + zSide * (towerR(y) * Math.cos(Math.PI / TOWER_SIDES) + out);
+/** A flat panel on the tower's face square to +z or -z (its door, its windows), standing proud of it by `out` - leaning
+ *  with the tower's taper, each edge on the face at its own height (AUDIT SHIPYARDS L5-3: laid flat, a door's foot sank
+ *  into the wall and its head stood off it). */
 function onFace(f, rec, zSide, x0, x1, y0, y1, out = 0.03) {
-  const z = T.z + zSide * (towerR((y0 + y1) / 2) * Math.cos(Math.PI / TOWER_SIDES) + out);
-  if (zSide > 0) f.quad(rec, [T.x + x1, y0, z], [T.x + x0, y0, z], [T.x + x0, y1, z], [T.x + x1, y1, z], [0, 1], [1, 1], [1, 0], [0, 0], [0, 0, 1]);
-  else f.quad(rec, [T.x + x0, y0, z], [T.x + x1, y0, z], [T.x + x1, y1, z], [T.x + x0, y1, z], [0, 1], [1, 1], [1, 0], [0, 0], [0, 0, -1]);
+  const za = faceZ(zSide, y0, out), zb = faceZ(zSide, y1, out);
+  if (zSide > 0) f.quad(rec, [T.x + x1, y0, za], [T.x + x0, y0, za], [T.x + x0, y1, zb], [T.x + x1, y1, zb], [0, 1], [1, 1], [1, 0], [0, 0], [0, 0, 1]);
+  else f.quad(rec, [T.x + x0, y0, za], [T.x + x1, y0, za], [T.x + x1, y1, zb], [T.x + x0, y1, zb], [0, 1], [1, 1], [1, 0], [0, 0], [0, 0, -1]);
 }
 
 function tower(f) {
@@ -97,8 +110,9 @@ function tower(f) {
   // its door to the town, a lintel over it, a step before it; its slit windows up the town's face and the sea's
   const D = LIGHTHOUSE.door;
   onFace(f, R.door, 1, -D.w / 2, D.w / 2, T.plinthH, T.plinthH + D.h, 0.04);
-  box(f, R.stone, T.x - D.w / 2 - 0.2, T.plinthH + D.h, T.z + towerR(T.plinthH) - 0.1, T.x + D.w / 2 + 0.2, T.plinthH + D.h + 0.25, T.z + towerR(T.plinthH) + 0.25);
-  box(f, R.stone, T.x - 0.9, 0, T.z + T.plinthR - 0.05, T.x + 0.9, T.plinthH * 0.5, T.z + T.plinthR + 0.55, { top: R.stone });
+  const lz = faceZ(1, T.plinthH + D.h, 0);   // the lintel set into the wall at its own height
+  box(f, R.stone, T.x - D.w / 2 - 0.2, T.plinthH + D.h, lz - 0.1, T.x + D.w / 2 + 0.2, T.plinthH + D.h + 0.25, lz + 0.25);
+  box(f, R.stone, ...STEP_BOX, { top: R.stone });
   for (const wy of [4.2, 9.4, 14.8]) onFace(f, R.window, 1, -0.22, 0.22, wy, wy + 1.0);
   for (const wy of [3.4, 8.6, 15.2]) onFace(f, R.window, -1, -0.22, 0.22, wy, wy + 1.0);
 }
@@ -120,18 +134,18 @@ function gallery(f) {
     box(f, R.iron, px - 0.03, y1, pz - 0.03, px + 0.03, y1 + G.railH, pz + 0.03);   // from the gallery's floor (the kit's post is sunk in the ground)
     for (const h of [0.55, G.railH - 0.03]) beam(f, R.iron, at(k, G.railR, y1 + h), at(k + 1, G.railR, y1 + h), 0.05, 0.05);
   }
-  // the hatch in the floor on the town's side: its frame and its lid
+  // the hatch in the floor on the town's side: its frame and its lid, a centimetre proud of it (as the yards' posts stand
+  // off their walls: nearer is one plane to the depth buffer at a distance)
   const [hx, , hz] = LIGHTHOUSE_POINTS.hatch;
   box(f, R.wood, hx - 0.45, y1, hz - 0.4, hx + 0.45, y1 + 0.06, hz + 0.4);
-  f.quad(R.door, [hx - 0.38, y1 + 0.065, hz + 0.33], [hx + 0.38, y1 + 0.065, hz + 0.33], [hx + 0.38, y1 + 0.065, hz - 0.33], [hx - 0.38, y1 + 0.065, hz - 0.33], [0, 0], [1, 0], [1, 1], [0, 1], [0, 1, 0]);
-  box(f, R.iron, hx - 0.04, y1 + 0.065, hz + 0.05, hx + 0.04, y1 + 0.12, hz + 0.22);   // its ring
+  f.quad(R.door, [hx - 0.38, y1 + 0.07, hz + 0.33], [hx + 0.38, y1 + 0.07, hz + 0.33], [hx + 0.38, y1 + 0.07, hz - 0.33], [hx - 0.38, y1 + 0.07, hz - 0.33], [0, 0], [1, 0], [1, 1], [0, 1], [0, 1, 0]);
+  box(f, R.iron, hx - 0.04, y1 + 0.07, hz + 0.05, hx + 0.04, y1 + 0.125, hz + 0.22);   // its ring
 }
 
 function lanternRoom(f) {
   const y0 = GALLERY_Y, yg = y0 + L.wallH, yc = yg + L.glassH;
   // its low iron wall, then the glass between its mullions, its cornice, its dome, the vent ball and the vane
   section(f, R.iron, T.x, T.z, L.mullions, L.r, L.r, y0, yg, { cap: R.iron });
-  section(f, R.glass, T.x, T.z, L.mullions, L.r - 0.05, L.r - 0.05, yg, yc);
   const step = (Math.PI * 2) / L.mullions;
   for (let k = 0; k < L.mullions; k++) {
     const a = k * step + step / 2;
@@ -147,8 +161,13 @@ function lanternRoom(f) {
   drum(f, R.iron, T.x, T.z, 4, 0.03, 0.03, yd + L.domeH + 0.3, yd + L.domeH + 1.1, R.iron);
   beam(f, R.iron, [T.x - 0.35, yd + L.domeH + 0.95, T.z], [T.x + 0.45, yd + L.domeH + 0.95, T.z], 0.04, 0.12);   // the vane
   box(f, R.iron, T.x + 0.3, yd + L.domeH + 0.86, T.z - 0.12, T.x + 0.38, yd + L.domeH + 1.04, T.z + 0.12);
-  // the lamp within: its brass stand and its lit lens
+  // the lamp within: its brass stand (its lit lens is the glass's - lanternGlass)
   drum(f, R.brass, T.x, T.z, 8, 0.32, 0.22, y0, yg + 0.25, R.brass);
+}
+/** The lantern room's GLASS between its mullions and the lamp's LIT LENS - the faces round the lamp's own light. */
+function lanternGlass(f) {
+  const yg = GALLERY_Y + L.wallH, yc = yg + L.glassH;
+  section(f, R.glass, T.x, T.z, L.mullions, L.r - 0.05, L.r - 0.05, yg, yc);
   const lamp = LIGHTHOUSE_POINTS.lamp;
   box(f, R.glass, T.x - 0.42, yg + 0.25, T.z - 0.42, T.x + 0.42, lamp[1] + 0.55, T.z + 0.42, { under: true });
 }
@@ -161,10 +180,13 @@ function cottage(f) {
   box(f, R.whitewash, C.x1 - W, -YARD_SINK, C.z0, C.x1, C.wallH, C.z1);
   // the gables over its front and its back (the ridge along z), and the slate roof
   const xm = (C.x0 + C.x1) / 2;
+  // AUDIT SHIPYARDS L5-1: the gable's apex at the roof's UNDERSIDE (its slab `t` under the ridge) - at the ridge its slopes
+  // lay in the slate's own plane and the two pictures fought for every pixel
+  const t = 0.14;
   for (const [a, b] of [[C.z0, C.z0 + W], [C.z1 - W, C.z1]]) {
-    hexa(f, R.whitewash, [[C.x0, C.wallH, a], [C.x1, C.wallH, a], [C.x1, C.wallH, b], [C.x0, C.wallH, b], [xm - 0.01, C.ridge, a], [xm + 0.01, C.ridge, a], [xm + 0.01, C.ridge, b], [xm - 0.01, C.ridge, b]]);
+    hexa(f, R.whitewash, [[C.x0, C.wallH, a], [C.x1, C.wallH, a], [C.x1, C.wallH, b], [C.x0, C.wallH, b], [xm - 0.01, C.ridge - t, a], [xm + 0.01, C.ridge - t, a], [xm + 0.01, C.ridge - t, b], [xm - 0.01, C.ridge - t, b]]);
   }
-  const o = 0.3, t = 0.14, slope = (C.ridge - C.wallH) / (xm - C.x0);
+  const o = 0.3, slope = (C.ridge - C.wallH) / (xm - C.x0);
   for (const s of [-1, 1]) {
     const xe = s < 0 ? C.x0 - o : C.x1 + o, ye = C.wallH - o * slope;
     hexa(f, R.stone, [
@@ -181,7 +203,7 @@ function cottage(f) {
   // a bench by its door, a water butt at its corner
   box(f, R.plank, C.x0 - 0.75, 0.42, 4.6, C.x0 - 0.4, 0.5, 5.45, { under: true });
   for (const z of [4.7, 5.35]) box(f, R.wood, C.x0 - 0.68, 0, z - 0.04, C.x0 - 0.47, 0.42, z + 0.04);
-  drum(f, R.plank, C.x0 - 0.5, C.z0 + 0.6, 10, 0.4, 0.4, 0, 1.0, R.water);
+  drum(f, R.plank, WATER_BUTT[0], WATER_BUTT[1], 10, WATER_BUTT[2], WATER_BUTT[2], 0, 1.0, R.water);   // clear of the plinth and the casks (AUDIT SHIPYARDS L5-3)
 }
 
 function compound(f) {
@@ -195,11 +217,16 @@ function compound(f) {
   box(f, R.stone, Wl.gate, -YARD_SINK, Wl.z1 - Wl.t, Wl.x1, Wl.h, Wl.z1, cap);
   for (const x of [-Wl.gate, Wl.gate]) box(f, R.stone, x - 0.25, -YARD_SINK, Wl.z1 - Wl.t - 0.05, x + 0.25, Wl.h + 0.45, Wl.z1 + 0.05, { top: R.stone });
   // the lamp's oil casks by the tower's door
-  for (const [x, z] of [[T.x + 1.7, T.z + T.plinthR + 0.3], [T.x + 2.35, T.z + T.plinthR - 0.15]]) drum(f, R.plank, x, z, 10, 0.32, 0.32, 0, 0.82, R.wood);
+  for (const [x, z] of OIL_CASKS) drum(f, R.plank, x, z, 10, 0.32, 0.32, 0, 0.82, R.wood);
 }
 
+/** The lamp's oil casks by the tower's door, [x, z] in its frame - off the plinth, the step and the water butt. */
+export const OIL_CASKS = Object.freeze([Object.freeze([T.x + 1.45, T.z + T.plinthR + 0.3]), Object.freeze([T.x + 1.55, T.z + T.plinthR + 0.97])]);
+/** The water butt at the cottage's corner, [x, z, r]. */
+export const WATER_BUTT = Object.freeze([LIGHTHOUSE.cottage.x0 - 0.4, LIGHTHOUSE.cottage.z0 + 0.75, 0.4]);
+
 /** THE LIGHTHOUSE, in its own frame: renderer.createMesh's model shape (and the collider's but the guard), under
- *  PORT_ARCHIVE. Pure. */
+ *  PORT_ARCHIVE - all but the lantern's glass (buildLighthouseGlass). Pure. */
 export function buildLighthouseModel() {
   const f = faces();
   compound(f);
@@ -209,18 +236,33 @@ export function buildLighthouseModel() {
   cottage(f);
   return assemble(f, PORT_ARCHIVE);
 }
+/** THE LANTERN'S GLASS AND THE LAMP'S LENS, a mesh of their own (the collider's too): drawn casting no shadow, since the
+ *  lamp's light stands inside them - a caster round it shadowed its own light on every side (AUDIT SHIPYARDS L5-2). Pure. */
+export function buildLighthouseGlass() {
+  const f = faces();
+  lanternGlass(f);
+  return assemble(f, PORT_ARCHIVE);
+}
 
-/** THE GUARD over the gallery's railing - collider alone, never drawn: a band of the railing's ring from its top rail to
- *  `guardH` over the floor, its faces both ways (a body inside it is kept in, one outside kept off). `{ positions,
- *  indices }` in the lighthouse's frame. Pure. */
+/** THE GUARD round the gallery - collider alone, never drawn: a CORRIDOR, a band of the railing's ring just inside it
+ *  (so no rail is a step) from the gallery's floor to `guardH` over it, and a LID over the walk at that height from the
+ *  lantern room's glass out to the band, faces both ways. AUDIT SHIPYARDS L4-1: an open band over the rail let a climb, a
+ *  boosted jump or a vault go over it - a twenty-metre fall - and walking into the rail stepped the body onto its edge.
+ *  The pool stands it only while the feet are on the gallery under its lid (scenes/portHost.js guardFor): standing
+ *  always, the lid was a floor to a body coming down onto the gallery from over it. `{ positions, indices }` in the
+ *  lighthouse's frame. Pure. */
 export function guardBand() {
   const positions = [], indices = [];
-  const step = (Math.PI * 2) / TOWER_SIDES, y0 = GALLERY_Y + G.railH - 0.05, y1 = GALLERY_Y + G.guardH;
-  const p = (k, y) => [T.x + Math.cos(k * step + step / 2) * G.railR, y, T.z + Math.sin(k * step + step / 2) * G.railR];
-  for (let k = 0; k < TOWER_SIDES; k++) {
+  const step = (Math.PI * 2) / TOWER_SIDES, y0 = GALLERY_Y, y1 = GALLERY_Y + G.guardH, rIn = G.railR - 0.08, rLid = L.r - 0.05;
+  const p = (k, r, y) => [T.x + Math.cos(k * step + step / 2) * r, y, T.z + Math.sin(k * step + step / 2) * r];
+  const quad = (a, b, c, d) => {
     const v = positions.length / 3;
-    for (const q of [p(k, y0), p(k + 1, y0), p(k + 1, y1), p(k, y1)]) positions.push(...q);
+    for (const q of [a, b, c, d]) positions.push(...q);
     indices.push(v, v + 1, v + 2, v, v + 2, v + 3, v, v + 2, v + 1, v, v + 3, v + 2);
+  };
+  for (let k = 0; k < TOWER_SIDES; k++) {
+    quad(p(k, rIn, y0), p(k + 1, rIn, y0), p(k + 1, rIn, y1), p(k, rIn, y1));   // the band, from the floor
+    quad(p(k, rLid, y1), p(k + 1, rLid, y1), p(k + 1, rIn, y1), p(k, rIn, y1));   // the lid
   }
   return { positions: new Float32Array(positions), indices: new Uint32Array(indices) };
 }

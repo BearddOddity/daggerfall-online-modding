@@ -34,7 +34,7 @@ const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const FONT = { fnt: { fixedWidth: 6, fixedHeight: 6, glyphWidth: () => 5 } };
 
 /** A town of two blocks by two, open ground with a road along row 64, its yards placed by the producer and handed the
- *  keeper the host hands them (scenes/world.js merchantYardSitesFor). */
+ *  keeper the host hands them (scenes/world.js townPlacesFor). */
 function town() {
   const g = yardGround({ width: 128, height: 128, weightAt: (gx, gy) => (gx < 0 || gy < 0 || gx >= 128 || gy >= 128 ? 0 : gy === 64 || gy === 65 ? ROAD_WEIGHT : 1) });
   const mapId = 7, regionIndex = 17;

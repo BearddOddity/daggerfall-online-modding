@@ -16,7 +16,8 @@ import { CONTAINER_IMAGES } from '../src/ui/targetIconPanel.js';
 import { customItemsForGroup, registerCustomItemGroup, templateByIndex } from '../src/systems/itemTemplates.js';
 import { DEEP_WATERS_FISH_TEMPLATES } from '../src/systems/deepWatersFishItems.js';
 import { isStackable } from '../src/systems/inventory.js';
-import { setModSetting } from '../src/systems/modSettings.js';
+import { setModSetting, latchModLoaded, modLatchedOn } from '../src/systems/modSettings.js';
+import { effectKindLoaded, WATER_WALKING_SILENT_KIND } from '../src/systems/effects.js';
 
 const DIR = new URL('../vendor/come-sail-away/Models/', import.meta.url);
 const json = (p) => JSON.parse(readFileSync(new URL(p, DIR), 'utf8'));
@@ -345,4 +346,18 @@ test('CSA-H x SHIPYARDS: the shelf\'s custom loop stocks neither row - a roll th
     assert.equal(all.filter((i) => i.templateIndex === 1320 || i.templateIndex === 1321).length, 0, `building ${buildingType}: no boat on its shelf`);
     for (const t of [1320, 1321]) assert.equal(shopBuysItem(buildingType, mintBoatItem(t, 5)), false, `building ${buildingType}: buys no ${t}`);
   }
+});
+
+// AUDIT SHIPYARDS L6-11: the mod's switch now feeds its one effect kind alone (the shelf's rows retired) - and nothing
+// pinned it, so CSA-H-group-always (the switch read as always on) survived; pinned here, the latch last (none clears it)
+test('CSA-H x AUDIT SHIPYARDS: WaterWalkingSilent - the mod\'s own effect - is a kind the broker knows only while the mod is loaded: off and unlatched, none; on, known; latched off for the game, none whatever the switch says', () => {
+  assert.equal(modLatchedOn('come-sail-away'), undefined, 'no host latched it in this file');
+  try {
+    setModSetting('come-sail-away', 'Enabled', false);
+    assert.equal(effectKindLoaded(WATER_WALKING_SILENT_KIND), false, 'the mod off: no such kind');
+    setModSetting('come-sail-away', 'Enabled', true);
+    assert.equal(effectKindLoaded(WATER_WALKING_SILENT_KIND), true, 'the mod on: its kind');
+    latchModLoaded('come-sail-away', false);
+    assert.equal(effectKindLoaded(WATER_WALKING_SILENT_KIND), false, 'latched off for the game: none, the switch on');
+  } finally { latchModLoaded('come-sail-away', true); setModSetting('come-sail-away', 'Enabled', true); }
 });

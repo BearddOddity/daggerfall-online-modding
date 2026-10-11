@@ -143,7 +143,7 @@ test('SHIPYARDS NO ROOM, NONE: a town whose ground has no open place stands none
   assert.deepEqual(siteToLocation({ x: 10, z: 20, yaw: 0 }, 1, 2), [11, 22]);
 });
 
-test('SHIPYARDS THE MODELS: the shipyard and the lighthouse under the port\'s own archive, within their footprints; the yard\'s boards, notice board and hull boxes inside its fence; the tower\'s gallery at GALLERY_Y, its lamp over it, the gallery\'s spot on its sea side and the hatch on the town\'s, the guard over its railing a collider alone (mutants: the gallery\'s spot on the town side)', () => {
+test('SHIPYARDS THE MODELS: the shipyard and the lighthouse under the port\'s own archive, within their footprints; the yard\'s boards, notice board and hull boxes inside its fence; the tower\'s gallery at GALLERY_Y, its lamp over it, the gallery\'s spot on its sea side and the hatch on the town\'s, the guard a closed corridor round the gallery from its floor, a collider alone (mutants: the gallery\'s spot on the town side)', () => {
   const bounds = (m) => { const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity]; for (let i = 0; i < m.positions.length; i += 3) for (let k = 0; k < 3; k++) { b[k] = Math.min(b[k], m.positions[i + k]); b[k + 3] = Math.max(b[k + 3], m.positions[i + k]); } return b; };
   for (const [kind, m] of [['shipyard', buildShipyardModel()], ['lighthouse', buildLighthouseModel()]]) {
     assert.ok(m.subMeshes.length > 0 && m.subMeshes.every((s) => s.textureArchive === PORT_ARCHIVE), `${kind}: the port's archive`);
@@ -162,8 +162,10 @@ test('SHIPYARDS THE MODELS: the shipyard and the lighthouse under the port\'s ow
   const rG = Math.abs(LIGHTHOUSE_POINTS.gallery[2] - T.z);
   assert.ok(rG > LIGHTHOUSE.lantern.r && rG < LIGHTHOUSE.gallery.railR, 'between the lantern\'s glass and the railing');
   assert.ok(LIGHTHOUSE_POINTS.foot[2] > T.z + towerR(0), 'the foot before its door');
+  // PIN MOVED (AUDIT SHIPYARDS L4-1): the guard was a band over the railing, open over its top - a climb crossed it and fell
+  // 19.68 m; it is a closed corridor now, from the gallery's floor to guardH, lidded in to the lantern's glass
   const band = bounds(guardBand());
-  assert.ok(band[1] > GALLERY_Y + LIGHTHOUSE.gallery.railH - 0.1 && band[4] <= GALLERY_Y + LIGHTHOUSE.gallery.guardH + 1e-9, 'over the railing');
+  assert.ok(Math.abs(band[1] - GALLERY_Y) < 1e-5 && Math.abs(band[4] - (GALLERY_Y + LIGHTHOUSE.gallery.guardH)) < 1e-5, 'from the floor to guardH (Float32)');
   const door = doorBox();
   assert.ok(door[2] > T.z && door[1] < LIGHTHOUSE.tower.plinthH, 'its door at its foot, to the town');
   assert.ok(hatchBox()[1] < GALLERY_Y && hatchBox()[4] > GALLERY_Y);
@@ -210,7 +212,7 @@ function rig({ feet = null, lit = false } = {}) {
   };
   const deps = {
     renderer, collider: () => collider, getTexture: async () => tex, uploadRecordFrame: (a, r, f) => log.uploads.push([a, `${r}#${f}`]),
-    sites: () => st.sites, groundAt: () => st.ground, eye: () => [100, 3, 70], feet: () => st.feet, lit: () => st.lit,
+    sites: () => st.sites, groundAt: () => st.ground, feet: () => st.feet, lit: () => st.lit,
     open: (site, page) => { log.opened.push([site.key, page]); return true; },
     climb: (site, way, at) => { log.climbs.push([site.key, way, at]); return st.climb; },
     say: (t) => log.say.push(t), midText: (t) => log.mid.push(t), now: () => st.t,
@@ -226,7 +228,7 @@ test('SHIPYARDS THE POOL STANDS THEM: each on its site\'s ground under its own b
   await tick();
   p.frame();
   assert.deepEqual([...log.buckets.keys()].sort(), ['port:9:lighthouse', 'port:9:shipyard']);
-  assert.equal(log.meshes, 2, 'one mesh a kind');
+  assert.equal(log.meshes, 3, 'one mesh a kind, and the lighthouse\'s glass');   // PIN MOVED (AUDIT SHIPYARDS L5-2): the lantern's glass and the lamp's lens a mesh of their own, drawn casting nothing
   assert.ok(log.uploads.some(([a]) => a === PORT_ARCHIVE), 'the port\'s art uploaded');
   assert.deepEqual(peopleOf(st.sites[0]).map((x) => x.role), ['keeper', 'crewmaster', 'recruit', 'recruit', 'recruit', 'worker', 'worker']);
   assert.deepEqual(peopleOf(st.sites[1]).map((x) => x.role), ['keeper']);
@@ -248,7 +250,10 @@ test('SHIPYARDS THE POOL STANDS THEM: each on its site\'s ground under its own b
 test('SHIPYARDS THE POOL HOLDS A PLACE BACK from feet on its ground at its foot as it first rises - never feet up on the gallery, which it must stand under (mutants: the gallery\'s feet held)', () => {
   const site = { kind: 'lighthouse', yaw: 0 };
   assert.equal(feetInPort(site, [0, 0, 0], [1, 0.2, 1]), true);
-  assert.equal(feetInPort(site, [0, 0, 0], [1, GALLERY_Y, -3]), false, 'up on the gallery');
+  // PIN MOVED (AUDIT SHIPYARDS L4-5): [1, GALLERY_Y, -3] stands 1.64 m off the tower's axis - inside the lantern room's
+  // glass (1.72), never the gallery's walk; a body there has risen up the hollow tower and is held back to the dome's top
+  assert.equal(feetInPort(site, [0, 0, 0], LIGHTHOUSE_POINTS.gallery), false, 'up on the gallery');
+  assert.equal(feetInPort(site, [0, 0, 0], [1, GALLERY_Y, -3]), true, 'inside the lantern room');
   assert.equal(feetInPort(site, [0, 0, 0], [PORT_FOOT.lighthouse.hx + 0.3, 0, 0]), false);
   assert.equal(feetInPort({ kind: 'shipyard', yaw: 90 }, [0, 0, 0], [PORT_FOOT.shipyard.hz - 0.2, 0, 0]), true, 'turned: its depth along x');
   const { log, st, deps } = rig({ feet: [160, 2.1, 20] });
@@ -353,10 +358,13 @@ test('SHIPYARDS THE LAMP: in the lanterns\' hours the lamp is a scene light at i
   assert.deepEqual(L.map((l) => l.range).sort((a, b) => a - b), [OFFICE_LAMP_RANGE, LAMP_RANGE]);
   const lamp = L.find((l) => l.range === LAMP_RANGE), want = yardToScene([160, 2, 20], 270, ...LIGHTHOUSE_POINTS.lamp);
   assert.deepEqual([lamp.x, lamp.y, lamp.z].map((v) => +v.toFixed(9)), want.map((v) => +v.toFixed(9)));
-  const g0 = p.glows([100, 3, 70], 5);
+  // PIN MOVED (AUDIT SHIPYARDS L4-2): the glows are the pool's own records written in place into one array - each call's
+  // read before the next (a copy of where each stands)
+  const copy = (G) => G.map((g) => ({ pos: [...g.pos], size: g.size, alpha: g.color[3], blend: g.blend, kind: g.kind }));
+  const g0 = copy(p.glows([100, 3, 70], 5));
   assert.equal(g0.length, 1 + 2 * BEAM_PUFFS);
   assert.ok(g0.every((g) => g.blend === 'add' && g.kind === 'lamp'));
-  const g1 = p.glows([100, 3, 70], 5 + BEAM_PERIOD_S / 4), g2 = p.glows([100, 3, 70], 5 + BEAM_PERIOD_S);
+  const g1 = copy(p.glows([100, 3, 70], 5 + BEAM_PERIOD_S / 4)), g2 = copy(p.glows([100, 3, 70], 5 + BEAM_PERIOD_S));
   assert.notDeepEqual(g1[BEAM_PUFFS].pos, g0[BEAM_PUFFS].pos, 'turned');
   g2.forEach((g, i) => g.pos.forEach((v, k) => assert.ok(Math.abs(v - g0[i].pos[k]) < 1e-6, 'a round each period')));
   assert.deepEqual(p.glows([160 + BEAM_SEEN_M + 50, 3, 20], 5), [], 'too far to see');

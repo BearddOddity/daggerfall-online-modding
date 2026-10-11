@@ -29,7 +29,9 @@ curse's pins (`test/cursesync.test.js`) read its `_no_` task. Port-Ledger sectio
   own bible page and code when it was written; a slice that changes how a system plays changes its page.
   SHIPYARDS (2026-10-11, `03-World/Shipyards.md`) did: Sailing sends the player to a port's shipyard, not a shelf;
   Shipwrights became Shipyards (the shipmaster, the crew hall, the helm's shipwright); Lighthouses is new - TUT1's
-  sixty-eight pages are sixty-nine.
+  sixty-eight pages are sixty-nine. AUDIT SHIPYARDS (L7-4, L7-6): Sailing says a bought ship is laid up and brought round
+  from the shipyard's Your fleet page (she never waited at the quay), and Shipyards says port towns have one (a town with
+  no room stands none).
   TUT1 AUDIT (Mac: "Ensure explanations dont sound AI and arent overloaded"): every page rewritten plain and short -
   at most two paragraphs, three points and sixty words (the first cut averaged 49 words and ran to 113; now 33 and
   60), no asides, no flourish, the words a player uses. The popup lost its foot (the welcome page says where every

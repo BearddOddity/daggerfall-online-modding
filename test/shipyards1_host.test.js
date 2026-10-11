@@ -34,7 +34,7 @@ const SK = Object.freeze({ mercantile: 40, personality: 50 });
  *  The ledger is the module's one: a rig is used through before the next is made. */
 function rig({ gold = 500000, csa = true, naval = true } = {}) {
   _resetFleetForTests();
-  const log = { paid: [], credited: [], traded: 0, changed: 0, sold: [], laidUp: [], forgotBoats: [], forgotHolds: [], fleetActs: [], enlisted: [], released: [] };
+  const log = { paid: [], credited: [], traded: 0, changed: 0, sold: [], laidUp: [], forgotBoats: [], forgotHolds: [], fleetActs: [], enlisted: [], released: [], yardBuys: [] };
   const st = { gold, pack: [], where: new Map(), boats: new Map(), hands: new Map(), away: new Map(), cabins: new Map(), held: new Map(), uid: 7000, day: 100 };
   const boatOf = (uid) => st.boats.get(uid) ?? null;
   const fleet = {
@@ -49,11 +49,20 @@ function rig({ gold = 500000, csa = true, naval = true } = {}) {
   };
   const sea = {
     crewHands: (boat) => st.hands.get(boat.uid) ?? [],
-    awayOf: (boat) => st.away.get(boat.uid) ?? new Set(),
-    enlistHand: (boat, r) => { log.enlisted.push([boat.uid, r.name, r.trade]); const h = { name: r.name, role: r.trade }; st.hands.set(boat.uid, [...(st.hands.get(boat.uid) ?? []), h]); return { ok: true, text: '', hand: h }; },
+    // AUDIT SHIPYARDS L6-1 (TEST THE SHAPE THE PRODUCER MINTS): navalHost.js awayOf answers her ROSTER PLACES ashore
+    awayOf: (boat) => { const names = st.away.get(boat.uid) ?? new Set(); return new Set((st.hands.get(boat.uid) ?? []).flatMap((h, i) => (names.has(h.name) ? [i] : []))); },
+    enlistHand: (boat, r) => { log.enlisted.push([boat.uid, r.name, r.trade]); const h = { name: r.name, role: r.trade, hall: r.id }; st.hands.set(boat.uid, [...(st.hands.get(boat.uid) ?? []), h]); return { ok: true, text: '', hand: h, raise: CREW_PER_HAND }; },
     releaseHand: (boat, name) => { log.released.push([boat.uid, name]); const hs = st.hands.get(boat.uid) ?? []; const h = hs.find((x) => x.name === name); if (!h) return { ok: false, text: 'No such hand aboard her.' }; st.hands.set(boat.uid, hs.filter((x) => x !== h)); return { ok: true, text: '', hand: h }; },
     forgetBoat: (uid) => log.forgotBoats.push(uid),
-    yardModelOf: (boat) => ({ uid: boat.uid, rows: [] }),
+    // AUDIT SHIPYARDS L6-7: the shipwright's model as navalHost.js yardModelOf mints it (the yard window's own shape)
+    yardModelOf: (boat) => ({
+      uid: boat.uid, hasBarrels: false,
+      ship: () => ({ hull: 80, maxHull: 100, sail: 10, maxSail: 10, crew: 18, maxCrew: 24, barrels: 0 }),
+      offer: () => ({ gold: st.gold, rows: [{ id: 'hull', missing: 20, price: 5, cost: 100, afford: 20, whole: 100 }, { id: 'sail', missing: 0, price: 3, cost: 0, afford: 0, whole: 0 }, { id: 'crew', missing: 6, price: 30, cost: 180, afford: 6, whole: 180 }] }),
+      provisions: () => ({ rows: [] }),
+      buy: (id) => { log.yardBuys.push([boat.uid, id]); return { ok: true, text: `${id} mended` }; },
+      buyAll: () => ({ ok: true, text: 'whole' }),
+    }),
   };
   const sail = {
     state: { PackedCargoes: st.held },
@@ -168,7 +177,8 @@ test('SHIPYARDS THE FLEET\'S OWN ACTS through the shipmaster - her summoning (it
   assert.deepEqual(r.log.fleetActs, [[602, 'summon', undefined], [601, 'rename', 'Kestrel'], [601, 'refit', 'hold'], [601, 'role', { name: 'Bram', role: 'Gunner' }]]);
   const y = r.host.model(SITE, { page: 'yard' });
   assert.deepEqual(y.choices.map((c) => c.uid), [601], 'a ship afar is not at hand');
-  assert.deepEqual(y.yard, { uid: 601, rows: [] }, 'the shipwright\'s own model');
+  assert.equal(y.yard.uid, 601, 'the shipwright\'s own model, of the ship chosen');
+  assert.equal(typeof y.yard.offer, 'function', 'as the sea fight mints it');
   const f = r.host.model(SITE, { page: 'refits' });
   assert.equal(f.refit.uid, 601);
   assert.match(rig({ naval: false }).host.model(SITE, { page: 'yard' }).why, /Naval Combat/);
@@ -179,13 +189,14 @@ test('SHIPYARDS THE CREW HALL: the day\'s roster less the names already serving,
   const r = rig();
   const all = recruitsOf({ mapId: SITE.mapId, day: 100, regionIndex: SITE.regionIndex });
   own(r, 701, 2, 'here', { hands: [all[0].name, 'Bram'] });
+  r.st.hands.get(701)[0].hall = all[0].id;   // PIN MOVED (AUDIT SHIPYARDS L2-9): a recruit serving her is known by his hall id
   own(r, 702, 4, 'laidup');
   own(r, 703, 1, 'here');   // a Large Boat: no crew
   const m = r.host.model(SITE, { page: 'crew', uid: 702 });
   assert.deepEqual(m.choices.map((c) => c.uid), [701, 702], 'the crewed ships at hand');
   assert.equal(m.uid, 702);
   assert.deepEqual(m.recruits.map((x) => x.id), all.slice(1).map((x) => x.id), 'a sailor serving her is not on the roster');
-  for (const x of m.recruits) assert.equal(x.fee, recruitFee(x.grade, x.trade));
+  for (const x of m.recruits) assert.deepEqual([x.fee, x.price, x.swap], [recruitFee(x.grade, x.trade), recruitFee(x.grade, x.trade), false], 'a man\'s share raised: his fee');
   const pick = m.recruits[0];
   const hired = r.host.act(SITE, 'hire', 702, pick.id);
   assert.equal(hired.ok, true);
@@ -200,7 +211,7 @@ test('SHIPYARDS THE CREW HALL: the day\'s roster less the names already serving,
   const poor = rig({ gold: 50 });
   own(poor, 701, 2, 'here');
   const p = poor.host.model(SITE, { page: 'crew' });
-  assert.ok(p.recruits.every((x) => x.why === CREW_HALL_TEXT.short(x.fee)));
+  assert.ok(p.recruits.every((x) => x.why === CREW_HALL_TEXT.short(x.price)));
   assert.equal(poor.host.act(SITE, 'hire', 701, p.recruits[0].id).ok, false);
   assert.deepEqual(poor.log.enlisted, [], 'short: nobody signed');
   const dry = rig({ naval: false });
@@ -227,30 +238,66 @@ test('SHIPYARDS THE WINDOW\'S WORDS: a ship\'s card (her figures, a galley lying
   assert.equal(recruitText({ name: 'B', gradeLabel: 'Green', trade: 'Cook', className: 'Monk', sex: 'male', fights: 0, boardings: 0, line: '', fee: 180 }).who, 'Green Cook - Monk, he has never been in a fight.');
 });
 
-test('SHIPYARDS THE WINDOW MOUNTED: its tabs page the model; a ship bought by its card\'s press; a sale and a pay-off each take a second press; a summons hands its water to the host and the window makes way; the back key leaves', () => {
+test('SHIPYARDS THE WINDOW MOUNTED: its tabs page the model; a ship bought, a ship sold and a hand paid off each take a SECOND press - never the click that asked (AUDIT SHIPYARDS L1-5: a double click is one press); a deed bought turns the window to her (L7-4); the Crew Hall, the Shipwright and the Refits pages mounted (L6-7); a summons hands its water to the host and the window makes way; the back key leaves', () => {
   const r = rig();
   own(r, 801, 2, 'here', { hands: ['Bram'] });
   own(r, 802, 4, 'away');
   const host = globalThis.document.createElement('div');
   globalThis.document.body.append(host);
   const exits = [], doors = [];
-  const view = mountShipyardWindow(host, { model: (v) => r.host.model(SITE, v), act: (verb, a, b) => r.host.act(SITE, verb, a, b), page: 'ships', onDoor: (d) => doors.push(d), onExit: (why) => exits.push(why) });
-  assert.equal(byClass(host, 'dfyard-card').length, SHIPYARD_HULLS.length);
-  const card = byClass(host, 'dfyard-card').find((c) => c.getAttribute('data-hull') === '1');
-  byClass(card, 'dfnaval-take')[0].dispatch('click', { stopPropagation() {} });
-  assert.equal(r.log.paid.length, 1, 'bought by its press');
+  let t = 1000;
+  const view = mountShipyardWindow(host, { model: (v) => r.host.model(SITE, v), act: (verb, a, b) => r.host.act(SITE, verb, a, b), page: 'ships', onDoor: (d) => doors.push(d), onExit: (why) => exits.push(why), now: () => t });
+  const click = (b) => b.dispatch('click', { stopPropagation() {} });
+  const note = () => byClass(host, 'dfnaval-note')[0].textContent;
   const tab = (id) => byClass(host, 'dfyard-tab').find((b) => b.getAttribute('data-tab') === id);
-  tab('fleet').dispatch('click', { stopPropagation() {} });
+  const selected = () => byClass(host, 'dfyard-tab').find((b) => b.getAttribute('aria-selected') === 'true')?.getAttribute('data-tab');
+  assert.equal(byClass(host, 'dfyard-card').length, SHIPYARD_HULLS.length);
+  // buying: the first press asks, a second at once (a double click) does nothing, a second a beat later buys
+  const buyBtn = () => byClass(byClass(host, 'dfyard-card').find((c) => c.getAttribute('data-hull') === '1'), 'dfnaval-take')[0];
+  click(buyBtn());
+  assert.deepEqual([r.log.paid.length, /Press again to buy her/.test(note())], [0, true], 'the first press asks');
+  click(buyBtn());
+  assert.equal(r.log.paid.length, 0, 'a double click is one press');
+  t += 400;
+  click(buyBtn());
+  assert.equal(r.log.paid.length, 1, 'the second press buys');
+  assert.equal(selected(), 'fleet', 'a deed bought: the window turns to her on Your fleet');
+  // selling, the same way
   const rowOf = (uid) => byClass(host, 'dfyard-row').find((x) => x.getAttribute('data-uid') === String(uid));
   const sellBtn = () => byClass(rowOf(801), 'dfnaval-btn').find((b) => /^Sell her|^Yes - sell/.test(b.textContent));
-  sellBtn().dispatch('click', { stopPropagation() {} });
+  click(sellBtn());
   assert.equal(r.log.credited.length, 0, 'the first press asks');
-  assert.match(byClass(host, 'dfnaval-note')[0].textContent, /Press again to sell her/);
-  sellBtn().dispatch('click', { stopPropagation() {} });
+  assert.match(note(), /Press again to sell her/);
+  click(sellBtn());
+  assert.equal(r.log.credited.length, 0, 'not the click that asked');
+  t += 400;
+  click(sellBtn());
   assert.equal(r.log.credited.length, 1, 'the second sells');
   assert.equal(rowOf(801), undefined, 'gone from the fleet');
+  // the Crew Hall: a hand paid off by a second press
+  own(r, 803, 2, 'here', { hands: ['Odo', 'Bram'] });
+  click(tab('crew'));
+  const payBtn = () => byClass(byClass(host, 'dfyard-row').find((x) => byClass(x, 'dfnaval-btn').some((b) => /^Pay off|^Yes - pay/.test(b.textContent)) && x.textContent?.includes?.('Bram') !== false && /Bram/.test(JSON.stringify(x.textContent ?? ''))) ?? byClass(host, 'dfyard-row')[1], 'dfnaval-btn').find((b) => /^Pay off|^Yes - pay/.test(b.textContent));
+  click(payBtn());
+  assert.deepEqual(r.log.released, [], 'the first press asks');
+  t += 400;
+  click(payBtn());
+  assert.equal(r.log.released.length, 1, 'the second pays him off');
+  // the Shipwright and the Refits pages stand on the chosen ship
+  click(tab('yard'));
+  assert.equal(selected(), 'yard');
+  assert.ok(byClass(host, 'dfnaval-sechead').some((h) => /The shipwright/.test(h.textContent)), 'the shipwright\'s page');
+  const mend = byClass(byClass(host, 'dfyard-row').find((x) => x.getAttribute('data-row') === 'hull'), 'dfnaval-btn')[0];
+  click(mend);
+  assert.equal(r.log.yardBuys.length, 1, 'a shipwright\'s row pressed is his work bought');
+  click(tab('refits'));
+  assert.ok(byClass(host, 'dfyard-row').some((x) => x.getAttribute('data-line') === 'hold'), 'the refits\' lines');
+  const refit = byClass(byClass(host, 'dfyard-row').find((x) => x.getAttribute('data-line') === 'hold'), 'dfnaval-btn')[0];
+  click(refit);
+  assert.ok(r.log.fleetActs.some(([, verb, line]) => verb === 'refit' && line === 'hold'), 'a refit pressed is the Fleet\'s act');
+  click(tab('fleet'));
   const summon = byClass(rowOf(802), 'dfnaval-btn').find((b) => b.textContent === 'Bring her here');
-  summon.dispatch('click', { stopPropagation() {} });
+  click(summon);
   assert.equal(doors.length, 1, 'the summons\' water handed to the host');
   assert.deepEqual(exits, ['door'], 'and the window makes way');
   keydown('Escape');

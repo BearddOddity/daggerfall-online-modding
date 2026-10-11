@@ -11,19 +11,24 @@
 // (crewLife.js PLAYER_CREW - the one her deck stands each hand as), a GRADE - green, able, seasoned or veteran - and the
 // fights and boardings he has stood, and a TRADE: the post he signs on for (shipCrew.js CREW_ROLES; a Bard keeps his
 // calling). A First Mate is seasoned at the least and a Bosun able. His SIGNING FEE is his grade's, times his trade's
-// premium: never under a shipwright's hand (REPAIR_PRICE.crew a man's share of her crew, CREW_PER_HAND of it), so no
-// recruit is the cheaper way to fill her. A sailor already serving a ship of the player's is not on the roster (the host
-// hands their names) - he signed on; paid off, he is back at the hall.
+// premium: never under a shipwright's hand (REPAIR_PRICE.crew a man's share of her crew, CREW_PER_HAND of it), and a
+// hire that raises her crew by more men than that pays the shipwright's price for every man it raises (`hireCharge`), so
+// no recruit is the cheaper way to fill her. A recruit already serving a ship of the player's is not on the roster (the
+// host hands their hall ids - AUDIT SHIPYARDS L2-9: by id, never by name, so a hand who merely shares a recruit's name
+// hides nobody); paid off, he is back at the hall.
 //
 // SIGNING ON (`enlistPlan`): a crewed hull's NAMED hands are the men her deck stands (crewLife.js playerCrewCount: a man
 // a CREW_PER_HAND of her crew, CREW_SHOWN at most), so a recruit takes a place on her deck: her crew raised to the share
 // that stands one more man, and never past her whole. A ship whose deck stands every man her whole crew can - a Small
-// Ship's four, a Carrack's five, a Large Galley's eight - has no place for another; deckhands by the head still fill her
-// crew at the shipwright's. He joins at his trade's post (a First Mate: the one she had stands down to Deckhand -
-// shipCrew.js assign's law), his record with him, and a seasoned man steadies a crew (`lift`, her spirits).
+// Ship's four, a Carrack's five, a Large Galley's eight, and so every ship as she is bought - is FULL (AUDIT SHIPYARDS
+// L7-2): a recruit signs on IN PLACE OF a hand the player names, who is paid off - one man for another, her crew as it
+// was. He joins at his trade's post (a First Mate: the one she had stands down to Deckhand - shipCrew.js assign's law),
+// his record with him, and a seasoned man steadies a crew (`lift`, her spirits - given back when he leaves).
 //
 // PAID OFF (`releasePlan`): a named hand leaves her - not one ashore at the player's side - and her crew falls by a man's
-// share. No fee comes back.
+// share. No fee comes back. Where her crew still stands as many on her deck (a galley's sixty stand eight), another of
+// her men steps up into the place, and the hall says who (AUDIT SHIPYARDS L2-1). The last of her crew is never paid off:
+// a ship with nobody aboard strikes (navalDamage.js `unmanned`).
 //
 // Pure: no DOM, no clock (the host hands the day). Its seeds its own (mulberry32 on hash32), the global stream put back.
 import { hash32 } from '../world/spawnedDungeons.js';
@@ -97,6 +102,12 @@ function drawTrade(r, gradeIndex) {
 /** A whole number in [lo, hi]. @param {() => number} r @param {readonly number[]} range */
 const between = (r, [lo, hi]) => lo + Math.floor(r() * (hi - lo + 1));
 
+/** What a hire costs (gold): his fee, or the shipwright's price for the men it raises her crew by when that is more -
+ *  `raise` enlistPlan's (none for a hand signed in another's place). AUDIT SHIPYARDS L2-2. */
+export const hireCharge = (fee, raise = 0) => Math.max(Math.max(0, fee | 0), Math.max(0, raise | 0) * REPAIR_PRICE.crew);
+/** The day a recruit's id was drawn for, or NaN. */
+export const recruitDay = (id) => Number(String(id ?? '').split(':')[1] ?? NaN);
+
 /** A recruit's signing fee (gold): his grade's ground times his trade's premium, to ten gold, never under HAND_PRICE. */
 export function recruitFee(grade, trade) {
   const g = typeof grade === 'string' ? gradeOf(grade) : grade;
@@ -106,8 +117,9 @@ export function recruitFee(grade, trade) {
 
 /**
  * A TOWN'S HALL ON A DAY: its RECRUITS_A_DAY sailors, the same on every client - `{ id, name, gender, sex, mobile,
- * className, grade, gradeLabel, trade, fights, boardings, fee, lift, line }` each. `serving` the names already signed on
- * a ship of the player's (none of them is offered). Pure (DFU's global stream put back by the name's draw).
+ * className, grade, gradeLabel, trade, fights, boardings, fee, lift, line }` each. `serving` the hall ids of the recruits
+ * already signed on a ship of the player's (none of them is offered). Pure (DFU's global stream put back by the name's
+ * draw).
  * @param {{ mapId: number, day: number, regionIndex?: number, serving?: Iterable<string>|null }} o
  */
 export function recruitsOf({ mapId, day, regionIndex = -1, serving = null }) {
@@ -129,40 +141,53 @@ export function recruitsOf({ mapId, day, regionIndex = -1, serving = null }) {
       fights: between(r, grade.fights), boardings: between(r, grade.boardings), fee: recruitFee(grade, trade), lift: grade.lift,
       line: lines[Math.floor(r() * lines.length)],
     };
-    if (!taken.has(rec.name)) out.push(rec);
+    if (!taken.has(rec.id)) out.push(rec);
   }
   return out;
 }
 
 /**
  * WHETHER A SHIP HAS A PLACE FOR ANOTHER NAMED HAND, and her crew once he is aboard: `hull` hers, `crew` and `maxCrew`
- * her crew now and whole, `hands` her named hands now. Answers `{ ok: true, crew }` (her crew raised to the share that
- * stands one more man - never past her whole) or `{ ok: false, why }`. Pure.
+ * her crew now and whole, `hands` her named hands now. Answers `{ ok: true, crew, raise, full: false }` (her crew raised
+ * to the share that stands one more man - never past her whole - `raise` the men it adds) or `{ ok: false, why, full }`:
+ * `full` when her deck already stands every man her whole crew can (a recruit then signs on in a hand's place). Pure.
  * @param {{ hull: number, crew: number, maxCrew: number, hands: number }} o
  */
 export function enlistPlan({ hull, crew, maxCrew, hands }) {
-  if (!((CREW_SHOWN[hull] ?? 0) > 0) || !(maxCrew > 0)) return { ok: false, why: 'She carries no crew to sign him on to.' };
+  if (!((CREW_SHOWN[hull] ?? 0) > 0) || !(maxCrew > 0)) return { ok: false, full: false, why: CREW_HALL_TEXT.noCrew };
   const n = Math.max(0, hands | 0);
-  const next = Math.min(maxCrew, Math.max(crew, (n + 1) * CREW_PER_HAND));
-  if (playerCrewCount(hull, next) !== n + 1) return { ok: false, why: 'Her deck has a place for no more named hands. Fill her crew with deckhands at the shipwright\'s.' };
-  return { ok: true, crew: next };
+  if (n >= playerCrewCount(hull, maxCrew)) return { ok: false, full: true, why: CREW_HALL_TEXT.full };
+  const now = Math.max(0, Number(crew) || 0);
+  const next = Math.min(maxCrew, Math.max(now, (n + 1) * CREW_PER_HAND));
+  if (playerCrewCount(hull, next) !== n + 1) return { ok: false, full: false, why: CREW_HALL_TEXT.noPlace };
+  return { ok: true, full: false, crew: next, raise: next - now };
 }
 /**
- * A named hand paid off: her crew once he is gone - a man's share less, never under none. Answers `{ ok, crew }`. Pure.
+ * A named hand paid off: her crew once he is gone - a man's share less. The last of her crew is not paid off (a ship
+ * with nobody aboard strikes). Answers `{ ok, crew, why? }`. Pure.
  * @param {{ crew: number }} o
  */
-export const releasePlan = ({ crew }) => ({ ok: crew > 0, crew: Math.max(0, crew - CREW_PER_HAND) });
+export const releasePlan = ({ crew }) => (crew > CREW_PER_HAND ? { ok: true, crew: crew - CREW_PER_HAND } : { ok: false, crew: Math.max(0, crew), why: CREW_HALL_TEXT.lastMan });
 
 /** A trade the hall signs a man on for (shipCrew.js CREW_ROLES, and a Bard's calling). */
 export const isRecruitTrade = (t) => /** @type {readonly string[]} */ (CREW_ROLES).includes(t) || t === 'Bard';
 
 /** The hall's words: a hire, a refusal, a pay-off. */
 export const CREW_HALL_TEXT = Object.freeze({
-  signed: (who, trade, ship) => `${who} signs on as ${ship}'s ${trade}.`,
-  short: (fee) => `${fee.toLocaleString('en-US')} gold is his fee - your purse falls short.`,
-  gone: 'He has signed on elsewhere.',
+  signed: (who, trade, ship) => `${who} signs on to ${ship} as her ${trade}.`,
+  swapped: (who, trade, ship, out) => `${who} signs on to ${ship} as her ${trade}, in ${out}'s place - ${out} is paid off.`,
+  short: (fee) => `The hire comes to ${fee.toLocaleString('en-US')} gold - your purse falls short.`,
+  gone: 'That sailor has signed on elsewhere.',
+  newDay: 'The crewmaster has a new day\'s roster.',
   paidOff: (who, ship) => `${who} is paid off and leaves ${ship}.`,
-  ashore: (who) => `${who} is ashore with you - send him back aboard first.`,
-  noShip: 'You have no crewed ship at hand to sign him on to - bring her to this port, or lay her up.',
+  steppedUp: (who, ship, next) => `${who} is paid off and leaves ${ship}. ${next} steps up into the place on her deck.`,
+  lastMan: 'That is the last of her crew - she would have nobody aboard.',
+  full: 'Her deck is full - sign a recruit on in place of one of her hands.',
+  noPlace: 'Her deck has no place for another named hand.',
+  noCrew: 'She carries no crew to sign anyone on to.',
+  sameName: (who) => `She already has a hand named ${who}.`,
+  fighting: 'Not while she is fighting.',
+  ashore: (who) => `${who} is ashore with you - send them back aboard first.`,
+  noShip: 'You have no crewed ship at hand to sign anyone on to - bring her to this port, or lay her up.',
   noSea: 'The crew halls sign hands on to the sea fight\'s crews - turn on Naval Combat.',
 });

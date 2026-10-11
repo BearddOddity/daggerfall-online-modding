@@ -1705,7 +1705,11 @@ export function createComeSailAwayRuntime(deps) {
     if (paused) return;
     latchTravelling();
     if (isSailing()) lateUpdateSailing();
-    else if (state.placing && activateComplete && f(f(deps.time()) - f(state.placeTime)) > PLACE_CLICK_DELAY) {
+    else if (state.placing && activateComplete && f(f(deps.time()) - f(state.placeTime)) > PLACE_CLICK_DELAY && !holdsItem(state.placeItemCollection, state.placeItem)) {
+      // AUDIT SHIPYARDS L1-1 (the port's own): the item the placing was armed with is no longer the player's - sold at a
+      // shipyard, dropped, taken by a load - so its click stands no boat: the boat it would stand was a ship twice
+      StopPlacing();
+    } else if (state.placing && activateComplete && f(f(deps.time()) - f(state.placeTime)) > PLACE_CLICK_DELAY) {
       const hullFromMessage_ = hullFromMessage(state.placeItem.message);
       const variantFromMessage_ = variantFromMessage(state.placeItem.message);
       log(`COME SAIL AWAY - ITEM HULL IS ${hullFromMessage_}`);
@@ -3282,6 +3286,13 @@ function swapItem(list, item, by) {
 }
 /** HOLDINGS: `item` out of the list - itself, else the one of its template and UID (a ship's parts and her deed share
  *  her number, and removeItem's UID alone would take whichever came first). */
+/** AUDIT SHIPYARDS L1-1: whether a placing's collection still holds its item - by the object, or its number and kind as
+ *  removeExact finds it; a placing armed with no collection (none to ask) holds it. */
+function holdsItem(list, item) {
+  const l = typeof list === 'function' ? list() : list;
+  if (!l || !item) return !!item;
+  return l.includes(item) || (item.UID != null && l.some((it) => it?.UID === item.UID && it?.templateIndex === item.templateIndex));
+}
 function removeExact(list, item) {
   const l = typeof list === 'function' ? list() : list;
   if (!l) return;

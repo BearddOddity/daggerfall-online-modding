@@ -16,6 +16,7 @@ import {
 } from '../src/systems/shipyards.js';
 import {
   RECRUITS_A_DAY, HAND_PRICE, RECRUIT_GRADES, RECRUIT_TRADES, recruitFee, recruitsOf, enlistPlan, releasePlan, isRecruitTrade, gradeOf, CREW_HALL_TEXT,
+  hireCharge, recruitDay,
 } from '../src/systems/crewHall.js';
 import { HULL_PRICES, HULL_NAMES } from '../src/systems/comeSailAwayHulls.js';
 import { BOAT_PARTS_TEMPLATE, BOAT_DEED_TEMPLATE, mintParts } from '../src/systems/comeSailAwayItems.js';
@@ -23,7 +24,7 @@ import { upgradeCost } from '../src/systems/fleet.js';
 import { calculateCost, calculateTradePrice, shopBuysItem } from '../src/systems/shopStock.js';
 import { getTradePrice } from '../src/systems/tradeModes.js';
 import { createShipCrew, CREW_ROLES, FIRST_MATE } from '../src/systems/naval/shipCrew.js';
-import { createShipDamage, REPAIR_PRICE } from '../src/systems/naval/navalDamage.js';
+import { createShipDamage, REPAIR_PRICE, SHIP_STATES } from '../src/systems/naval/navalDamage.js';
 import { playerCrewCount, CREW_SHOWN } from '../src/systems/naval/crewLife.js';
 import { CREW_PER_HAND, MOBILE } from '../src/systems/naval/navalBoarding.js';
 import { hullBuild } from '../src/systems/naval/navalShips.js';
@@ -179,12 +180,16 @@ test('SHIPYARDS THE CREW HALL\'S ROSTER: RECRUITS_A_DAY named sailors a town\'s 
   setSeed(777);
   const a = recruitsOf({ mapId: 4242, day: 100, regionIndex: 17 });
   assert.equal(getSeed(), 777, 'DFU\'s stream put back');
-  assert.equal(a.length, RECRUITS_A_DAY);
+  assert.equal(RECRUITS_A_DAY, 6, 'six a day (the page and the notes say six)');
+  assert.equal(a.length, 6);
   assert.deepEqual(recruitsOf({ mapId: 4242, day: 100, regionIndex: 17 }), a, 'the same hall the same day');
   assert.notDeepEqual(recruitsOf({ mapId: 4242, day: 101, regionIndex: 17 }).map((r) => r.name), a.map((r) => r.name), 'the next day\'s');
   assert.notDeepEqual(recruitsOf({ mapId: 4243, day: 100, regionIndex: 17 }).map((r) => r.name), a.map((r) => r.name), 'another town\'s');
-  const less = recruitsOf({ mapId: 4242, day: 100, regionIndex: 17, serving: [a[2].name] });
+  // PIN MOVED (AUDIT SHIPYARDS L2-9): the serving are their hall ids - a hand who merely shares a recruit's name hides nobody
+  const less = recruitsOf({ mapId: 4242, day: 100, regionIndex: 17, serving: [a[2].id] });
   assert.deepEqual(less.map((r) => r.id), a.filter((_, i) => i !== 2).map((r) => r.id), 'one signed on: off the roster');
+  assert.deepEqual(recruitsOf({ mapId: 4242, day: 100, regionIndex: 17, serving: [a[2].name] }).map((r) => r.id), a.map((r) => r.id), 'a name is no hall id');
+  assert.equal(recruitDay(a[2].id), 100, 'an id says its day');
   for (const r of a) {
     assert.ok(r.name && (r.sex === 'male' || r.sex === 'female'));
     assert.ok(gradeOf(r.grade), r.grade);
@@ -195,15 +200,25 @@ test('SHIPYARDS THE CREW HALL\'S ROSTER: RECRUITS_A_DAY named sailors a town\'s 
     assert.equal(r.trade === 'Bard', r.mobile === MOBILE.Bard, 'a Bard keeps his calling, and only a Bard is one');
     assert.ok(RECRUIT_GRADES.indexOf(g) >= RECRUIT_TRADES[r.trade].least, `a ${r.trade} is ${r.grade}`);
   }
-  // across many days: every grade and most trades turn up; a First Mate is seasoned at the least
-  const seen = new Map();
-  for (let d = 0; d < 300; d++) for (const r of recruitsOf({ mapId: 99, day: d })) seen.set(`${r.trade}`, (seen.get(r.trade) ?? new Set()).add(r.grade));
-  assert.ok([...seen.keys()].length >= 7, [...seen.keys()].join(','));
+  // across many days: every trade and every grade turns up (AUDIT SHIPYARDS L6-5: a weight of nought dies here); a First
+  // Mate is seasoned at the least
+  const seen = new Map(), grades = new Set();
+  for (let d = 0; d < 300; d++) for (const r of recruitsOf({ mapId: 99, day: d })) { seen.set(`${r.trade}`, (seen.get(r.trade) ?? new Set()).add(r.grade)); grades.add(r.grade); }
+  assert.deepEqual([...seen.keys()].sort(), Object.keys(RECRUIT_TRADES).sort(), 'every trade');
+  assert.deepEqual([...grades].sort(), RECRUIT_GRADES.map((g) => g.key).sort(), 'every grade');
   for (const g of seen.get(FIRST_MATE) ?? []) assert.ok(['seasoned', 'veteran'].includes(g), `a First Mate ${g}`);
 });
 
-test('SHIPYARDS THE FEES: a grade\'s ground times the trade\'s premium, to ten gold - never under a shipwright\'s hand (REPAIR_PRICE.crew a man\'s share), so no recruit is the cheaper way to fill her', () => {
+test('SHIPYARDS THE FEES: a grade\'s ground times the trade\'s premium, to ten gold - never under a shipwright\'s hand (REPAIR_PRICE.crew a man\'s share), and a hire that raises her crew by more men pays the shipwright\'s price for each (AUDIT SHIPYARDS L2-2), so no recruit is the cheaper way to fill her', () => {
   assert.equal(HAND_PRICE, REPAIR_PRICE.crew * CREW_PER_HAND);
+  // AUDIT SHIPYARDS L6-5: the page's tables, every figure
+  assert.deepEqual(RECRUIT_GRADES.map((g) => [g.key, g.fee, g.lift, g.weight]), [['green', 180, 0, 4], ['able', 260, 2, 4], ['seasoned', 420, 4, 2], ['veteran', 700, 6, 1]]);
+  assert.deepEqual(Object.fromEntries(Object.entries(RECRUIT_TRADES).map(([k, t]) => [k, [t.premium, t.least, t.weight]])), {
+    [FIRST_MATE]: [1.6, 2, 1], Bosun: [1.3, 1, 1], Gunner: [1.2, 0, 3], Carpenter: [1.2, 0, 2], Lookout: [1, 0, 2], Cook: [1, 0, 1], Deckhand: [1, 0, 3], Bard: [1.1, 0, 0],
+  });
+  assert.equal(hireCharge(180, 11), 11 * REPAIR_PRICE.crew, 'eleven men raised: the shipwright\'s price for them');
+  assert.equal(hireCharge(420, CREW_PER_HAND), 420, 'a man\'s share: his fee');
+  assert.equal(hireCharge(260, 0), 260, 'in a hand\'s place: his fee');
   for (const g of RECRUIT_GRADES) for (const t of Object.keys(RECRUIT_TRADES)) {
     const fee = recruitFee(g, t);
     assert.ok(fee >= HAND_PRICE && fee % 10 === 0, `${g.key} ${t}: ${fee}`);
@@ -214,20 +229,31 @@ test('SHIPYARDS THE FEES: a grade\'s ground times the trade\'s premium, to ten g
   assert.ok(CREW_ROLES.every(isRecruitTrade) && isRecruitTrade('Bard') && !isRecruitTrade('Captain'));
 });
 
-test('SHIPYARDS SIGNING ON: a recruit takes a place on her deck - her crew raised to the share that stands one more named hand, never past her whole; a deck already standing every man her crew can has none; a boat with no crew none (mutants: the deck\'s count unread, the cap gone)', () => {
+test('SHIPYARDS SIGNING ON: a recruit takes a place on her deck - her crew raised to the share that stands one more named hand, never past her whole, the men it raises said; a deck already standing every man her whole crew can is FULL (a recruit signs on in a hand\'s place); a boat with no crew none; paid off, a man\'s share less - never the last of her crew (mutants: the deck\'s count unread, the cap gone, the raise unsaid, full unread, the last man paid off)', () => {
   const S = hullBuild(2).crew;
-  assert.deepEqual(enlistPlan({ hull: 2, crew: 12, maxCrew: S, hands: 2 }), { ok: true, crew: 3 * CREW_PER_HAND });
+  // PIN MOVED (AUDIT SHIPYARDS L2-2, L7-2): the plan says the men it raises, and whether her deck is full
+  assert.deepEqual(enlistPlan({ hull: 2, crew: 12, maxCrew: S, hands: 2 }), { ok: true, full: false, crew: 3 * CREW_PER_HAND, raise: CREW_PER_HAND });
   assert.equal(playerCrewCount(2, 3 * CREW_PER_HAND), 3);
-  assert.deepEqual(enlistPlan({ hull: 2, crew: 20, maxCrew: S, hands: 3 }), { ok: true, crew: Math.min(S, 24) }, 'never lowered');
-  assert.deepEqual(enlistPlan({ hull: 4, crew: 24, maxCrew: 28, hands: 4 }), { ok: true, crew: 28 }, 'never past her whole');
+  assert.deepEqual(enlistPlan({ hull: 2, crew: 20, maxCrew: S, hands: 3 }), { ok: true, full: false, crew: Math.min(S, 24), raise: Math.min(S, 24) - 20 }, 'never lowered');
+  assert.deepEqual(enlistPlan({ hull: 4, crew: 24, maxCrew: 28, hands: 4 }), { ok: true, full: false, crew: 28, raise: 4 }, 'never past her whole');
+  assert.deepEqual(enlistPlan({ hull: 2, crew: 1, maxCrew: S, hands: 1 }), { ok: true, full: false, crew: 2 * CREW_PER_HAND, raise: 2 * CREW_PER_HAND - 1 }, 'a thin crew: the raise the charge reads');
   const full = playerCrewCount(2, S);
-  assert.equal(enlistPlan({ hull: 2, crew: S, maxCrew: S, hands: full }).ok, false, 'every man her crew stands');
-  assert.equal(enlistPlan({ hull: 0, crew: 0, maxCrew: 0, hands: 0 }).ok, false, 'a rowboat');
+  assert.equal(full, 4, 'a Small Ship as she is bought stands four');
+  assert.deepEqual(enlistPlan({ hull: 2, crew: S, maxCrew: S, hands: full }), { ok: false, full: true, why: CREW_HALL_TEXT.full }, 'every man her crew stands: full');
+  assert.deepEqual(enlistPlan({ hull: 0, crew: 0, maxCrew: 0, hands: 0 }), { ok: false, full: false, why: CREW_HALL_TEXT.noCrew }, 'a rowboat');
+  // AUDIT SHIPYARDS (the mutation rerun): a deck already standing more men than are named makes no NEW place - the host
+  // syncs her named hands first (navalHost.js crewHands), and a plan handed them behind refuses rather than guess
+  assert.deepEqual(enlistPlan({ hull: 3, crew: 60, maxCrew: 60, hands: 2 }), { ok: false, full: false, why: CREW_HALL_TEXT.noPlace }, 'her named hands behind her deck');
   assert.equal(enlistPlan({ hull: 1, crew: 0, maxCrew: hullBuild(1).crew, hands: 0 }).ok, CREW_SHOWN[1] > 0 && playerCrewCount(1, Math.min(hullBuild(1).crew, CREW_PER_HAND)) === 1);
+  // PIN MOVED (AUDIT SHIPYARDS L2-1): the last of her crew is never paid off - nobody aboard, she strikes
   assert.deepEqual(releasePlan({ crew: 20 }), { ok: true, crew: 20 - CREW_PER_HAND });
-  assert.deepEqual(releasePlan({ crew: 3 }), { ok: true, crew: 0 });
-  assert.deepEqual(releasePlan({ crew: 0 }), { ok: false, crew: 0 });
-  assert.equal(CREW_HALL_TEXT.signed('Anna Voss', 'Gunner', 'The Kestrel'), 'Anna Voss signs on as The Kestrel\'s Gunner.');
+  assert.deepEqual(releasePlan({ crew: CREW_PER_HAND + 1 }), { ok: true, crew: 1 });
+  assert.deepEqual(releasePlan({ crew: CREW_PER_HAND }), { ok: false, crew: CREW_PER_HAND, why: CREW_HALL_TEXT.lastMan });
+  assert.deepEqual(releasePlan({ crew: 0 }), { ok: false, crew: 0, why: CREW_HALL_TEXT.lastMan });
+  // PIN MOVED (AUDIT SHIPYARDS L2-7): no possessive on a ship's name ("Small Ship 'I''s")
+  assert.equal(CREW_HALL_TEXT.signed('Anna Voss', 'Gunner', 'The Kestrel'), 'Anna Voss signs on to The Kestrel as her Gunner.');
+  assert.equal(CREW_HALL_TEXT.swapped('Anna Voss', 'Gunner', 'The Kestrel', 'Bram'), 'Anna Voss signs on to The Kestrel as her Gunner, in Bram\'s place - Bram is paid off.');
+  assert.equal(CREW_HALL_TEXT.steppedUp('Bram', 'The Kestrel', 'Odo'), 'Bram is paid off and leaves The Kestrel. Odo steps up into the place on her deck.');
 });
 
 test('SHIPYARDS A NAMED HAND ENLISTED AND RELEASED (shipCrew.js): he joins at his trade\'s post with his record - a First Mate stands the old one down to Deckhand, a trade the deck has no post for is a Deckhand, a name already aboard is refused, his grade lifts her spirits; paid off he leaves wherever he stood; her crew discharged by his share (navalDamage.js), nothing else touched', () => {
@@ -236,19 +262,25 @@ test('SHIPYARDS A NAMED HAND ENLISTED AND RELEASED (shipCrew.js): he joins at hi
   if (!crew.hands.some((x) => x.role === FIRST_MATE)) crew.assign(crew.hands[0].name, FIRST_MATE);
   const old = crew.hands.find((x) => x.role === FIRST_MATE);
   const before = crew.morale;
-  const h = crew.enlist({ name: 'Anna Voss', role: FIRST_MATE, mobile: MOBILE.Rogue, gender: 'female', fights: 7, boardings: 3 }, 4);
-  assert.deepEqual(h, { name: 'Anna Voss', role: FIRST_MATE, mobile: MOBILE.Rogue, gender: 'female', fights: 7, boardings: 3 });
+  const h = crew.enlist({ name: 'Anna Voss', role: FIRST_MATE, mobile: MOBILE.Rogue, gender: 'female', fights: 7, boardings: 3, hall: '9:100:2' }, 4);
+  // PIN MOVED (AUDIT SHIPYARDS L2-4, L2-9): her hall id and the spirits she actually lifted ride her
+  assert.deepEqual(h, { name: 'Anna Voss', role: FIRST_MATE, mobile: MOBILE.Rogue, gender: 'female', fights: 7, boardings: 3, hall: '9:100:2', lift: 4 });
   assert.equal(crew.hands.at(-1), h, 'at her roster\'s end');
   assert.equal(crew.hands.filter((x) => x.role === FIRST_MATE).length, 1, 'one First Mate');
   assert.equal(old.role, 'Deckhand', 'the old one stood down');
-  assert.ok(crew.morale > before || before >= 100, 'a seasoned man steadies them');
+  assert.equal(crew.morale, before + 4, 'a seasoned man steadies them - by his grade\'s lift');
+  // the save keeps both (createShipCrew's restore)
+  const back = createShipCrew({ seed: 5, record: crew.snapshot() });
+  assert.deepEqual(back.hands.find((x) => x.name === 'Anna Voss'), h, 'saved and restored with them');
   assert.equal(crew.enlist({ name: 'Anna Voss', role: 'Cook' }), null, 'no name twice');
   assert.equal(crew.enlist({ name: 'Bram', role: 'Captain' }).role, 'Deckhand', 'a post the deck has not');
   assert.equal(crew.enlist({ name: 'Lute', role: 'Bard', mobile: MOBILE.Bard }).role, 'Bard', 'a Bard keeps his calling');
   assert.equal(crew.enlist({ name: 'Faker', role: 'Bard', mobile: MOBILE.Warrior }).role, 'Deckhand', 'a Bard is a bard');
   const n = crew.hands.length;
+  const lifted = crew.morale;
   assert.equal(crew.release('Anna Voss').name, 'Anna Voss');
   assert.equal(crew.hands.length, n - 1);
+  assert.equal(crew.morale, lifted - 4, 'AUDIT SHIPYARDS L2-4: the spirits she brought leave with her - no pump');
   assert.equal(crew.release('Nobody'), null);
   const d = createShipDamage({ hullHp: 900, sailHp: 300, crew: 24, player: true });
   const { hull, sail } = d;
@@ -259,4 +291,13 @@ test('SHIPYARDS A NAMED HAND ENLISTED AND RELEASED (shipCrew.js): he joins at hi
   assert.equal(d.crew, 0, 'never under none');
   d.discharge(10_000);
   assert.equal(d.crew, 0, 'a discharge never adds a man');
+  // AUDIT SHIPYARDS L2-5: a muster raises her crew and nothing else - a wreck stays a wreck (a repair's refloat would float her)
+  const w = createShipDamage({ hullHp: 600, sailHp: 200, crew: 24, player: true });
+  w.restore({ hull: 30, sail: 0, crew: 6, state: SHIP_STATES.wrecked });
+  w.muster(18);
+  assert.deepEqual([w.crew, w.state, w.hull], [18, SHIP_STATES.wrecked, 30]);
+  w.muster(1000);
+  assert.equal(w.crew, 24, 'never past her whole');
+  w.muster(3);
+  assert.equal(w.crew, 24, 'a muster never lowers');
 });

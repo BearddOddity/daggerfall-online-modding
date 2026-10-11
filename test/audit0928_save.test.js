@@ -23,7 +23,7 @@ import * as MS from '../src/systems/modSettings.js';
 import * as IA from '../src/systems/inputActions.js';
 import { setBindings, held } from '../src/ui/input.js';
 import { snapshotPlayer, restorePlayer } from '../src/systems/save.js';
-import { assignModBundle, isEntityWaterWalking, WATER_WALKING_SILENT_KIND } from '../src/systems/effects.js';
+import { assignModBundle, isEntityWaterWalking, WATER_WALKING_SILENT_KIND, effectKindLoaded } from '../src/systems/effects.js';
 import { assignShipToPlayer, ownsShip, sellShip, SHIP_TYPES } from '../src/systems/banking.js';
 import { createOceanHolesAbyss } from '../src/scenes/oceanHolesAbyss.js';
 import { mapPixelToLongitudeLatitude, mapPixelToWorldCoord, worldCoordToMapPixel } from '../src/formats/mapsFile.js';
@@ -283,6 +283,12 @@ test('AUDIT PRE-MERGE 0928 S4 x SHIPYARDS: no shelf stocks a boat row, whatever 
     assert.deepEqual(boatRows(), [], 'loaded on, switched off');
     MS._resetModSettings();
     assert.deepEqual(boatRows(), [], 'no host latched it: the switch as it stands');
+    // AUDIT SHIPYARDS (the mutation rerun: S4-reset-keeps-latch survived the move above) - the latch still goes with the
+    // settings a test resets, seen through the mod's one door left, its effect kind
+    MS.latchModLoaded?.('come-sail-away', false);
+    assert.equal(effectKindLoaded(WATER_WALKING_SILENT_KIND), false, 'latched off');
+    MS._resetModSettings();
+    assert.equal(effectKindLoaded(WATER_WALKING_SILENT_KIND), true, 'the latch reset with the settings: the switch as it stands (on)');
   } finally { MS._resetModSettings(); }
 });
 

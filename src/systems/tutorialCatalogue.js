@@ -415,14 +415,14 @@ export const TUTORIALS = Object.freeze([
   page({
     id: 'ships', group: 'sea', title: 'Sailing', trigger: 'When you first board a boat.',
     body: [
-      'Shipyards in port towns sell ships. A rowboat comes as parts: use them by any water. A bigger ship waits at the port where you bought her.',
+      'Shipyards in port towns sell ships. A rowboat comes as parts: use them by any water. A bigger ship is laid up where you bought her: bring her round from the shipyard\'s Your fleet page.',
       'At the helm, {BoatToggleSail} raises or lowers the sail and {BoatSailUp} and {BoatSailDown} set how much. {BoatDisembark} leaves the helm.',
     ],
   }),
   page({
     id: 'shipyard', group: 'sea', title: 'Shipyards', trigger: 'When you first visit a shipyard or a shipwright.',
     body: [
-      'Every port town has a shipyard by the water. The shipmaster sells ships and buys yours, and repairs and refits any ship of yours in port.',
+      'Port towns have a shipyard by the water. The shipmaster sells ships and buys yours, and repairs and refits any ship of yours in port.',
       'Its crew hall has new sailors to hire each day. You can also reach the shipwright from the helm in a port\'s harbour.',
     ],
   }),

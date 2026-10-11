@@ -7,12 +7,15 @@
 //
 // THE PIER'S DRESS (SHIPYARDS, 2026-10-11, Mac: "a detailed overhaul to piers"; systems/naval/quays.js pierDress): the
 // joists under every deck and the stringers along its edges, the piles' braces, the face's fender piles and ladders, the
-// cleats, the coils of rope (the rigging's own 0_77), the first berth's cargo crane and the jetty's lamp posts.
+// cleats, the coils of rope (the rigging's own 0_77), the first berth's cargo crane and the jetty's lamp posts. The
+// timbers under the decks (the joists, the stringers, the braces) and the deck's small fittings (the cleats, the coils)
+// are drawn and never collided (`collider`, the rest's): no foot reaches the one, a foot steps over the other, and the
+// berth's bucket is filed again at every recentre (AUDIT SHIPYARDS L5-5: all of it went in, 2.5-3.8 times the quay's).
 //
 // Not a DFU member. Ledger A (QUAYS).
 
 import { MeshBuilder } from './detStandIns.js';
-import { QUAY_DECK_T, PILE_R, BOLLARD_R, BOLLARD_H, LANTERN_UP, LANTERN_ARM, QUAY_KERB_W, QUAY_KERB_H, lanternHead, jettyLanternHead, BRACE_W } from '../systems/naval/quays.js';
+import { QUAY_DECK_T, PILE_R, BOLLARD_R, BOLLARD_H, LANTERN_UP, LANTERN_ARM, QUAY_KERB_W, QUAY_KERB_H, lanternHead, jettyLanternHead, BRACE_W, FENDER_W } from '../systems/naval/quays.js';
 
 const WOOD = [67, 0];        // the classic ship's own planking: the decks
 const WOOD_DARK = [67, 8];   // a darker plank of the same set: the piles, the timbers, the cargo
@@ -81,7 +84,7 @@ function railX(m, xa, xb, z, deck) {
  * @param {any} plan
  */
 export function buildQuayModel(plan) {
-  const m = new MeshBuilder();
+  const m = new MeshBuilder(), loose = new MeshBuilder();   // `loose`: drawn, never collided
   const { deck } = plan, q = plan.quay, t = QUAY_DECK_T;
   // the deck, its kerb along the face and the timber under the face
   m.box(WOOD, [(q.x0 + q.x1) / 2, deck - t / 2, (q.z0 + q.z1) / 2], [q.x1 - q.x0, t, q.z1 - q.z0], 0.5);
@@ -117,7 +120,7 @@ export function buildQuayModel(plan) {
     for (const [dx, dz] of [[-0.1, -0.1], [0.1, -0.1], [0.1, 0.1], [-0.1, 0.1]]) m.box(IRON, [hx + dx, hy, hz + dz], [0.025, 0.34, 0.025]);
     m.box(IRON, [hx, hy - 0.19, hz], [0.22, 0.05, 0.22]);
   }
-  pierDress(m, plan);
+  pierDress(m, loose, plan);
   // the cargo: crates, some stacked two high, and barrels
   for (const c of plan.cargo) {
     if (c.kind === 'crate') {
@@ -128,33 +131,49 @@ export function buildQuayModel(plan) {
       m.cylinderY(IRON, [c.x, deck + 0.72, c.z], c.s + 0.015, 0.05, 8, 0.5, false);
     }
   }
-  return m.build();
+  return joinModels(m.build(), loose.build());
+}
+/** The quay's model: `solid`'s and `loose`'s faces drawn as one, its `collider` the solid's alone - a view over the
+ *  joined vertices it begins (no copy). */
+function joinModels(solid, loose) {
+  const nv = solid.positions.length / 3, ni = solid.indices.length;
+  const cat = (A, B) => { const out = new /** @type {any} */ (A.constructor)(A.length + B.length); out.set(A, 0); out.set(B, A.length); return out; };
+  const indices = new Uint32Array(ni + loose.indices.length);
+  indices.set(solid.indices, 0);
+  for (let k = 0; k < loose.indices.length; k++) indices[ni + k] = loose.indices[k] + nv;
+  const positions = cat(solid.positions, loose.positions);
+  return {
+    positions, normals: cat(solid.normals, loose.normals), uvs: cat(solid.uvs, loose.uvs), indices,
+    subMeshes: [...solid.subMeshes, ...loose.subMeshes.map((s) => ({ ...s, startIndex: s.startIndex + ni }))], doors: [],
+    collider: { positions: positions.subarray(0, solid.positions.length), indices: indices.subarray(0, ni) },
+  };
 }
 
 /**
  * THE PIER'S DRESS (quays.js pierDress) into the quay's model: the timbers under its decks, the braces, the fenders,
- * the ladders, the cleats, the coils, the crane and the jetty's lamps.
- * @param {MeshBuilder} m @param {any} plan
+ * the ladders, the cleats, the coils, the crane and the jetty's lamps - the timbers under the decks and the deck's
+ * small fittings into `loose` (drawn, never collided).
+ * @param {MeshBuilder} m @param {MeshBuilder} loose @param {any} plan
  */
-function pierDress(m, plan) {
+function pierDress(m, loose, plan) {
   const { deck } = plan, q = plan.quay, t = QUAY_DECK_T, under = deck - t;
   // the joists across the quay's deck, a stringer along its back as the timber under its face
-  for (let z = q.z0 + 0.3; z <= q.z1 - 0.3 + 1e-6; z += JOIST_STEP) m.box(WOOD_DARK, [(q.x0 + q.x1) / 2, under - JOIST_H / 2, z], [q.x1 - q.x0 - 0.5, JOIST_H, 0.12], 1);
-  m.box(WOOD_DARK, [q.x1 - 0.12, under - 0.2, (q.z0 + q.z1) / 2], [0.24, 0.4, q.z1 - q.z0], 1);
+  for (let z = q.z0 + 0.3; z <= q.z1 - 0.3 + 1e-6; z += JOIST_STEP) loose.box(WOOD_DARK, [(q.x0 + q.x1) / 2, under - JOIST_H / 2, z], [q.x1 - q.x0 - 0.5, JOIST_H, 0.12], 1);
+  loose.box(WOOD_DARK, [q.x1 - 0.12, under - 0.2, (q.z0 + q.z1) / 2], [0.24, 0.4, q.z1 - q.z0], 1);
   // the jetty's joists across it and its stringers along its sides
   const j = plan.jetty;
   if (j && j.x1 - j.x0 > 0.5) {
-    for (let x = j.x0 + 0.6; x <= j.x1 - 0.3 + 1e-6; x += JOIST_STEP) m.box(WOOD_DARK, [x, under - JOIST_H / 2, (j.z0 + j.z1) / 2], [0.12, JOIST_H, j.z1 - j.z0 - 0.1], 1);
-    for (const z of [j.z0 + 0.12, j.z1 - 0.12]) m.box(WOOD_DARK, [(j.x0 + j.x1) / 2, under - 0.16, z], [j.x1 - j.x0, 0.32, 0.2], 1);
+    for (let x = j.x0 + 0.6; x <= j.x1 - 0.3 + 1e-6; x += JOIST_STEP) loose.box(WOOD_DARK, [x, under - JOIST_H / 2, (j.z0 + j.z1) / 2], [0.12, JOIST_H, j.z1 - j.z0 - 0.1], 1);
+    for (const z of [j.z0 + 0.12, j.z1 - 0.12]) loose.box(WOOD_DARK, [(j.x0 + j.x1) / 2, under - 0.16, z], [j.x1 - j.x0, 0.32, 0.2], 1);
   }
   // the braces between the piles
-  for (const [a, b] of plan.braces ?? []) beam(m, WOOD_DARK, a, b, BRACE_W);
-  // the fender piles down the face, iron-capped under the kerb
+  for (const [a, b] of plan.braces ?? []) beam(loose, WOOD_DARK, a, b, BRACE_W);
+  // the fender piles down the face, iron-capped under the kerb (FENDER_W across the face, the cap's)
   for (const [z, foot] of plan.fenders ?? []) {
     const top = deck - 0.04;
     if (top - foot < 0.1) continue;
-    m.box(WOOD_DARK, [q.x0 - 0.11, (top + foot) / 2, z], [0.2, top - foot, 0.24], 1);
-    m.box(IRON, [q.x0 - 0.11, top - 0.04, z], [0.22, 0.06, 0.26], 1);
+    m.box(WOOD_DARK, [q.x0 - 0.11, (top + foot) / 2, z], [0.2, top - foot, FENDER_W - 0.02], 1);
+    m.box(IRON, [q.x0 - 0.11, top - 0.04, z], [0.22, 0.06, FENDER_W], 1);
   }
   // the ladders down into the water: two iron stiles standing over the deck to be taken hold of, rungs between
   for (const [z, foot] of plan.ladders ?? []) {
@@ -165,13 +184,13 @@ function pierDress(m, plan) {
   }
   // the cleats: an iron base and its two horns along the face
   for (const [x, z] of plan.cleats ?? []) {
-    m.box(IRON, [x, deck + 0.04, z], [0.12, 0.08, 0.16], 1);
-    m.box(IRON, [x, deck + 0.11, z], [0.09, 0.06, 0.46], 1);
+    loose.box(IRON, [x, deck + 0.04, z], [0.12, 0.08, 0.16], 1);
+    loose.box(IRON, [x, deck + 0.11, z], [0.09, 0.06, 0.46], 1);
   }
   // the coils of rope, flaked down by the bollards - each a coil on a coil
   for (const [x, z, r] of plan.coils ?? []) {
-    m.cylinderY(ROPE, [x, deck, z], r, 0.07, 10, 0.3, true);
-    m.cylinderY(ROPE, [x, deck + 0.07, z], r * 0.8, 0.06, 10, 0.3, true);
+    loose.cylinderY(ROPE, [x, deck, z], r, 0.07, 10, 0.3, true);
+    loose.cylinderY(ROPE, [x, deck + 0.07, z], r * 0.8, 0.06, 10, 0.3, true);
   }
   // the crane: its post, its jib along the quay, the brace under it, the sheave and its fall with the hook, the winch
   const c = plan.crane;

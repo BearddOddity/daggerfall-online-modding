@@ -301,15 +301,15 @@ import { createQuayPool } from './quayPool.js';   // QUAYS: a harbour's quays, s
 import { createLefayMonument } from './lefayMonumentHost.js';   // LEFAY1: the monument to Julian LeFay in Gothway Garden, and the flowers laid at it
 import { isLefayTown, lefaySpotOf, carveLefay } from '../world/lefayMonument.js';   // LEFAY1: its town, its spot off the town's navgrid, and the people's navgrid carved round it
 import { createMerchantYards } from './merchantYardsHost.js';   // MERCHANT-YARDS: every city's and town's Stable and Wagon Yard, and their trade
-import { createPortHost, PORT_TEXT } from './portHost.js';   // SHIPYARDS: every port town's shipyard and lighthouse, their people, their press and the lamp - and the stair's refusals
+import { createPortHost, PORT_TEXT, stairRefusal, stairFeetY } from './portHost.js';   // SHIPYARDS: every port town's shipyard and lighthouse, their people, their press and the lamp - and the stair's refusals
 import { createShipyardHost } from './shipyardHost.js';   // SHIPYARDS: the shipmaster's window's host half
 import { createWardenShows } from './wagonWardenShow.js';   // WARDEN1: the town watch's throw, played
 import { createWagonWarden, wardenTownIn } from './wagonWardenHost.js';   // WARDEN1: the town watch - my wagon's stamp, the cell's words, the offline clock; AUDIT WARDEN1 D3: the town under a point, one pure home
 import { WARDEN_VENDOR, isWardenTown } from '../systems/wagonWarden.js';   // WARDEN1: the stamp's save slot, and the towns a watch keeps
 import { townGroundOf, yardSitesOn, carveYards, MONUMENT_KEEP_M, yardMeasuresOf, placedModelBox } from '../world/merchantYardSites.js';   // MERCHANT-YARDS: where they stand off the town's layout, and the people's navgrid carved round them
 import { isYardTown, yardKeeper, YARD_KIND_ORDER } from '../systems/merchantYards.js';   // MERCHANT-YARDS: the towns that stand them, who keeps them, the town's people
-import { isPortTown, portKeeper, portPlaceName, PORT_SITE_ORDER } from '../systems/portPlaces.js';   // SHIPYARDS: the port towns, their keepers and their places' names
-import { townSeaOf, seaBearing, seaField, portSitesOn, siteToLocation } from '../world/portSites.js';   // SHIPYARDS: where a port town's shipyard and lighthouse stand - its seaward ground
+import { isPortTown, portTownByData, portKeeper, portPlaceName, PORT_SITE_ORDER } from '../systems/portPlaces.js';   // SHIPYARDS: the port towns, their keepers and their places' names
+import { townSeaOf, seaBearing, seaField, portSitesOn, portPlaceRows, sceneToLocationXZ } from '../world/portSites.js';   // SHIPYARDS: where a port town's shipyard and lighthouse stand - its seaward ground
 import { SHIPYARD as SHIPYARD_LAYOUT } from '../world/shipyardModel.js';   // SHIPYARDS: the crew hall's table, for the talk directory's row
 import { HARBOUR_REACH } from '../systems/naval/shipLife.js';   // AUDIT HOLDINGS O1: the harbour's scan reach, its pixels built before it is sounded
 import { createHarbourBook } from '../systems/naval/harbourBook.js';   // HARBOUR-BOOK: the harbours near the player, the quays' and the sea's
@@ -3892,7 +3892,7 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  Travel Options' hand-written harbours (travelPorts.js hasPort) or Daggerfall's PortTownAndUnknown byte. Never a seat's
    *  members' harbour (hasPortFor's word is one guild's - every client stands the same shipyard), and never csaIsPortTown,
    *  declared below the stream (BOOT-TDZ). */
-  const portByData = (dfLocation) => hasPort(dfLocation?.mapTableData?.mapId) || (dfLocation?.exterior?.exteriorData?.portTownAndUnknown ?? 0) !== 0;
+  const portByData = (dfLocation) => portTownByData(dfLocation, hasPort);
   const _yardMemo = new Map();   // mapId -> { sig, sites, ports }, the latest few towns
   const _yardBoxes = new Map();   // a registered model's local box, by id
   const palaceIn = (b) => {
@@ -3901,19 +3901,12 @@ export async function bootWorld(canvas, renderer, params, status) {
     for (let i = 0; i < n; i++) if (list[i]?.buildingType === TALK_BUILDING_TYPES.Palace) return true;
     return false;
   };
-  function merchantYardSitesFor(dfLocation, lefaySpot, people, loc = null) {
-    return townPlacesFor(dfLocation, lefaySpot, people, loc).yards;
-  }
-  /** SHIPYARDS: A PORT TOWN'S SHIPYARD AND LIGHTHOUSE (world/portSites.js) - placed in the same pass as its yards, on
-   *  what they left (townPlacesFor), each keyed by the town and its kind, with its keepers (systems/portPlaces.js
-   *  portKeeper - the shipyard's crewmaster beside its shipmaster), its name and the town's people. */
-  function portSitesFor(dfLocation, lefaySpot, people, loc = null) {
-    return townPlacesFor(dfLocation, lefaySpot, people, loc).ports;
-  }
   /** MERCHANT-YARDS + SHIPYARDS: A TOWN'S PLACES - its yards placed on its ground as they always were (townGroundOf, then
    *  yardSitesOn - yardSitesOf's own two steps), and a port town's shipyard and lighthouse on what they left (portSitesOn
-   *  off the sea: the town's own shoreline cells, else the sea's bearing off the map pixels round it - seaPixel). One
-   *  memo a town, keyed by its measures and whether it is a port. */
+   *  off the sea: the town's own shoreline cells, else the sea's bearing off the map pixels round it - seaPixel), each
+   *  keyed by the town and its kind, with its keepers (systems/portPlaces.js portKeeper - the shipyard's crewmaster beside
+   *  its shipmaster), its name and the town's people. One memo a town, keyed by its measures and whether it is a port;
+   *  one call a build (AUDIT SHIPYARDS L3-3: the yards' and the port's each asked it whole). */
   function townPlacesFor(dfLocation, lefaySpot, people, loc = null) {
     try {
       const yl = loc && isEnhanced() && windmillsOn() ? loc : layoutLocation(dfLocation, maps, blocks, { enhanced: true, windmills: true });
@@ -3941,7 +3934,8 @@ export async function bootWorld(canvas, renderer, params, status) {
         let ports = [];
         if (g && port) {
           const lp = longitudeLatitudeToMapPixel(dfLocation.mapTableData.longitude, dfLocation.mapTableData.latitude);
-          ports = portSitesOn(g, seaField(g.width, g.height, townSeaOf(yl), seaBearing(lp.x, lp.y, seaPixel)));
+          const bearing = seaBearing(lp.x, lp.y, seaPixel);   // AUDIT SHIPYARDS U2: and the town's own water against it is no sea
+          ports = portSitesOn(g, seaField(g.width, g.height, townSeaOf(yl, bearing), bearing));
         }
         memo = { sig, sites, ports };
         _yardMemo.delete(mapId);
@@ -5743,8 +5737,12 @@ export async function bootWorld(canvas, renderer, params, status) {
       const loc = layoutLocation(dfLocation, maps, blocks, { enhanced: isEnhanced(), windmills: windmillsOn() });   // WM3: the pack's own switch
       locBlocks = loc.blocks;
       if (isLefayTown(dfLocation)) lefaySpot = lefaySpotOf(loc);   // LEFAY1: the open ground nearest the town's middle, off its own navgrid
-      if (isYardTown(dfLocation)) yardSites = merchantYardSitesFor(dfLocation, lefaySpot, climate?.people, loc);   // MERCHANT-YARDS: the town's open ground, clear of its buildings, roads and lots
-      if (isPortTown(dfLocation, portByData(dfLocation))) portSites = portSitesFor(dfLocation, lefaySpot, climate?.people, loc);   // SHIPYARDS: and a port town's seaward ground, on what the yards left
+      // MERCHANT-YARDS: the town's open ground, clear of its buildings, roads and lots; SHIPYARDS: and a port town's seaward
+      // ground, on what the yards left - one pass (AUDIT SHIPYARDS L3-3: the yards' and the port's each asked it whole)
+      const yardTown = isYardTown(dfLocation), portTown = isPortTown(dfLocation, portByData(dfLocation));
+      const places = yardTown || portTown ? townPlacesFor(dfLocation, lefaySpot, climate?.people, loc) : null;
+      if (yardTown) yardSites = places.yards;
+      if (portTown) portSites = places.ports;
       const tilePos = getLocationTerrainTileOrigin(dfLocation);
       const locLocal = [tilePos.x * tileSide, avg * worldHeight + 2.0 * 0.025, tilePos.y * tileSide];
       // T3d: EVERY location pixel keeps its origin (the population
@@ -8129,7 +8127,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       yards: cur.merchantYards ?? null,   // YARDS-FOUND: the town's Stable and Wagon Yard, rows of its directory (scenes/townTalk.js rebuildDirectory)
       ports: portPlacesOf(cur, dfLocation),   // SHIPYARDS: a port town's shipyard, crew hall, lighthouse and docks, rows of its directory too
     });
-    _portDocksWait = docksWaitOf(dfLocation);
+    _portDocksWait = docksWaitOf(dfLocation, cur?.px, cur?.py);
   }
   /**
    * SHIPYARDS-FOUND (2026-10-11, Mac: "Everything should show on the map/overworld and be able to be asked by NPCs"): A
@@ -8140,30 +8138,23 @@ export async function bootWorld(canvas, renderer, params, status) {
    * location's origin taken off), once it has; the frame hands them again as it is sounded (`docksWaitOf`).
    */
   function portPlacesOf(p, dfLocation) {
-    const out = [];
-    for (const site of p?.portSites ?? []) {
-      out.push({ kind: site.kind, x: site.x, z: site.z, name: site.name });
-      if (site.kind === 'shipyard') {
-        const [x, z] = siteToLocation(site, SHIPYARD_LAYOUT.points.crewmaster[0], SHIPYARD_LAYOUT.points.crewmaster[1]);
-        out.push({ kind: 'crewhall', x, z, name: site.crewName });
-      }
-    }
     const berth = dfLocation && p?.locOrigin ? docksBerthOf(dfLocation) : null;
-    if (berth) {
-      const t = state.pixelTranslation(p.px, p.py);
-      out.push({ kind: 'docks', x: berth[0] - t[0] - p.locOrigin[0], z: berth[1] - t[2] - p.locOrigin[2], name: portPlaceName('docks', { townName: dfLocation.name }) });
-    }
-    return out;
+    const docks = berth ? sceneToLocationXZ(berth, state.pixelTranslation(p.px, p.py), p.locOrigin) : null;
+    return portPlaceRows(p?.portSites, SHIPYARD_LAYOUT.points.crewmaster, docks, dfLocation?.name);
   }
   /** SHIPYARDS-FOUND: the first berth of the harbour the book has sounded off a town's shore - its scene point [x, z] -
    *  or null (none sounded yet, or a shore with no berth). */
   function docksBerthOf(dfLocation) {
     try { return harbourBook.get(`port:${maskMapId(dfLocation.mapTableData?.mapId ?? 0)}`)?.harbour?.berths?.[0]?.pos ?? null; } catch { return null; }   // BOOT-TDZ: the book stands below the stream
   }
-  /** SHIPYARDS-FOUND: the town whose docks row is still to come - a port town (systems/portPlaces.js isPortTown) whose
-   *  harbour the book has not sounded yet - or null; the frame hands the talk window its rows again once it is
-   *  (`_portDocksWait`). */
-  function docksWaitOf(dfLocation) { return dfLocation && isPortTown(dfLocation, portByData(dfLocation)) && !docksBerthOf(dfLocation) ? dfLocation : null; }
+  /** SHIPYARDS-FOUND: the town whose docks row is still to come - one whose harbour the book sounds (csaIsPortTown, the
+   *  book's own test: AUDIT SHIPYARDS L3-2 - the shipyard's test, asked here, kept a seat's docks to a second visit and
+   *  waited for ever on a harbour the book never sounds) and has not sounded yet - or null; the frame hands the talk
+   *  window its rows again once it is (`_portDocksWait`). */
+  function docksWaitOf(dfLocation, px, py) {
+    if (!dfLocation || docksBerthOf(dfLocation)) return null;
+    try { return csaIsPortTown(px, py) ? dfLocation : null; } catch { return null; }   // BOOT-TDZ: the book's test stands below the stream
+  }
   /** GetBuildingCompassDirection (TalkManager.cs:1203-1236) - %di's
    *  LOCAL arm, the one both consumers ask for by that name: the
    *  answer pipeline's GetKeySubjectLocationCompassDirection and
@@ -10273,7 +10264,16 @@ export async function bootWorld(canvas, renderer, params, status) {
     addToPack: (item) => { addItem((playerEntity.items ??= []), item); surfacePlayer(); },
     gold: () => totalGoldAmount(playerEntity),
     pay: (n) => { deductGold(playerEntity, n); surfacePlayer(); },
-    credit: (n) => { addGold(playerEntity, n); surfacePlayer(); },
+    // AUDIT SHIPYARDS L1-3: a sale the pack cannot carry as coin is paid as a letter of credit - the trade window's test
+    // on the live pack and ceiling (sellProceeds), the letter at the front of the pack as the counter puts one
+    credit: (n) => {
+      if (sellProceeds(n, { carriedWeightKg: carriedWeight(playerEntity), maxEncumbranceKg: entityMaxEncumbrance(playerEntity) }).kind === 'letterOfCredit') (playerEntity.items ??= []).unshift(letterOfCredit(n));
+      else addGold(playerEntity, n);
+      surfacePlayer();
+    },
+    canCarry: (item) => planTake(item, { bag: (playerEntity.items ??= []), entity: playerEntity, dryRun: true }).ok,   // AUDIT SHIPYARDS L1-4: the counter's carry gate
+    ashore: (uid) => naval?.handsAshore?.(uid) ?? 0,   // AUDIT SHIPYARDS L1-6: by her number, whatever the sea fight's switch
+    forgetBoat: (uid) => naval?.forgetBoat?.(uid),
     skills: () => ({ mercantile: skillValue(playerEntity, SKILLS.Mercantile), personality: playerEntity.stats?.personality == null ? 50 : liveStat(playerEntity, 'personality') }),
     traded: () => tallySkill(playerEntity, SKILLS.Mercantile, 1),
     mintUid: () => csaNewItemUid(),
@@ -10306,7 +10306,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     fleet: fleetHost ? { model: () => fleetHost.model(), offer: (uid) => fleetHost.offer(uid), act: (uid, verb, arg) => fleetHost.act(uid, verb, arg) } : null,
   });
   /** The sea emptied: a transition, a teleport, the arc switched off - its window with it. */
-  const navalClear = () => { naval?.clear(); navalFlames.clear(); navalCrew.clear(); closeNavalPlunder(); closeNavalYard(); drawNavalHud(null); drawNavalTags([]); drawCrewBars([]); drawCrewLines([]); };
+  const navalClear = () => { naval?.clear(); navalFlames.clear(); navalCrew.clear(); closeNavalPlunder(); closeNavalYard(); closeShipyard(); drawNavalHud(null); drawNavalTags([]); drawCrewBars([]); drawCrewLines([]); };
   const navalTransition = () => { harbourBook.clear(); navalClear(); };   // HARBOUR-BOOK: the harbours forgotten with the sea, found again where the world is next
   /** KEEP-PLUNDER: before a transition or a jump empties the sea, my crew stows what I left on it (navalHost
    *  stowPlunder) - ahead of Come Sail Away's own transition, while my boats still stand. Never on a load: the loaded
@@ -25371,7 +25371,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       return _portSites;
     },
     groundAt: (x, z) => surfaceAt(x, z),   // the drawn ground, as the yards stand on
-    eye: () => cam.pos, feet: () => (walkMode && playerSpawned ? player.feetAt() : null),
+    feet: () => (walkMode && playerSpawned ? player.feetAt() : null),
     lit: () => lightsOnAt(minuteNow()),   // the lamp's hours: the town's lanterns'
     open: (site, page) => openShipyard(site, page),
     climb: (site, way, at) => climbLighthouse(way, at),
@@ -25383,14 +25383,10 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  gallery is never a trap), onto the drawn ground at the door where it stands higher than the tower's middle (a slope).
    *  Answers true, or the refusal's words. */
   function climbLighthouse(way, at) {
-    if (!walkMode || !playerSpawned || _mode() !== 'exterior' || !at?.feet) return PORT_TEXT.shutStair;
-    if (way === 'up') {
-      if (!isOnFoot(player.transportMode)) return PORT_TEXT.riding;
-      if (csaRuntime?.isSailing?.()) return PORT_TEXT.shutStair;
-      if (livingTravelEnemies()) return PORT_TEXT.foes;
-    }
-    const ground = way === 'down' ? surfaceAt(at.feet[0], at.feet[2]) : NaN;
-    player.spawn(at.feet[0], Number.isFinite(ground) ? Math.max(at.feet[1], ground + 0.02) : at.feet[1], at.feet[2]);
+    const walking = walkMode && playerSpawned && _mode() === 'exterior' && !!at?.feet;
+    const no = stairRefusal(way, { walking, onFoot: walking && isOnFoot(player.transportMode), sailing: walking && !!csaRuntime?.isSailing?.(), foes: walking && way === 'up' && !!livingTravelEnemies() });
+    if (no) return no;
+    player.spawn(at.feet[0], stairFeetY(way, at.feet[1], way === 'down' ? surfaceAt(at.feet[0], at.feet[2]) : NaN), at.feet[2]);
     cam.yaw = at.yaw; cam.pitch = 0; lookFilter.settle();
     cam.pos = player.eyeAt();
     return true;
@@ -25402,8 +25398,9 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** The pool stood where its towns are built (the frame's, and a load's at once). */
   function portFrame() { try { portHost?.frame(); } catch (e) { console.warn('[port] the port', e?.message ?? e); } }
   /** The lighthouses' lamps and the shipyards' office lanterns into the frame's scene lights, in the town lanterns' colour
-   *  - beside the quays', never the player's extras. @param {any[]} out */
-  function portLightsInto(out) { for (const l of portHost?.lights() ?? []) out.push({ x: l.x, y: l.y, z: l.z, range: l.range, color: CITY_LIGHT_COLOR_F32 }); }
+   *  - beside the quays', never the player's extras: the pool's own records, refilled in place (PERF-LIGHTS' law, AUDIT
+   *  SHIPYARDS L4-2). @param {any[]} out */
+  function portLightsInto(out) { if (portHost) for (const l of portHost.lights()) { l.color = CITY_LIGHT_COLOR_F32; out.push(l); } }
   /** The port's people offered their Morrowind bodies (`eye` the frame's, `dt` its step). */
   function portBodies(eye, dt) { if (portHost && _mode() === 'exterior') portHost.offerBodies(offerStreetPerson, eye, townTalk.overlayActive ? 0 : dt); }
   /** The port's people on the flats' axis. @param {any[]} out */

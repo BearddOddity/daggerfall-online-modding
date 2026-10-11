@@ -169,8 +169,11 @@ test('SHIPYARDS-FOUND THE GLYPHS: a mark\'s yard kind its kind\'s second word; t
 
 test('SHIPYARDS THE HOSTS: world.js places the port\'s places in each port town\'s build on what its yards left, stands them (the pool beside the yards\'), draws them in the street and in the view out of a window, their people on the flats\' axis and in bodies, their lamps in the lights and their beams in the added pass, takes them down at a re-anchor and a load, names them under the eye, hands the press, the shipmaster\'s window and the stair; hands their sites to the town map, the talk directory (the docks once sounded) and the Overworld; worldModes\' street ray reaches them; the bench stands none, the dungeon none (mutants: each hand dropped)', () => {
   const w = read('src/scenes/world.js'), modes = read('src/scenes/worldModes.js');
-  assert.match(w, /if \(isPortTown\(dfLocation, portByData\(dfLocation\)\)\) portSites = portSitesFor\(dfLocation, lefaySpot, climate\?\.people, loc\);/);
-  assert.match(w, /ports = portSitesOn\(g, seaField\(g\.width, g\.height, townSeaOf\(yl\), seaBearing\(lp\.x, lp\.y, seaPixel\)\)\);/, 'on what the yards left, off the sea');
+  // PIN MOVED (AUDIT SHIPYARDS L3-3, U2): the yards' and the port's places in one pass, and the town's own water read against
+  // the map's bearing
+  assert.match(w, /const yardTown = isYardTown\(dfLocation\), portTown = isPortTown\(dfLocation, portByData\(dfLocation\)\);\n\s*const places = yardTown \|\| portTown \? townPlacesFor\(dfLocation, lefaySpot, climate\?\.people, loc\) : null;\n\s*if \(yardTown\) yardSites = places\.yards;\n\s*if \(portTown\) portSites = places\.ports;/);
+  assert.match(w, /const bearing = seaBearing\(lp\.x, lp\.y, seaPixel\);[^\n]*\n\s*ports = portSitesOn\(g, seaField\(g\.width, g\.height, townSeaOf\(yl, bearing\), bearing\)\);/, 'on what the yards left, off the sea');
+  assert.match(w, /const portByData = \(dfLocation\) => portTownByData\(dfLocation, hasPort\);/, 'a port by its own data (executed: test/shipyards1_audit_port.test.js)');
   assert.match(w, /if \(portSites\?\.length\) carveYards\(nav, portSites\);/, 'the people walk round them');
   assert.match(w, /\n\s+portSites,   \/\/ SHIPYARDS/, 'on the pixel\'s record');
   assert.match(w, /portHost = createPortHost\(\{/);
@@ -183,7 +186,9 @@ test('SHIPYARDS THE HOSTS: world.js places the port\'s places in each port town\
   assert.match(w, /\n {4}portBatchesInto\(livePersonBatches\);/);
   assert.match(w, /function portBatchesInto\(out\) \{ if \(portHost && _mode\(\) === 'exterior'\) for \(const b of portHost\.batches\(\)\) out\.push\(b\); \}/);
   assert.match(w, /\n {4}if \(portHost && lightsOnAt\(minute\)\) portLightsInto\(csaLit\);/);
-  assert.match(w, /function portLightsInto\(out\) \{ for \(const l of portHost\?\.lights\(\) \?\? \[\]\) out\.push\(/);
+  // PIN MOVED (AUDIT SHIPYARDS L4-2): the pool's own light records pushed as they are, the lanterns' colour set on them in
+  // place - a night frame mints no object here (PERF-LIGHTS' law)
+  assert.match(w, /function portLightsInto\(out\) \{ if \(portHost\) for \(const l of portHost\.lights\(\)\) \{ l\.color = CITY_LIGHT_COLOR_F32; out\.push\(l\); \} \}/);
   assert.match(w, /const glows = portHost\.glows\(cam\.pos\);\n\s*if \(glows\.length\) navalRender\.draw\(\{ particles: glows \}\);/);
   assert.ok(w.indexOf('\n    portGlows();') > w.indexOf("serpentRenderer()?.drawSea(_serpentDraw)"), 'over the sea\'s top, after the serpent\'s marks');
   // PERF-V8: the port's per-frame work is the host's own functions, never inline in the frame (test/perfv8.test.js)
@@ -200,15 +205,21 @@ test('SHIPYARDS THE HOSTS: world.js places the port\'s places in each port town\
   assert.match(w, /open: \(site, page\) => openShipyard\(site, page\),/);
   assert.match(w, /climb: \(site, way, at\) => climbLighthouse\(way, at\),/);
   assert.match(w, /lit: \(\) => lightsOnAt\(minuteNow\(\)\),/, 'the lamp\'s hours the lanterns\'');
-  assert.match(w, /if \(way === 'up'\) \{\n\s*if \(!isOnFoot\(player\.transportMode\)\) return PORT_TEXT\.riding;\n\s*if \(csaRuntime\?\.isSailing\?\.\(\)\) return PORT_TEXT\.shutStair;\n\s*if \(livingTravelEnemies\(\)\) return PORT_TEXT\.foes;/, 'up on foot, never with a foe about; down always');
+  // PIN MOVED (AUDIT SHIPYARDS L6-10): the stair's law is portHost's stairRefusal and stairFeetY, executed there
+  // (test/shipyards1_audit_port.test.js); world.js hands it what holds
+  assert.match(w, /const no = stairRefusal\(way, \{ walking, onFoot: walking && isOnFoot\(player\.transportMode\), sailing: walking && !!csaRuntime\?\.isSailing\?\.\(\), foes: walking && way === 'up' && !!livingTravelEnemies\(\) \}\);\n\s*if \(no\) return no;/, 'up on foot, never with a foe about; down always');
   assert.match(w, /townTalk\.showOverlay\(win, \(\) => \{ const fn = door; door = null; if \(fn && fn\(\) === false\) openShipyard\(site, 'fleet'\); \}\);/, 'a summons runs once the window is down');
   assert.match(w, /if \(!shipyardHost\) \{ setMidScreenText\(PORT_TEXT\.noSail\); return true; \}/, 'Come Sail Away off for the game: the shipmaster says why');
-  assert.match(w, /const ground = way === 'down' \? surfaceAt\(at\.feet\[0\], at\.feet\[2\]\) : NaN;\n\s*player\.spawn\(at\.feet\[0\], Number\.isFinite\(ground\) \? Math\.max\(at\.feet\[1\], ground \+ 0\.02\) : at\.feet\[1\], at\.feet\[2\]\);/, 'down onto the drawn ground at the door');
+  assert.match(w, /player\.spawn\(at\.feet\[0\], stairFeetY\(way, at\.feet\[1\], way === 'down' \? surfaceAt\(at\.feet\[0\], at\.feet\[2\]\) : NaN\), at\.feet\[2\]\);/, 'down onto the drawn ground at the door');
   assert.match(w, /shipyardHost = csaRuntime \? createShipyardHost\(\{/);
   assert.match(w, /traded: \(\) => tallySkill\(playerEntity, SKILLS\.Mercantile, 1\),/);
   assert.match(w, /\n\s+ports: b\.portSites \?\? null,   \/\/ SHIPYARDS-FOUND/, 'the town map');
   assert.match(w, /\n\s+ports: portPlacesOf\(cur, dfLocation\),/, 'the talk directory');
   assert.match(w, /if \(_portDocksWait && cur && docksBerthOf\(_portDocksWait\)\) \{ const loc = _portDocksWait; _portDocksWait = null; townTalk\.setPorts\(portPlacesOf\(cur, loc\)\); \}/, 'the docks once sounded');
+  // AUDIT SHIPYARDS L3-2: the docks row waits on the harbour book's own test (csaIsPortTown), not the shipyard's
+  assert.match(w, /function docksWaitOf\(dfLocation, px, py\) \{\n\s*if \(!dfLocation \|\| docksBerthOf\(dfLocation\)\) return null;\n\s*try \{ return csaIsPortTown\(px, py\) \? dfLocation : null; \} catch \{ return null; \}/, 'the book\'s own test');
+  assert.match(w, /_portDocksWait = docksWaitOf\(dfLocation, cur\?\.px, cur\?\.py\);/);
+  assert.match(w, /const docks = berth \? sceneToLocationXZ\(berth, state\.pixelTranslation\(p\.px, p\.py\), p\.locOrigin\) : null;\n\s*return portPlaceRows\(p\?\.portSites, SHIPYARD_LAYOUT\.points\.crewmaster, docks, dfLocation\?\.name\);/, 'the rows (executed: test/shipyards1_audit_port.test.js)');
   assert.match(w, /for \(const m of portHost\?\.overworldMarks\(\) \?\? \[\]\) marks\.push\(m\);\n\s*for \(const m of quays\?\.overworldMarks\(\) \?\? \[\]\) marks\.push\(m\);/, 'the Overworld');
   assert.ok(w.indexOf('portHost?.overworldMarks()') > w.indexOf('function travelViewMarks()'));
   const door = read('src/ui/townMapDoor.js');

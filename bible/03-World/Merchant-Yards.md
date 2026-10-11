@@ -20,7 +20,7 @@ over a copy - YARDS-FOUND, below) - and the whole of it is a departure, Ledger A
 **The ground** (`world/merchantYardSites.js`). The town's own navgrid (`world/cityNavigation.js`, DFU's CityNavigation
 carve: every automap byte a building, a tree or a lamp draws is closed, the water with it), always on the enhanced
 lane's water table as LEFAY1's monument reads it, and over it what the town's blocks put in a yard's way
-(`world/merchantYardSites.js` `yardMeasuresOf`, handed its measures by `scenes/world.js` `merchantYardSitesFor`):
+(`world/merchantYardSites.js` `yardMeasuresOf`, handed its measures by `scenes/world.js` `townPlacesFor`):
 
 - every **building**'s box (its ARCH3D size, `staticBuildingBox`, no mesh built; a registered model's own geometry -
   `placedModelBox`) kept `BUILDING_CLEAR_M` (6 m) away -

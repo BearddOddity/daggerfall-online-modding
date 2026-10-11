@@ -411,7 +411,8 @@ test('MERCHANT-YARDS THE YARD\'S FRAME IN THE SCENE: a point and a box turned wi
 test('MERCHANT-YARDS THE FOUR HOSTS - world.js places, stands, draws and names them and hands the press; worldModes\' street ray reaches them and opens their counter; exterior.js flagged; the dungeon none', () => {
   const world = read('src/scenes/world.js'), modes = read('src/scenes/worldModes.js'), host = read('src/scenes/merchantYardsHost.js');
   const ext = read('src/scenes/exterior.js'), dungeon = read('src/scenes/dungeonContext.js');
-  assert.match(world, /if \(isYardTown\(dfLocation\)\) yardSites = merchantYardSitesFor\(dfLocation, lefaySpot, climate\?\.people, loc\);/);
+  // PIN MOVED (AUDIT SHIPYARDS L3-3): a town's yards and its port's places in one pass - townPlacesFor asked once a build
+  assert.match(world, /const places = yardTown \|\| portTown \? townPlacesFor\(dfLocation, lefaySpot, climate\?\.people, loc\) : null;\n\s*if \(yardTown\) yardSites = places\.yards;/);
   assert.match(world, /const yl = loc && isEnhanced\(\) && windmillsOn\(\) \? loc : layoutLocation\(dfLocation, maps, blocks, \{ enhanced: true, windmills: true \}\);/, 'one layout for every lane (the build\'s own where it is that one)');
   // AUDIT MERCHANT-YARDS G1, G3, G4, G2: the measures the host hands yardMeasuresOf, and the sites kept per town
   assert.match(world, /custom: \(cid\) => \(hasCustomModel\(cid\) && !customModelNeeds\(cid\)\.length \? customModelFor\(cid\)\?\.positions \?\? null : null\),/, 'a registered model measured by its own geometry');

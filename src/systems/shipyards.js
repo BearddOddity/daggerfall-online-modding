@@ -99,7 +99,10 @@ export function refitGold(rec) {
 /** HER WORTH SOLD BACK (gold, before the haggle): what she was bought for, half her refits' gold, by her hull's state -
  *  `hullShare` her hull against its whole (1 whole; a wreck 0). Pure. */
 export function shipWorth(rec, hullShare = 1) {
-  const value = Number.isFinite(rec?.value) ? Math.max(0, rec.value) : HULL_PRICES[rec?.hull] ?? 0;
+  // AUDIT SHIPYARDS L1-2: never above what the yard asks for a new hull of hers - a record's worth is a save's word, and
+  // past a few million the counter's 32-bit haggle (shopStock.js calculateTradePrice) turns an offer negative
+  const whole = HULL_PRICES[rec?.hull] ?? 0;
+  const value = Number.isFinite(rec?.value) ? Math.max(0, Math.min(whole || rec.value, rec.value)) : whole;
   const k = SALE_FLOOR + (1 - SALE_FLOOR) * Math.max(0, Math.min(1, Number.isFinite(hullShare) ? hullShare : 1));
   return Math.max(1, Math.round((value + refitGold(rec) * REFIT_RESALE) * k));
 }
@@ -114,17 +117,19 @@ export function shipBuyPrice(value, skills) {
  *  at most). Pure. */
 export function shipSalePrice(worth, skills) {
   const pieces = 1;
-  return getTradePrice('Sell', calculateCost(Math.max(0, worth), SHIPYARD_QUALITY, SHIPYARD_PRICE_INDEX), SHIPYARD_QUALITY, skills, pieces);
+  return Math.max(0, getTradePrice('Sell', calculateCost(Math.max(0, worth), SHIPYARD_QUALITY, SHIPYARD_PRICE_INDEX), SHIPYARD_QUALITY, skills, pieces));   // never a negative offer (AUDIT SHIPYARDS L1-2)
 }
 
 /**
  * WHY A SHIP CANNOT BE SOLD HERE, or null: `where` where she is (scenes/fleetHost.js whereIs - 'sailing', 'here',
  * 'laidup', 'away', 'packed'), `hold` the goods in her hold (her laid-up or packed cargo, or her own), `ashore` the hands of
- * hers at the player's side, `fighting` whether she is in a fight, `aboard` another player standing on her. Pure.
- * @param {{ where: string, hold?: number, ashore?: number, fighting?: boolean, aboard?: number, atPort?: boolean }} o
+ * hers at the player's side, `fighting` whether she is in a fight, `aboard` another player standing on her, `crossed`
+ * whether she came into the realm through customs (systems/fleet.js fleetCrossed - kept, never sold). Pure.
+ * @param {{ where: string, hold?: number, ashore?: number, fighting?: boolean, aboard?: number, atPort?: boolean, crossed?: boolean }} o
  */
-export function saleRefusal({ where, hold = 0, ashore = 0, fighting = false, aboard = 0, atPort = true }) {
+export function saleRefusal({ where, hold = 0, ashore = 0, fighting = false, aboard = 0, atPort = true, crossed = false }) {
   if (!atPort) return SHIPYARD_TEXT.notPort;
+  if (crossed) return SHIPYARD_TEXT.crossed;
   if (where === 'sailing') return 'Step off her helm first.';
   if (where === 'away') return 'Bring her to this port first - the shipmaster buys what he can see.';
   if (where !== 'here' && where !== 'laidup' && where !== 'packed') return 'No such ship of yours here.';
@@ -137,12 +142,16 @@ export function saleRefusal({ where, hold = 0, ashore = 0, fighting = false, abo
 
 /** The shipyard's words. */
 export const SHIPYARD_TEXT = Object.freeze({
-  bought: (name, port) => `${name} is yours. She waits for you at ${port || 'this port'} - see your Fleet.`,
-  boughtParts: (name) => `${name} is in your pack. Use them by the water to launch her.`,
+  // AUDIT SHIPYARDS L7-4: a deed's ship is laid up at the yard until she is brought round - said, and the window turns
+  // to Your fleet with her chosen; AUDIT SHIPYARDS L7-10: her parts are plural
+  bought: (name, port) => `${name} is yours, laid up at ${port || 'this port'}. Press Bring her here to have her brought round to the quay.`,
+  boughtParts: (name) => `${name} are in your pack. Use them by the water to launch her.`,
+  heavy: (name) => `${name} weigh more than you can carry - lighten your pack first.`,
+  crossed: 'She came into the realm through customs - the shipmaster does not buy her. She stays yours.',
   sold: (name, gold) => `The shipmaster buys ${name} for ${Math.round(gold).toLocaleString('en-US')} gold.`,
   short: (gold) => `The shipmaster asks ${Math.round(gold).toLocaleString('en-US')} gold - your purse falls short.`,
   notPort: 'The shipmaster deals in ships at his own yard.',
-  noSail: 'The shipyard builds for Come Sail Away\'s ships - turn it on to buy one.',
+  noSail: 'The shipyard builds for Come Sail Away\'s ships - turn it on in the mods\' settings and reload to buy one.',   // AUDIT SHIPYARDS L7-11: the switch is read at a load
   steal: 'The shipmaster never takes an eye off his yard.',
 });
 

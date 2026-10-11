@@ -8,9 +8,13 @@
 // WHERE: the host says (`sites`: each port place of every town built, its middle in the scene's x, z - world/portSites.js
 // placed it, carried by the host's own frame - its turn, its name, its keepers), and the ground there is the host's
 // (`groundAt`), read when a place moves (a floating-origin recentre, across or up) and every PORT_GROUND_EVERY frames.
-// A place's collider bucket - its model, its people's boxes, the lighthouse's guard over its railing - is stood again when
-// it moves, and held back while the player's feet stand on its ground at its foot as it first rises (AUDIT SET W1's law,
-// the yards'): never for feet up on the lighthouse's gallery, which it must stand under.
+// A place's collider bucket - its model, its people's boxes, the lighthouse's lantern glass - is stood again when it moves,
+// and held back while the player's feet stand on its ground as it first rises (AUDIT SET W1's law, the yards'): up the
+// lighthouse's hollow tower and inside its lantern room too (AUDIT SHIPYARDS L4-5: a body risen inside was sealed in),
+// never for feet up on its gallery, which it must stand under. THE GALLERY'S GUARD (guardBand: a corridor from its floor
+// lidded to the lantern's glass - L4-1: a climb, a boosted jump or a vault went over the railing, a twenty-metre fall)
+// stands in a bucket of its own only while the feet are on the gallery under its lid: always standing, its lid was a
+// floor to a body coming down onto the gallery from over it.
 //
 // WHO STANDS IN IT: in the shipyard, the SHIPMASTER on his office's porch (his keeper's draw - systems/portPlaces.js
 // portKeeper), the CREWMASTER behind the crew hall's table, three SAILORS looking for a berth at its open side and two
@@ -29,7 +33,14 @@
 //
 // THE LIGHT (`lights`, `glows`): in the lanterns' hours (the host's `lit`) the lamp is a scene light, and its glow and two
 // beams turning BEAM_PERIOD_S a round are drawn as added light from as far as BEAM_SEEN_M - a light a captain sees from the
-// sea - each lighthouse's beams on its own phase (off its key).
+// sea - each lighthouse's beams on its own phase (off its key) of one clock every client reads alike, the wall clock's
+// (AUDIT SHIPYARDS L4-6: each client's own frame clock turned each its own sweep); a puff the eye stands in fades (L7-12:
+// from the gallery each sweep was a flash). The lamp's glass and lens cast no shadow (L5-2: they shadowed its own light).
+//
+// A FRAME ALLOCATES NOTHING HERE (AUDIT SHIPYARDS L4-2, PERF-LIGHTS' law): the glows' records and the lights' are each
+// place's own, written in place into one array each; a person's idle record turns its key only as its frame turns; the
+// art is painted a few pictures a frame (L5-5), the meshes made once it is all up - the places stand in the collider
+// meanwhile.
 //
 // NOTHING HERE IS SAVED OR SENT: where a place stands is the town's layout, who keeps it its map id.
 //
@@ -46,8 +57,8 @@ import { PORT_PLACES } from '../systems/portPlaces.js';
 import { SHIPYARD_TEXT } from '../systems/shipyards.js';
 import { PORT_FOOT } from '../world/portSites.js';
 import { buildShipyardModel, SHIPYARD, shipsSignBox, hullBox, noticesBox, crewSignBox } from '../world/shipyardModel.js';
-import { buildLighthouseModel, guardBand, LIGHTHOUSE_POINTS, doorBox, hatchBox, lanternBox, GALLERY_Y } from '../world/lighthouseModel.js';
-import { portArt, PORT_ARCHIVE } from '../world/portArt.js';
+import { buildLighthouseModel, buildLighthouseGlass, guardBand, LIGHTHOUSE, LIGHTHOUSE_POINTS, doorBox, hatchBox, lanternBox, GALLERY_Y } from '../world/lighthouseModel.js';
+import { PORT_PAINTERS, PORT_ARCHIVE } from '../world/portArt.js';
 import { PERSON_TEXTURES, PERSON_IDLE_RECORD, PERSON_IDLE_FPS } from '../characters/mobilePerson.js';
 import { mobileBillboardSize } from '../world/rmbFlats.js';
 import { folkLookOf } from '../characters/folkBodies.js';
@@ -68,9 +79,14 @@ export const PORT_GROUND_EVERY = 30;
 export const PORT_REACH = STATIC_NPC_ACTIVATION_DISTANCE;
 /** How far over each place's ground its Overworld mark stands - over the sheerlegs' head, over the lantern's vane. */
 export const PORT_MARK_LIFT = Object.freeze({ shipyard: 8.5, lighthouse: 24.5 });
-/** A place's collider held back while the feet stand on its ground below this height over it (m): the shipyard's scaffold
- *  and the lighthouse's foot - never its gallery, which must stand under them. */
-export const HOLD_BACK_UP = Object.freeze({ shipyard: 4.5, lighthouse: 2.5 });
+/** A place's collider held back while the feet stand on its ground below this height over it (m): the shipyard's scaffold,
+ *  and the lighthouse's whole hollow tower up to half a metre under its gallery (AUDIT SHIPYARDS L4-5: it stopped at 2.5 m,
+ *  and a body levitating inside was sealed in as the tower stood) - never the gallery, which must stand under them. */
+export const HOLD_BACK_UP = Object.freeze({ shipyard: 4.5, lighthouse: GALLERY_Y - 0.5 });
+/** THE GALLERY'S GUARD stands once the feet are on the gallery inside its band, low enough that a body (player/motor.js
+ *  CAPSULE_HEIGHT 1.8) stands under its lid - GUARD_HEADROOM under it - and stays while they are within its height over
+ *  the gallery's floor and its railing's reach. */
+export const GUARD_HEADROOM = 1.95;
 /** The lamp: its scene light's reach (m), and the office lantern's. */
 export const LAMP_RANGE = 28;
 export const OFFICE_LAMP_RANGE = 9;
@@ -88,6 +104,11 @@ export const BEAM_DIP = 0.035;
 export const BEAM_SEEN_M = 2600;
 export const GLOW_NEAR_M = 4;
 export const GLOW_ANGLE = 0.012;
+/** A beam's puff fades as the eye comes within BEAM_NEAR_FADE of its own size of its middle - none at half of it (the eye
+ *  inside it: the whole screen added at once), whole at that (AUDIT SHIPYARDS L7-12). */
+export const BEAM_NEAR_FADE = 1.5;
+/** The art's painting: pictures a frame while this many ms of it are unspent (one at least). */
+export const ART_BUDGET_MS = 4;
 /** The lamp's light, in added light and in the scene's. */
 export const LIGHTHOUSE_LAMP_COLOR = Object.freeze([1, 0.85, 0.55]);
 
@@ -119,6 +140,20 @@ export const PORT_TEXT = Object.freeze({
 });
 
 const NONE = Object.freeze([]);
+/** THE STAIR'S LAW (scenes/world.js climbLighthouse hands it what holds): its refusal's words, or null - neither off the
+ *  street nor before the body stands; up on foot alone, never sailing, never with a foe about; down always (a gallery is
+ *  never a trap). AUDIT SHIPYARDS L6-10: executed here, not read off world.js's text. Pure.
+ *  @param {string} way @param {{ walking: boolean, onFoot: boolean, sailing: boolean, foes: boolean }} now */
+export function stairRefusal(way, { walking, onFoot, sailing, foes }) {
+  if (!walking) return PORT_TEXT.shutStair;
+  if (way !== 'up') return null;
+  if (!onFoot) return PORT_TEXT.riding;
+  if (sailing) return PORT_TEXT.shutStair;
+  return foes ? PORT_TEXT.foes : null;
+}
+/** Where the stair stands the feet (y): up, where the pool says (the gallery's floor); down, on the drawn ground at the
+ *  door where it stands higher than the tower's middle (a slope) - `ground` the host's surface there. Pure. */
+export const stairFeetY = (way, feetY, ground) => (way === 'down' && Number.isFinite(ground) ? Math.max(feetY, ground + 0.02) : feetY);
 /** A person of a place's own: a sailor or a shipwright drawn off its key - their sex and outfit. Pure. */
 export function folkOf(key, role, i) {
   const h = textSeed(`${key}|${role}|${i}`);
@@ -139,43 +174,80 @@ export function peopleOf(site) {
     ...P.workers.map((p, i) => ({ role: 'worker', i, at: [p[0], p[2] ?? 0, p[1]], ...folkOf(site?.key ?? '', 'worker', i) })),
   ];
 }
-/** Whether feet `f` (the scene's) stand on a place's ground at its foot - its footprint, below HOLD_BACK_UP over it. Pure. */
+const T_ = LIGHTHOUSE.tower, G_ = LIGHTHOUSE.gallery, L_ = LIGHTHOUSE.lantern;
+/** The lantern room's top over the lighthouse's ground: its dome's. */
+const LANTERN_TOP = GALLERY_Y + L_.wallH + L_.glassH + L_.cornice + L_.domeH;
+/** Feet `f` (the scene's) in a place's own frame, over its ground - [x, y, z] into `out`. */
+function feetInFrame(site, at, f, out) {
+  const a = (-(site.yaw ?? 0) * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a), dx = f[0] - at[0], dz = f[2] - at[2];
+  out[0] = dx * c + dz * s; out[1] = f[1] - at[1]; out[2] = -dx * s + dz * c;
+  return out;
+}
+const _ff = [0, 0, 0];
+/** How far a point of the lighthouse's frame stands off its tower's axis. */
+const axisR = (q) => { const x = q[0] - T_.x, z = q[2] - T_.z; return Math.sqrt(x * x + z * z); };
+/** Whether feet `f` (the scene's) stand on a place's ground at its foot - its footprint, below HOLD_BACK_UP over it; or in
+ *  a lighthouse's lantern room, closed in its glass, below its dome's top (a body risen up the hollow tower: AUDIT
+ *  SHIPYARDS L4-5). Pure. */
 export function feetInPort(site, at, f) {
   if (!site || !at || !f) return false;
-  const a = (-(site.yaw ?? 0) * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
-  const dx = f[0] - at[0], dz = f[2] - at[2];
-  const x = dx * c + dz * s, z = -dx * s + dz * c;
-  const F = PORT_FOOT[site.kind];
-  return !!F && Math.abs(x) <= F.hx && Math.abs(z) <= F.hz && f[1] < at[1] + (HOLD_BACK_UP[site.kind] ?? 2.5) && f[1] + 1.8 > at[1] - 0.5;
+  const q = feetInFrame(site, at, f, _ff), F = PORT_FOOT[site.kind];
+  if (!F || Math.abs(q[0]) > F.hx || Math.abs(q[2]) > F.hz || q[1] + 1.8 <= -0.5) return false;
+  if (q[1] < (HOLD_BACK_UP[site.kind] ?? 2.5)) return true;
+  return site.kind === 'lighthouse' && axisR(q) < L_.r && q[1] < LANTERN_TOP;
 }
+/** Whether a lighthouse's gallery guard stands for feet `f` (the scene's) - `on` whether it stands now: it stands once they
+ *  are on the gallery inside its band and under its lid by GUARD_HEADROOM, and stays while they are within its height and
+ *  the railing's reach (AUDIT SHIPYARDS L4-1). Pure. */
+export function guardFor(site, at, f, on) {
+  if (!site || !at || !f) return false;
+  const q = feetInFrame(site, at, f, _ff), r = axisR(q), y = q[1];
+  return on ? y > GALLERY_Y - 0.5 && y < GALLERY_Y + G_.guardH && r < G_.railR + 0.5
+    : y > GALLERY_Y - 0.1 && y < GALLERY_Y + G_.guardH - GUARD_HEADROOM && r > L_.r && r < G_.railR - 0.08;
+}
+/** A beam's k-th puff (1..BEAM_PUFFS) from `lamp` along [dx, dz] written into `rec` (its `pos` and `size`) - answers its
+ *  alpha. The beam's one law: beamPuffs's and the pool's glows'. */
+function puffInto(rec, lamp, dx, dz, k) {
+  const t = k / BEAM_PUFFS, d = BEAM_LEN_M * t * t;
+  rec.pos[0] = lamp[0] + dx * d; rec.pos[1] = lamp[1] - BEAM_DIP * d; rec.pos[2] = lamp[2] + dz * d;
+  rec.size = BEAM_SIZE0 + (BEAM_SIZE1 - BEAM_SIZE0) * t;
+  return BEAM_ALPHA * (1 - t) ** 1.3;
+}
+/** How much of a puff of `size` with its middle `e` from the eye is drawn: none with the eye inside half its size, whole
+ *  from BEAM_NEAR_FADE of it. Pure. */
+export const nearFade = (e, size) => Math.min(1, Math.max(0, (e / size - 0.5) / (BEAM_NEAR_FADE - 0.5)));
 /** A beam's puffs from `lamp` along the bearing `theta` (radians, scene yaw: forward [sin, 0, cos]) - `{ pos, size,
  *  alpha }` each, nearest first. Pure. */
 export function beamPuffs(lamp, theta) {
   const out = [], dx = Math.sin(theta), dz = Math.cos(theta);
-  for (let k = 1; k <= BEAM_PUFFS; k++) {
-    const t = k / BEAM_PUFFS, d = BEAM_LEN_M * t * t;
-    out.push({ pos: [lamp[0] + dx * d, lamp[1] - BEAM_DIP * d, lamp[2] + dz * d], size: BEAM_SIZE0 + (BEAM_SIZE1 - BEAM_SIZE0) * t, alpha: BEAM_ALPHA * (1 - t) ** 1.3 });
-  }
+  for (let k = 1; k <= BEAM_PUFFS; k++) { const r = { pos: [0, 0, 0], size: 0, alpha: 0 }; r.alpha = puffInto(r, lamp, dx, dz, k); out.push(r); }
   return out;
 }
+/** A glow's record (render/navalRender.js's particle), the lamp's colour - each place's own, written in place. */
+const glowRec = () => ({ pos: [0, 0, 0], size: 0, color: [LIGHTHOUSE_LAMP_COLOR[0], LIGHTHOUSE_LAMP_COLOR[1], LIGHTHOUSE_LAMP_COLOR[2], 0], rot: 0, blend: 'add', flat: false, solid: false, kind: 'lamp', aspect: 1 });
+/** The distance between two points - Math.hypot's three arguments are an allocation a call in V8 (AUDIT SHIPYARDS L4-2). */
+const dist3 = (a, b) => { const x = a[0] - b[0], y = a[1] - b[1], z = a[2] - b[2]; return Math.sqrt(x * x + y * y + z * z); };
+/** A person's idle frame's record key, by frame - minted once each. */
+const IDLE_KEYS = [];
+const idleKey = (frame) => (IDLE_KEYS[frame] ??= `${PERSON_IDLE_RECORD}#${frame}`);
 
 /**
  * @param {{
  *   renderer?: any, getTexture?: ((archive: number) => Promise<any>)|null,
  *   uploadRecordFrame?: ((archive: number, record: number, frame: number) => void)|null,
  *   sites: () => Array<any>, groundAt: (x: number, z: number) => number, collider?: () => any,
- *   eye?: () => (number[]|null), feet?: () => (number[]|null), lit?: () => boolean,
+ *   feet?: () => (number[]|null), lit?: () => boolean, beamClock?: () => number,
  *   open?: (site: any, page: string) => boolean, climb?: (site: any, way: 'up'|'down', at: { feet: number[], yaw: number }) => (boolean|string),
  *   say?: (text: string) => void, midText?: (text: string) => void, now?: () => number,
  * }} deps  `sites` every port place standing this frame (`{ key, kind, x, z, yaw, comp, mapId, regionIndex, race, name,
  *   keeper, crewmaster?, crewName? }`, the scene's x, z); `lit()` the lanterns' hours; `open(site, page)` the shipmaster's
  *   window on its page; `climb(site, way, at)` the host's placing of the player (`at` the feet and yaw in the scene) -
- *   true, or its refusal's words
+ *   true, or its refusal's words; `beamClock()` the seconds the beams turn by - the wall clock's, alike on every client
  */
 export function createPortHost({
   renderer = null, getTexture = null, uploadRecordFrame = null, sites, groundAt, collider = () => null,
-  eye = () => null, feet = () => null, lit = () => false, open = () => false, climb = () => false,
-  say = () => {}, midText = () => {}, now = () => performance.now(),
+  feet = () => null, lit = () => false, open = () => false, climb = () => false,
+  say = () => {}, midText = () => {}, now = () => performance.now(), beamClock = () => Date.now() / 1000,
 }) {
   /** @type {Map<string, any>} */
   const places = new Map();
@@ -185,18 +257,33 @@ export function createPortHost({
   const models = new Map();
   /** @type {Map<string, number[]>} */
   const boxes = new Map();
-  let artUp = false;
+  let artAt = 0, artFrame = -1, guardMesh = null;
   const personTex = new Map();
   let frameN = 0;
-  const _batches = [], _targets = [];
+  // the arrays handed out, written in place and cut to their count at the end (`length = 0` then pushes trimmed each
+  // one's store and grew it again, every frame)
+  const _batches = [], _targets = [], _lights = [], _glows = [];
 
-  const modelOf = (kind) => { let m = models.get(kind); if (!m) { m = kind === 'lighthouse' ? buildLighthouseModel() : buildShipyardModel(); models.set(kind, m); } return m; };
+  const MODELS = { shipyard: buildShipyardModel, lighthouse: buildLighthouseModel, glass: buildLighthouseGlass };
+  /** A kind's model (the lighthouse's glass and lens its own, `glass`), built once. */
+  const modelOf = (kind) => { let m = models.get(kind); if (!m) { m = MODELS[kind](); models.set(kind, m); } return m; };
+  /** The art up, a few pictures a frame - once a frame, whichever place asks (AUDIT SHIPYARDS L5-5) - answers whether it
+   *  is all up. */
+  function paintArt() {
+    if (artAt >= PORT_PAINTERS.length) return true;
+    if (artFrame === frameN) return false;
+    artFrame = frameN;
+    const t0 = now();
+    do { const [rec, paint] = PORT_PAINTERS[artAt++]; renderer.uploadTexture?.(PORT_ARCHIVE, rec, paint()); } while (artAt < PORT_PAINTERS.length && now() - t0 < ART_BUDGET_MS);
+    return artAt >= PORT_PAINTERS.length;
+  }
   function meshOf(kind) {
     if (meshes.has(kind)) return meshes.get(kind);
     if (!renderer?.createMesh) return null;
     try {
-      if (!artUp) { for (const [rec, art] of portArt()) renderer.uploadTexture?.(PORT_ARCHIVE, rec, art); artUp = true; }
+      if (!paintArt()) return null;
       meshes.set(kind, renderer.createMesh(modelOf(kind)));
+      if (kind === 'lighthouse') meshes.set('glass', renderer.createMesh(modelOf('glass')));
     } catch (e) { meshes.set(kind, null); console.warn('[port] a place would not build', e?.message ?? e); }
     return meshes.get(kind);
   }
@@ -221,11 +308,11 @@ export function createPortHost({
     if (!b) { b = localAabb(modelOf(pl.site.kind).positions); boxes.set(pl.site.kind, b); }
     return transformedAabb(b, pl.matrix);
   }
-  /** The collider's geometry: the model, each person's box, the lighthouse's guard - in the place's frame. */
+  /** The collider's geometry: the model, each person's box, the lighthouse's glass - in the place's frame. */
   function colliderGeometry(pl) {
     const parts = [modelOf(pl.site.kind)];
     for (const p of peopleOf(pl.site)) parts.push(boxTriangles([p.at[0] - KEEPER_HALF, p.at[1], p.at[2] - KEEPER_HALF], [p.at[0] + KEEPER_HALF, p.at[1] + KEEPER_HEIGHT, p.at[2] + KEEPER_HALF]));
-    if (pl.site.kind === 'lighthouse') parts.push(guardBand());
+    if (pl.site.kind === 'lighthouse') parts.push(modelOf('glass'));
     const count = parts.reduce((n, p) => n + p.positions.length, 0), icount = parts.reduce((n, p) => n + p.indices.length, 0);
     const positions = new Float32Array(count), indices = new Uint32Array(icount);
     let v = 0, i = 0;
@@ -247,18 +334,33 @@ export function createPortHost({
     col.addMesh(pl.bucket, g.positions, g.indices, pl.matrix);
     pl.colAt = [pl.at[0], pl.at[1], pl.at[2]];
   }
+  /** A lighthouse's gallery guard stood in its own bucket, or taken down, by where the feet `f` are (guardFor) - stood
+   *  again under the model's matrix as the model is. */
+  function guardFrame(pl, f) {
+    const col = collider();
+    if (!col?.addMesh) return;
+    const on = pl.colAt !== null && (f ? guardFor(pl.site, pl.at, f, pl.guard !== null) : pl.guard !== null);
+    if (on && pl.guard !== pl.colAt) {
+      if (pl.guard) col.removeBucket?.(pl.guardBucket);
+      const g = (guardMesh ??= guardBand());
+      col.addMesh(pl.guardBucket, g.positions, g.indices, pl.matrix);
+      pl.guard = pl.colAt;
+    } else if (!on && pl.guard) { col.removeBucket?.(pl.guardBucket); pl.guard = null; }
+  }
   function takeDown(key) {
     const pl = places.get(key);
     if (!pl) return;
+    if (pl.guard) collider()?.removeBucket?.(pl.guardBucket);
     if (pl.colAt) collider()?.removeBucket?.(pl.bucket);
     for (const p of pl.people) if (p.batch) renderer?.destroyBillboardBatch?.(p.batch);
     places.delete(key);
   }
   function stand(site) {
     const pl = {
-      site, key: site.key, bucket: `port:${site.key}`, at: null, matrix: null, colAt: null, box: null, targets: null,
+      site, key: site.key, bucket: `port:${site.key}`, guardBucket: `port:${site.key}:guard`, guard: null, at: null, matrix: null, colAt: null, box: null, targets: null,
       groundY: NaN, groundAt: [NaN, NaN, -Infinity, NaN], phase: (textSeed(String(site.key)) % 6283) / 1000,
-      people: peopleOf(site).map((p) => ({ ...p, batch: null, origin: [0, 0, 0] })),
+      people: peopleOf(site).map((p) => ({ ...p, batch: null, origin: [0, 0, 0], frame: -1, keysOf: '', texKeys: [] })),
+      lamp: [0, 0, 0], light: null, glow: null, seen: -1,
     };
     places.set(site.key, pl);
     return pl;
@@ -270,11 +372,14 @@ export function createPortHost({
       if (!tex) continue;
       const frames = Math.max(1, tex.getFrameCount?.(PERSON_IDLE_RECORD) ?? 1);
       const frame = Math.floor((t / 1000) * PERSON_IDLE_FPS + p.i * 0.37) % frames;
-      const rkey = `${PERSON_IDLE_RECORD}#${frame}`;
-      if (!renderer.textures?.has?.(`${archive}_${rkey}`)) uploadRecordFrame?.(archive, PERSON_IDLE_RECORD, frame);
-      const sz = mobileBillboardSize(tex, PERSON_IDLE_RECORD);
-      if (!p.batch) { p.batch = renderer.createBillboardBatch(archive, rkey, { w: sz.w, h: sz.h }, [[0, 0, 0]]); p.batch.origin = p.origin; }
-      p.batch.record = rkey; p.batch.size = { w: sz.w, h: sz.h };
+      if (frame !== p.frame || !p.batch) {   // as its frame turns: its record, its picture's key (minted once a frame of its idle's) and its size (a settings read)
+        p.frame = frame;
+        const rkey = idleKey(frame), sz = mobileBillboardSize(tex, PERSON_IDLE_RECORD);
+        if (p.keysOf !== archive) { p.keysOf = archive; p.texKeys = []; }
+        if (!renderer.textures?.has?.(p.texKeys[frame] ??= `${archive}_${rkey}`)) uploadRecordFrame?.(archive, PERSON_IDLE_RECORD, frame);
+        if (!p.batch) { p.batch = renderer.createBillboardBatch(archive, rkey, { w: sz.w, h: sz.h }, [[0, 0, 0]]); p.batch.origin = p.origin; p.batch.size = { w: sz.w, h: sz.h }; }
+        p.batch.record = rkey; p.batch.size.w = sz.w; p.batch.size.h = sz.h;
+      }
       yardToScene(pl.at, pl.site.yaw, p.at[0], p.at[1], p.at[2], p.origin);
     }
   }
@@ -293,19 +398,19 @@ export function createPortHost({
     const a = (pl.site.yaw * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
     return Math.atan2(dir[0] * c + dir[1] * s, -dir[0] * s + dir[1] * c);
   };
-  const lampOf = (pl) => { const l = LIGHTHOUSE_POINTS.lamp; return yardToScene(pl.at, pl.site.yaw, l[0], l[1], l[2]); };
+  const lampOf = (pl) => { const l = LIGHTHOUSE_POINTS.lamp; return yardToScene(pl.at, pl.site.yaw, l[0], l[1], l[2], pl.lamp); };
   const nameOf = (pl) => pl.site.name ?? PORT_PLACES[pl.site.kind]?.title ?? '';
 
   return {
     /** One frame: each place standing where its town is built, its ground, its collider, its people; the gone taken down. */
     frame() {
       frameN++;
-      const list = sites?.() ?? NONE, live = new Set(), t = now();
+      const list = sites?.() ?? NONE, t = now();
+      let f;   // the feet, read once a frame there is a lighthouse
       for (const site of list) {
         if ((site?.kind !== 'shipyard' && site?.kind !== 'lighthouse') || !site.key) continue;
-        live.add(site.key);
         const pl = places.get(site.key) ?? stand(site);
-        pl.site = site;
+        pl.site = site; pl.seen = frameN;   // this frame's (a Set of the live keys was minted, and cleared, a frame)
         const comp = site.comp ?? 0, G = pl.groundAt;
         if (site.x !== G[0] || site.z !== G[1] || comp !== G[3] || !Number.isFinite(pl.groundY) || frameN - G[2] >= PORT_GROUND_EVERY) {
           pl.groundY = groundAt(site.x, site.z); G[0] = site.x; G[1] = site.z; G[2] = frameN; G[3] = comp;
@@ -318,9 +423,10 @@ export function createPortHost({
         }
         meshOf(site.kind);
         standCollider(pl);
+        if (site.kind === 'lighthouse') guardFrame(pl, f === undefined ? (f = feet()) : f);
         posePeople(pl, t);
       }
-      for (const key of [...places.keys()]) if (!live.has(key)) takeDown(key);
+      for (const pl of places.values()) if (pl.seen !== frameN) takeDown(pl.key);   // a Map deletes its own entry under its walk
       return places.size;
     },
     /** Every place's timber and stone in the host's world pass - by the street's view test where it is handed (in view,
@@ -335,7 +441,10 @@ export function createPortHost({
         const mesh = meshes.get(pl.site.kind);
         if (!mesh) continue;
         (v === DECOR_SHADOW ? castOnly(r) : r).drawMesh(mesh, pl.matrix, null);
-        if (v === DECOR_DRAW) n++;
+        if (v !== DECOR_DRAW) continue;
+        const glass = pl.site.kind === 'lighthouse' ? meshes.get('glass') : null;
+        if (glass) r.drawMesh(glass, pl.matrix, null, { noShadow: true });   // the lamp's light stands inside it (AUDIT SHIPYARDS L5-2)
+        n++;
       }
       return n;
     },
@@ -358,14 +467,15 @@ export function createPortHost({
     },
     /** The people, for the host's flats. */
     batches() {
-      _batches.length = 0;
-      for (const pl of places.values()) if (pl.at) for (const p of pl.people) if (p.batch) _batches.push(p.batch);
+      let n = 0;
+      for (const pl of places.values()) if (pl.at) for (const p of pl.people) if (p.batch) _batches[n++] = p.batch;
+      _batches.length = n;
       return _batches;
     },
     /** The eye's boxes: the shipyard's people, its two boards, its notice board and its hull; the lighthouse's keeper,
      *  its door, its hatch and its lamp - their reach a static NPC's beside the ray's. */
     targets() {
-      _targets.length = 0;
+      let n = 0;
       for (const pl of places.values()) {
         if (!pl.at) continue;
         pl.targets ??= (() => {
@@ -377,8 +487,9 @@ export function createPortHost({
           else { add('door', doorBox()); add('hatch', hatchBox()); add('lamp', lanternBox()); }
           return out;
         })();
-        for (const tg of pl.targets) _targets.push(tg);
+        for (const tg of pl.targets) _targets[n++] = tg;
       }
+      _targets.length = n;
       return _targets;
     },
     /** WORLD-HOVER: each part by its name and its keeper's, and its rows. */
@@ -431,31 +542,42 @@ export function createPortHost({
     },
     /** THE LAMP and the office lantern, in the lanterns' hours: scene lights `{ x, y, z, range }`. */
     lights() {
-      if (!lit()) return [];
-      const out = [];
-      for (const pl of places.values()) {
+      let n = 0;
+      if (lit()) for (const pl of places.values()) {
         if (!pl.at) continue;
-        if (pl.site.kind === 'lighthouse') { const l = lampOf(pl); out.push({ x: l[0], y: l[1], z: l[2], range: LAMP_RANGE }); }
-        else { const l = yardToScene(pl.at, pl.site.yaw, SHIPYARD.office.x0 - 0.45, 1.9, 5.33); out.push({ x: l[0], y: l[1], z: l[2], range: OFFICE_LAMP_RANGE }); }
+        const L = (pl.light ??= { x: 0, y: 0, z: 0, range: 0, color: null }), at = pl.lamp;
+        if (pl.site.kind === 'lighthouse') { lampOf(pl); L.range = LAMP_RANGE; }
+        else { const o = SHIPYARD.lantern; yardToScene(pl.at, pl.site.yaw, o[0], o[1], o[2], at); L.range = OFFICE_LAMP_RANGE; }
+        L.x = at[0]; L.y = at[1]; L.z = at[2];
+        _lights[n++] = L;
       }
-      return out;
+      _lights.length = n;
+      return _lights;
     },
-    /** THE LAMP'S GLOW AND ITS BEAMS, in the lanterns' hours, as render/navalRender.js's added particles - `t` seconds
-     *  turn the beams. */
-    glows(eyeAt, t = now() / 1000) {
-      if (!lit() || !eyeAt) return [];
-      const out = [];
-      for (const pl of places.values()) {
+    /** THE LAMP'S GLOW AND ITS BEAMS, in the lanterns' hours, as render/navalRender.js's added particles - `t` the beams'
+     *  clock's seconds (the wall clock's, every client's alike). Each place's records, written in place into one array
+     *  (read them before the next call). */
+    glows(eyeAt, t = beamClock()) {
+      let n = 0;
+      if (lit() && eyeAt) for (const pl of places.values()) {
         if (!pl.at || pl.site.kind !== 'lighthouse') continue;
-        const l = lampOf(pl), d = Math.hypot(l[0] - eyeAt[0], l[1] - eyeAt[1], l[2] - eyeAt[2]);
+        const l = lampOf(pl), d = dist3(l, eyeAt);
         if (d > BEAM_SEEN_M) continue;
-        out.push({ pos: l, size: Math.max(GLOW_NEAR_M, d * GLOW_ANGLE), color: [LIGHTHOUSE_LAMP_COLOR[0], LIGHTHOUSE_LAMP_COLOR[1], LIGHTHOUSE_LAMP_COLOR[2], 0.85], rot: 0, blend: 'add', flat: false, solid: false, kind: 'lamp', aspect: 1 });
-        const theta = pl.phase + (2 * Math.PI * t) / BEAM_PERIOD_S;
-        for (const th of [theta, theta + Math.PI]) {
-          for (const b of beamPuffs(l, th)) out.push({ pos: b.pos, size: b.size, color: [LIGHTHOUSE_LAMP_COLOR[0], LIGHTHOUSE_LAMP_COLOR[1], LIGHTHOUSE_LAMP_COLOR[2], b.alpha], rot: 0, blend: 'add', flat: false, solid: false, kind: 'lamp', aspect: 1 });
+        const G = (pl.glow ??= Array.from({ length: 1 + 2 * BEAM_PUFFS }, glowRec)), g0 = G[0];
+        g0.pos[0] = l[0]; g0.pos[1] = l[1]; g0.pos[2] = l[2]; g0.size = Math.max(GLOW_NEAR_M, d * GLOW_ANGLE); g0.color[3] = 0.85;
+        _glows[n++] = g0;
+        const theta = pl.phase + (2 * Math.PI * (t % BEAM_PERIOD_S)) / BEAM_PERIOD_S;
+        for (let b = 0; b < 2; b++) {
+          const th = theta + b * Math.PI, dx = Math.sin(th), dz = Math.cos(th);
+          for (let k = 1; k <= BEAM_PUFFS; k++) {
+            const g = G[b * BEAM_PUFFS + k], a = puffInto(g, l, dx, dz, k);
+            g.color[3] = a * nearFade(dist3(g.pos, eyeAt), g.size);
+            _glows[n++] = g;
+          }
         }
       }
-      return out;
+      _glows.length = n;
+      return _glows;
     },
     /** SHIPYARDS-FOUND: each place standing, as an Overworld mark - its name over it, its kind the look's (`yard
      *  shipyard`, `yard lighthouse` - ui/travelViewHud.js yardGlyph: an anchor, a tower) and the Towns switch's. */
@@ -477,7 +599,7 @@ export function createPortHost({
     dispose() {
       for (const key of [...places.keys()]) takeDown(key);
       for (const m of meshes.values()) if (m) renderer?.destroyMesh?.(m);
-      meshes.clear(); artUp = false;
+      meshes.clear(); artAt = 0; artFrame = -1;
     },
   };
 }

@@ -5042,10 +5042,11 @@ export function createWorldModes(host) {
     return back;
   }
   /** SHIPYARDS (scenes/shipyardHost.js): WHAT A SHIP'S CABIN STILL HOLDS - the things in its chests (its loot
-   *  containers) and in the storage pieces placed in it (DECOR1c's `decorItems`), by her number. A shipyard buys no ship
-   *  while it holds any: what a sold room's chests hold goes with it (DECOR1e's law for a house), and a ship sold away
-   *  with a sea chest still full was the player's things lost. The owner's own things standing in it are not counted -
-   *  a sale hands them back (cabinSold). */
+   *  containers), in the storage pieces placed in it (DECOR1c's `decorItems`) and lying on its floor (a dropped pile's,
+   *  a dropped torch - AUDIT SHIPYARDS L6-2: the scene goes with her, so they were lost unasked), by her number. A
+   *  shipyard buys no ship while it holds any: what a sold room's chests hold goes with it (DECOR1e's law for a house),
+   *  and a ship sold away with a sea chest still full was the player's things lost. The owner's own things standing in
+   *  it are not counted - a sale hands them back (cabinSold). */
   function cabinHolds(uid) {
     const name = cabinSceneName(uid);
     const d = name ? sceneCache().scenes.get(name) : null;
@@ -5053,6 +5054,8 @@ export function createWorldModes(host) {
     let n = 0;
     for (const c of d.lootContainers ?? []) n += (c.items ?? []).length;
     for (const list of Object.values(d.decorItems ?? {})) n += (list ?? []).length;
+    for (const p of d.droppedPiles ?? []) n += (p?.items ?? []).length;
+    n += (d.droppedTorches ?? []).length;
     return n;
   }
   /** SHIPYARDS: A SOLD SHIP'S CABIN goes with her, as a sold house's room does (decorSold's law: the owner's own things

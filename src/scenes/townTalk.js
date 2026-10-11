@@ -63,7 +63,7 @@ import { REGION_RACES } from '../formats/mapsFile.js';
 import { ChoiceWindow } from '../ui/talkWindow.js';
 import { buildBuildingDirectory, questorCandidateBuildings, TOPIC_CATEGORIES, whereIsAnswer, reactionTier012, buildingHint } from '../systems/talkTopics.js';
 import { yardDirectoryRows } from '../systems/merchantYards.js';   // YARDS-FOUND: the town's yards in its directory
-import { portDirectoryRows, FOUND_KIND_ORDER, FOUND_TALK_GROUPS } from '../systems/portPlaces.js';   // SHIPYARDS-FOUND: and a port town's shipyard, crew hall, lighthouse and docks - the found places' one order
+import { portDirectoryRows, FOUND_KIND_ORDER, FOUND_TALK_GROUPS, lettersOnMap } from '../systems/portPlaces.js';   // SHIPYARDS-FOUND: and a port town's shipyard, crew hall, lighthouse and docks - the found places' one order
 import { LIST_ITEM_TYPE, QUESTION_TYPE } from '../systems/topicTree.js';   // TK-vi: the window's rows are the tree's ListItems; B6: the Work question type
 import { discoverBuilding } from '../systems/discovery.js';   // T4: %loc's mark side effect
 import { getNameBankOfRegion, fullName as nameHelperFullName, GENDERS } from '../characters/nameHelper.js';   // MACRO-6: %fn/%mn in the engine-less answer
@@ -1214,7 +1214,7 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
     // function the walk calls per macro, and a record with neither
     // never rolls.
     const hint = () => {
-      const h = buildingHint(rolls, false);
+      const h = buildingHint(rolls, !lettersOnMap(building.buildingKey));   // AUDIT SHIPYARDS L7-5: a found place no map letters takes the way there
       const text = randomVariant(h.textId, h.reveal ? '... Let me just mark %loc here on your map' : '%di of here')   // MAC-U: the no-data fallback is the table's phrase too
         .replaceAll('%loc', building.name).replaceAll('%di', a.direction);
       // RP1: the discovery key is the CURRENT region's. This read the

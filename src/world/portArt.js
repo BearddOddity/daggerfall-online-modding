@@ -278,32 +278,36 @@ export function portSignArt(place) {
   return img;
 }
 
+/** Each picture of the port's own and its painter, in record order - painted one at a time (scenes/portHost.js paints a
+ *  few a frame: the twenty-six at once were a frame's ~60 ms at the first port stood, AUDIT SHIPYARDS L5-5).
+ *  @type {ReadonlyArray<readonly [number, () => any]>} */
+export const PORT_PAINTERS = Object.freeze([
+  [PORT_REC.wood, () => yardWoodArt()],
+  [PORT_REC.plank, () => yardPlankArt()],
+  [PORT_REC.shingle, () => yardShingleArt()],
+  [PORT_REC.hay, () => yardHayArt()],
+  [PORT_REC.dirt, () => yardDirtArt()],
+  [PORT_REC.gravel, () => yardGravelArt()],
+  [PORT_REC.water, () => yardWaterArt()],
+  [PORT_REC.iron, () => yardIronArt()],
+  [PORT_REC.stone, () => portStoneArt()],
+  [PORT_REC.whitewash, () => portWhitewashArt()],
+  [PORT_REC.redband, () => portRedbandArt()],
+  [PORT_REC.slate, () => portSlateArt()],
+  [PORT_REC.glass, () => portGlassArt()],
+  [PORT_REC.window, () => portWindowArt()],
+  [PORT_REC.rope, () => portRopeArt()],
+  [PORT_REC.canvas, () => portCanvasArt()],
+  [PORT_REC.tar, () => portTarArt()],
+  [PORT_REC.copper, () => portCopperArt()],
+  [PORT_REC.sawdust, () => portSawdustArt()],
+  [PORT_REC.hull, () => portHullArt()],
+  [PORT_REC.cobble, () => portCobbleArt()],
+  [PORT_REC.door, () => portDoorArt()],
+  [PORT_REC.notices, () => portNoticesArt()],
+  [PORT_REC.brass, () => portBrassArt()],
+  [PORT_REC.signShips, () => portSignArt('shipyard')],
+  [PORT_REC.signCrew, () => portSignArt('crewhall')],
+]);
 /** Every picture the port's two wear, by record - what a host uploads under PORT_ARCHIVE before it draws. */
-export const portArt = () => [
-  [PORT_REC.wood, yardWoodArt()],
-  [PORT_REC.plank, yardPlankArt()],
-  [PORT_REC.shingle, yardShingleArt()],
-  [PORT_REC.hay, yardHayArt()],
-  [PORT_REC.dirt, yardDirtArt()],
-  [PORT_REC.gravel, yardGravelArt()],
-  [PORT_REC.water, yardWaterArt()],
-  [PORT_REC.iron, yardIronArt()],
-  [PORT_REC.stone, portStoneArt()],
-  [PORT_REC.whitewash, portWhitewashArt()],
-  [PORT_REC.redband, portRedbandArt()],
-  [PORT_REC.slate, portSlateArt()],
-  [PORT_REC.glass, portGlassArt()],
-  [PORT_REC.window, portWindowArt()],
-  [PORT_REC.rope, portRopeArt()],
-  [PORT_REC.canvas, portCanvasArt()],
-  [PORT_REC.tar, portTarArt()],
-  [PORT_REC.copper, portCopperArt()],
-  [PORT_REC.sawdust, portSawdustArt()],
-  [PORT_REC.hull, portHullArt()],
-  [PORT_REC.cobble, portCobbleArt()],
-  [PORT_REC.door, portDoorArt()],
-  [PORT_REC.notices, portNoticesArt()],
-  [PORT_REC.brass, portBrassArt()],
-  [PORT_REC.signShips, portSignArt('shipyard')],
-  [PORT_REC.signCrew, portSignArt('crewhall')],
-];
+export const portArt = () => PORT_PAINTERS.map(([rec, paint]) => [rec, paint()]);
