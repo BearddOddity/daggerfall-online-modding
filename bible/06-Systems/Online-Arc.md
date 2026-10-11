@@ -8570,7 +8570,7 @@ The full record is `06-Systems/Horse-Cart-And-Cargo.md`, section HCC-PARK, HCC-T
   as `{t:'park'}` and hands a joiner the whole list after the welcome as `{t:'parks'}` with each owner's verified
   name. It is bounded by `PARK_HZ_MAX` a socket, `PARK_CELL_MAX` a cell (stalest out) and `PARK_TTL_MS` (72 hours
   since the owner last said it). An owner registry (one durable object per owner, `parkRegistryRoom`) drops the
-  old cell's record when the team moves or is taken up, over internal paths the public worker never forwards; the
+  old cell's record when the team moves or is taken up (AUDIT SCALE II R3-8: in the layer the team was kept in, SCALE5d), over internal paths the public worker never forwards; the
   cell also drops its own superseded record, so a dev worker with no registry binding keeps no ghost.
 - **The client's two words.** `hccParkTick` sends the word off the SAVE record when it changes (at most once a
   second), again on a room change and once the cell's socket opens; `sendPark` routes it to the primary socket or
@@ -10548,7 +10548,9 @@ The fix, at both ends:
 - **The token** (`net/accountClient.js`, `net/online.js`): a token opens a room when a hello carries it there (the
   session says so, `minter.opened`), never at the mint - a late token is handed to its room's next socket. A failed mint
   holds the page's next one off MINT_COOL_MS, doubling to MINT_COOL_MAX_MS, jittered; every room asking meanwhile is
-  answered at once with the failure's word, and a refused room waits the hold out (`_afterMintHold`).
+  answered at once with the failure's word, and a refused room waits the hold out (`_afterMintHold`) (AUDIT SCALE II L4a: a `queue` answer -
+  ADMIT-LINE's line - holds the line's own `wait` (`lineHoldMs`, within ADMIT_WAIT_MIN_MS and ADMIT_WAIT_MAX_MS, a tenth
+  of jitter at most), never doubles, and is no failure in a row).
 - **The Watch** (`net/townSeatBook.js`): a failed claim waits SEAT_WATCH_RETRY_MS, doubling to the claim's own ten
   minutes; an answer lets the wait go.
 - **The service** (acct88): one isolate keeps the seats' witness rows SEAT_ROWS_KEPT_S for a player's list, a Watch

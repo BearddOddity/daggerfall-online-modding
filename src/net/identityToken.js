@@ -310,7 +310,7 @@ export function nameIsIssuable(name) {
  *      the rights read; a face drawing the badge leaves these out
  *   ar the account's arena rating this season, absent for a guest (ARENA4)
  *   cl the level of the character the client named at the mint, as the
- *      realm keeps it (server-account/src/realm.js realmLevelOf - INT7:
+ *      realm keeps it (server-account/src/realm.js realmMintFacts - INT7:
  *      the level its judge TRUSTS, `level_seen`, once a checkpoint was
  *      judged; the summary's `level` before), absent when it named none
  *      or from a service before ARENA4b; the relay's ladder vitality

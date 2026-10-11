@@ -46,7 +46,7 @@ async function stood(extra = {}) {
 }
 
 test('SCALE4d the mint runs on ONE D1 session opened first-primary - its first statement the session lookup, every claim read through it; AUDIT SCALE4d A1: the honours (a #1 counted again and STORED) on the binding (mutants: the route set emptied; the route left on the binding; the constraint first-unconstrained; the honours on the session)', async () => {
-  assert.deepEqual([...REPLICA_ROUTES], ['/v1/auth/token'], 'the token alone');
+  assert.equal(REPLICA_ROUTES.get('/v1/auth/token'), 'POST', 'the token\'s mint');   // PIN MOVED (SCALE4g): the token was alone - the reads a tab keeps asking joined it (test/scale4g.test.js)
   assert.equal(REPLICA_CONSTRAINT, 'first-primary');
   const { S, who, R } = await stood();
   const raw = S.env.DB;
@@ -59,7 +59,9 @@ test('SCALE4d the mint runs on ONE D1 session opened first-primary - its first s
   const [s] = raw._sessions;
   assert.equal(s.constraint, 'first-primary', 'its first statement the primary\'s');
   assert.match(s.statements[0], /FROM sessions s LEFT JOIN players p/, 'and that first statement is the session lookup');
-  assert.ok(s.statements.length >= 8, `a realm character's mint - the session, its arena, Renown, guild, three realm rows, rating and house - rides it (${s.statements.length})`);
+  // PIN MOVED (SCALE4f): a realm character's mint is five statements here - the session, Renown, the guild, its realm row
+  // (the four reads of it folded into one, realm.js realmMintFacts) and the rating; it was eight
+  assert.ok(s.statements.length >= 5, `a realm character's mint - the session, Renown, guild, its realm row and rating - rides it (${s.statements.length})`);
   // AUDIT SCALE4d A1: the arena's and Iliac Hand's honours - the one read-then-write a mint makes (a stale #1 counted
   // again and stored) - on the binding, and nothing else of the mint
   // (the board a #1 is counted over reads arena_pvp, as the token's own rating read does - that one is a claim read, and
@@ -76,12 +78,14 @@ test('SCALE4d every other route stays on the binding - no session opened (mutant
   raw._sessions.length = 0;
   // AUDIT SCALE4d D3: real routes, each answered 200 (two of these four were routes the service never served - a 404 opens
   // no session either, so they proved nothing)
-  for (const [path, body] of [['/v1/account/played', {}], ['/v1/heartbeat', { parts: { box: {} } }], ['/v1/renown/xp', { character: R.id, xp: 1 }]]) {
+  // PIN MOVED (SCALE4g): the heartbeat and the realm's list ride a session now (test/scale4g.test.js) - the beat's own
+  // route and Renown's, both writes, stay on the binding
+  for (const [path, body] of [['/v1/account/played', {}], ['/v1/renown/xp', { character: R.id, xp: 1 }]]) {
     const r = await S.call(path, body, who.secret);
     assert.equal(r.status, 200, `${path} answered (${JSON.stringify(r.body)})`);
   }
-  const list = await S.fetch('https://accounts.invalid/v1/realm', { method: 'GET', headers: { authorization: `Bearer ${who.secret}` } });
-  assert.equal(list.status, 200, 'the realm\'s list answered');
+  const lineages = await S.fetch('https://accounts.invalid/v1/realm/lineages', { method: 'POST', headers: { authorization: `Bearer ${who.secret}`, 'content-type': 'application/json' }, body: '{}' });
+  assert.equal(lineages.status, 200, 'the realm\'s lines answered');
   assert.equal(raw._sessions.length, 0, 'no session for any of them');
 });
 
@@ -110,9 +114,9 @@ test('SCALE4d a mint on a session is still a mint\'s statements on its metrics p
   assert.equal((await S.call('/v1/auth/token', { character: R.id, guild: true }, who.secret)).status, 200);
   const p = points.find((x) => x.indexes[0] === '/v1/auth/token');
   assert.ok(p, 'the mint wrote its point');
-  assert.ok(raw._sessions[0].statements.length >= 8);
+  assert.ok(raw._sessions[0].statements.length >= 5);   // PIN MOVED (SCALE4f): five, the realm row's four reads in one
   assert.equal(p.doubles[2], raw._sessions[0].statements.length + asked.length, 'every statement the session ran, counted - beside the honours\' on the binding (AUDIT SCALE4d A1)');
-  assert.ok(p.doubles[2] >= 8, `a realm character's mint (${p.doubles[2]})`);
+  assert.ok(p.doubles[2] >= 6, `a realm character's mint (${p.doubles[2]})`);
 });
 
 test('SCALE4d the session answers DB_ROOT with the binding it came from, through the counter too - what an isolate keeps beside its database stays one store; a binding with no sessions is answered as it stands (mutants: DB_ROOT the session; the fallback dropped)', () => {

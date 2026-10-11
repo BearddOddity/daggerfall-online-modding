@@ -1702,7 +1702,7 @@ CAMP-SIGHT, CAMP-TRAVEL, CAMP-NOTIMER, TTL1, WORLD1's "True persistance"); the d
   client's sea stands ride the same word as held, a ship sunk, taken or given the slip is spent through the same spend
   (said, and owed to the cell's ledger), no sea stands a raider a peer's word holds, and a journey slows for every
   hostile ship before the ring where she stops it (NAV-H's enemy nearby) - a raider ship counted as the ship.
-- **The cell keeps the Overworld's ledger (OW6L, the relay - world127; net/overworldLaw.js).** What stays true after the
+- **The cell keeps the Overworld's ledger (OW6L, the relay - world127; net/overworldLaw.js).** (AUDIT SCALE II R3-3 (c), SCALE5d: the cell's place alone - a layer's word is dropped, and a band killed there stands again for the layer's next joiner.) What stays true after the
   moment: a band or raider spent, and a spawned dungeon's clocks. TV7b's word reached three pixels, that minute - a band
   fought was back for whoever came later in its life - and the spawn ledger was each client's own (TTL1's own note: two
   players disagreed for days whether a spawn stood). Each CELL ROOM now keeps a ledger: the spent ids (their own life

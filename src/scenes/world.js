@@ -707,6 +707,8 @@ import { createDataPipeline } from './dataPipeline.js';
 import { createWorldModes } from './worldModes.js';
 import { setAmbientTextHost, tickAmbientText } from '../systems/ambientText.js';   // AT2: Ambient Text's one component - this host claims it and feeds it the frame
 import { OnlineSession, roomKeyFor, DEFAULT_SERVER, WORLD_PUBLISH_MS, WORLD_REPUBLISH_MS, FOES_MS, FOES_FULL_MS, FOES_STALE_MS, SHOWN_MOVE_HOLD_MS } from '../net/online.js';   // ONLINE1: the session; WORLD1: the room's memory; AUDIT 637 D7: the move hold, one law both ends
+import { pageWave } from '../net/reconnectWave.js';   // SCALE2c: a relay deploy's reconnect, spread by the hub's count
+import { quietFoesGate } from '../net/foesQuiet.js';   // SCALE2c: a full foes frame that says nothing, said once
 import { createSeatLock, SEAT_NOTICE, SEAT_MID_TEXT, PLAY_HERE_LABEL } from '../net/oneSeat.js';   // ONE-SEAT: one tab of a player online - the browser's arm, beside the hub's
 import { readAccount, buyInsignia, equipTitle, equipAura, adoptIdentity as adoptSessionIdentity } from '../net/accountClient.js';   // WB9g: the Broker's insignia - the account's wardrobe, its sale and its wearing, and my own screen's word of it
 import { ownAura } from '../systems/ownGlyphs.js';   // WB9g: the aura at my own feet - the service's last word, kept on the stored session
@@ -716,7 +718,7 @@ import { parseModCommand, runModCommand, mutedText, mutedNotices } from '../net/
 import { createHeartbeat, whileLive } from '../net/heartbeat.js';   // SCALE4c: the beat, the letterbox and the town's board in one request
 import { startPlayClock } from '../net/playClock.js';   // ACC4: time played, knocked from here and measured by the account service's clock
 import { renownKillXp, renownQuestXp, renownPartyXp, renownText } from '../net/renown.js';   // RENOWN1: what a kill and a quest are worth, and the party's bonus (RENOWN3: read against my Renown)
-import { createRenownTracker, setRenownKillHandler, renownFoeLevel, renownAnswer, renownFoeCarry, renownStruckAt } from '../net/renownTracker.js';   // RENOWN1: what this character earns online, carried to the account service
+import { createRenownTracker, setRenownKillHandler, renownFoeLevel, renownAnswer, renownFoeCarry, renownStruckAt, renownReportSoon } from '../net/renownTracker.js';   // RENOWN1: what this character earns online, carried to the account service
 import { setRenownLayer } from '../systems/renownLayer.js';   // RENOWN1: the level's health and magicka, on top of Daggerfall's while online
 import { createHallBook, hallFactionsOf, chapterFactionOf, parseHallCommand, hallAuditLines } from '../net/npcHallBook.js';   // CHAP2a: a town's guild halls, witnessed as I walk in; AUDIT CHAP2 E1: a developer's /hall
 import { createChapterSheet } from '../net/chapterSheet.js';   // CHAP3c: the chapter sheet, for the halls' prices and shelves
@@ -775,7 +777,7 @@ import { makeHitPend } from '../net/hitPend.js';   // AUDIT FOES FOE2: a blow th
 import { PeerBodies, peerIsWolf, BODY_BUILD_GATE } from '../net/peerBodies.js';   // MWBODY1: the others in the Morrowind body; WEREWOLF1: and in Bloodmoon's wolf
 import { ChatLog, CHAT_REJOIN_MS } from '../net/chat.js';   // CHAT1: the tabs and their lines
 import { oocText, localLineHeard, nextRegionRoom, regionJoinedText, CHAN_OLD_RELAY_TEXT, ROLL_OLD_RELAY_TEXT, EMOTE_OLD_RELAY_TEXT, GUILD_OLD_RELAY_TEXT, NO_GUILD_TEXT, SOLO_LOCAL_TEXT, partyNoteTab } from '../net/chat.js';   // CHAT-CHAN: the channels' own laws (a second chat import: CHAT1's pin holds the first as it stands)
-import { parseChatLine, HELP_LINES, CHAT_GREETING_TEXT, unknownCommandText, emptyCommandText, hostMisuseText, badRollText, expandShortcodes, EMOTE_LINES } from '../net/chatCommands.js';   // CHAT-CHAN: what a typed line IS; DICE1: and a roll; EMOTE1: an action, a gesture, a shortcode
+import { parseChatLine, HELP_LINES, CHAT_GREETING_TEXT, unknownCommandText, emptyCommandText, hostMisuseText, badRollText, expandShortcodes, EMOTE_LINES, foundText, FIND_OFFLINE_TEXT, FIND_RELAY_TEXT } from '../net/chatCommands.js';   // CHAT-CHAN: what a typed line IS; DICE1: and a roll; EMOTE1: an action, a gesture, a shortcode
 import { partyRosterSource, localRosterSource, guildRosterSource } from '../net/roster.js';   // CHAT-CHAN: the Party and Local tabs' composed lists
 import { partyCompassPoints } from '../ui/partyMapMarks.js';   // COMPASS-PARTY: the party's points on the compass
 import { SocialState, accountId, accountSecret } from '../net/social.js';   // SOC2: the friends and the party, as the hub says them; the account the hub's hello carries; SOC3: and the two colours a name wears in the DOM - my party's green, a friend's blue
@@ -944,6 +946,9 @@ import { privateInteriorPrefix, privateInteriorRoom, privateBoatRoom, privateInt
 const TEST_GODMODE = false;
 const isStaffT = (g) => TEST_GODMODE || isStaff(g);
 import { isStaff, parseStaffCommand, STAFF_HELP_LINES, findPlace } from '../net/staffCommands.js';   // STAFF1: the staff's own commands
+import { RELAY_CFG_KEYS, mayRelayCfg } from '../net/relayCfg.js';   // SCALE5b: the relay's settings, a developer's
+import { shardOf, isChannelBus, isChannelShard, channelOf, hubShardsSupported } from '../net/hubShards.js';
+import { cellOfRoom as layerCellOf, worldRoom as layerCellAt } from '../net/wire.js';   // SCALE5d: a crowded place's layer, my party's   // SCALE5c: the hub, sixteen ways; part two: a region's channel, four
 import { fieldFromNative, nativeFromField, fieldOfPixelLocal } from '../systems/weatherField.js';   // WEATHER2b: the field's metres from the streaming world's natives, and back
 import { cellOfField, VC_PROFILE } from '../render/volumetricClouds.js';   // WEATHER2c: the field's cells as the clouds' cells   // W1: the live weather state (the save halves ride save.js); SAV3: the classic import's zone array
 import { classicSaveToSnapshot, takePendingClassicSave, peekPendingClassicSave } from '../systems/classicSave.js';   // SAV3: the classic-save import arm
@@ -7571,6 +7576,23 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  event handlers that ask this are bound before it exists. */
   let staffTeleportClient = null, staffTeleportHeld = false;
   let _staffGlyphs = [];
+  // SCALE5c: A CHANNEL LINK'S ROOM - the hub's or a region's (part two): this account's own shard of it (net/hubShards.js
+  // shardOf, by the session's account, which the token's subject is) once a relay has said it keeps them; else the
+  // channel itself, which tells a link of this build its shard (`hub`) when it does. Remembered between pages, so a page
+  // joins its shard at once rather than by way of the bus. Any other room is itself.
+  // AUDIT SCALE II C-2: REMEMBERED PER RELAY - the relay's own address beside the key. One flag for every relay let a
+  // `?server=` visit to a staging relay with the shards send the next page on production to a shard production's relay
+  // refuses (and a rolled-back staging relay pull production's page off its shards)
+  const HUB_SHARDS_SEEN_KEY = 'dfjs.hubShards';
+  const hubShardsSeenKey = () => `${HUB_SHARDS_SEEN_KEY}@${online?.url ?? ''}`;
+  const channelLinkRoom = (room) => {
+    if (!isChannelBus(room)) return room;
+    let seen = null;
+    try { seen = appStorage()?.getItem?.(hubShardsSeenKey()) ?? null; } catch { seen = null; }
+    return seen === '1' ? (shardOf(room, storedSession(appStorage())?.id) ?? room) : room;
+  };
+  let relayCfgLink = null, relayCfgTab = null;   // SCALE5b: the hub's link a relay setting goes down, and the tab that asked
+  let findTab = null;   // SCALE5c: the tab a `/find` was typed in - the hub's answer lands there
   const gamePaused = () => staffTeleportHeld || townTalk.overlayActive || (modes?.overlayHeld ?? false);
   _dwOverlayUp = () => gamePaused();   // DW-E2: the Deep Waters runtime's IsPlayingGame, now that the slot exists - AUDIT DW-F: every stack over the frame (a building's or a dungeon's window too), as IsPlayingGame asks of every window
   preloadCharSheetArt({ renderer, fetchBytes, palette });   // U8a: INFO00I0 warms at boot
@@ -20328,6 +20350,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   // stream every changed one FOES_MS apart (every one FOES_FULL_MS apart, so a dropped delta heals); while another
   // hosts, my layout foes are puppets that follow the stream and my blows on them go to the host as hits.
   let _foesSentAt = -Infinity, _foesFullAt = -Infinity, _foesInAt = -Infinity;
+  const _foesQuiet = quietFoesGate();   // SCALE2c: what my cell last heard from me - a full frame that says nothing is said once (net/foesQuiet.js)
   let _ownSentAt = -Infinity, _ownFullAt = -Infinity;   // QUEST-PARTY phase 3b: the room's own lane (OWN1), on its own clocks
   let _duelRingSaid = null;   // DUEL1: the id of the ring my foes frame last said I stand in (null: none)
   /** DUEL1: THE RINGS OTHERS DUEL IN, off their foes frames (exteriorFoes.js setOnDuel) - peer id -> { rec, at }; drawn
@@ -20406,8 +20429,12 @@ export async function bootWorld(canvas, renderer, params, status) {
     const frame = cell ? ((modes?.mode ?? 'exterior') === 'exterior' ? exteriorFoes.foesFrame(full, _hccDirty || csaMoved || csaAboardMoved || bandMoved || navalMoved || seaRaidMoved) : null) : modes?.dungeonFoesFrame?.(full);
     if (!frame) return false;
     if (cell && full) frame.c = camps.wireRecords(campToWire); if (cell && (full || _hccDirty)) { frame.hv = hcc.wireRecord(campToWire); _hccDirty = false; } if (cell) duelRingWord(frame, full); if (cell) csaWord(frame, full); if (cell) csaAboardWord(frame, full); if (cell) bandWord(frame, full); if (cell) navalWord(frame, full); if (cell) seaRaidWord(frame, full); if (cell) { const rk = raidWireWord(); if (rk) frame.rk = rk; } if (cell) portalWord(frame, full); if (cell && frame.hv !== undefined) frame.wr = wagonRiders?.word() ?? null;   // HCC-ONLINE: my horse and wagon as shown (null: none stand) ride beside the camps - on every full frame, and on a moved word between them   // AUDIT SURV B: an empty list says "none stand" - the last camp packed reaches the peers   // SURV3: my camps ride my full frame - a shared world object in the cell's own way; RAID2: my word on the raids I run or fought - my share of their deaths, and my claim; PORTAL1: my portal, on every full frame while it stands and I stand near it; WAGONS1: my ask for a seat in another's wagon, or the seat I sit in - beside my team's word, on its clock (sent whenever `hv` is)
-    if (!online.sendFoes(frame)) { _foesFullAt = -Infinity; return false; }   // AUDIT WORLD2 A9: a refused frame's deltas were already committed - the next frame carries every foe
+    // SCALE2c: A FULL FRAME THAT SAYS NOTHING IS SAID ONCE (net/foesQuiet.js) - in a cell, after one that said the same
+    const said = { full, cell, room: online.room };
+    if (_foesQuiet.skip(frame, said)) { _foesFullAt = now; return false; }
+    if (!online.sendFoes(frame)) { _foesFullAt = -Infinity; _foesQuiet.sent(frame, said, false); return false; }   // AUDIT WORLD2 A9: a refused frame's deltas were already committed - the next frame carries every foe
     if (full) _foesFullAt = now;
+    _foesQuiet.sent(frame, said);
     return true;
   };
   /** QUEST-PARTY phase 3b/3c (Mac: "Dungeons and buildings"): MY OWN FOES IN A WORLD ROOM, on the room's own lane (OWN1)
@@ -20762,6 +20789,14 @@ export async function bootWorld(canvas, renderer, params, status) {
     const say = (line) => chatLog.push(tabId, { text: line, system: true });
     if ('error' in c) { say(c.error); return; }
     if (c.cmd === 'staff') { for (const line of STAFF_HELP_LINES) say(line); return; }
+    if (c.cmd === 'relay') {
+      // SCALE5b: a relay setting, to the hub (net/relayCfg.js) - the Developer's alone; the hub's answer lands in this tab
+      if (!mayRelayCfg(staffGlyphs())) { say('Only a developer may change the relay\'s settings.'); return; }
+      if (!c.k) { say(`Relay settings: ${RELAY_CFG_KEYS.join(', ')} - /relay <setting> <value>, or /relay <setting> - for the Worker's own.`); return; }
+      relayCfgTab = tabId;
+      if (!relayCfgLink?.sendRelayCfg({ k: c.k, v: c.v })) say('The relay\'s settings need the hub online, on a relay that takes them.');
+      return;
+    }
     if (c.cmd === 'god' || c.cmd === 'fly') {
       setStaffPowers({ [c.cmd]: c.on });
       say(`${c.cmd === 'god' ? 'God mode' : 'Flying'} ${c.on ? 'on' : 'off'}.`);
@@ -20813,27 +20848,45 @@ export async function bootWorld(canvas, renderer, params, status) {
   // gate and the Broker read theirs; this machine's own clock, minutes off, ended the page's hour before or after the
   // service's, so the sigils drank in an hour that paid nothing or starved in one that paid again
   const renownHour = () => Math.floor((Date.now() + _sharedOffsetMs) / 3_600_000);
+  // AUDIT SCALE II C-4: what is left of that hour - in its last minute a report goes at the minute's pace, so what is
+  // earned in it is credited by its own hour's window, not held into the next (renownReportSoon `hourLeftMs`)
+  const renownHourLeftMs = () => (renownHour() + 1) * 3_600_000 - (Date.now() + _sharedOffsetMs);
+  // AUDIT SCALE II C-3: the hour the report in flight was SENT in (the tracker sends one at a time) - a `capped` answer
+  // speaks of that hour, whenever it arrives
+  let _renownSentHour = null;
   let renownSaid = null;   // AUDIT RENOWN1 UI-5: the highest level the page has announced - a rise is said against this, never against renownNow
+  // SCALE4h: what the hour's bound still takes, as the last report's answer said it - with the hour and the total it was
+  // said at, so another hour, or a total another door moved (a raid's, a serpent's, a writ's, a siege's), is a room not
+  // known, and the next report goes at the minute's pace to learn it (net/renownTracker.js renownReportSoon)
+  let _renownRoom = null;
   const renownTracker = onlineOn ? createRenownTracker({
-    report: (c, xp, name, rid, region) => renownAccount.report(c, xp, name, rid, region),
+    report: (c, xp, name, rid, region) => { _renownSentHour = renownHour(); return renownAccount.report(c, xp, name, rid, region); },   // AUDIT SCALE II C-3: the hour it goes in
     leave: (c, xp, name, rid, region) => renownAccount.leave(c, xp, name, rid, region),   // AUDIT RENOWN1 GAME-8: the page's last word, finished by the browser
     character: () => characterIdOf(playerEntity),
     region: () => { const px = playerTravelPixel(); const r = maps.getRegionIndexAt(px.x, px.y); return Number.isSafeInteger(r) ? r : null; },   // SEAT1b: where the XP was earned - a pledged seat's region counts it (Seats-Arc 4.2)
     name: () => (typeof playerEntity?.name === 'string' ? playerEntity.name : null),
-    earning: () => !!online && !seatOut(),   // ONE-SEAT: a tab another took the seat from earns nothing - its character is not online
+    earning: () => !!online && !seatOut() && _renownCapHour !== renownHour(),   // ONE-SEAT: a tab another took the seat from earns nothing - its character is not online. SCALE4h: nor does an hour the bound has spent - the service credits nothing in it, the sigils drink nothing and the bar draws no ghost (each as the page last heard it), so it is no longer reported every minute to be credited nothing
     onAnswer: (data, sent) => {
       const a = renownAnswer(data, sent, renownSaid);   // AUDIT RENOWN1: one pure plan (net/renownTracker.js), pinned there
       renownXpAdopt(a.xp);   // RENOWN4: the track's total, for my bar
+      if (a.room !== null) _renownRoom = { room: a.room, hour: renownHour(), xp: renownXp };   // SCALE4h
       renownAdopt(a.level);
       if (a.order) online?.sendRenownOrder?.(a.order, a.level);   // the rooms I am in hear it now - and again until each answers
       if (a.announce !== null) { renownSaid = a.announce; townTalk.say(`Your Renown is now ${a.announce}.`); }
+      // AUDIT SCALE II C-3: THE CAP IS THE SENT HOUR'S. A report sent at 10:59:59.7 and answered capped at 11:00:00.3 spoke
+      // of hour 10 - stamped with the hour it ARRIVED in, it marked hour 11 spent, and `earning` then kept nothing for the
+      // whole of hour 11. A cap is kept only while the hour it was sent in is still the page's
       if (a.capped) {
         const hour = renownHour();
-        if (_renownCapHour !== hour) { _renownCapHour = hour; tradeSay('You have earned all the Renown XP one hour allows. Your fighting still counts toward your skills.'); }
+        if (_renownSentHour === hour && _renownCapHour !== hour) { _renownCapHour = hour; tradeSay('You have earned all the Renown XP one hour allows. Your fighting still counts toward your skills.'); }
       }
     },
     // AUDIT RENOWN1 UI-4: a refusal that ends reporting is SAID - the sentences were written and nothing ever showed them
     onStop: (error) => tradeSay(`${accountRefusalText(error)} This character is earning no Renown.`),
+    // SCALE4h: at the minute's pace only while the answer says what the page cannot - a rise, the hour's bound, a total or
+    // a room not known; else every RENOWN_COALESCE_MS, what waits drawn as the bar's ghost
+    soon: () => renownReportSoon({ xp: renownXp, pending: renownTracker?.pending() ?? 0, capped: _renownCapHour === renownHour(), hourLeftMs: renownHourLeftMs(),
+      room: _renownRoom && _renownRoom.hour === renownHour() && _renownRoom.xp === renownXp ? _renownRoom.room : null }),
   }) : null;
   // CHAP1 (bible/11-Multiplayer/Chapters-Arc.md 3; Mac: "Server-owned"): THE ROLL - online, this realm character's
   // standing with Daggerfall's guilds (the twenty-two guild factions and its memberships) is the account service's. Read
@@ -21021,6 +21074,8 @@ export async function bootWorld(canvas, renderer, params, status) {
       // can drive: `fetch` and the storage are arguments, the same law
       // net/accountClient.js's own header states.
       mintToken: identityMinter,
+      wave: pageWave,   // SCALE2c: the page's one view of a relay deploy's wave, shared with every chat link
+      wire2: true,   // SCALE5b: the second wire - this build reads a relay's batched poses and its channel's roster deltas
     });
     online.onArena = (w, room) => arenaOnline?.word(w, room);   // ARENA4: a relay's bout's words, to the bout on this screen
     // ONE-SEAT: the browser's arm - this tab goes online, so any other tab of this browser that is online gives its seat
@@ -21316,7 +21371,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     online.onHoldem = (f) => modes?.cardOnlineFrame?.({ ...f, at: performance.now() });   // CARDS5: the relay's card table, to the room's host - AUDIT CARDS-3 D1: on the cloth's clock (the session's own `now` is the epoch's)
     for (const tab of chatLog.tabs) {
       if (!tab.link) continue;   // CHAT-CHAN: the Party and Local tabs ride the hub's link and the presence session's room
-      const link = new OnlineSession({ url: online.url, name: online.name, look: online.look, id: online.id, secret: online.secret, presence: false });
+      const link = new OnlineSession({ url: online.url, name: online.name, look: online.look, id: online.id, secret: online.secret, presence: false, wave: pageWave, wire2: true });   // SCALE2c: the page's one wave; SCALE5b: the second wire
       link.onChat = (line) => (tab.room === SOCIAL_ROOM && (line.ch === 'party' || line.ch === 'guild') && receiveWaypointLine(line)) || chatLog.push(tab.room === SOCIAL_ROOM && (line.ch === 'party' || line.ch === 'guild') ? line.ch : tab.id, line);   // CHAT-CHAN: the hub's party lines to the Party tab - by the relay's own routing word, heard only on the hub; GUILD1c: and a guild's to the Guild tab; WAYPOINTS: a party's or a guild's waypoint line is the maps', never a line of chat
       link.onRoll = (line) => chatLog.push(tab.room === SOCIAL_ROOM && (line.ch === 'party' || line.ch === 'guild') ? line.ch : tab.id, line);   // DICE1: a roll lands where a line would
       // RED1: the SERVER's own line, and it lands on the log with the
@@ -21329,9 +21384,12 @@ export async function bootWorld(canvas, renderer, params, status) {
       link.onMuted = onMuted;
       link.onRelay = onRelayVersion;
       link.onGuildGone = guildGone;   // GUILD1c: a room took my guild off - the hub's word on a removal most of all
-      if (tab.room) link.join(tab.room);   // CHAT-CHAN: the Region tab's room waits for the region and the relay (chatRegionFrame)
+      if (tab.room) link.join(channelLinkRoom(tab.room));   // CHAT-CHAN: the Region tab's room waits for the region and the relay (chatRegionFrame); SCALE5c: the hub link its own shard
       chatLinks.set(tab.id, link);
       if (tab.room === SOCIAL_ROOM) {
+        relayCfgLink = link;   // SCALE5b: a relay setting goes down the hub's link, and its answer comes back to the tab that asked
+        link.onRelayCfg = (m) => chatLog.push(relayCfgTab ?? tab.id, { text: m.error ? `Relay: ${m.error}.` : `Relay: ${m.k} is now ${m.v === '' ? 'unset' : m.v}.`, system: true });
+        link.onFound = (f) => chatLog.push(findTab ?? tab.id, { text: foundText(f), system: true });   // SCALE5c: a search's answer, in the tab that asked
         staffTeleportClient?.cancel();
         const client = createStaffTeleportClient({ send: (m) => link.sendStaffTeleport(m), capture: staffDestination });
         staffTeleportClient = client;
@@ -21594,6 +21652,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         const note = (line) => chatLog.push(tabId, { text: line, system: true });
         if (cmd.kind === 'help') { for (const line of HELP_LINES) note(line); return 'read'; }
         if (cmd.kind === 'emotes') { for (const line of EMOTE_LINES) note(line); return 'read'; }
+        if (cmd.kind === 'find') { findTab = tabId; const hub = chatLinks?.get('world'); if (!hub?.sendFind(cmd.q)) note(hub?.welcomed && !hub.findOk ? FIND_RELAY_TEXT : FIND_OFFLINE_TEXT); return 'read'; }   // SCALE5c: everyone online, by name - the hub's answer comes back to this tab. AUDIT SCALE II C-1: a hub online on a relay before the shards answers no search, and is never asked one (it closes the link on it) - said as that, not as offline
         if (cmd.kind === 'me') return chatSend(tabId, cmd.text, tabId, { me: true });   // EMOTE1: an action, on this tab
         if (cmd.kind === 'emote') return chatSend('local', cmd.text, tabId, { me: true });   // EMOTE1: a gesture - the body's, so those near see it
         if (cmd.kind === 'unknown') { note(unknownCommandText(cmd.name)); return false; }
@@ -23551,7 +23610,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // the hall's socket: a presence-less session of my own id, minting its token as every link does
     makeHall: () => {
       if (!online?.url) return null;
-      const link = new OnlineSession({ url: online.url, name: online.name, look: online.look, id: online.id, secret: online.secret, presence: false });
+      const link = new OnlineSession({ url: online.url, name: online.name, look: online.look, id: online.id, secret: online.secret, presence: false, wave: pageWave, wire2: true });   // SCALE2c: the page's one wave; SCALE5b: the second wire
       link.mintToken = identityMinter;
       link.onRelay = onRelayVersion;
       link.onSuperseded = () => seatLostNow();
@@ -25222,6 +25281,19 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  session (resting or not) - `bk` and `rest` below. This host owns every party/online seam, so it reads INTO
    *  the other two hosts' own window stacks through the `restState` getter each now exposes (worldModes.js's
    *  interior, dungeonContext.js's own) rather than each of them learning to speak the wire itself. */
+  /** SCALE5d: THE LAYER MY PARTY STANDS IN at the cell `key` - my leader's, else any mate's, whose pose is in the open air
+   *  in that cell (wire.js validPartyPose `ly`) - asked first when I join it, so a crowd that overflows into layers keeps
+   *  a party together; 0 (the place itself) for anything else. The Worker walks on past a full one.
+   *  AUDIT SCALE II R3-4: IN THAT CELL, not within one of it. A layer is a number of ONE place's objects (`key#n`): a mate
+   *  in layer 3 of the next cell asked `key#3` of mine, an empty copy of it away from its whole crowd (in the place
+   *  itself) and from the mate (whose halo of my cell is the place itself) - and a reconnect asked it again. */
+  const partyLayerAt = (key) => {
+    const at = layerCellOf(key), party = social?.party;
+    if (!at || !party) return 0;
+    const near = (m) => m.acct !== social.acct && m.p?.in === 0 && Number.isInteger(m.p.ly) && (() => { const c = layerCellOf(layerCellAt(m.p.px, m.p.py)); return !!c && c[0] === at[0] && c[1] === at[1]; })();
+    const mate = party.members.find((m) => m.acct === party.leader && near(m)) ?? party.members.find(near);
+    return mate?.p.ly ?? 0;
+  };
   const composePartyPose = () => {
     const mode = modes?.mode ?? 'exterior';
     const px = playerTravelPixel();   // AUDIT SOC B18: read ONCE - this ran twice a second, and it used to read the pixel three times and compose a whole look (every equipped item) for three fields
@@ -25246,6 +25318,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     return {
       px: px.x, py: px.y,
       in: mode === 'dungeon' ? 1 : mode === 'interior' ? 2 : 0,
+      ...(online?.layer ? { ly: online.layer } : {}),   // SCALE5d: the layer of the place I stand in, so a mate who comes asks for it
       loc: ident?.kind === 'dungeon' ? (ident.name ?? '') : (loc?.name ?? ''),
       // AUDIT SOC B5: fatigue in the DIGITS a sheet shows (ui/charsheet.js: the stored pool is x FATIGUE_MULTIPLIER) - a
       // member's card said 3200/6400 where their own sheet said 50/100
@@ -27194,7 +27267,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   // chat line, including `ui/nameLayer.js`'s BUBBLE1 speech-bubble treatment over the sender's own character.
   // See `_partyRestVoteTrackTick`'s own doc comment (this file, above) for the replacement: every near
   // member's own client now watches the shared pose data and pushes its own local, bubble-free `chatNotice`.
-  const onRelayVersion = (v) => { _relayKeepsRite = relaySupportsRite(v); _relayKeepsCage = relaySupportsCage(v); if (relayVersionSeen(v) === 'changed') chatNotice(RELAY_RESTART_TEXT); };   // AUDIT BROKER-CAGE C4, C6: and whether it keeps the rite and the cage
+  // AUDIT SCALE II C-2: A RELAY THAT KEEPS NO SHARDS (rolled back, or one before them) refuses a shard's key at its door, so
+  // every channel link standing on one - a page that remembered the shards, or a link whose relay just went back - goes
+  // to its channel now, which keeps it, rather than waiting out two misses (or, before the miss read the socket's own
+  // word, for ever in a browser). A link its own shard has welcomed stays: its own relay keeps them
+  const channelLinksOffShards = () => { for (const link of chatLinks?.values?.() ?? []) if (isChannelShard(link.room) && !link.welcomed) link.join(channelOf(link.room)); };
+  // SCALE5c: and whether the relay keeps the hub's shards, remembered for the next page (`channelLinkRoom`) - AUDIT SCALE II
+  // C-2: under this relay's own key, and a relay without them takes the links off their shards
+  const onRelayVersion = (v) => { const keeps = hubShardsSupported(v); try { appStorage()?.setItem?.(hubShardsSeenKey(), keeps ? '1' : '0'); } catch { /* storage refused: the hub itself says it again */ } if (!keeps) channelLinksOffShards(); _relayKeepsRite = relaySupportsRite(v); _relayKeepsCage = relaySupportsCage(v); if (relayVersionSeen(v) === 'changed') chatNotice(RELAY_RESTART_TEXT); };   // AUDIT BROKER-CAGE C4, C6: and whether it keeps the rite and the cage
   // SRV-N: THE BUILD POLL. The relay moves by hand and rarely; the client
   // moves on every merge, which is what "whenever we push" actually is
   // for this project. Nothing tells a tab held open across a deploy that
@@ -27240,10 +27320,11 @@ export async function bootWorld(canvas, renderer, params, status) {
   const chatRosterOf = (tabId) => {
     const s = chatSessionOf(tabId);   // CHAT-FIT: the session the lines' badges are read off - one session answers both
     if (tabId === 'party') return partyRosterSource(social?.party, s, social?.acct ?? null);
-    if (tabId === 'guild') return guildRosterSource(s, myGuildTag());   // GUILD1c: the hub's peers wearing my guild's tag
+    if (tabId === 'guild') { s?.sendGuildWho?.(); return guildRosterSource(s, myGuildTag()); }   // GUILD1c: the hub's peers wearing my guild's tag; SCALE5c: and the guild on every other shard, asked while the tab is drawn (the session's own clock bounds it)
     if (tabId === 'local') return localRosterSource(s, openPeers(peersNear(), isPartyMate), player.feetAt());   // AUDIT (pre-merge) I-F: a concealed player is not listed near - the F key's law (INVIS-NET; CONCEAL-MATE: a mate is)
+    if (tabId === 'world' || tabId === 'region') s?.sendHubWho?.();   // SCALE5c: on a shard, everyone online asked of the bus while the channel is small (the session's own clock bounds it); part two: a region's too
     const place = chatLog?.tab(tabId)?.place ?? null;
-    return place && s ? { id: s.id, name: s.name, title: s.title, glyphs: s.glyphs, gt: s.gt, peers: s.peers, roomCount: s.roomCount, label: place } : s;   // GUILD1c: my own row wears my tag
+    return place && s ? { id: s.id, name: s.name, title: s.title, glyphs: s.glyphs, gt: s.gt, peers: s.peers, roomCount: s.roomCount, hubOnline: s.hubOnline, label: place } : s;   // GUILD1c: my own row wears my tag
   };
   /** CHAT-CHAN: the Party and Region tabs on a relay from before the channels - the World link's welcome said so. */
   const chanOld = () => { const world = chatLinks?.get('world'); return world?.status === 'open' && !world.chanOk; };
@@ -27320,7 +27401,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (!room) return;
     const place = maps.getRegionName(index) || 'this region';
     chatLog.setRoom('region', room, place);
-    link.join(room);
+    link.join(channelLinkRoom(room));   // SCALE5c part two: the region's shard of this account's
     chatLog.push('region', { text: regionJoinedText(place), system: true });
   };
   /** TV3: my mark, when it is due - on the Region tab's own link, through a relay that knows the frame. */
@@ -27338,7 +27419,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // WILD1: in or near the open zone my mark is for my guild alone - a player with none sends none (my party has its own
     // poses), and the maps of everyone else hide one they hear anyway (wildHidesPlayer)
     const wildHidden = outdoors && !myGuildTag() && wildAtWire(campToWire(player.feetAt()), true);
-    const shown = outdoors && isEnhanced() && getPref('showToTravellers') !== false && link.room === chatRegionRoom(_questRegionIndex()) && !concealBits(playerEntity);
+    const shown = outdoors && isEnhanced() && getPref('showToTravellers') !== false && channelOf(link.room) === chatRegionRoom(_questRegionIndex()) && !concealBits(playerEntity);   // SCALE5c part two: the region's channel, on whichever of its shards
     const n = shown && !wildHidden ? state.worldCoords(player.pos) : null;
     // OWS1: at a helm or aboard, the region sees a ship, headed as its bow (a changed way is sent at once - travellerDue)
     const ship = n ? csaBoatUnderMe() : null;
@@ -27900,7 +27981,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     for (const [tabId, link] of chatLinks ?? []) {
       const room = chatLog?.tab(tabId)?.room ?? null;
       link.resume({ claim: room === SOCIAL_ROOM });
-      if (room) link.join(room);
+      if (room) link.join(channelLinkRoom(room));   // SCALE5c: a channel's link to its own shard
     }
     seatLock?.claim();
   };
@@ -28094,7 +28175,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // AUDIT WORLD2 C8: a world room's edge is never a churn - the hold delayed every handover and let one dungeon's stream land in another
     // AUDIT WORLD6b-iii(b) B1/B8: a cell crossing is joined the moment the cell is HELD (the halo's socket promotes in
     // place - the hold bought nothing but a 500 ms strip with no socket in the cell I stood in); otherwise the hold
-    else if (key !== online.room) { if (!online.room || isWorldRoom(key) || isWorldRoom(online.room) || (isCellRoom(key) && online.inRoom(key)) || now - _onlineKeySince >= ROOM_HOLD_MS) { online.setLook(composeLook(playerEntity)); online.join(key, { ...pose, ...arm }); } }   // the look re-composed: the next room's hello carries the gear worn now (PROFILE2: through setLook, so a halo the join PROMOTES - no hello of its own - is told too)
+    else if (key !== online.room) { if (!online.room || isWorldRoom(key) || isWorldRoom(online.room) || (isCellRoom(key) && online.inRoom(key)) || now - _onlineKeySince >= ROOM_HOLD_MS) { online.setLook(composeLook(playerEntity)); online.layerHint = partyLayerAt(key); online.join(key, { ...pose, ...arm }); } }   // the look re-composed: the next room's hello carries the gear worn now (PROFILE2: through setLook, so a halo the join PROMOTES - no hello of its own - is told too)
     else online.sendPose({ ...pose, ...arm, ...poseFx() });   // PEERFX1: and my landed blows and the blows I took
     siegeSession?.tick();   // SEAT2a part four: the battle's pass, its `in`, its HUD, its window
     if (siegeNpcs) { if (inSiegeRoom()) siegeNpcs.frame(siegeSession.npcs(), battleNowMs()); else siegeNpcs.leave(); }   // SEAT2b part two (c): the relay's own fighters, in its room alone
