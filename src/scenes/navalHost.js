@@ -73,6 +73,7 @@ import { mulberry32 } from '../combat/bloodArt.js';
 import { orientedBox, arcPoints, flatUnit, NAVAL_DEG, rangeAt, segmentBoxEntry, shotPosition, landing } from '../systems/naval/navalBallistics.js';
 import { lawOf, createNotoriety, crownRegion, notorietyLevel, WITNESS_RANGE, KNIGHTLY_FACTION, TEMPLE_FACTION } from '../systems/naval/navalLaw.js';
 import { standingFor } from '../systems/naval/captainLedger.js';   // CAPT-MARQUE: a rival's regard lost to a letter's prize
+import { KNOW, falseFlagOf, glassReach, knowledgeOf, glassHolds, glassCard, coloursWords, unknownName, hullWord, GLASS_ZOOM, GLASS_ZOOM_MIN, GLASS_ZOOM_MAX, GLASS_STUDY_S, GLASS_STUDY_NEAR_S } from '../systems/naval/shipKnowledge.js';   // SPYGLASS: what I know of a ship, and the glass
 import { drawHold, flotsamKeys, choiceEffect, choiceOffer, holdTier, CHOICES, prizeDeedValue, SALVAGE_LOT, isSalvage, salvageOf } from '../systems/naval/navalPlunder.js';
 import { mintStores } from '../systems/naval/navalStores.js';   // SALVAGE: a wreck's stores, minted as the yard's are
 import { mintDeed } from '../systems/comeSailAwayItems.js';   // SHIP-CLAIM: a claimed prize's deed, the shelf's own mint
@@ -227,6 +228,8 @@ export const NAVAL_TAG_RANGE = 700;
 export const NAVAL_TAG_NEAR = 25;
 export const NAVAL_TAG_MAX = 8;
 export const TAG_LIFT = 2.5;
+/** SPYGLASS: the glass is held on a ship this far over her waterline (m) - her hull's middle, not the sea at her foot. */
+export const GLASS_AIM_LIFT = 3;
 export const SAIL_HO_RANGE = 900;
 export const SAIL_HO_GAP_S = 8;
 export const SAIL_HO_CHECK_S = 0.5;
@@ -964,7 +967,7 @@ export function createNavalHost(deps) {
     const struck = (entry.strays.get(by) ?? 0) + Math.max(0, hurt.hull ?? 0);
     entry.strays.set(by, struck);
     if (struck > ALLY_STRAY_SHARE * s.damage.maxHull) return false;
-    if (by === myId() && !entry.straySaid) { entry.straySaid = true; deps.say?.(`Check your fire! ${nameOf(entry)} fights on your side.`, 4); }
+    if (by === myId() && !entry.straySaid) { entry.straySaid = true; deps.say?.(`Check your fire! ${calledName(entry)} fights on your side.`, 4); }
     return true;
   }
 
@@ -1048,6 +1051,133 @@ export function createNavalHost(deps) {
     return entries.some((x) => x && (x.ship.target === myId() || dist2d(x.ship.pos, feet) <= NEWS_RANGE));
   }
   const nameOf = (e) => e.ship.names?.name ?? withArticle(classLine(e.ship.cls, e.ship.names?.crown));
+
+  // ── SPYGLASS (2026-10-11, the owner: "Removing observable names from ships and instead implementing a spyglass option
+  // where you can aim and view to observe other ships, their allegiance, cargo, etc."): WHAT I KNOW OF EACH SHIP
+  // (systems/naval/shipKnowledge.js) - her hull at any range; her colours and name by the naked eye close, a Lookout's
+  // call, the glass held on her, or her own acts; her guns, hands and hold through the glass close, or once she strikes.
+  // Kept on her entry while she is in my sea; never on the wire (each player's own eye).
+  let glassUp = false, glassZoom = GLASS_ZOOM, glassOn = null, glassHeld = 0;
+  /** Her false colours, off her seed and temper (a raider's and a hand-launched foe's none: `plain`). */
+  const falseFlagFor = (e) => falseFlagOf(e.ship.cls, e.ship.seed, e.ship.temper, { plain: !!e.plain });
+  /** What I know of her - KNOW's. */
+  const knownOf = (e) => e?.known ?? KNOW.hull;
+  /** Whether her false colours still hold for me: not yet seen through by the glass, no black flag run up. */
+  const disguisedOf = (e) => !e.blackFlag && knownOf(e) < KNOW.studied && !!falseFlagFor(e);
+  /** Her name as I may say it on her tag and card: an unknown hull's ("Unknown galleon"), a merchantman's under false
+   *  colours, else her own (her class's line, a ship with none). */
+  function shownName(e) {
+    if (knownOf(e) < KNOW.colours) return unknownName(e.ship.hull);
+    if (disguisedOf(e)) return `A merchantman of ${falseFlagFor(e)}`;
+    return e.ship.names?.name ?? classLine(e.ship.cls, e.ship.names?.crown);
+  }
+  /** Her line as I may say it: her hull's word unknown, a merchantman's under false colours, else her class's. */
+  function shownLine(e) {
+    if (knownOf(e) < KNOW.colours) return hullWord(e.ship.hull).replace(/^./, (c) => c.toUpperCase());
+    if (disguisedOf(e)) return 'Merchantman';
+    return classLine(e.ship.cls, e.ship.names?.crown);
+  }
+  /** Her name as my crew cries it: an unknown hull by her kind ("A galleon"), else as her tag says it. */
+  const calledName = (e) => (knownOf(e) < KNOW.colours ? withArticle(hullWord(e.ship.hull)) : disguisedOf(e) ? shownName(e) : nameOf(e));
+  /** SPYGLASS: my deck's eye - the boat I sail, her Lookout's worth (`sight`) and whether one stands at her bow. */
+  function deckEye() {
+    const deck = boatInPlay();
+    const st = deck ? myBoatState(deck) : null;
+    return { deck, sight: st?.worth?.sight ?? 1, lookout: !!deck?.crewed && !!st?.worth?.posts?.Lookout };
+  }
+  /** Whether her guns are out: she engages or closes to board - anyone (a pirate's black flag goes up for any prey). */
+  const engagedOf = (s) => s.damage.state === SHIP_STATES.afloat && (s.mode === 'engage' || s.mode === 'board');
+  /** SPYGLASS: what a frame teaches me of each ship - the eye, my Lookout, the glass held on her, her acts - and the
+   *  words a lesson says: my Lookout's call of her colours, false colours seen through, a black flag run up. */
+  function knowStep() {
+    const eye = deps.look?.()?.origin ?? deps.feet();
+    const { deck, sight, lookout } = deckEye();
+    const night = !!where().night;
+    const me = meContact(), law = { notoriety: (c) => notoriety.get(c), now: clock };
+    for (const e of sea.values()) {
+      if (!e.boat) continue;
+      const s = e.ship;
+      const dist = dist2d(s.pos, eye);
+      const reach = glassReach({ night, lit: showsLight(e), sight, lookout });
+      const engaged = engagedOf(s);
+      // her guns out on me - run out at my side, or her flashes - tell her colours at any range; a crown's ship come to my
+      // aid hails me with hers
+      const gunsOut = s.runOut.size > 0 || gunfire.some((g) => g.by === e.id && clock - g.at <= GUNS_SEEN_S);
+      const revealed = (engaged && gunsOut && hostile(s, me, law)) || !!e.relief;
+      const was = knownOf(e);
+      const held = glassUp && glassOn === e.id ? glassHeld : 0;
+      const struck = s.damage.state !== SHIP_STATES.afloat || !!s.boarded || !!e.prize;
+      e.known = knowledgeOf(was, { dist, reach, held, revealed, struck });
+      const ff = engaged && !e.blackFlag ? falseFlagFor(e) : null;
+      if (ff) {
+        // her false colours struck and the black flag run up as she goes for her prey - said where her flag is seen: by
+        // the eye, my Lookout, or the glass on her
+        e.blackFlag = true;
+        if (held > 0 || dist <= Math.max(reach.eye, reach.lookout)) deps.say?.(was >= KNOW.colours ? `False colours! The merchantman of ${ff} runs up the black flag!` : `${withArticle(hullWord(s.hull))} runs up the black flag!`, 4);
+      }
+      if (was >= e.known) continue;
+      if (was < KNOW.colours && !held && lookout && dist > reach.eye && dist <= reach.lookout) {
+        // my Lookout calls her colours from the bow (her false ones, while they hold)
+        const colours = disguisedOf(e) ? coloursWords('merchant', falseFlagFor(e)) : coloursWords(s.cls.faction, s.flag);
+        deps.say?.(`Lookout: ${withArticle(hullWord(s.hull))} flying ${colours}!`, 3);
+        hailCalls.set(deck, `She flies ${colours}!`);   // from the bow (a Lookout stands only on a crewed deck)
+      }
+      if (e.known >= KNOW.studied && !e.blackFlag && !e.seenThrough && falseFlagFor(e)) {
+        e.seenThrough = true;   // seen through: her colours are a lie - a pirate to me from now, whatever she flies
+        deps.mid?.(`False colours! ${s.names?.name ?? 'She'} is a pirate.`, 4);
+      }
+    }
+  }
+  /**
+   * SPYGLASS: the glass's frame - raised (`up`), its magnification (`zoom`, the wheel's), the look it is held along. The
+   * ship it holds (glassHolds: her hull's length or the reticle's width, the nearest to its centre) is studied while held
+   * - a ship the glass leaves is begun afresh. Answers the glass card (shipKnowledge.js glassCard) or null.
+   */
+  function glass(dt, { up = false, zoom = GLASS_ZOOM } = {}) {
+    glassUp = !!up && enabled;
+    glassZoom = clamp(Number(zoom) || GLASS_ZOOM, GLASS_ZOOM_MIN, GLASS_ZOOM_MAX);
+    if (!glassUp) { glassOn = null; glassHeld = 0; return null; }
+    const look = deps.look?.();
+    if (!look) return null;
+    const len = Math.hypot(look.dir[0], look.dir[1], look.dir[2]) || 1;
+    const d = [look.dir[0] / len, look.dir[1] / len, look.dir[2] / len];
+    let best = null, bestA = Infinity;
+    for (const e of sea.values()) {
+      if (!e.boat || e.ship.damage.state === SHIP_STATES.sunk) continue;
+      const p = e.ship.pos;
+      const to = [p[0] - look.origin[0], p[1] + GLASS_AIM_LIFT - look.origin[1], p[2] - look.origin[2]];
+      const dist = Math.hypot(to[0], to[1], to[2]);
+      if (dist < 1) continue;
+      const a = Math.acos(clamp((to[0] * d[0] + to[1] * d[1] + to[2] * d[2]) / dist, -1, 1));
+      const b = hullBuild(e.ship.hull);
+      if (!glassHolds(a, dist, (b.bowZ - b.aftZ) / 2, glassZoom)) continue;
+      if (a < bestA) { bestA = a; best = e; }
+    }
+    if ((best?.id ?? null) !== glassOn) { glassOn = best?.id ?? null; glassHeld = 0; }
+    if (!best) return null;
+    glassHeld += Math.max(0, dt);
+    return glassCardOf(best);
+  }
+  /** SPYGLASS: the glass card of a ship as I know her now. */
+  function glassCardOf(e) {
+    const s = e.ship;
+    const dist = dist2d(s.pos, deps.look?.()?.origin ?? deps.feet());
+    const stance = stanceOf(s);
+    const engaged = stance.hostile && engagedOf(s);
+    const v = velocityOf(s);
+    const known = knownOf(e);
+    const { sight, lookout } = deckEye();
+    const reach = glassReach({ night: !!where().night, lit: showsLight(e), sight, lookout });
+    // the study under way: her colours within the glass's far reach, the rest within its near - past it, how close
+    const [needS, needM] = known < KNOW.colours ? [GLASS_STUDY_S, reach.far] : [GLASS_STUDY_NEAR_S, reach.near];
+    const short = known < KNOW.studied && dist > needM;
+    return glassCard({
+      hull: s.hull, name: s.names?.name ?? classLine(s.cls, s.names?.crown), classLine: classLine(s.cls, s.names?.crown), faction: s.cls.faction,
+      flag: s.flag, falseFlag: e.blackFlag ? null : falseFlagFor(e), temper: s.temper, mode: s.mode, hostile: engaged, friendly: stance.friendly, bound: boundOf(e),
+      distance: dist, speed: Math.hypot(v[0], v[2]), crew: s.damage.crew, hullShare: s.damage.hullShare(), sailShare: s.damage.maxSail > 0 ? s.damage.sailShare() : null,
+      fire: s.damage.fire > 0, cargo: s.cls.cargo, bounty: deps.bountyOf?.(e) ?? null, lore: deps.loreOf?.(e) ?? null,
+    }, known, { study: short ? 0 : Math.min(1, glassHeld / needS), within: short ? needM : null });
+  }
   /** The volleys heard at sea, HEAR_S each (navalAI.js heardGuns) - the newest GUNFIRE_KEEP. */
   let gunfire = [];
   /** AUDIT WK-N1: who a report shows by its flashes - the shooter as the captains' contacts name her: mine by my own id,
@@ -1068,7 +1198,7 @@ export function createNavalHost(deps) {
     if (prize.owner || prize.takenBy || prize.ship.damage.state !== SHIP_STATES.struck || boarding?.shipId === prize.id) return;
     victor.ship.lashed = { id: prize.id, until: clock + PRIZE_TAKE_S };
     prize.takenBy = victor.id;
-    if (newsworthy(victor, prize)) deps.say?.(`${nameOf(victor)} grapples ${nameOf(prize)}!`, 3);
+    if (newsworthy(victor, prize)) deps.say?.(`${calledName(victor)} grapples ${calledName(prize)}!`, 3);
   }
   /** A victor cast off her prize - under fire, or the prize gone from under her; the prize is anyone's again. */
   function unlashPrize(victor) {
@@ -1093,7 +1223,7 @@ export function createNavalHost(deps) {
       p.ship.damage.apply({ hull: 0, sail: 0, crew: 0, fire: true }, clock);   // her torch burns on as she goes (navalDamage.js step)
       igniteShip(p);
       sound(NAVAL_CLASSIC.bubbles, p.ship.pos, 1);
-      if (newsworthy(v, p)) deps.say?.(`${nameOf(v)} takes ${nameOf(p)} and puts her to the torch!`, 4);
+      if (newsworthy(v, p)) deps.say?.(`${calledName(v)} takes ${calledName(p)} and puts her to the torch!`, 4);
     }
   }
 
@@ -1587,12 +1717,13 @@ export function createNavalHost(deps) {
     // (the flag's emitter stops: they come down), the captor's once she is taken (the player's boats' own orange -
     // FlagMaterial's), and gone down with her (a flag flown on from a masthead under the sea showed through it); she
     // had flown her faction's whatever she was
-    const colours = state === SHIP_STATES.afloat ? 'hers' : state === SHIP_STATES.prize ? 'taken' : 'struck';
+    // SPYGLASS: a pirate under false colours flies a merchantman's pennant till she runs up the black flag
+    const colours = state === SHIP_STATES.afloat ? (falseFlagFor(e) && !e.blackFlag ? 'false' : 'hers') : state === SHIP_STATES.prize ? 'taken' : 'struck';
     if (b.FlagEmitter && e.colours !== colours) {
       e.colours = colours;
       if (colours === 'struck') b.FlagEmitter.stop?.();
       else {
-        b.flagColor = colours === 'hers' ? NAVAL_FACTIONS[s.cls?.faction]?.flag ?? null : null;
+        b.flagColor = colours === 'hers' ? NAVAL_FACTIONS[s.cls?.faction]?.flag ?? null : colours === 'false' ? NAVAL_FACTIONS.merchant.flag : null;
         if (!b.FlagEmitter.isEmitting) b.FlagEmitter.play?.();
       }
     }
@@ -3398,6 +3529,7 @@ export function createNavalHost(deps) {
     const eye = deps.look?.()?.origin ?? deps.feet();   // AUDIT NAV1 (#17): her rigging's life by her range from it
     for (const e of [...sea.values()]) fadeStep(e, total);   // SHIP-FADE
     for (const e of sea.values()) poseShip(e, total, seaY, eye);
+    knowStep();   // SPYGLASS: what this frame teaches me of each ship
     if (clock - lastHailCheck >= SAIL_HO_CHECK_S) { lastHailCheck = clock; hailSails(boat); }   // AUDIT NAV1 (#14)
     // the ram and the aim, on the hulls as this frame stands them (AUDIT NAV1: both read the last frame's, a ship's way
     // behind - my stem where it is, her planking where it was)
@@ -3845,7 +3977,7 @@ export function createNavalHost(deps) {
       // is not one - they may fall silent) or she is where they were; a crown's ship that takes on a pirate fighting me
       // says so, once
       if (e.relief && s.course && ((s.mode !== 'cruise' && s.mode !== 'answer') || dist2d(s.pos, [s.course[0], 0, s.course[1]]) <= RELIEF_REACHED_M)) s.course = null;
-      if (!e.aidSaid && s.cls.faction === 'navy' && s.mode === 'engage' && sea.get(s.target)?.ship.target === myId()) { e.aidSaid = true; deps.say?.(`${nameOf(e)} comes to your aid!`, 4); }
+      if (!e.aidSaid && s.cls.faction === 'navy' && s.mode === 'engage' && sea.get(s.target)?.ship.target === myId()) { e.aidSaid = true; deps.say?.(`${calledName(e)} comes to your aid!`, 4); }
       const change = s.damage.step(d, clock);
       if (change) stateChanged(e, was, change, e.fireBy ?? null);   // AUDIT NAV1 (B4): her fires' own, announced and charged
       for (const side of out.runOuts) runOutTell(e, side);
@@ -4250,7 +4382,7 @@ export function createNavalHost(deps) {
     const eye = deps.look?.()?.origin ?? deps.feet();
     const near = [];
     for (const e of sea.values()) {
-      if (!e.boat || e.ship.damage.state === SHIP_STATES.sunk) continue;
+      if (!e.boat || e.ship.damage.state === SHIP_STATES.sunk || knownOf(e) < KNOW.colours) continue;   // SPYGLASS: an unknown hull wears no tag
       const d = dist2d(e.ship.pos, eye);
       if (d <= NAVAL_TAG_RANGE && d >= NAVAL_TAG_NEAR) near.push({ e, d });
     }
@@ -4260,9 +4392,10 @@ export function createNavalHost(deps) {
       const s = e.ship;
       const root = e.boat.GameObject.position;
       const stance = stanceOf(s, me, law);
+      const hid = disguisedOf(e);   // SPYGLASS: her false colours, read as they fly - a merchantman's friendly bar
       return {
-        id: e.id, name: s.names?.name ?? classLine(s.cls, s.names?.crown), faction: s.cls.faction,
-        hostile: stance.hostile, friendly: stance.friendly, line: classLine(s.cls, s.names?.crown), bound: boundOf(e), hull: s.damage.hullShare(), state: s.damage.state,
+        id: e.id, name: shownName(e), faction: hid ? 'merchant' : s.cls.faction,
+        hostile: !hid && stance.hostile, friendly: hid || stance.friendly, line: shownLine(e), bound: hid ? '' : boundOf(e), hull: s.damage.hullShare(), state: s.damage.state,
         boarded: !!s.boarded, target: e.id === lastCardId, distance: Math.round(d), point: [root[0], root[1] + mastTop(e) + TAG_LIFT, root[2]],
         fade: e.fade ?? 1,   // SHIP-FADE: her tag comes and goes with her
       };
@@ -4283,6 +4416,7 @@ export function createNavalHost(deps) {
     for (const e of sea.values()) {
       const s = e.ship;
       if (s.damage.state !== SHIP_STATES.afloat || s.boarded || !hostile(s, me, law)) { e.hailed = false; continue; }
+      if (disguisedOf(e)) continue;   // SPYGLASS: under false colours she is a merchantman to my lookout - till her black flag
       const d = dist2d(s.pos, from);
       if (e.hailed || d > nightSight(SAIL_HO_RANGE * sight, { night, lit: showsLight(e) })) continue;   // AUDIT WK-N6: her flashes too
       if (d < bestD) { bestD = d; best = e; }
@@ -4292,7 +4426,7 @@ export function createNavalHost(deps) {
     lastHail = clock;
     const s = best.ship;
     const bears = boat ? ` ${bearingWords(bearingOf([s.pos[0] - from[0], 0, s.pos[2] - from[2]], boat.GameObject.rotation))}` : '';
-    const cry = `Sail ho! ${withArticle(classLine(s.cls, s.names?.crown))}${bears}!`;
+    const cry = `Sail ho! ${knownOf(best) >= KNOW.colours ? withArticle(classLine(s.cls, s.names?.crown)) : withArticle(hullWord(s.hull))}${bears}!`;   // SPYGLASS: an unknown hull by her kind
     deps.say?.(cry, 3);
     const deck = boatInPlay();
     if (deck?.crewed) hailCalls.set(deck, `Sail ho!${bears ? ` ${bears.charAt(1).toUpperCase()}${bears.slice(2)}!` : ''}`);   // SHIP-WATCH: the lookout cries it from the bow
@@ -4397,11 +4531,15 @@ export function createNavalHost(deps) {
   /** A ship's card, its distance from `from`. */
   function targetCardOf(e, from) {
     const s = e.ship;
+    // SPYGLASS: as I know her - an unknown hull her kind and nothing of her stance; false colours a merchantman's; her
+    // captain's name once she is studied
+    const known = knownOf(e), hid = disguisedOf(e);
+    const stance = known < KNOW.colours ? { hostile: false, friendly: false } : hid ? { hostile: false, friendly: true } : stanceOf(s);
     return {
-      id: e.id, name: s.names?.name ?? 'A ship', captain: s.names?.captain ?? null, classLine: classLine(s.cls, s.names?.crown), faction: s.cls.faction,
+      id: e.id, name: shownName(e), captain: known >= KNOW.studied ? s.names?.captain ?? null : null, classLine: shownLine(e), faction: known < KNOW.colours ? 'unknown' : hid ? 'merchant' : s.cls.faction,
       hull: s.damage.hullShare(), sail: s.damage.maxSail > 0 ? s.damage.sailShare() : null, state: s.damage.state, boarded: !!s.boarded,
       distance: Math.round(dist2d(s.pos, from)),
-      ...stanceOf(s), bound: boundOf(e),   // SEA-PEACE: sized up as I stand; SHIP-STANCE: as her tag - a struck ship neither; SHIP-TAGS
+      ...stance, bound: known < KNOW.colours || hid ? '' : boundOf(e),   // SEA-PEACE: sized up as I stand; SHIP-STANCE: as her tag - a struck ship neither; SHIP-TAGS
     };
   }
 
@@ -4592,6 +4730,10 @@ export function createNavalHost(deps) {
     frame, attackInput, cancelAim, holdFire, activate, hudModel, drawFrame, lights, offsetAll, clear, stowPlunder, aimEye, wayScale, sailRefused, brake, postsWay,
     /** CAPT-LOG: a crown's notoriety against me in its waters (the Captain page's - a hunted captain keeps no favours). */
     notorietyOf: (crown) => notoriety.get(crown),
+    /** SPYGLASS: the glass's frame (raised or not, its magnification) - the card of the ship it holds, or null. */
+    glass,
+    /** SPYGLASS: whether the glass is up (the world's view narrows to it). */
+    get glassUp() { return glassUp; },
     /** GALLEON: a galleon's gun deck as this frame stood it (her sides laid, her guns' places, her shutters) - a probe's reading. */
     gunDeckOf: (boat) => galleonGuns.read(boat, clock),
     fleetStatus, repairAway, refitBoat, openYard, freeBerth, crewHands, assignRole,   // HOLDINGS: the Fleet page's (scenes/fleetHost.js) - with giveOrder and hostileNear, below
@@ -4826,11 +4968,13 @@ export function createNavalHost(deps) {
       const pos = [f[0] + Math.sin(bearing) * range, deps.seaY(), f[2] + Math.cos(bearing) * range];
       const e = launch({ seed: u32(), classId, variant: 0, pos, yaw: yaw ?? bearing + Math.PI });
       if (e) e.ship.temper = Object.values(TEMPERS).includes(temper) ? temper : e.ship.cls.faction === 'pirate' ? TEMPERS.bold : e.ship.temper;
+      if (e) e.plain = true;   // SPYGLASS: a hand-launched foe flies no false colours
       return e?.id ?? null;
     },
     _sea: sea, _shots: shots, _effects: effects, _contacts: contacts,
     _myState: (boat) => myBoatState(boat),   // SHIP-CREW: the tests' door to a boat of mine's state (her damage, her crew)
     _charge: (act, id, o) => chargePlayer(act, sea.get(id), o),   // CAPT-LOG: the tests' door to the law's reckoning, by a ship's id
+    _glass: () => ({ up: glassUp, on: glassOn, held: glassHeld, zoom: glassZoom }),   // SPYGLASS: the tests' door to the glass
     get volleyWire() { return wireVolleys; },
     directorState: director,
     SIDE_DIR,

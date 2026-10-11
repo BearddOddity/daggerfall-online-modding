@@ -82,7 +82,9 @@ test('AUDIT DW-F E5-1/E5-4: the view the loot and the guards test is the one the
   // CLIMB4: the frame's lens carries the climb's kick (a leap's), and so does this one - the same lens, kicked or not
   assert.match(view, /const worldAspect = largeHudWorldAspect\(canvas\.clientWidth, canvas\.clientHeight\);[^\n]*\n\s+const P = mirrorProjectionX\(perspective\(fieldOfView\(\) \+ climbFeel\.fovRad\(\), worldAspect, 0\.2, 6000\)\);/, '...through the frame\'s own lens');
   assert.doesNotMatch(view, /renderer\._view|renderer\._proj/, 'not the last pass\'s matrices');
-  assert.match(w, /const proj = mirrorProjectionX\(perspective\(fieldOfView\(\) \+ climbFeel\.fovRad\(\), worldAspect, 0\.2, 6000\)\);/, 'the frame draws through the same lens');
+  // PIN MOVED (SPYGLASS, 2026-10-11): the frame's lens narrowed by the captain's glass while it is up - the spawners keep the
+  // wide one, so nothing they place pops into the view the glass comes down from
+  assert.match(w, /const proj = mirrorProjectionX\(perspective\(glassFov\(fieldOfView\(\) \+ climbFeel\.fovRad\(\), spyglass\.lens\), worldAspect, 0\.2, 6000\)\);/, 'the frame draws through the same lens');
   assert.match(w, /for \(let i = 0; i < 3; i\+\+\) _dwEyeOffset\[i\] = mwv\.eye\[i\] - cam\.pos\[i\];/, 'the camera machine\'s eye, relative (a crossing moves cam.pos, not the offset)');
   assert.match(w, /if \(_dwLootVel\.last\) for \(let i = 0; i < 3; i\+\+\) _dwLootVel\.last\[i\] \+= r\.offset\[i\];/, 'FloatingOrigin moves the player by transform: no velocity');
   assert.match(w, /dwLoot\?\.pump\(f\);[^\n]*\n\s+dwLootLetGoVelocity\(\);/, 'indoors: the way out is a reposition');

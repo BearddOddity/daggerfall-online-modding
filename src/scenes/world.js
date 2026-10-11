@@ -484,7 +484,7 @@ import { composeContents } from '../systems/worldHover.js';   // WORLD-HOVER: th
 import { mobilePersonName, lootPileName } from '../systems/worldTooltips.js';   // WORLD-HOVER H2: MobilePersonNPC.NameNPC (.cs:299-302); M5: a dropped pile's word (.cs:534-548), outdoors too
 import { wagonHoverName } from '../player/eotbWagon.js';   // WORLD-HOVER M6: the cart's word, beside its producer
 import { waterSourceHoverName } from '../systems/survival/items.js';   // WORLD-HOVER M6: a water source's word, beside its producer
-import { mwViewFirstPerson, mwViewFrame, mwViewWheel, mwViewDrawBody, mwViewBodyBones, mwViewSpriteFigure, mwViewSpriteFacing, mwViewFootstep, mwViewLoadPose, mwViewNewGame, mwViewRebase, mwViewAttachWagon, mwViewDrawWagon, mwViewWagonTargets, setEotbCartYields, mwViewWagonActivate, setEotbComeSailAway, mwViewHoldThird, mwViewHoldChanged, mwViewSaveCamera, mwViewTogglePerspective } from '../player/mwView.js';   // MW-D25: the Morrowind camera; AUDIT-EOTB2: the sprite's stride and the load's POV; CSA-J: EOTB's boat
+import { mwViewFirstPerson, mwViewFrame, mwViewWheel, mwViewDrawBody, mwViewBodyBones, mwViewSpriteFigure, mwViewSpriteFacing, mwViewFootstep, mwViewLoadPose, mwViewNewGame, mwViewRebase, mwViewAttachWagon, mwViewDrawWagon, mwViewWagonTargets, setEotbCartYields, mwViewWagonActivate, setEotbComeSailAway, mwViewHoldThird, mwViewHoldChanged, mwViewSaveCamera, mwViewTogglePerspective, mwViewHoldFirst } from '../player/mwView.js';   // MW-D25: the Morrowind camera; AUDIT-EOTB2: the sprite's stride and the load's POV; CSA-J: EOTB's boat
 import { seaZoomReach } from '../player/seaZoom.js';   // FIELD BUGS 2026-09-29 (the sea) #3: the zoom at a helm
 import { mwCamera } from '../player/mwCamera.js';   // MW-D30: persistence
 import { pickActivatableHit, pickQuestFoe, pickFoe, peacefulFoePass } from '../player/activate.js';   // G3: corpse loot; QG1: the foe-click door; TI1: the lock-on pick
@@ -599,7 +599,9 @@ import { watersOf } from '../systems/naval/navalDirector.js';   // CAPT-WATERS: 
 import { draftOf as navalDraftOf } from '../systems/naval/shipLife.js';   // AUDIT GN2-PF6: a hull's draft, hull 2's off her keel as she stands
 import { createNavalFlames } from './navalFlames.js';   // NAV-B: a burning ship's deck fires
 import { NavalRenderer } from '../render/navalRender.js';   // NAV-B: the smoke, the spray, the balls in flight and the aim
-import { drawNavalHud, navalTouchBrace, navalPadPrompts, drawNavalTags, drawCrewBars, CREW_BAR_RANGE, crewBarPoint, drawCrewLines, CREW_SAY_RANGE } from '../ui/navalHud.js';   // AUDIT NAV1 (#14): and the ships' tags - SHIPMATES: and the crew's bars (CEIL-GHOST: where they stand) - LIVING CREW: and their lines
+import { drawSpyglass, easeLens, glassFov, glassLookScale } from '../ui/spyglassView.js';   // SPYGLASS: the glass's window, its lens
+import { GLASS_ZOOM, GLASS_ZOOM_MIN, GLASS_ZOOM_MAX } from '../systems/naval/shipKnowledge.js';   // SPYGLASS: its magnification
+import { drawNavalHud, navalTouchBrace, navalTouchGlass, navalPadPrompts, drawNavalTags, drawCrewBars, CREW_BAR_RANGE, crewBarPoint, drawCrewLines, CREW_SAY_RANGE } from '../ui/navalHud.js';   // AUDIT NAV1 (#14): and the ships' tags - SHIPMATES: and the crew's bars (CEIL-GHOST: where they stand) - LIVING CREW: and their lines
 import { createNavalCrew, CREW_RANGE, CREW_KEEP } from './navalCrew.js';   // LIVING CREW: the crews on the decks near the eye
 import { asleepHour } from '../systems/naval/shipWatch.js';   // SHIP-WATCH: the crews' sleeping hours
 import { crewRoster, crewCount } from '../systems/naval/crewLife.js';
@@ -10145,12 +10147,12 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** CAPT-LOG: the Captain page's model - each crown's standing, rank and favours (none while it hunts me), the letter of
    *  marque held and its days, the contracts under way (CAPT-BOARD), and the log in words. */
   function captainModel() {
-    const now = Math.floor(playerTicker.ownMinutes);
-    const mq = captainLedger.marque(now);
+    const at = Math.floor(playerTicker.ownMinutes);   // the captain's own clock, the letter's
+    const mq = captainLedger.marque(at);
     return {
       crowns: captainLedger.crowns().map((c) => { const n = naval?.notorietyOf?.(c.crown) ?? 0; return { ...c, notoriety: n, perks: perksOf(c.rank.rank, n) }; }),
       refusedAt: PERKS_REFUSED_AT,
-      marque: mq ? { crown: mq.crown, days: Math.max(1, Math.ceil((mq.until - now) / 1440)) } : null,
+      marque: mq ? { crown: mq.crown, days: Math.max(1, Math.ceil((mq.until - at) / 1440)) } : null,
       contracts: [],
       log: logLines(captainLedger.log),
     };
@@ -10176,6 +10178,40 @@ export async function bootWorld(canvas, renderer, params, status) {
     // carried (csaCarry), a second sync is their poses alone
     if (naval.collidable().length) csaSyncColliders();
     navalFlames.tick(gamePaused() ? 0 : dt);
+  }
+  // ── SPYGLASS (2026-10-11, the owner: "a spyglass option where you can aim and view to observe other ships, their
+  // allegiance, cargo, etc." - bible/03-World/Captains-Sea.md): THE CAPTAIN'S GLASS. Its press (the Spyglass action - K
+  // beside the road's follow, the touch corner's or the plate's Glass, a pad button chosen for it) raises it to the eye
+  // aboard a ship - at a helm, on a deck, mine or another's - and lowers it; the wheel turns its magnification (x2, x4,
+  // x8). While it is up the view is the head's (mwViewHoldFirst), the lens narrowed to it (glassFov, eased over
+  // spyglassView.js GLASS_EASE_S), the look slowed by it, and the naval host makes out the ship it holds (navalHost.js
+  // glass) - her card under the reticle. Down at once ashore, under a window or a pause, under the travel view, with a
+  // broadside laid, and with the ships switched off.
+  const spyglass = { up: false, zoom: GLASS_ZOOM, lens: 1 };
+  /** Whether the glass may be up this frame. */
+  const spyglassAllowed = () => navalOn() && !!naval?.aboard?.() && _mode() === 'exterior' && walkMode && playerSpawned && !_loading && !gamePaused()
+    && !townTalk.overlayActive && !travelView?.active && !naval?.aiming && !(townTalk.overlay instanceof DeathScreen);
+  /** The glass's frame: its press read (the key's edge, the plate's tap), lowered where it may not be up, the head held
+   *  for it, its lens eased, the ship it holds made out and its window drawn. */
+  function spyglassStep(dt) {
+    const pressedNow = hccActionPressed('Spyglass') || navalTouchGlass();
+    if (pressedNow && (spyglass.up || spyglassAllowed())) spyglass.up = !spyglass.up;
+    if (spyglass.up && !spyglassAllowed()) spyglass.up = false;
+    mwViewHoldFirst(spyglass.up);
+    spyglass.lens = easeLens(spyglass.lens, spyglass.up ? spyglass.zoom : 1, dt);
+    const card = navalOn() && naval ? naval.glass(dt, { up: spyglass.up, zoom: spyglass.zoom }) : null;
+    const padHand = controllerLook() ? padFamily() : null;   // the pad in hand: its button named, not the key
+    const pad = padHand ? getBinding(bindings(), 'Spyglass', false) : null;
+    drawSpyglass(spyglass.up ? { card, zoom: spyglass.zoom } : null, {
+      keys: { glass: pad && /^Joystick/.test(pad) ? hdGlyphName(padHand, pad) : navalKeyName('Spyglass') },
+      scale: enhancedHudScale(), touch: !!touch, pad: !!padHand, covered: !!townTalk.hudHidden,
+    });
+  }
+  /** SPYGLASS: the wheel turns the glass while it is up - a notch up doubles its magnification, a notch down halves it. */
+  function spyglassWheel(deltaY) {
+    if (!spyglass.up || !deltaY) return false;
+    spyglass.zoom = Math.max(GLASS_ZOOM_MIN, Math.min(GLASS_ZOOM_MAX, deltaY < 0 ? spyglass.zoom * 2 : spyglass.zoom / 2));
+    return true;
   }
   /** The attack let go (every door's release, beside the rig's and as ungated): a laid broadside fires - unless a window
    *  came up over the aim, or the world under it went, which puts it down unfired. */
@@ -10493,6 +10529,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       vitals: enhancedHudBottom(), quick: enhancedHudQuick(),   // AUDIT NAV1: the vitals' column the plate keeps clear of, the quick block the card aside does
       compass: !isEnhanced() && hudArt?.compassBox ? classicCompassBox() : null,   // AUDIT NAV1: the classic compass the plate stands over
       touch: !!touch,   // a finger's screen: the plate over the touch corner's presses, the hints a finger's
+      glassUp: spyglass.up,   // SPYGLASS: the plate's Glass brass while the glass is up
     });
   }
   let _navalWordKey = null;   // the word my last foes frame carried ('' none stood; null: none said yet)
@@ -16593,7 +16630,7 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  it, a combo resolves, any key works (the old read built `Key` + a letter, so a custom bind that was not a letter
    *  never fired), and Travel Options switched off answers nothing. TO-ONLINE: the SAME door as
    *  beginAcceleratedTravel's, which has no online stand-down, so neither does this. */
-  function travelFollowPressed() { return pressed(latch.edge, keys, 'FollowPaths'); }
+  function travelFollowPressed() { return !naval?.aboard?.() && pressed(latch.edge, keys, 'FollowPaths'); }   // SPYGLASS: aboard, K is the glass's - a deck has no road
 
   /** AUDIT OW5 G2 (the audit before the merge): THE OVERWORLD'S OWN LINES OUTLAST ITS CLOCK. A HUD line counts down in
    *  game time (CSA-G: PopupText's Time.deltaTime), so at a journey's x10 "You have found X." (five seconds) was up for
@@ -17845,7 +17882,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (e.pointerType !== 'touch' && document.pointerLockElement !== canvas) setClickDelay((latch.activate ??= createActivateGate()));
     requestLook(canvas);
   });   // U8b/U8c: native windows own the pointer
-  canvas.addEventListener('wheel', (e) => { if (townTalk.wheel(e) || quickLootWheel(e.deltaY) || modes?.wheel?.(e) || mwViewWheel(e.deltaY)) e.preventDefault(); }, { passive: false });   // U-scroll: an open window owns the wheel; QUICK-LOOT B4: the plaque owns the wheel FIRST, and only while it is listing something - the ladder's own law ("an open window owns the wheel"), applied to a live list under the crosshair; MW-D25: otherwise the Morrowind camera zoom
+  canvas.addEventListener('wheel', (e) => { if (townTalk.wheel(e) || quickLootWheel(e.deltaY) || modes?.wheel?.(e) || spyglassWheel(e.deltaY) || mwViewWheel(e.deltaY)) e.preventDefault(); }, { passive: false });   // U-scroll: an open window owns the wheel; QUICK-LOOT B4: the plaque owns the wheel FIRST, and only while it is listing something - the ladder's own law ("an open window owns the wheel"), applied to a live list under the crosshair; MW-D25: otherwise the Morrowind camera zoom
   // ROAD-C c2/S4: THE OTHER TWO PHASES. This host already routed
   // `pointerdown` into the mode machine; the automap's chrome is
   // press-HOLD and drag driven, so a host that delivers `down` alone
@@ -18094,7 +18131,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // camera - PlayerMouseLook.ApplyLook (:126); the frame pays it out
     // at MouseLookSmoothingFactor. HANDEDNESS (mat4's law): mouse-right
     // turns toward +x = screen-right; the pitch clamp is the filter's.
-    lookFilter.add(e.movementX * lookScale(), -e.movementY * lookScale() * lookInvert());
+    lookFilter.add(e.movementX * lookScale() * glassLookScale(spyglass.lens), -e.movementY * lookScale() * lookInvert() * glassLookScale(spyglass.lens));   // SPYGLASS: slowed by the glass
   });
   // U41: `!townTalk.overlayActive` is the dungeon host's own gate
   // (dungeon.js:"latches this host used", "a right-click on a window is the window's...
@@ -18114,7 +18151,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   addEventListener('mouseup', (e) => { if (isSwingButton(e.button)) rightHeld = false; const mc = mouseCode(e.button); if (mc) { keys.delete(mc); noteKeyUp(latch.edge, mc); } if (isSwingButton(e.button) && walkMode && modeNow() === 'exterior') weaponRig.attackInput(0, 0, false); if (isSwingButton(e.button)) navalRelease(); });   // the RELEASE is never gated - a window opened mid-swing must still let go; NAV-H: let go at the helm, the broadside fires (a window over it puts the aim down unfired)
   const inputHooks = {   // GP1: one hooks object for the finger AND the pad   // mobile: stick synthesizes WASD; the right half is classified (TI1)
     look: (dx, dy) => {
-      lookFilter.add(dx * lookScale(), -dy * lookScale() * lookInvert());   // AUDIT 28 W7: through the look filter (HANDEDNESS, mat4's law)
+      lookFilter.add(dx * lookScale() * glassLookScale(spyglass.lens), -dy * lookScale() * lookInvert() * glassLookScale(spyglass.lens));   // AUDIT 28 W7: through the look filter (HANDEDNESS, mat4's law) - SPYGLASS: slowed by the glass
     },
     // TI1: the swipe is the RMB drag - the mousemove arm above, on a
     // finger: the exterior rig here, the modal rig through worldModes
@@ -33087,7 +33124,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // height out of its denominator here, and the sky, which draws
     // into the same rect, takes the same number.
     const worldAspect = largeHudWorldAspect(canvas.clientWidth, canvas.clientHeight);
-    const proj = mirrorProjectionX(perspective(fieldOfView() + climbFeel.fovRad(), worldAspect, 0.2, 6000));   // HANDEDNESS (mat4's law)   // CLIMB4: a leap's kick
+    spyglassStep(dt);   // SPYGLASS: the glass raised or lowered, its lens eased - before the lens is taken
+    const proj = mirrorProjectionX(perspective(glassFov(fieldOfView() + climbFeel.fovRad(), spyglass.lens), worldAspect, 0.2, 6000));   // HANDEDNESS (mat4's law)   // CLIMB4: a leap's kick   // SPYGLASS: the glass's lens
     // MW-D25: the eye goes through the Morrowind camera machine - in
     // first person it comes back untouched (camera.cpp:165-169), in
     // third it is the reference's focal-and-pull-back with this host's
@@ -33761,7 +33799,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // gl_FragDepth, which ran its shader before the test for every pixel
     // the streamed world covered). Same picture, a third to a half fewer
     // sky fragments on an open road.
-    sky.draw(tvf ? tvf.yaw : cam.yaw, tvf ? tvf.pitch : cam.pitch + climbFeel.pitch(), fieldOfView() + climbFeel.fovRad(), worldAspect, renderer.worldViewportPx ?? [0, 0, renderer.gl.drawingBufferWidth, renderer.gl.drawingBufferHeight]);   // VC3: the clouds' map restores this rect
+    sky.draw(tvf ? tvf.yaw : cam.yaw, tvf ? tvf.pitch : cam.pitch + climbFeel.pitch(), glassFov(fieldOfView() + climbFeel.fovRad(), spyglass.lens), worldAspect, renderer.worldViewportPx ?? [0, 0, renderer.gl.drawingBufferWidth, renderer.gl.drawingBufferHeight]);   // VC3: the clouds' map restores this rect
     meterFor(renderer.gl)?.markCpu('ring');   // PERF-ZONE2: the far province ring (its rebuild and its hole) and the water, after the sky hands the frame back
     // EV8: the far province ring - the horizon's actual mountains,
     // drawn while the depth buffer is still the sky's (the streamed
@@ -33796,7 +33834,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         // E5: the ring draws INTO the world pass's rect, so it takes
         // that pass's aspect - a horizon built on the full-canvas ratio
         // would step against the terrain in front of it under a docked bar.
-        fovY: fieldOfView() + climbFeel.fovRad(), aspect: worldAspect,   // CLIMB4: the lens the world took
+        fovY: glassFov(fieldOfView() + climbFeel.fovRad(), spyglass.lens), aspect: worldAspect,   // CLIMB4: the lens the world took (SPYGLASS: the glass's)
         // FAR-SEA1: the ring's sea under the water's sky; AUDIT FAR-SEA1: the eye and the world's lens it counts the sea
         // inside the hole from (P1: only the cells that can be past the far plane, none with the eye under the sea),
         // and the water's own body - the camera climate's tiles and Iliac Puddle No More's tint over its open sea (L1)

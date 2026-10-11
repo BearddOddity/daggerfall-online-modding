@@ -218,8 +218,8 @@
   {
     "name": "SE-cry-every-frame",
     "file": "src/scenes/navalHost.js",
-    "old": "{ e.aidSaid = true; deps.say?.(`${nameOf(e)} comes to your aid!`, 4); }",
-    "new": "{ deps.say?.(`${nameOf(e)} comes to your aid!`, 4); }",
+    "old": "{ e.aidSaid = true; deps.say?.(`${calledName(e)} comes to your aid!`, 4); }",
+    "new": "{ deps.say?.(`${calledName(e)} comes to your aid!`, 4); }",
     "tests": [
       "test/seaease.test.js"
     ]

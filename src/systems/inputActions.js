@@ -174,6 +174,12 @@ export const ACTIONS = Object.freeze([
   // host's weapon rig reads it through the one door the torches' keys take (actionDown). Appended, like every port
   // action before it.
   'WeaponTechnique',
+  // SPYGLASS (2026-10-11, the owner: "a spyglass option where you can aim and view to observe other ships"): THE
+  // CAPTAIN'S GLASS - one press raises it to the eye aboard a ship, the next lowers it (scenes/world.js spyglassStep;
+  // the naval host makes out the ship it holds). A DEFAULT SHARE on K beside Travel Options' FollowPaths
+  // (DEFAULT_SHARES): the road's key ashore, the glass's aboard - a deck has no road, and the road is never followed
+  // from one. Appended, like every port action before it.
+  'Spyglass',
 ]);
 
 /** AUDIT SOC D3: THE PORT'S OWN ROWS, NAMED SO THE CLASSIC WINDOWS CAN YIELD THEM.
@@ -191,7 +197,7 @@ export const PORT_ACTIONS = Object.freeze(['SocialInteract', 'QuickUse1', 'Quick
   'TorchToggleLight', 'TorchDrop', 'TorchThrow', 'ShoulderSwitch', 'AutoPerspective', 'FollowPaths', 'HorseMount', 'HorseSummon', 'DebugOverlay',
   'BoatDisembark', 'BoatToggleLight', 'BoatToggleSail', 'BoatTrimRight', 'BoatTrimLeft', 'BoatTrimModifier',
   'BoatTimeScaleUp', 'BoatTimeScaleDown', 'BoatTimeScaleReset', 'TravelView', 'WalkMode', 'TogglePerspective', 'ActChoice', 'BoatSailUp', 'BoatSailDown', 'Professions',
-  'LegacyFamily', 'ModeWheel', 'WeaponTechnique']);   // TECH1: the weapon's technique   // LEGACY1: Project Legacy's family tree; MODE-WHEEL: the mode wheel   // KB1; TV1; PADWALK; VIEW-TOGGLE; PROF1   // QUICK-LOOT B4: the plaque's two, drawn in the enhanced pane under their own heading - the classic windows cannot draw them at all
+  'LegacyFamily', 'ModeWheel', 'WeaponTechnique', 'Spyglass']);   // SPYGLASS: the captain's glass   // TECH1: the weapon's technique   // LEGACY1: Project Legacy's family tree; MODE-WHEEL: the mode wheel   // KB1; TV1; PADWALK; VIEW-TOGGLE; PROF1   // QUICK-LOOT B4: the plaque's two, drawn in the enhanced pane under their own heading - the classic windows cannot draw them at all
 
 const ACTION_SET = new Set(ACTIONS);
 
@@ -396,6 +402,9 @@ export const DEFAULT_SHARES = Object.freeze([
   Object.freeze(['ArrowUp', 'BoatSailUp', 'ActChoice']),
   // CLASSIC-PAGES: the Professions key on the down arrow beside less sail - off the helm the pages, at it the sails'
   Object.freeze(['ArrowDown', 'Professions', 'BoatSailDown']),
+  // SPYGLASS: the captain's glass on K beside the road's follow - ashore the road's, aboard the glass's (scenes/world.js
+  // reads the road's press nowhere aboard)
+  Object.freeze(['KeyK', 'Spyglass', 'FollowPaths']),
 ]);
 
 /**
@@ -454,6 +463,8 @@ export const MOD_ACTIONS = Object.freeze({
     Object.freeze({ action: 'BoatTimeScaleUp', legacy: 'Controls.IncreaseTimeScale', shipped: Object.freeze(['KeypadPlus']) }),
     Object.freeze({ action: 'BoatTimeScaleDown', legacy: 'Controls.DecreaseTimeScale', shipped: Object.freeze(['KeypadMinus']) }),
     Object.freeze({ action: 'BoatTimeScaleReset', legacy: 'Controls.ResetTimeScale', shipped: Object.freeze(['KeypadEnter']) }),
+    // SPYGLASS: the captain's glass - the port's own, live while the ships are (no TextKey of the mod's: `legacy` null)
+    Object.freeze({ action: 'Spyglass', legacy: null, shipped: Object.freeze([]) }),
   ]),
   // LEGACY1: the mod's "Key Input" (G) and "Second Key Input" (a chord for a pad) are TextKeys the port never shipped
   // as settings, so there is no saved value to carry (`legacy` null) - the pad reaches it through the registry's own row.
@@ -553,6 +564,7 @@ export const ACTION_GROUPS = Object.freeze([
     ['BoatTrimModifier', 'Trim the square sails (hold)'],
     ['BoatTimeScaleUp', 'Speed time up at the helm'], ['BoatTimeScaleDown', 'Slow time down at the helm'],
     ['BoatTimeScaleReset', 'Put time back to normal at the helm'],
+    ['Spyglass', 'Raise or lower the spyglass (aboard)'],   // SPYGLASS
   ], 'come-sail-away'),
   g('Project Legacy', [
     ['LegacyFamily', 'Family tree'],

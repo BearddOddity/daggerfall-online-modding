@@ -280,7 +280,7 @@ export function mwViewFirstPerson() {
  * (RIDE-POV: no saddle to show), and where no body can show at all.
  */
 export function mwViewTogglePerspective() {
-  if (heldThird) return false;
+  if (heldThird || heldFirst) return false;   // SPYGLASS: nor while the glass holds the head
   if (eotbLane()) { eotbCamera.toggleOffset(!eotbCamera.thirdPerson()); return true; }
   if (mwCamera.thirdPerson()) return mwIntoHead();
   if (!fpArm.canThirdPerson() || mounted) return false;
@@ -323,6 +323,29 @@ export function mwViewHoldThird(on) {
   else if (h.changed && h.lane === 'mw') mwIntoHead();
   return true;
 }
+/**
+ * SPYGLASS (2026-10-11, the owner: "a spyglass option where you can aim and view to observe other ships"): THE BODY INTO
+ * THE HEAD FOR THE GLASS, AND BACK. A glass is put to the eye - so while it is up whichever body answers is held in first
+ * person (MAP-POV's door, mwViewFirstPerson), and handed back to the third person it stood in when it comes down. The
+ * travel view's hold wins (it holds the body out of the head; the glass is never up under it). Answers whether the view
+ * is held in the head.
+ */
+let heldFirst = null;   // null, or { changed: boolean } - whether the hold took the body INTO the head
+export function mwViewHoldFirst(on) {
+  if (on) {
+    if (heldFirst) return true;
+    if (heldThird) return false;
+    heldFirst = { changed: mwViewFirstPerson() };
+    return true;
+  }
+  if (!heldFirst) return false;
+  const h = heldFirst;
+  heldFirst = null;
+  if (h.changed) mwViewTogglePerspective();   // back out into the third person it stood in
+  return true;
+}
+/** SPYGLASS: is the view held in the head for the glass (the pins' read). */
+export const mwViewHeldFirst = () => !!heldFirst;
 /** TV1: is a body held out of the head for the travel view (the pins' read). */
 export const mwViewHeldThird = () => (heldThird ? heldThird.lane : undefined);
 /** AUDIT DEEP T1-10: did the hold take the body OUT of the head (it was in first person)? The view's rise and fall then
