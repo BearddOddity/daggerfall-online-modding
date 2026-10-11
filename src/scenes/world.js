@@ -595,6 +595,7 @@ import { ComeSailAwayRenderer, softParticleTexture as csaSoftParticleTexture } f
 import { createNavalHost, hullBoxOf as navalHullBoxOf, NAVAL_SAVE_VENDOR, NAVAL_TAG_RANGE } from './navalHost.js';   // NAV-H: the sea fight - the Iliac Bay's ships, the guns, boarding, the law and the word
 import { createCaptainLedger, CAPTAIN_SAVE_VENDOR, perksOf, PERKS_REFUSED_AT, logLines } from '../systems/naval/captainLedger.js';   // CAPT-LOG: the captain's ledger - the log, the crowns' regard, the ranks, the letter of marque
 import { navalLootWorth } from '../systems/naval/navalTransfer.js';   // CAPT-LOG: what plunder is worth to the log
+import { watersOf } from '../systems/naval/navalDirector.js';   // CAPT-WATERS: the coast's waters, the open and the deep
 import { draftOf as navalDraftOf } from '../systems/naval/shipLife.js';   // AUDIT GN2-PF6: a hull's draft, hull 2's off her keel as she stands
 import { createNavalFlames } from './navalFlames.js';   // NAV-B: a burning ship's deck fires
 import { NavalRenderer } from '../render/navalRender.js';   // NAV-B: the smoke, the spray, the balls in flight and the aim
@@ -9722,6 +9723,20 @@ export async function bootWorld(canvas, renderer, params, status) {
     }
     return _navalPortAt.near;
   };
+  /** CAPT-WATERS (systems/naval/navalDirector.js watersOf): how far the player's pixel lies from the nearest port of the
+   *  map (Travel Options' ports - travelPorts.js), in map pixels, Chebyshev - asked once a pixel, the ports' pixels found
+   *  once; null before the map's directory stands. */
+  let _navalPorts = null, _navalPortPxAt = null;
+  const navalPortPx = () => {
+    if (!mapDict) return null;
+    const p = playerTravelPixel(), key = `${p.x},${p.y}`;
+    if (_navalPortPxAt?.key === key) return _navalPortPxAt.d;
+    _navalPorts ??= [...new Set(PORT_LOCATION_IDS)].map((id) => mapDict.get(id & 0x000fffff)).filter(Boolean).map((s) => getPixelFromPixelID(s.id));
+    let d = Infinity;
+    for (const q of _navalPorts) d = Math.min(d, Math.max(Math.abs(q.x - p.x), Math.abs(q.y - p.y)));
+    _navalPortPxAt = { key, d: Number.isFinite(d) ? d : null };
+    return _navalPortPxAt.d;
+  };
   /** SHIP-LIFE (systems/naval/shipLife.js): the port town within a pixel of the player - its location's key and its
    *  footprint in the scene NOW (the native rect, locationWorldRect, through the floating origin's localFromWorld), which
    *  the naval host finds its harbour off - or null where no port stands near. The town asked once a pixel. */
@@ -10004,7 +10019,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       dir: [Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)],
     }),
     level: () => playerEntity.level ?? 1,
-    where: () => { const p = playerTravelPixel(); return { px: p.x, py: p.y, region: _questRegionIndex(), day: Math.floor(worldMinutes() / 1440), nearPort: navalNearPort(), capitals: navalCapitals(), cityLights: isCityLightsOn(minuteNow()), night: isNight(minuteNow()) }; },   // AUDIT WK-N5: the lanterns' hours and the dark's, apart
+    where: () => { const p = playerTravelPixel(); const nearPort = navalNearPort(); return { px: p.x, py: p.y, region: _questRegionIndex(), day: Math.floor(worldMinutes() / 1440), nearPort, waters: watersOf({ nearPort, portPx: navalPortPx() }), capitals: navalCapitals(), cityLights: isCityLightsOn(minuteNow()), night: isNight(minuteNow()) }; },   // AUDIT WK-N5: the lanterns' hours and the dark's, apart - CAPT-WATERS: the deep waters
     say: (text, seconds) => townTalk.say(text, seconds),
     mid: (text, seconds) => setMidScreenText(text, seconds),
     shake: (amount) => betterAmbience.weaponKick(amount),   // FIELD-GUN6's door: a shake that is not a wound, under the player's own maxShake

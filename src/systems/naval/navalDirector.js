@@ -38,6 +38,14 @@
 // steering for them (`relief`: the host lays her course there); while they fight the roll launches nothing else - the
 // sea sends help, never more strangers. She is a crown's ship like any: the pirate is hers (navalAI.js AID_PRIORITY),
 // and she sails on when the fight is done.
+//
+// CAPT-WATERS (2026-10-11, the owner: "giving a reason to players to experience it" - bible/03-World/Captains-Sea.md) - THE
+// RICH WATERS. SEA-EASE made the Bay safer, and the pirates it thinned were the sea's prizes. The coasts keep SEA-EASE's
+// peace; the DEEP WATERS - DEEP_PX map pixels and more from every port (`watersOf`), the Bay's broad middle and the open
+// Abecean - are the captain's choice of risk: pirates DEEP_PIRATE_K times as likely and the trade's ships fewer, their
+// classes drawn DEEP_LEVEL levels above the captain's own (brigantines and galleys sooner, a flagship possible), a pirate
+// bold DEEP_BOLD of the time where the coast's are bold BOLD_SHARE, and every hold rolled DEEP_TIER rarity tiers richer
+// (navalHost.js launch, drawHold). The plate says the waters (ui/navalHud.js).
 
 import { hash32 } from '../../world/spawnedDungeons.js';
 import { mulberry32 } from '../../combat/bloodArt.js';
@@ -121,10 +129,11 @@ export function weightedPick(weights, r) {
   return keys[keys.length - 1] ?? null;
 }
 
-/** The factions' weights for these waters. */
-export function factionWeights({ nearPort = false, notoriety = 0 } = {}) {
+/** The factions' weights for these waters. CAPT-WATERS: `deep` the deep waters' - more pirates, less of the trade. */
+export function factionWeights({ nearPort = false, notoriety = 0, deep = false } = {}) {
   const w = { ...FACTION_WEIGHTS };
   if (nearPort) { w.merchant += PORT_WEIGHTS.merchant; w.navy += PORT_WEIGHTS.navy; w.pirate *= PORT_PIRATE_K; }   // SEA-EASE: the crown's own waters
+  else if (deep) { w.pirate *= DEEP_PIRATE_K; w.merchant *= DEEP_TRADE_K; w.navy *= DEEP_TRADE_K; }   // CAPT-WATERS: the deep waters
   if (notoriety >= HUNTER_AT) w.navy += HUNTER_WEIGHT;
   return w;
 }
@@ -217,8 +226,9 @@ export function createNavalDirector({ random = Math.random } = {}) {
         if (pair) { out.spawn = pair; return out; }
       }
       const rng = mulberry32(seed);
-      const faction = weightedPick(factionWeights({ nearPort: !!ctx.nearPort, notoriety: ctx.notoriety ?? 0 }), rng());
-      let cls = classFor(faction, ctx.level ?? 1, rng());
+      const deep = !ctx.nearPort && !!ctx.deep;   // CAPT-WATERS
+      const faction = weightedPick(factionWeights({ nearPort: !!ctx.nearPort, notoriety: ctx.notoriety ?? 0, deep }), rng());
+      let cls = classFor(faction, (ctx.level ?? 1) + (deep ? DEEP_LEVEL : 0), rng());
       if (cls?.flagship && (ctx.ships ?? []).some((s) => s.classId === cls.id)) cls = classFor(faction, 1, rng());   // one flagship at a time
       if (!cls) return out;
       for (let i = 0; i < SPAWN_TRIES; i++) {
@@ -233,7 +243,7 @@ export function createNavalDirector({ random = Math.random } = {}) {
         const yaw = hunter ? toPlayer : toPlayer + (rng() < 0.5 ? 1 : -1) * (0.6 + rng() * 0.9);
         const variants = HULL_VARIANT_COUNTS[cls.hull] ?? 0;
         const variant = cls.hull === HULL.LargeBoat && variants > 0 ? Math.floor(rng() * variants) : 0;
-        out.spawn = { seed, classId: cls.id, variant, pos, yaw, hunter };
+        out.spawn = { seed, classId: cls.id, variant, pos, yaw, hunter, ...(deep ? { deep: true } : {}) };   // CAPT-WATERS: launched of the deep
         break;
       }
       return out;
@@ -245,6 +255,19 @@ export function createNavalDirector({ random = Math.random } = {}) {
   };
   return director;
 }
+
+/** CAPT-WATERS: the deep waters begin this many map pixels (Chebyshev) from every port; their weights, levels, temper
+ *  and holds. */
+export const DEEP_PX = 12;
+export const DEEP_PIRATE_K = 1.8;
+export const DEEP_TRADE_K = 0.5;
+export const DEEP_LEVEL = 3;
+export const DEEP_BOLD = 0.5;
+export const DEEP_TIER = 2;
+/** CAPT-WATERS: the waters a captain sails - 'coastal' within a port's reach (SEA-EASE's own `nearPort`), 'deep' DEEP_PX
+ *  and more from every port (`portPx`: the nearest port's distance in map pixels, null where none is known), else
+ *  'open'. */
+export const watersOf = ({ nearPort = false, portPx = null } = {}) => (nearPort ? 'coastal' : Number.isFinite(portPx) && portPx >= DEEP_PX ? 'deep' : 'open');
 
 /** The seed base's own salt: the waters' - the host folds a stander's id into it online (navalHost.js idSalt). */
 export const SEED_SALT = 0x5ea;

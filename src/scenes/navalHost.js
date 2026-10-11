@@ -60,8 +60,8 @@
 
 import { createShotField, insideGrown } from '../systems/naval/navalShots.js';
 import { createNavalEffects } from '../systems/naval/navalEffects.js';
-import { createNavalDirector, DENSITY, seedBaseOf, SEED_SALT, DESPAWN_BEYOND } from '../systems/naval/navalDirector.js';
-import { createSeaShip, stepCaptain, quatOfYaw, forwardOfYaw, velocityOf, provoke, hostile, lookoutOf, fightingPower, TEMPERS, HEAR_S, RUN_OUT_S, RUN_OUT_DEG, BOW_RUN_OUT, SPARE_S, GUNS_SEEN_S, PROVOKED_S, NAVY_HUNTS } from '../systems/naval/navalAI.js';
+import { createNavalDirector, DENSITY, seedBaseOf, SEED_SALT, DESPAWN_BEYOND, DEEP_BOLD, DEEP_TIER } from '../systems/naval/navalDirector.js';
+import { createSeaShip, stepCaptain, quatOfYaw, forwardOfYaw, velocityOf, provoke, hostile, lookoutOf, fightingPower, TEMPERS, HEAR_S, RUN_OUT_S, RUN_OUT_DEG, BOW_RUN_OUT, SPARE_S, GUNS_SEEN_S, PROVOKED_S, NAVY_HUNTS, temperOf } from '../systems/naval/navalAI.js';
 import { wrapAngle, multiply } from '../world/mat4.js';   // ONCRASH1: the port's one angle wrap; AUDIT GN-R5: a rig box turned with its boom
 import { createShipDamage, shotDamage, shotMen, ballMen, playerMen, SHIP_STATES, SINK_SECONDS, SINK_CLEAR, sinkAngles, sinkDepth, BRACE_TAKEN, FIRE_CHANCE, WRECKED_OARS, repairCost, STRUCK_AT } from '../systems/naval/navalDamage.js';
 import { createGunDeck, aimSolution, volleyLaunches, bearingOf, sideForBearing, toWorld, RIPPLE_S, READY_FLASH_S } from '../systems/naval/navalGunnery.js';
@@ -1180,7 +1180,7 @@ export function createNavalHost(deps) {
     const drop = (lot, near, far) => {
       const a = random() * Math.PI * 2, r = near + random() * (far - near);
       const id = String(u32());
-      shots.dropFlotsam({ id, pos: [s.pos[0] + Math.sin(a) * r, deps.seaY(), s.pos[2] + Math.cos(a) * r], lot, from: s.cls.id });
+      shots.dropFlotsam({ id, pos: [s.pos[0] + Math.sin(a) * r, deps.seaY(), s.pos[2] + Math.cos(a) * r], lot, from: s.cls.id, deep: !!entry.deep });   // CAPT-WATERS: her casks the deep's
       if (by === myId()) myCasks.add(id);   // KEEP-PLUNDER: a ship I sank - her casks are mine to stow if the sea goes first
     };
     // her lots that float free
@@ -1246,7 +1246,7 @@ export function createNavalHost(deps) {
     const swim = e.collector === SWIMMER;
     const boat = swim ? null : myBoats().find((b) => myBoatId(b) === e.collector) ?? myBoat();
     if (isSalvage(e.lot)) { pickSalvage(e, boat, swim); return; }   // SALVAGE: her wreckage, no hold's lot
-    const items = deps.hold?.(e.lot, holdTier(classById(e.from))) ?? [];
+    const items = deps.hold?.(e.lot, holdTier(classById(e.from)) + (e.deep ? DEEP_TIER : 0)) ?? [];   // CAPT-WATERS: a deep ship's cask the richer
     if (items.length) { deps.board?.giveItems?.(items, boat ?? null); crewEvent(boat, 'plunder'); notePlunder(items); }   // SHIP-CREW: a hold filled; CAPT-LOG: the plunder hauled
     const things = `${items.length} ${items.length === 1 ? 'thing' : 'things'}`;
     deps.say?.(swim ? (items.length ? `You break open a floating cask (${things} in it).` : 'You break open a floating cask. It is empty.')
@@ -1374,7 +1374,8 @@ export function createNavalHost(deps) {
     const id = owner ? `${owner}:${num}` : `${myId()}:${num}`;
     const ship = createSeaShip({ id, seed: spec.seed, classId: spec.classId, variant: spec.variant ?? 0, pos: spec.pos, yaw: spec.yaw ?? 0, names, owner, errand: spec.errand ?? null });
     ship.flag = flagOf(cls, spec.seed, region);   // CAPT-MARQUE: her colours - a crown's ship her crown's, a merchantman her home port's, a pirate none
-    const entry = { id, n: num, owner, gen: Math.max(0, Math.min(NAVAL_GEN_MAX, spec.gen | 0)), region, orphan: null, ship, boat: null, fires: null, fireLoop: null, sinkLoop: null, target: null, seen: clock, charged: null, ramAt: -Infinity, myBlowAt: -Infinity, grappleAt: -Infinity, hunter: !!spec.hunter, phase: random() * 6.28, lifeDt: 0, lifeN: num % FAR_LIFE_EVERY, list: null, wake: false, deck: null, prize: null, lost: false, sinkUnder: null, colours: null, fade: 0, retiring: false };   // SHIP-FADE: she comes into the world
+    if (spec.deep) ship.temper = temperOf(cls, spec.seed, { bold: DEEP_BOLD });   // CAPT-WATERS: the deep waters' pirates bolder
+    const entry = { id, n: num, owner, gen: Math.max(0, Math.min(NAVAL_GEN_MAX, spec.gen | 0)), region, deep: !!spec.deep, orphan: null, ship, boat: null, fires: null, fireLoop: null, sinkLoop: null, target: null, seen: clock, charged: null, ramAt: -Infinity, myBlowAt: -Infinity, grappleAt: -Infinity, hunter: !!spec.hunter, phase: random() * 6.28, lifeDt: 0, lifeN: num % FAR_LIFE_EVERY, list: null, wake: false, deck: null, prize: null, lost: false, sinkUnder: null, colours: null, fade: 0, retiring: false };   // SHIP-FADE: she comes into the world
     sea.set(id, entry);
     return entry;
   }
@@ -2954,7 +2955,7 @@ export function createNavalHost(deps) {
     deps.mid?.(`${entry.ship.names?.name ?? 'The ship'} is yours!`, 3);
     if (yielded) deps.say?.('The rest of her crew throw down their arms.', 3);
     // the prize: her hold drawn once (whoever opens it again finds what is left), the boat that took her
-    entry.prize = { hold: drawHold(entry.ship.cls, entry.ship.seed, (key, tier) => deps.hold?.(key, tier) ?? []), boat: b.boat ?? nearestBoat(entry.ship.pos), peerOrigin: b.peerOrigin ?? null, chosen: null, fate: null };
+    entry.prize = { hold: drawHold(entry.ship.cls, entry.ship.seed, (key, tier) => deps.hold?.(key, tier + (entry.deep ? DEEP_TIER : 0)) ?? []), boat: b.boat ?? nearestBoat(entry.ship.pos), peerOrigin: b.peerOrigin ?? null, chosen: null, fate: null };   // CAPT-WATERS: a deep ship's hold the richer
     deps.captain?.prize?.(entry.ship.names?.name ?? classLine(entry.ship.cls, entry.ship.names?.crown), deps.worth?.(entry.prize.hold) ?? 0);   // CAPT-LOG: the richest prize
     endBoarding();   // the hands go home over the rail; her dead lie on her deck (entry.deck)
     openPrize(entry);
@@ -3008,7 +3009,7 @@ export function createNavalHost(deps) {
         lost += r.lost;
         continue;
       }
-      const got = deps.hold?.(f.lot, holdTier(classById(f.from))) ?? [];
+      const got = deps.hold?.(f.lot, holdTier(classById(f.from)) + (f.deep ? DEEP_TIER : 0)) ?? [];
       const r = got.length ? deps.board?.giveItems?.(got, into) ?? { left: got } : { left: [] };
       shots.removeFloater(f.id);
       casks++;
@@ -3808,7 +3809,7 @@ export function createNavalHost(deps) {
       const out = director.step(d, {
         density: launchesTraffic() ? trafficDensity(feet) : 0, player: feet, players, level: deps.level?.() ?? 1, seaY, ships,   // SEA-TRAFFIC
         // AUDIT NAV1 (online #6): the waters draw the navy after the most notorious player in them, not the stander alone
-        isOpenWater: (x, z, hull) => deps.isWater(x, z, hull), nearPort: !!w.nearPort, notoriety: Math.max(notoriety.get(crown.name), ...[...peerSelf.values()].map((p) => p.law?.[crown.name] ?? 0)),
+        isOpenWater: (x, z, hull) => deps.isWater(x, z, hull), nearPort: !!w.nearPort, deep: w.waters === 'deep', notoriety: Math.max(notoriety.get(crown.name), ...[...peerSelf.values()].map((p) => p.law?.[crown.name] ?? 0)),
         seedBase: seedBaseOf(w.px ?? 0, w.py ?? 0, w.day ?? 0, SEED_SALT ^ idSalt(myId())),
         distress, relieving,   // SEA-EASE: THE RELIEF
       });
@@ -4339,6 +4340,7 @@ export function createNavalHost(deps) {
     const hv = nb || pr || boarding ? null : heaveFor(boat);
     const yard = !nb && !pr && !hv && !boarding && yardHere(boat);
     return {
+      waters: w.waters ?? null,   // CAPT-WATERS: the plate says the deep waters
       ship: { name: HULL_NAMES[boat.hull], hull: st.damage.hullShare(), sail: st.damage.maxSail > 0 ? st.damage.sailShare() : null, crew: st.damage.maxCrew > 0 ? st.damage.crewShare() : null, fire: st.damage.fire > 0, wrecked: st.damage.state === SHIP_STATES.wrecked, braced: st.guns.braced, repair: repairCost(st.damage), mending,
         // SHIP-CREW, SEA-REPAIR: her crew's spirits and standing order, her repairs under way, her stores
         spirits: boat.crewed ? spiritsOf(st.crew.morale).label : null, order: boat.crewed && st.crew.order !== CREW_ORDERS.stand ? ORDER_TEXT[st.crew.order].label : null, repairing: !!st.repairing, repairOrdered: st.crew.order === CREW_ORDERS.repair, stores: deps.stores?.count?.(boat) ?? 0 },   // AUDIT CC-D8: her order standing (the hint says so in the quiet before the work)

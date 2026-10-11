@@ -579,7 +579,8 @@ export function navalHudText(model, keys = {}, { touch = false } = {}) {
   const ship = model.ship;
   const plate = ship ? {
     // SHIP-CREW: her crew's spirits and standing order beside her waters
-    name: ship.name, waters: [`${model.notoriety.crown} waters`, ship.spirits ? `crew ${ship.spirits.toLowerCase()}` : null, ship.order ?? null].filter(Boolean).join(' - '), anchors: model.notoriety.level,
+    // CAPT-WATERS: the deep waters said beside the crown's - richer prizes, bolder pirates
+    name: ship.name, waters: [`${model.notoriety.crown} waters${model.waters === 'deep' ? ', deep' : ''}`, ship.spirits ? `crew ${ship.spirits.toLowerCase()}` : null, ship.order ?? null].filter(Boolean).join(' - '), anchors: model.notoriety.level,
     hull: pct(ship.hull), sail: ship.sail == null ? null : pct(ship.sail), crew: ship.crew == null ? null : pct(ship.crew),
     chips: [ship.wrecked ? 'wreck' : null, ship.fire ? 'fire' : null, ship.braced ? 'brace' : null, ship.repairing ? 'repair' : ship.mending ? 'mend' : null].filter(Boolean),   // SEA-REPAIR: her repairs over the free mending
     batteries,

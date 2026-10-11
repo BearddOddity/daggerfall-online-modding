@@ -451,15 +451,18 @@ function sizeUp(c) {
 
 /**
  * SEA-PEACE: a captain's temper off her class and seed - a merchant peaceful, a navy dutiful, a pirate flagship bold,
- * and any other pirate bold on BOLD_SHARE of her seed's own draw, else wary (the host makes a raider bold).
+ * and any other pirate bold on BOLD_SHARE of her seed's own draw, else wary (the host makes a raider bold). CAPT-WATERS:
+ * `bold` the share of the deep waters' (navalDirector.js DEEP_BOLD) - the same draw, so a pirate bold on the coast is bold
+ * in the deep too.
  * @param {{ faction: string, flagship?: boolean }} cls
  * @param {number} seed
+ * @param {{ bold?: number }} [o]
  */
-export function temperOf(cls, seed) {
+export function temperOf(cls, seed, { bold = BOLD_SHARE } = {}) {
   if (cls.faction === 'merchant') return TEMPERS.peaceful;
   if (cls.faction === 'navy') return TEMPERS.dutiful;
   if (cls.flagship) return TEMPERS.bold;
-  return mulberry32(((seed >>> 0) ^ TEMPER_SALT) >>> 0)() < BOLD_SHARE ? TEMPERS.bold : TEMPERS.wary;
+  return mulberry32(((seed >>> 0) ^ TEMPER_SALT) >>> 0)() < bold ? TEMPERS.bold : TEMPERS.wary;
 }
 
 /** AUDIT NAV2 F25: a ship's measure (fightingPower's answer).
