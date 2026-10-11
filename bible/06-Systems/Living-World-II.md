@@ -1056,7 +1056,10 @@ old index); `idx_market_vendor_region (region, at)`, partial over the open trade
 `l.region = ?2` - a trader's listing takes its home's region when it is stocked (`listGood`) and nothing moves either
 after, so the answer is the same answer. On a seeded database (242,000 pieces, 54,400 open listings) the two went from
 588 and 659 ms to 2.2 and 1.6 ms, row for row the same. A stall's own read (`VENDOR_STANDS_SQL`) and the patrons'
-town reads find their piece by the new index too. No client or relay change: merging drops nobody.
+town reads find their piece by the new index too. No client or relay change: merging drops nobody. And the deploy's
+registration smoke check asks again on a 5xx, a new handle each try, as every other call there does
+(`account-deploy.yml`): asked once, it failed #766's deploy on the overload's 500 - read as the PBKDF2 cap - with the
+Worker already live.
 
 Pins: `test/patronload2.test.js` (2) - each statement's plan on the real migrations (the region's index, the piece's
 own, no walk of the market or of a town, the newest read in the index's order) and the stall's read;
