@@ -54,7 +54,7 @@ import {
   SAVE_DATA_PREFIX, SAVE_INFO_PREFIX, SAVE_SHOT_PREFIX, firstFreeKey, saveInfoOf, deleteSave, enumerateSaves,
 } from './saveSlots.js';
 import { importSlots } from './saveTransfer.js';
-import { serviceBase, storedSession, forgetSession, accountRefusalText } from '../net/accountClient.js';
+import { serviceBase, storedSession, forgetSession, accountRefusalText, forgetD1Bookmark } from '../net/accountClient.js';   // AUDIT SCALE II A-2: a write forgets the page's D1 bookmark
 
 /** THE REFUSALS THIS SIDE OWNS, and only the ones the service cannot
  *  answer. Everything the SERVICE refuses with keeps its sentence in
@@ -134,6 +134,12 @@ async function ask(io, path, { method = 'GET', json = null, raw = null } = {}) {
   if (json) headers['content-type'] = 'application/json';
   if (raw != null) headers['content-type'] = 'application/octet-stream';
   headers.authorization = `Bearer ${io.secret}`;
+  // AUDIT SCALE II A-2: A WRITE FORGETS THE PAGE'S D1 BOOKMARK, before it
+  // is sent and once it is answered - net/accountClient.js D1_BOOKMARK_READS
+  // says why (a write answers no bookmark, and the read after it must start
+  // at the primary).
+  const writes = method !== 'GET';
+  if (writes) forgetD1Bookmark();
   let res;
   try {
     res = await io.fetch(`${io.base}${path}`, {
@@ -143,8 +149,10 @@ async function ask(io, path, { method = 'GET', json = null, raw = null } = {}) {
   } catch {
     // ONCRASH1's law on this side too: a network failure is a refusal,
     // not a throw. Every arm of this function returns the same shape.
+    if (writes) forgetD1Bookmark();
     return { ok: false, error: 'offline' };
   }
+  if (writes) forgetD1Bookmark();
   const type = res.headers?.get?.('content-type') ?? '';
   if (!res.ok) {
     let data = null;

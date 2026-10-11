@@ -235,11 +235,11 @@
   {
     "name": "ACC1b-24-the-preflight-forbids-the-header",
     "file": "server-account/src/index.js",
-    "old": "          'access-control-allow-headers': 'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary',",
-    "new": "          'access-control-allow-headers': 'content-type, x-realm-lease, x-realm-seq, x-realm-summary',",
+    "old": "          'access-control-allow-headers': 'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary, x-d1-bookmark',",
+    "new": "          'access-control-allow-headers': 'content-type, x-realm-lease, x-realm-seq, x-realm-summary, x-d1-bookmark',",
     "tests": [
       "test/accountworker.test.js"
     ],
-    "note": "The header the credential now rides in is one no browser will send unless the preflight allows it. Every cross-origin authenticated call would fail, and the failure would look like a CORS problem rather than the missing word it is."
+    "note": "The header the credential now rides in is one no browser will send unless the preflight allows it. Every cross-origin authenticated call would fail, and the failure would look like a CORS problem rather than the missing word it is. SCALE4g (2026-10-10) re-aimed it by content."
   }
 ]

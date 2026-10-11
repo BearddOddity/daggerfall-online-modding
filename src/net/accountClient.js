@@ -702,6 +702,55 @@ export const handleShapeOk = (handle) => typeof handle === 'string' && HANDLE_RE
  * @param {object|null} [body]  POST body, or null for a GET
  * @returns {Promise<{ok: boolean, data?: any, error?: string, status?: number, unknown?: boolean}>}
  */
+/** SCALE4g (2026-10-10, Mac: "really future proof our archetecture"; bible/11-Multiplayer/Scale-Arc.md SCALE4g): THE
+ *  PAGE'S D1 BOOKMARK - the newest position in the account database any answer to this session has said it saw. Sent
+ *  back on every call (`x-d1-bookmark`), so a read route the service answers off a read replica answers no older than
+ *  everything this tab has seen and written there. It belongs to the session secret it was earned under: a sign-in, a
+ *  new guest or another account starts with none (the service then starts at the primary), so a session made a moment
+ *  ago is never looked for on a replica that has not heard of it yet. Kept in memory only - a new page starts fresh. */
+export const D1_BOOKMARK_RE = /^[0-9A-Za-z][0-9A-Za-z-]{0,159}$/;
+/** AUDIT SCALE II A-2/A-6/C-7 (2026-10-11, the audit of SCALE4d-SCALE5d; Mac: "Lets do an audit on everything. Ensure
+ *  perfection"): THE SERVICE'S BOOKMARK READS - the routes it answers on a D1 session started from the bookmark a call
+ *  carries, by route and method (server-account/src/service.js REPLICA_ROUTES, which a pin holds this equal to). Only
+ *  these carry the page's bookmark, and only their answers move it.
+ *  EVERY OTHER CALL FORGETS IT, before it is sent and again when it is answered: a bookmark is a position the tab has SEEN,
+ *  and no write route answers one - so a write left the bookmark behind it, and the next read, started from there, could
+ *  be served by a replica that had not heard the write. A Sigil Broker sale whose answer was lost asked the account view
+ *  whether it had landed, off a replica from before it, read "no", and handed the Sigil Stones back while the service
+ *  kept the sale. With the bookmark forgotten, the read after a write starts at the primary (the service's own law for
+ *  a call that carries none) - and an answer to a read sent BEFORE a forget is never kept after it (`_d1Era`), since it
+ *  may have been served before the write landed. The mint is among the reads: it starts at the primary whatever it
+ *  carries (service.js PRIMARY_FIRST_ROUTES, A-1), so its answer is a position no older than the tab's last write.
+ *  AND A CALL THAT COULD NOT BE MADE FORGETS IT (`offline`), and so does a read answered with none (C-7): a service rolled
+ *  back to before SCALE4g (acct111) says no bookmark, and its preflight refuses the header - kept, every call after it
+ *  failed `offline` until the page was reloaded. */
+export const D1_BOOKMARK_READS = new Map([
+  ['/v1/auth/token', 'POST'],
+  ['/v1/heartbeat', 'POST'],
+  ['/v1/account', 'GET'],
+  ['/v1/realm', 'GET'],
+  ['/v1/prof/state', 'POST'],
+  ['/v1/prof/motherlodes', 'POST'],
+]);
+let _d1Mark = { secret: null, mark: null };
+/** AUDIT SCALE II A-2: how many times the page's bookmark has been forgotten - a read's answer is kept only under the
+ *  era it was sent in. */
+let _d1Era = 0;
+/** D1's own shape - fixed-width hex positions first - orders by its first 26 characters; another shape is taken as newest. */
+const D1_POSITION_RE = /^[0-9a-f]{8}-[0-9a-f]{8}-[0-9a-f]{8}-/;
+const newerMark = (/** @type {string} */ a, /** @type {string} */ b) => !(D1_POSITION_RE.test(a) && D1_POSITION_RE.test(b)) || a.slice(0, 26) >= b.slice(0, 26);
+/** The bookmark to send with a call under `secret` - null for none, or for another session's. */
+export function d1BookmarkFor(/** @type {string|null} */ secret) { return secret && _d1Mark.secret === secret ? _d1Mark.mark : null; }
+/** An answer under `secret` said `mark`: kept if it is the session's first or no older than the one kept. */
+export function noteD1Bookmark(/** @type {string|null} */ secret, /** @type {unknown} */ mark) {
+  if (!secret || typeof mark !== 'string' || !D1_BOOKMARK_RE.test(mark)) return;
+  if (_d1Mark.secret !== secret || !_d1Mark.mark || newerMark(mark, _d1Mark.mark)) _d1Mark = { secret, mark };
+}
+/** Forget the page's bookmark: the next read starts at the primary, and no read already on the wire keeps its answer's
+ *  (AUDIT SCALE II A-2). Every door that writes to the service outside `call` asks it before and after its write
+ *  (systems/realmSaves.js realmAsk, systems/cloudSaves.js ask). */
+export function forgetD1Bookmark() { _d1Mark = { secret: null, mark: null }; _d1Era += 1; }
+
 export async function call({ fetch, base = DEFAULT_ACCOUNT_SERVICE, secret = null, keepalive = false }, path, body = null) {
   const headers = { accept: 'application/json' };
   if (body) headers['content-type'] = 'application/json';
@@ -709,11 +758,18 @@ export async function call({ fetch, base = DEFAULT_ACCOUNT_SERVICE, secret = nul
   // to reach and no argument that could add one - AUDIT-ACC F13 shut
   // that door on the service and this side does not get to reopen it.
   if (secret) headers.authorization = `Bearer ${secret}`;
+  const method = body ? 'POST' : 'GET';
+  // AUDIT SCALE II A-2: a bookmark read carries the page's bookmark; any other call forgets it, now and once answered
+  const read = D1_BOOKMARK_READS.get(path) === method;
+  if (!read) forgetD1Bookmark();
+  const era = _d1Era;
+  const mark = d1BookmarkFor(secret);   // SCALE4g: the session's newest D1 position, for a read a replica serves
+  if (mark) headers['x-d1-bookmark'] = mark;
 
   let res;
   try {
     res = await fetch(`${base}${path}`, {
-      method: body ? 'POST' : 'GET',
+      method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
       // AUDIT RENOWN1 GAME-8: a call made as the page goes (the Renown report on pagehide) asks the browser to finish
@@ -724,23 +780,34 @@ export async function call({ fetch, base = DEFAULT_ACCOUNT_SERVICE, secret = nul
     // A NETWORK FAILURE IS A REFUSAL, NOT A THROW. ONCRASH1's law on
     // this side too: a throw out of a button handler ends more than the
     // button. Every arm of this function returns the same shape.
+    forgetD1Bookmark();   // AUDIT SCALE II A-6: a call that could not be made - a preflight refusing the header among them
     return { ok: false, error: 'offline' };
   }
 
-  let data = null, read = false;
-  try { data = await res.json(); read = true; } catch { data = null; }
+  // SCALE4g: a read's answer says its session's newest position. AUDIT SCALE II: kept only in the era it was sent in (A-2);
+  // a read answered with none lets the page's go (C-7); any other call forgets it again, now that it is answered (A-2)
+  let said = null;
+  try { said = res.headers?.get?.('x-d1-bookmark') ?? null; } catch { said = null; }   // a fake answer with no headers says none
+  if (!read) forgetD1Bookmark();
+  else if (era === _d1Era) {
+    if (said == null) { if (_d1Mark.secret === secret) forgetD1Bookmark(); } else noteD1Bookmark(secret, said);
+  }
+  let data = null, parsed = false;
+  try { data = await res.json(); parsed = true; } catch { data = null; }
 
   if (!res.ok) {
     // The service says `{ error: '<word>' }`. A proxy, a 502 or an
     // HTML error page says nothing we can read, and `server` is the
     // honest answer for that rather than a guess at which word it meant.
-    return { ok: false, error: typeof data?.error === 'string' ? data.error : 'server', ...(typeof data?.why === 'string' ? { why: data.why } : {}), ...(Number.isSafeInteger(data?.seq) ? { seq: data.seq } : {}), ...(Number.isSafeInteger(data?.at) ? { at: data.at } : {}), ...(typeof data?.card === 'string' ? { card: data.card } : {}), status: res.status };   // AUDIT WB A5: and the rung, where the service names one; REALM P2.2: and a realm record's sequence; AUDIT2 GUILD2 S7: and when a refused act may come again; AUDIT CARDS-6 D7: and the card a short deck lacks
+    return { ok: false, error: typeof data?.error === 'string' ? data.error : 'server', ...(typeof data?.why === 'string' ? { why: data.why } : {}), ...(Number.isSafeInteger(data?.seq) ? { seq: data.seq } : {}), ...(Number.isSafeInteger(data?.at) ? { at: data.at } : {}), ...(typeof data?.card === 'string' ? { card: data.card } : {}),   // AUDIT WB A5: and the rung, where the service names one; REALM P2.2: and a realm record's sequence; AUDIT2 GUILD2 S7: and when a refused act may come again; AUDIT CARDS-6 D7: and the card a short deck lacks
+      ...(Number.isSafeInteger(data?.position) ? { position: data.position } : {}), ...(Number.isSafeInteger(data?.wait) ? { wait: data.wait } : {}),   // AUDIT SCALE II L4a: the sign-in line's place and its wait (ADMIT-LINE's `queue`)
+      status: res.status };
   }
   // MARKET-AUDIT (P1): every JSON route answers a body, so a 2xx whose body never came (the door's wait ended mid-body, a
   // dropped connection) is no word on the act - `offline`, as a request that never left: an act is kept and asked again
   // with its own id (the service's `repeat` answers one that landed), a read shows the last good view. As `ok` with no
   // data it let a kept purchase go unminted and cached a blank market for a minute. A 204 says it has nothing to say.
-  if (!read && res.status !== 204) return { ok: false, error: 'offline', unknown: true, status: res.status };
+  if (!parsed && res.status !== 204) { forgetD1Bookmark(); return { ok: false, error: 'offline', unknown: true, status: res.status }; }   // AUDIT SCALE II A-6: `offline`, as one never made
   return { ok: true, data, status: res.status };
 }
 
@@ -953,6 +1020,24 @@ export const TOKEN_REUSE_MS = 60_000;
 export const MINT_COOL_MS = 2_000;
 export const MINT_COOL_MAX_MS = 60_000;
 
+/** AUDIT SCALE II L4a (2026-10-11; Mac: "Lets do an audit on everything. Ensure perfection"): A PLACE IN THE SIGN-IN LINE
+ *  IS NOT A FAILURE. ADMIT-LINE answers a mint it holds back 503 `queue` with the place and the wait before asking again
+ *  (server-account/src/admit.js), and the minter read it as any failure: MINT_COOL_MS doubling to MINT_COOL_MAX_MS. A
+ *  player whose turn came mid-cool waited up to a minute past it, and a cool doubled past ADMIT_KEEP_MS lost the place
+ *  for good. So a `queue` holds the next mint for the line's own wait - within the line's own bounds, ADMIT_WAIT_MIN_MS
+ *  and ADMIT_WAIT_MAX_MS (a pin holds these two equal to them: the client never imports the service), never shorter
+ *  than told (asked sooner, the line answers the same place), and stretched by at most MINT_LINE_JITTER of itself so a
+ *  wave told one wait does not ask again in one instant. It does not double and is no failure in a row; every other
+ *  failure keeps STORM-SHED's law. */
+export const MINT_LINE_WAIT_MIN_MS = 1_000;
+export const MINT_LINE_WAIT_MAX_MS = 30_000;
+export const MINT_LINE_JITTER = 0.1;
+/** The hold a `queue` answer telling `wait` puts on the next mint, ms. `rand` is Math.random's shape. */
+export const lineHoldMs = (/** @type {unknown} */ wait, rand = Math.random) => {
+  const told = Math.min(MINT_LINE_WAIT_MAX_MS, Math.max(MINT_LINE_WAIT_MIN_MS, typeof wait === 'number' && Number.isFinite(wait) ? wait : MINT_LINE_WAIT_MIN_MS));
+  return Math.min(MINT_LINE_WAIT_MAX_MS, Math.round(told * (1 + MINT_LINE_JITTER * rand())));
+};
+
 /**
  * ACC1d: ONE TOKEN FOR ONE RELAY CONNECTION - NEVER TWICE INTO ONE ROOM.
  *
@@ -1012,6 +1097,8 @@ export const MINT_COOL_MAX_MS = 60_000;
  * STORM-SHED: a mint that failed holds the next one off (MINT_COOL_MS, doubling to MINT_COOL_MAX_MS, jittered) - every
  * room asking meanwhile answered null at once with the failure's word, and `minter.coolMs()` how long it still holds, so
  * a session's next hello waits for it (net/online.js). A token lets it go; another sign-in is never held by this one's.
+ * AUDIT SCALE II L4a: a place in the sign-in line (`queue`) holds it the line's own wait instead (lineHoldMs), and is
+ * no failure in a row.
  *
  * @param {object} io
  * @param {(url: string, init: object) => Promise<any>} io.fetch
@@ -1060,6 +1147,9 @@ export function accountTokenMinter({ fetch, storage, onIssued = null, character 
       if (token) {
         held = { token, secret: session.secret, character: named, at: now(), rooms: new Set() };   // STORM-SHED: opened by a hello (`opened`), never by the mint
         cool = { secret: null, fails: 0, until: -Infinity, why: null };
+      } else if (minter.lastWhy === 'queue') {
+        // AUDIT SCALE II L4a: the line's own wait, its failures in a row left where they stood
+        cool = { secret: session.secret, fails: cool.secret === session.secret ? cool.fails : 0, until: now() + lineHoldMs(lineWait, rand), why: 'queue' };
       } else {
         const fails = cool.secret === session.secret ? cool.fails + 1 : 1;
         cool = { secret: session.secret, fails, until: now() + jittered(Math.min(MINT_COOL_MAX_MS, MINT_COOL_MS * 2 ** (fails - 1)), rand), why: minter.lastWhy };
@@ -1089,9 +1179,12 @@ export function accountTokenMinter({ fetch, storage, onIssued = null, character 
     },
   });
 
+  /** AUDIT SCALE II L4a: the wait the sign-in line told the last mint it held back. */
+  let lineWait = /** @type {unknown} */ (null);
   /** One mint on the wire - the identity adopted, or null with `lastWhy` said. */
   async function mintFresh(/** @type {any} */ session, /** @type {string|null} */ named) {
     const answer = await mintIdentity({ fetch, base: serviceBase(storage), secret: session.secret }, named);
+    lineWait = answer.ok ? null : /** @type {any} */ (answer).wait;
     if (answer.ok) {
       const token = typeof answer.data?.token === 'string' ? answer.data.token : null;
       if (token) {

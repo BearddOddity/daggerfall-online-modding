@@ -1,6 +1,6 @@
 // LEGACY7 part two (2026-10-06, bible/06-Systems/Legacy-Arc.md section 9): A HOUSE NAME ONLINE - the law both ends share
 // (src/net/houseLaw.js), the identity token's claims (identityToken.js), the relay's stamp (wire.js badged) and the
-// client's read, the account service's mint and roster (server-account/src/legacy.js realmHouseOf, realm.js listRealm) on
+// client's read, the account service's mint and roster (server-account/src/legacy.js realmHouseOf - realm.js realmMintFacts since SCALE4f - and realm.js listRealm) on
 // the real Worker over the real migrations, and the three faces: over the head, the inspect card, the roster's tile.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,7 +13,7 @@ import { badged, readHouse as wireReadHouse } from '../src/net/wire.js';
 import { standService } from './accountDb.mjs';
 import { profileView } from '../src/ui/profileWindow.js';
 import { realmRowAsSave } from '../src/systems/realmSaves.js';
-import { realmHouseOf } from '../server-account/src/legacy.js';
+import { realmMintFacts } from '../server-account/src/realm.js';   // PIN MOVED (SCALE4f): legacy.js realmHouseOf is realmMintFacts' `house`
 
 const rd = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
 const { subtle } = globalThis.crypto;
@@ -93,9 +93,9 @@ test('LEGACY7 the service signs a realm character\'s house into its token and on
   assert.equal((await call('/v1/auth/token', { character: c.id })).body.house, null);
   // ...asked of the house's own door, not only behind the mint's `rc`
   const aLease = (await call('/v1/realm/join', { id: a.id })).body.lease;
-  assert.deepEqual(await realmHouseOf({ db: S.env.DB }, g.id, a.id), { hn: 'Hlaalu', hc: 'Ysolde', hb: 1, hg: 2 });
+  assert.deepEqual((await realmMintFacts({ db: S.env.DB }, g.id, a.id)).house, { hn: 'Hlaalu', hc: 'Ysolde', hb: 1, hg: 2 });
   await call('/v1/realm/die', { id: a.id, lease: aLease });
-  assert.equal(await realmHouseOf({ db: S.env.DB }, g.id, a.id), null, 'a tombstone\'s house is worn by nobody');
+  assert.equal((await realmMintFacts({ db: S.env.DB }, g.id, a.id)).house, null, 'a tombstone\'s house is worn by nobody');
 });
 
 test('LEGACY7 the faces: the inspect card\'s line, the roster\'s tile, and the nameplate\'s line by source', () => {

@@ -48,7 +48,7 @@
 // for the save as stored and opens it here.
 // ═══════════════════════════════════════════════════════════════════
 
-import { storedSession, serviceBase, forgetSession, accountRefusalText } from '../net/accountClient.js';
+import { storedSession, serviceBase, forgetSession, accountRefusalText, forgetD1Bookmark } from '../net/accountClient.js';   // AUDIT SCALE II A-2: a write forgets the page's D1 bookmark
 import { realmTradeRefusalText } from '../net/realmTradeLaw.js';   // REALM P2.1: a trade the realm settles
 import { REALM_DOOR_WORD } from '../net/wire.js';   // REALM-DOOR: the relay's word for a token that names no realm character
 import { gzipText, gunzipText, saveTextOf, canGzip, canGunzip } from '../net/realmSaveCodec.js';   // REALM-GZIP: a save rides packed
@@ -79,14 +79,22 @@ async function realmAsk(io, path, { method = 'GET', json = null, raw = null, hea
   const headers = { accept: 'application/json', authorization: `Bearer ${io.secret}`, ...extra };
   if (json) headers['content-type'] = 'application/json';
   if (raw != null) headers['content-type'] = 'application/octet-stream';
+  // AUDIT SCALE II A-2 (2026-10-11; Mac: "Lets do an audit on everything. Ensure perfection"): A WRITE FORGETS THE PAGE'S
+  // D1 BOOKMARK, before it is sent and once it is answered (net/accountClient.js D1_BOOKMARK_READS: a join, a create, a
+  // checkpoint answer no bookmark, so the next read after one - the account view, the heartbeat - must start at the
+  // primary, never at a position from before it)
+  const writes = method !== 'GET';
+  if (writes) forgetD1Bookmark();
   let res;
   try {
     res = await io.fetch(`${io.base}${path}`, {
       method, headers, body: json ? JSON.stringify(json) : (raw ?? undefined), ...(keepalive ? { keepalive: true } : {}),
     });
   } catch {
+    if (writes) forgetD1Bookmark();
     return { ok: false, error: 'offline' };
   }
+  if (writes) forgetD1Bookmark();
   const type = res.headers?.get?.('content-type') ?? '';
   if (!res.ok) {
     let data = null;

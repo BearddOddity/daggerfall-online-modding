@@ -274,7 +274,7 @@ test('REVENANT-HARM: a death no blow names goes to the foe whose harm last reach
   assert.equal(N.livingRevenants().length, 1); assert.equal(mage.revenant?.id, N.livingRevenants()[0].id, 'the caster');
   assert.equal(N.livingRevenants()[0].gender, 'female', 'its record off the pool');
   // a blow outranks the mark
-  me.health = 100;
+  me.health = 99;   // PIN MOVED (FULL-GUARD, FIELD BUGS 2026-10-11b): a foe's blow from full health leaves me at 1 - a point short of full, it kills
   H.markPlayerHarm(mage);
   setStruck(brute, me, 500); hurtPlayer(me, 500);
   await tick();

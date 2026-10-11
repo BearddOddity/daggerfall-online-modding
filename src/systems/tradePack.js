@@ -67,14 +67,22 @@ function offerWeight(entries, gold) {
 /**
  * The adapter over one entity's pack. `entity` is the live player entity (`items`, `goldPieces`).
  * Returns the `pack` object net/tradeSession.js takes.
+ * OFFER-ID (FIELD BUGS 2026-10-11b): `stampIds` - the realm's id stamp (itemIds.js stampItemIds), handed in by the host
+ * that checkpoints the realm's save (world.js) rather than imported: itemIds.js reads the item law, and importing the law
+ * installs it into the wire's clamp (itemLaw.js setItemLaw) for every reader of this file.
+ * @param {any} entity @param {{ stampIds?: ((owner: { items: any[] }) => number) | null }} [o]
  */
-export function createTradePack(entity) {
+export function createTradePack(entity, { stampIds = null } = {}) {
   const list = () => (entity.items ??= []);
   return {
     offerable: (item) => packTradeRefusal(item, entity),   // WAGONS2 (AUDIT): the loaded wagon stays
 
     /** [{item,count}] -> the records that go on the wire, or null. A partial stack is the origin's record at the count. */
     wire(entries) {
+      // OFFER-ID (FIELD BUGS 2026-10-11b): each valuable piece offered is given its id NOW (INT4 itemIds.js
+      // stampItemIds), the one the trade's hold checkpoint would stamp after the offer was made - so the record the
+      // realm finds is the one offered, and a piece looted since the last checkpoint trades instead of being refused
+      stampIds?.({ items: entries.map((e) => e.item) });
       const recs = entries.map(({ item, count }) => {
         const copy = JSON.parse(JSON.stringify(item));   // a plain-data copy: nothing from the pack rides the frame by reference
         const have = Math.max(1, item.stackCount ?? 1);
