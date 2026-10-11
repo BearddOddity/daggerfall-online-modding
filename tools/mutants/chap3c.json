@@ -68,8 +68,8 @@
   {
     "name": "CHAP3C-SHELF-ASCENDANT",
     "file": "src/net/npcChapterLaw.js",
-    "old": "from: 90, price: 0.9, writs: 1.5, shelf: 4 }",
-    "new": "from: 90, price: 0.9, writs: 1.5, shelf: 3 }",
+    "old": "from: 90, price: 0.8, writs: 1.5, shelf: 4 }",
+    "new": "from: 90, price: 0.8, writs: 1.5, shelf: 3 }",
     "tests": [
       "test/chap3c_halls.test.js"
     ]

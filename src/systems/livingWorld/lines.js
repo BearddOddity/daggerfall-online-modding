@@ -520,6 +520,7 @@ export const CHAPTER_NEWS = Object.freeze({
   failing: Object.freeze([
     Object.freeze(['The hall of {guild} is half empty of an evening.', 'Hard times for them.']),
     Object.freeze(['They say the chapter of {guild} here is failing.', 'Someone ought to help them, before it shuts.']),
+    Object.freeze(['They say the chapter of {guild} here is in decline.', 'It needs its members, and soon.']),   // GUILD3e: a Decline's, the band's now
   ]),
   thriving: Object.freeze([
     Object.freeze(['Have you seen the hall of {guild} of an evening? Full to the door.', 'Somebody is paying them well, then.']),
@@ -528,6 +529,7 @@ export const CHAPTER_NEWS = Object.freeze({
   ascendant: Object.freeze([
     Object.freeze(['They say the chapter of {guild} here is the strongest in {region}.', 'I believe it. You should see the hall.']),
     Object.freeze(['The chapter of {guild} has never stood higher in {town}.', 'Then we are in good hands.']),
+    Object.freeze(['The chapter of {guild} here is in its ascendancy, they say.', 'Everyone wants to be seen in that hall.']),   // GUILD3e: an Ascendancy's, the band's now
   ]),
 });
 /** CHAP5b: the days a week a chapter's news is told in its town - drawn on the seed, by the town and its guild. */
@@ -549,12 +551,6 @@ export const CHAPTER_EVENT_NEWS = Object.freeze({
   ]),
   rivalry: Object.freeze([
     Object.freeze(['They say the chapter of {guild} here has a rival this Season.', 'One of them will come out of it the poorer.']),
-  ]),
-  decline: Object.freeze([
-    Object.freeze(['They say the chapter of {guild} here is in decline.', 'It needs its members, and soon.']),
-  ]),
-  ascendancy: Object.freeze([
-    Object.freeze(['The chapter of {guild} here is in its ascendancy, they say.', 'Everyone wants to be seen in that hall.']),
   ]),
   shut: Object.freeze([
     Object.freeze(['They say the halls of {guild} here are shut, by the watch\'s order.', 'For the whole Season, I hear.']),

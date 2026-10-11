@@ -44,9 +44,10 @@ test('CHAP4c a chapter\'s key and its words: guild x 100 + region, worded withou
   assert.equal(chapterTitleKey(FIGHTERS, ANTICLERE), 4121);
   assert.deepEqual([chapterOfTitleKey(4121), chapterOfTitleKey(36861), chapterOfTitleKey(-1), chapterOfTitleKey(4.5), chapterOfTitleKey('4121')],
     [{ f: 41, region: 21 }, { f: 368, region: 61 }, null, null, null]);
+  // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - the Master's chair, the council, its Councillor; marked by AUDIT GUILD3 R4
   assert.deepEqual([
     chapterTitleText('chaptermaster', [4121, 2]), chapterTitleText('chapterofficer', [4017, 0]), chapterTitleText('formermaster', [36817, 1]),
-  ], ['Master of the Fighters Guild, Anticlere', 'Officer of the Mages Guild, Daggerfall', 'Former Master of the Knights of the Dragon, Daggerfall']);
+  ], ['Master of the Fighters Guild, Anticlere', 'Councillor of the Mages Guild, Daggerfall', 'Former Master of the Knights of the Dragon, Daggerfall']);
   for (const [why, t, ts] of [['a hidden guild', 'chaptermaster', [4221, 0]], ['no guild', 'chaptermaster', [9921, 0]], ['no region', 'chaptermaster', [4199, 0]],
     ['no claim', 'chaptermaster', null], ['a seat title', 'warden', [4121, 0]]]) assert.equal(chapterTitleText(t, ts), null, why);
 });
@@ -65,8 +66,8 @@ test('CHAP4c the titles a character\'s seats give it: a Master\'s, an officer\'s
 test('CHAP4c the badge: a chapter title worded off its claim in its own colour; its plain word where the claim names nothing (mutants: the claimed arm, the words, the colours)', () => {
   assert.deepEqual(titleBadge({ title: 'chaptermaster', ts: [4121, 0] }).text, 'Master of the Fighters Guild, Anticlere');
   assert.deepEqual(titleBadge({ title: 'formermaster', ts: [4017, 0] }).text, 'Former Master of the Mages Guild, Daggerfall');
-  assert.deepEqual(titleBadge({ title: 'chapterofficer' }).text, 'Chapter Officer');
-  assert.deepEqual([TITLE_TEXT.chaptermaster, TITLE_TEXT.chapterofficer, TITLE_TEXT.formermaster], ['Chapter Master', 'Chapter Officer', 'Former Master']);
+  assert.deepEqual(titleBadge({ title: 'chapterofficer' }).text, 'Chapter Councillor');
+  assert.deepEqual([TITLE_TEXT.chaptermaster, TITLE_TEXT.chapterofficer, TITLE_TEXT.formermaster], ['Chapter Master', 'Chapter Councillor', 'Former Master']);
   const hex = (t) => TITLE_RGBA[t].slice(0, 3).map((x) => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
   assert.deepEqual(CHAPTER_TITLES.slice(0, 3).map(hex), ['7fb2e5', 'a8c4dd', '9aa0a8']);   // PIN MOVED (CHAP6e): two more after them
 });

@@ -253,24 +253,6 @@
     ]
   },
   {
-    "name": "CHAP6C-LINE-DECLINE",
-    "file": "src/net/chapterEvents.js",
-    "old": "  else if (s.event === 'decline') out.push(",
-    "new": "  else if (false) out.push(",
-    "tests": [
-      "test/chap6c_words.test.js"
-    ]
-  },
-  {
-    "name": "CHAP6C-LINE-ASCENDANCY",
-    "file": "src/net/chapterEvents.js",
-    "old": "  else if (s.event === 'ascendancy') out.push('The chapter is ascendant this Season.');\n",
-    "new": "",
-    "tests": [
-      "test/chap6c_words.test.js"
-    ]
-  },
-  {
     "name": "CHAP6C-LINE-DOCTRINE",
     "file": "src/net/chapterEvents.js",
     "old": "  if (s.doctrine) out.push(`The chapter holds to ${chapterDoctrineWords(s.doctrine)} this Season.`);\n",
@@ -363,7 +345,7 @@
   {
     "name": "CHAP6C-BOARD-LINES",
     "file": "src/ui/noticeWindow.js",
-    "old": "      for (const line of chapterSeasonLines(c.faction, work.region, c)) body.append(el('p', 'notice-chapter notice-season', line));\n",
+    "old": "    for (const line of chapterSeasonLines(c.faction, work.region, c)) card.append(el('p', 'notice-chapter notice-season', line));\n",
     "new": "",
     "tests": [
       "test/chap6c_words.test.js"
@@ -372,7 +354,7 @@
   {
     "name": "CHAP6C-BOARD-MEMBER",
     "file": "src/ui/noticeWindow.js",
-    "old": "work.back && (writs?.merit ?? []).some((m) => m.faction === c.faction) ? chapterBackChoices(",
+    "old": "work.back && merit ? chapterBackChoices(",
     "new": "work.back ? chapterBackChoices(",
     "tests": [
       "test/chap6c_words.test.js"
@@ -381,8 +363,8 @@
   {
     "name": "CHAP6C-BOARD-DOOR",
     "file": "src/ui/noticeWindow.js",
-    "old": "work.back && (writs?.merit ?? []).some((m) => m.faction === c.faction) ? chapterBackChoices(",
-    "new": "(writs?.merit ?? []).some((m) => m.faction === c.faction) ? chapterBackChoices(",
+    "old": "work.back && merit ? chapterBackChoices(",
+    "new": "merit ? chapterBackChoices(",
     "tests": [
       "test/chap6c_words.test.js"
     ]

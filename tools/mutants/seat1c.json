@@ -320,8 +320,8 @@
   {
     "name": "SEAT1c-guild-goes-holding",
     "file": "server-account/src/guilds.js",
-    "old": "  OR EXISTS (SELECT 1 FROM town_seat_holds WHERE guild_id = ${p})   -- SEAT1c",
-    "new": "  OR 0   -- SEAT1c",
+    "old": "`EXISTS (SELECT 1 FROM town_seat_holds WHERE guild_id = ${p})`",
+    "new": "`0`",
     "tests": [
       "test/seat1c_service.test.js"
     ]

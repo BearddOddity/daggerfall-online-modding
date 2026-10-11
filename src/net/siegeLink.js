@@ -12,6 +12,7 @@
 // Not a DFU member. Ledger A (EVERY PALACE A SEAT's row).
 import { SIEGE_THRONE, SIEGE_BANNER_NAMES, SIEGE_SPECTATORS_MAX, SIEGE_NPC_KINDS, siegeNextWave, siegeWaveMs, siegeNpcAt, isSiegeNpcId } from './siegeRef.js';
 import { heraldryOf } from './heraldryLaw.js';   // HERALDRY-SHOWN: each side's heraldry on the HUD
+import { marksText } from './marksLaw.js';   // GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md): an amount of silver in its words
 import { heraldryByTag } from './heraldryIndex.js';   // HERALDRY-SHOWN: the dressed seat's guilds, by tag
 
 /**
@@ -213,7 +214,7 @@ export function siegeHonourLine(honours) {
   if (typeof honours === 'string') return honours;
   if (!honours) return 'No Honours this battle: they are earned by standing half the battle or felling a foe.';
   if (honours.spent) return 'Your Honour: these two guilds\' Honours were earned already this Season.';
-  return `Your Honour: ${honours.marks} Marks, ${Number(honours.xp).toLocaleString('en-US')} Renown, one Spoils of War roll`;
+  return `Your Honour: ${marksText(Number(honours.marks))}, ${Number(honours.xp).toLocaleString('en-US')} Renown, one Spoils of War roll`;   // GUILD3a: silver, as every sentence says it
 }
 
 /** SEAT2b part two (c): the card's word on Honours after a revolt. */

@@ -101,8 +101,8 @@
   {
     "name": "CHAP5A-LINE-MASTER",
     "file": "src/net/npcChapterLaw.js",
-    "old": "master ? `Master of the chapter: ${master.name}.` : 'The Master\\'s seat stands empty.',",
-    "new": "'The Master\\'s seat stands empty.',",
+    "old": "master ? `${chapterBandOf(chapter?.strength).band === 'ascendant' ? 'High Master' : 'Master'} of the chapter: ${master.name}.` : 'The Master\\'s chair stands empty.',",
+    "new": "'The Master\\'s chair stands empty.',",
     "tests": [
       "test/chap5a_roll.test.js"
     ]
@@ -110,17 +110,8 @@
   {
     "name": "CHAP5A-LINE-OFFICERS",
     "file": "src/net/npcChapterLaw.js",
-    "old": "officers.length ? `${officers.length > 1 ? 'Its officers' : 'Its officer'}: ${namesListed(officers)}.` : 'No officer\\'s seat is held.',",
-    "new": "`Its officers: ${namesListed(officers)}.`,",
-    "tests": [
-      "test/chap5a_roll.test.js"
-    ]
-  },
-  {
-    "name": "CHAP5A-LINE-PLURAL",
-    "file": "src/net/npcChapterLaw.js",
-    "old": "${officers.length > 1 ? 'Its officers' : 'Its officer'}",
-    "new": "Its officers",
+    "old": "officers.length ? `Its council: ${namesListed(officers)}.` : 'No council chair is held.',",
+    "new": "`Its council: ${namesListed(officers)}.`,",
     "tests": [
       "test/chap5a_roll.test.js"
     ]
