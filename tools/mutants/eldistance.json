@@ -12,8 +12,8 @@
   {
     "name": "EL-DISTANCE-the-far-ring-blends-the-fog-in-linear-again",
     "file": "src/render/enhancedLighting.js",
-    "old": "  vec3 col = mix(elEncode(elTonemapRGB(lit * ex)), uFogColor, min(base + rim, 1.0));   // HQ1",
-    "new": "  vec3 col = elEncode(mix(elTonemapRGB(lit * ex), elDecode(uFogColor), min(base + rim, 1.0)));   // HQ1",
+    "old": "  vec3 col = mix(shown, uFogColor, horizonHaze(vDist, uFogStart, uFogEnd, uRimStart, uRimEnd, uHazeHold));",
+    "new": "  vec3 col = elEncode(mix(elDecode(shown), elDecode(uFogColor), horizonHaze(vDist, uFogStart, uFogEnd, uRimStart, uRimEnd, uHazeHold)));",
     "tests": [
       "test/perffog_uniform.test.js",
       "test/el1_enhancedlighting.test.js"
