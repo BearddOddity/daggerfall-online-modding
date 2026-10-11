@@ -166,14 +166,15 @@ export async function listSeats({ db, nowS }, player, env) {
 /**
  * SEAT1b: THE SEATS A PLEDGE, A TICK OR A TRIBUTE MAY NAME - every confirmed seat (a disputed one too: it keeps every
  * effect it had), by key: `Map<key, { key, name, region, tier, pixel, state }>`. The ignored accounts left out, as the
- * list leaves them. STORM-SHED: the Watch's claims read the isolate's kept rows (seatRowsOf). D1-LOAD (2026-10-11, the
- * service slow after SEAT-LEASE): AND EVERY OTHER CALLER - the standings (every board opened, and a holder's members'
- * Watchtowers every ten minutes), every market sale's and courier's Tithe (titheAt) and the minute's auctions closed
- * with it, a market read's listings cap, a Levy's harvest, a Bounty's camp, a pledge: each read all 4,050 of the seats'
- * witness rows, STORM-SHED's costliest read by time, and the Tithe's began on every sale in a region the moment its
- * first Charter was held. A seat's facts move only with a witness's report or a strike (each lets the rows go here) and
- * by the week, so the minute's bound is the list's own. `fresh` reads the table as it stands - the Turning's, once a
- * week (seatTurning.js settleWeek), whose registry decides who holds what.
+ * list leaves them. STORM-SHED: the Watch's claims read the isolate's kept rows (seatRowsOf); GATHER-SPEED and
+ * MARKET-SPEED kept them too for the asks on a harvest's or a market read's way - a Levy's seat (seatHolding.js levyAt),
+ * a Tithe's (titheAt) and a board's Market Hall (seatForts.js listingsCapAt), each of which read every seat row on
+ * every harvest, read and buy. D1-LOAD (2026-10-11, the service slow after SEAT-LEASE): AND EVERY OTHER CALLER - the
+ * standings (every board opened, and a holder's members' Watchtowers every ten minutes), the minute's auctions closed,
+ * a Bounty's camp, a pledge - so kept is the rule, not a choice each caller must remember: all 4,050 of the seats'
+ * witness rows were STORM-SHED's costliest read by time. A seat's facts move only with a witness's report or a strike
+ * (each lets the rows go here) and by the week, so the minute's bound is the list's own. `fresh` reads the table as it
+ * stands - the Turning's, once a week (seatTurning.js settleWeek), whose registry decides who holds what.
  * @param {any} db
  * @param {number} nowS
  * @param {{ fresh?: boolean }} [opts]
