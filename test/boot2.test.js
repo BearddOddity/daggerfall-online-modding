@@ -81,11 +81,15 @@ test('BOOT2: the entry\'s static reach touches neither hub and stays under the c
   // (render/skinPalette.js: the entries a row and the unit, which CHAR_SKIN_VS is built from as the renderer loads, and
   // which formats/mwGpuSkin.js writes by). A leaf that imports nothing, so it can bring no hub, and the assertion below
   // keeps it so. The branch measured 70 under WINDFALL1's 71; RW1's 73 on main took the room. The ceiling moves to 74.
+  // FAR-SEA1 (2026-10-10): 75 - the horizon's haze (render/horizonHaze.js: the GLSL the water surface and the lane's far
+  // ring are built from as the renderer loads). A leaf that imports nothing, so it can bring no hub, and the assertion
+  // below keeps it so. The ceiling moves to 75.
   const importsOf = (p) => [...rd(p).matchAll(STATIC)].map((m) => m[1]);
   assert.deepEqual([importsOf('src/render/ecotoneGlsl.js'), importsOf('src/world/ecotone.js'), importsOf('src/render/windfallSway.js')], [['../world/ecotone.js'], [], []],
     'the border chunk and its law, and the wind law, stay leaves on the boot path');
   assert.deepEqual([importsOf('src/world/windowRoomArt.js'), importsOf('src/render/realWindows.js')], [[], ['../systems/uiPrefs.js', '../systems/uiSkin.js', '../systems/pageQuery.js', '../world/windowRoomArt.js']],
     'RW1: the rooms\' art a leaf, the windows\' block reading only the path it already stands on');
   assert.deepEqual(importsOf('src/render/skinPalette.js'), [], 'MWNPC1: the palette\'s shape a leaf');
-  assert.ok(reach.size <= 74, `the entry statically reaches ${reach.size} files - BOOT2 measured 43, PERF-URL 61, ECOTONE1 66, WINDFALL1 69, RW1 73, MWNPC1 74, and holds the ceiling at 74`);
+  assert.deepEqual(importsOf('src/render/horizonHaze.js'), [], 'FAR-SEA1: the horizon\'s haze a leaf');
+  assert.ok(reach.size <= 75, `the entry statically reaches ${reach.size} files - BOOT2 measured 43, PERF-URL 61, ECOTONE1 66, WINDFALL1 69, RW1 73, MWNPC1 74, FAR-SEA1 75, and holds the ceiling at 75`);
 });

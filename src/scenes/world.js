@@ -88,7 +88,7 @@ import { lookAt, multiply, perspective, mirrorProjectionX, trs, identity, UP_Y, 
 import { aabbOutside, localAabb, transformedAabb, flatBatchAabb, cullDisabled } from '../render/frustum.js';   // GHOST1: the plane extraction comes through bounds.js's `spherePlanes` now - `_planes` serves the sphere test too
 import { spherePlanes, batchVisible, setFlatLean, batchSphere } from '../render/bounds.js';   // PERF-CROWD: the batch's own bounding sphere, the test the shadow replay already uses   // GHOST1: through its ONE home, on the NORMALISED planes it needs   // EV3: the frustum
 import { withMoonAmbient } from '../render/enhancedSky.js';   // EV5: secunda rides the ambient
-import { FarRingRenderer, ringDisabled, ringHeight } from '../render/farRing.js';   // EV8: the province's mountains on the horizon
+import { FarRingRenderer, ringDisabled, ringHeight, RING_HAZE_HOLD } from '../render/farRing.js';   // EV8: the province's mountains on the horizon; FAR-SEA1: its haze, the sea's too
 import { syncLightingLane, lanternColor } from '../render/enhancedLighting.js';   // EL1: the Enhanced Lighting lane, installed at mount
 import { collectBlockFlats, billboardSize, mobileBillboardSize, centredBase, classicBillboardSize, isNatureArchive, NATURE_FLATS_Y } from '../world/rmbFlats.js'; import { blockHillSeat, seatNatureFlat } from '../world/townStandIns.js';   // TREES-SEATED: a block's trees on the hills drawn under them
 import { blockSolids, flatFieldFor } from '../world/flatFields.js';   // FIELD BUGS 2026-10-04d CROPS: a crop field keeps a metre off the block's solids; AUDIT MERCHANT-YARDS G1: and a yard off the field
@@ -301,6 +301,9 @@ import { createQuayPool } from './quayPool.js';   // QUAYS: a harbour's quays, s
 import { createLefayMonument } from './lefayMonumentHost.js';   // LEFAY1: the monument to Julian LeFay in Gothway Garden, and the flowers laid at it
 import { isLefayTown, lefaySpotOf, carveLefay } from '../world/lefayMonument.js';   // LEFAY1: its town, its spot off the town's navgrid, and the people's navgrid carved round it
 import { createMerchantYards } from './merchantYardsHost.js';   // MERCHANT-YARDS: every city's and town's Stable and Wagon Yard, and their trade
+import { createWardenShows } from './wagonWardenShow.js';   // WARDEN1: the town watch's throw, played
+import { createWagonWarden, wardenTownIn } from './wagonWardenHost.js';   // WARDEN1: the town watch - my wagon's stamp, the cell's words, the offline clock; AUDIT WARDEN1 D3: the town under a point, one pure home
+import { WARDEN_VENDOR, isWardenTown } from '../systems/wagonWarden.js';   // WARDEN1: the stamp's save slot, and the towns a watch keeps
 import { yardSitesOf, carveYards, MONUMENT_KEEP_M, yardMeasuresOf, placedModelBox } from '../world/merchantYardSites.js';   // MERCHANT-YARDS: where they stand off the town's layout, and the people's navgrid carved round them
 import { isYardTown, yardKeeper, YARD_KIND_ORDER } from '../systems/merchantYards.js';   // MERCHANT-YARDS: the towns that stand them, who keeps them, the town's people
 import { HARBOUR_REACH } from '../systems/naval/shipLife.js';   // AUDIT HOLDINGS O1: the harbour's scan reach, its pixels built before it is sounded
@@ -406,6 +409,7 @@ import { itemIconColor32 } from '../ui/itemIconColor32.js';   // WBX3: a spoil's
 import { setCourtRules } from '../systems/courtRules.js';   // WBX6: the court's laws, switched by the frame
 import { gateRoomKey, isGateRoom, gateBossOf, gateTimes, gateAdmits, gateAt, GATE_COLLAPSE_MS } from '../net/gateLaw.js';   // WB3b: the court's room, and its day's end
 import { createGateCrowd, gateCrowdMax } from '../net/gateCrowd.js';   // GATE-CROWD: a gate's court draws the nearest of a crowd
+import { createPeerRange, peerRangeOf } from '../net/peerRange.js';   // PEER-RANGE: the others drawn out to the distance on the Other players card
 import { gateLandingFor, courtRing, courtArena, courtToDungeon, courtBraziers, COURT_TEXT, COURT_FOG, LAVA_Y } from '../world/gateArena.js';   // WB3b: the Burning Court's way home, its ring and its words   // WB2: the gate's countdown over the screen, near it
 import { isMainStoryDungeon } from '../world/dungeonTextures.js';   // SPAWNED-DUNGEONS1: the main story's own dungeons are never cloned
 import { nearestSafeLocation, nearestSafeLocationAnywhere, respawnFlavorText, reviveForPlay, undergroundWakeSpot, undergroundWakeText } from '../systems/deathRespawn.js';   // D-ONLINE1: online, a death respawns instead of ending the run   // X-slice; the rest refusal raises the alert and asks the RESTING variant, the townsfolk idle the STRICT one; the catch-up loop's watch arm
@@ -782,6 +786,7 @@ import { caravanRoomOf, caravanKeyOf } from '../net/privateInterior.js';   // WA
 import { CARAVAN_TEXT } from '../systems/caravanRoom.js';   // WAGONS2 (FINAL AUDIT): a caravan's save that cannot come back, said
 import { caravanEntryOf, setDrivenCaravanEntry, caravanMayEnter, CARAVAN_VISIT_TEXT } from '../systems/caravanVisit.js';   // WAGONS2-VISIT: who may enter a caravan, and a visit to another's
 import { HOME_ENTRY_WORDS, homeNextEntry } from '../systems/onlineHomes.js';   // WAGONS2-VISIT: a caravan's door is turned as a home's is
+import { homeDecorShown } from '../net/homeVoteLaw.js';   // HOME-VOTE: a shunned home's paint stands for its insiders alone
 import { createCaravanVisitLink } from '../net/caravanVisitLink.js';   // WAGONS2-VISIT: the visited caravan's cell, heard from inside it
 import { RECEIVER_MARKS } from '../net/realmTradeLaw.js';   // WAGONS2-VISIT (AUDIT): the last owner's marks, never carried to the next
 import { GATE_BRAIN_V } from '../net/wire.js';   // AUDIT WBX R7: the brain's law this client knows, said on every `in`
@@ -1520,6 +1525,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   let quays = null;   // QUAYS: the harbours' quays (scenes/quayPool.js), made beside the farms; read late (a transition, a load, the frame)
   let lefay = null;   // LEFAY1: the monument to Julian LeFay (scenes/lefayMonumentHost.js), made beside the Sigil Broker; read late (a transition, a load, the frame)
   let merchantYards = null;   // MERCHANT-YARDS: the towns' Stables and Wagon Yards (scenes/merchantYardsHost.js), made beside the monument; read late as it is
+  let wardenShows = null, wagonWarden = null;   // WARDEN1: the town watch's throws (scenes/wagonWardenShow.js) and its host (scenes/wagonWardenHost.js), made beside the yards; read late as they are
   const _bountyFarmLocs = [];   // BOUNTY-FARM: the game's own farmsteads - the nearest lends a farm bounty its buildings
   const _bountyDungeonPixels = new Map();   // BOUNTY1: the game's own dungeons, by pixel -> name, for a board's underground hunts
   const _bountyGraveyardPixels = new Set();   // BOUNTY-GRAVEYARD: the game's own graveyards, by pixel - a board's hunt there stands outside
@@ -1671,7 +1677,8 @@ export async function bootWorld(canvas, renderer, params, status) {
   let _lookPreviewGen = 0;
   /** @type {Map<string, any>} `${mapId}:${buildingKey}` -> a look the owner's painter is trying */
   const _lookPreview = new Map();
-  const lookOfHome = (mapId, bk, row) => (_lookPreview.has(`${mapId}:${bk}`) ? _lookPreview.get(`${mapId}:${bk}`) : row?.look ?? null);
+  // HOME-VOTE: a home the town voted below zero stands in its town's own paint but for its insiders (net/homeVoteLaw.js)
+  const lookOfHome = (mapId, bk, row) => (_lookPreview.has(`${mapId}:${bk}`) ? _lookPreview.get(`${mapId}:${bk}`) : homeDecorShown(row) ? row?.look ?? null : null);
   // MARKS1 (PROF0 10.5): the account's Marks as this page knows them - the balance, the Bank's sale carried to its end
   // (a sale whose answer was lost is kept and settled), a guild's Marks moved (net/marksBook.js). Online only.
   const marksBook = params.has('online')
@@ -5121,6 +5128,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _dwBreathState = { tally: 0 };
   const _dwSurfaceList = [];
   let _waterU = null;   // WATER-NEXT 2: the frame's water uniforms, set where the terrain's water draws
+  /** The ground archive whose water texel colours the open sea - the camera's climate's, else any built pixel's. AUDIT
+   *  FAR-SEA1 L1: one home - Iliac Puddle No More's sea and the far ring's sea beside it take the same body. */
+  function seaGroundArchive() {
+    const here = playerTravelPixel();
+    let arch = here ? built.get(`${here.x},${here.y}`)?.groundArchive : null;   // the sea's water is the camera's climate's
+    if (arch == null) for (const p of built.values()) if (p.groundArchive != null) { arch = p.groundArchive; break; }
+    return arch;
+  }
   function drawDeepWatersSurfaces(nowMs, cells = null) {
     const f = _dwFrame;
     if (!f || !f.s.spawnSurfaces) return;
@@ -5133,10 +5148,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // WATER-NEXT 2: from above, the sea is the water's own - the swell, the depth to the floor the mod carved, the
     // look through it - drawn by the water program over the mod's own sheets; from under it, the mod's underside
     if (waterOn && !f.underwater && _waterU) {
-      const here = playerTravelPixel();
-      let arch = here ? built.get(`${here.x},${here.y}`)?.groundArchive : null;   // the sea's water is the camera's climate's
-      if (arch == null) for (const p of built.values()) if (p.groundArchive != null) { arch = p.groundArchive; break; }
-      renderer.drawSeaSurfaces(_dwSurfaceList, deepWaters.oceanLocalY + SURFACE_RENDER_Y_OFFSET, _waterU, f.look.topColor, renderer.tileArrays.get(arch));   // its rgb read in place
+      renderer.drawSeaSurfaces(_dwSurfaceList, deepWaters.oceanLocalY + SURFACE_RENDER_Y_OFFSET, _waterU, f.look.topColor, renderer.tileArrays.get(seaGroundArchive()));   // its rgb read in place
       return;
     }
     dwRender.drawSurfaces(_dwSurfaceList, { ...f.look, underwater: f.underwater, liftY: deepWaters.oceanLocalY + SURFACE_RENDER_Y_OFFSET, surfaceScroll: surfaceScrollAt(nowMs / 1000), surfaceTexture: _dwSurfaceTex });
@@ -6481,6 +6493,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       population, locOrigin, personBatches,   // T2 towns
       lefay: lefaySpot,   // LEFAY1: the monument's spot, location frame (locOrigin + its x, z) - null off Gothway Garden
       merchantYards: yardSites,   // MERCHANT-YARDS: the Stable's and the Wagon Yard's sites, location frame - null off a city or a town
+      wardenTown: dfLocation && isWardenTown(dfLocation.mapTableData?.locationType) ? (dfLocation.mapTableData?.mapId ?? 0) >>> 0 : null,   // WARDEN1: a city's, a hamlet's or a village's map id - its watch throws a wagon parked too long on its road, or past its fourth
       npcs: pixelNpcs,   // AUDIT 26 (F019): RMBLayout's street StaticNPCs, pixel-local
       npcBatches: [], npcQuestPass: false,   // E3: their billboards (a subset of `batches`) and the one-shot SetupIndividualStaticNPC latch
       boards: pixelBoards,   // the block's bulletin boards (41739), pixel-local boxes
@@ -7058,7 +7071,9 @@ export async function bootWorld(canvas, renderer, params, status) {
       let merged = false;
       // a home the merge swallowed rebuilds its pixel once a look is WRITTEN on it, or once it is this account's - never
       // for the painter's preview (AUDIT: a colour tried tore the owner's street down under the open panel)
-      for (const [bk, row] of homes) if (!p.homeKeys.has(bk) && p.buildingKeys.has(bk) && (row?.look || row?.mine || row?.keeper)) merged = true;   // GUILD-YARD: a hall kept
+      // HOME-VOTE: a look shown - a shunned home's stands in the merge for everyone but its insiders (never lookOfHome: the
+      // painter's preview would tear the owner's street down)
+      for (const [bk, row] of homes) if (!p.homeKeys.has(bk) && p.buildingKeys.has(bk) && ((row?.look && homeDecorShown(row)) || row?.mine || row?.keeper)) merged = true;   // GUILD-YARD: a hall kept
       if (merged) { _reskin.mark(key); continue; }
       for (const m of p.models) {
         if (!m._home) continue;
@@ -12058,7 +12073,8 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _hiddenPeers = new Set();   // AUDIT (pre-merge) I-B: the peers the classic lane stands nowhere this frame - their teams with them
   const veilOf = (id) => _veils.get(id) ?? null;
   const gateCrowd = createGateCrowd();   // GATE-CROWD: a gate's court draws the nearest of a crowd (net/gateCrowd.js) - the places held frame to frame
-  const crowdDrawnHere = (p) => gateCrowd.shows(p.id);   // GATE-CROWD: a player the court's crowd leaves undrawn is not there to press or aim a gift at
+  const peerRange = createPeerRange();   // PEER-RANGE: past the Other players card's distance the others stand nowhere on this screen (net/peerRange.js) - held a little past it frame to frame
+  const crowdDrawnHere = (p) => gateCrowd.shows(p.id) && peerRange.shows(p.id);   // GATE-CROWD: a player the court's crowd leaves undrawn is not there to press or aim a gift at; PEER-RANGE: nor one past the distance
   const magic = createPlayerMagic({
     renderer, audio, getTexture, uploadRecord, uploadRecordFrame,
     lairHere: () => {   // RVN7 (bible/12-Enhanced-AI/Feud-Arc.md 18.1): a deed in the open world - my map pixel, and the named dungeons in the boards' ring about it
@@ -13841,6 +13857,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     quays?.destroyAll();   // QUAYS: and the quays - stood again off the harbours found in the new one
     lefay?.destroyAll();   // LEFAY1: and the monument - stood again the next frame that finds Gothway Garden built
     merchantYards?.destroyAll();   // MERCHANT-YARDS: and the yards - stood again the next frame, in the new frame
+    wardenShows?.destroyAll();   // WARDEN1: and a throw in flight - its team set down where it landed
     riteHost?.destroyAll();   // WB12d: and the faithful's circle - its faithful went with the live pools; it stands again the next frame
     csaReanchor(state.initOffset);   // FIELD-CSA1: and every placed boat with it
     // AUDIT ENVIRONS I2: AND THE SNOW, THE WIND AND THE HAZE, by the same move. Each keeps scene places a recentre
@@ -15752,6 +15769,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         quays?.destroyAll();   // QUAYS: and the quays, off the harbours found again
         lefay?.destroyAll();   // LEFAY1: and the monument - its collider down, stood again off the loaded world (a flower in the air lands nowhere: thrown before the restore - AUDIT LEFAY1 B1)
         merchantYards?.destroyAll();   // MERCHANT-YARDS: and the yards, their colliders down, stood again off the loaded world
+        wardenShows?.destroyAll();   // WARDEN1: and a throw in flight
         camps.dropOwn();   // AUDIT SURV-TIERS (the third pass): the save says which camps are mine - the pitch after it is undone, not kept beside the gear it gave back
         camps.restore(restandAt('pos')(w.camps), campFromNatives);   // SURV3
         // F216/F217: the pools re-mint through their one spawn chain,
@@ -20557,7 +20575,8 @@ export async function bootWorld(canvas, renderer, params, status) {
   // and is asked for none. WAGONS2's caravan room had none at all in the wilderness (no town's map id) and a town
   // building's (`owned:...:<map>.<key>`) in a town - its party lost it either way, and no visitor could find it.
   let _caravanKeyFor = null, _caravanKey = null;
-  function myCaravanRoom() {
+  /** My character's park key, or null while it is worked out (WARDEN1: a throw the cell names is mine by it). */
+  function myParkKey() {
     const c = characterIdOf(playerEntity);
     if (!social?.acct || !c) return null;
     const source = `${social.acct}\n${c}`;
@@ -20565,8 +20584,9 @@ export async function bootWorld(canvas, renderer, params, status) {
       _caravanKeyFor = source; _caravanKey = null;
       parkKeyOf(social.acct, c).then((k) => { if (_caravanKeyFor === source) _caravanKey = k; }).catch(() => { if (_caravanKeyFor === source) _caravanKeyFor = null; });
     }
-    return caravanRoomOf(_caravanKey);
+    return _caravanKey;
   }
+  function myCaravanRoom() { return caravanRoomOf(myParkKey()); }
   // WAGONS2-VISIT (FINAL AUDIT): a fresh session (a load inside my caravan, online turned on in it) has had no welcome
   // to say its relay - and with no room it is never welcomed - so the world channel's word stands for it, as the owned
   // rooms' staffTeleportOk does; the frame itself still waits for the primary's own (online.js sendCaravan)
@@ -21066,7 +21086,8 @@ export async function bootWorld(canvas, renderer, params, status) {
     exteriorFoes.setQuestShare(questShareSeam);   // QUEST-PARTY: the party's law, one home (questShareSeam)
     exteriorFoes.setOnPortals((from, r) => { const p = online?.peers?.get(from); portalGates.applyOwner(from, r, p?.shown ? onlineToScene(p.shown) : null); });   // PORTAL1: a peer's portal - believed only near the peer's own feet (AUDIT PORTAL1 O1), kept to its own time
     exteriorFoes.setOnDuel((from, r, at) => { const rec = r === null ? null : validRingRecord(r); if (rec) _duelRings.set(from, { rec, at }); else _duelRings.delete(from); }, () => _duelRings.clear());   // DUEL1: a peer's ring, for the wall
-    online.onPark = (room, e) => hcc.applyKept(room, e, campToScene, performance.now());   // HCC-PARK: a cell's word about a parked team (mine or a halo's cell), its owner here or not
+    online.onPark = (room, e) => { wagonWarden?.keptWord(room, e); hcc.applyKept(room, e, campToScene, performance.now()); };   // HCC-PARK: a cell's word about a parked team (mine or a halo's cell), its owner here or not; WARDEN1: a throw it had not said played from where the team stood, before the pool moves it to the landing
+    online.onParkYeet = (room, y) => wagonWarden?.onParkYeet(room, y);   // WARDEN1: the town watch threw my parked wagon - my save moves to the landing, and I am told
     online.onCaravan = (room, doc) => modes?.applyCaravanDecor?.(room, doc);   // WAGONS2-VISIT: what the caravan I visit holds, from its room
     online.onParks = (room, list) => hcc.replaceKept(room, list, campToScene, performance.now());   // HCC-PARK: and a cell's whole memory, after its welcome   // HCC-ONLINE: a peer's horse and wagon, the same frame, the same room test, through validHccRecord; and the peers' teams go wherever the pool's puppets go (a room change, a leave)
     online.onTrade = (id, data) => { tradeMgr.onFrame(id, data); };
@@ -24084,6 +24105,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** The frame the renderer draws this render frame (the body's pass reads it, the sea's pass after it). */
   let _serpentDraw = null;
   let _serpentBarUp = false;
+  let _serpentFight = false;   // HALO-THIN: this frame's serpent fight - its trail reads my pose in the room it is fought in, a halo's too
   /** The serpent's frame (the online frame's, after the gate's): its omen's line, its receipts offered, and - on the
    *  street, alive - the fight on this screen and its bar. */
   const serpentFrame = () => {
@@ -24094,10 +24116,12 @@ export async function bootWorld(canvas, renderer, params, status) {
     serpentClaims?.tick();
     sdClaims?.tick();   // SD9b: what the account service has not counted yet, offered again on its own clock
     iliacClaims?.tick();   // CARDS10: and the ranked Iliac games', on theirs
+    _serpentFight = false;
     if (!serpentHost) return;
     const street = (modes?.mode ?? 'exterior') === 'exterior' && playerSpawned && playerEntity.health > 0 && !modes?.deathUp?.();
     let fight = false;
     try { fight = street && serpentHost.frame(); } catch (e) { console.warn('[serpent] frame', e?.message ?? e); }
+    _serpentFight = !!fight;
     const bar = fight ? serpentHost.bar() : null;
     if (bar || _serpentBarUp) {
       drawGateBossBar(bar ? serpentBarModel(bar) : null, { hidden: gamePaused() || !!townTalk.hudHidden });
@@ -25013,6 +25037,38 @@ export async function bootWorld(canvas, renderer, params, status) {
     wagonBox: (kind) => hcc.partsOf(kind)?.box ?? null,
     open: (site, mode, name) => modes?.openYardTrade?.(site.kind, site.regionIndex, mode, name) ?? false,
     say: (text) => townTalk.say(text), midText: (text) => setMidScreenText(text),
+  });
+  // WARDEN1 (2026-10-10, Mac: "...I want a gaurd to navigate, lift the wagon/horse on top of their sprite and yeet it far
+  // away"): THE TOWN WATCH (scenes/wagonWardenHost.js) - my parked wagon stamped off the town built under it, its park
+  // word's fields, the cell's two words, the offline clock; its throws played (scenes/wagonWardenShow.js) by a guard of
+  // the city guards' picture, the wagon drawn as the yards draw theirs, its horses on the flats' axis
+  const _wardenT = [0, 0, 0];
+  /** WARDEN1: the scene's x, z in a built town a watch keeps (wagonWardenHost.js wardenTownIn, over the built pixels). */
+  const wardenTownAt = (x, z) => wardenTownIn(built.values(), (px, py) => state.pixelTranslation(px, py, _wardenT), TERRAIN_SIZE, x, z);
+  const WARDEN_CLIPS = { heave: SOUND.AnimalHorse, throw: SOUND.SwingHighPitch, land: SOUND.BodyFall };
+  wardenShows = createWardenShows({
+    renderer, getTexture, uploadRecordFrame,
+    toScene: campToScene, groundAt: (x, z) => surfaceAt(x, z),
+    showWagon: (r, texRemap, position, rotation, kind, look, tier, turn, hitched) => hcc.drawShowWagon(r, texRemap, position, rotation, kind, look, tier, turn, hitched),
+    wagonBox: (kind) => hcc.partsOf(kind)?.box ?? null,
+    horseArt: () => !!hcc.presentation.horseArt.ensureStationary(),
+    hold: (owner, on, lone) => hcc.holdTeam(owner, on, lone),
+    sound: (what, at) => { const d = Math.hypot(cam.pos[0] - at[0], cam.pos[2] - at[2]); if (d < 120) audio.playOneShot(WARDEN_CLIPS[what], 0.7 * (1 - d / 120)); },
+    now: () => performance.now() / 1000,
+  });
+  wagonWarden = createWagonWarden({
+    hcc, runtime: () => hccRuntime, shows: wardenShows, online: () => online,
+    toWire: campToWire, toScene: campToScene, townAt: wardenTownAt,
+    townName: (id) => _townOfMapId.get(id >>> 0)?.name ?? '',
+    eye: () => cam.pos, street: () => _mode() === 'exterior' && !_loading,
+    notify: (lines) => { for (const l of lines) townTalk.say(l); },
+    myKey: () => myParkKey(),   // AUDIT WARDEN1 C6: a throw of another character's team is not mine
+  });
+  hcc.setWardenWord((a) => wagonWarden?.word(a) ?? null);   // WARDEN1: my park word carries the stamp - the cell throws on it
+  registerModSaveData(WARDEN_VENDOR, {
+    newSaveData: () => null,
+    getSaveData: () => wagonWarden?.getSaveData() ?? null,
+    restoreSaveData: (rec) => wagonWarden?.restoreSaveData(rec),
   });
   /** WB1: the compass's mark - the gate's spot in THIS scene, while the gate stands and the player is in its ring. */
   // GUIDE5: a quest target's place to its map pixel (the held map's own goto law) - AUDIT GUIDE O3: through the host's
@@ -27732,7 +27788,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     _peerFxHp = playerEntity?.health ?? null;
     if (!online) return;
     for (const p of online.peers.values()) {
-      if (!p?.shown || !online.visible(p) || !gateCrowd.shows(p.id)) { peerFxPlayer.forget(p?.id); continue; }   // GATE-CROWD: no spark nor cry from a player the court's crowd leaves undrawn
+      if (!p?.shown || !online.visible(p) || !gateCrowd.shows(p.id) || !peerRange.shows(p.id)) { peerFxPlayer.forget(p?.id); continue; }   // GATE-CROWD: no spark nor cry from a player the court's crowd leaves undrawn; PEER-RANGE: nor from one past the distance
       peerFxPlayer.update(p.id, p.shown, onlineToScene(p.shown), peerBodies?.heightOf?.(p.id) || 0);
     }
     peerFxPlayer.frame();
@@ -28022,6 +28078,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       ...climbPoseOf(player),   // CLIMB5: my climb and the way my body faces on it, so the others turn me to the wall, pose me off the ground and hear me climb - absent off the wall
     };   // the wire's move bit: 1 walking, 2 running (the peers' bodies pick the clip off it)
     if (seated) arm.st = seated.st;   // CARDS2b: seated, and the table's top above the feet - absent standing, the wire's omission law
+    online.haloWhole = !!duelMgr.duel || _serpentFight;   // HALO-THIN (net/online.js haloPoseDue): a halo hears my pose when it is due - every pose while a referee may stand in one (a duel's bout is refereed in the room my opponent is heard through, a serpent's trail in the fight's); never the open zone's - its referee holds me by the zone word, which my own cell's socket alone says (AUDIT B F4)
     if (!modes?.caravanVisit) caravanVisitLink.close();   // WAGONS2-VISIT: no visit, no listener - closed before my primary joins the cell it heard (never replaced by my own id)
     if (!key) { if (online.room) online.leave(); }   // AUDIT ONLINE D4: a place the host cannot name is no room, not the old one in the wrong frame
     // AUDIT WORLD2 C8: a world room's edge is never a churn - the hold delayed every handover and let one dungeon's stream land in another
@@ -28101,7 +28158,8 @@ export async function bootWorld(canvas, renderer, params, status) {
     _peerMapPoses.clear();
     for (const d of drawable) if (d?.shown) _peerMapPoses.set(d.id, d.shown);
     if (hccOn()) hcc.driverGlue(drawable, { toWire: campToWire });   // WAGONS3: a driver on their bench, drawn seated there - after the map's poses, where `peerAnchor` reads the puller their wagon hangs from
-    const visiblePeers = gateCrowd.cut(cabin ? drawable : drawable.filter((d) => !csaPeers.isBelowDeck(d.id)), { on: modes?.gateArenaDay?.() != null, me: player.pos, at: (d) => onlineToScene(d.shown), max: gateCrowdMax(getPref('gateCrowd')), mate: (id) => !!social?.isPartyPeer(id) });   // GATE-CROWD (2026-10-07, Mac: "some type of filter when there are too many people"): in a gate's court, past the count on the Other players card only the nearest are drawn, my party always (net/gateCrowd.js) - the rest stand nowhere on this screen this frame: no body, sprite, name, light, cast or step (their map marks, above, are kept)
+    const ranged = peerRange.cut(cabin ? drawable : drawable.filter((d) => !csaPeers.isBelowDeck(d.id)), { on: !travelView?.active, me: player.pos, at: (d) => onlineToScene(d.shown), range: peerRangeOf(getPref('peerRange')), mate: (id) => !!social?.isPartyPeer(id) || id === duelMgr.opponent });   // PEER-RANGE (2026-10-10, the owner: "the rendering of players far out is contributing to poor performance"): past the distance on the Other players card a player stands nowhere on this screen - GATE-CROWD's cut by distance (net/peerRange.js): my party and the one I duel always, nobody cut under the travel view (OW-PEERS grows them to be seen from overhead); their map marks, above, are kept
+    const visiblePeers = gateCrowd.cut(ranged, { on: modes?.gateArenaDay?.() != null, me: player.pos, at: (d) => onlineToScene(d.shown), max: gateCrowdMax(getPref('gateCrowd')), mate: (id) => !!social?.isPartyPeer(id) });   // GATE-CROWD (2026-10-07, Mac: "some type of filter when there are too many people"): in a gate's court, past the count on the Other players card only the nearest are drawn, my party always (net/gateCrowd.js) - the rest stand nowhere on this screen this frame: no body, sprite, name, light, cast or step (their map marks, above, are kept)
     peerCastVisuals(visiblePeers);   // SPELLFX1: a peer's new cast, drawn once
     if (modes?.gateArenaDay?.() != null) gateCourt?.stepsIn(drawable, (d) => (d?.shown ? onlineToScene(d.shown) : null));   // AUDIT GATE-FBX C3: a player stepping out of the court's way in opens it - every one in the room, the crowd's cut or not (the fire is the court's, not a body this screen draws)
     _veilT += dt > 0 ? dt : 0;
@@ -28151,7 +28209,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       for (const acct of [..._partyBodies]) if (!others.some((m) => m.acct === acct)) { _partyBodies.delete(acct); remotePlayers.partyForget(acct); }
     }
     if (online.room) remotePlayers.keepCorpses((r) => r === online.room || ((isWorldRoom(r) || isCellRoom(r)) && (isWorldRoom(online.room) || isCellRoom(online.room))));   // PCORPSE2: never judged while between rooms (a cell crossing's gap) - no room is not another space
-    remotePlayers.sync(visiblePeers, onlineToScene, { bodyHeight: (id) => peerRiders.heightOf(id) || peerBodies.heightOf(id) || peerWalkers.heightOf(id), dt, eye: travelView?.eye ?? player.pos, poseAgeMs: (p) => online.poseAgeMs(p), conceal: veilOf, hidden: (id) => _hiddenPeers.has(id), grow: tvGrow });   // AUDIT (pre-merge) I-G: every peer HEARD (a concealed one's steps, swings and hooves - sound is no renderer), the classic lane's concealed drawn nowhere   // 2026-09-17: dt drives the class-enemy billboard path's own animation clock; eye is the local player's own position, needed for mobileOrientation's facing calculation (see remotePlayers.js _syncMobilePeer)   // AUDIT DEEP R-11: under the travel view, the view's own eye - the picture each peer shows is the one the camera sees
+    remotePlayers.sync(visiblePeers, onlineToScene, { bodyHeight: (id) => peerRiders.heightOf(id) || peerBodies.heightOf(id) || peerWalkers.heightOf(id), dt, eye: travelView?.eye ?? player.pos, poseAgeMs: (p) => online.poseAgeMs(p), conceal: veilOf, hidden: (id) => _hiddenPeers.has(id), grow: tvGrow, room: drawable });   // AUDIT PEER-RANGE A L1/L6: the room's whole list - a rise past the draw distance is seen, and a cut peer keeps its sprite's bundle   // AUDIT (pre-merge) I-G: every peer HEARD (a concealed one's steps, swings and hooves - sound is no renderer), the classic lane's concealed drawn nowhere   // 2026-09-17: dt drives the class-enemy billboard path's own animation clock; eye is the local player's own position, needed for mobileOrientation's facing calculation (see remotePlayers.js _syncMobilePeer)   // AUDIT DEEP R-11: under the travel view, the view's own eye - the picture each peer shows is the one the camera sees
     peerFlashFrame();   // PEERFX3: after every layer has (re)made its sprites this frame
   };
   /** SPELLFX1 (the Unity co-op's RpcPlayPlayerSpellCastVisual): EVERY PEER'S CAST, DRAWN. The pose already carries the
@@ -32987,6 +33045,9 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // mouse's forward side button by default) - under no window, and never mid-load (hccActionPressed's gate)
     // AUDIT HCC H1: LateUpdate - after the motor and the recentre, before the world pass draws the wagon. WAGONS3: and
     // before the camera, which sits on the bench of the wagon it just stood (`_driverSeat`)
+    // WARDEN1: my wagon's stamp, the cell's throws of it, the offline clock, and the throws in flight - AUDIT WARDEN1 C11:
+    // before the pool's step, so a team set down this frame is posed by it this frame (a landing's frame drew it horseless)
+    try { if (!_loading) wagonWarden?.tick(); if (_mode() === 'exterior') wardenShows?.frame(cam.pos); } catch (e) { console.warn('[warden] the watch', e?.message ?? e); }
     hccTick(dt, now);
     // WAGONS3 (Mac: "sit on the wagon itself, the ledge its built for"): DRIVING FROM A BENCH - my seat where my wagon
     // is drawn this frame (scenes/horseCartPool.js driverSeat): the eye on it in first person, the body on it in third
@@ -33383,6 +33444,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     yards?.draw(renderer);   // HOME-YARD: the pieces outside the town's homes, and the one being placed
     lefay?.draw(renderer);   // LEFAY1: the monument to Julian LeFay
     merchantYards?.draw(renderer, yardCull);   // MERCHANT-YARDS: the yards' timber and the Wagon Yards' wagons on show; PERF-YARD (AUDIT 15): the street's view test
+    if (_mode() === 'exterior') wardenShows?.draw(renderer);   // WARDEN1: a wagon on a guard's shoulders, or in the air
     if (csaOn()) csa.draw(renderer);   // CSA-B: the boats - the hulls, the classic models their helpers stand, the baked sails
     // SERPENT1: the sea serpent's body with the opaque world, before the sea's top (its humps break it, the rest shows
     // dark through it); its frame made once here, its sea's marks drawn from it after the sea
@@ -33643,9 +33705,11 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // nothing nearer has claimed, and write no depth, so everything
     // blended after them (the water, the flats, the rain, the grass)
     // composes exactly as it did. The ring keeps its "the streamed
-    // world repaints everything nearer" law by gl_FragDepth = 1.0
-    // instead of by order. Same picture, a third to a half fewer sky
-    // fragments on an open road.
+    // world repaints everything nearer" law by depth instead of by order
+    // (AUDIT FAR-SEA1 P1: the pass's depthRange(1, 1), not a written
+    // gl_FragDepth, which ran its shader before the test for every pixel
+    // the streamed world covered). Same picture, a third to a half fewer
+    // sky fragments on an open road.
     sky.draw(tvf ? tvf.yaw : cam.yaw, tvf ? tvf.pitch : cam.pitch + climbFeel.pitch(), fieldOfView() + climbFeel.fovRad(), worldAspect, renderer.worldViewportPx ?? [0, 0, renderer.gl.drawingBufferWidth, renderer.gl.drawingBufferHeight]);   // VC3: the clouds' map restores this rect
     meterFor(renderer.gl)?.markCpu('ring');   // PERF-ZONE2: the far province ring (its rebuild and its hole) and the water, after the sky hands the frame back
     // EV8: the far province ring - the horizon's actual mountains,
@@ -33654,6 +33718,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // the air (rain, snow, heavy fog); its light state is the frame's
     // own, already installed by setLighting/beginFrame above. It
     // shares the EV6 seam mark below - one foreign span, two passes.
+    const waterSkyNow = waterOn ? sky.waterSky() : null;   // FAR-SEA1: the sky the water reflects, once a frame - the ring's sea and the water's (AUDIT FAR-SEA1 H2: none with the Enhanced water off - the sea is Daggerfall's tile, and the ring's sea keeps the ground's look beside it)
+    const seaYNow = farRing ? tvSeaY() : 0;   // FAR-SEA1: the sea's surface in the scene this frame
     const frameRing = () => {   // PERF-V8
     if (farRing && fogNow.mode === 'linear') {
       if (farRing.needsRebuild(state.current.x, state.current.y)) {
@@ -33680,7 +33746,15 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         // that pass's aspect - a horizon built on the full-canvas ratio
         // would step against the terrain in front of it under a docked bar.
         fovY: fieldOfView() + climbFeel.fovRad(), aspect: worldAspect,   // CLIMB4: the lens the world took
+        // FAR-SEA1: the ring's sea under the water's sky; AUDIT FAR-SEA1: the eye and the world's lens it counts the sea
+        // inside the hole from (P1: only the cells that can be past the far plane, none with the eye under the sea),
+        // and the water's own body - the camera climate's tiles and Iliac Puddle No More's tint over its open sea (L1)
+        skyZenith: waterSkyNow?.zenith, skyHorizon: waterSkyNow?.horizon, eye: renderer._camPos, worldProj: renderer._proj,
+        seaTiles: waterSkyNow ? renderer.tileArrays.get(seaGroundArchive()) : null, seaTint: _dwFrame && !_dwFrame.underwater ? _dwFrame.look.topColor : null,
       });
+      // FAR-SEA1: and the streamed sea meets it at the ring's haze - with a sky to reflect: under the classic panorama
+      // the water reflects WATER1's default day, which the fog had hidden past its end and the hold would show at night
+      if (waterSkyNow) renderer.setSeaHaze(RING_HAZE_HOLD, seaYNow);
     }
     };
     frameRing();
@@ -33695,7 +33769,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     const frameWater = () => {   // PERF-V8
     if (waterOn) {
       stirRipples(dt, now);   // WATER-NEXT 4
-      const wu = _waterU = waterUniforms({ seconds: now / 1000, wind: windNow, rain: precipMode === 'rain' || precipMode === 'storm' ? fx.intensity : 0, sky: sky.waterSky() });   // WATER-NEXT 2: the sea's draw takes the frame's too
+      const wu = _waterU = waterUniforms({ seconds: now / 1000, wind: windNow, rain: precipMode === 'rain' || precipMode === 'storm' ? fx.intensity : 0, sky: waterSkyNow });   // WATER-NEXT 2: the sea's draw takes the frame's too; FAR-SEA1: the sky read once
       let n = 0;   // PERF-EXT13: collected, then ONE call - the frame's block once, not once a pixel (renderer.js)
       for (const p of built.values()) {
         if (!p._visible || !p.water || p.deepWaters?.hide) continue;   // DW-C: a hidden cap takes its water with it
@@ -33935,6 +34009,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     if (sigilBroker && _mode() === 'exterior') livePersonBatches.push(...sigilBroker.batches());   // SET7: the Broker on the flats' axis, as a foe stands
     if (lefay && _mode() === 'exterior') livePersonBatches.push(...lefay.batches());   // LEFAY1: the flowers laid at the monument, and the ones in flight
     if (merchantYards && _mode() === 'exterior') livePersonBatches.push(...merchantYards.batches());   // MERCHANT-YARDS: the keepers and the Stables' horses on the flats' axis
+    if (wardenShows && _mode() === 'exterior') livePersonBatches.push(...wardenShows.batches());   // WARDEN1: the guard, and the horses it carries
     if (riteHost && _mode() === 'exterior') { riteHost.tick(dt); livePersonBatches.push(...riteHost.batches()); }   // WB12d: the braziers' flames and the faithful's fire
     // HCC: the horse billboards on the flats' axis (the runtime ticked above, hccTick - AUDIT HCC H1)
     if (hcc.enabled && _mode() === 'exterior') livePersonBatches.push(...hcc.batches());

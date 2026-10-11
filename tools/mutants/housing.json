@@ -647,7 +647,8 @@
   {
     "name": "HOME-LOOK-the-preview-rebuilding",
     "file": "src/scenes/world.js",
-    "old": "(row?.look || row?.mine || row?.keeper)) merged = true;",
+    "old": "((row?.look && homeDecorShown(row)) || row?.mine || row?.keeper)) merged = true;",
+    "note": "HOME-VOTE (PIN MOVED): a look counts only where it is shown - a shunned home's stays in the merge",
     "new": "lookOfHome(p.homeTown, bk, row)) merged = true;",
     "tests": [
       "test/homelook.test.js"

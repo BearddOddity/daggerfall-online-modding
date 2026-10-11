@@ -351,6 +351,7 @@ function worldRoomRig({ caravanOk = true, worldCaravanOk = caravanOk, room = { k
   };
   const make = new Function(...Object.keys(scope), `let _caravanKeyFor = null, _caravanKey = null, _privateSource = null, _privatePrefix = null;
     const caravanRelayOk = ${lift('src/scenes/world.js', 'caravanRelayOk')};
+    const myParkKey = ${lift('src/scenes/world.js', 'myParkKey')};   // PIN MOVED (AUDIT WARDEN1 C6): my park key worked out in its own function - the town watch's parkYeet is mine by it too
     const myCaravanRoom = ${lift('src/scenes/world.js', 'myCaravanRoom')};
     const caravanRoomHere = ${lift('src/scenes/world.js', 'caravanRoomHere')};
     return ${lift('src/scenes/world.js', 'privateRoomHere')};`);

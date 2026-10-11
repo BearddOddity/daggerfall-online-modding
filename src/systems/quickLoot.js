@@ -254,6 +254,11 @@ export function plaqueActionFor(key) {
   return _actionIds[_sel.row] ?? null;
 }
 
+/** AUDIT HOME-VOTE B1: whether the plaque lists verbs now - lit or not (a stranger's door lists its votes unlit) - so a
+ *  press whose verb is null is told "nothing was lit" apart from "no list was drawn" (a touch screen, World Tooltips
+ *  off), where a door asks in a box of its own. */
+export const plaqueListing = () => !!(_actionIds && _actionIds.length && _sel);
+
 /** PROF-MENU: the act choice key's step over a list of verbs - `n` rows down (negative up), folded on the next frame
  *  as the wheel's nudge is (clamped there; the caller wraps). True when a list of verbs stands to step. */
 export function plaqueStep(n) {

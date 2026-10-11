@@ -52,6 +52,9 @@ import { heraldryOf } from '../net/heraldryLaw.js';   // GUILD1d: a hall's heral
 import { layoutStampOfMapId, CLASSIC_LAYOUT } from './layoutPins.js';   // WD3: a home is bought in its town's layout
 import { goldSum as gold, EMPIRE_ACCOUNT_WORDS } from './homeWords.js';   // HOME-PRICE: every sum with its thousands; online, the Empire's account (EMPIRE-ACCOUNT)
 import { walletReserve } from '../net/realmGoldLaw.js';   // MARKET-AUDIT: a refusal gives back exactly what the payment took
+import {
+  HOME_VOTE_UP, HOME_VOTE_DOWN, homeScoreOf, homeMyVoteOf, homeShunned, homeShunnedInsiderLine, homeVotesLine, HOME_SHUNNED_LINE,
+} from '../net/homeVoteLaw.js';   // HOME-VOTE: a town's word on a player's house
 
 /** How long a town's answer is believed before a door asks again. */
 export const HOME_TOWN_TTL_MS = 60_000;
@@ -193,6 +196,10 @@ export const homeShortLine = (price) => `You need ${gold(price)} gold, in your p
  */
 export const HOME_BUY_ARM_MS = 5_000;
 export const HOME_VERB = Object.freeze({ enter: 'home-enter', buy: 'home-buy', entry: 'home-entry', sell: 'home-sell', rent: RENT_VERB });   // HOME-RENT: a room rented at the door
+/** HOME-VOTE: the town's word on another's home - the vote's own verbs beside a home's, as a hall's are. AUDIT B3: taking
+ *  one's vote back is a verb of its own, so a press sends what the row it pressed says - two quick presses on Vote up are
+ *  two votes up, never a vote and its taking back. */
+export const HOME_VOTE_VERB = Object.freeze({ up: 'home-vote-up', down: 'home-vote-down', clear: 'home-vote-clear' });
 /** GUILD1d: a house bought as its guild's hall, and who may walk into a hall - the hall's own verbs beside a home's. */
 export const HALL_VERB = Object.freeze({ buy: 'home-hall', entry: 'home-hall-entry' });
 /** The rows over a house anyone may buy, at `price`; `armed` after its first press. */
@@ -221,6 +228,58 @@ export function homeVisitorRows(home, door, nowS = Math.floor(Date.now() / 1000)
   if (!home.rent || home.mine) return null;
   return [...(door === 'enter' ? [{ id: HOME_VERB.enter, label: 'Go in' }] : []), { id: HOME_VERB.rent, label: rentRowLabel(home.rent.from) }];
 }
+// ═══ HOME-VOTE (2026-10-10) - THE TOWN'S WORD ON A PLAYER'S HOUSE, AT ITS DOOR ═════════════════════════════════════════
+// The owner: "a house voting system within vicinity of player houses. If the house votes run negative, the exterior
+// decorations/interior decorations should not be shown to other players" (net/homeVoteLaw.js). A vote is cast standing
+// at the house - its door's plaque lists "Vote up" and "Vote down" under whatever else the door does (worldModes.js),
+// and where the plaque draws no rows an Info press asks (openHomeVoteMenu).
+
+/** HOME-VOTE: whether the player looking may vote on this home (`homeAt`'s view) - anybody's but their own account's
+ *  (`mine`: any of its characters'), and never a hall of their own guild - any character of their account's in it
+ *  (`insider`, AUDIT A5; `member`, the playing character's); never a knight's deed house (AUDIT HOME-VOTE II B5: its
+ *  room, yard and paint are its save's - a vote hid nothing). The service holds the same line (server-account/src/
+ *  homeVotes.js VOTABLE). */
+export const homeVotable = (home) => !!home && !home.own && home.mine !== true && home.deed !== true && !(home.hall && (home.member === true || home.insider === true));
+/** HOME-VOTE: the vote a row's verb sends - up, down, or (its own verb, AUDIT B3) the one standing taken back; null for a
+ *  verb that is no vote's. */
+export const homeVoteOfVerb = (id) => (id === HOME_VOTE_VERB.up ? HOME_VOTE_UP : id === HOME_VOTE_VERB.down ? HOME_VOTE_DOWN : id === HOME_VOTE_VERB.clear ? 0 : null);
+/** HOME-VOTE: the door's two vote rows, to a player who may vote on it - each saying what its press does: the vote
+ *  standing is taken back by its own row. AUDIT HOME-VOTE II A3: to one who may not (a hall's member now) but has a
+ *  vote standing on it - cast before they joined - the take-back alone, which the service never refuses. */
+export function homeVoteRows(home) {
+  const mine = homeMyVoteOf(home?.myVote);
+  if (!homeVotable(home)) return mine ? [{ id: HOME_VOTE_VERB.clear, label: `Take back your vote ${mine === HOME_VOTE_UP ? 'up' : 'down'}` }] : [];
+  return [
+    mine === HOME_VOTE_UP ? { id: HOME_VOTE_VERB.clear, label: 'Take back your vote up' } : { id: HOME_VOTE_VERB.up, label: 'Vote up' },
+    mine === HOME_VOTE_DOWN ? { id: HOME_VOTE_VERB.clear, label: 'Take back your vote down' } : { id: HOME_VOTE_VERB.down, label: 'Vote down' },
+  ];
+}
+/** HOME-VOTE: whether a door row is a vote's. */
+export const isHomeVoteVerb = (id) => homeVoteOfVerb(id) !== null;
+/** AUDIT HOME-VOTE II A3: whether `vote` may be pressed at this home - any, where I may vote on it; the take-back (0) of
+ *  a vote I have standing, where I may not (a hall whose guild I joined since). */
+export const homeVotePressable = (home, vote) => homeVotable(home) || (vote === 0 && !!homeMyVoteOf(home?.myVote));
+/** HOME-VOTE: the Info press's box's two choices at a home I may vote on (where no plaque is drawn - worldModes.js
+ *  openHomeVoteMenu): U and D, each the door's own row - its label and the vote it sends. */
+export const homeVoteChoices = (home) => homeVoteRows(home).map((row) => {
+  // AUDIT HOME-VOTE II A3: D the row of the vote down - the down row, or the take-back of one - U the other's, whichever rows stand
+  const down = row.id === HOME_VOTE_VERB.down || (row.id === HOME_VOTE_VERB.clear && homeMyVoteOf(home.myVote) === HOME_VOTE_DOWN);
+  return { code: down ? 'KeyD' : 'KeyU', label: `${down ? 'D' : 'U'} - ${row.label}`, vote: homeVoteOfVerb(row.id) };
+});
+/** HOME-VOTE: the lines under a home's door - to a voter its score and their own vote (once there is either) and, shunned,
+ *  that its decorations are hidden; to its insiders (its owner's account, a hall's members) its score once it has one,
+ *  and, shunned, that the town no longer sees them. */
+export function homeVoteLines(home) {
+  if (!home) return [];
+  const score = homeScoreOf(home.score);
+  if (!homeVotable(home)) {
+    if (homeShunned(score)) return [homeShunnedInsiderLine(score, !!home.hall)];
+    return score !== 0 ? [homeVotesLine(score)] : [];
+  }
+  const lines = score !== 0 || homeMyVoteOf(home.myVote) ? [homeVotesLine(score, homeMyVoteOf(home.myVote))] : [];
+  return homeShunned(score) ? [...lines, HOME_SHUNNED_LINE] : lines;
+}
+
 /**
  * GUILD1d (Seats-Arc 8.2): THE HALL'S ROWS. A guildmaster whose guild holds no hall reads, under a house anyone may buy,
  * "Buy it for <guild>: N gold from the treasury" - the home's price and half again (hallLaw.js guildHallPrice), armed by
@@ -362,6 +421,8 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
             member: h.member === true, keeper: h.keeper === true,
             hallEntry: h.hallEntry === true,   // AUDIT PROF-541 G2: may say who walks in - the rank's, no realm record asked
             deed: h.deed === true,   // FIELD BUGS 2026-10-04d KNIGHT-HOUSE: a deed the service holds for its knight, never bought
+            score: homeScoreOf(h.score), myVote: homeMyVoteOf(h.vote),   // HOME-VOTE: its votes summed, and this account's own
+            insider: h.insider === true,   // AUDIT HOME-VOTE A5: a hall of a guild this account has any character in
           });
         }
         towns.set(id, { at: now(), homes });
@@ -410,10 +471,13 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
   }
 
   /** A change I made, shown now and read back from the service after (the owner's name, the others' doors).
-   *  LEGACY7 part five: and told (`onWrote`) - a home of mine bought, sold or changed is the line's to learn again. */
-  function wrote(id, buildingKey, row) {
+   *  LEGACY7 part five: and told (`onWrote`) - a home of mine bought, sold or changed is the line's to learn again.
+   *  HOME-VOTE: a vote on another's home (`mine` false) is no home of the line's - shown and read back, never told. */
+  function wrote(id, buildingKey, row, { mine = true } = {}) {
     writes.set(id, writesTo(id) + 1);   // FB1001 LOOK-STALE: an ask already out answers the town from before this
-    try { onWrote?.(id, buildingKey); } catch { /* a listener's fault is never the registry's */ }
+    if (mine) {
+      try { onWrote?.(id, buildingKey); } catch { /* a listener's fault is never the registry's */ }
+    }
     const t = towns.get(id);
     if (t) {
       if (row) t.homes.set(buildingKey, row);
@@ -506,6 +570,27 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
     if (r?.error === 'no-home') ensure(id, { force: true });
     return { ok: false, error: r?.error ?? 'server' };
   }
+  /** HOME-VOTE: THIS ACCOUNT'S VOTE ON ANOTHER'S HOME - up (1), down (-1), or taken back (0); shown at once (the door's
+   *  rows, and whether its decor stands) and read back. `{ ok, vote, score }` or a refusal. */
+  async function vote(mapId, buildingKey, v) {
+    const id = idOf(mapId);
+    // AUDIT HOME-VOTE II A4: a vote cast names the owner this door read - it lands on their house, never the next owner's;
+    // a house this page holds no owner of is asked again, and no vote sent (a take-back names nobody: its row is mine)
+    const owner = v !== 0 ? towns.get(id)?.homes.get(buildingKey)?.owner : undefined;
+    if (v !== 0 && !owner) { ensure(id, { force: true }); return { ok: false, error: 'no-home' }; }
+    const r = await api.vote?.({ mapId: id, buildingKey, vote: v, ...(owner ? { owner } : {}) });
+    if (r?.ok) {
+      const score = homeScoreOf(r.data?.score);
+      const mine = homeMyVoteOf(r.data?.vote);
+      const row = towns.get(id)?.homes.get(buildingKey);
+      if (row) wrote(id, buildingKey, { ...row, score, myVote: mine }, { mine: false });
+      else ensure(id, { force: true });
+      return { ok: true, vote: mine, score };
+    }
+    if (r?.error === 'no-home' || r?.error === 'vote-own') ensure(id, { force: true });   // nobody's now, or mine: the door should say so
+    return { ok: false, error: r?.error ?? 'server' };
+  }
+
   /** HOME-LOOK: every home of a town this page has heard from, by its building key - the pixel's painter reads it. */
   function homesIn(mapId) {
     const t = towns.get(idOf(mapId));
@@ -515,7 +600,7 @@ export function createOnlineHomes({ api, character = () => null, now = () => Dat
   /** AUDIT GUILD1d A5: something a door shows moved outside the registry (the guild book's look - whether this character
    *  may buy a hall): the doors are read again. */
   const bump = () => { version++; };
-  return { ensure, waitFor, known, homeAt, claim, release, setEntry, setLook, homesIn, bump, holdDeed, releaseDeed, version: () => version };
+  return { ensure, waitFor, known, homeAt, claim, release, setEntry, setLook, vote, homesIn, bump, holdDeed, releaseDeed, version: () => version };
 }
 
 // ═══ FIELD BUGS 2026-10-04d KNIGHT-HOUSE - A HOUSE THE REALM GAVE IS ITS KNIGHT'S, ON EVERY DOOR ═══════════════════════

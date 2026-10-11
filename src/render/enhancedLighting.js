@@ -74,6 +74,7 @@ import { HIT_FLASH_GLSL, ELITE_GLOW_GLSL, GLINT_GLSL } from '../systems/hitFlash
 import { pageParam } from '../systems/pageQuery.js';   // PERF-URL: the page's query, parsed once a search
 import { ecotoneGlsl } from './ecotoneGlsl.js';   // ECOTONE1: the ground's share of its neighbours, both terrain programs' one chunk
 import { WATER_BED_GLSL, waterBedMix } from './waterBedGlsl.js';   // WATER-NEXT 2: under the enhanced water the ground is a bed
+import { RING_SEA_GLSL } from './horizonHaze.js';   // FAR-SEA1: the ring's sea and the horizon's haze, the classic ring's own text
 import { realWindowsGlsl, RW_MAIN_DERIVS, RW_MAIN_CUTOUT, RW_MAIN_GLASS, RW_MAIN_ROOM } from './realWindows.js';   // RW1: the real windows, the classic FS's own block on the lane's codec
 
 /** The lane's light cap - the classic lane's sixteen, tripled. Forty-eight
@@ -1128,20 +1129,28 @@ uniform float uFogEnd;
 uniform float uRimStart;
 uniform float uRimEnd;
 uniform float uHazeHold;
+uniform vec3 uSeaAmbient;     // AUDIT FAR-SEA1 L1: the frame's light as the host gave it - the water surface's own space
+uniform vec3 uSeaSunColor;
+uniform vec3 uSeaMoonColor;
+${RING_SEA_GLSL}
 ${EL_GLSL}
 out vec4 outColor;
 void main() {
-  gl_FragDepth = 1.0;
+  // PERF2 / AUDIT FAR-SEA1 P1: at the far plane by the pass's depthRange(1, 1) - the depth test runs before the shader
   float ex = uELExposure * elAdapt();   // EL4
   vec3 n = normalize(vNormal);
   float diff = max(dot(n, uLightDir), 0.0);
   float mdiff = max(dot(n, uMoonDir), 0.0);
   vec3 lit = elDecode(vColor) * (uAmbient + uSunColor * (uSunScale * diff) + uMoonColor * (uMoonScale * mdiff));
-  float base = uHazeHold * clamp((vDist - uFogStart) / max(uFogEnd - uFogStart, 1.0), 0.0, 1.0);
-  float rim = (1.0 - uHazeHold) * smoothstep(uRimStart, uRimEnd, vDist);
+  vec3 shown = elEncode(elTonemapRGB(lit * ex));   // HQ1
+  // FAR-SEA1: the sea is the water's own - and the water surface is a classic-space program on every lane, so the sea
+  // beside it is summed in the same space, from the same light (AUDIT FAR-SEA1 L1: its body and its glints, not the
+  // ground's through the tonemap and the eye); the land pays nothing for it
+  float sea = vSea * uSeaLook;
+  if (sea > 0.0) shown = mix(shown, ringSea(uSeaAmbient, uSeaSunColor, uSeaMoonColor), sea);
   // EL-DISTANCE: the ring fades into the fog in DISPLAY space, as elFinish and the classic ring do - mixed in linear
-  // it reached the fog colour long before the streamed ground beside it
-  vec3 col = mix(elEncode(elTonemapRGB(lit * ex)), uFogColor, min(base + rim, 1.0));   // HQ1
+  // it reached the fog colour long before the streamed ground beside it (FAR-SEA1: the horizon's one law)
+  vec3 col = mix(shown, uFogColor, horizonHaze(vDist, uFogStart, uFogEnd, uRimStart, uRimEnd, uHazeHold));
   outColor = vec4(col + (bayer4(gl_FragCoord.xy) - ${BAYER_MEAN}) / 255.0, 1.0);   // EL6: the ring's sky gradient, dithered at the byte
 }`;
 
