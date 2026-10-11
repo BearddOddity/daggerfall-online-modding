@@ -6,7 +6,7 @@ card tables UI needs to be enhanced".
 | | Report | What it was | Done |
 |---|---|---|---|
 | 1 | "I would love to Poker but..." - "You have too many stakes waiting to be settled - visit the tables they were staked at first", at the first gold table, "Tried on multiple characters Same Problem everywhere" (Shortstori) | the stakes book reads and writes JSON by `get`/`set`, and the host handed it the device's bare Storage (`getItem`/`setItem`): every write threw into the book's own catch, the stake read back unkept, and every first buy-in was refused as `cards-kept-full`. No gold moved | fixed (CARDS-KEPT) |
-| 2 | "Soul Trap Dragonling is not giving -5000 ep value" (Paofrenetico) | DFU's own law: Daggerfall has two Dragonlings. The one every encounter and dungeon spawns (34) has no soul and prices Soul Bound at 0; the one with a soul (40, Dragonling_Alternate) is the quest B0B70Y16's alone, and it is the -5000. Both are named "Dragonling" | not a port bug - kept, the owner's call below |
+| 2 | "Soul Trap Dragonling is not giving -5000 ep value" (Paofrenetico) | DFU's own law: Daggerfall has two Dragonlings. The one every encounter and dungeon spawns (34) has no soul and prices Soul Bound at 0; the one with a soul (40, Dragonling_Alternate) is the quest B0B70Y16's alone, and it is the -5000. Both are named "Dragonling" | fixed (DRAGON-SOUL), a departure - the owner: "Fuck matching DFU." |
 | 3 | "Hotkey Bug" - a key set for "Overworld (the travel view)" in the Windows group "shows that my selected key is set" but does nothing, and is gone from the page after (Woodland) | nothing in the Overworld's road was broken: the key pane STAGES until Confirm (FIX-F's law), and the player never saw a Confirm owed - a staged key drew exactly as a saved one, and the sticky head that carries Confirm stood under Settings' sticky toolbar (and, on a phone, over the row just bound) | fixed (UNSAVED-MARK) |
 | 4 | "If you recall from the helm of a ship, you get sent to the void" - "You can unstuck to get out but then you're trapped at sea with no boat" (Cruor) | a Recall is a jump DFU raises neither the travel nor the load event for, so the Come Sail Away helm never heard it: every frame its sail stood the player back at the drive position of the boat the jump had left - and hidden - at sea. An unstuck from the helm, the same | fixed (HELM-JUMP), a departure |
 | 5 | the owner: "the card tables UI needs to be enhanced" | the panel: a refusal said in the line's plain words, a slider with no unit and no quick stakes, the log a run of sentences cut off at its newest | done (CARDS-PANEL) |
@@ -41,17 +41,24 @@ and the log away so the cloth shows, kept across repaints; and the log a line a 
 (the run of sentences in one box cut the newest off). `11-Multiplayer/Tavern-Cards.md` section 36. Pinned by
 `test/fb1011_cardskept.test.js`; PIN MOVED: `cards4_hud` - the buy-in's and the raise's models carry their picks.
 
-## The Dragonlings (2): DFU's own, kept
+## DRAGON-SOUL: the Dragonling the world spawns binds at -5000 (2)
 
-`systems/enchantmentCatalogue.js` SoulBound's costs are DFU's `classicParamCosts` verbatim: index 34 `0` ("Dragonling
+`systems/enchantmentCatalogue.js` SoulBound's costs were DFU's `classicParamCosts` verbatim: index 34 `0` ("Dragonling
 (no soul, general spawn)") and index 40 `-5000` ("Dragonling_Alternate (has soul, quest spawn only)"). The encounter
 tables (`characters/encounterTables.js`, DFU's RandomEncounters) draw 34 and never 40; 40 comes only as quest B0B70Y16's
-foe (`vendor/dfu-quests/Tables/Quests-Foes.txt`: 34 is `Dragonling_souless`, 40 `Dragonling`), and the shop's filled
-soul traps never stock 34 (`systems/shopStock.js` `SOULLESS_DRAWS`). The trap writes the foe's own mobile id and the
-item maker reads it - no remapping anywhere. Both are named "Dragonling" (ENEMY_NAMES), so the gem, the trap's line and
-the picker cannot tell them apart; `test/enchantmentcatalogue.test.js` pins exactly that. Not changed. OPEN for the
-owner: name the soulless one's soul differently where it is shown ("Dragonling (soulless)"), refuse to trap it, or price
-it - each a departure from DFU.
+foe (`vendor/dfu-quests/Tables/Quests-Foes.txt`: 34 is `Dragonling_souless`, 40 `Dragonling`). The trap writes the foe's
+own mobile id and the item maker reads it, and both are named "Dragonling" (ENEMY_NAMES) - so the soul a player could
+actually trap was offered at nothing, beside a name worth five thousand. The owner, offered the choice of keeping DFU's
+law, renaming the soul, refusing the trap or pricing it: "Fuck matching DFU."
+
+A departure (Port-Ledger A, DRAGON-SOUL): index 34 binds at -5000, the quest Dragonling's own worth - one name, one
+worth. The binding alone moved. A soul's SoulPts (the gold it adds to a shop's soul gem and to a soul-bound item's
+price, `enchantments.js` `legacyEnchantmentValue`) stay DFU's - 0 for 34 - so a monster every encounter spawns is no
+500,000-gold gem; and the shops' filled traps still never draw 34 (`shopStock.js` `SOULLESS_DRAWS`, DFU's veto). Pinned
+by `test/fb1011_dragonsoul.test.js` (the service's empty trap filled by the soul trap's own roll with a general-spawn
+Dragonling, enumerated from the pack, offered by the picker at -5000; its SoulPts and the soulless cells untouched);
+PIN MOVED: `enchantmentcatalogue` - 34's cost, the table's sum (99680 -> 94680), SoulBound's (-23440 -> -28440) and the
+side effects' (-55160 -> -60160). `tools/mutants/fb1011_dragonsoul.json` (2, both dead).
 
 ## UNSAVED-MARK: a key a Confirm still owes says so (3)
 
