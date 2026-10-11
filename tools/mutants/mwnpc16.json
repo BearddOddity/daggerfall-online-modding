@@ -119,8 +119,8 @@
  {
   "name": "MWNPC16-grown-cast",
   "file": "src/net/peerBodies.js",
-  "old": "      const cast = this._casts && !veiled && !(ow > 1);",
-  "new": "      const cast = this._casts && !veiled;",
+  "old": "      const cast = this._casts && !veiled && !(ow > 1) && !dissolveShadowless(fx?.dissolve);",
+  "new": "      const cast = this._casts && !veiled && !dissolveShadowless(fx?.dissolve);",
   "tests": [
    "test/mwnpc16_bodyshadow.test.js"
   ]
@@ -128,8 +128,8 @@
  {
   "name": "MWNPC16-veiled-cast",
   "file": "src/net/peerBodies.js",
-  "old": "      const cast = this._casts && !veiled && !(ow > 1);",
-  "new": "      const cast = this._casts && !(ow > 1);",
+  "old": "      const cast = this._casts && !veiled && !(ow > 1) && !dissolveShadowless(fx?.dissolve);",
+  "new": "      const cast = this._casts && !(ow > 1) && !dissolveShadowless(fx?.dissolve);",
   "tests": [
    "test/mwnpc16_bodyshadow.test.js"
   ]
@@ -364,6 +364,51 @@
   "file": "src/render/shadowPass.js",
   "old": "    return near === DYN_SWAY ? DYN_MOVER : DYN_BODY;",
   "new": "    return near === DYN_SWAY ? DYN_SWAY : DYN_BODY;",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R1-dissolve-unread",
+  "file": "src/net/peerBodies.js",
+  "old": " && !dissolveShadowless(fx?.dissolve);",
+  "new": ";",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R1-threshold-moved",
+  "file": "src/systems/dissolve.js",
+  "old": "export const dissolveShadowless = (d) => !!d && d[0] > DISSOLVE_SHADOWLESS;",
+  "new": "export const dissolveShadowless = (d) => !!d && d[0] >= DISSOLVE_SHADOWLESS;",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-cut-model-unset",
+  "file": "src/render/shadowPass.js",
+  "old": "              gl.uniformMatrix4fv(cutP.model, false, r.matrix);\n",
+  "new": "",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-built-every-frame",
+  "file": "src/render/shadowPass.js",
+  "old": "    if (this._bodyBuilt) return;\n",
+  "new": "",
+  "tests": [
+   "test/mwnpc16_bodyshadow.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-cut-palette-unset",
+  "file": "src/render/shadowPass.js",
+  "old": "if (skinned) gl.uniform1i(u(p, 'uSkinPalette'), SKIN_PALETTE_UNIT);",
+  "new": "if (skinned && !cut) gl.uniform1i(u(p, 'uSkinPalette'), SKIN_PALETTE_UNIT);",
   "tests": [
    "test/mwnpc16_bodyshadow.test.js"
   ]

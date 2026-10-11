@@ -95,6 +95,14 @@ test('MWNPC17b who wears what: a noble never on the common rung and a commoner n
     assert.equal(!!l, !!r, 'the pauldrons a pair');
   }
   assert.ok(many('rogue').every((d) => d.items.filter((it) => it.group === 'Armor').every((it) => it.material === ARMOR_MATERIAL.Leather)), 'a rogue\'s leathers');
+  assert.ok(many('rogue').filter((d) => d.items.some((it) => it.group === 'Armor')).length > many('rogue').length / 4, 'and a rogue wears them (AUDIT MWNPC16-18 R2: the leather law held for a rogue in none)');
+  // AUDIT MWNPC16-18 R2: A PRIEST AT THE TEMPLE'S DOOR IN THE ROBES HIS PICTURE WEARS - every one, never the role's odds
+  // (a priest's table draws a robe about six times in seven: one seed passed whether or not the cut was forced)
+  for (const s of seeds(200, 9)) for (const sex of ['male', 'female']) {
+    const look = residentLook({}, { id: `T${s}`, cls: null, sex, gender: sex === 'female' ? 1 : 0, race: 'Breton', archive: 381, face: 0, job: 'priest' }, { still: true });
+    assert.equal(slotOf(look, EQUIP_SLOTS.LegsClothes).length, 0, `a robe, nothing under it (${s} ${sex})`);
+    assert.equal(slotOf(look, EQUIP_SLOTS.ChestClothes).length, 1);
+  }
   assert.deepEqual(armorKit('nonsense', 1, 5), []);
   assert.equal(weighted([0, 0, 0], 7), 0);
   assert.equal(weighted([0, 5, 0], 123), 1);

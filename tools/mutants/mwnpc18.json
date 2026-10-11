@@ -144,5 +144,113 @@
   "tests": [
    "test/mwnpc18_decorfigures.test.js"
   ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-mage-before-priest",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  ['priest', /\\b(?:priest|monks?\\b|nuns?\\b|cleric|healer|acolyte|templar|abbot|abbess|holy\\b)/i],\n  ['mage', /\\b(?:mages?\\b|wizard|sorcer|witch|warlock|necromanc|magician|enchant|seers?\\b|mystic|alchemist)/i],",
+  "new": "  ['mage', /\\b(?:mages?\\b|wizard|sorcer|witch|warlock|necromanc|magician|enchant|seers?\\b|mystic|alchemist)/i],\n  ['priest', /\\b(?:priest|monks?\\b|nuns?\\b|cleric|healer|acolyte|templar|abbot|abbess|holy\\b)/i],",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-knight-before-mage",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  ['mage', /\\b(?:mages?\\b|wizard|sorcer|witch|warlock|necromanc|magician|enchant|seers?\\b|mystic|alchemist)/i],\n  ['knight', /\\b(?:knight|soldier|captain|sentry|sentries|paladin|sergeant)|guard/i],",
+  "new": "  ['knight', /\\b(?:knight|soldier|captain|sentry|sentries|paladin|sergeant)|guard/i],\n  ['mage', /\\b(?:mages?\\b|wizard|sorcer|witch|warlock|necromanc|magician|enchant|seers?\\b|mystic|alchemist)/i],",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-fighter-before-knight",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  ['knight', /\\b(?:knight|soldier|captain|sentry|sentries|paladin|sergeant)|guard/i],\n  ['fighter', /\\b(?:warrior|fighter|barbarian|mercenar|swordsm|archer|spear|axes?\\b|axe-?m[ae]n|crossbow|amazon|gladiator)/i],",
+  "new": "  ['fighter', /\\b(?:warrior|fighter|barbarian|mercenar|swordsm|archer|spear|axes?\\b|axe-?m[ae]n|crossbow|amazon|gladiator)/i],\n  ['knight', /\\b(?:knight|soldier|captain|sentry|sentries|paladin|sergeant)|guard/i],",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-noble-before-fighter",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  ['fighter', /\\b(?:warrior|fighter|barbarian|mercenar|swordsm|archer|spear|axes?\\b|axe-?m[ae]n|crossbow|amazon|gladiator)/i],\n  ['noble', /\\b(?:noble|lords?\\b|lady|ladies|kings?\\b|queen|prince|baron|duke|duchess|count(?:ess)?\\b|regent|courtier|elegant|royal|emperor|empress|aristocra)/i],",
+  "new": "  ['noble', /\\b(?:noble|lords?\\b|lady|ladies|kings?\\b|queen|prince|baron|duke|duchess|count(?:ess)?\\b|regent|courtier|elegant|royal|emperor|empress|aristocra)/i],\n  ['fighter', /\\b(?:warrior|fighter|barbarian|mercenar|swordsm|archer|spear|axes?\\b|axe-?m[ae]n|crossbow|amazon|gladiator)/i],",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-rogue-before-noble",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  ['noble', /\\b(?:noble|lords?\\b|lady|ladies|kings?\\b|queen|prince|baron|duke|duchess|count(?:ess)?\\b|regent|courtier|elegant|royal|emperor|empress|aristocra)/i],\n  ['rogue', /\\b(?:thief|thieves|rogue|assassin|cutthroat|bandit|brotherhood|smuggler|pirate|cowl)/i],",
+  "new": "  ['rogue', /\\b(?:thief|thieves|rogue|assassin|cutthroat|bandit|brotherhood|smuggler|pirate|cowl)/i],\n  ['noble', /\\b(?:noble|lords?\\b|lady|ladies|kings?\\b|queen|prince|baron|duke|duchess|count(?:ess)?\\b|regent|courtier|elegant|royal|emperor|empress|aristocra)/i],",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-merchant-before-rogue",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  ['rogue', /\\b(?:thief|thieves|rogue|assassin|cutthroat|bandit|brotherhood|smuggler|pirate|cowl)/i],\n  ['merchant', /\\b(?:merchant|shopkeep|trader|vendor|innkeep|barkeep|bartender|banker|tailor|grocer)|smith/i],",
+  "new": "  ['merchant', /\\b(?:merchant|shopkeep|trader|vendor|innkeep|barkeep|bartender|banker|tailor|grocer)|smith/i],\n  ['rogue', /\\b(?:thief|thieves|rogue|assassin|cutthroat|bandit|brotherhood|smuggler|pirate|cowl)/i],",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-scholar-before-merchant",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  ['merchant', /\\b(?:merchant|shopkeep|trader|vendor|innkeep|barkeep|bartender|banker|tailor|grocer)|smith/i],\n  ['scholar', /\\b(?:scholar|sages?\\b|librarian|scribe|teacher|professor|clerk|historian)/i],",
+  "new": "  ['scholar', /\\b(?:scholar|sages?\\b|librarian|scribe|teacher|professor|clerk|historian)/i],\n  ['merchant', /\\b(?:merchant|shopkeep|trader|vendor|innkeep|barkeep|bartender|banker|tailor|grocer)|smith/i],",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-priest-case-bound",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  ['priest', /\\b(?:priest|monks?\\b|nuns?\\b|cleric|healer|acolyte|templar|abbot|abbess|holy\\b)/i],",
+  "new": "  ['priest', /\\b(?:priest|monks?\\b|nuns?\\b|cleric|healer|acolyte|templar|abbot|abbess|holy\\b)/],",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-fighter-case-bound",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  ['fighter', /\\b(?:warrior|fighter|barbarian|mercenar|swordsm|archer|spear|axes?\\b|axe-?m[ae]n|crossbow|amazon|gladiator)/i],",
+  "new": "  ['fighter', /\\b(?:warrior|fighter|barbarian|mercenar|swordsm|archer|spear|axes?\\b|axe-?m[ae]n|crossbow|amazon|gladiator)/],",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-scholar-case-bound",
+  "file": "src/characters/peopleBodies.js",
+  "old": "  ['scholar', /\\b(?:scholar|sages?\\b|librarian|scribe|teacher|professor|clerk|historian)/i],",
+  "new": "  ['scholar', /\\b(?:scholar|sages?\\b|librarian|scribe|teacher|professor|clerk|historian)/],",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-room-reads-no-flats",
+  "file": "src/scenes/worldModes.js",
+  "old": "    get flats() { return pipeline?.flatsFile?.() ?? null; },",
+  "new": "    get flats() { return null; },",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-yard-reads-no-flats",
+  "file": "src/scenes/world.js",
+  "old": "const yardFigureCtx = { get flats() { return pipeline.flatsFile?.() ?? null; }",
+  "new": "const yardFigureCtx = { get flats() { return null; }",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
  }
 ]

@@ -72,6 +72,7 @@ import { ARMOR_ENUM } from '../combat/enemyEquipment.js';
 import { EQUIP_SLOTS } from '../systems/equip.js';
 import { mwRaceId } from '../formats/mwNpc.js';
 import { CAPSULE_HEIGHT } from '../player/motor.js';
+import { dissolveShadowless } from '../systems/dissolve.js';   // AUDIT MWNPC16-18 R1: a body burnt more than half away casts none
 import { peerStubEntity, lookKey } from './remotePlayers.js';
 import { POSE_STRIKES } from './wire.js';   // MAC7 #1: the swing's kind, by the wire's index
 import { HIT_FRAME_MELEE, MELEE_NUM_FRAMES } from '../characters/weaponStates.js';   // MW-PACE1: where in a blow its hit lands
@@ -855,8 +856,10 @@ export class PeerBodies {
       const ow = this._cam?.grow ? Math.max(1, this._cam.grow(b.feet)) : 1;   // OW-PEERS
       const g = ow * this._scaleOf(b);   // MWNPC10: and its own scale
       // MWNPC16: the body casts its own shape where this lane's do - an open body (a veiled one casts nothing), never one
-      // the travel view grows (OW-BIG: no giant's shadow)
-      const cast = this._casts && !veiled && !(ow > 1);
+      // the travel view grows (OW-BIG: no giant's shadow), never one more burnt away than whole (AUDIT MWNPC16-18 R1: the
+      // dissolve's own law, as its flat keeps it - systems/dissolve.js dissolveShadowless)
+      const fx = this._cam?.fxOf ? this._cam.fxOf(b.id) : null;
+      const cast = this._casts && !veiled && !(ow > 1) && !dissolveShadowless(fx?.dissolve);
       const anchored = cast && !!this._cam?.anchoredOf?.(b.id);   // AUDIT MWNPC16-18 A3
       if (this._planesOk) {
         if (!this._sees(b, 0, g)) {
@@ -876,7 +879,7 @@ export class PeerBodies {
       if (b.stale) {
         try { b.rig.update(0, { pose: true, effectsDt: b.bank }); b.bank = 0; b.stale = false; b.owed = false; b.posedAt = this._frame; } catch (e) { this._fail(b, `update threw: ${e?.message ?? e}`); continue; }
       }
-      try { if (b.rig.drawThird(canvas, { proj, view, eye, feet: b.feet, yaw: b.yaw, hitFlash: flashOf ? flashOf(b.id) : 0, conceal: b.veil ?? null, grow: g, up: this._cam?.up ?? null, fx: this._cam?.fxOf ? this._cam.fxOf(b.id) : null, cast, anchored })) drawn++; } catch (e) { this._fail(b, `draw threw: ${e?.message ?? e}`); }   // AUDIT MWBODY A1; HITFLASH1: a struck body flashes red; INVIS-LOOK: a concealed one blends; OW-PEERS: grown and leaned under the Overworld; MWNPC16: its own shadow
+      try { if (b.rig.drawThird(canvas, { proj, view, eye, feet: b.feet, yaw: b.yaw, hitFlash: flashOf ? flashOf(b.id) : 0, conceal: b.veil ?? null, grow: g, up: this._cam?.up ?? null, fx, cast, anchored })) drawn++; } catch (e) { this._fail(b, `draw threw: ${e?.message ?? e}`); }   // AUDIT MWBODY A1; HITFLASH1: a struck body flashes red; INVIS-LOOK: a concealed one blends; OW-PEERS: grown and leaned under the Overworld; MWNPC16: its own shadow
     }
     return drawn;
   }

@@ -81,6 +81,10 @@ test('MWNPC18b figureRole: the caption\'s words to a role, the first that matche
   for (const c of ['good-looking whore', 'walking man', 'country girl', 'overseer', 'image of a man', 'relaxed woman', 'monkey trainer', 'message boy', 'landlord']) assert.equal(figureRole(c), 'commoner', `"${c}": no word of a role in it`);
   for (const [c, role] of [['bodyguard', 'knight'], ['blacksmith', 'merchant'], ['axeman', 'fighter'], ['King of Worms', 'noble'], ['count', 'noble'], ['monks', 'priest'], ['sage', 'scholar'], ['seer', 'mage'], ['mages', 'mage'], ['lords', 'noble']]) assert.equal(figureRole(c), role, `"${c}"`);
   for (const [role] of FIGURE_ROLE_WORDS) assert.ok(WARDROBE_ROLES[role], role);
+  // AUDIT MWNPC16-18 R2: THE ORDER, EVERY NEIGHBOUR - a caption naming two roles is the higher one's (only a knight before
+  // a noble was pinned: any other two rows turned survived); and every row in any case (only two were asked in capitals)
+  for (const [c, role] of [['mage priest', 'priest'], ['knight mage', 'mage'], ['warrior knight', 'knight'], ['noble warrior', 'fighter'], ['thief lord', 'noble'], ['merchant thief', 'rogue'], ['scholar merchant', 'merchant']]) assert.equal(figureRole(c), role, `"${c}": the higher row's`);
+  for (const [c, role] of [['PRIEST', 'priest'], ['WIZARD', 'mage'], ['KNIGHT', 'knight'], ['WARRIOR', 'fighter'], ['NOBLE', 'noble'], ['THIEF', 'rogue'], ['MERCHANT', 'merchant'], ['SCHOLAR', 'scholar'], ['BODYGUARD', 'knight'], ['BLACKSMITH', 'merchant']]) assert.equal(figureRole(c), role, `"${c}" in capitals`);
 });
 
 test('MWNPC18c offerDecorFigures, through a real decor room: each figure with a look offered on the lane at its piece\'s base - the room\'s origin and its place in it, never its batch\'s origin (a room\'s batch is minted with none; a restand() writes only its step there) - after a recentre where it stands now, and made again over a lane that moved it; turned to the eye; one without draws its picture (its cast-only cleared); the lane off offers none (AUDIT MWNPC16-18 D1: the batch\'s origin was read - a TypeError every frame a placed figure stood with bodies on, or a body a whole room off after a recentre. Mutants: the offer skipped; the castOnly left; the place in the room dropped; the base made once)', async () => {
@@ -178,6 +182,10 @@ test('MWNPC18d EVERY DECOR ROOM\'S FIGURES ARE OFFERED - the rooms\' on the inte
   // context names none, and every room's figure stood a Breton
   assert.match(modes, /get race\(\) \{ const i = interiorBuilding\?\.regionIndex \?\? host\.currentRegionIndex\?\.\(\) \?\? -1; return REGION_RACES\[i\] != null \? REGION_RACES\[i\] \+ 1 : null; \},/);
   assert.match(world, /get race\(\) \{ return REGION_RACES\[_questRegionIndex\(\)\] \+ 1; \} \};/);
+  // AUDIT MWNPC16-18 R2: and each reads FLATS.CFG off the pipeline - a context whose file is null keeps every figure its
+  // picture for good, and nothing failed (figureLook's own pins hand it a file)
+  assert.match(modes, /const figureCtx = \{\n    get flats\(\) \{ return pipeline\?\.flatsFile\?\.\(\) \?\? null; \},/);
+  assert.match(world, /const yardFigureCtx = \{ get flats\(\) \{ return pipeline\.flatsFile\?\.\(\) \?\? null; \},/);
   const y = world.indexOf("    if (yards && _mode() === 'exterior') offerDecorFigures(yards.figures(), streetPeople, _peopleOn, yardFigureCtx, mwv.eye,");
   assert.ok(y > 0 && y < world.indexOf('    streetPeople.draw(canvas, proj, view, mwv.eye,'), 'a yard\'s, before the street\'s people draw');
   assert.equal(decorIsFigure({ model: null, flat: [182, 11] }), true, 'a person\'s flat is a figure');

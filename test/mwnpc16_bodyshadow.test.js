@@ -15,6 +15,7 @@ import { PeerBodies } from '../src/net/peerBodies.js';
 import { createNpcBodies, createPopulationLane } from '../src/characters/npcBodies.js';
 import { createFpArm } from '../src/combat/fpArm.js';
 import { fixtureBodyDeps, countingRenderer } from './fixtures/mw/bodyRig.mjs';
+import { setBatchDissolve, dissolveShadowless, DISSOLVE_SHADOWLESS } from '../src/systems/dissolve.js';
 
 const rd = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -32,14 +33,17 @@ function pass({ throwOn = null } = {}) {
     return (...a) => { calls.push([k, ...a]); };
   } });
   const names = { mesh: 'MESH', bb: 'BB', terrain: 'TERRAIN', char: 'CHAR', charSkin: 'SKIN' };
+  const built = [];
   const build = (vs, fs) => {
     if (vs === throwOn) throw new Error('link failed');   // AUDIT MWNPC16-18 N2: buildProgram throws on a failed link
-    return { name: `${vs}/${fs === DEPTH_FS ? 'depth' : fs === DEPTH_BB_FS ? 'cut' : 'other'}` };
+    const name = `${vs}/${fs === DEPTH_FS ? 'depth' : fs === DEPTH_BB_FS ? 'cut' : 'other'}`;
+    built.push(name);
+    return { name };
   };
   const sp = new ShadowPass(gl, { build, vs: names });
   const held = [];
   const f = { bindVao: (v) => calls.push(['bindVao', v]), textures: new Map(), isSpectral: () => false, holdSkin: (t) => held.push(t) };
-  return { sp, gl, calls, f, held };
+  return { sp, gl, calls, f, held, built };
 }
 const VP = multiply(ortho(50, 50, -100, 100), lookAt([0, 50, 0], [0, 0, 0], [0, 0, -1]));   // a sun looking straight down on a 100 m square
 /** AUDIT MWNPC16-18 E2: a frame render() takes - a lamp 8 m about [0, 2, 0], night (no sun); `everyLight` a room drawn whole */
@@ -78,6 +82,7 @@ test('MWNPC16a the shadow pass replays a skinned body through the skinned depth 
   const samplers = calls.filter((c) => c[0] === 'uniform1i').map((c) => [c[1], c[2]]);
   assert.ok(samplers.some(([l, v]) => l === 'SKIN/depth.uSkinPalette' && v === SKIN_PALETTE_UNIT), 'the palette read on the lit draw\'s unit');
   assert.ok(samplers.some(([l, v]) => l === 'SKIN/cut.uTex' && v === 0), 'the cut\'s picture on 0');
+  assert.ok(samplers.some(([l, v]) => l === 'SKIN/cut.uSkinPalette' && v === SKIN_PALETTE_UNIT), 'the cut\'s palette on the palette\'s unit (AUDIT MWNPC16-18 R2: unset, it skins off unit 0 - the hair\'s own picture)');
   calls.length = 0;
   const n = sp.replay(f, VP, null);
   assert.deepEqual(draws(calls), [[0, 30], [60, 30], [90, 30], [120, 30]], 'the first piece, the run after the blade, the hair alone, the last');
@@ -87,6 +92,27 @@ test('MWNPC16a the shadow pass replays a skinned body through the skinned depth 
   assert.ok(calls.some((c) => c[0] === 'uniform1f' && c[1] === 'SKIN/depth.uSkin' && c[2] === 2), 'uSkin its pairs');
   assert.ok(calls.some((c) => c[0] === 'uniform1f' && c[1] === 'SKIN/cut.uSkin' && c[2] === 2), 'the cut skinned as well');
   assert.ok(calls.some((c) => c[0] === 'bindTexture' && c[2]?.hair === 1), 'the hair\'s own picture for its cut');
+  // AUDIT MWNPC16-18 R2: BUILT ONCE - a second frame compiles nothing (three programs a frame, never freed, where the guard
+  // fell); and the cut program is every body's, so each body's hair is drawn under ITS matrix, never the last body's
+  const twice = pass();
+  const at = (x) => new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, 0, 0, 1]);
+  const hairy = () => skinnedBody([{ first: 0, count: 30 }, { first: 30, count: 30, alphaCut: 0.5, tex: { hair: 1 } }]);
+  for (let i = 0; i < 2; i++) {
+    twice.sp.discard();   // a frame: its records let go, as the renderer does
+    twice.sp.recordCharacter(hairy(), at(1), [1, 1, 0, 1.2], true);
+    twice.sp.recordCharacter(hairy(), at(-1), [-1, 1, 0, 1.2], true);
+    twice.sp.render(lampFrame(twice.f));
+  }
+  assert.equal(twice.built.filter((nm) => nm.startsWith('SKIN/')).length, 2, 'the body programs built once across two frames');
+  twice.calls.length = 0;
+  twice.sp.replay(twice.f, VP, null);
+  const hairUnder = [];
+  let cutModel = null;
+  for (const c of twice.calls) {
+    if (c[0] === 'uniformMatrix4fv' && c[1] === 'SKIN/cut.uModel') cutModel = c[3][12];
+    if (c[0] === 'drawArrays' && c[2] === 30 && c[3] === 30) hairUnder.push(cutModel);
+  }
+  assert.deepEqual(hairUnder.slice(0, 2).sort(), [-1, 1], 'each body\'s hair under its own matrix');
   // nothing hidden and nothing cut: the whole body in one draw
   const one = pass();
   one.sp.recordCharacter(skinnedBody([{ first: 0, count: 50 }, { first: 50, count: 40 }, { first: 90, count: 60 }]), IDENTITY, [0, 1, 0, 1.2], true);
@@ -418,4 +444,29 @@ test('MWNPC16i AN UNSEEN BODY CASTS ONLY THE POSE OF WHO IT STANDS FOR - a spare
   b.posedAt = 7;
   pb._react(b, dead.shown);
   assert.equal(b.posedAt, 0, 'a death flips it unposed');
+});
+
+test('MWNPC16j A BODY MORE BURNT AWAY THAN WHOLE CASTS NO SHADOW - the dissolve\'s own law (systems/dissolve.js: past half, its flat takes noShadow), kept for the body standing in the flat\'s place, seen or not: a foe burnt nine parts away or a companion not yet through its portal threw a whole man\'s shadow, its flat cast-only (AUDIT MWNPC16-18 R1. Mutants: the dissolve unread; the threshold moved; the unseen cast past it)', async () => {
+  // the dissolve as the producer mints it (setBatchDissolve - the flat's own field, foeBodies.js foeFx hands it on)
+  const burnt = (share) => { const f = {}; setBatchDissolve(f, share); return f; };
+  assert.equal(burnt(0.5).noShadow, undefined, 'half gone: the flat still casts');
+  assert.equal(burnt(0.51).noShadow, true, 'more gone than whole: the flat casts nothing');
+  const run = async (share) => {
+    const rigs = [];
+    const f = burnt(share);
+    const pb = new PeerBodies({ renderer: {}, createRig: recording(rigs), buildOpts: () => ({}), now: () => 1000, casts: true });
+    const fxOf = () => (f.dissolve ? { glint: null, elite: 0, time: 0, dissolve: f.dissolve } : null);
+    for (let i = 0; i < 4; i++) { pb.sync([peer('front', -5), peer('back', 5)], toScene, 1 / 60, [0, 0, 0]); await settle(); pb.draw({}, { proj: PROJ, view: VIEW, eye: [0, 1.6, 0], fxOf }); }
+    return rigs;
+  };
+  const [front, back] = await run(0.9);
+  assert.ok(front.draws.length > 0 && front.draws.every((c) => c === false), 'seen, nine parts gone: drawn, casting nothing');
+  assert.equal(back.casts.length, 0, 'unseen, nine parts gone: not cast');
+  const [f2, b2] = await run(0.5);
+  assert.ok(f2.draws.length > 0 && f2.draws.every((c) => c === true), 'half gone: cast, as the flat');
+  assert.ok(b2.casts.length > 0, 'and unseen');
+  const [f3] = await run(0);
+  assert.ok(f3.draws.every((c) => c === true), 'whole: cast');
+  assert.equal(dissolveShadowless(null), false);
+  assert.equal(DISSOLVE_SHADOWLESS, 0.5);
 });

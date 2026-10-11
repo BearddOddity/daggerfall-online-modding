@@ -232,5 +232,23 @@
   "tests": [
    "test/mwnpc17_wardrobe.test.js"
   ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-door-priest-unrobed",
+  "file": "src/characters/rosterBodies.js",
+  "old": "cut: kind === 'priest' ? 'robe' : null",
+  "new": "cut: null",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R2-rogue-unarmoured",
+  "file": "src/characters/wardrobe.js",
+  "old": "armor: 'rogue'",
+  "new": "armor: null",
+  "tests": [
+   "test/mwnpc17_wardrobe.test.js"
+  ]
  }
 ]

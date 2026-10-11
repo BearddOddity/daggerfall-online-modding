@@ -1928,7 +1928,7 @@ body (`test/fixtures/mw/bodyRig.mjs`) recording its mesh, model and sphere only
 when asked, never veiled, castThird the same place and only in reach; PeerBodies
 asking the cast of a casting lane's seen, unseen, veiled and grown bodies and
 never of the peers', every NPC lane casting; the renderer's door by source.
-`tools/mutants/mwnpc16.json`: 18 mutants, 18 dead (41 after the audit,
+`tools/mutants/mwnpc16.json`: 18 mutants, 18 dead (46 after the audit,
 section 27). Pins moved: EL2's and
 LA-COST3's shadow-pass construction, MWNPC1g's and MWNPC1h's door (the sprite
 target still records nothing - drawCharacter's gate, now the law MWNPC1's
@@ -2039,7 +2039,7 @@ reached; and the 200-person street (196 or more distinct). Pins moved: MWNPC7a,
 MWNPC8a-1/-2, MWNPC8b-d (a coven's witch now a mage), MWNPC10c-2, MWNPC12-1 (a
 knightly person's plate one metal of his rank), AUDIT MW-NPC II K1's priest,
 MW-D27's thread (and `walk`). `tools/mutants/mwnpc17.json`: 16 mutants, 16
-dead (26 after the audit, section 27); mutant records re-aimed by content: MWNPC7's three, MWNPC8a's seven,
+dead (28 after the audit, section 27); mutant records re-aimed by content: MWNPC7's three, MWNPC8a's seven,
 MWNPC10c's, MWNPC12's, MWNPC14's three and MW-CROWD's.
 
 ## 26. MWNPC18 - THE FIGURES A PLAYER PLACED (SHIPPED 2026-10-11)
@@ -2090,7 +2090,7 @@ PROVEN. `test/mwnpc18_decorfigures.test.js` (4): figureLook's sex, role, race
 (by name and by id), seed, its pictures kept and its file asked again; the
 caption's roles in order; the offer and the drawn picture where no look
 stands; the decor rooms' hosts enumerated and wired before their draws, by
-source. `tools/mutants/mwnpc18.json`: 10 mutants, 10 dead (16 after the
+source. `tools/mutants/mwnpc18.json`: 10 mutants, 10 dead (28 after the
 audit, section 27). The yards'
 figures are offered before the yards' keepers, so AUDIT MW-NPC II P1's pin
 (the keepers' offer just before the street's draw) stands as it was.
@@ -2279,6 +2279,64 @@ PROVEN.
   and PR-BOW1b's drawThird (its `anchored`), MWNPC1h's and MWNPC12-1's
   titles; every record those files kill judged again (43: 42 dead, one
   equivalent as recorded).
-- Mutant records: `tools/mutants/mwnpc16.json` 41 and `mwnpc17.json` 26,
-  all dead; `mwnpc18.json` 16, 15 dead and one equivalent as recorded (the
-  figures' set let go at a take-down: memory, which no pin sees).
+- Mutant records: `tools/mutants/mwnpc16.json` 46 and `mwnpc17.json` 28,
+  all dead; `mwnpc18.json` 28, 27 dead and one equivalent as recorded (the
+  figures' set let go at a take-down: memory, which no pin sees) - the
+  second look's (below) among them.
+
+THE SECOND LOOK (R). Mac, of the same pull request: "Audit this. Ensure its
+perfect". Four more cold lenses ran beside the five above, on the tree before
+them (8fe9df7f): the shadow, the wardrobe, the figures and the proof. Every
+finding was read against this audit's head (04cc40f7). Those already closed
+here were dropped: D1-D4, A1-A3, C F1, E2 and E6, found again from cold. What
+was left was reproduced, fixed and pinned.
+- R1. A BODY BURNT AWAY CAST A WHOLE MAN'S SHADOW. The dissolve's law
+  (systems/dissolve.js, AUDIT 2026-10-02): more gone than whole, a flat casts
+  nothing (`noShadow`). A flat whose body stands is cast-only and casts
+  nothing whatever its dissolve. The body is drawn dissolving off the flat's
+  dissolve (foeBodies.js foeFx), and drawThird and castThird recorded its
+  whole shape. So a foe burnt nine parts away (REVENANT-FATE), or a companion
+  not yet through its portal (COMPANION-PORTAL), threw its whole silhouette
+  where its picture cast none. The lane asks the dissolve now (net/peerBodies.js
+  `cast`), seen or not, under the flat's own threshold: one home,
+  `DISSOLVE_SHADOWLESS` and `dissolveShadowless`, which setBatchDissolve
+  reads too.
+- R2. PINS THAT COULD NOT FAIL. Each mutation below survived every test
+  that claims its law. Each is a record now, and dead:
+  - the cut program's matrix unset (a body's hair cast under the last
+    body's matrix);
+  - the body programs built every frame (three programs a frame, never
+    freed);
+  - the cut program's palette sampler unset (the hair skinned off unit 0,
+    its own picture);
+  - a rogue unarmoured (the leather law held for a rogue in none);
+  - the temple door's priest unrobed (a priest's table draws a robe about six
+    times in seven, and the one seed asked drew one anyway);
+  - any two neighbouring rows of the caption's roles turned (only a knight
+    before a noble was asked);
+  - a row read in one case;
+  - either host's figure context reading no FLATS.CFG (every figure its
+    picture for good).
+- NOT TAKEN. A knight's Silver and Elven plate are drawn as Morrowind's steel
+  (mwItemMap.js's map, older than these slices). As drawn, the knights wear
+  five metals, not seven (steel about seven in ten), which the patch note's
+  "iron and steel up to dwarven, orcish and ebony" still describes. The
+  weights stand: they are Daggerfall's materials, and a body draws the map's
+  answer for them.
+- THE FOUR HOSTS (rule 17e). The lane's dissolve read is net/peerBodies.js's,
+  under every host's NPC lanes. scenes/world.js, scenes/worldModes.js,
+  scenes/dungeonContext.js and scenes/exterior.js are WIRED through
+  createPopulationLane and createHostNpcBodies.
+- PROVEN. `test/mwnpc16_bodyshadow.test.js` 16j (the dissolve, seen and
+  unseen, off setBatchDissolve's own field) and 16a (the cut's palette,
+  built once, each hair under its own matrix); `test/mwnpc17_wardrobe.test.js`
+  17b (the rogue, and 400 priests at the door); and
+  `test/mwnpc18_decorfigures.test.js` 18b (the rows' order and case) and 18d
+  (both contexts' FLATS.CFG). Records: 5 in `mwnpc16.json`, 2 in
+  `mwnpc17.json`, 12 in `mwnpc18.json`. Five older records were re-aimed by
+  content to the same laws (MWNPC16-grown-cast, MWNPC16-veiled-cast,
+  OW-PEERS-a-body-unleaned, MWNPC5-lane-drops-fxof and
+  AUDIT-E5-a-burnt-body-s-shadow). Pins moved: PR-BOW1's and PR-BOW1b's
+  drawThird call (its tells read once a body, a line above). Every record a
+  changed test file or a re-aimed site names was judged again: 136, 134 dead
+  and two equivalent as recorded.
