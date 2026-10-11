@@ -571,5 +571,24 @@ export function shipNames(shipClass, seed, { regionIndex = 17, crown: crownIn = 
   return { name, captain, crown: crown?.name ?? null };
 }
 
+/**
+ * CAPT-MARQUE (2026-10-11, bible/03-World/Captains-Sea.md) - A SHIP'S COLOURS: the crown whose flag she flies, which a
+ * letter of marque reads (navalHost.js chargePlayer) and the glass makes out (SPYGLASS). A crown's ship flies her
+ * crown's; a merchantman her home port's - FLAG_HOME_SHARE of them the crown her names' region is (a packet's home port,
+ * SEA-LANES), the rest one of the three by her seed on its own stream (FLAG_SALT, so her names and every other draw are
+ * the ones they were); a pirate none - the black flag. The same on every client: her seed and her word's region.
+ */
+export const FLAG_HOME_SHARE = 0.6;
+export const FLAG_SALT = 0xf1a6;
+export function flagOf(shipClass, seed, region = -1) {
+  if (!shipClass) return null;
+  if (shipClass.faction === 'navy') return crownOf(0, 0, null, region).name;
+  if (shipClass.faction !== 'merchant') return null;
+  const r = mulberry32(((seed >>> 0) ^ FLAG_SALT) >>> 0);
+  const home = CROWNS.find((c) => c.region === region) ?? null;
+  if (home && r() < FLAG_HOME_SHARE) return home.name;
+  return CROWNS[Math.floor(r() * CROWNS.length) % CROWNS.length].name;
+}
+
 /** The line the target card reads under a ship's name: "Pirate Brigantine" / "Wayrest War Galley". */
 export const classLine = (shipClass, crown = null) => (shipClass.faction === 'navy' && crown ? `${crown} ${shipClass.title}` : shipClass.title);

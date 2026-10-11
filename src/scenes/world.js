@@ -593,6 +593,8 @@ import { windWidgetFrameUrl as csaWindWidgetFrameUrl, waveDerivedUrl as csaWaveD
 import { WAVE_FRAME_COUNT as CSA_WAVE_FRAME_COUNT, waveDitherOf as csaWaveDitherOf } from '../systems/comeSailAwayWaves.js';   // CSA-F
 import { ComeSailAwayRenderer, softParticleTexture as csaSoftParticleTexture } from '../render/comeSailAwayRender.js';   // CSA-F: the waves' and the particles' passes
 import { createNavalHost, hullBoxOf as navalHullBoxOf, NAVAL_SAVE_VENDOR, NAVAL_TAG_RANGE } from './navalHost.js';   // NAV-H: the sea fight - the Iliac Bay's ships, the guns, boarding, the law and the word
+import { createCaptainLedger, CAPTAIN_SAVE_VENDOR, perksOf, PERKS_REFUSED_AT, logLines } from '../systems/naval/captainLedger.js';   // CAPT-LOG: the captain's ledger - the log, the crowns' regard, the ranks, the letter of marque
+import { navalLootWorth } from '../systems/naval/navalTransfer.js';   // CAPT-LOG: what plunder is worth to the log
 import { draftOf as navalDraftOf } from '../systems/naval/shipLife.js';   // AUDIT GN2-PF6: a hull's draft, hull 2's off her keel as she stands
 import { createNavalFlames } from './navalFlames.js';   // NAV-B: a burning ship's deck fires
 import { NavalRenderer } from '../render/navalRender.js';   // NAV-B: the smoke, the spray, the balls in flight and the aim
@@ -8320,6 +8322,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** NAV-H: the naval host (made below, with Come Sail Away's runtime) - declared here, beside the pool whose sea list
    *  it fills, because the boats' colliders, rays and particles below read its ships. */
   let naval = null;
+  const captainLedger = createCaptainLedger();   // CAPT-LOG: one ledger a world host - the naval host and the harbour's windows read it
   /** SERPENT1: the sea serpent's host (scenes/serpentHost.js) - made with the online links below; the naval host and
    *  Come Sail Away read it through their seams at a frame, never at their build. */
   let serpentHost = null;
@@ -9967,7 +9970,24 @@ export async function bootWorld(canvas, renderer, params, status) {
   const navalFlames = createNavalFlames({ renderer, getTexture, uploadRecordFrame });
   const navalCrew = createNavalCrew({ renderer, getTexture, uploadRecordFrame });   // LIVING CREW: the crews on the decks near the eye
   const navalRender = new NavalRenderer(renderer);
+  // CAPT-LOG (bible/03-World/Captains-Sea.md): THE CAPTAIN'S LEDGER - the log, the three crowns' regard and the ranks it
+  // earns, the letter of marque - its own save slot, carried whether the sea fight runs or not (AUDIT REALM2 C3's law); a
+  // rank crossed is said on the screen's middle as it is crossed. The letter is held on the captain's own clock.
+  const captainSay = () => {
+    for (const c of captainLedger.takeRankChanges()) setMidScreenText(c.to.rank > c.from.rank ? `The crown of ${c.crown} names you ${c.to.title}!` : `The crown of ${c.crown} no longer counts you ${c.from.title}.`, 4);
+  };
+  const captainDeps = {
+    deed: (act, cls, o) => { const r = captainLedger.deed(act, cls, o); captainSay(); return r; },
+    regard: (crown, n) => { const r = captainLedger.regard(crown, n); captainSay(); return r; },
+    note: (field, n) => captainLedger.note(field, n),
+    sailed: (m) => captainLedger.sailed(m),
+    prize: (name, worth) => captainLedger.prize(name, worth),
+    marque: () => captainLedger.marque(Math.floor(playerTicker.ownMinutes)),
+    tearMarque: () => captainLedger.tearMarque(),
+  };
   naval = createNavalHost({
+    captain: captainDeps,   // CAPT-LOG: the ledger's door
+    worth: (items) => navalLootWorth(items),   // CAPT-LOG: plunder's worth to the log
     packedItems: packedItemsCodec,   // COMPANION-KIT: the companions' packs saved as the cargo's are - AUDIT WK-D11: the one codec
     pool: csa,
     csa: () => (navalOn() ? csaRuntime : null),
@@ -10079,6 +10099,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   });
   naval.setEnabled(navalOn());   // the switch's state from the first frame (navalFrame follows it after)
   registerModSaveData(NAVAL_SAVE_VENDOR, naval);   // the player's boats' hurts, the crowns' notoriety, a raid a load carries
+  registerModSaveData(CAPTAIN_SAVE_VENDOR, captainLedger);   // CAPT-LOG: the captain's log, the crowns' regard, the letter of marque
   // HOLDINGS (bible/03-World/Holdings.md): THE FLEET'S LEDGER - every ship's title, name and refits - its own save slot,
   // carried whether Come Sail Away runs or not (AUDIT REALM2 C3's law: an off boot never loses a record); and the
   // Holdings tab's two pages over this host's horse, wagon and boats
@@ -10104,7 +10125,21 @@ export async function bootWorld(canvas, renderer, params, status) {
   setHoldingsProvider({
     ...stableProviderFor({ runtime: hccRuntime, on: hccOn, hasHorse: () => hasTransport(TRANSPORT_HORSE), hasCart: () => hasTransport(TRANSPORT_SMALL_CART), wagonKind: () => activeWagonKind(playerEntity.items ?? []), items: () => playerEntity.items ?? [], onPainted: () => { _hccDirty = true; } }),   // WAGONS1: the Stable names the wagon driven - WAGONS2: and paints it
     fleet: fleetHost ? { model: () => fleetHost.model(), offer: (uid) => fleetHost.offer(uid), act: (uid, verb, arg) => fleetHost.act(uid, verb, arg) } : null,
+    captain: { model: () => captainModel() },   // CAPT-LOG: the Captain page - the crowns' regard, the letter, the contracts, the log
   });
+  /** CAPT-LOG: the Captain page's model - each crown's standing, rank and favours (none while it hunts me), the letter of
+   *  marque held and its days, the contracts under way (CAPT-BOARD), and the log in words. */
+  function captainModel() {
+    const now = Math.floor(playerTicker.ownMinutes);
+    const mq = captainLedger.marque(now);
+    return {
+      crowns: captainLedger.crowns().map((c) => { const n = naval?.notorietyOf?.(c.crown) ?? 0; return { ...c, notoriety: n, perks: perksOf(c.rank.rank, n) }; }),
+      refusedAt: PERKS_REFUSED_AT,
+      marque: mq ? { crown: mq.crown, days: Math.max(1, Math.ceil((mq.until - now) / 1440)) } : null,
+      contracts: [],
+      log: logLines(captainLedger.log),
+    };
+  }
   /** The sea emptied: a transition, a teleport, the arc switched off - its window with it. */
   const navalClear = () => { naval?.clear(); navalFlames.clear(); navalCrew.clear(); closeNavalPlunder(); closeNavalYard(); drawNavalHud(null); drawNavalTags([]); drawCrewBars([]); drawCrewLines([]); };
   const navalTransition = () => { harbourBook.clear(); navalClear(); };   // HARBOUR-BOOK: the harbours forgotten with the sea, found again where the world is next
