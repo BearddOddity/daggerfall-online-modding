@@ -205,6 +205,16 @@ export const CREDITS = Object.freeze({
       link: 'https://www.nexusmods.com/daggerfallunity/mods/158',
     }),
     Object.freeze({
+      title: 'Readied Spellcasting Hands',
+      version: '1.3',
+      author: 'jefetienne',
+      what: 'Your hands raised while a spell is readied (RSH1): until the click, the spell\u2019s own element\u2019s casting hands hold their first frame where the screen stood empty - and the cast plays on from them. The mod\u2019s coroutine ported 1:1 from its own source onto the port\u2019s FPSSpellCasting (which the mod copies unchanged), in the classic first-person lane.',
+      terms: 'Carried under its MIT License - the permission the source grants (Copyright (c) 2009-2018 jefetienne), beside Daggerfall Workshop\u2019s own; see vendor/readied-spellcasting-hands/README.md.',
+      contact: 'jefetienne, through the DFU forums (the manifest\u2019s ContactInfo)',
+      vendor: Object.freeze(['readied-spellcasting-hands']),
+      link: 'https://www.nexusmods.com/daggerfallunity/mods/91',
+    }),
+    Object.freeze({
       title: 'Windmills of Daggerfall',
       version: '2.0',
       author: 'Kamer',

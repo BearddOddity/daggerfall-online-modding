@@ -150,6 +150,7 @@ test('CM3-CM11: THE ROSTER - every DaggerfallInputMessageBox in src/ui is a push
     'src/ui/itemMakerWindow.js': 'NameItemButon_OnMouseClick (DaggerfallItemMakerWindow.cs:799-811)',
     'src/ui/nativeInventory.js': 'the split popup (:1523-1536) and GoldButton_OnMouseClick (:1269-1284)',
     'src/ui/nativeTrade.js': 'the split popup, inherited (DaggerfallTradeWindow.cs:31 over DaggerfallInventoryWindow.cs:1523-1536) - DISC25-F',
+    'src/ui/questJournal.js': 'EnterNote (DaggerfallQuestJournalWindow.cs:507-526) - NOTE-KEYS',
     'src/ui/saveWindow.js': 'RenameSaveButton_OnMouseClick (DaggerfallUnitySaveGameWindow.cs:566-570)',
     'src/ui/spellMakerWindow.js': 'NameSpellButton_OnMouseClick (DaggerfallSpellMakerWindow.cs:911-918)',
     'src/ui/spellbookWindow.js': 'SpellNameLabel_OnMouseClick (DaggerfallSpellBookWindow.cs:927-938)',

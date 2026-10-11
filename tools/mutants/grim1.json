@@ -194,8 +194,8 @@
     "tests": [
       "test/grim1_dress.test.js"
     ],
-    "old": "${empty ? '100%' : `calc(100cqw - ${px(VIAL_FOOT, 'gq')})`} 0 /",
-    "new": "${empty ? '100%' : `calc(100% - ${px(VIAL_FOOT, 'gq')})`} 0 /"
+    "old": "${empty ? '100%' : `calc(100cqw - ${px(VIAL_FOOT, u)})`} 0 /",
+    "new": "${empty ? '100%' : `calc(100% - ${px(VIAL_FOOT, u)})`} 0 /"
   },
   {
     "name": "GRIM5-of-n-lifted",
