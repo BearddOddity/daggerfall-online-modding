@@ -1284,7 +1284,10 @@ directory by `test/audit18_bible_docs.test.js`:
   lanterns x48, exposure + extended Reinhard, fog in-scatter, sRGB encode - and
   the pure functions that ARE their terms; the switch (`enhancedLightingOn`),
   the host's one call (`syncLightingLane`), the flame colour. See
-  `07-Rendering/Enhanced-Lighting-Arc.md`.
+  `07-Rendering/Enhanced-Lighting-Arc.md`. INTERIOR-DIM (2026-10-11): a
+  building's own lamps on the lane (`interiorLightColor` - half the switch's
+  intensity, the white ones in the flame) and the room's grade
+  (`interiorGrade`, the eye at most 1.2x), both interior hosts' calls.
 - `enhancedSky.js` - ES1 the ENHANCED SKY: one fullscreen procedural
 - `dynamicSkiesRenderer.js` - DS1: Dynamic Skies' own skybox (BLBProceduralSkybox, translated line for line), the enhanced lane's sky while the vendored mod's switch is on; the same draw contract as `enhancedSky.js`.
 - `dynamicSkiesBridge.js` - DS2: the mod's state in the port's shapes - `dynamicMoonState` (the world's moonlight off the mod's orbits, DS1) and `cloudsStateUnderMod` (the volumetric clouds' six fields off the mod's sun, moons and horizon over the port's colours); one home the controller and the sky lab both import.

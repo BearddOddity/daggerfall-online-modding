@@ -38,7 +38,7 @@
   {
     "name": "PERF-EXT1-5-the-replay-asks-the-sphere-alone",
     "file": "src/render/shadowPass.js",
-    "old": "          if (b._place && !placementsInVolume(b, quadRadius(r, wl, law, b), planes)) { this.stats.culled++; continue; }\n",
+    "old": "            if (!(vname === 0 ? placementsInVolume(b, rad, planes) : placementsInVolumeOf(b, rad, planes, vname))) { this.stats.culled++; continue; }\n",
     "new": "",
     "tests": [
       "test/perfexta.test.js"

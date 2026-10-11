@@ -28,3 +28,15 @@ let _door = null;
 export function setPlayerDoor(door) { _door = door && typeof door === 'object' ? door : null; }
 /** The scene the player stands in, or null before a host has run a frame. */
 export const playerDoor = () => _door;
+
+/** BAL5 (bible/05-Combat/Balance-Arc.md section 11): what a blow PAID BACK may take from foe record `f` - `n`, but never
+ *  its last point. A foe's own blow turned back on it (the loot's thorns, Spite of the Spurned) wounds and never kills:
+ *  the kill is the player's to take, so standing still is no way to win a fight. A whole point is left whatever the
+ *  host's door divides it by (a shared foe's toughness only lessens it); a record that carries no health is taken at
+ *  its word. */
+export function paidBack(f, n) {
+  if (!(n > 0)) return 0;
+  const h = f?.entity?.health;
+  if (!Number.isFinite(h)) return n;
+  return Math.max(0, Math.min(n, Math.ceil(h) - 1));
+}

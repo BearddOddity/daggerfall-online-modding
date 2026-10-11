@@ -17,6 +17,7 @@ import { nearestLights } from '../src/world/cityLights.js';
 import { withPlayerLights } from '../src/scenes/magicCandle.js';
 import { Renderer } from '../src/render/renderer.js';
 import { interiorLightProperties } from '../src/world/interiorLights.js';
+import { interiorLightColor } from '../src/render/enhancedLighting.js';   // INTERIOR-DIM: the hosts' colour x intensity, through the lane's law
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = (p) => readFileSync(join(ROOT, 'src', p), 'utf8');
@@ -144,7 +145,8 @@ test('LT1: all four fragment shaders accumulate vec3 pointAcc off uPointColors[i
 
 test('LT1: both interior hosts feed colour x intensity from AddLight\'s own switch', () => {
   for (const host of ['scenes/worldModes.js', 'scenes/interior.js']) {
-    assert.match(src(host), /\(l\) => \[l\.color\[0\] \* l\.intensity, l\.color\[1\] \* l\.intensity, l\.color\[2\] \* l\.intensity\]/,
+    // PIN MOVED (INTERIOR-DIM, 2026-10-11): the product goes through the lane's law now - DFU's own off the lane
+    assert.match(src(host), /\(l\) => interiorLightColor\(!!renderer\.lightingLane, l\.color, l\.intensity\)/,
       `${host} premultiplies intensity into the uploaded colour, the Unity light product`);
     assert.match(src(host), /setPointLights\(\w+\.data, null, \w+\.colors\)/,
       `${host} rides the paired channel`);
@@ -153,4 +155,6 @@ test('LT1: both interior hosts feed colour x intensity from AddLight\'s own swit
   // lamp's teal at full prefab intensity
   assert.deepEqual([...interiorLightProperties(8).color], [0.68, 1.0, 0.94]);
   assert.equal(interiorLightProperties(8).intensity, 1);
+  const lantern = interiorLightProperties(25);
+  assert.deepEqual(interiorLightColor(false, lantern.color, lantern.intensity), lantern.color.map((c) => c * lantern.intensity), 'off the lane, colour x intensity itself');
 });
