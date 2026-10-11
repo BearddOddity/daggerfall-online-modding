@@ -65,6 +65,7 @@ import { HorseFollowController, WagonHitch, hitchedPoseStep, hitchJumpReach, try
 import { thrownTo, horseThrownWith } from './wagonWarden.js';   // WARDEN1: where a thrown wagon's save goes, and the horse that goes with it   // WAGON-HITCH: the moving wagon on its shafts (the IL's WagonTrail / groundedPoseStep stay in horseFollow.js as the record)
 import { yawed } from './horseFollow.js';   // WAGONS2: the bogie's turn
 import { quatLookRotation, quatForward, quatFromBasis, quatRotate, UNITY_QUAT_IDENTITY } from '../world/quat.js';
+import { noteFirstUse } from './tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** KB1: the mod's two hotkeys are the port's keybinding registry's actions (systems/inputActions.js MOD_ACTIONS) -
  *  bound in the controls pane beside every other key, not parsed off the mod's own TextKeys here. */
@@ -849,6 +850,7 @@ export function createHorseCartRuntime(deps) {
     if (deps.actionPressed(HCC_SUMMON_ACTION)) { handleSummonTransport(); }
   }
   function handleQuickMountOrDismount() {
+    noteFirstUse('horse');   // TUT1
     const mode = tm().get();
     if (mode === TRANSPORT.Horse || mode === TRANSPORT.Cart) { tm().set(TRANSPORT.Foot); return; }   // the direct set; ObserveTransportMode reads it next frame
     if (mode !== TRANSPORT.Foot) { say(HCC_TEXT.quickMountUnavailable); return; }

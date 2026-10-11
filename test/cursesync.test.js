@@ -43,7 +43,7 @@ const behaviourOf = (m, foe) => mintQuestFoeWave(m, foe, 1)[0].behaviour;
 
 test('CURSE-SYNC: the curse\'s ghost and wraith, minted and bound by the real producer, are a world quest\'s foes; a quest of the player\'s own stays private, and a foe of no quest is neither', () => {
   assert.deepEqual(WORLD_QUESTS, ['S0000977'], 'the Curse of Daggerfall, and nothing else');
-  assert.match(rd('vendor/dfu-quests/Quests/_TUTOR__.txt'), /start quest 977 977/, 'the tutorial starts it for every character');
+  assert.match(rd('vendor/dfu-quests/Quests/_TUTOR__.txt'), /start quest 977 977/, 'the tutorial started it for every character - and since TUT1 the game start does, in its place (questBridge.js GAME_START_QUESTS)');
   assert.equal(isMainQuestName('S0000977'), true, 'a main quest - the share gates refuse it, so it never rides as a party\'s');
   const { m, ghost, wraith, rats } = quests();
   assert.equal(ghost.foeType, 18, 'Foe _F.00_ is Ghost');

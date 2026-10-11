@@ -34,6 +34,7 @@ import { RemoteIliacTable } from '../systems/iliacRemoteTable.js';
 import { createIliacTableDraw } from '../render/iliacTableDraw.js';
 import { cardById } from '../net/iliacCards.js';
 import { ILIAC_IDLE_TURNS } from '../net/iliacTable.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** A regular's temper at Iliac Hand by his seed - Hold'em's three names (AUDIT CARDS-6 B9: his Hold'em temper is that
  *  evening's draw, not this). */
@@ -101,6 +102,7 @@ export function lastLineOf(/** @type {any} */ last) {
  *     board?: () => Promise<any>, welcomes?: () => number}|null}} d
  */
 export function openIliacTableGame(d) {
+  noteFirstUse('tavern-cards');   // TUT1: Iliac Hand's table is a card table too
   const g = {
     phase: /** @type {'setup'|'playing'|'over'} */ ('setup'), session: null, escrow: null, staged: [], pick: null, log: [], why: null,   // AUDIT CARDS-6 B1: `escrow` the stake held
     setup: { deck: null, foe: null, forKeeps: false }, landed: new Map(), draw: createIliacTableDraw(d.renderer, { doc: d.doc }),

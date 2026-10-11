@@ -22,6 +22,10 @@ export function stopShotTally() {
   return w ? w.shots : null;
 }
 
+/** STUCK-ARROWS (combat/arrowFlight.js stickable): is a bout counting now? A shaft loosed on the sand keeps the classic
+ *  LOST law, so the healers' refund stays the whole account of it. */
+export const shotTallyOpen = () => watching !== null;
+
 /** A real round of `template` spent from `list` - counted when `list` is the pack watched.
  *  @param {any[] | null | undefined} list @param {number} template */
 export function noteShot(list, template) {

@@ -71,6 +71,7 @@ import { GUILD_HALL_PRICE_MULT, GUILD_HALL_ENTRIES, GUILD_HALL_ENTRY_WORDS, hall
 import { homeSaleRefund } from '../net/homeLaw.js';   // GUILD1d: what the hall sells back for
 import { REGION_NAMES } from '../formats/mapsTables.js';   // GUILD1d: where the hall stands
 import { wagonItemName } from '../systems/wagonKinds.js';   // WAGONS2 (FINAL AUDIT): a marked wagon by its kind's name
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 /** A piece of the pack as the vault's Put in names it - the Open Wagon and the Caravan by their own names (their record's
  *  is the Small Cart's), anything else by its record's (the account service names the vault's row so - guildVault.js). */
 const vaultPieceName = (it) => String(wagonItemName(it) ?? it?.name ?? 'an item');
@@ -1825,6 +1826,7 @@ export function createSocialPanel({ social, send = null, mail = null, guild = nu
 
   const openPanel = () => {
     if (!alive || open || !canOpen() || overlay()) return false;
+    noteFirstUse('party');   // TUT1: the friends and party panel
     open = true; ui++;
     root.dataset.open = '1';
     repaint();

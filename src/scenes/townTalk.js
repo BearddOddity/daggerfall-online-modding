@@ -1425,6 +1425,7 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
     hudText: (line, delayInSeconds) => { hud.add(line, delayInSeconds); return true; },
     priority: 0,
   });
+  registerPresenter({ holds: (win) => windows.containsWindow(win) });   // TUT1 audit: whether this host's stack still holds a window (systems/notify.js windowHeld) - a registration of its own, no `mount`, so the presenter above keeps its shape
   return {
     keydown, keyup, tryActivate, frame, ensureLoaded, nextMode, setMode, pickMode, showOverlay, pushOverlay, setTopics, setPorts, pointerdown, pointer, wheel, hover,   // ROAD-B B1: pushOverlay is the stacking door beside the replacing one   // U45: setMode is the large HUD's mode panel, whose cycle is not nextMode's   // c2/S10: `pointer` is the RELEASE route (down rides pointerdown, move rides hover)
     openTalkWindow,   // B7: TalkToStaticNPC's window push routes here (worldModes' click + the guild popup's TALK)

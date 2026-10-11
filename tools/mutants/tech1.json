@@ -430,8 +430,8 @@
   {
     "name": "TECH1-a-shaft-untallied",
     "file": "src/combat/techniques.js",
-    "old": "for (; n < t.arrows; n++) { if (!spendAmmoFor(items, weapon)) break; tallySwingSkills(ctx.entity, weapon); }",
-    "new": "for (; n < t.arrows; n++) { if (!spendAmmoFor(items, weapon)) break; }",
+    "old": "conjured.push(shot.summoned); tallySwingSkills(ctx.entity, weapon); }",
+    "new": "conjured.push(shot.summoned); }",
     "tests": [
       "test/tech1_runner.test.js"
     ]
@@ -484,8 +484,8 @@
   {
     "name": "TECH1-the-shot-at-plain-speed",
     "file": "src/combat/techniques.js",
-    "old": "pierce: t.through }, speedScale: t.speed });",
-    "new": "pierce: t.through } });",
+    "old": "pierce: t.through }, speedScale: t.speed, summoned: shot.summoned });",
+    "new": "pierce: t.through }, summoned: shot.summoned });",
     "tests": [
       "test/tech1_runner.test.js"
     ]

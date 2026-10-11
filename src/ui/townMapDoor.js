@@ -28,6 +28,7 @@ import { heldMapWorn } from './mapSkin.js';   // MAP-TOGGLE: the skin AND the pl
 import { ExteriorAutomapWindow, preloadExteriorAutomapArt, exteriorAutomapArtLoaded } from './exteriorAutomapWindow.js';
 import { HeldMapWindow } from './heldMap.js';
 import { yardTownBlocks } from '../world/merchantYardMap.js';   // YARDS-FOUND: the town's yards on either map
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { preloadExteriorAutomapArt };
 
@@ -62,6 +63,7 @@ export function townMapDoorReady() {
  * same way, the lighthouse in a house's byte.
  */
 export function createTownMapWindow(deps = {}) {
+  noteFirstUse('automap');   // TUT1: the town's map is the same page
   if (deps.ports?.length) deps = { ...deps, blocks: yardTownBlocks(deps.blocks ?? [], deps.ports) };   // SHIPYARDS-FOUND: a port town's shipyard and lighthouse, the same way
   if (deps.yards?.length) deps = { ...deps, blocks: yardTownBlocks(deps.blocks ?? [], deps.yards) };
   if (heldMapWorn()) {

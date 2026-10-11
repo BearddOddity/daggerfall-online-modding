@@ -41,6 +41,7 @@ import { mountEnhancedChunk } from './enhancedChunk.js';   // MENU1: the one laz
 import { registerOverlay } from './enhancedOverlays.js';   // PX28: Tab puts it away
 import { QuestJournalWindow, questJournalArtLoaded } from './questJournal.js';
 import { PlayerHistoryWindow, playerHistoryArtLoaded } from './playerHistory.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { questJournalArtLoaded, playerHistoryArtLoaded };
 
@@ -104,6 +105,7 @@ export const historyDoorReady = () => isEnhanced() || playerHistoryArtLoaded();
  */
 export function createChronicleWindow(deps = {}) {
   const section = deps.section ?? 'notes';
+  noteFirstUse(section === 'notes' ? 'notebook' : 'quests');   // TUT1
   if (isEnhanced() && typeof document !== 'undefined') {
     if (!chronicleDoorReady()) return null;
     return enhancedChronicleOverlay(deps, section);
