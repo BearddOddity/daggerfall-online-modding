@@ -46,8 +46,8 @@ ledger's day kept for one exchange, words wrong, and a record that promised what
 
 Severity: HIGH a crash, a lost save or a hole without end; MED a wrong result a player meets; LOW an edge, a risk, a
 cost; NOTE a word or a nit; DOC the record alone. Every FIXED is pinned in `test/auditcaptsea.test.js` (the finding's
-own id in its test's title) or in the suite named, and has a mutant in `tools/mutants/auditcaptsea.json` (ACS-<id>-...)
-unless it is a word in the record.
+own id in its test's title) or in the suite its verdict names, and where it changed code it has a mutant in
+`tools/mutants/auditcaptsea.json` (ACS-<id>-...); a word in the record, and D18's dead reckoning taken out, have none.
 
 ### C - the crew
 
@@ -161,7 +161,7 @@ unless it is a word in the record.
 |---|---|---|---|
 | H1 | HIGH | No Etheric port had a harbour: a port isle of two kilometres put the water past any harbour's reach (420 m), so no quay stood at any port of the sea, Veilhaven's included (= P2) | FIXED: A PORT IS A TOWN ON A SMALL ISLE - its land the four bytes round its town's pixel's middle (`landCentre`), its shore ETHER_PORT_SHORE_M about the town, its harbour sounded ETHER_HARBOUR_REACH (900 m) through the kernel's own ground - executed over seven ports, both turns of the widest towns cloned |
 | H2 | MED | = D9 | |
-| H3 | DOC | = D2 (and the cache "beside the ship") | |
+| H3 | DOC | = D2 (and the cache "beside the ship") | FIXED with D2; the cache's words in the record |
 | H4 | DOC | = D16 | |
 | H5 | LOW | An unknown hull's card showed her hull and sail bars (= S24) | FIXED: no bars till she is made out |
 | H6 | DOC | = L15 | |
@@ -176,7 +176,7 @@ unless it is a word in the record.
 | H15 | DOC | = L16 | |
 | H16 | DOC | The log's description: every prize's worth, the repelled by trade, the standing paid | FIXED in the record |
 | H17 | DOC | = X19 | |
-| H18 | DOC | = G13 (and "days of real time") | |
+| H18 | DOC | = G13 (and "days of real time") | FIXED in the record with G13 |
 | H19 | DOC | Veilhaven's "Land ho!" example cannot appear (it is charted at the crossing) | FIXED in the record |
 | H20 | DOC | The board turns at midnight, not dawn; a bounty's quarry is one of the two strongest | FIXED in the record |
 | H21 | LOW | The keyboard's look was not slowed by the glass (= S13) | FIXED: as the mouse's is |
@@ -224,7 +224,7 @@ unless it is a word in the record.
 | P4 | MED | A death past the Veil rose at Betony's temple a crossing away (the ship and her hold left behind); vampirism's cemetery the same | FIXED: the nearest port isle's town (ETHER_RISE_PX, else Veilhaven); no Bay cemetery there |
 | P5 | HIGH | The Fleet's Summon and Send away carried a ship across the Veil in a moment; the nearest port was named from the Bay | FIXED: never across the Veil (`veilApart`), laid up she keeps her side through a save, past the Veil the nearest port the sea's - executed |
 | P6 | LOW | Recall, a guild's teleport, a portal stone and a party's journey to its leader crossed the Veil | FIXED: refused at every door (`veilRefused`) - executed |
-| P7 | HIGH | = G2 (and the online wake ungated by the sea's switch) | |
+| P7 | HIGH | = G2 (and the online wake ungated by the sea's switch) | FIXED with G2: the wake lands where the world stands |
 | P8 | MED | A quest site in an isle town carried the region "the Etheric Isles": RevealLocation threw (a guild's house job removed on its first tick) and topic gates failed | FIXED: found in the index it stands in, by its region's own name |
 | P9 | LOW | House ownership keyed (region 19, building key): one Betony house owned the same key in every isle town | FIXED: no deed past the Veil, no house sold there (`houseOwnedAt`, the one reading of the law) |
 | P10 | NOTE | A ruin kept its template's port byte; with Travel Options on an isle's port was no port for the ship | FIXED: by its own kind |
@@ -246,7 +246,7 @@ unless it is a word in the record.
 | B9 | LOW | A cache's or a chart's things the pack could not carry went down unsaid | FIXED: kept in an overladen pack, said |
 | B10 | LOW | Sites and caches drawn past the map's edge, where nothing streams with the land beyond the Bay off | FIXED: only where the land past the Bay stands |
 | B11 | LOW | The exchange sold a hold to a standstill unsaid | FIXED: a purchase capped at her room before she would lie dead in the water, the room said - off Come Sail Away's own reckoning (`cargoRoom`) |
-| B12 | LOW | = H8 (and the item sweep never minted goods or charts) | |
+| B12 | LOW | = H8 (and the item sweep never minted goods or charts) | FIXED: the sweep mints both (`test/int1_itemlaw.test.js`, `test/honestItems.mjs`) |
 | B13 | NOTE | "1 hours left" | FIXED |
 | B14 | NOTE | "a Admiral" | FIXED |
 | B15 | NOTE | The discount's words; a purse of the bill could not pay for her whole | FIXED: named for what it covers; each row in whole gold |
@@ -278,8 +278,8 @@ CHART_PINCH_STEP, the board's BOARD_PAY_MAX and BOARD_STANDING_MAX. G2's landing
   literal, the game's own sizes), the ports' lettering (X14: against a chart of its ports alone), the host's ashore set
   (C1), a new day's dealing (B1), the mid-rank meter (L5), the exotic's refusal and the world's switch (B16), the void's
   word (B4), the room handed from the yard to the exchange (B11), a strand bare from its first cask (D1); and S18's
-  floor of five, and the swimmer's give line's `swim ? null :`, were arms no input reaches - dropped. The P1 records
-  are killed against the player's own data (ARENA2_PATH).
+  floor of five, and the swimmer's give line's `swim ? null :`, were arms no input reaches - dropped. ACS-P1-types
+  is killed against the player's own data (ARENA2_PATH), the havens' filter run over MAPS.BSA's rows.
 - 93 records in 35 lists named source the fixes rewrote (`test/mutantdrift.test.js` holds every record to its text):
   each re-aimed BY CONTENT to the code as it stands, the same law mutated - all dead.
 - The lists touching every file the fixes changed were run over the fixed tree: see What stands.

@@ -101,10 +101,10 @@ new character's first pause with Come Sail Away off and the Fleet hidden).
 
 THE LOG: leagues sailed at a helm (`sailed`, LEAGUE_M a league - a frame's way, never a jump: a step over 100 km is
 refused), the deepest waters sailed, ships sunk and taken by trade (`LOG_TRADES`: pirate, merchant, navy, and the
-Etheric Sea's two) and boarders beaten off (one count), the richest prize, the plunder hauled (`navalTransfer.js
-navalLootWorth` - gold pieces at their count, the rest at its value: a hold's own items each counted once as they leave
-it, by Take all or by hand - AUDIT CAPTAIN'S SEA L12: the captain's own things put in and taken out again were counted
-every pass), the contracts done by kind (`LOG_CONTRACTS`). `logLines` says it in a captain's words, one of a thing
+Etheric Sea's two) and boarders beaten off (one count, not by trade - H16), the richest prize (not every prize's
+worth), the plunder hauled (`navalTransfer.js navalLootWorth` - gold pieces at their count, the rest at its value: a
+hold's own items each counted once as they leave it, by Take all or by hand - AUDIT CAPTAIN'S SEA L12: the captain's
+own things put in and taken out again were counted every pass), the contracts done by kind (`LOG_CONTRACTS`). `logLines` says it in a captain's words, one of a thing
 "1 pirate" (L11).
 
 STANDING: a number with each of the three crowns, CROWN_STANDING_MIN to CROWN_STANDING_MAX. A DEED (`deed(act, cls, { crown,

@@ -559,6 +559,8 @@ test('AUDIT CAPTAIN\'S SEA H1/P2: every port isle has a harbour - its town whole
   const rectOf = (isle, w, h) => { const r = locationWorldRect({ exterior: { exteriorData: { width: w, height: h, blockNames: ['X'] } } }, isle.px, isle.py); return { minX: r.minX / 40, maxX: r.maxX / 40, minZ: r.minZ / 40, maxZ: r.maxZ / 40 }; };
   const dry = (rect) => { for (let i = 0; i <= 6; i++) for (let k = 0; k <= 6; k++) if (isWater(rect.minX + (rect.maxX - rect.minX) * i / 6, rect.minZ + (rect.maxZ - rect.minZ) * k / 6)) return false; return true; };
   assert.equal(E.ETHER_HARBOUR_REACH, 900); assert.ok(E.ETHER_HARBOUR_REACH > HARBOUR_REACH);
+  const { TOWN_BLOCKS } = await import('../src/world/etherPlaces.js');
+  assert.deepEqual([TOWN_BLOCKS.port, TOWN_BLOCKS.haven], [[2, 6], [6, 12]], 'the towns cloned no wider than the ones measured dry below (P1: the game\'s hamlets of six to twelve)');
   const ports = [E.veilhaven()];
   for (let cy = 20; cy < 480 && ports.length < 7; cy += 61) for (let cx = 20; cx < 790 && ports.length < 7; cx += 13) { const i = E.isleOfCell(cx, cy); if (i?.kind === 'port' && !i.haven) ports.push(i); }
   // the widest towns each kind is cloned from, either way about (MAPS.BSA: a port's of 2x3 and 3x2 blocks at most, a
@@ -595,7 +597,6 @@ test('AUDIT CAPTAIN\'S SEA P1 (the game\'s rows): Veilhaven\'s havens are the ga
     assert.ok(n >= 6 && n <= 12 && l.mapTableData.locationType === LOCATION_TYPES.TownHamlet, `${l.name}: a hamlet of ${n}`);
     assert.ok(Math.max(l.exterior.exteriorData.width, l.exterior.exteriorData.height) <= 4 && Math.min(l.exterior.exteriorData.width, l.exterior.exteriorData.height) <= 3, `${l.name}: within the 4x3 an isle was measured dry for (H1)`);
   }
-  assert.deepEqual(TOWN_BLOCKS.haven, [6, 12]);
 });
 
 test('AUDIT CAPTAIN\'S SEA P3/P12: an isle\'s place is never a spawn\'s template - a session that stood ruins past the Veil first cloned other templates than its party on every Bay pixel; its exterior names the isle\'s place in every id it carries - its record\'s header too (mutants: the filter, the exterior\'s ids)', async () => {
