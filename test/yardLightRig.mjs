@@ -20,7 +20,11 @@ function exteriorLightsSource() {
   const at0 = W.indexOf('    const wodLit = wod ? _wodLitCount() : 0;');
   const block = W.slice(at0, W.indexOf('    csaPoolFrame(dt);', at0));
   assert.ok(from > 0 && setAt > from && at0 > setAt && block.includes('yards.lamps()'), 'the exterior light code is where this reads it');
-  return new Function('__scope', `with (__scope) {\n${helpers}\n${block}\n}`);
+  // SHIPYARDS: the port's lamps go through the host's own helper (world.js portLightsInto - PERF-V8 keeps it out of the frame)
+  const portAt = W.indexOf('  function portLightsInto(out) {');
+  const port = W.slice(portAt, W.indexOf('\n', portAt));
+  assert.ok(portAt > 0 && block.includes('portLightsInto(csaLit)'), 'the port\'s lamps are where this reads them');
+  return new Function('__scope', `with (__scope) {\n${helpers}\n${port}\n${block}\n}`);
 }
 function fakeCanvas() {
   let ids = 0;

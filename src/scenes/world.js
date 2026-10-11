@@ -15986,7 +15986,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         portHost?.destroyAll(); closeShipyard();   // SHIPYARDS: and the shipyards and lighthouses, and the shipmaster's window over a world gone
         // SHIPYARDS: stood again at once off the loaded world, the player already where the save stood them - the frame
         // steps the player before its pools stand, so a save made on a lighthouse's gallery found no floor for a frame
-        try { portHost?.frame(); } catch (e) { console.warn('[port] the port', e?.message ?? e); }
+        portFrame();
         wardenShows?.destroyAll();   // WARDEN1: and a throw in flight
         camps.dropOwn();   // AUDIT SURV-TIERS (the third pass): the save says which camps are mine - the pitch after it is undone, not kept beside the gear it gave back
         camps.restore(restandAt('pos')(w.camps), campFromNatives);   // SURV3
@@ -25364,6 +25364,25 @@ export async function bootWorld(canvas, renderer, params, status) {
     cam.pos = player.eyeAt();
     return true;
   }
+  // SHIPYARDS x PERF-V8: THE PORT'S PER-FRAME WORK, AS THE HOST'S OWN FUNCTIONS - never inline in `frame` and never a
+  // closure made each frame: the frame's bytecode stays under three quarters of V8's ceiling (test/perfv8.test.js; a
+  // loop, a try or a spread inline added registers past r123, where every operand goes wide). Each is called once a frame
+  // where its statement stood.
+  /** The pool stood where its towns are built (the frame's, and a load's at once). */
+  function portFrame() { try { portHost?.frame(); } catch (e) { console.warn('[port] the port', e?.message ?? e); } }
+  /** The lighthouses' lamps and the shipyards' office lanterns into the frame's scene lights, in the town lanterns' colour
+   *  - beside the quays', never the player's extras. @param {any[]} out */
+  function portLightsInto(out) { for (const l of portHost?.lights() ?? []) out.push({ x: l.x, y: l.y, z: l.z, range: l.range, color: CITY_LIGHT_COLOR_F32 }); }
+  /** The port's people offered their Morrowind bodies (`eye` the frame's, `dt` its step). */
+  function portBodies(eye, dt) { if (portHost && _mode() === 'exterior') portHost.offerBodies(offerStreetPerson, eye, townTalk.overlayActive ? 0 : dt); }
+  /** The port's people on the flats' axis. @param {any[]} out */
+  function portBatchesInto(out) { if (portHost && _mode() === 'exterior') for (const b of portHost.batches()) out.push(b); }
+  /** The lamps' glow and their turning beams, added light in the sea fight's particle pass (its lamps' own law). */
+  function portGlows() {
+    if (!portHost || _mode() !== 'exterior') return;
+    const glows = portHost.glows(cam.pos);
+    if (glows.length) navalRender.draw({ particles: glows });
+  }
   // WARDEN1 (2026-10-10, Mac: "...I want a gaurd to navigate, lift the wagon/horse on top of their sprite and yeet it far
   // away"): THE TOWN WATCH (scenes/wagonWardenHost.js) - my parked wagon stamped off the town built under it, its park
   // word's fields, the cell's two words, the offline clock; its throws played (scenes/wagonWardenShow.js) by a guard of
@@ -33703,7 +33722,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     try { quays?.frame(); } catch (e) { console.warn('[quays] pool', e?.message ?? e); }   // QUAYS: the harbours' quays stood or taken down, before the lights (their lanterns) and the world pass
     try { lefay?.frame(); } catch (e) { console.warn('[lefay] monument', e?.message ?? e); }   // LEFAY1: the monument stood where Gothway Garden is built, its flowers in flight and laid
     try { merchantYards?.frame(); } catch (e) { console.warn('[yards] the yards', e?.message ?? e); }   // MERCHANT-YARDS: each town's Stable and Wagon Yard stood where it is built
-    try { portHost?.frame(); } catch (e) { console.warn('[port] the port', e?.message ?? e); }   // SHIPYARDS: each port town's shipyard and lighthouse stood where it is built, before the lights (its lamp)
+    portFrame();   // SHIPYARDS: each port town's shipyard and lighthouse stood where it is built, before the lights (its lamp)
     // Lanterns on 17:00-08:00, flickering verbatim; pixel-local lights
     // placed under the current compensation, nearest 16 to the camera.
     // WOD2: the mod's lights burn at every hour and each carries its own
@@ -33719,7 +33738,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     if (lightsOnAt(minute)) for (const l of quays?.lights() ?? []) csaLit.push({ x: l.x, y: l.y, z: l.z, range: l.range, color: CITY_LIGHT_COLOR_F32 });
     // SHIPYARDS: the lighthouses' lamps and the shipyards' office lanterns, in the lanterns' hours (the pool's own `lit`) -
     // scene lights beside the quays', in the town lanterns' colour
-    if (lightsOnAt(minute)) for (const l of portHost?.lights() ?? []) csaLit.push({ x: l.x, y: l.y, z: l.z, range: l.range, color: CITY_LIGHT_COLOR_F32 });
+    if (portHost && lightsOnAt(minute)) portLightsInto(csaLit);
     const frameLanterns = () => {   // PERF-V8
     if (lightsOnAt(minute)) {
       worldLightAnimator.tick(dt);
@@ -34018,7 +34037,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     }
     };
     framePixelWalk();
-    if (portHost && _mode() === 'exterior') portHost.offerBodies(offerStreetPerson, mwv.eye, townTalk.overlayActive ? 0 : dt);   // SHIPYARDS: the shipmasters, crewmasters, sailors, shipwrights and lightkeepers, standing people as the yards' keepers are
+    portBodies(mwv.eye, dt);   // SHIPYARDS: the shipmasters, crewmasters, sailors, shipwrights and lightkeepers, standing people as the yards' keepers are
     if (merchantYards && _mode() === 'exterior') merchantYards.offerBodies(offerStreetPerson, mwv.eye, townTalk.overlayActive ? 0 : dt);   // AUDIT MW-NPC II P1: the Stables' and the Wagon Yards' keepers, standing people (their flats ride livePersonBatches)
     streetPeople.draw(canvas, proj, view, mwv.eye, townTalk.overlayActive ? 0 : dt);   // MWNPC8b: the standing people's bodies - before the flats draw
     siegeNpcs?.drawBodies(canvas, proj, view, mwv.eye, dt);   // MWNPC10: and the siege's fighters' (their batches ride the flats)
@@ -34369,7 +34388,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     if (sigilBroker && _mode() === 'exterior') livePersonBatches.push(...sigilBroker.batches());   // SET7: the Broker on the flats' axis, as a foe stands
     if (lefay && _mode() === 'exterior') livePersonBatches.push(...lefay.batches());   // LEFAY1: the flowers laid at the monument, and the ones in flight
     if (merchantYards && _mode() === 'exterior') livePersonBatches.push(...merchantYards.batches());   // MERCHANT-YARDS: the keepers and the Stables' horses on the flats' axis
-    if (portHost && _mode() === 'exterior') livePersonBatches.push(...portHost.batches());   // SHIPYARDS: the port's people on the flats' axis
+    portBatchesInto(livePersonBatches);   // SHIPYARDS: the port's people on the flats' axis
     if (wardenShows && _mode() === 'exterior') livePersonBatches.push(...wardenShows.batches());   // WARDEN1: the guard, and the horses it carries
     if (riteHost && _mode() === 'exterior') { riteHost.tick(dt); livePersonBatches.push(...riteHost.batches()); }   // WB12d: the braziers' flames and the faithful's fire
     // HCC: the horse billboards on the flats' axis (the runtime ticked above, hccTick - AUDIT HCC H1)
@@ -34401,8 +34420,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     if (oceanHoles) drawOceanHolesTransparent();   // OH-C: the blue hole's core over it (3001), then the miasma (3002)
     csaDrawParticlesBlended();   // CSA-F: the oars' and rudders' drops (the Transparent queue)
     if (naval?.enabled) navalRender.draw(naval.drawFrame());   // NAV-B: the smoke, the spray, the balls in flight and the aim's arcs and zone, over the sea's top
-    if (portHost && _mode() === 'exterior') { const glows = portHost.glows(cam.pos); if (glows.length) navalRender.draw({ particles: glows }); }   // SHIPYARDS: the lighthouses' lamps and their turning beams, added light in the sea fight's particle pass (its lamps' own law)
     if (_serpentDraw) { try { serpentRenderer()?.drawSea(_serpentDraw); } catch (e) { console.warn('[serpent] marks', e?.message ?? e); } }   // SERPENT1: its telegraphs, the maelstrom and the venom, over the sea's top
+    portGlows();   // SHIPYARDS: the lighthouses' lamps and their turning beams, added light over the sea's top
     navalHud(dt);   // NAV-F: the helm's readout
     // DW-C: under the distance fog the air's own effects - the sand, the wisps, the bolts, none of which writes a depth
     // the mod's post effect would fog it by, so all of which it closes to the fog colour - are the fog's. PUDDLE-RAIN

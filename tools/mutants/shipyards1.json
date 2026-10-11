@@ -67,8 +67,8 @@
   {"name": "SHIPYARDS-FOUND-the-overworld-unhanded", "file": "src/scenes/world.js", "old": "    for (const m of portHost?.overworldMarks() ?? []) marks.push(m);\n", "new": "", "tests": ["test/shipyards1_found.test.js"]},
   {"name": "SHIPYARDS-FOUND-the-town-map-unhanded", "file": "src/scenes/world.js", "old": "      ports: b.portSites ?? null,   // SHIPYARDS-FOUND", "new": "      ports: null,   // SHIPYARDS-FOUND", "tests": ["test/shipyards1_found.test.js"]},
   {"name": "SHIPYARDS-the-stair-to-any-rider", "file": "src/scenes/world.js", "old": "      if (!isOnFoot(player.transportMode)) return PORT_TEXT.riding;\n", "new": "", "tests": ["test/shipyards1_found.test.js"]},
-  {"name": "SHIPYARDS-the-lamp-unwired", "file": "src/scenes/world.js", "old": "    if (lightsOnAt(minute)) for (const l of portHost?.lights() ?? []) csaLit.push(", "new": "    if (false) for (const l of portHost?.lights() ?? []) csaLit.push(", "tests": ["test/shipyards1_found.test.js"]},
-  {"name": "SHIPYARDS-the-gallery-floorless-on-a-load", "file": "src/scenes/world.js", "old": "        try { portHost?.frame(); } catch (e) { console.warn('[port] the port', e?.message ?? e); }\n", "new": "", "tests": ["test/shipyards1_found.test.js"]},
+  {"name": "SHIPYARDS-the-lamp-unwired", "file": "src/scenes/world.js", "old": "    if (portHost && lightsOnAt(minute)) portLightsInto(csaLit);", "new": "    if (false) portLightsInto(csaLit);", "tests": ["test/shipyards1_found.test.js"]},
+  {"name": "SHIPYARDS-the-gallery-floorless-on-a-load", "file": "src/scenes/world.js", "old": "        portFrame();\n", "new": "", "tests": ["test/shipyards1_found.test.js"]},
   {"name": "SHIPYARDS-the-press-unhanded", "file": "src/scenes/worldModes.js", "old": "      return host.activatePort?.(key, getInteractionMode(), plaqueActionFor(key)) ?? true;", "new": "      return true;", "tests": ["test/shipyards1_found.test.js"]},
   {"name": "SHIPYARDS-the-window-not-warmed", "file": "src/ui/enhancedChunk.js", "old": "  () => import('./shipyardWindow.js'),", "new": "  () => Promise.resolve(null),", "tests": ["test/shipyards1_host.test.js"]}
 ]

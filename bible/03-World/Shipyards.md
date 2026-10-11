@@ -205,7 +205,10 @@ off the General Store. AssignVariantsToShopItems stands, ported: a shelf a save 
   its beams in the added pass, taken down at a re-anchor and a load (the shipmaster's window shut with it); the hover
   names it; the press is handed to it; the shipmaster's window (`openShipyard`, `scenes/shipyardHost.js` over the
   Fleet's host) and the stair (`climbLighthouse`); the town map, the talk directory and the Overworld's marks are
-  handed its sites, and the docks' mark is the quay pool's.
+  handed its sites, and the docks' mark is the quay pool's. Its per-frame work is the host's own functions (`portFrame`,
+  `portLightsInto`, `portBodies`, `portBatchesInto`, `portGlows`), never inline in `frame`: PERF-V8's budget
+  (`test/perfv8.test.js` - an inline loop, try or spread put the frame's registers past r123, where every operand goes
+  wide; the frame stands at main's register count).
 - `scenes/worldModes.js` - WIRED: the street's one ray reaches them (`portTargets`), the `port:` arm (the too-far
   refusal, the plaque's lit row); a sold ship's cabin (`cabinHolds`, `cabinSold`). Its interiors stand no port.
 - `scenes/exterior.js` - FLAGGED: the single-town bench stands no port; the streaming host is where its towns are played.
