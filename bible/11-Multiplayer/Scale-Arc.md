@@ -60,6 +60,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE4d | The token's mint on a D1 session - its first statement the primary's, its reads after it a read replica's - and the deploy turns the database's read replication on | No | **Built** (2026-10-10, this branch; acct106) |
 | SCALE5a | At 500 online: the hub's hello and leave without a walk of every socket, a busy refusal that mints nothing, the World tab's count past the roster's cut | Yes, once | **Built** (2026-10-10, this branch; world189 - NOT YET DEPLOYED) |
 | SCALE5 | Past about 1-2k players: the hub split (presence and social state per account, world chat over shard rooms), slimmer or binary poses, pose-only halo frames | Yes | When the metrics say - SCALE5a measured where the hub's wall is |
+| HALO-THIN | A cell's halos hear my pose when it is due - its first, a new map pixel, 8 m on, standing at a new place, the heartbeat - not every pose; whole while my own cell's socket is down, while a halo reaches a player in range who does not hold my cell, or while a referee may stand in one (a duel, a serpent's fight); a halo pinged on its own clock | No | **Built** (2026-10-10, PR #761; client only) |
 | SCALE6 | Abuse and backups: Turnstile on guest creation, /64 IPv6 rate keys, bans, report and ignore, `ALLOWED_ORIGIN`, R2 snapshots, a hub export | Some | Alongside |
 
 **Relay deploy policy (SCALE):** relay changes are batched into as few deploys as possible, each in a window announced beforehand. A deploy drops every player, and until SCALE2 every reconnect is a D1 write storm.
@@ -130,8 +131,9 @@ larger amounts of players". Asked, Mac chose client fixes first and a batched re
 - **A crowd degrades smoothly.** SLAM3 slows a crowded sender and SLAM6 gives far listeners one pose in four. Before,
   the rate changes as a peer crossed a tier made the peer dash; now a backlog or a promotion is walked at no more than
   twice the pace, and a demotion is walked over its own interval.
-- **More halos, no more jumping.** Every halo a player holds is another copy of every nearby pose. One source room per
-  peer makes the copies harmless however many rooms overlap.
+- **More halos, no more jumping.** Every halo a player holds was another copy of every nearby pose (HALO-THIN, below: a
+  halo now hears a pose only when it is due). One source room per peer makes the copies harmless however many rooms
+  overlap.
 - **The relay batch is unchanged by it.** SCALE2b still owns the relay's O(N) work and the hello path. A sequence and a
   send time on the pose belong to that deploy, and NET-SMOOTH is written to read them when they come.
 
@@ -822,3 +824,102 @@ Considered, not reproduced, each with its reason:
   allow none.
 
 Re-measured after the fixes: the table under "Measured", above. Pins, below.
+
+## HALO-THIN: built (client only, no relay deploy)
+
+The owner, 2026-10-10, after PEER-RANGE (`07-Rendering/Performance-Priority.md`): *"For you when you are near a player
+within 41 pixels. Theres 10 position updates every time. Multiply it by the times the player is near you and its an
+insane bottleneck."*
+
+**Found.** WORLD6b-iii(b) gave a player near a cell's edge a halo socket into each neighbouring cell within range
+(`wire.js` `cellHaloFor`): one along an edge, three at a corner. A cell is 16 map pixels and a halo opens within 3
+of its edge, so about three fifths of the map holds one and about one in seven places (the corners) holds three.
+`OnlineSession.sendPose` sent every pose down the cell's socket AND every halo's. A neighbour holding the same rooms
+heard each pose once per room it shares: two copies astride an edge, four at a corner. Each copy was fanned by its own
+room, carried, parsed and gated. SCALE2b's `ts` applies the first to arrive and drops the rest - so a copy bought only
+the quickest room's head start, and multiplied the relay's fan work, the bytes and the receiving client's parses by
+the rooms shared.
+
+**Why a halo hears a pose at all.** By `cellHaloFor`'s own symmetry everyone within range of me WANTS my cell, so its
+fan alone reaches them all. That is why foes are never streamed to a halo (`online.js` `_halo`). A halo needs my pose
+for:
+- its fan ranging me as a LISTENER, on the map pixel (`inRangeOf`);
+- its near tier ranking me among a sender's POSE_FAN_MAX nearest, by ground distance (`poseFan`);
+- its roster placing me for a newcomer's introduction;
+- the relay's judges of a word sent down that socket: a duel's opening ring (`duelOpen`, 12 m) and its bout
+  (`duelPose`) - a duel's frames go to the room my opponent is heard through (`sendDuel` -> `_socketFor`); a rite's call
+  (`riteNear`, 60 m, down the circle's cell socket); a serpent fight's trail (`_trailing`); a raid's word (my pixel);
+  an Abyss find (160 m of the pixel's centre). The open zone's referee is not among them: it holds a fighter by the zone
+  word, which `setWildZone` says down my own cell's socket alone (AUDIT B F4).
+
+**The law** (`net/online.js` `haloPoseDue`). A halo hears a pose when it is due:
+- its first since its welcome (per SOCKET - a reconnect's new socket, or AURA-LIVE's swapped one, has heard nothing);
+- a new map pixel, either way (the range's own grain, and the raid's word);
+- HALO_STEP_M (8 m) moved on the ground since the last it heard (the near tier's ranking);
+- standing at a place it has not heard - a stop, or a walk under the step then a stop (AUDIT B F3);
+- the heartbeat. A fall is `sendDeath`'s, down every socket as before.
+
+It goes whole - every pose, the law before this - while my own cell's socket took none (AUDIT WORLD6b-iii(b) A5); while
+it reaches a player in range who does not hold my cell (`_haloAlone`: a member of that room, within range of me, that
+my own room does not report - their socket into my cell still opening, backing off or refused busy, who hears me
+through the halo alone; AUDIT B F1); and while the host says a referee may stand in one: `haloWhole`, raised by
+`scenes/world.js` for a duel (`duelMgr.duel`) and this frame's serpent fight (`_serpentFight`). A duel's or a rite's word
+sent down a halo first brings it my latest pose when its last is not that (`_haloCurrent`, AUDIT D3), so the judge reads
+where I am. And a halo is pinged on its own clock (AUDIT B F2): its poses no longer keep it busy, so it holds RELAY-H1's
+PING_MS cadence like every socket.
+
+THE FOUR HOSTS: `scenes/world.js` WIRED - its online frame runs the one session, raises `haloWhole` and reads
+`_serpentFight`. `scenes/worldModes.js` and `scenes/dungeonContext.js` send no pose of their own: the interior's and
+the dungeon's ride `world.js`'s online frame. `scenes/exterior.js` runs no online session.
+
+**Measured** (`tools/haloThinProbe.mjs`: the real `OnlineSession`, its own gate and clock, over `test/fakeSocket.mjs`,
+60 frames a second, 60 s a run; the counts exact; "copies" the most a neighbour holding all the same rooms can get - the
+far tier may serve it fewer):
+
+| where | pace | frames sent a second, before -> after | copies a neighbour gets of each pose, before -> after |
+|---|---|---|---|
+| a corner (3 halos) | walk 4 m/s | 35.4 -> 10.3 | 4.00 -> 1.16 |
+| a corner | run 8 m/s | 35.4 -> 11.8 | 4.00 -> 1.33 |
+| a corner | ride 16 m/s | 35.4 -> 14.1 | 4.00 -> 1.59 |
+| an edge (1 halo) | walk 4 m/s | 17.7 -> 9.3 | 2.00 -> 1.05 |
+| an edge | run 8 m/s | 17.7 -> 9.8 | 2.00 -> 1.11 |
+| an edge | ride 16 m/s | 17.7 -> 10.6 | 2.00 -> 1.19 |
+
+What one inbound pose costs a client was measured beside it (node 22, the real session's `_receive` over the fake
+socket, this container's CPU): 2-8 us. In a crowd a sender speaks less (SLAM3's `poseHzFor`: 4 a second at 120 peers),
+so 120 neighbours at a corner were 1,920 copies a second - and 480, plus the due ones, after. PERF-ON4's own figures
+work out to about 19 us a message in real Chromium on this container (its inbound column over the messages its crowd
+sent): a derivation, not a measurement. The relay's side is each halo room's fan of each copy, gone with it.
+
+**What a player sees.** Movement as before: a neighbour holding my cell hears every pose from it. Three differences,
+none a jump: one who held two of my rooms got whichever copy came first, and now gets my cell's (a quicker halo's head
+start is gone); in a crowd past 32, a halo ranks me as a listener by a pose up to 8 m old; and a neighbour whose socket
+into my cell is opening or refused gets every pose through the halo, as before.
+
+**Left.**
+- The far tier by DISTANCE is still a relay deploy. SLAM6's far tier serves one pose in four to listeners past a
+  sender's 32 nearest, by rank. A listener past every draw distance (PEER-RANGE's 600 m) still hears a near crowd's every
+  pose. Serving such listeners one in POSE_FAR_SHARE, or none past a bound, is the relay's `_poseFrame`, and it waits for
+  the next announced relay batch (with PERF-RELAY1's and SCALE5a's).
+- Found beside it, not this change's (AUDIT B F4): a duel asked across a cell's edge never opens - each side's word goes
+  down the socket the other is heard through, so the ask and the yes land in two Durable Objects; and a blow in the open
+  zone across an edge lands in a room where its striker is no fighter. Both want one room for a pair; recorded, not built
+  here.
+
+**Pins.** `test/halothin.test.js` (11):
+- the step, and the law, every arm of it;
+- the real session at a corner - its own cell every pose, each halo one each 8 m, the stop and the heartbeat;
+- standing and turning - the halo hears the place once (the stop the session records);
+- whole under `haloWhole` and with its own cell's socket really dropped;
+- alone - a halo whose room reports a player in range my own does not;
+- AURA-LIVE's swapped socket and a real reconnect each hearing the next pose, and a fall;
+- never ahead of a welcome;
+- the halos' own keepalive;
+- a referee's word bringing the halo current;
+- the host's word, said before the frame's pose, and the zone word's socket.
+
+Mutants: `tools/mutants/halothin.json`, 32 dead. SCALE2b's stamp-per-room record re-aimed by content at the halo's send
+(dead). The word moved one line up after CI: WAGONS2-VISIT holds `caravanVisitLink.close()` against `if (!key)`.
+
+AUDITED the same day (`01-Overview/Audit-Peer-Range-Halo-Thin.md`): what it changed is written into this section as it
+now stands.

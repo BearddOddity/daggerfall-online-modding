@@ -14715,7 +14715,8 @@ the client, in `src/net/online.js`; the relay is untouched and stays on its vers
    (`scenes/world.js` `nativeFrame`), 40 units to the metre. There the snap was 0.75 m, and a runner at 10 Hz goes
    0.8 m a pose: they teleported on nearly every pose. The snap is the frame of the ROOM the pose was heard in now
    (`nativePoseRoom`, `snapUnitsFor`).
-2. **One pose, several rooms, no order.** `sendPose` sends down the cell's socket and every halo's, and each room is a
+2. **One pose, several rooms, no order.** `sendPose` sent down the cell's socket and every halo's (HALO-THIN,
+   `11-Multiplayer/Scale-Arc.md`: a halo now hears a pose only when it is due - a copy is rarer, and races when it comes), and each room is a
    Durable Object of its own. A listener holding two of them hears every pose twice, and the copies race. Only an
    identical copy was dropped (AUDIT WORLD6b-iii(b) C6); an OLDER copy landing second was eased toward and the peer
    walked backwards. The frame has no sequence to order by, so a peer is heard through ONE room at a time (`src`).
@@ -14792,7 +14793,7 @@ side). The wire gains one field and the client reads it.
 is an integer inside the modulus and drops it otherwise - never clamped, which would order every later pose behind it.
 `poseTsDiff` orders two across the wrap. Omitted by an older client, stripped by an older relay: a receiver that sees
 none plays the pose as NET-SMOOTH does. Every room's copy of one pose carries the same `ts` (one stamp, then the cell's
-socket and every halo's); the hello's pose is stamped as it is said; a pose that goes nowhere spends no stamp.
+socket and every halo it is due to - HALO-THIN); the hello's pose is stamped as it is said; a pose that goes nowhere spends no stamp.
 Wall clock, so a reload's poses are never older than the last page's.
 
 **The receiver** (`OnlineSession._arriveTimed`):

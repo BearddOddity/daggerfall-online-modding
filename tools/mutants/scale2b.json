@@ -350,8 +350,8 @@
   {
     "name": "SCALE2b-stamp-per-room",
     "file": "src/net/online.js",
-    "old": "    if (this._halo.size) { const s = JSON.stringify({ t: 'pose', p: out });",
-    "new": "    if (this._halo.size) { const s = JSON.stringify({ t: 'pose', p: { ...pose, ts: this._stampTs() } });",
+    "old": "h.ws.send(s ??= JSON.stringify({ t: 'pose', p: out }));",
+    "new": "h.ws.send(JSON.stringify({ t: 'pose', p: { ...pose, ts: this._stampTs() } }));",
     "tests": [
       "test/scale2b.test.js"
     ],

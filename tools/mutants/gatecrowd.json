@@ -389,8 +389,8 @@
   {
     "name": "GATECROWD-spark-uncut",
     "file": "src/scenes/world.js",
-    "old": "if (!p?.shown || !online.visible(p) || !gateCrowd.shows(p.id)) {",
-    "new": "if (!p?.shown || !online.visible(p)) {",
+    "old": "if (!p?.shown || !online.visible(p) || !gateCrowd.shows(p.id) || !peerRange.shows(p.id)) {",
+    "new": "if (!p?.shown || !online.visible(p) || !peerRange.shows(p.id)) {",
     "tests": [
       "test/gatecrowd.test.js"
     ]
@@ -398,8 +398,8 @@
   {
     "name": "GATECROWD-everyone-drawn-here",
     "file": "src/scenes/world.js",
-    "old": "const crowdDrawnHere = (p) => gateCrowd.shows(p.id);",
-    "new": "const crowdDrawnHere = () => true;",
+    "old": "const crowdDrawnHere = (p) => gateCrowd.shows(p.id) && peerRange.shows(p.id);",
+    "new": "const crowdDrawnHere = (p) => peerRange.shows(p.id);",
     "tests": [
       "test/gatecrowd.test.js"
     ]
