@@ -207,7 +207,7 @@ import { applyDeathPenalty, deathPenaltyText } from '../systems/deathPenalty.js'
 import { revenantTakes } from '../systems/revenant.js';   // AUDIT FEUD (RVN8): the in-place respawn's theft, as the world host's
 import { endPlayerFights } from '../systems/harmMark.js';   // AUDIT FEUD (RVN10): ...and its fights ended
 import { tokenRows } from '../ui/messageBox.js';
-import { staticNpcRoute, showsJoinButton, serviceAccess, onPushEffects, NO_POTION_INGREDIENTS, isServiceBox } from '../systems/guildServiceFlow.js';
+import { staticNpcRoute, showsJoinButton, serviceAccess, onPushEffects, NO_POTION_INGREDIENTS, isServiceBox, SERVICE_LABEL, SERVICE_DESTINATION } from '../systems/guildServiceFlow.js';
 import { isIngredient } from '../systems/potions.js';   // F201: MakePotionService's scan
 import { isPotionRecipe, USE_TEXT, expandItemMacro } from '../systems/useItem.js';   // AUDIT 63 F42: IsPotionRecipe (DaggerfallUnityItem.cs:344-347); RR1: the light's own "You douse the %it."
 import { canAccessService , hasCustomMerchantService, getCustomMerchantService, getCustomMerchantServiceLabel } from '../systems/guildServices.js';   // G4: does THIS guild also sell soul gems?
@@ -362,7 +362,7 @@ import {
 // DECOR1c: the pieces a room's owner placed (their law, and the pool that stands them in the room)
 import { decorPieceOf, decorSaleBack, DECOR_STATION_SERVICES, DECOR_STATION_NAMES } from '../net/decorLaw.js';
 import { VENDOR_STATION, VENDOR_COLD_LINE } from '../net/vendorLaw.js';   // HOME-VENDOR: a trader, and its word where none can trade
-import { forgeOffered, PROF_STATIONS, stationColdLine, enchantGoldPct } from '../ui/profPages.js';   // AUDIT 29 B2: a Forge worked only where the Stores page is; PROF4: a Workbench
+import { forgeOffered, PROF_STATIONS, stationColdLine, enchantGoldPct, STORES_ACT_STATIONS, focusStoresStation } from '../ui/profPages.js';   // AUDIT 29 B2: a Forge worked only where the Stores page is; PROF4: a Workbench
 import { FORGE_FEE, WORKBENCH_FEE, LOOM_FEE, MASON_FEE, COOK_FIRE, JEWEL_FEE, ALCHEMY_FEE, ENCHANT_FEE } from '../net/professionLaw.js';   // PROF2: a smith's forge's use fee; PROF4: a furnisher's workbench's; PROF7: a tailor's loom's; PROF11: a General Store's mason's bench's; PROF10: a Pawn Shop's or a Gem Store's jeweller's bench's
 /** HOME-STATIONS: a station pressed whose maker's art has not landed yet. */
 const DECOR_STATION_NOT_READY = 'The station is not ready yet - try again in a moment.';
@@ -1700,7 +1700,7 @@ export function createWorldModes(host) {
     // off this host's slot, as world.js reads off its own.
     sheetWindowUp: () => interiorOverlay?.holdsScreen === true,
     activateHeld: () => held(keys, 'ActivateCenterObject') || !!host.activateDown?.(),   // AUDIT 62 F8 (review): the finger's press too - it reaches this host ONLY through activateDown, never through `keys`   // AUDIT 28 W12: the drawn bow's un-draw key
-    spellArmed: () => magic?.spellArmed() ?? false, abortSpell: () => magic?.abortReadySpell(),   // M2; MAC-O1: WeaponManager.Update:251 - the ReadyWeapon key puts a readied spell away and draws
+    spellArmed: () => magic?.spellArmed() ?? false, readiedSpell: () => magic?.readied?.() ?? null,   /* RSH1: the readied hands */ abortSpell: () => magic?.abortReadySpell(),   // M2; MAC-O1: WeaponManager.Update:251 - the ReadyWeapon key puts a readied spell away and draws
     renderer, canvas, fetchBytes, palette, audio, entity: playerEntity,
     collider: () => player.collider ?? null, missEffect: (k, p, o) => interiorHitEffects.showMissEffect(k, p, o),   // WW1: the weapon widget's environment recoil, and DoClang/DoThud on the interior pool
     actionDown: (action) => held(keys, action), torches: () => interiorTorches,   // HT1; KB1: registry actions
@@ -4756,6 +4756,14 @@ export function createWorldModes(host) {
     // the player's smelting is done; where the Stores page is not (offline, the switch shut, the classic skin) it says
     // so (AUDIT 29 B2 - it landed on the Character page without a word)
     if (PROF_STATIONS.includes(piece.station)) { if (forgeOffered()) interiorKeyCtx.togglePause({ at: 'stores' }); else say(stationColdLine(piece.station)); return; }   // PROF4: the workbench too; PROF7: the loom; PROF11: the mason's bench
+    // STATION-DOOR (bible/01-Overview/Field-Bugs-2026-10-11f.md): an alchemy or enchanting station is Daggerfall's maker
+    // AND its profession's act, which is the Stores page's (the brew, Disenchanting) - online the press offers both; the
+    // maker alone where the page is not
+    if (Object.hasOwn(STORES_ACT_STATIONS, piece.station) && forgeOffered()) { offerStationActs(piece); return; }
+    openStationMaker(piece);
+  }
+  /** HOME-STATIONS: a station's own maker - the guild service's window (openServiceFlow), or the refusal it answers. */
+  function openStationMaker(piece) {
     const rows = (id, pick) => townTalk?.lines?.(id, pick) ?? [];
     const flow = openServiceFlow(DECOR_STATION_SERVICES[piece.station], { guild: null, memberships: null, store: null, rows, route: null });
     if (isServiceBox(flow)) {   // STATION-ROWS: the spell maker's window carries `rows` too - its reader, not a box
@@ -4764,6 +4772,23 @@ export function createWorldModes(host) {
       return;
     }
     if (!flow && !interiorOverlay) say(DECOR_STATION_NOT_READY);
+  }
+  /** STATION-DOOR: THE PRESS'S CHOOSER at an alchemy or enchanting station - Daggerfall's maker (its own service label), or
+   *  the profession's act on the Stores page, landed on the station's section. THE SLOT IS EMPTIED BEFORE THE OCCUPANT IS
+   *  TOLD: the chooser leaves the slot before either door is opened, so the maker's "not ready" reads the slot as it is. */
+  function offerStationActs(piece) {
+    const kind = piece.station;
+    const maker = Object.keys(SERVICE_DESTINATION).find((s) => SERVICE_DESTINATION[s] === DECOR_STATION_SERVICES[kind]);   // the guild's service this station's maker is
+    const chooser = new ChoiceWindow({
+      lines: [DECOR_STATION_NAMES[kind]],
+      options: [
+        { code: 'Digit1', label: `1 - ${SERVICE_LABEL[maker]}`, action: () => { leave(); openStationMaker(piece); } },
+        { code: 'Digit2', label: `2 - ${STORES_ACT_STATIONS[kind]} (Stores page)`, action: () => { leave(); focusStoresStation(kind); interiorKeyCtx.togglePause({ at: 'stores' }); } },
+        { code: 'Escape', label: 'Esc - close', action: () => {} },
+      ],
+    });
+    const leave = () => { if (interiorOverlay === chooser) interiorOverlay = null; };
+    interiorOverlay = chooser;
   }
 
   /** GUILD1d (Seats-Arc 8.2: "decor in the hall by Officers"): a guild's hall this character keeps - its Officers and its
@@ -13444,7 +13469,7 @@ export function createWorldModes(host) {
     },
     /** PROF12 (bible/06-Systems/Professions-Arc.md 9.3; professionLaw ALCHEMY_FEE): THE ALCHEMY STATION THE PLAYER STANDS AT -
      *  an Alchemist's, open for trade (its use fee, ALCHEMY_FEE gold a brew or a transmutation), or their own home's alchemy
-     *  station (a hall member's) - or null. The station's DFU potion maker stays the station's own press (useDecorStation). */
+     *  station (a hall member's) - or null. The station's DFU potion maker stays the station's own press (useDecorStation) - beside the brew, online (STATION-DOOR). */
     alchemyHere() {
       if (mode !== 'interior' || !interiorBuilding) return null;
       if (interiorBuilding.buildingType === BUILDING_TYPES.Alchemist) return interiorBuilding.insideOpenShop === false ? null : { kind: 'shop', fee: ALCHEMY_FEE };

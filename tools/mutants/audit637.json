@@ -112,7 +112,7 @@
   {
     "name": "AUDIT637-A1a-the-panel-short-circuit-gone",
     "file": "src/ui/chatPanel.js",
-    "old": "    if (rows === whoRowsSeen && total === whoTotalSeen && label === whoLabelSeen && menuFor === whoMenuSeen) return;\n",
+    "old": "    if (all === whoRowsSeen && total === whoTotalSeen && label === whoLabelSeen && menuFor === whoMenuSeen && query === whoQuerySeen) return;\n",
     "new": "",
     "tests": [
       "test/audit637_roster.test.js",
@@ -122,7 +122,7 @@
   {
     "name": "AUDIT637-A1b-the-list-seen-never-recorded",
     "file": "src/ui/chatPanel.js",
-    "old": "    whoRowsSeen = rows; whoTotalSeen = total;",
+    "old": "    whoRowsSeen = all; whoTotalSeen = total;",
     "new": "    whoTotalSeen = total;",
     "tests": [
       "test/audit637_roster.test.js",

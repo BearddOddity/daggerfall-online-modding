@@ -3381,8 +3381,9 @@ Seats-Arc 7.5). What sections 1, 2, 3.3, 4.1, 4.3, 4.5, 9.3 and 9.4 left open fo
 - **The alchemy station** (9.3: "the brewing act at an alchemy station"; `professionLaw.js` ALCHEMY_FEE). DECIDED: an
   **Alchemist's**, open for trade (DFU's own potion seller; its `insideOpenShop` latch), **50 gold a brew** or a
   transmutation as every station's fee, paid as the potions are bottled - or a home's **`alchemy` station** (HOME-STATIONS'
-  first, its 50,000 licence; a hall member's). `scenes/worldModes.js` alchemyHere. The station's own press still opens
-  DFU's potion maker, 1:1. The Stores page's **The Alchemy Station**.
+  first, its 50,000 licence; a hall member's). `scenes/worldModes.js` alchemyHere. The station's own press opens DFU's
+  potion maker, 1:1 - online it asks first, the maker or the brew on the Stores page (STATION-DOOR,
+  `01-Overview/Field-Bugs-2026-10-11f.md`). The Stores page's **The Alchemy Station**.
 - **The brew** (9.3: "the service runs DFU's own recipe law on them ... the same twenty recipes, and no new ones, make the
   same potions, into the pack"; `/v1/prof/brew`, `server-account/src/alchemy.js` brewAtStation). The request names the
   potion and the cauldron **as the Stores hold it** (`keys` - an herb its northern or southern, the brewer's: the page
@@ -3451,8 +3452,8 @@ Seats-Arc 7.5). What sections 1, 2, 3.3, 4.1, 4.3, 4.5, 9.3 and 9.4 left open fo
 - **DISENCHANTING** (9.3: "a provenance item the player owns becomes Arcane Essence, one per 100 enchantment points it
   carried (Disenchanter x2), into the Stores, and is gone. Loot cannot be disenchanted"; `/v1/prof/disenchant`,
   `alchemy.js` disenchantPiece). **The enchanting station** - DECIDED: a **Mages Guild hall** (the house of DFU's own item
-  maker; 50 gold a piece) or a home's **`enchant` station** (HOME-STATIONS', 200,000; a hall member's) - `worldModes.js`
-  enchantHere; the Stores page's **The Enchanting Station**, the pack's crafted pieces each its Essence, **pressed twice**
+  maker; 50 gold a piece) or a home's **`enchant` station** (HOME-STATIONS', 200,000; a hall member's; its press asks
+  online, the item maker or Disenchanting - STATION-DOOR) - `worldModes.js` enchantHere; the Stores page's **The Enchanting Station**, the pack's crafted pieces each its Essence, **pressed twice**
   (the piece is gone). DECIDED - **the points it carried** are its budget as the service knows it from its own record: its
   **DFU template's** enchantment points (`itemTemplates.json`), a piece of jewellery **its own** (PROF10's metal and gem
   shares, by its hand) - never the client's word; the material multiplier DFU's item maker lays on a weapon's or armour's

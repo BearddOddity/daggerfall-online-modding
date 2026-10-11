@@ -8315,6 +8315,35 @@ and the dungeon's through worldModes into dungeonContext (THE FOUR HOSTS; exteri
 **Not changed:** the chat's wire, its bound, its filters. Pins: `test/chatpost.test.js` (2),
 `tools/mutants/chat_post.json` (8 dead).
 
+## CHAT-FIND (2026-10-11, the owner: "search for a player's name in the chat in every ui"; "put the search bar above the player list for better visibility") - the chat's search
+
+**ONE PANEL, EVERY UI.** The chat is one panel (`ui/chatPanel.js`) on the classic skin, the enhanced skin and the
+touch layer, so its search is every UI's. A strip - a field ("Find a player"), the count of lines it found and a clear -
+stands at the TOP OF THE PLAYER LIST, above the roster's heading; where that column is not drawn (the sheet hides it
+under 560px; a host with no roster) the strip stands over the conversation instead (`placeFind`), so a phone keeps it.
+
+**THE LAW** (`net/chat.js`, pure): a query is a piece of a name, case and the spaces round it ignored, at most
+`CHAT_FIND_MAX` (32) characters (`findQuery`); a query that starts with `#` is the start of a TAG - the four
+characters beside a name, the one way to tell two players of one name apart (`playerFound`). A line is found when its
+speaker is, or (a plain query) when its words name them; a line the game said (a notice, `/red`, `/dm`) is nobody's
+(`lineFound`). The results are EVERY tab's lines - a tab off the bar keeps its history - oldest first, a line kept on
+more than one tab once (`findLines`).
+
+**THE PANEL.** Under a query the list is the results (`paintFound`, rebuilt only when the query, the log or the open
+tab moves): a line from another tab wears that tab's mark (the peek's own `chanOf`), the query is marked where it
+stands in the name and the words (a `#` query marks the tag), and nothing found says so. The roster column is the
+players the query finds, its heading "Online - 2 of 6". The field's keys are the panel's, as the chat field's are
+(CG2): Enter and Tab go back to the chat field, Escape clears a search and on an empty one closes the chat. A tab
+pressed, or the chat closed, clears it - a search is a look at the log, never a state of it. `/search <name>` typed
+in the chat field fills it and says nothing to anyone (`net/chatCommands.js` findCommandOf, answered by the panel
+before the host is asked); `/search` alone clears it; `/help` lists it. `/find` and `/who` are NOT the panel's: SCALE5c
+(Mac's decision 2) made them the hub's search of everyone online, anywhere in the world, answered as a line in the tab
+that asked - this slice was cut before SCALE5c landed and first took `/find` too, and gave it back on the merge.
+
+Pins: `test/chat_find.test.js` (8). Mutants: `tools/mutants/chat_find.json`, 17, all dead. Re-aimed pins:
+`chatfit` (the column's order), `acc3wear` (the roster key carries the query); re-aimed mutant records: `audit637`
+A1a/A1b, `chatfit` the-inner, `perfon3` the-open-row (the roster's short-circuit carries the query).
+
 ## HOME-STATIONS (2026-09-27, Discord - Tabitha: "CRAFTABLE / PURCHASABLE CRAFT / GUILD STATIONS [Spellmaking, Alchemy, Enchanting] FOR HOMES / SHIPS") - a placed piece may serve a craft
 
 **THE LAW** (`net/decorLaw.js`). A placed piece's place may carry `station`, one of DECOR_STATIONS ('alchemy',
@@ -8340,7 +8369,8 @@ view, "Station: Alchemy >" cycles the craft offered, free, and follows a newly c
 **THE PRESS** (`scenes/worldModes.js` useDecorStation). A station pressed by its owner opens its craft's maker
 through the guild service's own door (openServiceFlow, no guild), so the maker's own laws stand: the potion maker's
 ingredients, the spell maker's spellbook, and what each charges. A visitor is told whose home it is, as a storage
-piece's visitor is.
+piece's visitor is. STATION-DOOR (`01-Overview/Field-Bugs-2026-10-11f.md`): online, an alchemy or enchanting station
+asks first - its maker, or its profession's act on the Stores page (the brew, Disenchanting).
 
 **THE SERVICE** (`server-account/src/decor.js` placeJson). The craft is written with the place. ACCOUNT_VERSION
 acct16 (acct15 on its branch; main's FOUNDER3 took acct15 first) - the account Worker deploys from CI on a change to its bundle.

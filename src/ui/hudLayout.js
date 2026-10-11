@@ -54,7 +54,7 @@ export const HUD_PIECES = Object.freeze([
   { id: 'tracker', sel: '.qtrack', name: 'Quest tracker', dummy: true, ghost: 'tracker' },
   { id: 'party', sel: '.dfparty', name: 'Party', dummy: true, ghost: 'party' },
   { id: 'notices', sel: '.notice-stack', name: 'Notifications', dummy: true, ghost: 'notices' },
-  { id: 'boss', sel: '.wb-boss-bar', name: 'Boss bar', dummy: true, ghost: 'boss' },
+  { id: 'boss', sel: '.wb-boss-bar', name: 'Boss bar', dummy: true, ghost: 'boss', len: true },   // HUD-LEN: and its length
   { id: 'revenant', sel: '.rvncard-stack', name: 'Revenant taunts', dummy: true, ghost: 'revenant' },   // REVENANT-CARD
   { id: 'loot', sel: '.lootbanner-stack', name: 'Loot banners', dummy: true, ghost: 'loot' },   // LOOT-BANNER
   { id: 'fps', sel: '#fps-counter', name: 'FPS counter' },
@@ -132,12 +132,15 @@ ${MOVED} { translate: var(--hmx, 0px) var(--hmy, 0px); scale: var(--hms, 1); }
 .hud .hud-breath[data-hm-len] .hud-track { width: calc(min(140px, 18vw) * var(--hml, 1)) !important; }
 .hud .hud-renown[data-hm-len] { width: calc((3 * min(190px, 23vw) + 32px) * var(--hml, 1)) !important; }
 .hud .hud-compass[data-hm-len] { width: calc(min(520px, 60vw) * var(--hml, 1)) !important; }
+/* HUD-LEN: the boss's bar at its sheet's width (ui/gateBossBar.js BOSS_BAR_WIDTH) times its length; its track is the bar's */
+.wb-boss-bar[data-hm-len] { width: calc(460px * var(--hml, 1)) !important; max-width: 96vw !important; }
 /* THE HANDLES: a corner square scales a piece, an edge bar changes its length */
 #${HANDLES_ID} { position: fixed; inset: 0; pointer-events: none; z-index: 7; }
 #${HANDLES_ID} i { position: fixed; display: block; pointer-events: auto; touch-action: none; background: #e0b070;
   border: 1px solid #3a2a14; box-shadow: 0 0 0 1px rgba(0,0,0,0.4); }
 #${HANDLES_ID} i[data-hm-handle="scale"] { width: 12px; height: 12px; cursor: nwse-resize; }
 #${HANDLES_ID} i[data-hm-handle="len"] { width: 6px; height: 20px; cursor: ew-resize; }
+#${HANDLES_ID} i[data-hm-handle="len"][data-axis="y"] { width: 20px; height: 6px; cursor: ns-resize; }
 #${HANDLES_ID} i[data-hm-handle="off"] { width: 16px; height: 16px; cursor: pointer; background: #b8402e; color: #fff;
   font: 700 12px/16px sans-serif; text-align: center; font-style: normal; }
 #${HANDLES_ID} i[data-hm-handle="off"][data-on="0"] { background: #4f7a3a; }
@@ -410,7 +413,13 @@ function syncHandles(doc, edit) {
         if (h.turn) { h.turn.style.left = `${r.right - 34}px`; h.turn.style.top = `${Math.max(2, r.top - 18)}px`; }
         h.tag.style.left = `${Math.max(2, r.left)}px`; h.tag.style.top = `${Math.max(2, r.top - 19)}px`;
         h.sq.style.left = `${r.right - 2}px`; h.sq.style.top = `${r.bottom - 2}px`;
-        if (h.ln) { h.ln.style.left = `${r.right + 2}px`; h.ln.style.top = `${r.top + r.height / 2 - 10}px`; }
+        if (h.ln) {
+          // HUD-LEN: a piece whose length runs up (a dress's upright vials say so: --hm-len-axis) takes it on its top edge
+          const ax = lenAxisOf(n);
+          if (h.ln.dataset.axis !== ax) h.ln.dataset.axis = ax;
+          if (ax === 'y') { h.ln.style.left = `${r.left + r.width / 2 - 10}px`; h.ln.style.top = `${Math.max(2, r.top - 8)}px`; }
+          else { h.ln.style.left = `${r.right + 2}px`; h.ln.style.top = `${r.top + r.height / 2 - 10}px`; }
+        }
       }
       handleRaf = win.requestAnimationFrame(step);
     };
@@ -493,6 +502,26 @@ function saveLayout(id, o) {
   setPref(HUD_LAYOUT_PREF, Object.keys(next).length ? next : null);
 }
 
+/** HUD-LEN: which way a piece's length runs - across ('x', the sheets' bars) or up ('y': a dress that stands its bars
+ *  on end says so with --hm-len-axis). */
+function lenAxisOf(node) {
+  try { return String((node.ownerDocument?.defaultView ?? globalThis).getComputedStyle?.(node)?.getPropertyValue('--hm-len-axis') ?? '').trim() === 'y' ? 'y' : 'x'; } catch { return 'x'; }
+}
+/** HUD-LEN: a size or a length taken from a piece that stood wholly on the screen keeps it there - the piece is moved
+ *  back in by what it outgrew past an edge (a corner's vitals grown about their middle went off the screen's edge). */
+function keepOnScreen(want) {
+  const r = drag.node.getBoundingClientRect();
+  const vw = globalThis.innerWidth || 0, vh = globalThis.innerHeight || 0;
+  if (!vw || !vh || !drag.inView) return want;
+  let dx = 0, dy = 0;
+  if (r.width <= vw) { if (r.left < 0) dx = -r.left; else if (r.right > vw) dx = vw - r.right; }
+  if (r.height <= vh) { if (r.top < 0) dy = -r.top; else if (r.bottom > vh) dy = vh - r.bottom; }
+  if (!dx && !dy) return want;
+  const out = { ...want, x: want.x + dx / drag.k, y: want.y + dy / drag.k };
+  paint(drag.node, out);
+  return out;
+}
+
 const handleAt = (target) => target?.closest?.('[data-hm-handle]') ?? null;
 const pieceAt = (target) => (handleAt(target)?._hmNode) ?? target?.closest?.('[data-hm-edit]') ?? null;
 const swallow = (e) => { e.preventDefault?.(); e.stopPropagation?.(); e.stopImmediatePropagation?.(); };
@@ -520,8 +549,26 @@ function onDown(e) {
     if (Math.abs(b - a) > 1) k = (b - a) / 100;
   } catch { /* keep 1 */ }
   const cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
+  // HUD-LEN: THE HANDLE FOLLOWS THE POINTER. How far the handle's edge moves for a step of length is MEASURED, never
+  // assumed: a centred piece grows both ways, a corner's grows one way, and a dress's upright vials grow up, not across
+  // (the old "twice the pull across" sent a corner's handle running from the pointer, and did nothing to a stood bar)
+  let axis = 'x', per = 0;
+  if (mode === 'len') {
+    axis = lenAxisOf(node);
+    try {
+      paint(node, o);
+      const a = node.getBoundingClientRect();
+      paint(node, { ...o, l: (o.l || 1) * 1.25 });
+      const b = node.getBoundingClientRect();
+      paint(node, o);
+      per = (axis === 'y' ? a.top - b.top : b.right - a.right) / ((o.l || 1) * 0.25);   // px of the handle's edge per unit of length
+    } catch { per = 0; }
+    if (!(Math.abs(per) > 0.5)) per = axis === 'y' ? Math.max(8, r0.height) : Math.max(8, r0.width) / 2;
+  }
+  const vw = globalThis.innerWidth || 0, vh = globalThis.innerHeight || 0;
+  const inView = r0.left >= -1 && r0.top >= -1 && r0.right <= vw + 1 && r0.bottom <= vh + 1;
   drag = { node, id, mode, free: !!e.altKey, sx: e.clientX, sy: e.clientY, ox: o.x, oy: o.y, o0: { ...o }, k, cur: { ...o }, pid: e.pointerId,
-    cx, cy, d0: Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), w0: Math.max(8, r0.width), cap: e.target };
+    cx, cy, d0: Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), w0: Math.max(8, r0.width), cap: e.target, axis, per, inView };
   node.setAttribute('data-hm-drag', '');
   try { (drag.cap ?? node).setPointerCapture?.(e.pointerId); } catch { /* ok */ }
 }
@@ -536,14 +583,15 @@ function onMove(e) {
     const d = Math.hypot(e.clientX - drag.cx, e.clientY - drag.cy);
     want = { ...drag.o0, s: clamp(drag.o0.s * d / drag.d0, SCALE_MIN, SCALE_MAX) };
   } else if (drag.mode === 'len') {
-    // the right edge pulled out or pushed in (a centred piece grows both ways, so twice the pull)
-    const grow = (e.clientX - drag.sx) * 2;
-    want = { ...drag.o0, l: clamp(drag.o0.l * (drag.w0 + grow) / drag.w0, LEN_MIN, LEN_MAX) };
+    // HUD-LEN: the handle's edge goes where the pointer goes - right (or up, for a stood bar) is longer
+    const pull = drag.axis === 'y' ? drag.sy - e.clientY : e.clientX - drag.sx;
+    want = { ...drag.o0, l: clamp((drag.o0.l || 1) + pull / drag.per, LEN_MIN, LEN_MAX) };
   } else {
     want = { ...drag.o0, x: drag.ox + (e.clientX - drag.sx) / drag.k, y: drag.oy + (e.clientY - drag.sy) / drag.k };
   }
   paint(drag.node, want);
   if (drag.mode === 'move') want = snapMove(want);
+  else want = keepOnScreen(want);   // HUD-LEN: a size or a length never carries a piece off the screen
   liveOuter = { id: drag.id, o: want }; repaintInsides(drag.id); liveOuter = null;
   const r = drag.node.getBoundingClientRect();
   const vw = globalThis.innerWidth || 0, vh = globalThis.innerHeight || 0;
