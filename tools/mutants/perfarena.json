@@ -92,8 +92,8 @@
   {
     "name": "PERFARENA-no-spill",
     "file": "src/render/renderer.js",
-    "old": "      if (at >= 0) { a.taken = at; return a; }",
-    "new": "      if (at >= 0 || a === this._bbArenas[this._bbArenas.length - 1]) { a.taken = Math.max(0, at); return a; }",
+    "old": "      if (at >= 0) { a.taken = at; if (key != null) this._bbArenaOfKey.set(key, a); return a; }",
+    "new": "      if (at >= 0 || a === this._bbArenas[this._bbArenas.length - 1]) { a.taken = Math.max(0, at); if (key != null) this._bbArenaOfKey.set(key, a); return a; }",
     "tests": [
       "test/perfarena.test.js"
     ]
@@ -130,6 +130,33 @@
     "file": "src/render/snowfallSurface.js",
     "old": "    if (this.renderer?._bindVao) this.renderer._bindVao(null); else gl.bindVertexArray(null);\n",
     "new": "",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "PERFARENA2-no-growth",
+    "file": "src/render/renderer.js",
+    "old": "const gl = this.gl, cap = Math.max(last ? Math.min(BB_ARENA_MAX_QUADS, last * 2) : BB_ARENA_QUADS, quads);",
+    "new": "const gl = this.gl, cap = Math.max(BB_ARENA_QUADS, quads);",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "PERFARENA2-unbounded",
+    "file": "src/render/renderer.js",
+    "old": "const gl = this.gl, cap = Math.max(last ? Math.min(BB_ARENA_MAX_QUADS, last * 2) : BB_ARENA_QUADS, quads);",
+    "new": "const gl = this.gl, cap = Math.max(last ? last * 2 : BB_ARENA_QUADS, quads);",
+    "tests": [
+      "test/perfarena.test.js"
+    ]
+  },
+  {
+    "name": "PERFARENA2-no-home",
+    "file": "src/render/renderer.js",
+    "old": "    const home = key != null ? this._bbArenaOfKey.get(key) : undefined;",
+    "new": "    const home = undefined;",
     "tests": [
       "test/perfarena.test.js"
     ]
