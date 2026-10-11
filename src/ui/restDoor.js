@@ -24,6 +24,7 @@ import { isEnhanced } from '../systems/uiSkin.js';
 import { registerOverlay } from './enhancedOverlays.js';
 import { RestWindow, preloadRestArt } from './restWindow.js';
 import { openEnhancedRest } from './enhancedRest.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { preloadRestArt };
 
@@ -38,6 +39,7 @@ export { preloadRestArt };
  *  online, in a party, outside a tavern, temple or guild hall (world.js partyRestHere); a mirror's deps say yes. A
  *  solo or offline rest on the classic skin keeps RestWindow, byte for byte. */
 export function createRestWindow(deps, ignoreAllocatedBed = false) {
+  noteFirstUse('rest');   // TUT1
   if (typeof document !== 'undefined' && (isEnhanced() || deps?.partyRest?.() === true)) return enhancedRestOverlay(deps, ignoreAllocatedBed);
   return new RestWindow(deps, ignoreAllocatedBed);
 }

@@ -28,6 +28,7 @@
 // Not a DFU member: Daggerfall Unity has no other players, no friends and no parties. Ledger A row (ONLINE).
 import { isTextEntryTarget } from './input.js';
 import { PIXELIFY_FIVE_FACE, PIXEL_FONT_CSS } from './pixelifyFive.js';   // FONT1: the enhanced skin's own face, unsmoothed, with Silkscreen's five
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export const SOCIAL_MENU_STYLE_ID = 'dagger-peermenu-style';
 
@@ -212,6 +213,7 @@ export function createSocialMenu({ onAct = null, canOpen = () => true, onOpen = 
    *  peer to draw - and a false NEVER touches the pointer, because nothing opened. */
   const show = ({ name = null, peerId = null, actions = null } = {}) => {
     if (!alive || !peerId || !canOpen()) return false;
+    noteFirstUse('party');   // TUT1: the F-menu on another player
     const rows = socialMenuRows({ peerId, ...(actions ?? {}) });
     paint(name, rows);
     shown = { peerId, rows };

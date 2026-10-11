@@ -1035,6 +1035,8 @@ import { createRoyalSession } from '../net/royalSession.js';   // CROWN1 part tw
 import { createRoyalClaims, createDuelClaims } from '../net/siegeClaims.js';   // CROWN1 part two: its bouts' receipts carried to the service; INT8: a duel's
 import { createSiegeHerald } from '../net/siegeHerald.js';   // AUDIT-SEATS G1: the battles announced in the server's voice
 import { siegeBlowKind, siegeCastClamp, siegeSpellNumbers, siegeSpellBarred, SIEGE_SPELL_BARRED_TEXT, SIEGE_DISMOUNT_TEXT } from '../combat/siegeCombat.js';   // AUDIT-SEATS G5: a battle's shafts, spells and saddle
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
+import { startTutorialTour } from '../ui/tutorialPopup.js';   // TUT1: the welcome tour - and the popups' handler, registered by this host (the four hosts' rule)
 
 /** Internal_Strings_en 654 / 655, the two guild map-reveal notes
  *  (ThievesGuild.cs:115, DarkBrotherhood.cs:108). %map is the
@@ -1820,7 +1822,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const carryHands = {
     held: (key) => bagHeldOf(playerEntity, key),
     room: (key) => bagRoomFor(playerEntity, key),
-    mint: (key, n) => { const got = mintCarried(playerEntity, key, n, carryOpts(key)); if (got.bag + got.pack > 0) saveSoon.changed(); return got; },
+    mint: (key, n) => { const got = mintCarried(playerEntity, key, n, carryOpts(key)); if (got.bag + got.pack > 0) saveSoon.changed(); if (got.bag > 0) noteFirstUse('materials'); return got; },   // TUT1: the first material bagged
     take: (key, n, stamp = null, order = null) => {
       const t = takeCarried(playerEntity, key, n, stamp, order);
       if (t.taken > 0) saveSoon.changed();
@@ -7761,6 +7763,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (!questBridge) { _questStartPending = true; return; }
     _questStarted = true;
     questBridge.initAtGameStart();
+    startTutorialTour();   // TUT1: DFO's welcome tour, where DFU's _TUTOR__ spoke its first page (questBridge.js GAME_START_QUESTS)
     // BA1: StartGameBehaviour.OnStartGame's two listeners in Better Ambience (the fog, the rain source), and
     // Immersive Footsteps' ModCompatibilityWarning_OnStartGame - the box a DFU player sees with both strides on.
     betterAmbience.onStartGame();
@@ -21525,6 +21528,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // ONE notice, not one each.
     online.onRelay = onRelayVersion;
     online.onGuildGone = guildGone;   // GUILD1c
+    noteFirstUse('online');   // TUT1: the first time this device plays online
     chatPanel = createChatPanel({
       log: chatLog,
       // UNSTUCK1 (per-request): a local command, never sent to the
@@ -22004,7 +22008,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     });
     // DUEL1: the challenge at me - the newest standing one, with Accept and Decline (the F-menu's rows are the other way)
     duelPrompt = createDuelPrompt({
-      asks: () => duelMgr.asks(), now: () => performance.now(), name: (id) => peerName(id) ?? 'Someone', touch: isTouchDevice(), doc: document,
+      asks: () => { const a = duelMgr.asks(); if (a?.length) noteFirstUse('duel'); return a; }, now: () => performance.now(), name: (id) => peerName(id) ?? 'Someone', touch: isTouchDevice(), doc: document,
       accept: (id) => { const r = duelMgr.accept(id); if (!r.ok) tradeSay(r.why === 'try again' ? TRY_AGAIN_TEXT : `You cannot accept: ${r.why}.`); },
       decline: (id) => { duelMgr.decline(id); },
     });
@@ -23316,6 +23320,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         _wildWas = here;
         _wildRingWas = ring;
         const line = here ? `${WILD_TEXT.enter} ${WILD_TEXT.ring(ring)}` : WILD_TEXT.leave;
+        if (here) noteFirstUse('wild-zone');   // TUT1: the first step into the open zone
         setMidScreenText(line);
         townTalk.say(line);
         _wildLineHold = { line, until: Date.now() + WILD_LINE_HOLD_MS };   // WILD-LINE-HOLD

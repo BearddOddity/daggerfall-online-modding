@@ -49,6 +49,7 @@ import { sweepHudLayout } from './hudLayout.js';
 import { audio } from '../systems/audio.js';
 import { SOUND } from '../systems/soundClips.js';
 import { enhancedSoundsOn } from '../systems/enhancedSounds.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export const LOOT_BANNER_STYLE_ID = 'loot-banner-css';
 export const LOOT_BANNER_STACK_ID = 'loot-banners';
@@ -433,6 +434,7 @@ export function drawLootBanners({ entity = null, hidden = false, dt = 0, doc = d
         const entries = arrivals.map((a) => bannerEntry(a, entity)).filter(Boolean);
         for (const e of entries) if (_codexNew.has(e.item)) { e.codex = true; _codexNew.delete(e.item); }
         queue.push(entries);
+        if (entries.length) noteFirstUse('loot');   // TUT1: the first rare find
       }
     }
     if (!queue.size) { if (_stack) takeDown(); return 0; }

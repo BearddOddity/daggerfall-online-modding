@@ -442,6 +442,8 @@ import { deepWatersOn, deepWatersSwimSettings } from './deepWatersHost.js';
 import { loadGraceActive as dwLoadGraceActive } from '../world/deepWaterRuntime.js';
 import { livingWorldOn } from '../systems/livingWorld/livingSwitch.js';   // HALT-ONE: the living watch's lane, for a watch called into a building
 import { chapterHallFactor, chapterHallShelf, chapterHallShut, CHAPTER_HALL_SHUT_LINE, seatedBook } from '../net/npcChapterLaw.js';   // CHAP3c: a hall's chapter's band on its training, spells and shelf; CHAP4b: a seat's rank at its halls
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
+import '../ui/tutorialPopup.js';   // TUT1: the popup's handler, registered by this host (the four hosts' rule)
 /** BOUNTY1: the plaque over a town's bounty board. */
 const BOUNTY_BOARD_TEXT = 'Bounty Board';
 const NOTICE_BOARD_TEXT = 'Notice Board';   // ONE-BOARD: a town's Notice Board, while it is open to this account
@@ -7757,6 +7759,7 @@ export function createWorldModes(host) {
   /** THE OFFER at a house anyone may buy, where the plaque lists no verbs (HOME2). Yes buys it; "just go in" goes on
    *  to the door, and this house does not ask again this session. */
   function openHomeOffer(bd, price, hit, entries) {
+    noteFirstUse('holdings');   // TUT1
     townTalk?.showOverlay?.(new ChoiceWindow({
       lines: homeOfferLines(price),
       options: [
@@ -7829,6 +7832,7 @@ export function createWorldModes(host) {
   }
   /** THE RENT WINDOW: the home's rooms free to rent (and my own, to renew), each at its price a day. */
   async function openHomeRent(bd, home) {
+    noteFirstUse('holdings');   // TUT1
     const api = host.homesApi;
     if (!api) return;
     const got = await homeRooms(api, homeTownOf(bd), bd.buildingKey, host.decorCharacter?.() ?? null);
@@ -12563,6 +12567,7 @@ export function createWorldModes(host) {
   // own (the town's and the dungeon's are the two), so it offers no
   // hudText. No unregister: the mode machine lives as long as the page.
   registerPresenter({ mount: (win) => showQuestOverlay(win), priority: 10 });
+  registerPresenter({ holds: (win) => interiorWindows.containsWindow(win) });   // TUT1 audit: whether this host's stack still holds a window (systems/notify.js windowHeld) - a registration of its own, no `mount`, so the presenter above keeps its shape (the dungeon's answers for its own)
   return {
     get mode() { return mode; },
     /**
