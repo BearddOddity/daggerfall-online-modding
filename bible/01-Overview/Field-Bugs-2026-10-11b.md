@@ -1,4 +1,4 @@
-# FIELD BUGS 2026-10-11 - "Card Table blocking", again
+# FIELD BUGS 2026-10-11b - "Card Table blocking", again
 
 One Discord thread, handed over as screenshots: the "Card Table blocking" thread FIELD BUGS 2026-10-09c answered with
 WALK-WHOLE, and two posts under it the day after WALK-WHOLE merged.
@@ -6,7 +6,7 @@ WALK-WHOLE, and two posts under it the day after WALK-WHOLE merged.
 | | Report | What it was | Done |
 |---|---|---|---|
 | 1 | "another one at Dancing Castle in Pilliweyn" (æther, the thread's author: "This table is oddly placed, it's in 'The Gold Dungeon' in Menakat. I've seen this in other locations aswell. (same tavern layout)") | WALK-WHOLE moved neither: the Gold Dungeon stood its table by WALK-WHOLE's own fallback, and the Dancing Castle's gold table in an opening the building went round | fixed (WAY-ROUND) - read on the player's own taverns, below |
-| 2 | the same thread: "The red tables (where u can bet Gold) aint working at all. U cant Build Decks for Illiac Hand. U cant Read the cards in illiac Hand" (Shortstori) | not a placement report | not taken up here - below |
+| 2 | the same thread: "The red tables (where u can bet Gold) aint working at all. U cant Build Decks for Illiac Hand. U cant Read the cards in illiac Hand" (Shortstori) | not a placement report: the gold tables are CARDS-KEPT's (`Field-Bugs-2026-10-11.md`, the same day) | below |
 
 ## WAY-ROUND: a card table never stands in the way (1)
 
@@ -59,7 +59,7 @@ TVRNAS00 #9's design (274 taverns with the packs, 2,326 without) at the T where 
 south, its stools 0.28 m off both walls. A smaller table for the cramped inns, or one of the room's own tables given
 over to cards, would put a table back in them; both are the owner's call, and neither is built.
 
-PINS. `test/fb1011_wayround.test.js` (6): the law's constant; the Dancing Castle's shape (a hall whose openings lead
+PINS. `test/fb1011b_wayround.test.js` (6): the law's constant; the Dancing Castle's shape (a hall whose openings lead
 round a core - the chips table in the hall, no gold table, the player walking straight through the opening WALK-WHOLE's
 gold table shut); GENRAL03's (the table in the hall, not on the doorway WALK-WHOLE's stood on); two tables in a room
 7 by 6, and a lane apart in two rooms with a pillar (the window taking the first in whole, its lane with it); and,
@@ -67,7 +67,7 @@ gated on ARENA2_PATH, every tavern the towns lay with the packs and without - no
 more than a quarter of a square metre (eight classic layouts of one hall keep a 22-cell sliver behind a stool, by a
 wall), the Gold Dungeon stands none, the Dancing Castle its chips table where it stood, and the counts above. PIN
 MOVED: `test/fb1009c_walkwhole.test.js`'s second test, which held the fallback - its room stands none now, and stands
-the table once its far corridor is gone. `tools/mutants/fb1011_wayround.json` (8, all dead);
+the table once its far corridor is gone. `tools/mutants/fb1011b_wayround.json` (8, all dead);
 `tools/mutants/fb1009c_walkwhole.json` re-aimed by content (4, all dead) - WALK-WHOLE-no-table-when-every-spot-cuts
 RETIRED with the law it pinned, and its cut and its every-spot-cuts records aimed at the window's test;
 `taverntables.json`'s TTS-ctx-silent re-aimed by content at the console's words ("... out of the way").
@@ -80,8 +80,9 @@ made where a table stood lands on open floor now.
 ## The other post (2)
 
 "The red tables (where u can bet Gold) aint working at all", "U cant Build Decks for Illiac Hand", "U cant Read the
-cards in illiac Hand" - three claims about the card games themselves, with no screenshot and no steps. None is a
-placement report, and none is answered here: the gold table seats a realm character at a relay that deals and nobody
-else (TAVERN-TABLES, section 30 - a guest is told so before he sits), and the deck and the cards' faces are CARDS7,
-CARDS8 and CARDS10's (sections 26 and 33). Each needs a reproduction from the reporter - which character (realm or
-guest), which client, what the screen says - before it is a bug.
+cards in illiac Hand" - three claims about the card games themselves, with no screenshot and no steps, and none a
+placement report. The first is the reporter's own thread of the same day, "I would love to Poker but...", answered by
+CARDS-KEPT (`Field-Bugs-2026-10-11.md` #1): the stakes book was handed the device's bare Storage, and every gold
+table refused every first buy-in. The other two are CARDS7, CARDS8 and CARDS10's (`11-Multiplayer/Tavern-Cards.md`
+sections 26 and 33) and are not answered here: each needs a reproduction from the reporter - which character, which
+client, what the screen says - before it is a bug.
