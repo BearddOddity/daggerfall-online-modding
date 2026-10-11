@@ -197,7 +197,7 @@ export function drawFleetPage(detail, rerender, { el, divider, meter = null, doo
   const m = fleet()?.model?.() ?? { ships: [], gold: 0, atPort: false };
   detail.append(divider(`Fleet (${m.ships.length})`));
   if (!m.ships.length) {
-    detail.append(el('p', 'px-note', 'You hold no ship. A general store at a port sells a ship\'s deed - her title comes here, and she waits at the port - and a ship taken by boarding can be claimed as yours.'));
+    detail.append(el('p', 'px-note', 'You hold no ship. A port\'s shipyard sells them - a ship\'s title comes here, and she lies laid up where you bought her - and a ship taken by boarding can be claimed as yours.'));   // AUDIT SHIPYARDS L7-1: no general store sells one
     return;
   }
   const list = el('div', 'hld-list');

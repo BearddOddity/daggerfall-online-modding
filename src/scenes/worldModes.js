@@ -5043,6 +5043,35 @@ export function createWorldModes(host) {
     say(`Its ${pieces.length} placed piece${pieces.length === 1 ? '' : 's'} went with it: ${goldSum(back)} gold to ${accountWords(goldRegion(playerEntity.bankAccounts, region) !== region)}.`);
     return back;
   }
+  /** SHIPYARDS (scenes/shipyardHost.js): WHAT A SHIP'S CABIN STILL HOLDS - the things in its chests (its loot
+   *  containers), in the storage pieces placed in it (DECOR1c's `decorItems`) and lying on its floor (a dropped pile's,
+   *  a dropped torch - AUDIT SHIPYARDS L6-2: the scene goes with her, so they were lost unasked), by her number. A
+   *  shipyard buys no ship while it holds any: what a sold room's chests hold goes with it (DECOR1e's law for a house),
+   *  and a ship sold away with a sea chest still full was the player's things lost. The owner's own things standing in
+   *  it are not counted - a sale hands them back (cabinSold). */
+  function cabinHolds(uid) {
+    const name = cabinSceneName(uid);
+    const d = name ? sceneCache().scenes.get(name) : null;
+    if (!d) return 0;
+    let n = 0;
+    for (const c of d.lootContainers ?? []) n += (c.items ?? []).length;
+    for (const list of Object.values(d.decorItems ?? {})) n += (list ?? []).length;
+    for (const p of d.droppedPiles ?? []) n += (p?.items ?? []).length;
+    n += (d.droppedTorches ?? []).length;
+    return n;
+  }
+  /** SHIPYARDS: A SOLD SHIP'S CABIN goes with her, as a sold house's room does (decorSold's law: the owner's own things
+   *  back to the pack, half of what its placed pieces cost into the region's account) - and its scene is let go from the
+   *  cache for good, so the next ship of her number (none: a number is a ship's for life) finds nothing. Answers the
+   *  gold the pieces brought back. */
+  function cabinSold(uid, region) {
+    const name = cabinSceneName(uid);
+    if (!name || !sceneCache().scenes.has(name)) return 0;
+    const back = decorSold(name, region);
+    sceneCache().scenes.delete(name);
+    sceneCache().permanent.delete(name);
+    return back;
+  }
   /** DECOR2a: ONE OF THE PLAYER'S OWN THINGS OUT OF THE PACK, to stand in a room - one of a stack, moved as a drop
    *  moves it (itemTransfer.js applyTransfer: a lit torch stops lighting the player, a stack splits one off) - or null
    *  when it is no longer carried. */
@@ -6983,6 +7012,10 @@ export function createWorldModes(host) {
     // MERCHANT-YARDS (scenes/merchantYardsHost.js): every city's and town's Stable and Wagon Yard - the streaming host's
     // (its `yardTargets`; the bench stands none): a keeper, a signboard, a horse, a wagon on show, each its own box
     for (const t of host.yardTargets?.() ?? []) targets.push(t);
+    // SHIPYARDS (scenes/portHost.js): a port town's shipyard and lighthouse - the streaming host's (its `portTargets`; the
+    // bench stands none): the shipmaster, the crewmaster, the sailors and shipwrights, the boards and the hull on the
+    // stocks; the lightkeeper, the tower's door, its hatch and its lamp - each its own box
+    for (const t of host.portTargets?.() ?? []) targets.push(t);
     _extList = { entries, npcs, boards, graves, targets };
     _extMark = mark;
     return _extList;
@@ -7490,6 +7523,10 @@ export function createWorldModes(host) {
     if (typeof key === 'string' && key.startsWith('yard:')) {   // MERCHANT-YARDS: a yard - too far speaks the refusal; the plaque's lit row (Buy, Sell) is the verb
       if (_hitDist > _hitReach) { setMidScreenText(TOO_FAR_AWAY_TEXT); return true; }
       return host.activateYard?.(key, getInteractionMode(), plaqueActionFor(key)) ?? true;
+    }
+    if (typeof key === 'string' && key.startsWith('port:')) {   // SHIPYARDS: a port's place - too far speaks the refusal; the plaque's lit row (a page of the shipmaster's, the crew hall's, the stair) is the verb
+      if (_hitDist > _hitReach) { setMidScreenText(TOO_FAR_AWAY_TEXT); return true; }
+      return host.activatePort?.(key, getInteractionMode(), plaqueActionFor(key)) ?? true;
     }
     if (_hitDist > _hitReach) { setMidScreenText(TOO_FAR_AWAY_TEXT); return true; }   // AUDIT 65 MC-2: ActivateStaticDoor's OWN first statement (:501-504), before the bash sound and the lock ladder; the board arm keeps its gate inside activateBulletinBoard (:709-712), as C# does
     return activateStaticDoor(entries[key], entries, false, { verb: plaqueActionFor(key) });   // HOME2: the verb the door's plaque lit, if it listed any
@@ -13822,6 +13859,7 @@ export function createWorldModes(host) {
     exteriorHoverPick,   // WORLD-HOVER: the plaque's winner, raced exactly as the press's is
     exteriorHoverName,   // ...and what that winner is called
     openYardTrade,   // MERCHANT-YARDS: a yard's counter, opened from the street (scenes/world.js merchantYards' `open`)
+    cabinHolds, cabinSold,   // SHIPYARDS: a ship sold at a shipyard - what her cabin still holds, and her cabin let go with her
     attemptExteriorDoorBash,   // ROAD-B: WeaponEnvDamage's static-door arm (PlayerActivate.cs:1056-1079)
     frame,
     installShotProbes,

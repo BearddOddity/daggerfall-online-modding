@@ -393,9 +393,9 @@
   {
    "file": "src/scenes/world.js",
    "has": "day: () => Math.floor(worldMinutes() / 1440),",
-   "count": 2,
+   "count": 3,
    "clock": "event",
-   "why": "CAPT-BOARD and ETHER-SEA: the captain's day - a port's board and exchange, the strands' regrowth and the legends' rise"
+   "why": "CAPT-BOARD and ETHER-SEA: the captain's day - a port's board and exchange, the strands' regrowth and the legends' rise; SHIPYARDS: the crew hall's day - which sailors a port town's hall has, the same for everyone in the town"
   },
   {
    "file": "src/scenes/world.js",

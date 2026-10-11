@@ -41,7 +41,8 @@ carried a ship across the Veil in a moment (P5), and a General Store paid more f
 asked (B2). The rest: a crew's worth lost at sea, a spyglass that saw through land and night and carried into cabins,
 a crossing question that never came back, legends launched twice online, a bounty's quarry that came back whole, the
 ledger's day kept for one exchange, words wrong, and a record that promised what the code did not do. The runs that
-checked the fixes found seven more (lane V), none a player meets: each a pin or the record.
+checked the fixes found eight more (lane V): one a player meets, the chart's tutorial page (V8); the rest a pin or the
+record.
 
 ## Findings
 
@@ -258,7 +259,7 @@ own id in its test's title) or in the suite its verdict names, and where it chan
 
 The lanes read 4aec81c85; these came out of the runs that checked their fixes - the whole suite over the tree merged
 with main, CI on each head, every test that reads the player's data run with it (ARENA2_PATH), and the touched mutation
-lists (What stands). None reaches a player: each is a pin or the record.
+lists (What stands). Only V8 reaches a player; the rest are each a pin or the record.
 
 | # | Sev | Finding | Verdict |
 |---|---|---|---|
@@ -269,6 +270,7 @@ lists (What stands). None reaches a player: each is a pin or the record.
 | V5 | LOW | FIELD-CSA2's retail-data test threw "etherSea is not defined" from ETHER-PORTS on: it mounts world.js's `csaIsPortTown`, which asks an isle's port first - and it runs only with the player's data, so CI skips it | FIXED: PIN MOVED, the mount handed the sea, its law and an isle's port that answers every pixel, and the open Bay asked - a Bay pixel that asked the sea's ports would read a port; 6 of 6 with the data (ACS-V5-bay-asks-the-sea) |
 | V6 | NOTE | At the merge: F212 (`audit26_dungeonfoes`) reads the teleport's first 7,800 characters for its teardown - the needle stood at 7,664 on main and 7,756 on this branch, 7,939 merged | FIXED: PIN MOVED, 8,100 |
 | V7 | DOC | Port-Status counted this branch's two Ledger rows in section A's tally (302) and never named them | FIXED at the third merge: 303 rows, 288 standing - BR5's the 301st, this branch's the 302nd and 303rd |
+| V8 | LOW | The chart of the Etheric Sea popped the sea fight's tutorial page the first time it opened - the windows' door read every window but the yard's as the sea fight's; at the merge of SHIPYARDS, main's door would have read it as the yard's | FIXED: the chart pops no page (`test/shipyards1_found.test.js`, ACS-V8-the-chart-pops-a-page); main's record of the door re-aimed by content, dead |
 
 ## Pins moved
 
@@ -287,21 +289,24 @@ and CHART_PINCH_STEP, the board's BOARD_PAY_MAX and BOARD_STANDING_MAX. G2's lan
 (`_streamedLanding`), so the teleport's resets keep their place first (AUDIT 39 #62, CLIMB-ARC F6, F212's window). The
 runs over the fixed and merged tree moved three more, each its finding in lane V: `fb1011c_seatown` (V2), `field_csa2`
 (V5) and F212's window in `audit26_dungeonfoes` (V6); and `ethersea` asks its rim of a wild isle (V4). G2's word moved
-instead of a pin (V1).
+instead of a pin (V1). At the merge of SHIPYARDS: `shipyards1` (a hall's recruit no service kept apart, `prior` 0 -
+SHIPYARDS' record his deeds, C8's `prior` a sign-on's alone), `shipyards1_found` (the chart's door pops no page, V8) and
+U41's window in `travelmap` (both sides' 12,800 and 13,000, the last needle at 12,879 merged).
 
 ## Mutants
 
-- `tools/mutants/auditcaptsea.json` - 330 records, one or more a finding (lane V's ACS-V1-word-in-the-arrival,
-  ACS-MERGE-plate-glass-unhanded and ACS-V5-bay-asks-the-sea among them): all dead but four equivalent as recorded, each
-  with its why - X2-yes-sailing (a helm let go is a helm `CurrentBoat` no longer names), X4-mouth-host (the law asks the
-  mouth again), D17-fight (a ship in a fight is never let fade), B4-mine-not (a quarry of mine is done before she is
-  dropped). Every survivor of the first runs was a pin that could not fail, made one that can: the compass's disguise
-  (S4: a provoked trader), the player's own unbinding with K still shared (S14), the havens' bounds (P1: literal, the
-  game's own sizes), the ports' lettering (X14: against a chart of its ports alone), the host's ashore set (C1), a new
-  day's dealing (B1), the mid-rank meter (L5), the exotic's refusal and the world's switch (B16), the void's word (B4),
-  the room handed from the yard to the exchange (B11), a strand bare from its first cask (D1); and S18's floor of five,
-  and the swimmer's give line's `swim ? null :`, were arms no input reaches - dropped. ACS-P1-types is killed against
-  the player's own data (ARENA2_PATH), the havens' filter run over MAPS.BSA's rows.
+- `tools/mutants/auditcaptsea.json` - 331 records, one or more a finding (lane V's ACS-V1-word-in-the-arrival,
+  ACS-MERGE-plate-glass-unhanded, ACS-V5-bay-asks-the-sea and ACS-V8-the-chart-pops-a-page among them): all dead but
+  four equivalent as recorded, each with its why - X2-yes-sailing (a helm let go is a helm `CurrentBoat` no longer
+  names), X4-mouth-host (the law asks the mouth again), D17-fight (a ship in a fight is never let fade), B4-mine-not (a
+  quarry of mine is done before she is dropped). Every survivor of the first runs was a pin that could not fail, made
+  one that can: the compass's disguise (S4: a provoked trader), the player's own unbinding with K still shared (S14),
+  the havens' bounds (P1: literal, the game's own sizes), the ports' lettering (X14: against a chart of its ports
+  alone), the host's ashore set (C1), a new day's dealing (B1), the mid-rank meter (L5), the exotic's refusal and the
+  world's switch (B16), the void's word (B4), the room handed from the yard to the exchange (B11), a strand bare from
+  its first cask (D1); and S18's floor of five, and the swimmer's give line's `swim ? null :`, were arms no input
+  reaches - dropped. ACS-P1-types is killed against the player's own data (ARENA2_PATH), the havens' filter run over
+  MAPS.BSA's rows.
 - 93 records in 35 lists named source the fixes rewrote (`test/mutantdrift.test.js` holds every record to its text):
   each re-aimed BY CONTENT to the code as it stands, the same law mutated - all dead but one, which survives on the base
   as well (What stands).

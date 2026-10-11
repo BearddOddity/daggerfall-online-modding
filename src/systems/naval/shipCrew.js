@@ -237,7 +237,7 @@ export function handName(seed, hire, gender, regionIndex = 17) {
  * @param {{ seed: number, regionIndex?: number, record?: any }} o - `record` a save's (`snapshot()`), or none: a new crew
  */
 export function createShipCrew({ seed, regionIndex = 17, record = null }) {
-  /** @type {{ name: string, role: string, mobile: number, gender: 'male'|'female', fights: number, boardings: number, prior: number }[]} */
+  /** @type {{ name: string, role: string, mobile: number, gender: 'male'|'female', fights: number, boardings: number, prior: number, hall?: string, lift?: number }[]} */
   let hands = [];
   let morale = MORALE_START, hires = 0, seaT = 0, portT = 0, losses = 0, lossT = 0;
   /** AUDIT CC-D5: the world's day her crew last drank the yard's round (one a port day). */
@@ -254,6 +254,10 @@ export function createShipCrew({ seed, regionIndex = 17, record = null }) {
         name: h.name, role: typeof h.role === 'string' ? h.role : 'Deckhand', mobile: Number.isInteger(h.mobile) ? h.mobile : MOBILE.Warrior,
         gender: h.gender === 'female' ? 'female' : 'male', fights: Math.max(0, h.fights | 0), boardings: Math.max(0, h.boardings | 0),
         prior: clamp(h.prior | 0, 0, VETERANCY[VETERANCY.length - 1].at),   // AUDIT CAPTAIN'S SEA C8: a hire's service, kept apart
+        // AUDIT SHIPYARDS: a hall's recruit keeps his hall id (the roster's exclusion) and the spirits he lifted (given back
+        // when he is paid off) - each only where the save carries it
+        ...(typeof h.hall === 'string' && h.hall ? { hall: h.hall } : {}),
+        ...(Number.isFinite(h.lift) && h.lift > 0 ? { lift: Math.min(MORALE_MAX, h.lift) } : {}),
       }));
     }
     hires = Math.max(hires, hands.length);
@@ -308,6 +312,46 @@ export function createShipCrew({ seed, regionIndex = 17, record = null }) {
       if (role === FIRST_MATE) for (const o of hands) if (o !== h && o.role === FIRST_MATE) o.role = 'Deckhand';
       h.role = role;
       return { ok: true, text: `${h.name} is her ${role} now.` };
+    },
+    /**
+     * SHIPYARDS (systems/crewHall.js): A RECRUIT SIGNED ON BY NAME - he joins her roster's end (the last to join, the
+     * first the guns take, as every hire), at his trade's post (a First Mate: the one she had stands down to Deckhand,
+     * assign's law), his record with him; `lift` her crew's spirits (a seasoned man steadies them). A name already
+     * aboard her is refused. The host raises her crew to stand him on her deck (crewHall.js enlistPlan), so the next
+     * sync finds her roster whole. His hall id (`r.hall`) and the spirits he actually lifted ride him - AUDIT SHIPYARDS
+     * L2-4: paid off, he takes them with him, so signing a man on and off again pumps nothing. Answers the hand, or null.
+     * @param {{ name: string, role: string, mobile: number, gender: string, fights?: number, boardings?: number, hall?: string }} r
+     * @param {number} [lift]
+     */
+    enlist(r, lift = 0) {
+      if (!r || typeof r.name !== 'string' || !r.name || hands.some((h) => h.name === r.name)) return null;
+      const bard = r.role === 'Bard' && r.mobile === MOBILE.Bard;
+      const role = /** @type {readonly string[]} */ (CREW_ROLES).includes(r.role) || bard ? r.role : 'Deckhand';
+      if (role === FIRST_MATE) for (const o of hands) if (o.role === FIRST_MATE) o.role = 'Deckhand';
+      /** @type {'male'|'female'} */
+      const gender = r.gender === 'female' ? 'female' : 'male';
+      // AUDIT CAPTAIN'S SEA C8 (at the merge of SHIPYARDS): a hall's recruit brings his record as his deeds - the fights and
+      // boardings he has stood, SHIPYARDS' law - and none kept apart (`prior` is a sign-on's service, which no hall gives)
+      /** @type {{ name: string, role: string, mobile: number, gender: 'male'|'female', fights: number, boardings: number, prior: number, hall?: string, lift?: number }} */
+      const h = { name: r.name, role, mobile: Number.isInteger(r.mobile) ? r.mobile : MOBILE.Warrior, gender, fights: Math.max(0, r.fights | 0), boardings: Math.max(0, r.boardings | 0), prior: 0 };
+      if (typeof r.hall === 'string' && r.hall) h.hall = r.hall;
+      hands.push(h);
+      hires = Math.max(hires + 1, hands.length);
+      if (Number.isFinite(lift) && lift > 0) {
+        const was = morale;
+        bump(lift);
+        if (morale > was) h.lift = morale - was;
+      }
+      return h;
+    },
+    /** SHIPYARDS: a named hand paid off - out of her roster wherever he stood in it (the host lowers her crew by his share
+     *  - crewHall.js releasePlan). Answers the hand, or null. @param {string} name */
+    release(name) {
+      const i = hands.findIndex((h) => h.name === name);
+      if (i < 0) return null;
+      const h = hands.splice(i, 1)[0];
+      if (Number.isFinite(h.lift) && h.lift > 0) bump(-h.lift);   // AUDIT SHIPYARDS L2-4: the spirits he brought leave with him
+      return h;
     },
     /** A hand's name and role, as he is called: "Aldric Wayrest, Bosun". @param {number} i */
     calledOf: (i) => (hands[i] ? `${hands[i].name}, ${hands[i].role}` : null),

@@ -2991,5 +2991,14 @@
       "test/field_csa2.test.js",
       "test/fb0929h_deedport.test.js"
     ]
+  },
+  {
+    "name": "ACS-V8-the-chart-pops-a-page",
+    "file": "src/ui/navalPlunderDoor.js",
+    "old": "  if (slot !== ETHER_CHART) noteFirstUse(slot === PLUNDER",
+    "new": "  noteFirstUse(slot === PLUNDER",
+    "tests": [
+      "test/shipyards1_found.test.js"
+    ]
   }
 ]
