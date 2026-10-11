@@ -222,7 +222,9 @@
     "new": "    this.grade = new Float32Array([1, 1, AIR_VIGNETTE, AIR_CONTRAST]);",
     "tests": [
       "test/el3_air.test.js"
-    ]
+    ],
+    "equivalent": true,
+    "why": "AUDIT PERF-ARENA O8 (2026-10-11): the constructor's bloom gain is never uploaded - every prepare writes grade[0] first (`this.grade[0] = g?.bloom ?? AIR_BLOOM_STRENGTH`), and the upload's value is pinned there (el3's 'the bloom gain and the shafts''). Recorded so the dead initial value is known, not mistaken for a hole."
   },
   {
     "name": "composite-alpha-blend",

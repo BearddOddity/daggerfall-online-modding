@@ -178,5 +178,23 @@
     "tests": [
       "test/shadowreach.test.js"
     ]
+  },
+  {
+    "name": "PERFVOL-shipped-off",
+    "file": "src/render/shadowPass.js",
+    "old": "facePrepass: true, sunPrepass: true, volumeMemo: true };",
+    "new": "facePrepass: true, sunPrepass: true, volumeMemo: false };",
+    "tests": [
+      "test/perfvol.test.js"
+    ]
+  },
+  {
+    "name": "PERFORDER-picture-first",
+    "file": "src/render/airPass.js",
+    "old": "          const emis = f.emissionTextures.get(key);\n          if (!emis) continue;\n          if (!batchVisible(planes, b)) continue;   // EL5\n          const tex = f.textures.get(key);\n",
+    "new": "          const emis = f.emissionTextures.get(key);\n          const tex = f.textures.get(key);\n          if (!emis) continue;\n          if (!batchVisible(planes, b)) continue;   // EL5\n",
+    "tests": [
+      "test/perfvol.test.js"
+    ]
   }
 ]

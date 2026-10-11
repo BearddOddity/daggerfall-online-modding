@@ -260,12 +260,12 @@ test('AUDIT 637 B2: UNDER THE STATIC CACHE TOO, a wood is asked of its quads onc
     }
     return { out, walks, faces };
   });
-  // PIN MOVED (PERF-VOL): the base asks every face afresh, as it did before the planes were named - with the answers
-  // kept (bounds.js placementsInVolumeOf) a still lantern's faces walk the woods once, on the frame they are named
+  // PIN MOVED (PERF-VOL; AUDIT PERF-ARENA O2): BOTH arms ask every face afresh, as before the planes were named - with
+  // the answers kept (bounds.js placementsInVolumeOf) a still lantern's faces walk the woods once, on the frame they
+  // are named, so the kept answers would hide a dead pre-pass on every frame after; this pin holds the pre-pass, perfvol the memo
   SHADOW_TUNING.volumeMemo = false;
-  let base;
-  try { base = run(false); } finally { SHADOW_TUNING.volumeMemo = true; }
-  const now = run(true);
+  let base, now;
+  try { base = run(false); now = run(true); } finally { SHADOW_TUNING.volumeMemo = true; }
   assert.deepEqual(now.out, base.out, 'the same draws');
   assert.ok(base.faces >= 4 * 6 * 5, `the lanterns drew their static faces and then their dynamic ones every frame (${base.faces})`);
   assert.ok(base.walks >= 4 * 6 * 5, `the base walked the woods' placements from the faces (${base.walks})`);

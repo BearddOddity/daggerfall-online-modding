@@ -20,6 +20,7 @@ import * as bounds from '../src/render/bounds.js';
 import { ortho, lookAt, multiply } from '../src/world/mat4.js';
 
 const { placementGrid, placementsInVolume, placementsInVolumeOf, volumeName, spherePlanes, sphereInPlanes, batchLift, VOLUME_MEMO_MAX, VOLUME_TABLE_MAX } = bounds;
+const SHIPPED = { ...SHADOW_TUNING };   // AUDIT PERF-ARENA O1: the switch as the module ships it, before any pin sets it
 
 function rng(seed) {
   let a = seed >>> 0;
@@ -291,7 +292,8 @@ test('PERF-VOL: the replay draws exactly what it drew - every draw of every fram
   assert.ok(compared > 2000, `the comparison drew something (${compared})`);
 });
 
-test('PERF-VOL: the replay asks through the name, once a replay, and only with a placed batch to ask', async () => {
+test('PERF-VOL: the replay asks through the name, once a replay, and only with a placed batch to ask; and the memo SHIPS ON (AUDIT PERF-ARENA O1: every other pin sets the switch for each arm, so a shipped `volumeMemo: false` failed none) (mutant: PERFVOL-shipped-off)', async () => {
+  assert.equal(SHIPPED.volumeMemo, true, 'SHADOW_TUNING.volumeMemo ships on');
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/render/shadowPass.js', import.meta.url), 'utf8');
   const body = src.slice(src.indexOf('  replay(f, vp, lightPos,'), src.indexOf('\n  }\n', src.indexOf('  replay(f, vp, lightPos,')));
@@ -302,7 +304,7 @@ test('PERF-VOL: the replay asks through the name, once a replay, and only with a
 
 // ─── PERF-ORDER: the cheapest skip first ──────────────────────────────────────────────────────────────────────────
 
-test('PERF-ORDER: the air pass\'s emitters are the flats with an emission map, in view, with a picture - over random flats in front of the eye and behind it, lit and plain, one lit with no picture: the draws counted are the oracle\'s, and the sphere is asked of the lit flats alone (Knightstale by night: 3 of the 636 a frame) (mutants: PERFORDER-blind-drawn, PERFORDER-unseen-drawn, PERFORDER-sphere-first; EL3\'s emit-flat-without-map, re-aimed)', async () => {
+test('PERF-ORDER: the air pass\'s emitters are the flats with an emission map, in view, with a picture - over random flats in front of the eye and behind it, lit and plain, one lit with no picture: the draws counted are the oracle\'s, and the sphere is asked of the lit flats alone (Knightstale by night: 3 of the 636 a frame) (mutants: PERFORDER-blind-drawn, PERFORDER-unseen-drawn, PERFORDER-sphere-first, PERFORDER-picture-first; EL3\'s emit-flat-without-map, re-aimed)', async () => {
   const { perspective, mirrorProjectionX } = await import('../src/world/mat4.js');
   const calls = [];
   let ids = 0;
@@ -350,9 +352,14 @@ test('PERF-ORDER: the air pass\'s emitters are the flats with an emission map, i
     let s = f.b.bounds;
     Object.defineProperty(f.b, 'bounds', { get() { if (resolving) asked.set(f, (asked.get(f) ?? 0) + 1); return s; }, set(v) { s = v; }, configurable: true });
   }
+  // AUDIT PERF-ORDER O3: and the picture is asked after both skips - the plain flats' keys are never looked up at the resolve
+  const pictures = [];
+  const texGet = r.textures.get.bind(r.textures);
+  r.textures.get = (k) => { if (resolving) pictures.push(k); return texGet(k); };
   const frame = () => {
     r.beginFrame(P, I, sun, WORLD_FRAME);
     r.drawBillboards(flats.map((f) => f.b), RIGHT, UP);
+    pictures.length = 0;
     resolving = true;
     try { r.drawScreenQuad({ id: 'ui' }, { x: 0, y: 0, w: 10, h: 10 }); } finally { resolving = false; }
   };
@@ -361,4 +368,7 @@ test('PERF-ORDER: the air pass\'s emitters are the flats with an emission map, i
   const plainAsked = flats.filter((f) => !f.lit && asked.get(f)).length;
   assert.equal(plainAsked, 0, `no plain flat's sphere asked at the resolve (${plainAsked} were)`);
   assert.ok(flats.filter((f) => f.lit && asked.get(f)).length >= want, 'the lit flats\' were');
+  const plainPictures = pictures.filter((k) => k !== '210_1' && k !== '210_9');
+  assert.equal(plainPictures.length, 0, `no plain flat's picture looked up at the resolve (${plainPictures.length}: ${[...new Set(plainPictures)]})`);
+  assert.ok(pictures.includes('210_1'), 'the lit flats\' were');
 });
