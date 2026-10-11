@@ -27,18 +27,19 @@ const TOWN = Object.freeze({ mapId: 4242, blocks: 36, region: 17, people: 3, por
 
 // ── THE LAW ─────────────────────────────────────────────────────────
 
-test('CHAP6d a hall\'s price factor: its band\'s, an Ascendancy\'s further tenth on training and spells alike, "cheaper training"\'s tenth on training alone; none known, DFU\'s own (mutants: the band, the Ascendancy, the doctrine, the service)', () => {
+// PIN MOVED: GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md) - an Ascendancy's further tenth is the Ascendant band's
+// own now (a fifth off, CHAPTER_BANDS); the Season adds the training doctrine's tenth alone
+test('CHAP6d a hall\'s price factor: its band\'s - the Ascendant band a fifth off (GUILD3e) - and "cheaper training"\'s tenth on training alone; a retired Ascendancy on a sheet nothing; none known, DFU\'s own (mutants: the band, the doctrine, the service)', () => {
   assert.deepEqual(CHAPTER_HALL_SERVICES, ['training', 'spells']);
-  assert.equal(CHAPTER_EVENT_EFFECTS.ascendancyPrice, 0.9);
+  assert.equal('ascendancyPrice' in CHAPTER_EVENT_EFFECTS, false);
   const f = (c, service) => chapterHallFactor(c, service);
   assert.deepEqual([f(null, 'training'), f(null, 'spells')], [1, 1]);
-  assert.deepEqual([f({ strength: 10 }, 'training'), f({ strength: 50 }, 'spells'), f({ strength: 80 }, 'training')], [chapterPriceFactor(10), 1, chapterPriceFactor(80)]);
-  assert.equal(f({ strength: 50, event: 'ascendancy' }, 'spells'), 0.9);
-  assert.equal(f({ strength: 50, event: 'ascendancy' }, 'training'), 0.9);
-  assert.equal(f({ strength: 95, event: 'ascendancy' }, 'spells'), chapterPriceFactor(95) * 0.9);
+  assert.deepEqual([f({ strength: 10 }, 'training'), f({ strength: 50 }, 'spells'), f({ strength: 80 }, 'training'), f({ strength: 95 }, 'spells')],
+    [chapterPriceFactor(10), 1, chapterPriceFactor(80), 0.8]);
+  assert.deepEqual([f({ strength: 50, event: 'ascendancy' }, 'spells'), f({ strength: 95, event: 'ascendancy' }, 'spells')], [1, 0.8], 'a retired Ascendancy adds nothing');
   assert.equal(f({ strength: 50, doctrine: 'training' }, 'training'), CHAPTER_DOCTRINE_EFFECTS.training);
   assert.equal(f({ strength: 50, doctrine: 'training' }, 'spells'), 1, 'the training\'s doctrine prices no spell');
-  assert.equal(f({ strength: 50, event: 'ascendancy', doctrine: 'training' }, 'training'), 0.9 * 0.9);
+  assert.equal(f({ strength: 95, doctrine: 'training' }, 'training'), 0.8 * 0.9);
   assert.deepEqual([f({ strength: 50, event: 'decline', doctrine: 'shelf' }, 'training'), f({ strength: 50, event: 'Ascendancy', doctrine: 'gold' }, 'training')], [1, 1], 'no other event, nor doctrine, nor a name it does not know');
 });
 

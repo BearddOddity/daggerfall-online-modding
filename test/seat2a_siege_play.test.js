@@ -90,7 +90,7 @@ test('SEAT2a part four THE FOLD AND THE HUD\'S WORDS: the roll call replaces eve
     'EBON OATH NEVER CAME - THE SILVER HAND HOLDS ANTICLERE', 'NEITHER SIDE CAME - THE SILVER HAND KEEPS ANTICLERE']);
   assert.deepEqual(['attack', 'defend', 'tie'].map((r) => siegeResultTitle({ r }, { ...BATTLE, kind: 'tourney' })), [
     'EBON OATH WINS THE TOURNEY FOR ANTICLERE', 'THE SILVER HAND WINS THE TOURNEY FOR ANTICLERE', 'A DEAD HEAT AT ANTICLERE - THE GREATER INFLUENCE TAKES IT']);
-  assert.equal(siegeHonourLine({ marks: 50, xp: 2000 }), 'Your Honour: 50 Marks, 2,000 Renown, one Spoils of War roll');
+  assert.equal(siegeHonourLine({ marks: 50, xp: 2000 }), 'Your Honour: 50 silver, 2,000 Renown, one Spoils of War roll');
   assert.match(siegeHonourLine({ marks: 0, xp: 0, spent: true }), /earned already this Season/);
   assert.match(siegeHonourLine(null), /^No Honours this battle/);
   assert.equal(foldSiege(s, { k: 'no', m: 'the stands are full' }, AT).no, 'the stands are full');
@@ -122,7 +122,7 @@ test('SEAT2a part four THE READOUT: made on the first update and updated, never 
   claim.click();
   assert.equal(claimed, 1);
   hud.update(siegeHudModel(s, BATTLE, 'me-00001', AT + 1_800_000, { honours: { marks: 25, xp: 1000 } }));
-  assert.match(card.textContent, /Your Honour: 25 Marks, 1,000 Renown/);
+  assert.match(card.textContent, /Your Honour: 25 silver, 1,000 Renown/);
   assert.equal(claim.style.display, 'none', 'nothing more to claim');
   hud.update(siegeHudModel(s, BATTLE, 'eye-0001', AT + 1_800_000, { watching: true, claimable: true }));
   assert.equal(claim.style.display, 'none', 'a spectator claims nothing');
@@ -335,7 +335,7 @@ test('SEAT2a part four THE SESSION: no field, not in the town; an old relay said
   assert.deepEqual(kept, [rc, 'offered'], 'the receipt kept and carried at once');
   ses.claimed({ ok: true, honours: { marks: 50, xp: 2000 } });
   ses.tick();
-  assert.match(hudCalls.at(-1).card.honour, /50 Marks/);
+  assert.match(hudCalls.at(-1).card.honour, /50 silver/);   // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - silver, as every sentence says it
   // the window's close
   now = AT + 7_200_000;
   ses.tick();

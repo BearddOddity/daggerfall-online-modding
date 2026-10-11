@@ -175,8 +175,8 @@ test('SEAT1c THE HOSTS BY SOURCE: the service settles the Turning before any sea
   assert.match(idx, /'\/v1\/seats\/relinquish': \(\) => relinquishSeat\(ctx, who\.player, env, body\),/);
   assert.ok(rd('server-account/src/service.js').includes("'/v1/seats/relinquish',"));
   const gu = rd('server-account/src/guilds.js');
-  assert.match(gu, /OR EXISTS \(SELECT 1 FROM town_seat_holds WHERE guild_id = \$\{p\}\)/);
-  assert.match(gu, /OR EXISTS \(SELECT 1 FROM town_seat_rights WHERE \(guild_id = \$\{p\} OR against = \$\{p\}\) AND \$\{SEAT_BATTLE_PENDING\}\)   -- SEAT1c/);   // PIN MOVED (AUDIT CHAP5 E4): no longer the list's last - a patron's bid kept after it
+  assert.match(gu, /\['guild-seat', \(\/\*\* @type \{string\} \*\/ p\) => `EXISTS \(SELECT 1 FROM town_seat_holds WHERE guild_id = \$\{p\}\)`\]/);   // PIN MOVED: AUDIT GUILD3 T1 - one list of holds, the gate's and the view's
+  assert.match(gu, /\['guild-battle', \(\/\*\* @type \{string\} \*\/ p\) => `EXISTS \(SELECT 1 FROM town_seat_rights WHERE \(guild_id = \$\{p\} OR against = \$\{p\}\) AND \$\{SEAT_BATTLE_PENDING\}\)`\],   \/\/ SEAT1c/);   // PIN MOVED (AUDIT CHAP5 E4): no longer the list's last - a patron's bid kept after it; AUDIT GUILD3 T1: one list of holds
   assert.match(gu, /const SEAT_BATTLE_PENDING = 'week > COALESCE\(\(SELECT MAX\(week\) FROM town_seat_weeks\), -1\)';/);
   const si = rd('server-account/src/seatInfluence.js');
   assert.match(si, /const held = await db\.prepare\('SELECT key FROM town_seat_holds WHERE guild_id = \? AND region = \? ORDER BY key LIMIT 1'\)/);

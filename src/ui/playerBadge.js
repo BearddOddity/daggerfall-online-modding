@@ -102,9 +102,9 @@ export const TITLE_TEXT = Object.freeze({
   // CHAP4c (2026-10-08, the Chapters arc): a chapter's seats' - worded off their claim (npcChapterLaw.js chapterTitleText,
   // "Master of the Fighters Guild, Anticlere"); these where the claim names no chapter this client knows
   chaptermaster: 'Chapter Master',
-  chapterofficer: 'Chapter Officer',
+  chapterofficer: 'Chapter Councillor',   // GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md): a chapter's rank 8 sits on its council - "Officer" is a player guild's rank
   formermaster: 'Former Master',
-  highmaster: 'High Master',      // CHAP6e: a Master's in its chapter's Ascendancy
+  highmaster: 'High Master',      // CHAP6e: a Master's in its chapter's Ascendancy - GUILD3e: while its chapter stands Ascendant
   seasonmaster: 'Season Master',  // CHAP6e: a Season's Master's, kept for good
 });
 

@@ -437,7 +437,7 @@
  {
   "name": "AUDIT-SEATS-S4-words",
   "file": "src/net/townSeatLaw.js",
-  "old": "${Number(d.refund) > 0 ? ` - its claim fee of ${Number(d.refund).toLocaleString('en-US')} Marks refunded` : ''}",
+  "old": "${Number(d.refund) > 0 ? ` - its claim fee of ${marksText(Number(d.refund))} refunded` : ''}",
   "new": "",
   "tests": [
    "test/audit_seats_service.test.js"

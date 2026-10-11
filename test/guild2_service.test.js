@@ -202,8 +202,8 @@ test('GUILD2 service: what may not leave a pack never reaches the vault; a recor
   // the guild keeps its pieces: no disband, no lone guildmaster's leave, until they are taken out
   assert.equal((await put({ pick: 0, item: sword() })).status, 200);
   s.raw.prepare('DELETE FROM guild_members WHERE char_id = ?').run(s.member.character);
-  assert.deepEqual((await s.call('/v1/guilds/disband', { character: s.gm.character }, s.gm.secret)).body, { error: 'guild-vault' });
-  assert.deepEqual((await s.call('/v1/guilds/leave', { character: s.gm.character }, s.gm.secret)).body, { error: 'guild-vault' });
+  assert.deepEqual((await s.call('/v1/guilds/disband', { character: s.gm.character }, s.gm.secret)).body, { error: 'guild-vault', keeps: ['guild-vault'] });   // PIN MOVED: GUILD3c (bible/11-Multiplayer/Guilds-Made-Plain.md) - the whole list beside the first
+  assert.deepEqual((await s.call('/v1/guilds/leave', { character: s.gm.character }, s.gm.secret)).body, { error: 'guild-vault', keeps: ['guild-vault'] });   // PIN MOVED: GUILD3c (bible/11-Multiplayer/Guilds-Made-Plain.md) - the whole list beside the first
 });
 
 /** Holds the next realm record read (the take's prepareRealmRecord) until `release` - the take has read its slot and its

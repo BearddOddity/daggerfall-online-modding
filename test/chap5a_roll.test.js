@@ -36,20 +36,21 @@ test('CHAP5a the roll\'s words: its title by guild and region; the chapter\'s st
   assert.equal(chapterRollTitle(DRAGON, DAGGERFALL), 'The Roll of the Knights of the Dragon, Daggerfall');
   for (const [f, r] of [[THIEVES, ANTICLERE], [99, ANTICLERE], [FIGHTERS, 999], [FIGHTERS, null], ['41', ANTICLERE]]) assert.equal(chapterRollTitle(f, r), null, `${f} ${r}`);
   // PIN MOVED (AUDIT CHAP4 C4): the state's line has the chapter its subject
+  // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - the Master's chair, the council, its Councillor; marked by AUDIT GUILD3 R4
   assert.deepEqual(chapterRollLines(FIGHTERS, { strength: 74, seats: [S('officer', 'Bryn'), S('master', 'Alda'), S('officer', 'Cael'), S('officer', 'Dara')] }), [
-    'The chapter of the Fighters Guild here is Thriving (Strength 74).', 'Master of the chapter: Alda.', 'Its officers: Bryn, Cael and Dara.',
+    'The chapter of the Fighters Guild here is Thriving (Strength 74).', 'Master of the chapter: Alda.', 'Its council: Bryn, Cael and Dara.',
   ]);
   assert.deepEqual(chapterRollLines(MAGES, { strength: 12, seats: [S('officer', 'Bryn')] }), [
-    'The chapter of the Mages Guild here is Failing (Strength 12).', 'The Master\'s seat stands empty.', 'Its officer: Bryn.',
+    'The chapter of the Mages Guild here is Failing (Strength 12).', 'The Master\'s chair stands empty.', 'Its council: Bryn.',
   ]);
-  assert.deepEqual(chapterRollLines(FIGHTERS, { strength: 50, seats: [S('master', 'Alda'), S('officer', 'Bryn'), S('officer', 'Cael')] }).slice(2), ['Its officers: Bryn and Cael.']);
-  assert.deepEqual(chapterRollLines(FIGHTERS, { seats: [] }), ['The Master\'s seat stands empty.', 'No officer\'s seat is held.'], 'no Strength, no state');
+  assert.deepEqual(chapterRollLines(FIGHTERS, { strength: 50, seats: [S('master', 'Alda'), S('officer', 'Bryn'), S('officer', 'Cael')] }).slice(2), ['Its council: Bryn and Cael.']);
+  assert.deepEqual(chapterRollLines(FIGHTERS, { seats: [] }), ['The Master\'s chair stands empty.', 'No council chair is held.'], 'no Strength, no state');
 });
 
 // ── THE BOOK ────────────────────────────────────────────────────────
 
 test('CHAP5a the roll as a book: its title centred in the title face, each line a paragraph; one page, its clerk the author (mutants: the title, the lines)', () => {
-  const roll = { title: 'The Roll of the Fighters Guild, Anticlere', lines: ['Master of the chapter: Alda.', 'Its officer: Bryn.'] };
+  const roll = { title: 'The Roll of the Fighters Guild, Anticlere', lines: ['Master of the chapter: Alda.', 'Its council: Bryn.'] };
   const t = chapterRollTokens(roll);
   assert.deepEqual(t.filter((x) => typeof x.text === 'string').map((x) => x.text), [roll.title, ...roll.lines]);
   assert.deepEqual(t.slice(0, 2).map((x) => x.formatting !== undefined), [true, true]);

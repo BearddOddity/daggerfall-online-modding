@@ -178,7 +178,8 @@ import { validRollSpec, validRoll, rollDice, ROLL_DICE_MAX, ROLL_SIDES_MAX, ROLL
 import { ribbonClaimOk } from './heraldryLaw.js';   // SEASON1 part two: a Season's banner ribbon - heraldryLaw.js imports nothing, so the worker's graph stays flat
 import { GUILD_TAG_RE } from './guildLaw.js';   // GUILD1c: a guild's tag is badged beside the name - guildLaw.js imports nothing, so the worker's graph stays flat
 import { RAID_KEY_RE, RAID_SIG_RE, RAID_TARGET_MIN, RAID_TARGET_MAX, RAID_TYPES, RAID_WORD_KILLS_MAX, RAID_ACCOUNTS_MAX, RAID_TOP_MAX, RAID_TOWNS_SHA_RE, RAID_TOWNS_CHUNK, RAID_TOWNS_CHUNKS_MAX } from './raidLaw.js';   // RAID3: a town raid's law - raidLaw.js imports nothing, so the worker's graph stays flat
-import { SIEGE_HIT, SIEGE_WORK_IDS, SIEGE_RAMS_MAX, SIEGE_WORK_TIER_MAX, siegeGateVitality, siegeRamVitality, isSiegeNpcId, SIEGE_NPC_MAX, SIEGE_NPC_KINDS } from './siegeRef.js';   // PVP-REF: a siege's blow kinds - siegeRef.js imports nothing, so the worker's graph stays flat; SEAT2b part two (b): the works a blow may name; part two (c): the relay's own fighters
+import { SIEGE_HIT, SIEGE_WORK_IDS, SIEGE_RAMS_MAX, SIEGE_WORK_TIER_MAX, siegeGateVitality, siegeRamVitality, isSiegeNpcId, SIEGE_NPC_MAX, SIEGE_NPC_KINDS, isBattleRoom } from './siegeRef.js';   // PVP-REF: a siege's blow kinds - siegeRef.js imports nothing, so the worker's graph stays flat; SEAT2b part two (b): the works a blow may name; part two (c): the relay's own fighters
+import { privateInteriorOf } from './privateInterior.js';   // SLIM-FRAME: an owned interior's poses are MapsFile's (nativePoseRoom) - privateInterior.js imports nothing, and the relay walks it already
 import { validSdMarks, SD_ELEMENTS } from './sdMarks.js';   // SD18a: a Hollow's marks and its blows' elements - sdMarks.js imports nothing, so the worker's graph stays
 import { validArenaIn, validArenaOut } from './arenaLaw.js';   // ARENA4: the arena's words both ways - arenaLaw.js imports nothing, so the worker's graph stays flat
 import { readHouse } from './houseLaw.js';   // LEGACY7 part two: a house rides a row - houseLaw.js imports nothing, so the worker's graph stays flat
@@ -929,6 +930,12 @@ const CELL_ROOM = /^world:-?\d{1,3},-?\d{1,3}$/;
 export const isCellRoom = (key) => CELL_ROOM.test(String(key ?? ''));
 /** A room whose foes ride the wire: a world room (the host's) or a cell (each spawner's). */
 export const streamsFoes = (key) => isWorldRoom(key) || isCellRoom(key);
+/** NET-SMOOTH 1: the rooms whose poses are MapsFile's frame (scenes/world.js `nativeFrame`): a world cell, a siege's
+ *  battle or a Royal Tourney (the overworld's own rooms), and an owned interior or boat. Its place is in world units, 40 to
+ *  the metre; every other room's is the scene's metres - and a pose's HEIGHT is the scene's metres in both (world.js sheds
+ *  only the floating origin from it). SLIM-FRAME: moved here from net/online.js, which re-exports it - the relay rounds a
+ *  slim pose by it (slimPose), so the law both ends run has one home. */
+export const nativePoseRoom = (key) => isCellRoom(key) || isBattleRoom(key) || !!privateInteriorOf(key);
 /** SCALE5d (2026-10-11, Mac's decision 3 - a full city overflows into a layer rather than refusing `room full`;
  *  bible/11-Multiplayer/Scale-Arc.md SCALE5d): A CROWDED PLACE OVERFLOWS INTO LAYERS - copies of the same place, each
  *  an object of its own, whose players do not see each other. A room is still its KEY everywhere (every law that reads
@@ -1339,7 +1346,7 @@ export const KEEPALIVE_FAN_MS = HEARTBEAT_MS / 2;
  *  is deployed by CI and the relay by hand, so a skew between them is the ordinary state of a release day, and until
  *  now nothing on either end could see it. */
 // Integrated Arena spectator visibility with staff teleport, stable boat identity and private ownership; deploy relay before clients.
-export const RELAY_VERSION = 'world193';   // SERPENT4 (2026-10-11, the players' feature-feedback thread on the Serpent boss fight; bible/11-Multiplayer/Sea-Serpent.md section 16; world192 on its branch, renumbered past main's SCALE5c world192 at the merge; NOT YET DEPLOYED): THE SEA SERPENT REWORKED - its waters open until it dives (serpentLaw.js serpentAdmits), a sixth off its health, its girth SERPENT_GIRTH times (serpentBody.js - the relay judges a blow by it), a part dealt or a quarter of the fight stood earns and the hub gives a dealer's party a stander's receipt (the cell says its kin with the kill), a hand's own weapons on a hand's purse (the `hit` word's `r`); its law version 3 (a game before it is told to reload)
+export const RELAY_VERSION = 'world194';   // SLIM-FRAME (2026-10-11, the owner: "I notice some players look like they are walking off the ground"; bible/11-Multiplayer/Scale-Arc.md SLIM-FRAME): THE SECOND WIRE'S PLACE IN ITS OWN UNITS - slimPose rounds a pose's height (the scene's metres in every room) to the centimetre, and a dungeon's, a town's and a building's x and z with it; a native room's x and z keep whole world units (nativePoseRoom, moved here from net/online.js, so the relay's fan rounds by the room it was said in). SCALE5b rounded all three to whole units, so every peer heard on the second wire stood on a whole metre of height. Before it, world193: SERPENT4 (2026-10-11, the players' feature-feedback thread on the Serpent boss fight; bible/11-Multiplayer/Sea-Serpent.md section 16; world192 on its branch, renumbered past main's SCALE5c world192 at the merge; NOT YET DEPLOYED): THE SEA SERPENT REWORKED - its waters open until it dives (serpentLaw.js serpentAdmits), a sixth off its health, its girth SERPENT_GIRTH times (serpentBody.js - the relay judges a blow by it), a part dealt or a quarter of the fight stood earns and the hub gives a dealer's party a stander's receipt (the cell says its kin with the kill), a hand's own weapons on a hand's purse (the `hit` word's `r`); its law version 3 (a game before it is told to reload)
 // world192:   SCALE5c (2026-10-10, Mac: "I wanna do every single slice"; bible/11-Multiplayer/Scale-Arc.md SCALE5c; NOT YET DEPLOYED - its merge's drop, relay-deploy.yml deploying it as main moves to it (AUDIT SCALE II L1)): THE HUB, SIXTEEN WAYS (net/hubShards.js) - a hub link lands on its account's shard (`chat:world.<k>`), which holds the socket and its roster; `chat:world` is the bus, running every law it ran over a virtual socket for each (server/src/index.js ShardSocket), handed each shard's hellos, frames and closes and handing back what it says, batched both ways; the hub's count (`n`); a search of everyone online by name (`find`/`found`) and the guild online on every shard. A tab from before it still joins `chat:world`, which keeps it as the hub always did. SCALE5b with it (world191 on its branch - main's WARDEN1 took world191 at the merge, so this drop is world192 alone; 2026-10-10, Mac: "lets now tackle the bigger work ... really future proof our archetecture while also increasing performance"; bible/11-Multiplayer/Scale-Arc.md SCALE5b; NOT YET DEPLOYED - its merge's drop, relay-deploy.yml deploying it as main moves to it (AUDIT SCALE II L1)): the second wire, offered by the hello (`w2`) - a room's poses batched a listener every POSE_BATCH_MS and slim (slimPose), a channel's joins and leaves batched a second (ROSTER_BATCH_MS), a boss's beat one frame (wire2Batch); the relay's hygiene (the host kept, directed frames by an id index, the foes fan a method with its budget asked first, the drain's sweep not paid twice); eight more doubles on the metrics point; the relay's settings at run time (net/relayCfg.js, a developer's `cfg`); a cell's word that it judges the poses reaching it (`rf`), which a halo there reads as a reason to send every pose (HALO-THIN thins the rest; AUDIT SCALE II R1-6: SCALE5b's own thinning, HALO_POSE_MS, went at the merge past it). A socket that offers nothing hears every frame byte for byte as world190 said it. World190 before it: AUDIT MW-NPC II (2026-10-10, the MW-NPC arc's second audit, world188, then world189, on its branch - renumbered past main's INT11-INT14 world188 and SCALE5a world189 at the merges; bible/04-Characters/Morrowind-NPCs.md section 23; NOT YET DEPLOYED): a foe record may carry the look its owner stands it in - `ls` its seed and `lw` a person's worn kit (validFoeRecord) - read by the clients alone; the relay forwards foe frames unread, so no frame changes shape and the bundle's bytes move only by wire.js's own. A new version rather than one re-hashed: the one before it is main's INT11-INT14, and may be deployed before this lands.
 // world191:   WARDEN1 (2026-10-10, Mac: "Anytime there are too many carts/wagons in a city or they are parked on the road for a long time. I want a gaurd to navigate, lift the wagon/horse on top of their sprite and yeet it far away"; bible/06-Systems/Wagon-Warden.md; world188, world189 then world190 on its branch - renumbered past main's INT11-INT14 world188 at the rebase onto it, past SCALE5a's world189 at the merge after it and past AUDIT MW-NPC II's world190 at the next; NOT YET DEPLOYED - a deploy drops every player once): THE TOWN WATCH THROWS A PARKED TEAM OUT - a park record keeps where a throw lands (validParkData `ly`, within WARDEN_LAND_REACH of its anchor), its town (`tw`) and its road (`rd`); the cell keeps when each team came to stand where it stands (`since`), throws a road team WARDEN_ROAD_MS on (at the first frame past it, at a hello, at a store - never on the alarm, whose firing is a cell's other duties') and the longest parked past a town's WARDEN_TOWN_CAP (at the store), marks it (`y`, fanned and listed), and tells its owner's sockets (the new frame out, `parkYeet` - wire.js validParkYeet; a socket's `pk` names whose team it last spoke for, and the frame names it, `k`); WARDEN_RELAY_MIN 191 - an older relay drops `ly`, `tw` and `rd`, and nothing is thrown. AUDIT WARDEN1 (re-hashed, never deployed): one account one team a town's crowd, a team's spot by WARDEN_SPOT_NATIVES, a landing a wagon's alone, the round's failure never a frame's. The bundle's files unchanged.
 // world190:   AUDIT MW-NPC II (2026-10-10, the MW-NPC arc's second audit, world188, then world189, on its branch - renumbered past main's INT11-INT14 world188 and SCALE5a world189 at the merges; bible/04-Characters/Morrowind-NPCs.md section 23; NOT YET DEPLOYED): a foe record may carry the look its owner stands it in - `ls` its seed and `lw` a person's worn kit (validFoeRecord) - read by the clients alone; the relay forwards foe frames unread, so no frame changes shape and the bundle's bytes move only by wire.js's own. A new version rather than one re-hashed: the one before it is main's INT11-INT14, and may be deployed before this lands.
@@ -1487,7 +1494,7 @@ export function poseChanged(a, b, eps = 0.01) {
  *  `{ t: 'poses', l: [[id, pose], ...] }` - where it heard one frame a pose: in a full cell about 88 sends a pose became
  *  about one frame a listener a batch. Each pose in a batch is SLIM: the fields at the value validPose would fill them
  *  with are left out (validPose fills them back, at every reader), and the place and the turn are rounded to what a
- *  reader can see - whole world units (PIXEL_UNITS 32768 to a map pixel: 2.5 cm) and a ten-thousandth of a radian. A
+ *  reader can see - a centimetre of the place (slimPose says in which units) and a ten-thousandth of a radian. A
  *  socket that says no `w2` hears every pose as it always has, byte for byte. */
 export const POSE_BATCH_MS = 50;
 /** SCALE5b: how long a channel's join or leave may wait for its batch - a roster beside the chat is not a pose, and a
@@ -1500,8 +1507,18 @@ export const WIRE2_BATCH_MAX = 2 * 256;
 /** SCALE5b: the fields validPose always writes, at the value it writes for a pose that never set them. */
 export const POSE_DEFAULTS = Object.freeze({ mv: 0, wd: 0, an: 0, as: 0, am: 0, sr: 0, cn: 0, cr: 0, ce: 4, ar: 0, fk: 0 });
 /** SCALE5b: a validated pose (validPose's own) as the second wire carries it - its defaults left out, its place and turn
- *  rounded. validPose(slimPose(p)) is p, but for the rounding. */
-export function slimPose(p) {
+ *  rounded. validPose(slimPose(p)) is p, but for the rounding.
+ *  SLIM-FRAME (2026-10-11, the owner: "I notice some players look like they are walking off the ground"): THE PLACE IS
+ *  ROUNDED IN ITS OWN UNITS, and `key` - the room the pose was said in - says which. SCALE5b rounded x, y and z to whole
+ *  units, reading every one as MapsFile's world unit (2.5 cm). Only a native room's x and z are (nativePoseRoom); a
+ *  pose's HEIGHT is the scene's metres in every room (scenes/world.js sheds the floating origin from it, nothing more),
+ *  and a dungeon's, a town's or a building's x and z are metres too. So every peer heard on the second wire stood on a
+ *  whole metre of height - up to half a metre over the ground or under it, a step at every metre of a slope - and,
+ *  off the overworld, walked a one-metre grid. A native room's x and z keep whole world units; every other place is
+ *  rounded to the centimetre (SLIM_SCENE_STEPS). A pose with no room is rounded as the scene's: finer, never wrong. */
+export const SLIM_SCENE_STEPS = 100;
+export function slimPose(p, key = null) {
+  const native = nativePoseRoom(key);
   const out = {};
   for (const k of Object.keys(p)) {
     const v = p[k];
@@ -1511,7 +1528,7 @@ export function slimPose(p) {
     // pose while the first wire's and the relay's referees took it: a modified client moved unseen on w2. The place is
     // bounded by an integer (POSE_BOUND, POSE_Y_BOUND) and the turn wrapped, so only a pitch can reach it; each is held
     // to the same law
-    const r = k === 'x' || k === 'y' || k === 'z' ? Math.round(v) : k === 'yaw' || k === 'pitch' ? Math.round(v * 1e4) / 1e4 : v;
+    const r = native && (k === 'x' || k === 'z') ? Math.round(v) : k === 'x' || k === 'y' || k === 'z' ? Math.round(v * SLIM_SCENE_STEPS) / SLIM_SCENE_STEPS : k === 'yaw' || k === 'pitch' ? Math.round(v * 1e4) / 1e4 : v;
     out[k] = Number.isFinite(r) ? r : v;
   }
   return out;

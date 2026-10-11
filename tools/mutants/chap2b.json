@@ -240,18 +240,18 @@
   },
   {
     "name": "CHAP2B-CARD-RAID",
-    "file": "src/ui/noticeWindow.js",
-    "old": "a.kind === 'raid' ? `Defend a raided town of ${work.regionName}, for the ${poster}` :",
-    "new": "a.kind === 'gate' ? `Defend a raided town of ${work.regionName}, for the ${poster}` :",
+    "file": "src/net/npcChapterLaw.js",
+    "old": "const DUTY_WORDS = Object.freeze({ gate: 'hold a gate', raid: 'defend a raided town' });",
+    "new": "const DUTY_WORDS = Object.freeze({ gate: 'hold a gate', raid: 'hold a gate' });",
     "tests": [
       "test/chap2b_receipts.test.js"
     ]
   },
   {
     "name": "CHAP2B-CARD-STATE",
-    "file": "src/ui/noticeWindow.js",
-    "old": "a.done ? 'Done today' : a.member ? 'Your next one here fills it' : `For members of the ${poster}`",
-    "new": "a.member ? 'Your next one here fills it' : `For members of the ${poster}`",
+    "file": "src/net/npcChapterLaw.js",
+    "old": "${member && mine.some((a) => a.kind === k && a.done === true) ? ' (done today)' : ''}",
+    "new": "${''}",
     "tests": [
       "test/chap2b_receipts.test.js"
     ]

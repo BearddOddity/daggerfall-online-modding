@@ -185,8 +185,8 @@
   {
     "name": "SILVER-WAYS-svc-guild-goes-with-contract",
     "file": "server-account/src/guilds.js",
-    "old": "  OR EXISTS (SELECT 1 FROM guild_contracts WHERE guild_id = ${p} AND (state = 'open' OR (returned = 0 AND escrow > 0)))   -- SILVER-WAYS",
-    "new": "  OR 0   -- SILVER-WAYS",
+    "old": "`EXISTS (SELECT 1 FROM guild_contracts WHERE guild_id = ${p} AND state = 'open')`",
+    "new": "`0`",
     "tests": [
       "test/silverways_service.test.js",
       "test/silverways_client.test.js"

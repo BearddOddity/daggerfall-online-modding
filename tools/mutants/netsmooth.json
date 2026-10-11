@@ -1,21 +1,23 @@
 [
   {
     "name": "NETSMOOTH-1-battle-and-owned-in-the-scene-frame",
-    "file": "src/net/online.js",
+    "file": "src/net/wire.js",
     "old": "export const nativePoseRoom = (key) => isCellRoom(key) || isBattleRoom(key) || !!privateInteriorOf(key);",
     "new": "export const nativePoseRoom = (key) => isCellRoom(key);",
     "tests": [
-      "test/netsmooth.test.js"
+      "test/netsmooth.test.js",
+      "test/slimframe.test.js"
     ],
     "note": "A siege's battle, a Royal Tourney and an owned interior snap at 30 MapsFile units - 0.75 m, so a runner teleports every pose."
   },
   {
     "name": "NETSMOOTH-1-owned-interior-forgotten",
-    "file": "src/net/online.js",
+    "file": "src/net/wire.js",
     "old": "export const nativePoseRoom = (key) => isCellRoom(key) || isBattleRoom(key) || !!privateInteriorOf(key);",
     "new": "export const nativePoseRoom = (key) => isCellRoom(key) || isBattleRoom(key);",
     "tests": [
-      "test/netsmooth.test.js"
+      "test/netsmooth.test.js",
+      "test/slimframe.test.js"
     ],
     "note": "An owned interior or boat, carried in MapsFile's frame, snaps in the scene's units."
   },
