@@ -1,7 +1,7 @@
 // @ts-check
 import { validStaffTeleportIn } from './staffTeleport.js';
 import { validRelayCfgIn } from './relayCfg.js';   // SCALE5b: a relay setting, said to the hub
-import { HUB_SHARD_ROOMS, isHubShard, HUB_FIND_Q_MAX } from './hubShards.js';   // SCALE5c: the hub, sixteen ways
+import { HUB_SHARD_ROOMS, isHubShard, HUB_FIND_Q_MAX, REGION_SHARD_ROOMS } from './hubShards.js';   // SCALE5c: the hub, sixteen ways
 // ONLINE1 (2026-09-12, Mac: "the basic bones of multiplayer ... being
 // able to see and traverse with other players"): THE WIRE'S LAW, pure,
 // ONE HOME (AUDIT ONLINE B7/B8). The relay (server/src/relay.js) re-exports
@@ -519,7 +519,7 @@ export const CHAT_REGION_COUNT = 62;
 export const chatRegionRoom = (index) => (Number.isInteger(index) && index >= 0 && index < CHAT_REGION_COUNT ? `${CHAT_REGION_PREFIX}${index}` : null);
 /** Every channel the relay will open (AUDIT CHAT A1: a whitelist - a later tab is a later entry, and nothing else is a
  *  channel). CHAT-CHAN: the world channel and the 62 region channels, enumerated, so the whitelist stays a list. */
-export const CHAT_ROOMS = Object.freeze(new Set([CHAT_WORLD_ROOM, ...Array.from({ length: CHAT_REGION_COUNT }, (_, i) => chatRegionRoom(i)), ...HUB_SHARD_ROOMS]));   // SCALE5c: and the hub's shards (net/hubShards.js)
+export const CHAT_ROOMS = Object.freeze(new Set([CHAT_WORLD_ROOM, ...Array.from({ length: CHAT_REGION_COUNT }, (_, i) => chatRegionRoom(i)), ...HUB_SHARD_ROOMS, ...REGION_SHARD_ROOMS]));   // SCALE5c: and the hub's shards (net/hubShards.js); part two: and each region's
 /** CHAT-CHAN: the channels a LINE may name inside a room (`{t:'chat', text, ch}`). A party's line is said on the hub
  *  link and heard by the party's members alone; a line naming anything else is refused whole - it is never allowed to
  *  fall through to the room's own fan, where a party line said to an old or a confused relay would reach everyone. */

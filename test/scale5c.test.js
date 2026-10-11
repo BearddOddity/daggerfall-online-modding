@@ -37,8 +37,8 @@ async function world(fn) {
       /** Every shard's hand-up and the bus's deliveries, until both rest. */
       const settle = async () => {
         for (let i = 0; i < 6; i++) {
-          for (const [k, r] of W.made) if (H.isHubShard(k)) await r.room._hubUpFlush();
-          await bus.room._downFlush();
+          for (const [k, r] of W.made) if (H.isChannelShard(k)) await r.room._hubUpFlush();
+          for (const [k, r] of [...W.made]) if (H.isChannelBus(k)) await r.room._downFlush();
         }
       };
       /** A hub link for `n` (account `acct-<n>`), said hello to `key` - its own shard unless named. */
@@ -76,7 +76,7 @@ test('SCALE5c the law: sixteen shards beside the bus, each a channel the Worker 
   assert.equal(H.shardHash('a'), 0xe40c292c, 'FNV-1a, both ends');
   assert.equal(H.hubHopOf({ t: 'hub', key: 'chat:world.3' }), 'chat:world.3');
   assert.equal(H.hubHopOf({ t: 'hub', key: SOCIAL_ROOM }), SOCIAL_ROOM);
-  for (const bad of [{ t: 'hub', key: 'chat:region.3' }, { t: 'hub' }, { t: 'x', key: 'chat:world.3' }, null]) assert.equal(H.hubHopOf(bad), null);
+  for (const bad of [{ t: 'hub', key: 'chat:region.62' }, { t: 'hub', key: 'world:1,2' }, { t: 'hub' }, { t: 'x', key: 'chat:world.3' }, null]) assert.equal(H.hubHopOf(bad), null);   // part two: a region's channel and its shards are hops too
   assert.equal(H.hubShardsSupported('world191'), false); assert.equal(H.hubShardsSupported('world192'), true);
   const look = { race: 'Nord', gender: 'male', faceIndex: 0, items: [] };
   const hello = (hs) => parseClient(JSON.stringify({ t: 'hello', id: 'peer-0001', secret: 'secret-of-peer-0001', name: 'x', look, pose: null, hs }));
@@ -296,8 +296,8 @@ test('SCALE5c the session: a hub link offers the shards in its hello, goes where
     assert.equal(again.hs, undefined, 'and offers the shards no more - the bus would send it straight back');
   });
   const world = src('src/scenes/world.js');
-  assert.match(world, /if \(tab\.room\) link\.join\(tab\.room === SOCIAL_ROOM \? hubLinkRoom\(\) : tab\.room\);/);
-  assert.match(world, /return seen === '1' \? \(hubOfSubject\(storedSession\(appStorage\(\)\)\?\.id\) \?\? SOCIAL_ROOM\) : SOCIAL_ROOM;/);
+  assert.match(world, /if \(tab\.room\) link\.join\(channelLinkRoom\(tab\.room\)\);/);
+  assert.match(world, /return seen === '1' \? \(shardOf\(room, storedSession\(appStorage\(\)\)\?\.id\) \?\? room\) : room;/);
   assert.match(world, /const onRelayVersion = \(v\) => \{ try \{ appStorage\(\)\?\.setItem\?\.\(HUB_SHARDS_SEEN_KEY, hubShardsSupported\(v\) \? '1' : '0'\); \}/);
 });
 
@@ -468,5 +468,82 @@ test('SCALE5c the World tab while the hub is small (Mac\'s decision 2): a shard\
     assert.equal(s.sendHubWho(), false, 'never past a roster\'s worth');
     assert.equal(s.hubOnline.size, 0, 'and the list let go');
   });
-  assert.match(src('src/scenes/world.js'), /if \(tabId === 'world'\) s\?\.sendHubWho\?\.\(\);/);
+  assert.match(src('src/scenes/world.js'), /if \(tabId === 'world' \|\| tabId === 'region'\) s\?\.sendHubWho\?\.\(\);/);
+});
+
+test('SCALE5c part two: A REGION\'S CHANNEL, FOUR WAYS - its shards beside it, an account on one by its subject; the region\'s own channel the bus: a region line and a traveller\'s mark from one shard heard on another and on a tab from before (the mark never back to its own), a shard\'s joiner told the region\'s marks, the census over every shard, everyone online for the Region tab, the hops, and a bus never another channel\'s (mutants: a region shard no channel; the bus the hub; the mark a socket each; the mark back to its sender; the joiner told nothing; the census the bus\'s own; the region\'s list unanswered; a bus taking another channel\'s shard)', async () => {
+  const { CHAT_REGION_COUNT, chatRegionRoom, isChatRoom: chatRoom, isRegionRoom: regionRoom, isSocialRoom: socialRoom } = await import('../src/net/wire.js');
+  assert.equal(H.REGION_SHARDS, 4);
+  assert.equal(H.REGION_CHANNELS, CHAT_REGION_COUNT, 'the politic map\'s regions, both ends');
+  assert.equal(H.REGION_SHARD_ROOMS.length, CHAT_REGION_COUNT * H.REGION_SHARDS);
+  for (const k of H.REGION_SHARD_ROOMS) { assert.ok(CHAT_ROOMS.has(k), k); assert.equal(chatRoom(k), true); assert.equal(regionRoom(k), true); assert.equal(socialRoom(k), false); assert.equal(H.isRegionShard(k), true); }
+  for (const k of ['chat:region.62.0', 'chat:region.3.4', 'chat:region.03.1', 'chat:region.3.01', 'chat:region.3', 'chat:world.3', null]) assert.equal(H.isRegionShard(k), false, String(k));
+  assert.equal(H.busOf('chat:region.7.2'), 'chat:region.7'); assert.equal(H.busOf('chat:world.3'), SOCIAL_ROOM); assert.equal(H.busOf('chat:region.7'), null);
+  assert.equal(H.isChannelBus('chat:region.7'), true); assert.equal(H.isChannelBus(SOCIAL_ROOM), true); assert.equal(H.isChannelBus('chat:world.3'), false); assert.equal(H.isChannelBus('chat:region.62'), false);
+  assert.equal(H.channelOf('chat:region.7.2'), 'chat:region.7'); assert.equal(H.channelOf('cell:1,2'), 'cell:1,2');
+  assert.equal(H.shardOf('chat:region.7', 'acct-x'), `chat:region.7.${H.shardHash('acct-x') % H.REGION_SHARDS}`);
+  assert.equal(H.shardOf(SOCIAL_ROOM, 'acct-x'), H.hubOfSubject('acct-x'));
+  assert.equal(H.shardOf('chat:region.7', ''), null); assert.equal(H.shardOf('chat:world.3', 'acct-x'), null);
+  assert.equal(H.hubHopOf({ t: 'hub', key: 'chat:region.7.2' }), 'chat:region.7.2'); assert.equal(H.hubHopOf({ t: 'hub', key: 'chat:region.7' }), 'chat:region.7');
+  const MARK = { px: 207, py: 213, fx: 12, fy: 250, h: 64, m: 1, tv: 1 };
+  const RB = chatRegionRoom(5);
+  /** Names whose accounts land on distinct shards of the region. */
+  const onRegionShards = (count) => { const out = [], seen = new Set(); for (let i = 0; out.length < count && i < 4096; i++) { const n = `r${i}`; const k = H.shardOf(RB, `acct-${n}`); if (!seen.has(k)) { seen.add(k); out.push(n); } } assert.equal(out.length, count); return out; };
+  await world(async ({ W, link, say }) => {
+    const bus = W.room(RB);
+    const [a, b, c] = onRegionShards(3);
+    const ka = H.shardOf(RB, `acct-${a}`), kb = H.shardOf(RB, `acct-${b}`), kc = H.shardOf(RB, `acct-${c}`);
+    const wa = await link(a, ka, { kind: 'linked' }), wb = await link(b, kb);
+    const old = await link('regold', RB, { hs: undefined, kind: 'linked' });   // a tab from before: the region's channel itself
+    assert.equal(wa.sent[0].t, 'welcome');
+    assert.equal(bus.room._vsocks.size, 2, 'the region\'s bus holds a ShardSocket each');
+    assert.equal(bus.room._busKey, RB);
+    for (const ws of [wa, wb, old]) ws.sent.length = 0;
+    await say(wa, ka, { t: 'chat', text: 'hail, region' });
+    for (const ws of [wa, wb, old]) assert.deepEqual(ofT(ws, 'chat').map((f) => f.text), ['hail, region'], 'the region\'s line on every shard and the bus');
+    const sentAll = [];
+    const vsendAll = bus.room._vsendAll.bind(bus.room);
+    bus.room._vsendAll = (out, x) => { sentAll.push([out, x]); return vsendAll(out, x); };
+    await say(wa, ka, { t: 'trav', p: MARK });
+    assert.ok(sentAll.some(([out, x]) => out.startsWith('{"t":"trav"') && x === `peer-${a}`), 'the mark one entry a shard, its sender\'s own skipped');
+    for (const ws of [wb, old]) assert.deepEqual(ofT(ws, 'trav').map((f) => [f.id, f.p?.px]), [[`peer-${a}`, MARK.px]], 'the mark on every other shard and the bus');
+    assert.equal(ofT(wa, 'trav').length, 0, 'never back to its own');
+    const wc = await link(c, kc);
+    assert.deepEqual(ofT(wc, 'trav').map((f) => f.id), [`peer-${a}`], 'a shard\'s joiner told the region\'s marks by the bus');
+    const census = await (await bus.room._sdCensusInternal()).json();
+    assert.equal(census.n, 2, 'the census over every shard: the two registered accounts, wherever they stand');
+    wb.sent.length = 0;
+    await say(wb, kb, { t: 'find', all: 1 });
+    assert.deepEqual(ofT(wb, 'found').at(-1).l.map((p) => p.name).sort(), [a, b, c, 'regold'].sort(), 'everyone in the region, for the Region tab');
+    // the hops
+    const wrong = H.REGION_SHARD_ROOMS.find((k) => H.busOf(k) === RB && k !== ka);
+    const hop = await link(a, wrong, { peer: `peer-${a}-x` });
+    assert.deepEqual(hop.sent, [{ t: 'hub', key: ka }]);
+    const viaBus = await link(b, RB, { peer: `peer-${b}-y`, hs: 1 });
+    assert.deepEqual(viaBus.sent, [{ t: 'hub', key: kb }]);
+    // a bus never another channel's
+    const res = await bus.room._hubUpInternal(new Request('https://relay.internal/', { method: 'POST', body: JSON.stringify({ hub: 'chat:world.3', e: [] }) }));
+    assert.equal(res.status, 400);
+  });
+  await quiet(() => {
+    const { FakeWS, sockets } = fakeSocketClass();
+    let t = 1_000_000;
+    const s = new OnlineSession({ url: 'wss://relay.test', name: 'Mac', id: 'mac-0001', secret: 'secret-of-mac-0001', WebSocketImpl: FakeWS, now: () => t, rand: () => 0, presence: false });
+    s.join('chat:region.5');
+    sockets[0].open();
+    assert.equal(JSON.parse(sockets[0].sent.find((x) => x.startsWith('{"t":"hello"'))).hs, 1, 'a region link offers');
+    sockets[0].receive({ t: 'hub', key: 'chat:world.3' });
+    assert.equal(s.room, 'chat:region.5', 'never out of its own channel');
+    sockets[0].receive({ t: 'hub', key: 'chat:region.5.2' });
+    assert.equal(s.room, 'chat:region.5.2');
+    sockets.at(-1).drop(1006);
+    t += 5000; s.tick?.();
+    sockets.at(-1).drop(1006);
+    assert.equal(s.room, 'chat:region.5', 'a relay before them: back to the region\'s channel');
+  });
+  const w = src('src/scenes/world.js');
+  assert.match(w, /const channelLinkRoom = \(room\) => \{\n\s*if \(!isChannelBus\(room\)\) return room;[\s\S]{0,200}?return seen === '1' \? \(shardOf\(room, storedSession\(appStorage\(\)\)\?\.id\) \?\? room\) : room;/);
+  assert.match(w, /chatLog\.setRoom\('region', room, place\);\n\s*link\.join\(channelLinkRoom\(room\)\);/);
+  assert.match(w, /channelOf\(link\.room\) === chatRegionRoom\(_questRegionIndex\(\)\)/);
+  assert.match(w, /hubOnline: s\.hubOnline, label: place \}/);
 });

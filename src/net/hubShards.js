@@ -37,6 +37,41 @@ export function shardHash(s) {
  *  subject. */
 export const hubOfSubject = (sub) => (typeof sub === 'string' && sub ? chatHubRoom(shardHash(sub) % HUB_SHARDS) : null);
 
+/** SCALE5c part two (bible/11-Multiplayer/Scale-Arc.md SCALE5c): A REGION'S CHANNEL, SPLIT THE SAME WAY. The politic
+ *  map's regions (wire.js CHAT_REGION_COUNT - REGION_CHANNELS here, pinned to it: wire.js imports this module) each have
+ *  a channel, `chat:region.<r>`, which held every player standing in the region: 2,048 sockets, and a start region's
+ *  every arrival at its one gate. A region link lands on `chat:region.<r>.<k>`, k from the verified account as the hub's
+ *  is, and the region's own channel is that region's bus - its lines, its travellers' marks and its census, run over a
+ *  ShardSocket for each shard's socket as the hub's bus runs its own. */
+export const REGION_SHARDS = 4;
+export const REGION_CHANNELS = 62;
+const REGION_BUS_RE = /^chat:region\.(\d{1,2})$/;
+const REGION_SHARD_RE = /^chat:region\.(\d{1,2})\.(\d{1,2})$/;
+const canon = (d, n) => String(Number(d)) === d && Number(d) < n;
+/** Is `key` a region's own channel - a region shard's bus? */
+export const isRegionBus = (key) => { const m = REGION_BUS_RE.exec(String(key ?? '')); return !!m && canon(m[1], REGION_CHANNELS); };
+/** Is `key` one of a region's shards? */
+export const isRegionShard = (key) => { const m = REGION_SHARD_RE.exec(String(key ?? '')); return !!m && canon(m[1], REGION_CHANNELS) && canon(m[2], REGION_SHARDS); };
+/** Region `r`'s shard `k`, or null for one the map does not have. */
+export const regionShardRoom = (r, k) => (Number.isInteger(r) && r >= 0 && r < REGION_CHANNELS && Number.isInteger(k) && k >= 0 && k < REGION_SHARDS ? `chat:region.${r}.${k}` : null);
+/** Every region shard's key, region by region. */
+export const REGION_SHARD_ROOMS = Object.freeze(Array.from({ length: REGION_CHANNELS * REGION_SHARDS }, (_, i) => /** @type {string} */ (regionShardRoom(Math.floor(i / REGION_SHARDS), i % REGION_SHARDS))));
+/** The bus a shard's key hands its frames to - `chat:world` for a hub shard, the region's own channel for a region's -
+ *  or null for a key that is no shard. */
+export const busOf = (key) => (isHubShard(key) ? HUB_BUS : isRegionShard(key) ? String(key).slice(0, String(key).lastIndexOf('.')) : null);
+/** Is `key` a shard of any channel? */
+export const isChannelShard = (key) => busOf(key) != null;
+/** Is `key` a channel that has shards (the hub, each region's)? */
+export const isChannelBus = (key) => key === HUB_BUS || isRegionBus(key);
+/** A key's channel: a shard's bus, or the key itself. */
+export const channelOf = (key) => busOf(key) ?? key;
+/** The shard of the channel `bus` an account lands on, by its verified subject - null for no subject or no such bus. */
+export const shardOf = (bus, sub) => {
+  if (bus === HUB_BUS) return hubOfSubject(sub);
+  if (!isRegionBus(bus) || typeof sub !== 'string' || !sub) return null;
+  return `${bus}.${shardHash(sub) % REGION_SHARDS}`;
+};
+
 /** A shard's hello, frames and closes, to the bus. */
 export const HUB_INTERNAL_UP = '/internal/hub/up';
 /** The bus's frames and closes for a shard's sockets, to the shard. */
@@ -71,7 +106,7 @@ export const hubShardsSupported = (v) => Number(/^world(\d+)$/.exec(String(v ?? 
  * @param {any} m
  * @returns {string|null}
  */
-export const hubHopOf = (m) => (m && typeof m === 'object' && m.t === 'hub' && (isHubShard(m.key) || m.key === HUB_BUS) ? m.key : null);
+export const hubHopOf = (m) => (m && typeof m === 'object' && m.t === 'hub' && (isChannelShard(m.key) || isChannelBus(m.key)) ? m.key : null);   // SCALE5c part two: a region's shard or its own channel too
 
 /** SCALE5c (Mac's decision 2): the most names a search of everyone online answers. */
 export const HUB_FIND_MAX = 32;

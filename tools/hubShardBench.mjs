@@ -9,18 +9,20 @@
 //            PARTY: everyone in a party of four, each saying its party pose once a PARTY_SEND_MS (the steadiest
 //            traffic through the bus) - the bus's time a pose and a shard's.
 //
-//   node tools/hubShardBench.mjs [ONE_N=2000] [SHARD_N=10000]
+//   REGION   N players arriving at one region's channel (SCALE5c part two): the one room, then its four shards.
+//
+//   node tools/hubShardBench.mjs [ONE_N=2000] [SHARD_N=10000] [REGION_N=2000]
 //
 // Wall time in this process stands in for an object's CPU: the objects' own calls are timed apart (the doors between
 // them are stubbed, each object fed what the other handed it), the token signing and the harness's socket are not
 // counted. A model of nothing: the Room's code runs; only the clock, the sockets and the storage are the harness's.
 import { performance } from 'node:perf_hooks';
 import { fakeRoom } from '../test/fakeRoom.mjs';
-import { SOCIAL_ROOM, CHAT_HELLO_HZ_MAX, PARTY_SEND_MS, PARTY_MAX, mintPartyId } from '../src/net/wire.js';
-import { hubOfSubject, HUB_SHARD_ROOMS, HUB_INTERNAL_UP, HUB_BATCH_MS } from '../src/net/hubShards.js';
+import { SOCIAL_ROOM, CHAT_HELLO_HZ_MAX, PARTY_SEND_MS, PARTY_MAX, mintPartyId, chatRegionRoom } from '../src/net/wire.js';
+import { shardOf, busOf, HUB_SHARD_ROOMS, REGION_SHARD_ROOMS, REGION_SHARDS, HUB_INTERNAL_UP, HUB_BATCH_MS } from '../src/net/hubShards.js';
 
 const arg = (k, d) => Number(process.argv.find((a) => a.startsWith(`${k}=`))?.split('=')[1] ?? d);
-const ONE_N = arg('ONE_N', 2000), SHARD_N = arg('SHARD_N', 10000);
+const ONE_N = arg('ONE_N', 2000), SHARD_N = arg('SHARD_N', 10000), REGION_N = arg('REGION_N', 2000);
 
 async function onClock(fn) {
   const realNow = Date.now;
@@ -47,9 +49,9 @@ const timed = async (box, fn) => { const t = performance.now(); try { return awa
 const name = (i) => `Trav${[...i.toString(26).padStart(4, '0')].map((d) => String.fromCharCode(97 + parseInt(d, 26))).join('')}`;
 const hello = async (R, ws, n, extra = {}) => R.hello(ws, `peer-${n}`, null, { name: n, acct: `acct-${n}`, asecret: `secret-of-acct-${n}`, tok: await R.token(`peer-${n}`, { s: `acct-${n}`, n }), ...extra });
 
-async function oneHub(N) {
+async function oneHub(N, key = SOCIAL_ROOM) {
   return onClock(async ({ tick }) => {
-    const R = fakeRoom(SOCIAL_ROOM);
+    const R = fakeRoom(key);
     const c = counted(R);
     const t = { ms: 0 }, last = { ms: 0, sends: 0 };
     const socks = [];
@@ -70,15 +72,16 @@ async function oneHub(N) {
   });
 }
 
-async function sharded(N) {
+async function sharded(N, busKey = SOCIAL_ROOM) {
+  const keys = busKey === SOCIAL_ROOM ? HUB_SHARD_ROOMS : REGION_SHARD_ROOMS.filter((k) => busOf(k) === busKey);
   return onClock(async ({ tick }) => {
     // the shards, each handing its batches to a list (the bus fed them below); the bus, its deliveries to a list
     const ups = [];
     const shardRooms = (key) => ({ idFromName: (n) => n, get: () => ({ fetch: async (req) => { ups.push({ key, body: await req.text() }); return new Response('{"ok":1,"unknown":[]}'); } }) });
-    const shards = new Map(HUB_SHARD_ROOMS.map((k) => { const R = fakeRoom(k, { ROOMS: shardRooms(k) }); return [k, { R, c: counted(R), t: { ms: 0 }, socks: [] }]; }));
+    const shards = new Map(keys.map((k) => { const R = fakeRoom(k, { ROOMS: shardRooms(k) }); return [k, { R, c: counted(R), t: { ms: 0 }, socks: [] }]; }));
     const downs = [];
     const busRooms = { idFromName: (n) => n, get: (hub) => ({ fetch: async (req) => { downs.push({ hub, body: await req.text() }); return new Response('{"ok":1,"gone":[]}'); } }) };
-    const bus = fakeRoom(SOCIAL_ROOM, { ROOMS: busRooms });
+    const bus = fakeRoom(busKey, { ROOMS: busRooms });
     const busT = { ms: 0 };
     let hellos = 0;
     const flushUp = async () => {
@@ -95,10 +98,10 @@ async function sharded(N) {
     let flushAt = HUB_BATCH_MS;
     for (let i = 0; i < N; i++) {
       const n = name(i);
-      const s = shards.get(hubOfSubject(`acct-${n}`));
+      const s = shards.get(shardOf(busKey, `acct-${n}`));
       const ws = s.R.connect();
-      tick(step / HUB_SHARD_ROOMS.length);
-      flushAt -= step / HUB_SHARD_ROOMS.length;
+      tick(step / keys.length);
+      flushAt -= step / keys.length;
       await timed(s.t, () => hello(s.R, ws, n));
       s.socks.push(ws);
       hellos++;
@@ -123,6 +126,7 @@ async function sharded(N) {
     for (const d of downs.splice(0)) { const s = shards.get(d.hub); const t0 = { ms: 0 }; await timed(t0, () => s.R.room._hubDownInternal(new Request('https://relay.internal/', { method: 'POST', body: d.body }))); perShard.push(t0.ms); }
     const sends = [...shards.values()].reduce((a, s) => a + s.c.sends, 0);
     const lineBusMs = busT.ms + busDown.ms;
+    if (busKey !== SOCIAL_ROOM) return { N, shardHelloMs, busHelloMs, wave, lineBusMs, lineShardMaxMs: Math.max(...perShard), lineSends: sends, downBytes: downBytes.n, busSocks: bus.room._vsocks.size };   // a region's channel keeps no party
     // PARTY: parties of four seated on the bus's records, then one PARTY_SEND_MS of every member's party pose
     const P = Math.min(4, PARTY_MAX), groups = Math.floor(N / P);
     for (let g = 0; g < groups; g++) {
@@ -161,3 +165,13 @@ for (const N of [ONE_N, SHARD_N]) {
   console.log(`  party poses: ${f(s.partyBusMs)} ms on the bus a pose, ${f(s.partyShardMs)} ms on the shards - everyone in a party of four, one PARTY_SEND_MS: ${f(s.partyBusPerSec, 0)} ms of the bus's each second`);
   console.log(`  a world line: ${f(s.lineBusMs)} ms on the bus (${(s.downBytes / 1024).toFixed(1)} KiB to the shards), ${f(s.lineShardMaxMs)} ms on the busiest shard, ${s.lineSends} sends`);
 }
+const RB = /** @type {string} */ (chatRegionRoom(5));
+const oneRegion = await oneHub(REGION_N, RB);
+console.log(`ONE REGION: ${REGION_N} players on ${RB}`);
+console.log(`  a hello: ${f(oneRegion.helloMs)} ms on average; the ${REGION_N}th: ${f(oneRegion.lastMs)} ms and ${oneRegion.lastSends} sends`);
+console.log(`  a region line: ${f(oneRegion.lineMs)} ms, ${oneRegion.lineSends} sends`);
+const region = await sharded(REGION_N, RB);
+console.log(`REGION SHARDED: ${REGION_N} players on its ${REGION_SHARDS} shards, the bus holding ${region.busSocks} ShardSockets`);
+console.log(`  a hello: ${f(region.shardHelloMs)} ms on its shard, ${f(region.busHelloMs)} ms on the bus`);
+console.log(`  the whole wave: ${f(region.wave.busMs, 0)} ms of the bus's, ${f(region.wave.shardMs, 0)} ms of the busiest shard's`);
+console.log(`  a region line: ${f(region.lineBusMs)} ms on the bus (${(region.downBytes / 1024).toFixed(1)} KiB to the shards), ${f(region.lineShardMaxMs)} ms on the busiest shard, ${region.lineSends} sends`);

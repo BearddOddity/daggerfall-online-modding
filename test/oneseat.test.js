@@ -289,7 +289,7 @@ test('ONE-SEAT, the host: the World link claims, the tab claims the browser\'s s
   const take = w.slice(w.indexOf('  const takeSeat = () => {'), w.indexOf('  const onlineFrame = (now, dt) => {'));
   assert.match(take, /_seatOut = false; _seatLeft = false; _seatSaid = false;/, 'a seat taken back is lost afresh next time');
   assert.match(take, /online\?\.resume\(\);/);
-  assert.match(take, /link\.resume\(\{ claim: room === SOCIAL_ROOM \}\);\n\s*if \(room\) link\.join\(room === SOCIAL_ROOM \? hubLinkRoom\(\) : room\);/, 'the hub\'s link claims the seat back (PIN MOVED, SCALE5c: on its own shard)');
+  assert.match(take, /link\.resume\(\{ claim: room === SOCIAL_ROOM \}\);\n\s*if \(room\) link\.join\(channelLinkRoom\(room\)\);/, 'the hub\'s link claims the seat back (PIN MOVED, SCALE5c: a channel\'s link on its own shard)');
   assert.match(take, /seatLock\?\.claim\(\);/, 'and the browser\'s other tabs are told');
   assert.match(w, /earning: \(\) => !!online && !seatOut\(\),/, 'a tab out of the seat earns no Renown');
   assert.match(w, /here: seatOut\(\) \? \{ label: PLAY_HERE_LABEL, run: takeSeat \} : null,/, 'the way back, drawn');
@@ -492,7 +492,7 @@ function seatHost({ publishThrows = false, duelThrows = false, court = null } = 
     staffTeleportClient: { cancel() {} }, cabinLink: { close() {} }, caravanVisitLink: { close: () => log.push('caravan listener closed') },   // WAGONS2-VISIT: the visited caravan's listener
     wagonRiders: { clear: () => log.push('riders cleared') },   // WAGONS2 (FINAL AUDIT): nobody rides with me offline
     online: session('presence', 'dungeon:m123'), chatLinks: new Map(Object.keys(rooms).map((k) => [k, session(k, rooms[k])])),
-    chatLog: { tab: (id) => ({ room: rooms[id] ?? null }) }, SOCIAL_ROOM, hubLinkRoom: () => SOCIAL_ROOM,   // SCALE5c: a page that has not seen a relay with the shards - the hub link the bus's
+    chatLog: { tab: (id) => ({ room: rooms[id] ?? null }) }, SOCIAL_ROOM, channelLinkRoom: (r) => r,   // SCALE5c: a page that has not seen a relay with the shards - each channel link the channel's own
     seatLock: { release: () => log.push('lock released'), claim: () => log.push('lock claimed') },
     handOverFoes: () => { log.push('foes handed'); return 0; }, handOverRoomFoes: () => 0,
     worldPublish: (now, force) => { log.push(`last word${force ? ', final' : ''}`); if (publishThrows) throw new TypeError("Cannot read properties of undefined (reading 'records')"); },

@@ -52,7 +52,7 @@
   {
     "name": "SCALE5c-hop-anywhere",
     "file": "src/net/hubShards.js",
-    "old": "m.t === 'hub' && (isHubShard(m.key) || m.key === HUB_BUS) ? m.key : null",
+    "old": "m.t === 'hub' && (isChannelShard(m.key) || isChannelBus(m.key)) ? m.key : null",
     "new": "m.t === 'hub' && typeof m.key === 'string' ? m.key : null",
     "tests": [
       "test/scale5c.test.js"
@@ -102,7 +102,7 @@
   {
     "name": "SCALE5c-frame-not-handed-up",
     "file": "server/src/index.js",
-    "old": "    if (a.vid && a.id && typeof message === 'string' && isHubShard(a.key) && !shardKeeps(message)) { this._hubForward(ws, a, message); return; }\n",
+    "old": "    if (a.vid && a.id && typeof message === 'string' && isChannelShard(a.key) && !shardKeeps(message)) { this._hubForward(ws, a, message); return; }\n",
     "new": "",
     "tests": [
       "test/scale5c.test.js"
@@ -202,7 +202,7 @@
   {
     "name": "SCALE5c-hop-unasked",
     "file": "server/src/index.js",
-    "old": "      if (isHubShard(a.key) && hubOfSubject(who.subject) !== a.key) {",
+    "old": "      if (isChannelShard(a.key) && shardOf(busOf(a.key), who.subject) !== a.key) {",
     "new": "      if (false) {",
     "tests": [
       "test/scale5c.test.js"
@@ -212,7 +212,7 @@
   {
     "name": "SCALE5c-bus-hop-unasked",
     "file": "server/src/index.js",
-    "old": "      if (a.key === SOCIAL_ROOM && m.hs === 1 && hubOfSubject(who.subject)) {",
+    "old": "      if (isChannelBus(a.key) && m.hs === 1 && shardOf(a.key, who.subject)) {",
     "new": "      if (false) {",
     "tests": [
       "test/scale5c.test.js"
@@ -312,7 +312,7 @@
   {
     "name": "SCALE5c-bus-leave-count-unmoved",
     "file": "server/src/index.js",
-    "old": "    else if (a.key === SOCIAL_ROOM) this._busCountMoved();",
+    "old": "    else if (isChannelBus(a.key)) this._busCountMoved();",
     "new": "",
     "tests": [
       "test/scale5c.test.js"
@@ -472,8 +472,8 @@
   {
     "name": "SCALE5c-broadcast-out-of-order",
     "file": "server/src/index.js",
-    "old": "      b.seg.push({ all: this._vframe(b, s) });\n      b.cur = null;",
-    "new": "      b.seg.push({ all: this._vframe(b, s) });",
+    "old": "      b.seg.push(x ? { all: this._vframe(b, s), x } : { all: this._vframe(b, s) });   // `x`: a peer it is not said to (a traveller's own mark)\n      b.cur = null;",
+    "new": "      b.seg.push(x ? { all: this._vframe(b, s), x } : { all: this._vframe(b, s) });   // `x`: a peer it is not said to (a traveller's own mark)",
     "tests": [
       "test/scale5c.test.js"
     ],
@@ -482,7 +482,7 @@
   {
     "name": "SCALE5c-broadcast-undelivered",
     "file": "server/src/index.js",
-    "old": "        if (typeof s === 'string') for (const [ws, a] of this._all()) if (a.id && a.vid && !this._dead.has(ws) && !this._gone.has(ws)) this._send(ws, s);\n",
+    "old": "        if (typeof s === 'string') for (const [ws, a] of this._all()) if (a.id && a.vid && a.id !== g.x && !this._dead.has(ws) && !this._gone.has(ws)) this._send(ws, s);\n",
     "new": "",
     "tests": [
       "test/scale5c.test.js"
@@ -492,7 +492,7 @@
   {
     "name": "SCALE5c-offer-unsaid",
     "file": "src/net/online.js",
-    "old": "    if (isSocialRoom(this.room) && !this._hubBus) frame.hs = 1;",
+    "old": "    if ((isSocialRoom(this.room) || isRegionRoom(this.room)) && !this._hubBus) frame.hs = 1;",
     "new": "",
     "tests": [
       "test/scale5c.test.js"
@@ -502,7 +502,7 @@
   {
     "name": "SCALE5c-hop-unread",
     "file": "src/net/online.js",
-    "old": "      if (primary && isSocialRoom(room) && key && key !== this.room) this.join(key);",
+    "old": "      if (primary && isChatRoom(room) && key && key !== this.room && channelOf(key) === channelOf(room)) this.join(key);",
     "new": "",
     "tests": [
       "test/scale5c.test.js"
@@ -682,7 +682,7 @@
   {
     "name": "SCALE5c-who-unasked",
     "file": "src/scenes/world.js",
-    "old": "    if (tabId === 'world') s?.sendHubWho?.();",
+    "old": "    if (tabId === 'world' || tabId === 'region') s?.sendHubWho?.();",
     "new": "",
     "tests": [
       "test/scale5c.test.js"
@@ -698,5 +698,155 @@
       "test/scale5c.test.js"
     ],
     "note": "the ask junk"
+  },
+  {
+    "name": "SCALE5c-region-fifth-shard",
+    "file": "src/net/hubShards.js",
+    "old": "canon(m[1], REGION_CHANNELS) && canon(m[2], REGION_SHARDS); };",
+    "new": "canon(m[1], REGION_CHANNELS) && canon(m[2], REGION_SHARDS + 1); };",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a fifth shard a region has not"
+  },
+  {
+    "name": "SCALE5c-region-bus-the-hub",
+    "file": "src/net/hubShards.js",
+    "old": "isRegionShard(key) ? String(key).slice(0, String(key).lastIndexOf('.')) : null",
+    "new": "isRegionShard(key) ? HUB_BUS : null",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a region shard handing its frames to the hub"
+  },
+  {
+    "name": "SCALE5c-channel-unread",
+    "file": "src/net/hubShards.js",
+    "old": "export const channelOf = (key) => busOf(key) ?? key;",
+    "new": "export const channelOf = (key) => key;",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard its own channel"
+  },
+  {
+    "name": "SCALE5c-region-subject-unread",
+    "file": "src/net/hubShards.js",
+    "old": "return `${bus}.${shardHash(sub) % REGION_SHARDS}`;",
+    "new": "return `${bus}.0`;",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "every account on a region's first shard"
+  },
+  {
+    "name": "SCALE5c-region-no-bus",
+    "file": "src/net/hubShards.js",
+    "old": "export const isChannelBus = (key) => key === HUB_BUS || isRegionBus(key);",
+    "new": "export const isChannelBus = (key) => key === HUB_BUS;",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a region's channel never sends a link to its shard"
+  },
+  {
+    "name": "SCALE5c-mark-a-socket-each",
+    "file": "server/src/index.js",
+    "old": "    if (this._vper.size) { this._vsendAll(out, id); for (const [o, b] of this._reals()) if (o !== skip && b.id && b.id !== id) this._send(o, out); return; }\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a traveller's mark one entry a socket on the region's bus"
+  },
+  {
+    "name": "SCALE5c-mark-back-to-sender",
+    "file": "server/src/index.js",
+    "old": "if (a.id && a.vid && a.id !== g.x && !this._dead.has(ws)",
+    "new": "if (a.id && a.vid && !this._dead.has(ws)",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a traveller hears its own mark"
+  },
+  {
+    "name": "SCALE5c-joiner-told-nothing",
+    "file": "server/src/index.js",
+    "old": "    if (!hubBus) { this._travTell(vws, now); return; }",
+    "new": "    if (!hubBus) return;",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard's joiner sees no traveller until each says again"
+  },
+  {
+    "name": "SCALE5c-census-the-bus-own",
+    "file": "server/src/index.js",
+    "old": "  _shardAtt(a) { const { key, pose, hm, at, w2, vid, ...att } = a; void key;",
+    "new": "  _shardAtt(a) { const { key, pose, hm, at, w2, vid, lk, ...att } = a; void lk; void key;",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the census counts the bus's own sockets alone"
+  },
+  {
+    "name": "SCALE5c-region-list-unanswered",
+    "file": "server/src/index.js",
+    "old": "      if (m.all === 1 && isRegionBus(a.key)) { this._send(ws, this._everyoneSaid(now)); return; }   // SCALE5c part two: a region's too - the Region tab's list\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the Region tab's list never answered"
+  },
+  {
+    "name": "SCALE5c-bus-any-channel",
+    "file": "server/src/index.js",
+    "old": "    else if (this._busKey !== busOf(hub)) return json({ error: 'bad' }, 400);   // and never another channel's\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a bus taking another channel's shard"
+  },
+  {
+    "name": "SCALE5c-hop-out-of-channel",
+    "file": "src/net/online.js",
+    "old": " && key !== this.room && channelOf(key) === channelOf(room)) this.join(key);",
+    "new": " && key !== this.room) this.join(key);",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a region link sent to the hub"
+  },
+  {
+    "name": "SCALE5c-fallback-to-the-hub",
+    "file": "src/net/online.js",
+    "old": "this._hubBus = true; this._ws = null; this.join(channelOf(room)); return; }",
+    "new": "this._hubBus = true; this._ws = null; this.join('chat:world'); return; }",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a region link falling back to the hub"
+  },
+  {
+    "name": "SCALE5c-region-join-unsharded",
+    "file": "src/scenes/world.js",
+    "old": "    link.join(channelLinkRoom(room));   // SCALE5c part two: the region's shard of this account's",
+    "new": "    link.join(room);",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the region link always on the region's channel"
+  },
+  {
+    "name": "SCALE5c-region-list-unmerged",
+    "file": "src/scenes/world.js",
+    "old": "hubOnline: s.hubOnline, label: place }",
+    "new": "label: place }",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the Region tab its own shard's alone"
   }
 ]

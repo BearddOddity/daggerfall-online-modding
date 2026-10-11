@@ -243,13 +243,13 @@
   {
     "name": "AUDIT-SCALE5a-n-off-the-leave",
     "file": "server/src/index.js",
-    "old": "...(isChatRoom(a.key) ? { n: isHubShard(a.key) ? this._hubN(this._namedCount()) : this._vsocks.size ? this._busCount() : this._namedCount() } : {})",
+    "old": "...(isChatRoom(a.key) ? { n: isChannelShard(a.key) ? this._hubN(this._namedCount()) : this._vsocks.size ? this._busCount() : this._namedCount() } : {})",
     "new": "...({})",
     "tests": [
       "test/scale5a.test.js",
       "test/rosterg.test.js"
     ],
-    "note": "a channel's leave says no count - a claim's closed tab (C1) and a failed welcome's leave (C2) taken off twice SCALE5c (re-aimed by content): the leave n reads the hub count"
+    "note": "a channel's leave says no count - a claim's closed tab (C1) and a failed welcome's leave (C2) taken off twice SCALE5c (re-aimed by content): the leave n reads the hub count SCALE5c (re-aimed by content): a region shard too (part two)"
   },
   {
     "name": "AUDIT-SCALE5a-n-counts-the-dead",

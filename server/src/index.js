@@ -182,7 +182,7 @@ import { routeStaffTeleport } from './staffTeleport.js';
 import { privateInteriorOf, privateInteriorAdmits, caravanKeyOf } from '../../src/net/privateInterior.js';   // WAGONS2-VISIT: and a caravan's own room
 import { isStaff } from '../../src/net/staffCommands.js';
 import { RELAY_CFG_TTL_MS, RELAY_INTERNAL_CFG, mayRelayCfg, relayCfgValue } from '../../src/net/relayCfg.js';   // SCALE5b: the relay's settings, at run time
-import { isHubShard, hubOfSubject, HUB_INTERNAL_UP, HUB_INTERNAL_DOWN, HUB_BATCH_MS, HUB_SYNC_MS, HUB_COUNT_MS, HUB_BATCH_MAX, CLOSE_HUB, HUB_FIND_MAX, HUB_FIND_ROOM_HZ_MAX, HUB_GUILD_WHO_MAX, HUB_WHO_KEEP_MS, HUB_FRAME_MAX, HUB_UP_HZ_MAX, HUB_UP_BURST, shardKeeps, foldFind } from '../../src/net/hubShards.js';   // SCALE5c: the hub, sixteen ways
+import { busOf, shardOf, isChannelShard, isChannelBus, isRegionBus, HUB_INTERNAL_UP, HUB_INTERNAL_DOWN, HUB_BATCH_MS, HUB_SYNC_MS, HUB_COUNT_MS, HUB_BATCH_MAX, CLOSE_HUB, HUB_FIND_MAX, HUB_FIND_ROOM_HZ_MAX, HUB_GUILD_WHO_MAX, HUB_WHO_KEEP_MS, HUB_FRAME_MAX, HUB_UP_HZ_MAX, HUB_UP_BURST, shardKeeps, foldFind } from '../../src/net/hubShards.js';   // SCALE5c: the hub, sixteen ways
 import { verifyToken, verifyOrder, verifyStakeOrderAnyAge, importPublicKeyB64, MAX_TTL_S, ORDER_TTL_S, renownIssuable, deckDigest, remainsDigest } from '../../src/net/identityToken.js';   // MOD1: and the mute order, checked with the same key
 /** ACC1d/F8: the most spent signatures one room remembers. Every entry
  *  expires within MAX_TTL_S and the hello gate bounds how fast they can
@@ -597,6 +597,7 @@ export class Room {
     this._folds = new WeakMap();   // SCALE5c: an attachment -> its name as a search folds it (`_findNames`)
     this._findRoom = null;       // SCALE5c: the whole hub's search bucket (HUB_FIND_ROOM_HZ_MAX)
     this._everyone = null;       // SCALE5c: { at, s } - everyone online as the bus last said it (`_everyoneSaid`)
+    this._busKey = undefined;    // SCALE5c part two: the channel this bus is (its first shard's), never another's
     this._hostMemo = undefined;  // SCALE5b: the room's host (`_hostOf`), kept until a socket's id or hello stamp moves - undefined: not known
     this._relayCfg = undefined;  // SCALE5b: the relay's settings (net/relayCfg.js) - the hub's from its storage, any other room's as the hub last answered
     this._relayCfgAt = -Infinity;   // SCALE5b: when a room not the hub last asked
@@ -1082,12 +1083,12 @@ export class Room {
     const rooms = this.env?.ROOMS;
     const now = Date.now();
     const sync = now - this._hubSyncAt >= HUB_SYNC_MS;
-    if (!isHubShard(hub) || !rooms?.get || (!this._up.length && !sync)) return Promise.resolve();
+    if (!isChannelShard(hub) || !rooms?.get || (!this._up.length && !sync)) return Promise.resolve();   // SCALE5c part two: a region's shard too
     const body = { hub, e: this._up.splice(0, HUB_BATCH_MAX) };
     if (sync) { this._hubSyncAt = now; body.live = this._hubLive(); }
     this._upBusy = (async () => {
       try {
-        const res = await rooms.get(rooms.idFromName(SOCIAL_ROOM)).fetch(new Request(`https://relay.internal${HUB_INTERNAL_UP}`, { method: 'POST', body: JSON.stringify(body), signal: AbortSignal.timeout(ROOM_CALL_MS) }));
+        const res = await rooms.get(rooms.idFromName(/** @type {string} */ (busOf(hub)))).fetch(new Request(`https://relay.internal${HUB_INTERNAL_UP}`, { method: 'POST', body: JSON.stringify(body), signal: AbortSignal.timeout(ROOM_CALL_MS) }));
         const ans = res?.ok ? await res.json() : null;
         for (const vid of Array.isArray(ans?.unknown) ? ans.unknown : []) this._hubRehello(vid);
       } catch (e) {
@@ -1108,7 +1109,7 @@ export class Room {
     for (const g of b.seg) {
       if (Number.isInteger(g?.all)) {   // to every socket it holds that the bus holds too
         const s = b.s[g.all];
-        if (typeof s === 'string') for (const [ws, a] of this._all()) if (a.id && a.vid && !this._dead.has(ws) && !this._gone.has(ws)) this._send(ws, s);
+        if (typeof s === 'string') for (const [ws, a] of this._all()) if (a.id && a.vid && a.id !== g.x && !this._dead.has(ws) && !this._gone.has(ws)) this._send(ws, s);
         continue;
       }
       for (const e of Array.isArray(g?.to) ? g.to : []) {
@@ -1171,7 +1172,9 @@ export class Room {
     let b;
     try { b = await request.json(); } catch { return json({ error: 'bad' }, 400); }
     const hub = b?.hub;
-    if (!isHubShard(hub) || !Array.isArray(b.e)) return json({ error: 'bad' }, 400);
+    if (!isChannelShard(hub) || !Array.isArray(b.e)) return json({ error: 'bad' }, 400);
+    if (this._busKey === undefined) this._busKey = busOf(hub);   // SCALE5c part two: a bus is the channel its first shard names
+    else if (this._busKey !== busOf(hub)) return json({ error: 'bad' }, 400);   // and never another channel's
     this._all();
     const unknown = new Set();
     for (const ev of b.e.slice(0, HUB_BATCH_MAX)) {
@@ -1200,20 +1203,41 @@ export class Room {
     const now = Date.now();
     const m = { id: p.att.id, ...(typeof p.m?.acct === 'string' && typeof p.m?.asecret === 'string' ? { acct: p.m.acct, asecret: p.m.asecret } : {}), ...(p.m?.ps === 1 ? { ps: 1 } : {}), ...(p.m?.cl === 1 ? { cl: 1 } : {}) };   // `id`: the account's hello asks the socket still holds the id it greeted
     const vws = new ShardSocket(this, hub, vid);
-    const a = { ...p.att, key: SOCIAL_ROOM };
+    const bus = /** @type {string} */ (busOf(hub)), hubBus = bus === SOCIAL_ROOM;
+    const a = { ...p.att, key: bus };
     vws.att = a;
     this._vput(vws);
     this._all();
     this._adopt(vws, a);
     this._metrics.c.hellos++;
-    const held = a.sub ? this._otherTabsOf(a.sub, vws, a.id).filter((o) => !o.virtual) : [];
+    const held = hubBus && a.sub ? this._otherTabsOf(a.sub, vws, a.id).filter((o) => !o.virtual) : [];   // ONE-SEAT is the hub's (a region's channel never held a seat)
     if (held.length && !m.cl) { this._refuse(vws, SEAT_ELSEWHERE, CLOSE_REPLACED); return; }
     if (m.cl) for (const o of held) this._refuse(o, SEAT_ELSEWHERE, CLOSE_REPLACED);
     this._busCountMoved();
     this._fanRoster(vws, JSON.stringify(badged({ t: 'join', id: a.id, name: a.name, sub: a.sub, n: this._busCount() }, a)));
+    if (!hubBus) { this._travTell(vws, now); return; }   // SCALE5c part two: a region's - its travellers' marks
     const ev = await this._liveEvent();
     if (ev) this._send(vws, JSON.stringify({ t: 'event', kind: ev.kind, at: ev.at, w: 1 }));   // `w`: as a welcome says it - a joiner's, not a fresh staging
     await this._hubHelloWords(vws, m, a.sub, now);
+  }
+  /** (a region's bus) SCALE5c part two: a shard's joiner told the region's fresh traveller marks (TV3) - its shard's
+   *  welcome holds none, the marks being the bus's - TRAV_WELCOME_MAX at most, as a welcome's `tr` is cut. Each as a
+   *  `trav` frame, which a client reads as said now: a mark up to TRAV_SEND_MIN_MS old is drawn that much longer. */
+  _travTell(vws, now) {
+    let n = 0;
+    for (const [w, b] of this._all()) {
+      if (w === vws || !b.id || !b.tm || now - b.tm.at > TRAV_STALE_MS || this._dead.has(w) || this._gone.has(w)) continue;
+      const p = { ...b.tm };
+      delete p.at;
+      this._send(vws, JSON.stringify(badged({ t: 'trav', id: b.id, name: b.name, sub: b.sub, p }, b)));
+      if (++n >= TRAV_WELCOME_MAX) break;
+    }
+  }
+  /** SCALE5c part two: one frame to everyone the room holds but the peer `id` (and the socket `skip`) - on a bus, one
+   *  entry a shard (`_vsendAll`) and a walk of its own sockets, never of its shards'; anywhere else, the walk. */
+  _fanAllBut(skip, id, out) {
+    if (this._vper.size) { this._vsendAll(out, id); for (const [o, b] of this._reals()) if (o !== skip && b.id && b.id !== id) this._send(o, out); return; }
+    for (const [o, b] of [...this._all()]) if (o !== skip && b.id && b.id !== id) this._send(o, out);
   }
   /** (the bus) A ShardSocket gone: closed (`said` - its leave said, as any socket's), or replaced by its own reconnect on
    *  its shard (nothing said: the id lives on in the new one - the hub's own law for a reconnect). */
@@ -1239,11 +1263,11 @@ export class Room {
   }
   /** (the bus) A frame to EVERY ShardSocket - one entry a shard, never one a socket: each shard says it to every socket
    *  it holds. In its batch's order (a segment of its own), so nothing said a socket before it is heard after it. */
-  _vsendAll(s) {
+  _vsendAll(s, x = null) {
     for (const [hub, n] of this._vper) {
       if (!(n > 0)) continue;
       const b = this._vbatch(hub);
-      b.seg.push({ all: this._vframe(b, s) });
+      b.seg.push(x ? { all: this._vframe(b, s), x } : { all: this._vframe(b, s) });   // `x`: a peer it is not said to (a traveller's own mark)
       b.cur = null;
     }
     if (this._vper.size) this._downArm();
@@ -1585,7 +1609,7 @@ export class Room {
       this._travClearFan = g.bucket;
       if (!g.pass) return;
       this._travOwed.delete(id);
-      for (const [other, b] of [...this._all()]) if (b.id && b.id !== id) this._send(other, out);
+      this._fanAllBut(null, id, out);   // SCALE5c part two: on a region's bus, one entry a shard
     }
   }
   /** TRADE1: the trade frames' own bucket (TRADE_HZ_MAX), the same strikes - an offer beside the poses, never starving them. */
@@ -1832,7 +1856,7 @@ export class Room {
    *  nobody plays would cost storage for ever, and the rooms a client can name are many. */
   async alarm() {
     // SCALE5c: a shard's alarm is its sync - every socket it holds told the bus, every HUB_SYNC_MS while it holds any
-    if (this._hubKey === undefined) { let k = null; for (const [, b] of this._all()) { k = b.key ?? null; break; } this._hubKey = isHubShard(k) ? k : null; }
+    if (this._hubKey === undefined) { let k = null; for (const [, b] of this._all()) { k = b.key ?? null; break; } this._hubKey = isChannelShard(k) ? k : null; }
     if (this._hubKey) { this._hubSyncAt = 0; await this._hubUpFlush(); if (this.state.getWebSockets().length) await this.state.storage.setAlarm(Date.now() + HUB_SYNC_MS); return; }
     if (await this.state.storage.get('hub')) { await this._relayCfgOf(); await this._sweepHub(Date.now()); await this._heraldBeat(Date.now()); await this._serpentHeraldBeat(Date.now()); await this._sdBeat(Date.now()); await this._sdHeraldBeat(Date.now()); return; }   // AUDIT SOC A3: the hub's alarm is its sweep, whoever is in the room; DISCORD-GATES: and its herald's posts; SERPENT2: and the serpent's; SD3: and the Super dungeon's director; SD-HERALD: and its herald's, after the director's moves
     // AUDIT 68 X8-park-registry-unbounded: an owner's registry (HCC-PARK) is one object per account and character a
@@ -2231,7 +2255,7 @@ export class Room {
     // SCALE5c: A SHARD HANDS ON every frame but its socket's hello, ping and pose (a channel keeps no place), AS IT CAME -
     // before any door or parse here: the bus parses it, meters it and strikes for it over the socket's ShardSocket, as
     // the hub always did, and its doors (a quest's, which asks the account only the bus's socket carries) are the bus's
-    if (a.vid && a.id && typeof message === 'string' && isHubShard(a.key) && !shardKeeps(message)) { this._hubForward(ws, a, message); return; }
+    if (a.vid && a.id && typeof message === 'string' && isChannelShard(a.key) && !shardKeeps(message)) { this._hubForward(ws, a, message); return; }
     // AUDIT WORLD A1: a large frame - or any frame shaped as a world frame - is the host's memory or nothing, and is
     // answered BEFORE any parse: a socket with no hello is refused, the frame is metered on the pose bucket, and
     // anyone but a world room's host is ignored unparsed (a handover races; parsing 512 KiB for a stranger was the
@@ -2318,8 +2342,8 @@ export class Room {
       if (who.error) { this._refuse(ws, who.error); return; }
       // SCALE5c: A SHARD HOLDS ITS OWN ACCOUNTS - one whose subject lands on another is told which (its client goes there),
       // before anything here is written
-      if (isHubShard(a.key) && hubOfSubject(who.subject) !== a.key) { this._hubHop(ws, hubOfSubject(who.subject) ?? SOCIAL_ROOM); return; }
-      if (a.key === SOCIAL_ROOM && m.hs === 1 && hubOfSubject(who.subject)) { this._hubHop(ws, /** @type {string} */ (hubOfSubject(who.subject))); return; }   // SCALE5c: a hub link of a build that knows the shards, said hello to the bus itself (no stored word of them yet), is told its own - before anything is held, so its close says no leave
+      if (isChannelShard(a.key) && shardOf(busOf(a.key), who.subject) !== a.key) { this._hubHop(ws, shardOf(busOf(a.key), who.subject) ?? /** @type {string} */ (busOf(a.key))); return; }   // SCALE5c part two: a region's shards the same
+      if (isChannelBus(a.key) && m.hs === 1 && shardOf(a.key, who.subject)) { this._hubHop(ws, /** @type {string} */ (shardOf(a.key, who.subject))); return; }   // SCALE5c: a hub link of a build that knows the shards, said hello to the bus itself (no stored word of them yet), is told its own - before anything is held, so its close says no leave
       if (a.key.startsWith('owned:') && !await privateInteriorAdmits(a.key, who.subject, isStaff(who.glyphs))) {
         this._refuse(ws, 'private room'); return;
       }
@@ -2373,7 +2397,7 @@ export class Room {
       let replaced = null;   // AUDIT WORLD A4: the reconnect keeps the first hello's stamp - a host whose connection blipped keeps its seat
       for (const [other, b] of this._withId(m.id, ws)) {   // SCALE5a: listed by a method of its own (`_withId`) - `_message`'s own loops run interpreted
         replaced = b;
-        if (isHubShard(a.key) && b.vid) { this._vidIdx.delete(b.vid); this._hubUpOwe(b.vid, 'r', 0); }   // SCALE5c: its ShardSocket replaced too - nothing said for its account
+        if (isChannelShard(a.key) && b.vid) { this._vidIdx.delete(b.vid); this._hubUpOwe(b.vid, 'r', 0); }   // SCALE5c: its ShardSocket replaced too - nothing said for its account
         this._setAttach(other, { ...b, id: null, replaced: true });
         try { other.close(CLOSE_REPLACED, 'replaced'); } catch { /* gone */ }
         this._closed(other);   // SCALE2b
@@ -2413,7 +2437,7 @@ export class Room {
       // the sand when its join makes it one (`_sessionShow`)
       const shown = isArenaPrivateRoom(a.key) ? { shown: (await this._sessionOf())?.members?.[who.subject] ? 1 : 0 } : {};
       // SCALE5c: a shard's socket is the bus's ShardSocket by this id - and keeps what its hello said the bus, to say it again
-      const shard = isHubShard(a.key), vid = shard ? `${m.id}~${now.toString(36)}${(++this._vseq).toString(36)}${crypto.getRandomValues(new Uint16Array(1))[0].toString(36)}` : null;
+      const shard = isChannelShard(a.key), vid = shard ? `${m.id}~${now.toString(36)}${(++this._vseq).toString(36)}${crypto.getRandomValues(new Uint16Array(1))[0].toString(36)}` : null;
       if (shard) this._hubKey = a.key;
       if (!this._setAttach(ws, { ...a, ...placed, ...shown, ...(shard ? { vid, hm: { acct: m.acct ?? null, as: m.asecret ?? null, ps: m.ps === 1 ? 1 : 0 } } : {}), id: m.id, name: who.name, title: who.title, ...(who.ts ? { ts: who.ts } : {}), glyphs: who.glyphs, gx: who.gx, au: who.au, ...(who.rb ? { rb: who.rb } : {}), lv: who.lv, ...guild, ...(who.hn ? { hn: who.hn, hc: who.hc, hb: who.hb, hg: who.hg } : {}), ...(who.ci && !chat && !isSocialRoom(a.key) ? { ci: who.ci } : {}), ...(armsOk(who.wa) && !chat && !isSocialRoom(a.key) ? { wa: who.wa } : {}), gio: who.gio, sub: who.subject, ...(siegeSide ? { sd: siegeSide } : {}), mu: who.mu, pose: chat ? null : m.pose, since: replaced?.since ?? now, ...arena, ...charLv, ...linked, ...(m.w2 === 1 ? { w2: 1 } : {}) })) { this._refuse(ws, 'hello too large'); return; }   // MOD1: `sub` the verified account (what a mute names), `mu` until when it may not talk   // RENOWN1: `lv` the Renown level the token carried
       if (!chat && m.pose && this._trailing({ key: a.key, sub: who.subject })) this._trailPose(ws, m.pose, now);   // AUDIT INT11: a fighter's socket new to the room stands where its hello put it, from now - on its trail, or none says when
@@ -2450,7 +2474,7 @@ export class Room {
           if (!this._hubAlarmed) { this._hubAlarmed = true; try { if ((await this.state.storage.getAlarm()) == null) await this.state.storage.setAlarm(now + HUB_SYNC_MS); } catch { /* the next hello arms it */ } }
           return;
         }
-        if (a.key === SOCIAL_ROOM) this._busCountMoved();   // SCALE5c: the bus's own hello - its shards told the count
+        if (isChannelBus(a.key)) this._busCountMoved();   // SCALE5c: the bus's own hello - its shards told the count
         if (isSocialRoom(a.key)) await this._hubHelloWords(ws, m, who.subject, now);
         return;
       }
@@ -3122,6 +3146,7 @@ export class Room {
       // online instead, every shard's - the Guild tab's list - off the guild's own sockets
       const now = Date.now();
       if (!this._spend(ws, now, (b, t) => tokenGate(b, t, 1, 3), 'findbucket', 'finddrops', 'too many searches')) return;
+      if (m.all === 1 && isRegionBus(a.key)) { this._send(ws, this._everyoneSaid(now)); return; }   // SCALE5c part two: a region's too - the Region tab's list
       if (!isSocialRoom(a.key)) { this._junk(ws); return; }
       if (m.g === 1) { this._send(ws, JSON.stringify({ t: 'found', g: 1, l: this._guildWho(ws, a) })); return; }
       if (m.all === 1) { this._send(ws, this._everyoneSaid(now)); return; }
@@ -3194,7 +3219,7 @@ export class Room {
       // nothing to send again, so a dropped one left the player drawn for TRAV_STALE_MS; it is said on the budget's next
       // pass (the room's next traveller frame - a room over the budget has them every moment)
       if (!room.pass) { if (clear) this._oweTravClear(a.id, out); return; }
-      for (const [other, b] of [...this._all()]) if (other !== ws && b.id) this._send(other, out);
+      this._fanAllBut(ws, a.id, out);   // SCALE5c part two: on a region's bus, one entry a shard
       return;
     }
     if (m.t === 'party') {
@@ -3632,10 +3657,10 @@ export class Room {
     this._raidTownsUp.delete(ws);   // SCALE2b: an upload its socket never finished goes with it
     if (!last) { try { await this.state.storage.delete([lookKey(a.id), secretKey(a.id)]); } catch { /* the room forgets it on the next empty hello */ } }
     // ROSTER-G: a channel says its leaves now, as it says its joins - the roster beside the chat is everyone online
-    const out = JSON.stringify({ t: 'leave', id: a.id, ...(isChatRoom(a.key) ? { n: isHubShard(a.key) ? this._hubN(this._namedCount()) : this._vsocks.size ? this._busCount() : this._namedCount() } : {}) });   // SCALE5c: a shard's, the hub's count   // AUDIT SCALE5a C1-C3: a channel's leave says the room's count, as its join does
+    const out = JSON.stringify({ t: 'leave', id: a.id, ...(isChatRoom(a.key) ? { n: isChannelShard(a.key) ? this._hubN(this._namedCount()) : this._vsocks.size ? this._busCount() : this._namedCount() } : {}) });   // SCALE5c: a shard's, the hub's count   // AUDIT SCALE5a C1-C3: a channel's leave says the room's count, as its join does
     if (isChatRoom(a.key)) this._fanRoster(ws, out); else this._fanBut(ws, out);   // SCALE5a: in place, as the join's; SCALE5b: a channel's, the second wire's batched
-    if (isHubShard(a.key) && a.vid) { this._vidIdx.delete(a.vid); this._hubUpOwe(a.vid, 'x', 0); }   // SCALE5c: and the bus told it went
-    else if (a.key === SOCIAL_ROOM) this._busCountMoved();   // SCALE5c: the bus's - its shards told the hub's count
+    if (isChannelShard(a.key) && a.vid) { this._vidIdx.delete(a.vid); this._hubUpOwe(a.vid, 'x', 0); }   // SCALE5c: and the bus told it went
+    else if (isChannelBus(a.key)) this._busCountMoved();   // SCALE5c: the bus's - its shards told the hub's count
     this._travOwed.delete(a.id);   // AUDIT DEEP2 C2: the leave takes the mark out - an owed clear of it is said
     if (!isChatRoom(a.key) && this._leads(a, ws)) this._sayHost({ skip: ws, except: ws });   // WORLD1: the host left - the next-longest in the room is the host now, said to everyone (ROSTER-G: a channel has no host)
     if (isBattleRoom(a.key) && a.sub) { try { await this._siegeGone(ws, a.sub, Date.now()); } catch (e) { console.warn('[siege] leave failed', e?.message ?? e); } }   // AUDIT-SEATS T3: a fighter's place kept from now

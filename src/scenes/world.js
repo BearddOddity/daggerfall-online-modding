@@ -942,7 +942,7 @@ const TEST_GODMODE = false;
 const isStaffT = (g) => TEST_GODMODE || isStaff(g);
 import { isStaff, parseStaffCommand, STAFF_HELP_LINES, findPlace } from '../net/staffCommands.js';   // STAFF1: the staff's own commands
 import { RELAY_CFG_KEYS, mayRelayCfg } from '../net/relayCfg.js';   // SCALE5b: the relay's settings, a developer's
-import { hubOfSubject, hubShardsSupported } from '../net/hubShards.js';   // SCALE5c: the hub, sixteen ways
+import { shardOf, isChannelBus, channelOf, hubShardsSupported } from '../net/hubShards.js';   // SCALE5c: the hub, sixteen ways; part two: a region's channel, four
 import { fieldFromNative, nativeFromField, fieldOfPixelLocal } from '../systems/weatherField.js';   // WEATHER2b: the field's metres from the streaming world's natives, and back
 import { cellOfField, VC_PROFILE } from '../render/volumetricClouds.js';   // WEATHER2c: the field's cells as the clouds' cells   // W1: the live weather state (the save halves ride save.js); SAV3: the classic import's zone array
 import { classicSaveToSnapshot, takePendingClassicSave, peekPendingClassicSave } from '../systems/classicSave.js';   // SAV3: the classic-save import arm
@@ -7557,14 +7557,16 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  event handlers that ask this are bound before it exists. */
   let staffTeleportClient = null, staffTeleportHeld = false;
   let _staffGlyphs = [];
-  // SCALE5c: THE HUB LINK'S ROOM - this account's own shard (net/hubShards.js hubOfSubject, by the session's account, which
-  // the token's subject is) once a relay has said it keeps them; else the hub itself, whose welcome names the shard
-  // (`hub`) when it does. Remembered between pages, so a page joins its shard at once rather than by way of the bus.
+  // SCALE5c: A CHANNEL LINK'S ROOM - the hub's or a region's (part two): this account's own shard of it (net/hubShards.js
+  // shardOf, by the session's account, which the token's subject is) once a relay has said it keeps them; else the
+  // channel itself, which tells a link of this build its shard (`hub`) when it does. Remembered between pages, so a page
+  // joins its shard at once rather than by way of the bus. Any other room is itself.
   const HUB_SHARDS_SEEN_KEY = 'dfjs.hubShards';
-  const hubLinkRoom = () => {
+  const channelLinkRoom = (room) => {
+    if (!isChannelBus(room)) return room;
     let seen = null;
     try { seen = appStorage()?.getItem?.(HUB_SHARDS_SEEN_KEY) ?? null; } catch { seen = null; }
-    return seen === '1' ? (hubOfSubject(storedSession(appStorage())?.id) ?? SOCIAL_ROOM) : SOCIAL_ROOM;
+    return seen === '1' ? (shardOf(room, storedSession(appStorage())?.id) ?? room) : room;
   };
   let relayCfgLink = null, relayCfgTab = null;   // SCALE5b: the hub's link a relay setting goes down, and the tab that asked
   let findTab = null;   // SCALE5c: the tab a `/find` was typed in - the hub's answer lands there
@@ -21328,7 +21330,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       link.onMuted = onMuted;
       link.onRelay = onRelayVersion;
       link.onGuildGone = guildGone;   // GUILD1c: a room took my guild off - the hub's word on a removal most of all
-      if (tab.room) link.join(tab.room === SOCIAL_ROOM ? hubLinkRoom() : tab.room);   // CHAT-CHAN: the Region tab's room waits for the region and the relay (chatRegionFrame); SCALE5c: the hub link its own shard
+      if (tab.room) link.join(channelLinkRoom(tab.room));   // CHAT-CHAN: the Region tab's room waits for the region and the relay (chatRegionFrame); SCALE5c: the hub link its own shard
       chatLinks.set(tab.id, link);
       if (tab.room === SOCIAL_ROOM) {
         relayCfgLink = link;   // SCALE5b: a relay setting goes down the hub's link, and its answer comes back to the tab that asked
@@ -27211,9 +27213,9 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (tabId === 'party') return partyRosterSource(social?.party, s, social?.acct ?? null);
     if (tabId === 'guild') { s?.sendGuildWho?.(); return guildRosterSource(s, myGuildTag()); }   // GUILD1c: the hub's peers wearing my guild's tag; SCALE5c: and the guild on every other shard, asked while the tab is drawn (the session's own clock bounds it)
     if (tabId === 'local') return localRosterSource(s, openPeers(peersNear(), isPartyMate), player.feetAt());   // AUDIT (pre-merge) I-F: a concealed player is not listed near - the F key's law (INVIS-NET; CONCEAL-MATE: a mate is)
-    if (tabId === 'world') s?.sendHubWho?.();   // SCALE5c: on a shard, everyone online asked of the bus while the hub is small (the session's own clock bounds it)
+    if (tabId === 'world' || tabId === 'region') s?.sendHubWho?.();   // SCALE5c: on a shard, everyone online asked of the bus while the channel is small (the session's own clock bounds it); part two: a region's too
     const place = chatLog?.tab(tabId)?.place ?? null;
-    return place && s ? { id: s.id, name: s.name, title: s.title, glyphs: s.glyphs, gt: s.gt, peers: s.peers, roomCount: s.roomCount, label: place } : s;   // GUILD1c: my own row wears my tag
+    return place && s ? { id: s.id, name: s.name, title: s.title, glyphs: s.glyphs, gt: s.gt, peers: s.peers, roomCount: s.roomCount, hubOnline: s.hubOnline, label: place } : s;   // GUILD1c: my own row wears my tag
   };
   /** CHAT-CHAN: the Party and Region tabs on a relay from before the channels - the World link's welcome said so. */
   const chanOld = () => { const world = chatLinks?.get('world'); return world?.status === 'open' && !world.chanOk; };
@@ -27290,7 +27292,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (!room) return;
     const place = maps.getRegionName(index) || 'this region';
     chatLog.setRoom('region', room, place);
-    link.join(room);
+    link.join(channelLinkRoom(room));   // SCALE5c part two: the region's shard of this account's
     chatLog.push('region', { text: regionJoinedText(place), system: true });
   };
   /** TV3: my mark, when it is due - on the Region tab's own link, through a relay that knows the frame. */
@@ -27308,7 +27310,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // WILD1: in or near the open zone my mark is for my guild alone - a player with none sends none (my party has its own
     // poses), and the maps of everyone else hide one they hear anyway (wildHidesPlayer)
     const wildHidden = outdoors && !myGuildTag() && wildAtWire(campToWire(player.feetAt()), true);
-    const shown = outdoors && isEnhanced() && getPref('showToTravellers') !== false && link.room === chatRegionRoom(_questRegionIndex()) && !concealBits(playerEntity);
+    const shown = outdoors && isEnhanced() && getPref('showToTravellers') !== false && channelOf(link.room) === chatRegionRoom(_questRegionIndex()) && !concealBits(playerEntity);   // SCALE5c part two: the region's channel, on whichever of its shards
     const n = shown && !wildHidden ? state.worldCoords(player.pos) : null;
     // OWS1: at a helm or aboard, the region sees a ship, headed as its bow (a changed way is sent at once - travellerDue)
     const ship = n ? csaBoatUnderMe() : null;
@@ -27870,7 +27872,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     for (const [tabId, link] of chatLinks ?? []) {
       const room = chatLog?.tab(tabId)?.room ?? null;
       link.resume({ claim: room === SOCIAL_ROOM });
-      if (room) link.join(room === SOCIAL_ROOM ? hubLinkRoom() : room);   // SCALE5c: the hub link to its own shard
+      if (room) link.join(channelLinkRoom(room));   // SCALE5c: a channel's link to its own shard
     }
     seatLock?.claim();
   };

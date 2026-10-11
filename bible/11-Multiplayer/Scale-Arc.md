@@ -65,7 +65,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE4f | The mint's realm row read once (four statements in one), and its guild membership once (three in one); every statement's D1 wait, rows and a replica's serving on the metrics point; an overloaded D1 a 503 | No | **Built** (2026-10-10, this branch; acct110) - the writes stay, with their reasons |
 | SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | **Built** (2026-10-10, this branch; acct110) |
 | SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | **Built** (2026-10-10, this branch; relay world191, NOT YET DEPLOYED) - with the relay's settings at run time and a halo at a walking rate |
-| SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | **Part one built** (2026-10-11, this branch; relay world192, NOT YET DEPLOYED) - the hub's sixteen shards, the World tab's list and search; the region channels next |
+| SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | **Built** (2026-10-11, this branch; relay world192, NOT YET DEPLOYED) - the hub's sixteen shards and each region's four, the World and Region tabs' lists and the search |
 | SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | Planned, by the metrics |
 | SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | Planned, by the metrics |
 | SCALE6 | Abuse and backups: Turnstile on guest creation, /64 IPv6 rate keys, bans, report and ignore, `ALLOWED_ORIGIN`, R2 snapshots, a hub export | Some | Alongside |
@@ -1359,7 +1359,45 @@ PIN MOVED, each a pin that read a line SCALE5c moved:
 **The deploy.** One announced relay drop, with SCALE5b's world191 (neither is deployed). The account service (acct110)
 ships first or with it. No database migration.
 
-**Left:** the region channels on the same machinery (part two).
+**Left:** nothing of the slice - part two, below, is the region channels.
+
+### SCALE5c part two: a region's channel, four ways (2026-10-11, this branch - the same world192, re-hashed)
+
+A region's channel (`chat:region.<r>`) held every player standing in the region behind one door: 2,048 sockets, and a
+start region's whole reconnect wave through one hello gate. It is split the way the hub is, on the same machinery
+(`src/net/hubShards.js` REGION_SHARDS, busOf, shardOf, channelOf):
+- **Four shards a region**, `chat:region.<r>.<k>`, k from the verified account as the hub's. The region's own channel
+  is its bus: its lines, its travellers' marks (TV3) and its census (SD3) run over a ShardSocket for each shard's
+  socket. Each shard has its own gate and cap, so the region's door is four times as wide and holds four times as many.
+- **The machinery, by channel.** A shard hands its frames to its own channel's bus. A bus takes a shard of its own
+  channel alone (the first shard that speaks names it, and any other channel's is refused). The hub's laws stay the
+  hub's: ONE-SEAT, the live event and the account's words are said by the hub's bus alone.
+- **A traveller's mark** is one entry a shard that skips its sender (`{all, x}`). Its owed clears go the same way.
+  A shard's joiner is told the region's fresh marks by the bus (`_travTell`, TRAV_WELCOME_MAX at most). Each arrives
+  as a `trav` frame, which a client reads as said now, so a mark up to TRAV_SEND_MIN_MS old is drawn that much longer.
+- **The census** counts every shard's registered accounts: their ShardSockets carry the hello's `lk`.
+- **The Region tab** lists its own shard's members live, and everyone in the region while it holds no more than a
+  roster says: the region's bus answers `find` with `all`, as the hub's does.
+- **The client.** The Region tab's link offers the shards, joins its own shard once the page has seen a relay with
+  them (`channelLinkRoom`), follows a hop only within its own channel, and falls back to the region's channel after two
+  shard sockets that never open. A traveller's mark is sent only while the link stands in the region's channel, on
+  whichever of its shards (`channelOf`).
+
+**Measured** (`node tools/hubShardBench.mjs REGION_N=2000`): one region's channel, 2,000 arriving - the 2,000th hello
+3.78 ms and 2,000 sends, a region line 0.81 ms; the same region on its four shards - a hello 1.24 ms on its shard
+(500 a shard) and 0.08 ms on the bus, the whole wave 156 ms of the bus's, a region line 0.56 ms on the bus and 0.7 KiB
+to the shards.
+
+**Pins.** `test/scale5c.test.js`'s thirteenth: the law (every region shard a channel and a region's room, never a
+hub's; the bus of a shard and the channel of a key), and over real Rooms a region line and a traveller's mark from one
+shard heard on another and on a tab from before (the mark one entry a shard, never back to its sender), a shard's
+joiner told the marks, the census over every shard, everyone for the Region tab, the hops, a bus refusing another
+channel's shard; the session's offer, hop and fallback; the host's wiring. `tools/mutants/scale5c.json` 85, all dead.
+
+PIN MOVED: the channel whitelist again (chat1, chatchan: each region's four); the hub link's room, now any channel's
+(`channelLinkRoom` - chat1, oneseat and its harness); the Region tab's join (chatchan); a traveller's mark's region
+check (tv3, two). Re-aimed by content, all dead: TV3-host-switch-ignored, AUDIT-TV-C4-told-to-the-region-left,
+AUDIT-SCALE5a-n-off-the-leave.
 
 ## THE PLAN PAST 2,000 (2026-10-10)
 
@@ -1425,7 +1463,7 @@ slice below measures again with a tool of its own in the tree.
    - `BOSS_BODY` and the Discord settings read at run time, so changing one no longer drops every player.
    - A halo hearing a player's pose at a walking rate, with the referees that read halo poses (the serpent's fight,
      INT11's trails, duels, the Wild zone) kept at full rate.
-6. **SCALE5c - the hub split, ONE announced drop** (part one built, above - thin shards and a fat bus).
+6. **SCALE5c - the hub split, ONE announced drop** (built, above - thin shards and a fat bus, the hub's and each region's).
    - **Sixteen hubs, chosen by the account** (`chat:world.<k>`, k from the account's subject). An account's every tab
      lands on the same hub, so ONE-SEAT, the account's record, its receipts and its tabs stay on one object. At 10k
      that is about 625 sockets a hub, room for 32k.
