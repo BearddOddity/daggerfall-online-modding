@@ -191,6 +191,11 @@ export const ITEM_FIELDS = Object.freeze({
   horsePattern: int({ min: 1, max: 4 }),
   horseLegs: int({ min: 1, max: 2 }),
   horseSeed: int({ min: 1, max: 65535 }),
+  // STEED1 (bible/06-Systems/Horse-Care.md): a horse's bond with its owner, in tenths (systems/steedCare.js - absent,
+  // none) - the OWNER's mark, never carried to the next (net/realmTradeLaw.js RECEIVER_MARKS); and the minute of its
+  // owner's clock its food runs out (absent, never seen fed - it comes fed)
+  horseBond: int({ min: 1, max: 1000 }),
+  horseFed: int({ min: 1 }),
 });
 
 /** The declared names, and those of one kind. */

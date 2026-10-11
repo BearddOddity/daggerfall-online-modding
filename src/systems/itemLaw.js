@@ -80,6 +80,7 @@ import './gateSpoils.js';
 import './ayleidStones.js';
 import './gems.js';   // GEM2: the graded gems' rows
 import './walletItem.js';
+import './upkeepItemRows.js';   // STEED1/WAGONS4: the Sack of Oats and the Wagon Repair Kit
 import './livingWorld/keepsake.js';
 import './legacy/heirloom.js';
 import './comeSailAwayItems.js';
@@ -233,7 +234,7 @@ export function itemFindings(v, opts = {}) {
   //    (WAGON-PRICE: one bought before the price rose stays lawful) ──
   if ((has(item, 'wagonKind') || has(item, 'wagonLook') || has(item, 'wagonEntry')) && item.templateIndex !== TRANSPORT_SMALL_CART) out.add('wagon');
   if (has(item, 'wagonKind') && item.wagonKind !== 'cart' && !(item.value >= (WAGON_KINDS[item.wagonKind]?.floor ?? Infinity))) out.add('wagon');
-  if (['horseCoat', 'horsePattern', 'horseLegs', 'horseSeed'].some((k) => has(item, k)) && item.templateIndex !== TRANSPORT_HORSE) out.add('horse');   // COATS1: a horse's look on DFU's Horse alone
+  if (['horseCoat', 'horsePattern', 'horseLegs', 'horseSeed', 'horseBond', 'horseFed'].some((k) => has(item, k)) && item.templateIndex !== TRANSPORT_HORSE) out.add('horse');   // COATS1: a horse's look on DFU's Horse alone; STEED1: and its bond and its food
   // ── the Broker's binding ────────────────────────────────────────────
   if (has(item, 'stonesPaid') && !(item.bound === true && BROKER_STONES.has(item.stonesPaid))) out.add('bound');
   // ── the ladder, the records, the sigil and the enchantments ──────────

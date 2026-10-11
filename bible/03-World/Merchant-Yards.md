@@ -237,3 +237,13 @@ talk window reads the same directory, so a yard is asked after indoors too (the 
 building). `scenes/dungeonContext.js` - no town.
 
 Pins: `test/yardsfound1.test.js`. Mutants: `tools/mutants/yardsfound1.json`. Not seen in a real town (no ARENA2 here).
+
+## STEED1 / WAGONS4 (2026-10-11)
+
+The Stable stands three horses a day, each its own - born at the yard on the town's map id, the world's day and its
+stall, so every client sees the same three - priced by what they are while horses are cared for, a horse the buyer
+owns never stood again, and a stack of oats beside them (`06-Systems/Horse-Care.md`). The Wagon Yard sells Wagon Repair
+Kits beside its wagons, and its keeper's third row, Mend, makes the wagon driven whole for gold - a wright sent out to
+a wagon away (`06-Systems/Wagon-Upkeep.md`). Online the oats and the kits wait on UPKEEP_ITEMS_ONLINE
+(`systems/upkeepItemRows.js`, REST6's law). The counter opens on the yard's town (`openYardTrade`'s `mapId`).
+

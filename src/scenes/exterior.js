@@ -104,6 +104,9 @@ import { createHorseCartRuntime } from '../systems/horseCart.js';   // HCC: Trai
 import { setHoldingsProvider, stableProviderFor } from '../ui/holdingsPages.js';   // HOLDINGS: the Stable page over this host's horse and wagon (no boats here)
 import { isQualifyingThreatState } from '../systems/horseFollow.js';   // HCC: CollectThreats' qualification
 import { totalWeight } from '../systems/inventory.js';   // HCC: PlayerEntity.WagonWeight
+import { createUpkeep, horseWhereOf, upkeepReach, registerUpkeepUses } from '../systems/upkeepRuntime.js';   // STEED1/WAGONS4: world.js's twin
+import { horseCareOn, wagonUpkeepOn } from '../systems/upkeepSwitch.js';
+import { setGallopGate } from '../systems/transport.js';
 import { wagonKgFor, activeWagonKind, horseCountOf, wagonTeamShort } from '../systems/wagonKinds.js';   // HCC: ItemHelper.WagonKgLimit - WAGONS1: the driven wagon's
 import { SEATED_EYE_HEIGHT } from '../player/seatPose.js';   // WAGONS3: the driver's seated eye
 import { InputMessageBoxWindow } from '../ui/inputMessageBox.js';   // HCC: the horse's name
@@ -1459,6 +1462,7 @@ export async function bootExterior(canvas, renderer, params, status) {
     lookPitch: () => cam.pitch, lookYaw: () => cam.yaw, groundHeightAt: (x, z) => collider.heightAt(x, z),
     enhancedRiding: () => (rrRidingOn() ? { terrainFollowing: rrRidingSetting('followTerrainEnabled') === true, softenFollow: rrRidingSetting('followTerrainSoftenFactor') ?? 8 } : null),
     horseCart: () => hccRuntimeOn(),   // HCC: TrailingWagonTransportWindow's gate and route (declared below; read at open)
+    cartRefusal: () => upkeep.brokenWhy(),   // WAGONS4: the classic window's Cart row, a broken wagon dark (declared below; read at open)
   });
   preloadCharSheetArt({ renderer, fetchBytes, palette });   // U8a: INFO00I0 warms at boot
   warmLevelUpWindow();   // LV1's audit: the level-up window opens because the GAME decided, so its chunk warms at boot rather than inside a pause nobody asked for
@@ -1729,13 +1733,28 @@ export async function bootExterior(canvas, renderer, params, status) {
   // RW1 x WAGONS2 (FINAL AUDIT): the wagons stand in the street a window looks out on, as world.js has them - the fixed
   // city stands no caravan room, so none is left out
   renderer.outsideViewDraws?.add(({ renderer: r }) => { if (hccOn()) hcc.drawOutside(r, null); });
+  // STEED1 / WAGONS4: world.js's twin - horse care and wagon upkeep over this host's pack and the character's clock
+  const upkeep = createUpkeep({
+    items: () => playerEntity.items ?? [], now: () => ownMinutes(),
+    horseCare: horseCareOn, wagonUpkeep: wagonUpkeepOn,
+    where: () => horseWhereOf(hccRuntimeOn()?.stableView() ?? null),
+    stores: () => (upkeepReach(hccRuntimeOn(), !!hccRuntimeOn()).wagonNear ? playerEntity.wagonItems ?? [] : []),   // the wagon's load, where it is in reach
+    say: (l) => townTalk.say(l),
+  });
+  setGallopGate((mode, mods) => upkeep.gallopGate(mode, mods));
+  registerUpkeepUses(upkeep, {
+    reach: () => upkeepReach(hccRuntimeOn(), !!hccRuntimeOn()), horseCare: horseCareOn, wagonUpkeep: wagonUpkeepOn,
+    pass: (n) => { playerTicker.advance(n); runEncounterTick(walkMode ? player.pos : cam.pos, true); },
+  });
+  const wagonLoadShare = () => { const lim = wagonKgFor(playerEntity); return lim > 0 ? totalWeight(playerEntity.wagonItems ?? []) / lim : 0; };
+  let _upkeepOdo = null;
   const hccRuntime = createHorseCartRuntime({
     ready: () => walkMode,
     transport: {
       get: () => player.transportMode, set: (m) => mountRig.setMode(m),
       hasCart: () => hasCart(playerEntity.items ?? []), hasHorse: () => hasHorse(playerEntity.items ?? []), isOnShip: () => false,
     },
-    teamShort: () => wagonTeamShort(playerEntity.items ?? []),   // WAGONS3: a pair's wagon takes its pair
+    teamShort: () => wagonTeamShort(playerEntity.items ?? []) ?? upkeep.brokenWhy(),   // WAGONS3: a pair's wagon takes its pair; WAGONS4: and a broken one goes nowhere
     player: { position: hccPlayerCentre, forward: hccForward, movement: () => ({ position: hccPlayerCentre(), forward: hccForward() }) },
     gps: { worldX: () => _anchorNative(player.pos).x, worldZ: () => _anchorNative(player.pos).z, scenePosition: hccPlayerCentre, currentMapPixel: () => _locPixel },
     streaming: { isReady: () => true, isInit: () => false, mapPixelX: () => _locPixel.x, mapPixelY: () => _locPixel.y, ratio: () => 1 / GLOBAL_SCALE },
@@ -1769,7 +1788,8 @@ export async function bootExterior(canvas, renderer, params, status) {
   // HOLDINGS (bible/03-World/Holdings.md): world.js's twin - the Stable page over this host's pair; no Fleet (this host
   // stands no Come Sail Away)
   setHoldingsProvider({
-    ...stableProviderFor({ runtime: hccRuntime, on: hccOn, hasHorse: () => hasHorse(playerEntity.items ?? []), hasCart: () => hasCart(playerEntity.items ?? []), wagonKind: () => activeWagonKind(playerEntity.items ?? []), items: () => playerEntity.items ?? [] }),   // WAGONS1: the Stable names the wagon driven - WAGONS2: and paints it
+    ...stableProviderFor({ runtime: hccRuntime, on: hccOn, hasHorse: () => hasHorse(playerEntity.items ?? []), hasCart: () => hasCart(playerEntity.items ?? []), wagonKind: () => activeWagonKind(playerEntity.items ?? []), items: () => playerEntity.items ?? [],
+      upkeep, pass: (n) => { playerTicker.advance(n); runEncounterTick(walkMode ? player.pos : cam.pos, true); } }),   // WAGONS1: the Stable names the wagon driven - WAGONS2: and paints it; STEED1/WAGONS4: and keeps them
     fleet: null,
   });
   /** AUDIT HCC H1: LateUpdate once a frame in every mode, before the world pass draws the wagon (world.js's twin). */
@@ -5216,7 +5236,7 @@ export async function bootExterior(canvas, renderer, params, status) {
         // AUDIT 23 (entity-2): playerMotor.IsRunning && !IsStandingStill
         // (PlayerEntity.cs:408) - `player.running` never existed, so the
         // 88/min running drain was dead above ground. C6: the jump edge.
-        running: player.isRunning && !player.standing,
+        running: player.isRunning && !player.standing && upkeep.riderPaysGallop(player.transportMode),   // STEED1: a gallop is the horse's breath
         standing: !!player.standing,   // FATIGUE-IDLE: standing still on the ground pays no minute's band (worldTick.js)
         // AUDIT 64 F7 - PlayerEntity.cs:311, the TALLY's own gate:
         // `playerMotor.IsRunning && !playerMotor.IsRiding`, with NO
@@ -5267,6 +5287,7 @@ export async function bootExterior(canvas, renderer, params, status) {
       // as a RELEASE to the motor's press-edge latches, so a key held
       // through the paralysis fired a synthetic press on the frame it lifted.
       playerBlowFrame({ motor: player, entity: playerEntity, shake: (k) => betterAmbience.weaponKick(k), hurt: (n) => { hurtPlayer(playerEntity, n); flashPlayerDamage(n); surfacePlayer(); } });   // TELL6e: a landing's push, rattle, knockdown and bleed
+      player.rideSpeedScale = upkeep.rideScale(player.transportMode, wagonLoadShare());   // STEED1/WAGONS4: world.js's twin
       if (_overlayHeld) player.holdFrame();   // DISC8-G: a held motor reports no landing and no jump
       if (!_overlayHeld) player.update(dt, paralyzed ? { forward: 0, strafe: 0, run: held(keys, 'Run'), autoRun: held(keys, 'AutoRun'), back: mv.backwards, sneak: held(keys, 'Sneak') || walkModeOn(), jump: false, up: false, down: false, crouch: crouchPress } : {
         forward: axes.forward,   // AUDIT 28 W8: InputManager's axes - accelerated under MovementAcceleration, the held difference without
@@ -5311,6 +5332,16 @@ export async function bootExterior(canvas, renderer, params, status) {
       // consumers below read it.
       const _surf = exteriorSurfaceNow();
       _surfPath = !!_surf.path;
+      {   // STEED1/WAGONS4: the frame's upkeep (world.js's twin)
+        const odo = player.odometer?.h ?? 0, metres = _upkeepOdo == null ? 0 : Math.max(0, odo - _upkeepOdo);
+        _upkeepOdo = odo;
+        const mode = player.transportMode;
+        upkeep.tick(gamePaused() ? 0 : dt, {
+          mode, galloping: !_overlayHeld && mode === TRANSPORT_MODES.Horse && !!player.isRunning && !player.standing, moving: !player.standing,
+          metres, road: _surfPath, load: wagonLoadShare(),
+          wagonGoes: mode === TRANSPORT_MODES.Cart || !!hccRuntimeOn()?.view?.()?.teamFollowing,
+        });
+      }
       // PlayerHeightChanger's sink reads `OnExteriorWater == Swimming`
       // alone (:127, :294, :326, :550) - WaterWalking splashes but
       // never sinks the capsule. A6 left this flag false pending
@@ -6301,6 +6332,7 @@ export async function bootExterior(canvas, renderer, params, status) {
           // platform does not have - which is the whole of AUDIT SOC C9.
           quickUse: (n) => quickUse(n), quickSwap: () => quickSwap(), quickOffHand: () => quickOffHand(), quickSpell: () => quickSpell(), quickSwitchHand: () => quickSwitchHand(),   // QS6   // MAC-R3
           grip: player.gripShown,   // CLIMB2
+          steed: modeNow() === 'exterior' ? upkeep.bar(player.transportMode) : null,   // STEED1: the ridden horse's breath
           weaponSheathed: !!weaponRig.playerWeapon.sheathed });   // AUDIT 28 W2: the arrow counter's drawn-bow gate   // U38 + X4 + U43
     }
     townTalk.frame(dt);   // T3b: HUD lines + the talk overlay, above everything
