@@ -207,15 +207,6 @@
     ]
   },
   {
-    "name": "CHAP6E-SVC-COUNTED",
-    "file": "server-account/src/npcChapters.js",
-    "old": "const counted = seasonOf(week, zero)?.n ?? null;",
-    "new": "const counted = seasonOf(week, zero)?.n ?? 0;",
-    "tests": [
-      "test/chap6e_titles.test.js"
-    ]
-  },
-  {
     "name": "CHAP6E-SVC-HIGH",
     "file": "server-account/src/npcChapters.js",
     "old": "high: ascendant.has(`${r.faction}|${r.region}`) })),",

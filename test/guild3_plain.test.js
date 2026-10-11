@@ -96,17 +96,18 @@ test('GUILD3b a silver line by its own kind and way: every kind a guild\'s treas
     assert.ok(Object.hasOwn(GUILD_SILVER_LINE_WORDS, k), `${k} has words`);
   }
   assert.equal(guildSilverLineText({ who: 'Alda', raw: 'tribute', out: true, amount: 1000 }), 'Alda paid Tribute of 1,000 silver');
-  assert.equal(guildSilverLineText({ who: 'The Turning', raw: 'seat-upkeep', out: true, amount: 2500 }), 'The Turning paid a Charter\'s upkeep of 2,500 silver');
+  // PIN MOVED: AUDIT GUILD3 W2 - a line the service made (its `who` a label: 'The Turning', an auction's id) is the guild's
+  assert.equal(guildSilverLineText({ who: 'The Turning', raw: 'seat-upkeep', out: true, amount: 2500 }), 'The guild paid a Charter\'s upkeep of 2,500 silver');
   assert.equal(guildSilverLineText({ who: 'Alda', raw: 'patron-escrow', out: true, amount: 1500 }), 'Alda bid for a chapter\'s patronage: 1,500 silver');
-  assert.equal(guildSilverLineText({ who: 'Bryn', raw: 'tithe', out: false, amount: 12 }), 'Bryn collected a Tithe of 12 silver');
+  assert.equal(guildSilverLineText({ who: 'auction:4f1c', raw: 'tithe', out: false, amount: 12 }), 'The guild collected a Tithe of 12 silver');
   assert.equal(guildSilverLineText({ who: 'Bryn', raw: 'guild-deposit', out: false, amount: 5 }), 'Bryn put in 5 silver');
   assert.deepEqual([guildSilverLineText({ who: 'X', raw: 'conscription', out: true, amount: 3 }), guildSilverLineText({ who: 'X', raw: 'conscription', out: false, amount: 3 })],
-    ['X paid Conscription of 3 silver', 'X received Conscription of 3 silver']);
+    ['The guild paid Conscription of 3 silver', 'The guild received Conscription of 3 silver']);
   assert.deepEqual([guildSilverLineText({ who: 'X', raw: 'fealty-tribute', out: true, amount: 3 }), guildSilverLineText({ who: 'X', raw: 'fealty-tribute', out: false, amount: 3 })],
-    ['X paid its liege tribute of 3 silver', 'X received a vassal\'s tribute of 3 silver']);
-  assert.equal(guildSilverLineText({ who: 'X', raw: 'some-new-kind', out: true, amount: 7 }), 'X paid 7 silver', 'a kind with no words, out: paid');
-  assert.equal(guildSilverLineText({ who: 'X', raw: 'some-new-kind', out: false, amount: 7 }), 'X received 7 silver');
-  assert.equal(guildSilverLineText({ who: 'X', kind: 'heraldry', amount: 500 }), 'X changed the heraldry for 500 silver', 'an older service: by its kind');
+    ['The guild paid its liege a fealty share of 3 silver', 'The guild received a vassal\'s fealty share of 3 silver']);   // PIN MOVED: AUDIT GUILD3 W5 - fealty, never "tribute"
+  assert.equal(guildSilverLineText({ who: 'X', raw: 'some-new-kind', out: true, amount: 7 }), 'The guild paid 7 silver', 'a kind with no words, out: paid');
+  assert.equal(guildSilverLineText({ who: 'X', raw: 'some-new-kind', out: false, amount: 7 }), 'The guild received 7 silver');
+  assert.equal(guildSilverLineText({ who: 'X', kind: 'heraldry', amount: 500 }), 'X changed the guild\'s arms for 500 silver', 'an older service: by its kind');   // PIN MOVED: AUDIT GUILD3 W6 - arms
   assert.equal(guildSilverLineText({ who: 'X', kind: 'deposit', amount: 9 }), 'X put in 9 silver');
   // the sweep: no kind that LEAVES a treasury is worded as one coming in (the in-only kinds - a deposit, a Tithe, a deed,
   // a refund, a return - are never a guild's `out`)
@@ -128,14 +129,14 @@ async function guildService(extra = {}) {
 test('GUILD3b the service: each silver line carries its own kind (`raw`) and whether it left the treasury (`out`), beside the `kind` an older client reads (mutants: the kind, the way)', async () => {
   const s = await guildService();
   const line = (src, dst, kind, amount, rid) => s.raw.prepare(`INSERT INTO marks_ledger (src_kind, src_id, dst_kind, dst_id, kind, amount, day, at, actor, who, rid)
-    VALUES (?, ?, ?, ?, ?, ?, 1, ?, 'test', 'The Turning', ?)`).run(src[0], src[1], dst[0], dst[1], kind, amount, T0, rid);
+    VALUES (?, ?, ?, ?, ?, ?, 1, ?, 'test', 'Aldric', ?)`).run(src[0], src[1], dst[0], dst[1], kind, amount, T0, rid);
   line(['mint', null], ['guild', s.gid], 'guild-deed', 100, 'r-deed');
   line(['guild', s.gid], ['burn', null], 'tribute', 40, 'r-trib');
   const mine = await s.call('/v1/guilds/mine', { character: s.gm.character }, s.gm.secret);
   assert.equal(mine.status, 200, JSON.stringify(mine.body));
   const lines = mine.body.guild.marksLedger.map((l) => [l.raw, l.out, l.kind, l.amount]);
   assert.deepEqual(lines.sort(), [['guild-deed', false, 'deed', 100], ['tribute', true, 'deposit', 40]].sort(), 'the Tribute left the treasury - its old `kind` still "deposit" for an older client');
-  assert.equal(guildSilverLineText(mine.body.guild.marksLedger.find((l) => l.raw === 'tribute')), 'The Turning paid Tribute of 40 silver');
+  assert.equal(guildSilverLineText(mine.body.guild.marksLedger.find((l) => l.raw === 'tribute')), 'Aldric paid Tribute of 40 silver');   // PIN MOVED: AUDIT GUILD3 W2 - a Tribute's `who` is its payer's name
 });
 
 // ─── GUILD3c: EVERY RULE BEFORE THE PRESS ───────────────────────────
@@ -150,16 +151,20 @@ test('GUILD3c what each rank may do: every power of the four tables worded, each
     }
   }
   assert.ok(GUILD_RANK_ACTS.some((r) => r.table === 'levers'), 'the seat\'s levers');
+  // PIN MOVED: AUDIT GUILD3 W3/W4/C4/C5/C7 - what a rank may NOT do is said (an Officer fills no writ of its own guild's,
+  // is paid by none of its contracts); the guildmaster's acts by rank alone and the town board's call worded; the writ budget
+  // the Officers'; the vault its own line; a rank named as its guild wrote it, never with an article guessed
   assert.deepEqual(guildRankActsOf(3), ['put gold and silver into the treasuries', 'put pieces into the vault', 'pin notes on the guild\'s board',
-    'put materials into the guild Stores, and take their own back out']);
+    'put materials into the guild Stores, and take their own back out', 'fill the guild\'s own writs for their pay', 'be paid by the guild\'s own contracts']);
   assert.deepEqual(guildRankLines().map((l) => [l.name, l.text]), [
-    ['Guildmaster', 'Everything an Officer may, and: take pieces out of the vault, as many as they like; take gold and silver out of the treasuries; set how much silver may be spent on guild writs each week; pay Tribute at the seat the guild pledged; give a held Charter up; buy and sell the hall; choose the guild\'s arms; grant or revoke each member\'s use of the vault; rename the ranks; give the guild a new name, for a price; hand the guild on; disband it.'],
-    ['Officer', 'Everything a Member may, and: take pieces out of the vault, 10 a day; invite new members; promote and demote the ranks below their own; remove a member of a lower rank; choose who may walk into the hall; decorate the hall, its yard and its outside; take down anyone\'s note on the guild\'s board; post guild writs and contracts; take any materials out of the guild Stores; pledge the guild to a seat in the Muster; run a held seat - its Tithe, its Edict, its battle window, its works, its fealty and pacts.'],
-    ['Member', 'The same as a Recruit.'],
-    ['Recruit', 'Put gold and silver into the treasuries; put pieces into the vault; pin notes on the guild\'s board; put materials into the guild Stores, and take their own back out.'],
+    ['Guildmaster', 'Everything the Officer may, and: take pieces out of the vault, as many as they like; take gold and silver out of the treasuries; set the Officers\' weekly budget - the silver they may post guild writs and contracts with; withdraw any guild writ or contract; pay Tribute at the seat the guild pledged; hire Sellswords for the guild\'s battles; give a held Charter up; buy and sell the hall; choose the guild\'s arms; grant or take back each member\'s use of the vault; rename the ranks; give the guild a new name, for a price; hand the guild on; disband it.'],
+    ['Officer', 'Everything the Member may except fill the guild\'s own writs for their pay or be paid by the guild\'s own contracts, and: take pieces out of the vault, 10 a day; invite new members, and pin the guild\'s call for them on a town\'s Notice Board; promote and demote the ranks below their own; remove a member of a lower rank; choose who may walk into the hall; decorate the hall, its yard and its outside; take down anyone\'s note on the guild\'s board; post guild writs and contracts - an Officer within the weekly budget the guildmaster sets - and withdraw the ones they posted; take any materials out of the guild Stores; pledge the guild to a seat in the Muster; run a held seat - its Tithe, its Edict, its battle window, its works, its fealty and Pacts.'],
+    ['Member', 'The same as the Recruit.'],
+    ['Recruit', 'Put gold and silver into the treasuries; put pieces into the vault; pin notes on the guild\'s board; put materials into the guild Stores, and take their own back out; fill the guild\'s own writs for their pay; be paid by the guild\'s own contracts.'],
   ]);
-  assert.deepEqual(guildRankLines(['Captain', 'Adept', 'Initiate', 'Novice']).map((l) => l.text.split(':')[0]), ['Everything an Adept may, and', 'Everything an Initiate may, and', 'The same as a Novice.', 'Put gold and silver into the treasuries; put pieces into the vault; pin notes on the guild\'s board; put materials into the guild Stores, and take their own back out.'],
-    'the guild\'s own names, each with its article');
+  assert.deepEqual(guildRankLines(['Captain', 'The Unsworn', 'Honoured Blade', 'Unit']).map((l) => l.text.split(':')[0]),
+    ['Everything The Unsworn may, and', 'Everything the Honoured Blade may except fill the guild\'s own writs for their pay or be paid by the guild\'s own contracts, and', 'The same as the Unit.', 'Put gold and silver into the treasuries; put pieces into the vault; pin notes on the guild\'s board; put materials into the guild Stores, and take their own back out; fill the guild\'s own writs for their pay; be paid by the guild\'s own contracts.'],
+    'the guild\'s own names, as written');
   assert.match(GUILD_RANK_ACTS_NOTE, /grant or take back/);
 });
 
@@ -274,7 +279,7 @@ test('GUILD3c the tab: a guild in one look for a character in none; where the re
   assert.equal(ranks.tagName, 'DETAILS');
   const lines = ranks.children.filter((c) => c.tagName === 'P').map((p) => texts(p).join(''));
   assert.deepEqual(lines.slice(0, 4).map((l) => l.split(':')[0]), ['Captain', 'Adept', 'Initiate', 'Novice']);
-  assert.equal(lines[2], 'Initiate: The same as a Novice.');
+  assert.equal(lines[2], 'Initiate: The same as the Novice.');   // PIN MOVED: AUDIT GUILD3 C7 - no article guessed
   assert.equal(lines[4], GUILD_RANK_ACTS_NOTE);
 });
 
@@ -307,7 +312,8 @@ test('GUILD3c the Settings page says, before the press, everything that holds th
   assert.equal(btn(viewed.panel.root, 'Disband').disabled, true);
   assert.ok(texts(btn(viewed.panel.root, 'Disband')).includes('what is listed above first'));
   assert.equal(btn(viewed.panel.root, 'Leave').disabled, true, 'a lone guildmaster leaves only a guild that can go');
-  assert.deepEqual(guildKeepsOf(view({ treasury: 0, keeps: [] }), ['guild-writs', 'marks-full']), ['marks-full'], 'the view\'s word stands for what it reads; a refusal\'s other word stays');
+  // PIN MOVED: AUDIT GUILD3 S3 - the view reads the silver's room too now: its word stands for it; a code it reads not stays
+  assert.deepEqual(guildKeepsOf(view({ treasury: 0, keeps: [] }), ['guild-writs', 'marks-full', 'guild-some-new-hold']), ['guild-some-new-hold'], 'the view\'s word stands for what it reads; a refusal\'s other word stays');
   const officer = await tab(view({ rank: 1, treasury: 9 }), 'settings');
   assert.equal(find(officer.panel.root, 'dfsocial-keeps').length, 0, 'an Officer is asked nothing of the guild\'s going');
 });
@@ -315,21 +321,26 @@ test('GUILD3c the Settings page says, before the press, everything that holds th
 // ─── GUILD3d: THE CHAPTER'S CARD ────────────────────────────────────
 
 test('GUILD3d what a band does, in words off the bands and off what the guild\'s hall sells - training where it trains, spells at the Mages Guild and Kynareth\'s, a shelf where it keeps one, writs everywhere; a hidden guild\'s its writs alone; an Ascendant chapter\'s Master its High Master (mutants: each part)', () => {
-  assert.equal(chapterBandEffectsLine(50, FIGHTERS), 'Its halls keep their usual prices, shelf and writs.');
-  assert.equal(chapterBandEffectsLine(10, MAGES), 'Training and spells a quarter dearer, a poorer shelf, half the writs.');
+  // PIN MOVED: AUDIT GUILD3 L4 - Steady's line the usual of what the hall HAS (the Fighters keep no shelf); R1 - a Failing
+  // chapter's fall said; L5/W8 - the High Master a rule of the band
+  assert.equal(chapterBandEffectsLine(50, FIGHTERS), 'Its halls keep their usual prices and writs.');
+  assert.equal(chapterBandEffectsLine(50, MAGES), 'Its halls keep their usual prices, shelf and writs.');
+  assert.equal(chapterBandEffectsLine(50, DRAGON), 'Its halls keep their usual writs.');
+  assert.equal(chapterBandEffectsLine(10, MAGES), 'Training and spells a quarter dearer, a poorer shelf, half the writs - and it loses 2 Strength more each week its members\' Merit lifts it by less than 2.');
   assert.equal(chapterBandEffectsLine(75, MAGES), 'Training and spells a tenth cheaper, a richer shelf, half again the writs.');
-  assert.equal(chapterBandEffectsLine(95, MAGES), 'Training and spells a fifth cheaper, a richer shelf, half again the writs - and its Master is High Master.');
+  assert.equal(chapterBandEffectsLine(95, MAGES), 'Training and spells a fifth cheaper, a richer shelf, half again the writs - and whoever holds its Master\'s chair is its High Master.');
   assert.equal(chapterBandEffectsLine(75, FIGHTERS), 'Training a tenth cheaper, half again the writs.', 'the Fighters Guild keeps no shelf, sells no spell');
   assert.equal(chapterBandEffectsLine(75, KYNARETH), 'Training and spells a tenth cheaper, half again the writs.');
   assert.equal(chapterBandEffectsLine(75, ARKAY), 'Training a tenth cheaper, a richer shelf, half again the writs.');
-  assert.equal(chapterBandEffectsLine(95, DRAGON), 'Half again the writs - and its Master is High Master.', 'an order trains nothing, keeps no shelf');
+  assert.equal(chapterBandEffectsLine(95, DRAGON), 'Half again the writs - and whoever holds its Master\'s chair is its High Master.', 'an order trains nothing, keeps no shelf');
   assert.equal(chapterBandEffectsLine(95, THIEVES), 'Half again the writs.', 'a hidden guild: its hall DFU\'s own; no title');
   assert.deepEqual(chapterDoctrinesFor(DRAGON), ['writs']);
 });
 
 test('GUILD3d a chapter\'s Duties: what its guild asks of its members in the region and what each earns, the reader\'s first of each today; to a stranger its members\'; none for the Thieves Guild (mutants: the words, the state)', () => {
   const asks = [{ faction: FIGHTERS, kind: 'gate', member: true, done: true }, { faction: FIGHTERS, kind: 'raid', member: true, done: false }];
-  assert.equal(chapterDutiesLine(FIGHTERS, asks), 'Duties here: hold a gate (done today), defend a raided town - standing each time, more for the day\'s first of each, and Merit.');
+  // PIN MOVED: AUDIT GUILD3 L2 - a member is promised Merit where its Merit row says it earns some
+  assert.equal(chapterDutiesLine(FIGHTERS, asks, { merit: 10, max: 600 }), 'Duties here: hold a gate (done today), defend a raided town - standing each time, more for the day\'s first of each, and Merit.');
   assert.equal(chapterDutiesLine(FIGHTERS, []), 'Its members\' duties here: hold a gate, defend a raided town - standing each time, more for the day\'s first of each, and Merit.');
   assert.equal(chapterDutiesLine(MAGES, [{ faction: MAGES, kind: 'gate', member: false, done: true }]), 'Its members\' duties here: hold a gate - standing each time, more for the day\'s first of it, and Merit.', 'a stranger is told no state');
   assert.equal(chapterDutiesLine(THIEVES, []), null);
@@ -374,7 +385,8 @@ test('GUILD3d the board draws each chapter as one card under its guild\'s name a
     'Duties here: hold a gate (done today), defend a raided town - standing each time, more for the day\'s first of each, and Merit.',
   ]);
   assert.deepEqual(card(1), [
-    'Mages Guild - Failing', 'The chapter of the Mages Guild here is Failing (Strength 10)', 'Training and spells a quarter dearer, a poorer shelf, half the writs.',
+    'Mages Guild - Failing', 'The chapter of the Mages Guild here is Failing (Strength 10)',
+    'Training and spells a quarter dearer, a poorer shelf, half the writs - and it loses 2 Strength more each week its members\' Merit lifts it by less than 2.',   // PIN MOVED: AUDIT GUILD3 R1
     'Its members\' duties here: hold a gate - standing each time, more for the day\'s first of it, and Merit.',
   ]);
   const inCard = (n) => { for (let x = n.parentNode; x; x = x.parentNode) if (String(x.className).split(/\s+/).includes('notice-chapter-card')) return true; return false; };

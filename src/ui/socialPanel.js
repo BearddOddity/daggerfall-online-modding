@@ -62,7 +62,7 @@ import { LETTER_OF_CREDIT_TEXT } from '../systems/tradeModes.js';   // GUILD-LET
 import { writMay, guildMoveOk, writBudgetOk, GUILD_STORES_MAX, WRIT_BUDGET_MAX } from '../net/writLaw.js';   // PROF6: the guild Stores' and the writ budget's ranks and bounds
 import { guildRankLines, GUILD_RANK_ACTS_NOTE } from '../net/guildPowers.js';   // GUILD3c: what each rank may do, in words
 import { STORES_MAX } from '../net/professionLaw.js';   // AUDIT 31 U8: a character's Stores' most of a material
-import { marksText, MARKS_FAUCETS } from '../net/marksLaw.js';   // MARKS1: the Marks treasury's words   // MAIL1: the form's caps are the service's
+import { marksText, MARKS_FAUCETS, MARKS_MAX } from '../net/marksLaw.js';   // MARKS1: the Marks treasury's words   // MAIL1: the form's caps are the service's
 import { glyphBadges, glyphSvgNode, titleBadge } from './playerBadge.js';   // MAIL1: a sender's glyphs, in the one drawing every DOM face uses
 import { HERALDRY_COLOURS, HERALDRY_DEVICES, HERALDRY_UNHELD, HERALDRY_CHANGE_DRAKES, heraldryOf, heraldrySame, heraldryText, heraldryDeviceName,
   HERALDRY_DIVISIONS, HERALDRY_DIVISION_NAMES, heraldryColourOf, heraldryInk } from '../net/heraldryLaw.js';   // GUILD1d; GUILD2c: the divisions, the device's colour
@@ -139,7 +139,12 @@ export const GUILD_KEEPS_HEAD = 'Before the guild can go';
 /** GUILD3c: the codes the service's view reads of what holds a guild (server-account/src/guilds.js guildHolds) - where
  *  the view carries its list, its word stands for these; a refusal's older word for one of them is not repeated. */
 export const GUILD_HOLD_CODES = Object.freeze(['guild-treasury', 'guild-stores', 'guild-writs', 'guild-writ-escrow', 'guild-contracts', 'guild-hall',
-  'guild-vault', 'guild-seat', 'guild-battle', 'guild-patron']);
+  'guild-vault', 'guild-seat', 'guild-battle', 'guild-patron', 'marks-full']);   // AUDIT GUILD3 S3: the silver's room, the view's too
+/** AUDIT GUILD3 S3: a hold the Settings list says in the going's own terms where the service's sentence is a general one
+ *  (an account's cap, said of any silver it is paid). */
+export const GUILD_KEEPS_WORDS = Object.freeze({
+  'marks-full': `The guild's silver comes to you when it goes, and your account has no room for it - it holds at most ${MARKS_MAX.toLocaleString('en-US')} silver. Spend some of yours first.`,
+});
 /**
  * GUILD3c: EVERYTHING THAT STILL HOLDS A GUILD THAT WOULD GO, as refusal codes in the service's order: the guildmaster's
  * view's own list (`v.keeps`, the service's guildHolds - read fresh after every act), what the service's last refusal
@@ -163,7 +168,7 @@ export function guildKeepsOf(v, said, { leave = false } = {}) {
   for (const [k, holds] of known) if (holds && !out.includes(k)) out.push(k);
   return out;
 }
-export const GUILD_HERALDRY_NONE_TEXT = 'Your guild has no heraldry yet.';
+export const GUILD_HERALDRY_NONE_TEXT = 'Your guild has no arms yet.';   // AUDIT GUILD3 W6: one word - the page is "Arms"
 /** GUILD2 (bible/11-Multiplayer/Guild-Overhaul.md): the pages' own sentences. */
 export const GUILD_RENAME_COST_TEXT = `A new name or tag costs ${GUILD_RENAME_GOLD.toLocaleString('en-US')} gold from the treasury - gold your realm characters put in - and the next may come a fortnight later. The old name is free for anyone at once.`;
 /** GUILD2a: when the next new name may come, from `at` (epoch seconds). */
@@ -190,38 +195,46 @@ export const guildDeedsText = (n, max) => `Guild deeds today: ${Math.max(0, Numb
 export const GUILD_LEDGER_WORDS = Object.freeze({ deposit: 'put in', withdraw: 'took out', hall: 'bought the hall for', 'hall-sale': 'sold the hall for', 'hall-piece': 'took down a hall piece - back into the treasury:', rename: 'renamed the guild for', grant: 'awarded the guild' });   // AUDIT2 GUILD2: a rename's line read "put in" - a payment out said as one in; GUILD-GRANT: the operator's award (tools/grantGuildGold.mjs)
 /** AUDIT GUILD1d R5: a Drakes ledger line's verb - a heraldry changed is the treasury paying, never a deposit. */
 export const GUILD_MARKS_LEDGER_WORDS = Object.freeze({
-  deposit: 'put in', withdraw: 'took out', heraldry: 'changed the heraldry for',
+  deposit: 'put in', withdraw: 'took out', heraldry: 'changed the guild\'s arms for',   // AUDIT GUILD3 W6: the page is "Arms"
   // SILVER-WAYS: a guild deed (its third member names it), a contract's pay put up, and what came home of it
   deed: 'completed a guild deed:', contract: 'put up a contract of', 'contract-return': 'came home with',
 });
 /** GUILD3b (bible/11-Multiplayer/Guilds-Made-Plain.md, EVERY RULE BEFORE THE PRESS): A SILVER LINE BY ITS OWN KIND - the
  *  ledger's (`raw`, marksLaw.js MARKS_KINDS) where the service sends it, each kind a guild's treasury is an end of, worded
- *  as `<who> <words> <amount>`; a kind that runs either way (a Conscription, a vassal's tribute) worded by its direction.
- *  Before it, every line the service had no word for said "put in" - a Tribute, an upkeep, a claim fee, a writ's escrow, a
- *  patron's bid: silver LEAVING the treasury read as silver coming into it. */
+ *  as `<who> <words> <amount>`; a kind that runs either way (a Conscription, a vassal's fealty share) worded by its
+ *  direction. Before it, every line the service had no word for said "put in" - a Tribute, an upkeep, a claim fee, a writ's
+ *  escrow, a patron's bid: silver LEAVING the treasury read as silver coming into it. */
 export const GUILD_SILVER_LINE_WORDS = Object.freeze({
   'guild-deposit': 'put in', 'guild-withdraw': 'took out',
-  heraldry: 'changed the heraldry for', 'guild-deed': 'completed a guild deed:',
-  'contract-escrow': 'put up a contract of', 'contract-return': 'brought a contract\'s unpaid pay home:',
-  'writ-escrow': 'posted a guild writ of', 'writ-return': 'brought a guild writ\'s unpaid pay home:',
+  heraldry: 'changed the guild\'s arms for', 'guild-deed': 'completed a guild deed:',   // AUDIT GUILD3 W6: the page is "Arms"
+  'contract-escrow': 'put up a contract of', 'contract-return': 'had a contract\'s unpaid pay come home:',
+  'writ-escrow': 'set aside a guild writ\'s pay of', 'writ-return': 'had a guild writ\'s unpaid pay come home:',
   tribute: 'paid Tribute of', 'seat-claim': 'paid a Charter\'s claim fee of', 'seat-upkeep': 'paid a Charter\'s upkeep of',
   'seat-edict': 'paid for an Edict:', fort: 'paid for a fortification:', 'seat-strike-refund': 'had a struck Charter\'s fee refunded:',
-  tithe: 'collected a Tithe of', 'bounty-escrow': 'set a Bounty aside:', 'bounty-return': 'brought a Bounty\'s unpaid silver home:',
-  'sellsword-escrow': 'hired a Sellsword for', 'sellsword-return': 'brought a Sellsword\'s unpaid fee home:',
-  'royal-escrow': 'put up a Royal Tourney prize of', 'royal-return': 'brought a Royal Tourney prize home:',
+  tithe: 'collected a Tithe of', 'bounty-escrow': 'set a Bounty aside:', 'bounty-return': 'had a Bounty\'s unpaid silver come home:',
+  'sellsword-escrow': 'hired a Sellsword for', 'sellsword-return': 'had a Sellsword\'s unpaid fee come home:',
+  'royal-escrow': 'put up a Royal Tourney prize of', 'royal-return': 'had a Royal Tourney prize come home:',
   'patron-escrow': 'bid for a chapter\'s patronage:', 'patron-return': 'had a patronage bid come home:',
   conscription: Object.freeze({ in: 'received Conscription of', out: 'paid Conscription of' }),
-  'fealty-tribute': Object.freeze({ in: 'received a vassal\'s tribute of', out: 'paid its liege tribute of' }),
+  // AUDIT GUILD3 W5: a vassal's 5% is its FEALTY share - "Tribute" is the seat's, paid where the guild pledged
+  'fealty-tribute': Object.freeze({ in: 'received a vassal\'s fealty share of', out: 'paid its liege a fealty share of' }),
 });
+/** AUDIT GUILD3 W2: THE KINDS WHOSE `who` IS THE MEMBER WHO ACTED - the service writes their display name (marks.js
+ *  deposits, withdrawals and deeds; halls.js the arms; contracts.js a contract put up; seatInfluence.js a Tribute;
+ *  npcChapters.js a patron's bid). Every other kind's `who` is the service's own label - 'A Sellsword', 'The Turning', 'The
+ *  registry', a writ's material, an auction's id, a work's name - and GUILD3b made it the sentence's subject ("A Sellsword
+ *  hired a Sellsword for 1,500 silver"): those lines are the guild's own. */
+export const GUILD_SILVER_MEMBER_KINDS = Object.freeze(['guild-deposit', 'guild-withdraw', 'heraldry', 'guild-deed', 'contract-escrow', 'tribute', 'patron-escrow']);
 /** GUILD3b: a silver line in words - by its own kind and direction where the service sent them (`raw`, `out`); a kind with
- *  no words here said by its direction alone ("paid", "received"), never "put in" for silver that left; an older service's
- *  line (no `raw`) by its `kind`, as before. */
+ *  no words here said by its direction alone ("paid", "received"), never "put in" for silver that left; the member its
+ *  subject where a member acted, the guild where the service did (AUDIT GUILD3 W2); an older service's line (no `raw`) by
+ *  its `kind`, as before. */
 export function guildSilverLineText(l) {
   const amount = marksText(Number(l?.amount ?? 0));
   if (typeof l?.raw !== 'string') return `${l?.who} ${GUILD_MARKS_LEDGER_WORDS[l?.kind] ?? GUILD_MARKS_LEDGER_WORDS.deposit} ${amount}`;
   const w = Object.hasOwn(GUILD_SILVER_LINE_WORDS, l.raw) ? GUILD_SILVER_LINE_WORDS[l.raw] : null;
   const words = typeof w === 'string' ? w : w ? w[l.out === true ? 'out' : 'in'] : l.out === true ? 'paid' : 'received';
-  return `${l.who} ${words} ${amount}`;
+  return `${GUILD_SILVER_MEMBER_KINDS.includes(l.raw) ? l.who : 'The guild'} ${words} ${amount}`;
 }
 /** AUDIT GUILD1d R13: the hall's sale in words - the service's own sum (the deed share and its pieces' half). */
 export const guildHallSoldText = (r) => `The hall is sold. ${Number(r?.data?.back ?? 0).toLocaleString('en-US')} gold went back into the treasury.`;
@@ -1639,7 +1652,7 @@ export function createSocialPanel({ social, send = null, mail = null, guild = nu
     if (holding.length) {
       out.push(el('div', 'dfsocial-empty', `${GUILD_KEEPS_HEAD}:`));
       const list = el('ul', 'dfsocial-keeps');
-      for (const k of holding) list.append(el('li', null, accountRefusalText(k)));
+      for (const k of holding) list.append(el('li', null, GUILD_KEEPS_WORDS[k] ?? accountRefusalText(k)));
       out.push(list);
     }
     const keptBy = (promise) => Promise.resolve(promise).then((r) => { guildUi.keeps = r?.ok ? null : (Array.isArray(r?.keeps) ? r.keeps : null); return r; });

@@ -322,8 +322,8 @@
   {
     "name": "AUDIT31-svc-escrow-word",
     "file": "server-account/src/guilds.js",
-    "old": "holds(r.writ_escrow, 'guild-writ-escrow');",
-    "new": "holds(r.writ_escrow, 'guild-writs');",
+    "old": "  ['guild-writ-escrow', (/** @type {string} */ p) => `EXISTS (SELECT 1 FROM guild_writs WHERE",
+    "new": "  ['guild-writs', (/** @type {string} */ p) => `EXISTS (SELECT 1 FROM guild_writs WHERE",
     "tests": [
       "test/audit31_service.test.js"
     ]

@@ -41,7 +41,7 @@ import { allRegionChapters } from './npcHalls.js';
 import { agreedGateRegions } from './seatInfluence.js';   // AUDIT CHAP3 E1: a gate's region, as three of the day's claims agree on it
 import { seatWeekStartMs, SEAT_WEEK_MS, seasonEndingAt, seasonZeroOf, seasonOf, SEASON_WEEKS } from '../../src/net/townSeatLaw.js';
 import {
-  STRENGTH_START, strengthAfter, strengthTarget, strengthSeasonEnd, chapterBandOf, meritWeekOf, hallHidden, chaptersSwitchOf,
+  STRENGTH_START, strengthAfter, failingWeekAfter, strengthTarget, strengthSeasonEnd, chapterBandOf, meritWeekOf, hallHidden, chaptersSwitchOf,
   SEAT_MERIT_WEEKS, seatEligibleAt, chapterSeatPlan, seatChangesOf, chapterTitlesOf, chapterFocusOk, HIDDEN_HALL_FACTIONS,
   chapterEventWeights, chapterEventOf, chapterEventOk, chapterRivalsOf, chapterRivalPick, rivalryEnd, crackdownShuts, CHAPTER_ASCENDANT_FROM,
   schismDoctrinesOf, schismWinner, successionHeir, chapterBackOk, chapterDoctrineOk, SUCCESSION_TURNING,
@@ -117,11 +117,12 @@ export async function settleChapterWeek(db, week, nowS, zero = null, open = 'on'
   for (const r of merits) at(Number(r.faction), Number(r.region)).merit += Number(r.n);
   const ends = seasonEndingAt(week, zero);
   const keys = new Set(confirmed.map((c) => `${c.faction}|${c.region}`));
-  // CHAP6a: the week's step (Chapters-Arc 7). GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md): a Decline's 2 more
-  // are gone with the event - the Failing band says it - and a row still holding one reads as none (heldEvent)
+  // CHAP6a: the week's step (Chapters-Arc 7). GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md): the Decline gone as an
+  // event - a row still holding one reads as none (heldEvent) - and AUDIT GUILD3 R1: its fall the Failing band's, every
+  // week a chapter begins Failing (failingWeekAfter: 2 more unless the week's Merit meets twice the target)
   const season = seasonOf(week, zero);
   const live = (/** @type {Chapter} */ c) => (season && c.eventSeason === season.n ? c.event : null);
-  for (const c of all.values()) c.s = strengthAfter(c.prev, c.merit, target);
+  for (const c of all.values()) c.s = failingWeekAfter(c.prev, strengthAfter(c.prev, c.merit, target), c.merit, target);
   // CHAP6b: a Succession named at the Season's third Turning (or the first after it a sleeping service settles)
   if (season && week >= season.start + SUCCESSION_TURNING - 1) await successionNamed(db, season, week, all, live);
   /** @type {any[]} */
@@ -622,8 +623,7 @@ export async function chapterTitlesOfAccount(db, playerId, nowS, zero = null, ch
     AND x.kind = 'seat' AND json_extract(x.data, '$.from') = 'master' AND x.week >= ?3`).bind(playerId, character, seasonStartOf(week, zero)).all();
   const { results: whole = [] } = await db.prepare(`SELECT x.char_id, x.faction, x.region, x.data FROM npc_chapter_history x ${who}
     AND x.kind = 'season'`).bind(playerId, character).all();
-  const counted = seasonOf(week, zero)?.n ?? null;
-  const season = counted ?? 0;
+  const season = seasonOf(week, zero)?.n ?? 0;   // AUDIT GUILD3 L1: no Season counted asks no High Master now (GUILD3e: the band's) - the 0 the season titles read
   if (!seats.length && !lost.length && !whole.length) return [];
   const confirmed = new Set((await allChapters(db, nowS)).map((c) => `${c.faction}|${c.region}`));
   // GUILD3e: only the chapters whose Master's seat the account holds are asked - never every Ascendant chapter's row

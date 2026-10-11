@@ -83,8 +83,8 @@
   {
     "name": "CHAP7B-SHEET-TAG",
     "file": "src/net/npcChapterLaw.js",
-    "old": "return p ? `Its patron this Season: ${p.name}${p.tag ? ` [${p.tag}]` : ''}.` : null;",
-    "new": "return p ? `Its patron this Season: ${p.name} [${p.tag}].` : null;",
+    "old": "${p.tag ? ` <${p.tag}>` : ''}",
+    "new": "` <${p.tag}>`",
     "tests": [
       "test/chap7b_patrons_client.test.js"
     ]
@@ -92,8 +92,8 @@
   {
     "name": "CHAP7B-SHEET-NONE",
     "file": "src/net/npcChapterLaw.js",
-    "old": "  const p = chapterPatronOf(patron);\n  return p ?",
-    "new": "  const p = patron;\n  return p ?",
+    "old": "  const p = chapterPatronOf(patron);\n  if (!p) return null;",
+    "new": "  const p = patron;\n  if (!p) return null;",
     "tests": [
       "test/chap7b_patrons_client.test.js"
     ]

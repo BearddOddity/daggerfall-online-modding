@@ -622,7 +622,7 @@ export function chronicleLine(row, seat, zero = null) {
     // CROWN2: fealty (7.8)
     case 'fealty-sworn': return `${when}, ${guildWords(d.vassal)} swore fealty to ${guildWords(d.liege)}.`;
     case 'fealty-broken': return `${when}, ${guildWords(d.breaker)} broke the fealty between ${guildWords(d.vassal)} and ${guildWords(d.liege)}.`;
-    case 'fealty-tribute': return `${when}, ${guildWords(d.vassal)} paid ${marksText(Number(d.marks ?? 0))} of tribute to ${guildWords(d.liege)}.`;
+    case 'fealty-tribute': return `${when}, ${guildWords(d.vassal)} paid ${marksText(Number(d.marks ?? 0))} in fealty to ${guildWords(d.liege)}.`;   // AUDIT GUILD3 W5: "Tribute" is the seat's
     case 'fealty-lapsed': return `${when}, the fealty between ${guildWords(d.vassal)} and ${guildWords(d.liege)} lapsed.`;
     // SEAT2b (7.5): a fortification's project begun, and its tier standing
     case 'fort-begun': return `${when}, ${guildWords(d.guild)} began raising ${seat.name}'s ${fortWork(d.work)?.name ?? 'works'} to ${theirOf(d.work)} ${TIER_WORDS[d.tier] ?? 'next'} tier.`;

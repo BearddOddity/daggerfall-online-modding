@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import {
   CHAPTER_EVENTS, CHAPTER_EVENT_EFFECTS, CHAPTER_RIVAL_PAIRS, chapterEventWeights, chapterEventOf, chapterEventOk, chapterEventName,
   chapterRivalsOf, chapterRivalPick, rivalryEnd, crackdownMerit, crackdownShuts, chapterSeasonLine, chapterChronicleLine,
-  chapterBandOf, meritWeekOf, strengthAfter, strengthSeasonEnd, ROLL_FACTIONS, memberWrit,
+  chapterBandOf, meritWeekOf, strengthAfter, failingWeekAfter, strengthSeasonEnd, ROLL_FACTIONS, memberWrit,
 } from '../src/net/npcChapterLaw.js';
 import { seatWeekStartMs } from '../src/net/townSeatLaw.js';
 import { herbPatches, nodeKey, regionWritTable, daySeason } from '../src/net/nodeLaw.js';
@@ -182,7 +182,8 @@ test('CHAP6a the draw at the Turning that opens a Season: every confirmed chapte
   s.raw.prepare("INSERT INTO town_seat_holds (key, guild_id, region, tier, since_week, standing, at) VALUES (901, 'gcurfew', ?, 'palace', 0, 50, 0)").run(DAGGERFALL);
   s.raw.prepare("INSERT INTO town_seat_edicts (key, week, edict, guild_id, set_by, state, at) VALUES (901, ?, 'curfew', 'gcurfew', 'x', 'law', 0)").run(WEEK - 1);   // last week's, not this
   assert.deepEqual(await s.settle(WEEK), { settled: true, chapters: ROLL_FACTIONS.length * 2 });
-  const after = (f, g) => strengthAfter(strengths.get(`${f}|${g}`), 0, 60);
+  // PIN MOVED: AUDIT GUILD3 R1 - a chapter that begins its week Failing falls 2 more (failingWeekAfter)
+  const after = (f, g) => { const p = strengths.get(`${f}|${g}`); return failingWeekAfter(p, strengthAfter(p, 0, 60), 0, 60); };
   let rivalries = 0;
   for (const f of ROLL_FACTIONS) for (const g of [ANTICLERE, DAGGERFALL]) {
     const rivals = chapterRivalsOf(f).map((r) => ({ faction: r, strength: after(r, g) }));

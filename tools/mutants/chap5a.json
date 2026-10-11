@@ -101,7 +101,7 @@
   {
     "name": "CHAP5A-LINE-MASTER",
     "file": "src/net/npcChapterLaw.js",
-    "old": "master ? `Master of the chapter: ${master.name}.` : 'The Master\\'s chair stands empty.',",
+    "old": "master ? `${chapterBandOf(chapter?.strength).band === 'ascendant' ? 'High Master' : 'Master'} of the chapter: ${master.name}.` : 'The Master\\'s chair stands empty.',",
     "new": "'The Master\\'s chair stands empty.',",
     "tests": [
       "test/chap5a_roll.test.js"

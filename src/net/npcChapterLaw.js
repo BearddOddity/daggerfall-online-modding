@@ -448,16 +448,19 @@ const DUTY_WORDS = Object.freeze({ gate: 'hold a gate', raid: 'defend a raided t
  * `receipts` - `{ faction, kind, member, done }`): "Duties here: hold a gate (done today), defend a raided town - standing
  * each time, more for the day's first of each, and Merit." To a reader not of the guild, "Its members' duties here: ...".
  * Null for a guild that asks none (the Thieves Guild). The receipts' asks were cards with no Take ("Hall writ"); a card
- * that cannot be taken is no writ, so they are this line now.
- * @param {number} faction @param {unknown} asks
+ * that cannot be taken is no writ, so they are this line now. AUDIT GUILD3 L2: a member is promised Merit only where its
+ * Merit row here (`merit`, the board's) says it earns some (meritEarnsOf - AUDIT CHAP3 C8's rule, the writ card's): not
+ * before its week in the guild, at the week's cap, nor with the week's Merit another chapter's.
+ * @param {number} faction @param {unknown} asks @param {any} [merit]
  */
-export function chapterDutiesLine(faction, asks) {
+export function chapterDutiesLine(faction, asks, merit = null) {
   const kinds = hallReceiptKindsOf(faction);
   if (!kinds.length) return null;
   const mine = (Array.isArray(asks) ? asks : []).filter((a) => a?.faction === faction);
   const member = mine.some((a) => a.member === true);
   const said = kinds.map((k) => `${DUTY_WORDS[/** @type {'gate' | 'raid'} */ (k)]}${member && mine.some((a) => a.kind === k && a.done === true) ? ' (done today)' : ''}`);
-  return `${member ? 'Duties here' : 'Its members\' duties here'}: ${said.join(', ')} - standing each time, more for the day's first of ${kinds.length > 1 ? 'each' : 'it'}, and Merit.`;
+  const earned = `standing each time, more for the day's first of ${kinds.length > 1 ? 'each' : 'it'}`;
+  return `${member ? 'Duties here' : 'Its members\' duties here'}: ${said.join(', ')} - ${earned}${!member || meritEarnsOf(merit) ? ', and Merit' : ''}.`;
 }
 
 /** The orders as DFU captions their halls (Internal_Strings en id 63 - systems/topicTree.js REGIONAL_BUILDING_NAMES). */
@@ -602,6 +605,10 @@ export const isChapterWrit = (/** @type {unknown} */ kind) => kind === 'hall' ||
  * max, elsewhere, from }`) - "Merit with the Fighters Guild here this week: 150 of 600", or why it earns none here.
  * @param {{ faction: number, merit: number, max: number, elsewhere: boolean, from: number | null }} m @param {number} nowS
  */
+/** AUDIT CHAP3 C8 (AUDIT GUILD3 L2 moved it here, one rule for the writ card and the Duties line): whether an account's
+ *  Merit row `m` here (the board's) earns Merit now - counted (`from` none: its week in the guild served), not at the
+ *  week's cap, and not this week's Merit another chapter's. */
+export const meritEarnsOf = (/** @type {any} */ m) => !!m && m.from == null && !m.elsewhere && Number(m.merit) < Number(m.max);
 export function meritLineOf(m, nowS) {
   const name = hallPosterName(m?.faction) ?? 'guild';
   if (m.from != null && m.from > nowS) {
@@ -659,8 +666,22 @@ export const CHAPTER_BANDS = Object.freeze([
   Object.freeze({ band: 'thriving', name: 'Thriving', from: 70, price: 0.9, writs: 1.5, shelf: 4 }),
   Object.freeze({ band: 'ascendant', name: 'Ascendant', from: 90, price: 0.8, writs: 1.5, shelf: 4 }),
 ]);
+/** AUDIT GUILD3 R1: THE FAILING BAND'S FALL - the Decline's (2 Strength a week unless the week's Merit met twice the target),
+ *  folded into the band GUILD3e said it repeated, as the Ascendancy's tenth and High Master were into the Ascendant band
+ *  (CUT A DUPLICATE, NEVER DEPTH: what a cut said that the other did not moves to the other - GUILD3e had dropped it). */
+export const CHAPTER_FAILING_FALL = 2;
+/** ... unless the week's Merit lifts the chapter by this many steps (Merit at this many times the week's target). */
+export const CHAPTER_FAILING_MEETS = 2;
+/** A FAILING WEEK: Strength `s` after the week's own step (strengthAfter), for a chapter that stood at `prev` as the week
+ *  began - CHAPTER_FAILING_FALL more where `prev` is Failing, unless `merit` meets CHAPTER_FAILING_MEETS times `target`. */
+export function failingWeekAfter(/** @type {number} */ prev, /** @type {number} */ s, /** @type {number} */ merit, /** @type {number} */ target) {
+  if (chapterBandOf(prev).band !== 'failing') return s;
+  return Number(merit) >= CHAPTER_FAILING_MEETS * Math.max(1, Number(target) || 0) ? s : Math.max(STRENGTH_MIN, s - CHAPTER_FAILING_FALL);
+}
 /** GUILD3e: the Strength a chapter stands Ascendant from - its Master is High Master while it does. */
 export const CHAPTER_ASCENDANT_FROM = /** @type {{ from: number }} */ (CHAPTER_BANDS.find((b) => b.band === 'ascendant')).from;
+/** A band's name ("Thriving") by its id. */
+const chapterBandNamed = (/** @type {string} */ id) => CHAPTER_BANDS.find((b) => b.band === id)?.name ?? id;
 /** A Strength's band (CHAPTER_BANDS' row) - Steady's for a number that is none. */
 export function chapterBandOf(/** @type {unknown} */ strength) {
   if (typeof strength !== 'number' || !Number.isFinite(strength)) return CHAPTER_BANDS[1];
@@ -687,21 +708,32 @@ const priceWords = (/** @type {number} */ f) => {
  *  guildNpcServices.js), so the words never drift from the law nor promise a service the hall has not: "Training and
  *  spells a tenth cheaper, a richer shelf, half again the writs." A hidden guild's halls are DFU's own on every sheet -
  *  its band moves its writs alone. An Ascendant chapter's Master is High Master (never a hidden guild's: no title). */
-export function chapterBandEffectsLine(/** @type {unknown} */ strength, /** @type {unknown} */ faction) {
+export function chapterBandEffectsLine(/** @type {unknown} */ strength, /** @type {unknown} */ faction, { shut = false } = {}) {
   /** @type {{ band: string, price: number, shelf: number, writs: number }} */
   const b = chapterBandOf(strength);
-  if (b.band === 'steady') return 'Its halls keep their usual prices, shelf and writs.';
   const sold = chapterDoctrinesFor(faction);
   const sells = sold.includes('training')
     ? (faction === GUILD_FACTION_IDS.MagesGuild || faction === DIVINES.Kynareth ? 'training and spells' : 'training') : null;
+  // AUDIT GUILD3 R1: a Failing chapter's fall, said where it stands; L5/W8: the High Master a rule of the band - said
+  // whether or not the chair is held this week (the roll says who holds it: chapterRollLines)
+  const fall = b.band === 'failing' ? `it loses ${CHAPTER_FAILING_FALL} Strength more each week its members' Merit lifts it by less than ${CHAPTER_FAILING_MEETS}` : null;
+  const high = b.band === 'ascendant' && isRollFaction(faction) && !hallHidden(faction) ? 'whoever holds its Master\'s chair is its High Master' : null;
+  const cap = (/** @type {string} */ t) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
+  // AUDIT GUILD3 L3: halls shut this Season (a Crackdown's) sell nothing and post no writs - the band says none of them
+  if (shut) return fall || high ? `${cap(/** @type {string} */ (fall ?? high))}.` : null;
+  if (b.band === 'steady') {
+    // AUDIT GUILD3 L4: the usual of what the hall HAS - never a shelf or prices it keeps none of
+    const kept = [sells ? 'prices' : null, sold.includes('shelf') ? 'shelf' : null, 'writs'].filter(Boolean);
+    return `Its halls keep their usual ${kept.length > 1 ? `${kept.slice(0, -1).join(', ')} and ${kept[kept.length - 1]}` : kept[0]}.`;
+  }
   const parts = [
     sells && b.price !== 1 ? `${sells} ${priceWords(b.price)}` : null,
     sold.includes('shelf') && b.shelf !== 0 ? (b.shelf > 0 ? 'a richer shelf' : 'a poorer shelf') : null,
     b.writs > 1 ? 'half again the writs' : b.writs < 1 ? 'half the writs' : null,
   ].filter(Boolean);
   const said = /** @type {string[]} */ (parts).join(', ');
-  const high = b.band === 'ascendant' && isRollFaction(faction) && !hallHidden(faction) ? ' - and its Master is High Master' : '';
-  return `${said.charAt(0).toUpperCase()}${said.slice(1)}${high}.`;
+  const and = fall ?? high;
+  return `${cap(said)}${and ? ` - and ${and}` : ''}.`;
 }
 
 // ─── CHAP3c: THE BANDS ON THE HALLS (Chapters-Arc 5.2) ──────────────
@@ -1017,7 +1049,8 @@ export function chapterRollLines(/** @type {unknown} */ faction, /** @type {any}
   const officers = seats.filter((s) => s.seat === 'officer').map((s) => s.name);
   return [
     ...(Number.isFinite(chapter?.strength) ? [`${chapterLineOf({ faction: /** @type {number} */ (faction), strength: chapter.strength })}.`] : []),
-    master ? `Master of the chapter: ${master.name}.` : 'The Master\'s chair stands empty.',
+    // AUDIT GUILD3 W8: an Ascendant chapter's Master is its High Master - the roll says it as the band line does
+    master ? `${chapterBandOf(chapter?.strength).band === 'ascendant' ? 'High Master' : 'Master'} of the chapter: ${master.name}.` : 'The Master\'s chair stands empty.',
     officers.length ? `Its council: ${namesListed(officers)}.` : 'No council chair is held.',   // GUILD3a: its council, never its "officers"
   ];
 }
@@ -1342,9 +1375,13 @@ export function chapterPatronBidsOf(/** @type {any} */ bid) {
 }
 const silverOf = (/** @type {number} */ n) => `${n.toLocaleString('en-US')} silver`;
 /** The board's line for a chapter's patron this Season: "Its patron this Season: Grey Lanterns [GLN]." - null for none. */
-export function chapterPatronSheetLine(/** @type {any} */ patron) {
+export function chapterPatronSheetLine(/** @type {any} */ patron, /** @type {unknown} */ faction = null) {
   const p = chapterPatronOf(patron);
-  return p ? `Its patron this Season: ${p.name}${p.tag ? ` [${p.tag}]` : ''}.` : null;
+  if (!p) return null;
+  // AUDIT GUILD3 L6: what the patronage buys, where the hall sells training (chapterHallFactor - the better of the band's
+  // price and Thriving's); W12: its tag as guildTagText writes every guild's, <TAG>
+  const priced = faction != null && chapterDoctrinesFor(faction).includes('training');
+  return `Its patron this Season: ${p.name}${p.tag ? ` <${p.tag}>` : ''}${priced ? ` - its members pay ${chapterBandNamed(CHAPTER_PATRON_BAND)}'s prices here, or the band's where better` : ''}.`;
 }
 /** The board's line for a guildmaster's own bid: "Your guild bids 1,500 silver for its patronage in the Season of First
  *  Seed." - or that it has not bid; null for no bid to say. */

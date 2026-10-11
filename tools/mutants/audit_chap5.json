@@ -312,8 +312,8 @@
   {
     "name": "AUDIT-CHAP5-E4-KEEPS",
     "file": "server-account/src/guilds.js",
-    "old": "  OR EXISTS (SELECT 1 FROM npc_chapter_patron_bids WHERE guild_id = ${p} AND state = 'open'))`;",
-    "new": "  )`;",
+    "old": "`EXISTS (SELECT 1 FROM npc_chapter_patron_bids WHERE guild_id = ${p} AND state = 'open')`",
+    "new": "`0`",
     "tests": [
       "test/audit_chap5.test.js"
     ]
@@ -321,8 +321,8 @@
   {
     "name": "AUDIT-CHAP5-E4-WORD",
     "file": "server-account/src/guilds.js",
-    "old": "  holds(r.patron, 'guild-patron');",
-    "new": "",
+    "old": "  ['guild-patron', (/** @type {string} */ p) =>",
+    "new": "  ['guild-seat', (/** @type {string} */ p) =>",
     "tests": [
       "test/audit_chap5.test.js"
     ]

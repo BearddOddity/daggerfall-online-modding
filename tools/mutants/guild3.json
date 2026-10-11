@@ -154,8 +154,8 @@
   {
     "name": "GUILD3c-the-vault-limit-unsaid",
     "file": "src/net/guildPowers.js",
-    "old": "const limit = d.limit > 0 ? `, ${d.limit} a day` : ', as many as they like';",
-    "new": "const limit = '';",
+    "old": "const takeWords = (/** @type {number} */ limit) => (limit > 0 ? `${limit} a day` : 'as many as they like');",
+    "new": "const takeWords = (/** @type {number} */ limit) => '';",
     "tests": [
       "test/guild3_plain.test.js"
     ]
@@ -172,8 +172,8 @@
   {
     "name": "GUILD3c-svc-the-stores-unsaid",
     "file": "server-account/src/guilds.js",
-    "old": "  holds(r.stores, 'guild-stores');",
-    "new": "",
+    "old": "  ['guild-stores', (/** @type {string} */ p) =>",
+    "new": "  ['guild-treasury', (/** @type {string} */ p) =>",
     "tests": [
       "test/guild3_plain.test.js"
     ]
@@ -353,7 +353,7 @@
   {
     "name": "GUILD3d-the-card-no-band-line",
     "file": "src/ui/noticeWindow.js",
-    "old": "    card.append(el('p', 'notice-chapter notice-band', chapterBandEffectsLine(c.strength, c.faction)));   // GUILD3d: what the band does\n",
+    "old": "    if (band) card.append(el('p', 'notice-chapter notice-band', band));\n",
     "new": "",
     "tests": [
       "test/guild3_plain.test.js",
@@ -449,7 +449,7 @@
   {
     "name": "GUILD3c-svc-the-view-says-nothing",
     "file": "server-account/src/guilds.js",
-    "old": "    ...(me.rank === GUILD_RANK_MASTER ? { keeps: (await guildHolds(db, guildId)) ?? [] } : {}),\n",
+    "old": "    ...(me.rank === GUILD_RANK_MASTER ? { keeps: (await guildHolds(db, guildId, me.player)) ?? [] } : {}),\n",
     "new": "",
     "tests": [
       "test/guild3_plain.test.js"
@@ -467,8 +467,8 @@
   {
     "name": "GUILD3c-svc-a-battle-unread",
     "file": "server-account/src/guilds.js",
-    "old": "  holds(r.battle, 'guild-battle');",
-    "new": "",
+    "old": "`EXISTS (SELECT 1 FROM town_seat_rights WHERE (guild_id = ${p} OR against = ${p}) AND ${SEAT_BATTLE_PENDING})`",
+    "new": "`0`",
     "tests": [
       "test/guild3_plain.test.js",
       "test/seat1c_service.test.js"

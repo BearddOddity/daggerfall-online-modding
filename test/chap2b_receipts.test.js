@@ -212,7 +212,8 @@ test('CHAP2b the asks on the board - GUILD3d (bible/11-Multiplayer/Guilds-Made-P
   ];
   const chapters = [{ faction: 41, strength: 50, band: 'steady' }, { faction: 368, strength: 50, band: 'steady' }];
   const book = { state: { open: true, writs: { today: 0, max: 3 } }, held: () => 0,
-    writs: async () => ({ data: { writs: [], receipts, chapters, today: { filled: 0, max: 3 } }, error: null, stale: false }), deliver: async () => ({ ok: true, data: {} }) };
+    // PIN MOVED: AUDIT GUILD3 L2 - a member is promised Merit where its Merit row here says it earns some (meritEarnsOf)
+    writs: async () => ({ data: { writs: [], receipts, chapters, merit: [{ faction: 41, merit: 100, max: 600, elsewhere: false, from: null }], today: { filled: 0, max: 3 } }, error: null, stale: false }), deliver: async () => ({ ok: true, data: {} }) };
   const notices = { seenAt: () => null, read: async () => ({ board: { notes: [], notices: [], me: {} } }), markSeen() {}, cached: () => null, draft: () => ({ subject: '', body: '', days: 7, button: '' }), noticeDraft: () => ({ subject: '', body: '', days: 3 }) };
   const host = document.createElement('div');
   mountNoticeBoard(host, { town: { name: 'Anticlere', mapId: 5 }, book: notices, work: { book, region: 21, regionName: 'Anticlere', countName: (k, n) => materialCountLabel(k, n) } });
@@ -239,5 +240,6 @@ test('CHAP2b the wiring: both routes credit after the receipt\'s row, the raid b
   assert.match(world, /claim: \(r\) => \(gateClaimReady\(\) \? _accountGates\.claim\(r, gateSeatWord\(r\)\)\.then\(rollHeard\) : Promise\.resolve\(\{ ok: false, error: 'offline' \}\)\),/);
   assert.match(world, /claim: \(r, ch, \.\.\.a\) => _accountRaids\.claim\(r, ch, \.\.\.a\)\.then\(\(x\) => \(ch === characterIdOf\(playerEntity\) \? rollHeard\(x\) : x\)\),/);
   // PIN MOVED: GUILD3d - the asks are each chapter's Duties line on its card
-  assert.match(src('src/ui/noticeWindow.js'), /const duties = chapterDutiesLine\(c\.faction, writs\?\.receipts\);\n\s+if \(duties\) card\.append\(el\('p', 'notice-chapter notice-duties', duties\)\);/);
+  // PIN MOVED: AUDIT GUILD3 L2 - and the reader's Merit row, the Merit promised only where it earns
+  assert.match(src('src/ui/noticeWindow.js'), /const duties = chapterDutiesLine\(c\.faction, writs\?\.receipts, merit\);[^\n]*\n\s+if \(duties\) card\.append\(el\('p', 'notice-chapter notice-duties', duties\)\);/);
 });
