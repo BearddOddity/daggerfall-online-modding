@@ -79,6 +79,7 @@ import { yardOffer, yardAll, fieldMend, FIELD_QUIET_S, FIELD_REFLOAT, YARD_PRICE
 import { createCompanions, companionRows } from '../systems/naval/crewCompanions.js';   // CREW-COMPANIONS
 import { createShipCrew, reloadScaleOf, mendScaleOf, handsBonusOf, crewCard, CREW_ORDERS, ORDER_TEXT, spiritsOf, LOOKOUT_ROLE, FIRST_MATE } from '../systems/naval/shipCrew.js';   // SHIP-CREW
 import { crewRoster, playerCrewCount } from '../systems/naval/crewLife.js';   // AUDIT NAV1: the shipwright, the mending at sea
+import { enlistPlan, releasePlan, CREW_HALL_TEXT } from '../systems/crewHall.js';   // SHIPYARDS: the crew hall's recruits signed on to her deck by name, and paid off
 import { createBoarding, berthPose, musterOf, crewTeamOf, handsOf, repelPartyOf, raidQuestOf, raidQuestWon, raidQuestRetreated, boardingWon, BOARD_RANGE, BOARD_SPEED, ABANDON_RANGE, HAND, SURRENDER_SHARE, CREW_PER_HAND } from '../systems/naval/navalBoarding.js';
 import { navalWireRecord, validNavalRecord, navalHitData, validNavalHit, NAVAL_SHARE_RADIUS, NAVAL_VOLLEY_KEEP_MS, NAVAL_GEN_MAX, NAVAL_WIRE_VOLLEYS, NAVAL_WIRE_SPENT, TRAFFIC_DEFAULT } from '../systems/naval/navalWire.js';
 import { Boat, boatAnimators, boatParticleSystems, animatorOf, setLights, meshLocalBounds, HULL_NAMES } from '../systems/comeSailAwayBoat.js';
@@ -2407,6 +2408,81 @@ export function createNavalHost(deps) {
     if (!st || !boat.crewed) return { ok: false, text: 'She has no crew.' };
     return st.crew.assign(name, role);
   }
+  /**
+   * SHIPYARDS (systems/crewHall.js): A RECRUIT SIGNED ON BY NAME - her roster made to match her deck first (crewHands'
+   * own sync, said to nobody), then her place for another named hand weighed (enlistPlan): he joins her roster at his
+   * trade's post with his record (shipCrew.js enlist, her spirits lifted by `recruit.lift`), and her crew is raised to
+   * the share that stands him on her deck - no blow, no fire put out, no loss on her spirits' books (`lastCrew` moved with
+   * it). Answers `{ ok, text, hand? }`; the purse is the caller's.
+   * @param {any} boat @param {{ name: string, trade: string, mobile: number, sex: string, fights?: number, boardings?: number, lift?: number }} recruit
+   */
+  function enlistHand(boat, recruit) {
+    const st = myBoatState(boat);
+    if (!st || !boat?.crewed) return { ok: false, text: CREW_HALL_TEXT.noCrew };
+    crewHands(boat);
+    const d = st.damage;
+    const plan = enlistPlan({ hull: boat.hull, crew: d.crew, maxCrew: d.maxCrew, hands: st.crew.hands.length });
+    if (!plan.ok) return { ok: false, full: !!plan.full, text: plan.why };
+    if (st.crew.hands.some((h) => h.name === recruit.name)) return { ok: false, text: CREW_HALL_TEXT.sameName(recruit.name) };
+    const hand = st.crew.enlist(recruitHand(recruit), recruit.lift ?? 0);
+    if (!hand) return { ok: false, text: CREW_HALL_TEXT.gone };
+    const was = d.crew;
+    d.muster(plan.crew);   // AUDIT SHIPYARDS L2-5: her crew raised and nothing else - a wreck stays a wreck
+    st.lastCrew = d.crew;
+    st.mustered = true;
+    return { ok: true, text: '', hand: { ...hand }, raise: d.crew - was };
+  }
+  /** A hall's recruit as her roster takes him (shipCrew.js enlist): his trade the post, his hall id with him. */
+  const recruitHand = (recruit) => ({ name: recruit.name, role: recruit.trade, mobile: recruit.mobile, gender: recruit.sex, fights: recruit.fights, boardings: recruit.boardings, hall: recruit.id });
+  /**
+   * SHIPYARDS (AUDIT SHIPYARDS L7-2): A RECRUIT SIGNED ON IN A HAND'S PLACE - her deck full, `outName` paid off and the
+   * recruit standing in his place: one man for another, her crew as it was, the spirits each brought or takes with him.
+   * Never a hand ashore at the player's side, never a recruit whose name is already aboard. Answers `{ ok, text, hand?,
+   * out? }`; the purse is the caller's. @param {any} boat @param {string} outName @param {any} recruit
+   */
+  function swapHand(boat, outName, recruit) {
+    const st = myBoatState(boat);
+    if (!st || !boat?.crewed) return { ok: false, text: CREW_HALL_TEXT.noCrew };
+    crewHands(boat);
+    if (!st.crew.hands.some((h) => h.name === outName)) return { ok: false, text: 'No such hand aboard her.' };
+    if (boat.uid && companions.awayOf(boat.uid)?.has?.(outName)) return { ok: false, text: CREW_HALL_TEXT.ashore(outName) };
+    if (st.crew.hands.some((h) => h.name === recruit.name)) return { ok: false, text: CREW_HALL_TEXT.sameName(recruit.name) };
+    const out = st.crew.release(outName);
+    const hand = st.crew.enlist(recruitHand(recruit), recruit.lift ?? 0);
+    if (!hand) return { ok: false, text: CREW_HALL_TEXT.gone };   // unreachable: the name was asked first
+    st.mustered = true;
+    return { ok: true, text: '', hand: { ...hand }, out };
+  }
+  /** SHIPYARDS: a named hand of hers PAID OFF (systems/crewHall.js releasePlan) - never one ashore at the player's side,
+   *  never the last of her crew; out of her roster wherever he stood, her crew down by his share, no loss on her spirits'
+   *  books. Where her crew still stands as many on her deck, the sync names the man who steps up into the place (AUDIT
+   *  SHIPYARDS L2-1: said, never a stranger unexplained). Answers `{ ok, text, hand?, next? }`.
+   *  @param {any} boat @param {string} name */
+  function releaseHand(boat, name) {
+    const st = myBoatState(boat);
+    if (!st || !boat?.crewed) return { ok: false, text: 'She has no crew.' };
+    crewHands(boat);   // her roster made to match her deck first, as a hire's is
+    if (boat.uid && companions.awayOf(boat.uid)?.has?.(name)) return { ok: false, text: CREW_HALL_TEXT.ashore(name) };
+    if (!st.crew.hands.some((h) => h.name === name)) return { ok: false, text: 'No such hand aboard her.' };
+    const plan = releasePlan({ crew: st.damage.crew });
+    if (!plan.ok) return { ok: false, text: plan.why };
+    const hand = st.crew.release(name);
+    st.damage.discharge(plan.crew);
+    st.lastCrew = st.damage.crew;
+    const before = new Set(st.crew.hands.map((h) => h.name));
+    const next = crewHands(boat).find((h) => !before.has(h.name)) ?? null;
+    return { ok: true, text: '', hand, next };
+  }
+  /** SHIPYARDS (AUDIT SHIPYARDS L1-6): how many of her hands stand ashore at the player's side, by her number - whatever
+   *  the sea fight's switch says and wherever she lies (packed, laid up, afar). */
+  const handsAshore = (uid) => (uid ? companions.awayOf(uid)?.size ?? 0 : 0);
+  /** SHIPYARDS: a ship sold (systems/shipyards.js) - her hurts, her powder, her crew and her store's credit let go, by her
+   *  number. */
+  function forgetBoat(uid) {
+    if (!uid) return;
+    boatState.delete(uid);
+    pendingBoats.delete(uid);
+  }
   /** HOLDINGS: her state built again on her refitted whole - her hurts kept as the share of it they were (a refit
    *  never heals her nor hurts her), her spare work, her crew and her powder as they were. A record still waiting for her
    *  needs nothing: it is read on her new whole when she stands (savedHurts, by its share). */
@@ -4591,6 +4667,10 @@ export function createNavalHost(deps) {
     /** GALLEON: a galleon's gun deck as this frame stood it (her sides laid, her guns' places, her shutters) - a probe's reading. */
     gunDeckOf: (boat) => galleonGuns.read(boat, clock),
     fleetStatus, repairAway, refitBoat, openYard, freeBerth, crewHands, assignRole,   // HOLDINGS: the Fleet page's (scenes/fleetHost.js) - with giveOrder and hostileNear, below
+    enlistHand, swapHand, releaseHand, forgetBoat, handsAshore,   // SHIPYARDS: the crew hall's recruits signed on (in a hand's place, AUDIT SHIPYARDS) and paid off, a ship sold, her hands ashore
+    /** SHIPYARDS: the shipwright's model of a boat of mine (ui/navalYardWindow.js's - its rows, its presses), for the
+     *  shipmaster's window's Shipwright page (ui/shipyardWindow.js) - the one the yard's own window reads. */
+    yardModelOf: (boat) => yardModel(boat),
     harbourList, warp, dockedAt, gangways,   // QUAYS: the harbours the quays stand off (scenes/quayPool.js), Come Sail Away's warp seam, where a boat lies made fast, the gangways run out
     boatInPlay: () => boatInPlay(),
     word, applyWord, sweepOwners, applyPeerHit, dropOwner, clearPeers,
