@@ -158,7 +158,7 @@ export async function titheAt(db, nowS, region, pixel = null) {
   if (!held.length) return null;
   // MARKET-SPEED: the seats' places off the isolate's kept witness rows (townSeats.js seatRowsOf) - the holder and its
   // Tithe above are read as they stand; only which seat a board's bailiwick is comes from the minute's rows
-  const seat = bailiwickOf((await confirmedSeats(db, nowS, { kept: true })).values(), region, pixel);
+  const seat = bailiwickOf((await confirmedSeats(db, nowS)).values(), region, pixel);
   const h = seat ? held.find((x) => Number(x.key) === seat.key) : null;
   return h ? { key: seat.key, guild: h.guild_id, pct: Math.min(Number(h.tithe), marketHallTitheCap(TITHE_CAP[h.tier] ?? 0, Number(h.market ?? 0))) } : null;
 }
@@ -170,7 +170,7 @@ export async function levyAt(db, nowS, region, pixel) {
   const { results = [] } = await db.prepare("SELECT key FROM town_seat_edicts WHERE week = ? AND state = 'law' AND edict = 'levy'").bind(weekAt(nowS)).all();
   if (!results.length) return null;
   // GATHER-SPEED: the seats' places off the isolate's kept witness rows - every harvest under a Levy read them whole
-  const seat = bailiwickOf((await confirmedSeats(db, nowS, { kept: true })).values(), region, pixel);
+  const seat = bailiwickOf((await confirmedSeats(db, nowS)).values(), region, pixel);
   return seat && results.some((e) => Number(e.key) === seat.key) ? seat.key : null;
 }
 
