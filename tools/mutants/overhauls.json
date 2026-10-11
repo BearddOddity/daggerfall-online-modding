@@ -41,7 +41,7 @@
     "tests": [
       "test/overhauls.test.js"
     ],
-    "old": "  isOn: () => uiSkin() === skin && (skin !== 'classic' || (activeUiPack()?.id ?? UI_PACK_NONE) === pack),",
+    "old": "  isOn: () => uiSkin() === skin && (skin !== 'classic' ? dressWorn() === dress : (activeUiPack()?.id ?? UI_PACK_NONE) === pack),",
     "new": "  isOn: () => uiSkin() === skin,"
   },
   {

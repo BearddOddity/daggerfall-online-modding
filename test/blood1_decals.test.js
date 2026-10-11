@@ -1481,7 +1481,7 @@ test('BLOOD1b by source: a moved batch moves its BOUNDS, and the corner table ha
   assert.match(fn, /const bounds = \(batch\.bounds && batch\.bounds\.length === 4\) \? batch\.bounds : \(batch\.bounds = new Float32Array\(4\)\);/,
     'minted once, on the first move only, and written in place after');
   // ...and it writes rather than reallocating
-  assert.match(fn, /gl\.bufferSubData\(gl\.ARRAY_BUFFER, 0, verts, 0, count \* 20\);/);
+  assert.match(fn, /gl\.bufferSubData\(gl\.ARRAY_BUFFER, batch\._arena \? batch\._q0 \* BB_QUAD_VERT_BYTES : 0, verts, 0, count \* 20\);/);   // PIN MOVED (PERF-ARENA): a still batch's corners are its arena's range - a gib's (dynamic) its own buffer's, from 0, as before
   assert.doesNotMatch(fn, /createBuffer|createVertexArray|bufferData\(/, 'nothing is rebuilt on a move');
   // ...and it cannot write past the buffer it was given
   assert.match(fn, /Math\.min\(centers\.length, batch\._quads \?\? 0\)/, 'bounded by the quads the batch actually holds');

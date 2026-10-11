@@ -65,6 +65,9 @@
  * @property {object|null} [lptProto]                 LPT1: the low-poly tree a far picture stands for (its handle) - it gives way to the tree near the eye (renderer setLowPolyTrees)
  * @property {number} [farH]                          LPT1: the height MAC1's far-ring rule reads in place of size.h (a far picture's classic flat's)
  * @property {boolean} [_dyn]                         BLOOD1b: born DYNAMIC_DRAW, because its centres move every frame
+ * @property {object|null} [_arena]                   PERF-ARENA: a still batch's arena (renderer _bbArenaFor) - its VAO and buffers the arena's; null for one with its own (dynamic), or freed
+ * @property {number} [_q0]                           PERF-ARENA: the first of its arena's quads it holds
+ * @property {number} [_ibOff]                        PERF-ARENA: the byte offset of its range in the arena's indices - every draw of the batch passes it (0 for a batch with its own)
  * @property {object|null} [_place]                  PERF-EXT1: a static batch's placements on a grid (bounds.js placementGrid) - the shadow pass asks its QUADS; null for one flat, one built dynamic, one moved; and its quads' half-diagonal, once a size (placedHalfDiagonal, the review)
  * @property {Float32Array} [_moveScratch]            BLOOD1b: the move's own vertex staging, kept rather than re-minted each frame
  * @property {number[]} [_box]                        EV3: the host's cull box [minX, minY, minZ, maxX, maxY, maxZ] (flatBatchAabb)

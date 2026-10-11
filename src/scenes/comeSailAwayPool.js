@@ -163,36 +163,84 @@ export function createComeSailAwayPool({ renderer = null, pipeline = null, fetch
   // before it) is made where it is read and never kept; a boat re-dressed or moved by the origin is walked again.
   /** boat -> { stamp, nodes, mats } */
   const walks = new Map();
-  /** node -> its world matrix, kept */
-  const nodeMats = new WeakMap();
-  const _walkStack = [];
+  /** A node's world matrix, kept - and (PERF-SAILS1) what it was made from: `l` the node's local rotation, position
+   *  and scale as they read when it was made, and `pver` the `ver` of the parent's matrix it was made under (ROOT_MADE
+   *  for a boat's root). `ver` names this making: every making of every matrix takes the next of one count, so no two
+   *  makings share one - a part hung under another parent reads another parent's `ver`, whatever either was made. */
+  // PERF-SAILS2: the record rides the node (`_walkRec`, as PrefabNode keeps its own worldMatrix's `_w`) - a WeakMap's ask
+  // a node a frame was a sixth of the walk
+  const _walkStack = [], _walkRecs = [];
   const _local = new Float32Array(16);
-  let walkStamp = 0;
-  const matOf = (n) => { let m = nodeMats.get(n); if (!m) { m = new Float32Array(16); nodeMats.set(n, m); } return m; };
+  let walkStamp = 0, _makings = 0;
+  const ROOT_MADE = -2;
+  const recOf = (n) => {
+    let r = n._walkRec;
+    if (!r) {
+      const l = new Float64Array(10).fill(NaN);
+      r = { m: new Float32Array(16), ver: 0, pver: -1, pend: false, under: null, l, lq: l.subarray(0, 4), lt: l.subarray(4, 7), ls: l.subarray(7, 10) };
+      n._walkRec = r;
+    }
+    return r;
+  };
+  /** PERF-SAILS1: does the node read the local values its matrix was last made from? (And, when not, they are taken.) */
+  function localSame(r, n) {
+    const q = n.localRotation, t = n.localPosition, sc = n.localScale, l = r.l;
+    if (l[0] === q[0] && l[1] === q[1] && l[2] === q[2] && l[3] === q[3] && l[4] === t[0] && l[5] === t[1] && l[6] === t[2]
+      && l[7] === sc[0] && l[8] === sc[1] && l[9] === sc[2]) return true;
+    l[0] = q[0]; l[1] = q[1]; l[2] = q[2]; l[3] = q[3]; l[4] = t[0]; l[5] = t[1]; l[6] = t[2]; l[7] = sc[0]; l[8] = sc[1]; l[9] = sc[2];
+    return false;
+  }
+  // PERF-SAILS1 (2026-10-10, Dudey's readout in a port at night: the boats' frame 5-7.6 ms - `sails`, ?perf=cpu): THE
+  // WALK MAKES A MATRIX ONLY WHERE ONE MOVED. A ship is hundreds of objects (twelve hulls: 7,384), and every one's world
+  // matrix was made again every frame - a quaternion's matrix and a product a node - where all but her sails, booms,
+  // flags and oars stand as they stood. A node's matrix is made again when its own local values read otherwise than
+  // they did at its last making, or the parent's matrix it stands under is not the making it was made under (made again,
+  // or another parent's); else it is the one already made from those same values - the same floats.
+  // PERF-SAILS2 (Dudey: "iam not near water btw" - "lets say water is there like 2 pixel away"): AND MADE WHEN READ. A
+  // harbour's moored ships stand within HARBOUR_STAND of its mouth, ashore too, and navalHost's poseShip rocks each in
+  // the wind every frame - her MeshObject turned, so every object under it moved and PERF-SAILS1 made them all again.
+  // Most are read by nobody: her still parts draw as her one batch at the MeshObject's matrix (AUDIT NAV1 #13). The walk
+  // marks a node due (`pend`, `under` the record it hangs under) and `made` makes it - its parent first - when a reader
+  // asks: the draw for what it draws one by one, the flats for theirs, a probe's walkOf for all. A due matrix is made
+  // from the local values the walk read (`lq`/`lt`/`ls`, the same numbers) under the parent's as made then - the eager
+  // walk's floats. tools/csaBench.mjs, twelve ships, the frame and the draw: 9.6 -> 4.6 ms standing, 9.5 -> 5.4 rocking.
   function walkBoat(boat, stamp) {
     let w = walks.get(boat);
-    if (!w) { w = { stamp: -1, nodes: [], mats: [] }; walks.set(boat, w); }
-    w.stamp = stamp; w.nodes.length = 0; w.mats.length = 0;
+    if (!w) { w = { stamp: -1, nodes: [], mats: [], recs: [] }; walks.set(boat, w); }
+    w.stamp = stamp; w.nodes.length = 0; w.mats.length = 0; w.recs.length = 0;
     const root = boat.GameObject;
     if (!root?.activeSelf) return w;
-    mat4FromQuatPosScale(root.localRotation, root.localPosition, root.localScale, matOf(root));
-    const stack = _walkStack;
-    stack.length = 0;
-    stack.push(root);
+    const rr = recOf(root);
+    if (!localSame(rr, root) || rr.pend || rr.pver !== ROOT_MADE) { rr.pend = true; rr.under = null; }
+    const stack = _walkStack, recs = _walkRecs;
+    stack.length = 0; recs.length = 0;
+    stack.push(root); recs.push(rr);
     while (stack.length) {
-      const n = stack.pop(), m = nodeMats.get(n);
-      w.nodes.push(n); w.mats.push(m);
+      const n = stack.pop(), pr = recs.pop();
+      w.nodes.push(n); w.mats.push(pr.m); w.recs.push(pr);
       for (let i = n.children.length - 1; i >= 0; i--) {
         const c = n.children[i];
         if (!c.activeSelf) continue;
-        multiply(m, mat4FromQuatPosScale(c.localRotation, c.localPosition, c.localScale, _local), matOf(c));
-        stack.push(c);
+        const r = recOf(c);
+        if (!localSame(r, c) || r.pend || pr.pend || r.pver !== pr.ver) { r.pend = true; r.under = pr; }
+        stack.push(c); recs.push(r);
       }
     }
     return w;
   }
+  /** PERF-SAILS2: a walked node's matrix, made now if it is due - its parent's first. */
+  function made(r) {
+    if (!r.pend) return r.m;
+    const p = r.under;
+    if (p === null) { mat4FromQuatPosScale(r.lq, r.lt, r.ls, r.m); r.pver = ROOT_MADE; }
+    else { multiply(made(p), mat4FromQuatPosScale(r.lq, r.lt, r.ls, _local), r.m); r.pver = p.ver; }
+    r.ver = ++_makings; r.pend = false;
+    return r.m;
+  }
   /** This frame's walk of a boat - the frame's own, or one made now and kept for nobody. */
   const walkOf = (boat) => { const w = walks.get(boat); return w && w.stamp === walkStamp && walkStamp > 0 ? w : walkBoat(boat, -1); };
+  /** PERF-SAILS2: the same walk with every matrix made - a probe's reading (the pool's own readers make what they read). */
+  const walkMade = (boat) => { const w = walkOf(boat); for (const r of w.recs) made(r); return w; };
 
   async function ensureModels() {
     if (models || modelsFailed) return models;
@@ -459,15 +507,16 @@ export function createComeSailAwayPool({ renderer = null, pipeline = null, fetch
     const seen = new Set();
     for (const boat of drawn()) {
       if ((boat.fade ?? 1) < FADE_FLATS) continue;   // SHIP-FADE: a ship half faded stands no flat - her crew and lanterns go first
-      const { nodes, mats } = walkOf(boat);   // AUDIT PRE-MERGE 0928 R5
+      const { nodes, recs } = walkOf(boat);   // AUDIT PRE-MERGE 0928 R5
       for (let i = 0; i < nodes.length; i++) {
-        const n = nodes[i], m = mats[i];
+        const n = nodes[i];
         const bb = n.getComponent('DaggerfallBillboard');
         if (!bb) continue;
         const r = n.getComponent('MeshRenderer');
         if (!r || r.m_Enabled === false) continue;
         const [w, h] = bb.Summary.Size;
         if (!(w > 0 && h > 0)) continue;
+        const m = made(recs[i]);   // PERF-SAILS2: a flat's matrix made as it is read
         let b = flats.get(n);
         if (!b) {
           if (!renderer?.createBillboardBatch) continue;
@@ -524,10 +573,10 @@ export function createComeSailAwayPool({ renderer = null, pipeline = null, fetch
       const fade = Math.max(0, Math.min(1, boat.fade ?? 1));
       if (fade <= 0) continue;
       if (fade < 1) r.setDissolve?.(fade);
-      const { nodes, mats } = walkOf(boat);   // AUDIT PRE-MERGE 0928 R5
+      const { nodes, recs } = walkOf(boat);   // AUDIT PRE-MERGE 0928 R5
       const still = [];   // AUDIT NAV1 (#13): this frame's parts that hang in her hull's frame
       for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i], m = mats[i];
+        const node = nodes[i], rec = recs[i];   // PERF-SAILS2: its matrix made where it is drawn on its own
         const mr = node.getComponent('MeshRenderer');
         if (!mr || mr.m_Enabled === false || mr.materials?.[0]?.billboard) continue;
         let gpu = null, key = null, slots = null, mesh = null;
@@ -544,13 +593,14 @@ export function createComeSailAwayPool({ renderer = null, pipeline = null, fetch
         }
         if (!gpu) continue;
         const chain = key && boat.MeshObject ? stillChain(boat, node) : null;
-        if (chain) { still.push({ node, key, mesh, slots, chain, gpu, m }); continue; }
-        one(gpu, m);
+        if (chain) { still.push({ node, key, mesh, slots, chain, gpu, rec }); continue; }
+        one(gpu, made(rec));
       }
       const batch = stillBatch(boat, still);
-      const frame = batch ? nodeMats.get(boat.MeshObject) : null;
+      const hullRec = batch ? boat.MeshObject?._walkRec ?? null : null;   // PERF-SAILS1: the record's matrix
+      const frame = hullRec ? made(hullRec) : null;   // PERF-SAILS2: made as it is read
       if (batch && frame) one(batch.mesh, frame);
-      for (const c of still) if (!batch || !frame || !batch.nodes.has(c.node)) one(c.gpu, c.m);
+      for (const c of still) if (!batch || !frame || !batch.nodes.has(c.node)) one(c.gpu, made(c.rec));
       if (fade < 1) r.setDissolve?.(1);
     }
     return n;
@@ -708,7 +758,7 @@ export function createComeSailAwayPool({ renderer = null, pipeline = null, fetch
     hullRig,   // OWS2
     spawnPeerNow, spawnSeaNow,
     /** AUDIT PRE-MERGE 0928 R5: a boat's walk as this frame made it (its nodes and world matrices) - a probe's reading. */
-    walkOf,
+    walkOf: walkMade,
     /** AUDIT NAV1 (#13): a boat's batch of still parts as the last draw left it ({ nodes, mesh }), or null - a probe's reading. */
     stillOf: (boat) => { const st = stills.get(boat); return st?.mesh ? { nodes: st.nodes, mesh: st.mesh } : null; },
     get boats() { return boats; },

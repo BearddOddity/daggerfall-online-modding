@@ -184,6 +184,10 @@ async function boot() {
       import('./ui/menuPad.js'), import('./systems/padCursor.js'), import('./ui/plusCursor.js'),
     ]);
     const detachMenuPad = attachMenuPad({ cursor: { law: padDoorCursorLaw, art: GAUNTLET_POINT } });
+    // SND2: the door's presses sound as the game's do - the click's sound bank read through this file's data gate, the
+    // reader handed in (ui/uiClickSound.js names no data module: the HUD imports it). Not awaited, and a missing bank
+    // boots nothing.
+    import('./ui/uiClickSound.js').then((m) => m.wakeUiClickSound(getBytes)).catch(() => {});
     // INTRO2: the cinematic and menu share ONE music session. The final
     // splash holds for the player's tap; opening the menu ducks the track,
     // choosing a game closes it before any in-game or classic video audio.
