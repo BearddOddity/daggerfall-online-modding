@@ -192,6 +192,10 @@ test('ETHER-SEA the ground: 0 at sea, the isle\'s peak at its centre falling to 
   assert.equal(ISLE_KINDS.port.fall, 1); assert.equal(ISLE_KINDS.rock.fall, 1.5);
   const wild = strip(600, 640, 220, 260).find((i) => i.kind === 'wild');
   assert.deepEqual([wild.lx, wild.ly], [wild.px, wild.py], 'every other kind\'s land on its centre');
+  // AUDIT CAPTAIN'S SEA (the touched run over 8cf4a1804: SEA-rim-unkept survived) - H1 gave a port a fall of 1, whose
+  // tail past the rim is below nothing and clamps to 0 without the rim; a fall of no whole number (1.5) leaves NaN there,
+  // so the rim is asked of a wild isle too
+  assert.equal(isleByte(wild, Math.floor(wild.lx + wild.r) + 2, wild.ly), 0, 'past a wild isle\'s rim');
   assert.ok(Math.abs(etherHeightByte(wild.px, wild.py) - wild.peak) <= HEIGHT_NOISE, 'the peak at its centre');
   assert.equal(etherHeightByte(VEIL_X + 4, h.py), 0, 'the Veil\'s water');
   const sea = etherLargeMap(VEIL_X + 4, h.py);
