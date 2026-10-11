@@ -2,7 +2,8 @@
 
 > Design page and record of the slice, written 2026-10-04 as it shipped and corrected the same day by its audit
 > (`01-Overview/Audit-Sea-Serpent.md`, whose finding ids - S1, T3, E2 ... - the code's comments cite). The code's
-> comments cite this page by section number; where the page and a pin disagree, the pin is what runs.
+> comments cite this page by section number; where the page and a pin disagree, the pin is what runs. SERPENT4 (section
+> 16, 2026-10-11) reworked it from the players' feedback: the sentences below say what runs now.
 
 ## What Mac asked for
 
@@ -16,8 +17,8 @@ So, as decided here:
 - **Online only.** Like the gate, the serpent is a fact about the shared world: the relay keeps its fight, signs each
   fighter's kill and the account service pays for it. Offline there is no serpent.
 - **A ship's fight.** It lives on the open sea and is fought from decks with the guns the naval fight already has
-  (`03-World/Naval-Combat.md`). A player with no ship can still crew another player's ship and earn a share by
-  standing the fight out near it (section 8).
+  (`03-World/Naval-Combat.md`). A player with no ship can still crew another player's ship, strike it with her own bow
+  and spells (SERPENT4, section 16) and earn a share by what she lands or by standing the fight out near it (section 8).
 - **One beast, named.** SETHRAKUL, the Shed-Skin of Satakal, whom the Bay's sailors call the Old Coil. The Redguards say
   Satakal, the World-Skin, sheds the world as a snake sheds its skin, and that not every skin he leaves behind is
   dead. The table (`SERPENT_BOSSES`) holds one serpent now, so a later slice can add more without a new mechanism (the
@@ -31,8 +32,8 @@ Daggerfall has no other players and no sea serpent, so none of this is a DFU mem
 ## The shape, end to end
 
 ```
- the event clock ─► the SIGHTING (02:00) ─► it RISES (05:00) ─► the STORM closes its waters (08:00) ─► it DIVES (10:00)
-   (no frame)        chat line, map ring     ships sail in, `in`    no newcomer; the fight goes on        unslain: gone
+ the event clock ─► the SIGHTING (02:00) ─► it RISES (05:00) ─► the STORM breaks over its waters (08:00) ─► it DIVES (10:00)
+   (no frame)        chat line, map ring     ships sail in, `in`    ships still sail in (SERPENT4)              unslain: gone
                      compass in the ring          │
                                                   ▼
                         the CELL ROOM its site stands in keeps the fight (brain on the cell's alarm)
@@ -54,11 +55,12 @@ It takes the dawn watch, the gate's quiet half of the day, so the two never stan
 |---|---|---|
 | 02:00 | HH:02:30 | **the sighting**: the chat line, the map ring |
 | 05:00 | HH:17:30 | **it rises**: its waters open to every ship, the fight begins (it surfaces over `SERPENT_SURFACE_MS`, 12 s) |
-| 08:00 | HH:32:30 | **the storm closes its waters**: no newcomer joins, the ships already in it fight on |
+| 08:00 | HH:32:30 | **the storm breaks over its waters**: SERPENT4 - a reminder, nothing closes; every ship may still join until it dives |
 | 10:00 | HH:42:30 | **it dives** (it *sounds*, in the code's word): unslain, it goes down over `SERPENT_DIVE_MS` (15 s) and is gone |
 
-(HH is 03, 07, 11, 15, 19 and 23.) That gives fifteen real minutes from the sighting to the rising, fifteen to
-reach it, and twenty-five minutes of fight at most. Every client and the relay compute the same instants with
+(HH is 03, 07, 11, 15, 19 and 23.) That gives fifteen real minutes from the sighting to the rising and twenty-five
+minutes of fight at most, a ship joining at any of them (`serpentAdmits`, SERPENT4: the storm closed its waters at 08:00
+before, to a late ship and to a friend who sailed out to help). Every client and the relay compute the same instants with
 nothing sent (`serpentTimes`, `serpentPhase`: quiet, omen, rising, hunt, late, slain, sounding, gone). A kill makes
 the phase `slain` for `SERPENT_DIVE_MS` (its death throes), then `gone`.
 
@@ -71,14 +73,14 @@ more. Each line is said once a day, in order. A player arriving late hears only 
 - the sighting - *"Bells ring in the harbours: a great serpent is sighted off Sentinel. Sethrakul rises at 04:17 your
   time."* (the place is the nearer port, and its province where that is another name; the time is this machine's local
   time, as the gate's lines are);
-- the rising - *"Sethrakul rises off Sentinel. The storm closes over its waters in 14m 48s."*;
-- the storm closing - *"A storm closes over Sethrakul's waters off Sentinel - no ship can join the fight now. It dives
-  at 04:42 your time."*;
+- the rising - *"Sethrakul rises off Sentinel. It dives in 24m 48s - sail out and join the fight."*;
+- the storm breaking - *"A storm breaks over Sethrakul's waters off Sentinel - every ship may still join the fight. It
+  dives at 04:42 your time."*;
 - the dive - *"Sethrakul dives off Sentinel and is gone into the deep."* (never said of a serpent slain).
 
 A time left is said as *14m 48s* and *9s*, never *14:48*, which reads as the hour beside lines that name the hour
-(AUDIT SERPENT, the words); a countdown never reads *0s* with time left, and the rising counts to the storm, never
-*"rises in 0s"* as it rises (B9).
+(AUDIT SERPENT, the words); a countdown never reads *0s* with time left, and the rising counts to the dive (SERPENT4 - to
+the storm before), never *"rises in 0s"* as it rises (B9).
 
 The kill's line is the HUB's word (section 8): *"Sethrakul is slain off Sentinel by Ama, Bryn and Cass. Its hoard goes
 to the ships that fought it."* Each client says it for its own site's serpent alone, naming the place from that site
@@ -123,7 +125,8 @@ and a client folds its own site's alone (AUDIT SERPENT S1, AUDIT SERPENT 2 F1). 
   side (`sd` is +1 for a right turn, -1 for a left). A jump leg (`j`) starts a fresh track: its rising's alone - since
   SERPENT3 (section 15) every other leg is swum from where the last left its head.
 - **The body follows the head's track** back by arclength (`spinePoint`). It has `SEG_N` (24) segments of `SEG_LEN`
-  (7 m), 168 m in all, with radii tapering from the head to a tail fin (`radiusAt`).
+  (7 m), 168 m in all, with radii tapering from the head to a tail fin (`radiusAt`) - SERPENT4: its first build's radii
+  times `SERPENT_GIRTH` (1.6), the great coils 12.5 m through.
 - **How it rides the sea** is a mode, each change blended over `MODE_BLEND_MS` (1.5 s):
   - `deep`: under the sea, `DEEP_Y`.
   - `cruise`: humps break the surface, `HUMP_L` (46 m) waves along it, the head just over the sea.
@@ -182,7 +185,8 @@ or not at all: one this machine first sees (or comes back to) more than `LAND_JU
 ship sailing in on its recovery, a stalled frame - strikes nothing, its venom laid all the same (AUDIT SERPENT 2 F4).
 
 **The throw** (`shoveOf`) pushes her away from the blow (across the ram's lane) and dies away over `SHOVE_S` (2.5 s).
-It is carried by Come Sail Away's new `drift` seam (section 7).
+It is carried by Come Sail Away's new `drift` seam (section 7). SERPENT4: a blow throws her `SERPENT_THROW_X` (half) of
+the table's way, and tears `SERPENT_CANVAS_X` (half) of its canvas - the crush's too.
 
 ### The coil
 
@@ -271,8 +275,8 @@ health, and the first beat that finds her at the fight brings it in (AUDIT SERPE
 - an older law, with `reload`;
 - another day, with *the serpent is gone*;
 - a pose past `ADMIT_R`, with *too far from its waters*;
-- after 08:00, with *the storm has closed its waters* (a newcomer is shown the fight and refused; a site with no fight
-  yet stands none);
+- past its dive, with *the serpent is gone* (a site with no fight yet stands none; SERPENT4 - after 08:00, *the storm has
+  closed its waters*, before; a relay before it may still say so, and the client reads it);
 - a serpent already slain, with *it is already slain* (B8);
 - a full fight (`SERPENT_FIGHTERS_MAX` 128) that frees no idle seat, a fourth site, or an account already at another
   site this day, with *the waters are full*;
@@ -291,7 +295,8 @@ health; it no longer goes at her; her stood time still counts.
 reference broadside a second (`SHIP_REF`: rowboat 0, Large Boat 3.6 - she has no crew to her guns, T6 - Small Ship 10,
 Large Galley 13, Carrack 12) sets:
 
-- the health it brings: `SERPENT_TTK_S` (180) seconds of it, at the fight's current fraction for a late ship;
+- the health it brings: `SERPENT_TTK_S` (150 - SERPENT4; 180 before) seconds of it, at the fight's current fraction for a
+  late ship;
 - its damage bucket: refilled at `SERPENT_BUCKET_RATE_X` (1.5) times the reference a second (honest fire measures
   0.25-0.4 of it; at 3 a forged claim had a 12-20 times ceiling - T5), 20 deep, no one blow over 14;
 - `SERPENT_HIT_HZ_MAX` (6) words a second.
@@ -302,8 +307,9 @@ A share stays in its health only while its ship is at the fight: seen within `EN
 the fraction it stands at, with her next blow.
 
 A blow is believed only from where the socket's own pose stands: within `ENGAGE_R` (900 m) plus slack, and within a
-gun's reach (`GUN_REACH_M` 300 m) of something of it above the sea. A hand aboard another's ship brings and deals
-nothing with guns it does not have.
+gun's reach (`GUN_REACH_M` 300 m) of something of it above the sea. A hand aboard another's ship brings nothing; since
+SERPENT4 she deals with her own bow and spells on a hand's purse (`SERPENT_HAND_REF`), from within a shaft's flight
+(`SERPENT_HAND_REACH_M` 200 m), never heard from her own ship's deck (section 16).
 
 **Its mind.**
 - It surfaces and circles for `SERPENT_OPENING_MS` (10 s) before it strikes.
@@ -340,10 +346,12 @@ under the pins. Its job:
 - **My wreck** is said as it comes and as she floats again (`wr`).
 - **Its blows on MY ship and MY feet** (section 5). The hurt goes through the naval host's `serpentStrike` (the deck's
   shake, the line, the hull's mending as any hit's). The spray and the sound of every landing play for everyone.
-- **Come Sail Away's two seams:**
+- **Come Sail Away's seams:**
   - `warp`, which QUAYS gave the harbour: the naval host's warp answers the coil's hold first.
   - `drift`, new: a world-space velocity added to the sea's current under her, which carries the whirl's pull and a
-    blow's throw (`systems/comeSailAway.js` `lateUpdateSailing`).
+    blow's throw (`systems/comeSailAway.js` `lateUpdateSailing`) - SERPENT4: and in its waters, the ships' bumpers
+    (`scenes/navalHost.js` `bumperDrift`).
+  - `gale`, SERPENT4's: its gale about my ship at her helm in its waters (`SERPENT_GALE`, section 16).
 - **Leaving**: going offline forgets the fight and lets my ship go (`leave`), and the omen stands nothing - no ring,
   no compass mark - until it is ready again (L4). A new serpent day forgets the last fight's attacks, numbered from one
   again (H3); the phase a ship sails in on is not said as if it turned.
@@ -360,10 +368,15 @@ pin `test/serpent1_client.test.js` reads the three and finds no serpent in them.
 
 ## 8. The kill - receipts, the books, the hoard
 
-**Who earned it** (`serpentEarned`; AUDIT SERPENT E1/E2, Mac: *"Must be in the fight"*): a ship that dealt
-`SERPENT_RECEIPT_SHARE` (10%) of its own share, or anyone who stood within `SERPENT_STAND_R` (450 m) of its body for
-`SERPENT_STOOD_SHARE` (half) of the fight. At 2% one volley bought a dealer's hoard, and a boat parked 900 m off, where
-nothing of it reaches, stood. The kill is stamped once, with its three best dealers and the damage chart.
+**Who earned it** (`serpentEarned`; AUDIT SERPENT E1/E2, Mac: *"Must be in the fight"*; SERPENT4): a fighter that dealt
+`SERPENT_PART_SHARE` (2.5%) of her own share - a stander's hoard - or `SERPENT_RECEIPT_SHARE` (6%) - a dealer's
+(`serpentEarnedBy`); a hand's part measured against `SERPENT_HAND_SHARE`, a galleon's; or anyone who stood within
+`SERPENT_STAND_R` (600 m) of its body for `SERPENT_STOOD_SHARE` (a quarter) of the fight. Where she is at the kill is
+nothing to it. AUDIT SERPENT's bars (a tenth dealt, half the fight within 450 m) sent home with nothing a ship its blows
+threw out of reach after her first volleys; at 2% one volley had bought a dealer's hoard, and a boat parked 900 m off,
+where nothing of it reaches, stood. A dealer's PARTY shares the kill: the cell says its kin (`serpentKinOf` - who came and
+earned nothing) with the kill, and the hub gives each whose party holds a dealer's receipt a stander's (section 16). The
+kill is stamped once, with its three best dealers and the damage chart.
 
 **The receipt** (`net/serpentReceipt.js`, version `l1`). Ed25519, signed by the relay's one key (`GATE_SIGNING_KEY`),
 the version inside the signed bytes. It is refused by the gate's (`r1`) and the raid's (`w1`) verifiers, and theirs by
@@ -478,6 +491,10 @@ After the kill the bar holds a moment and fades.
 
 ## 11. Versions and deploy order
 
+- **SERPENT4's relay: `world193`** (section 16; `world192` on its branch, renumbered past SCALE5c's `world192` at the merge). Its law's version 3 (`SERPENT_BRAIN_MIN`): a game before it is told to
+  reload. The `hit` word carries `r` (a hand's own weapons - an older relay drops it and judges her on a purse of
+  nought, so nothing lands), the kill tells the hub its kin, and the hub mints a party's stander's receipts. Deploy the
+  relay with the client; the account service is untouched (a stander's receipt is a stander's, whoever minted it).
 - **SERPENT3's relay: `world173`** (section 15; `world171` on its branch, renumbered past main's CRYSTAL-FIST and
   WATCH-FIX at the merges). The brain swims every leg it shows and judges a blow where the body lay when it struck; its law's version is 2
   (`SERPENT_BRAIN_MIN`), so a game before it is told to reload. No frame changes shape, and nothing else in the order
@@ -541,6 +558,9 @@ After the kill the bar holds a moment and fades.
   card's source and the embers' tier) and the AUDIT 625 records of `tools/mutants/audit625.json`, all dead.
 - SERPENT3's: `test/serpent3.test.js` (12 - section 15) and `tools/mutants/serpent3.json` (46), all dead; five records of
   `serpent1.json` and `serpent1_audit.json` re-aimed by content (the stray's once is the resume's now).
+- SERPENT4's: `test/serpent4.test.js` (9 - section 16) and `tools/mutants/serpent4.json` (36), all dead; seventeen records
+  of `sailfree.json`, `serpent1.json`, `serpent1_audit.json`, `serpent2.json`, `serpent3.json` and `soc1.json` re-aimed by
+  content (the storm's three records the dive's and the hunt's now, and the relay's version world193).
 
 ## 14. The herald and the timers (SERPENT2, 2026-10-04)
 
@@ -554,8 +574,10 @@ the gate's, marked in its ring's colour (`SERPENT_RING_MAP_CSS`). Its row follow
 |---|---|---|
 | quiet | *Sethrakul rises* - "The harbour bells ring 15 minutes before" | the rising |
 | omen | *Sethrakul rises*, off its port - "The harbour bells are ringing - its waters are ringed on your map" | the rising |
-| rising, hunt | *Sethrakul hunts* (live), off its port - "A storm closes its waters when this runs out - sail out to join" | the storm |
-| late | *Sethrakul's waters are closed* (live), off its port - "It dives when this runs out" | the dive |
+| rising, hunt, late | *Sethrakul hunts* (live), off its port - "It dives when this runs out - sail out to join" | the dive |
+
+(SERPENT4: its waters open until it dives, the hunt counts to the dive and the storm's breaking is no row of its own;
+before it the hunt counted to the storm and *Sethrakul's waters are closed* counted to the dive.)
 
 Once it is under way, *Next sea serpent rises* stands beside it. A kill ends its row early (the host hands the kill
 of this machine's own site). The port is named from the bells on, as the chat names it (the omen's `site.near`).
@@ -568,8 +590,9 @@ at sea (`World-Bosses.md`, the herald), posted to the gate's channel through the
   after and never twice. They ping `SERPENT_DISCORD_ROLE` when the operator names one (a var in
   `server/wrangler.toml`, empty by default), else the gate's role; that role is the only mention Discord may make.
   *"**Bells ring in the harbours: a great serpent is sighted off Sentinel.** Sethrakul, the Old Coil, rises in 15
-  minutes (15:17). A storm closes over its waters at 15:32 - no ship can join after. One ship alone cannot bring it
-  down: sail out together."* The times are Discord's stamps, drawn in each reader's own clock.
+  minutes (15:17). It hunts until it dives at 15:42 - every ship may join until then. One ship alone cannot bring it
+  down: sail out together."* (SERPENT4 - the storm's closing at 15:32 before.) The times are Discord's stamps, drawn in
+  each reader's own clock.
 - **The kill**, once a serpent day while it is news (until fifteen minutes after its last dive). It names its port,
   its top dealers and how many more fought, and pings nobody.
 
@@ -716,6 +739,107 @@ moved - the stray's surfacing for the resume's, the Maelstrom at the heart, a la
 time; `tools/mutants/serpent3.json` (45, all dead - its ram's-doubled-wake record went with the ram's own wake, AUDIT
 SHIPS C4). AUDIT SHIPS (`01-Overview/Audit-Ships.md`): `test/auditships.test.js` (20) and
 `tools/mutants/auditships.json` (73, all dead).
+
+## 16. The players' fight (SERPENT4, 2026-10-11)
+
+The players' thread in feature-feedback, "Serpent boss fight", handed over by Mac as it stood: maya - *"i think the fight
+is too slow and boring atm, and the snake is way too strong for the small amount of people who do it ... maybe make the
+wind go crazy where the serpent stands so we can sail faster an turn faster aswell ... also let players on the ship be
+able to hurt it ... also it was super laggy for me ... and make it huge"*; n0b0dynose - *"The fact they block ships
+getting in after a while is stupid too. One time I was the ship that took the first shot and hit on the thing and the
+game just pushed me away from the snake and no matter what I did it was like sailing through molasse I couldn't catch
+up"*; DraugrDraugr - *"ships inevitably end up colliding and then phasing through each other with the lag. I think ships
+need some kind of larger invisible box "aura" around them while this fight is in effect so they "bounce" off each other.
+Also it sucks doing damage to the serpent and getting nothing from it if your not near the snake when it dies ...
+Rewards based on party or individual damage should be given on death ... It could be bigger too as hitting with slow
+projectiles + lag is a challenge."*
+
+What each came to, in the code:
+
+- **"Block ships getting in after a while."** The storm at 08:00 closed its waters (`serpentAdmits` to `sealAt`): a ship
+  that sailed in for its last ten minutes, or a friend who came out to help, was shown the fight and refused. **Now its
+  waters are open until it dives** (`serpentAdmits` to `soundAt`); a late ship joins as the late ship's law always
+  joined her - her share at the fraction it stands at, her bucket empty, so she buys no faster kill. The storm's moment
+  stays a line (*"every ship may still join the fight"*); the rising, the Timers row and the bells count to the dive.
+- **"Pushed me away ... like sailing through molasse."** The first ship to strike it is the one it hates
+  (`SERPENT_THREAT_PICK`), and every blow threw her off (a ram's 9 m/s, a Maw's 6, a lash's 4) and tore her canvas, so she
+  lay downwind of the fight with less sail and beat back into the wind at about half her way (SAIL-FREE's head wind, 0.55
+  of her best). The time dial was not it - online it is retired (HELM-TIME-ONLINE). **Now a blow throws her half as far
+  and tears half the canvas** (`serpentStrike.js` `SERPENT_THROW_X`, `SERPENT_CANVAS_X` - the crush's too), and its gale
+  (below) gives her her best way on every heading.
+- **"Make the wind go crazy where the serpent stands."** **Its gale**: within `SERPENT_NEAR_M` (900 m) of its waters
+  while it swims unslain, my ship at her helm sails as on her quarter on every heading (no head wind - its eye goes round
+  with her), in at least `SERPENT_GALE.wind` (1.15) of the rated wind (a storm's stronger wind stands), her helm
+  `SERPENT_GALE.turn` (1.5) times quicker under sail. Come Sail Away's new `gale` seam (`comeSailAway.js` `galeWind`,
+  `galeTurn` - asked once a frame in `updateSailing`, the responsive helm's alone; the mod's own Classic handling is the
+  mod's), handed by `scenes/serpentHost.js` `gale` through the naval host. Its first breath says *"A gale howls about the
+  serpent - your canvas fills on every heading!"* once a serpent day. A galleon circles at 18.7 m/s in it where the rated
+  wind gave her 13.3, and makes as much into the wind, where she made 8.9.
+- **"Too strong for the small amount of people", "too slow."** **A sixth off its health** (`SERPENT_TTK_S` 150, from
+  180). Simulated against the relay's own brain (`node tools/serpentFleetSim.mjs`, twelve seeded fights a row, galleons -
+  the gale's 18.7 m/s beside the rated 13.3):
+
+  | fleet | gunnery | before (TTK 180, 13.3 m/s) | SERPENT4 (13.3 m/s) | SERPENT4 in its gale (18.7 m/s) |
+  |---|---|---|---|---|
+  | a lone galleon | 38% | 0 of 12 | 0 of 12 | 0 of 12 |
+  | a lone galleon | 50% | 0 of 12 | 1 of 12 | 5 of 12, in 6.1 min |
+  | a pair | 25% | 0 of 12 (at 18.7) | - | 5 of 12, in 11.6 min |
+  | a pair | 38% | 9 of 12, in 9.9 min | 12 of 12, in 8.5 min | 12 of 12, in 8.4 min |
+  | three | 38% | 11 of 12, in 10.5 min | - | 12 of 12, in 8.7 min |
+  | five | 38% | - | - | 12 of 12, in 9.1 min |
+
+  A third off (TTK 120) was simulated first: a pair won in 6.6 minutes, but a lone galleon at a storm's way (26.5 m/s)
+  won eight fights in twelve at the measured gunnery, which Mac's call - one ship alone can't - rules out; at 150 it wins
+  one at 26.5, none at 17.7 and 21.2 (`test/auditships.test.js` A1 holds it). At 50% - gunnery well past the measured -
+  a lone galleon in the gale wins five in twelve: Mac's call, open (it won two in twelve at 21.2 m/s before, AUDIT SHIPS).
+- **"Make it huge", "hitting with slow projectiles + lag is a challenge."** **Its girth is `SERPENT_GIRTH` (1.6) times
+  its first build's** (`serpentBody.js` `RADII`): the great coils 12.5 m through where they were under 8, the skull a
+  carrack's beam. Every segment's box is its radius square (`segmentBox`), so a ball flown a wire's time late still meets
+  its hide, and the relay judges a blow by the same body; the renderer's tube, sail, horns and eyes are drawn off the
+  radius and grow with it. Its length, its path, its coil's round and every attack's shape are as they were.
+- **"Let players on the ship be able to hurt it."** A hand aboard another's ship had no guns and dealt nothing. **Now a
+  hand's own weapons strike it**: a shaft of mine whose step passes through one of its segments' boxes stops in it
+  (`combat/arrowFlight.js` `boxTargets`, the guns' own `segmentBoxEntry`) and a harmful missile of mine inside one goes
+  through its door (`scenes/hostMagic.js` `boxMarks`, `castAtBox`); each is computed on my machine against its stand-in
+  by the port's own formulas (`scenes/world.js` `serpentStandIn` - the gate's `bossStandIn` on the Dreugh's mobile, a
+  hide no armour turns and nothing dodges: `calculateAttackDamage` for a shaft, `applySpell` into a summing sink for a
+  spell) and gathered into its own word of its zone (`serpentHost.js` `handStruck`, the `hit` word's `r` 1). The relay
+  judges it on a HAND'S PURSE (`serpentBrain.js` `applySerpentHit`'s `hand`): `SERPENT_HAND_REF` (1.5) - a fill of 2.25 a
+  second, as deep and capped a blow as a ship's purse is of hers - from within `SERPENT_HAND_REACH_M` (200 m, a missile's
+  flight), never from one on her own ship (a captain's purse is her guns: `serpentOnShip`). Her part is measured against
+  `SERPENT_HAND_SHARE` (a galleon's share). **A departure** from the gate's law that what a fighter brings it may deal: a
+  hand brings no health, so a crew aboard brings the kill sooner - bounded, each at most a Large Boat's swivels, and only
+  where her pose stands at the fight. The marks are hers only while no ship of her own is under her
+  (`serpentHost.js` `handBoxes`). Melee from a deck is not taken: its hide is out of a blade's reach but in a coil, and the
+  swing's resolution is the host's own work.
+- **"Ships colliding and phasing through each other with the lag."** A peer's hull met mine only as Come Sail Away met
+  a rock (`CheckCollision`): at its own size, a frame stale, never while I lay still - with a wire's lag two hulls met
+  and passed through. **The ships' bumpers**: in its waters my ship's hull and every other player's at her helm are met
+  `BUMPER_M` (10 m) out from each, and my ship is pushed off along the shallowest way out at `BUMPER_GAIN` (1.5) a
+  second of how deep the bumpers meet, `BUMPER_V_MAX` (30 m/s) at most, on the drift seam (`navalHost.js`
+  `bumperDrift`, `withBumpers`; `flatHull` and `hullOverlap` moved to the module's top to be read by both). Each machine
+  pushes its own ship, so two meeting are pushed apart by both - two closing at 30 m/s hold 10 m inside the bumpers' 20,
+  short of the hulls - and drift apart as their helms let go.
+- **"Getting nothing from it if your not near the snake when it dies."** Where she was at the kill never counted (the
+  hub hands a far earner her receipt - AUDIT SERPENT S5); the bars did. **A part dealt earns** (`SERPENT_PART_SHARE` 2.5%
+  of her share - several volleys landed, never one: a stander's hoard), **a dealer's at `SERPENT_RECEIPT_SHARE` 6%** (it
+  was 10%), **a quarter of the fight stood within `SERPENT_STAND_R` 600 m** of its greater body earns (it was half, within
+  450 m). **"Rewards based on party"**: the cell knows no party, so it says the fight's kin with the kill
+  (`serpentKinOf` - each who stood a beat within 600 m of it or dealt a blow, and earned nothing: her hull and the level
+  it admitted her at), and the hub, which keeps the parties, mints a stander's receipt for each whose party - as it
+  stands now - holds a dealer's receipt of this kill (`server/src/index.js` `_serpentKinShare`), kept and handed as the
+  cell's own are. A party with no dealer shares nothing, and one with no party nothing.
+- **"It was super laggy."** Not reproduced in Node, and nothing here measured a frame: the bumpers stand in for the lag
+  the players saw between hulls, and its girth for the lag between a ball and its hide. A frame of the fight was never
+  profiled on a live relay - the next look, not this slice's.
+
+THE FOUR HOSTS RULE: `scenes/world.js` wires the gale (Come Sail Away's `gale` beside its `drift`), the hand's shaft
+(`arrows.update`'s `boxTargets`) and the hand's missile (`createPlayerMagic`'s `boxMarks`); `scenes/exterior.js`,
+`scenes/worldModes.js` and `scenes/dungeonContext.js` carry no serpent (section 7) - their Come Sail Away and their
+missiles ask seams they are not handed, and answer as before.
+
+**The relay:** `world193` (section 11). **Pins:** `test/serpent4.test.js` (9) and the SERPENT1, AUDIT SERPENT, SERPENT2,
+SERPENT3 and AUDIT SHIPS pins its laws moved; `tools/mutants/serpent4.json` (36, all dead).
 
 See also: `World-Bosses.md` (the gate, whose law this follows at sea), `03-World/Naval-Combat.md` (the guns, the
 hull and the seams it reaches).

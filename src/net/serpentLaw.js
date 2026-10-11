@@ -24,10 +24,11 @@ import { gateHash, PIXEL_M } from './gateLaw.js';
 
 /** Classic minutes in a game day (gameDate.js MINUTES_PER_DAY - pinned equal; the relay's graph stays flat). */
 export const SERPENT_DAY_MINUTES = 1440;
-/** The serpent's day, as the game's clock says it: sighted at 02:00, risen at 05:00, its waters closed by the storm at
- *  08:00, sounding at 10:00. On the event clock that is the omen fifteen real minutes before it rises, fifteen minutes
- *  for a ship to reach it, and twenty-five minutes of fight at most. The gate's day is 17:00 to midnight - the serpent's
- *  sounding is seven game hours (35 real minutes) clear of the gate's omen. */
+/** The serpent's day, as the game's clock says it: sighted at 02:00, risen at 05:00, the storm breaking over its waters
+ *  at 08:00, sounding at 10:00. On the event clock that is the omen fifteen real minutes before it rises and twenty-five
+ *  minutes of fight at most. The gate's day is 17:00 to midnight - the serpent's sounding is seven game hours (35 real
+ *  minutes) clear of the gate's omen. SERPENT4 (2026-10-11, the players: "The fact they block ships getting in after a
+ *  while is stupid"): the storm closes nothing - its waters stand open to every ship until it dives (serpentAdmits). */
 export const SERPENT_OMEN_MINUTE = 2 * 60;
 export const SERPENT_RISE_MINUTE = 5 * 60;
 export const SERPENT_SEAL_MINUTE = 8 * 60;
@@ -79,8 +80,8 @@ export function serpentAt(nowMs) {
   return serpentTimes(day);
 }
 
-/** The phases, in the order a serpent lives them. `hunt`: its waters open to every ship; `late`: the storm has closed
- *  them - the ships inside fight on, none joins; `slain` and `sounding` its two endings. */
+/** The phases, in the order a serpent lives them. `hunt`: its waters open to every ship; `late`: the storm has broken
+ *  over them - SERPENT4: open still, the hunt's last stretch; `slain` and `sounding` its two endings. */
 export const SERPENT_PHASES = Object.freeze(['quiet', 'omen', 'rising', 'hunt', 'late', 'slain', 'sounding', 'gone']);
 
 /**
@@ -107,19 +108,20 @@ export function serpentPhase(t, nowMs, fellAt = null) {
 export const serpentSwims = (phase) => phase === 'rising' || phase === 'hunt' || phase === 'late' || phase === 'slain' || phase === 'sounding';
 /** Does the map mark its waters in this phase (from the sighting until it is gone)? */
 export const serpentMarked = (phase) => phase !== 'quiet' && phase !== 'gone';
-/** May a player join the fight now - from the rising until the storm closes the waters? */
-export const serpentAdmits = (day, nowMs) => { const t = serpentTimes(day); return isSerpentDay(day) && nowMs >= t.riseAt && nowMs < t.sealAt; };
+/** May a player join the fight now - from the rising until it dives? SERPENT4 (2026-10-11): a ship sailing in late joins
+ *  as any other (the late ship's law: her share at the fraction it stands at - serpentBrain.js joinSerpentFight); the
+ *  storm at SERPENT_SEAL_MINUTE closed its waters to her, and to a friend who sailed out to help. */
+export const serpentAdmits = (day, nowMs) => { const t = serpentTimes(day); return isSerpentDay(day) && nowMs >= t.riseAt && nowMs < t.soundAt; };
 /** May a fighter already in it be in it now (a reconnect after a blip)? From the rising until it has gone. */
 export const serpentHolds = (day, nowMs) => { const t = serpentTimes(day); return isSerpentDay(day) && nowMs >= t.riseAt && nowMs < t.soundAt + SERPENT_DIVE_MS; };
 
-/** What a countdown on the serpent counts to, and says: to its rising from the sighting; to the storm's closing while
- *  its waters are open (AUDIT SERPENT B9: from the rising itself - never "rises in 0s" as it rises); to its sounding
- *  once they are closed. Null otherwise. */
+/** What a countdown on the serpent counts to, and says: to its rising from the sighting; to its sounding while it swims
+ *  (AUDIT SERPENT B9: from the rising itself - never "rises in 0s" as it rises). SERPENT4: its waters are open until it
+ *  dives, so the storm's breaking is no instant a ship sails against. Null otherwise. */
 export function serpentCountdown(t, nowMs, phase = serpentPhase(t, nowMs)) {
   if (!t) return null;
   if (phase === 'omen') return { to: 'rise', ms: Math.max(0, t.riseAt - nowMs) };
-  if (phase === 'rising' || phase === 'hunt') return { to: 'seal', ms: Math.max(0, t.sealAt - nowMs) };
-  if (phase === 'late') return { to: 'sound', ms: Math.max(0, t.soundAt - nowMs) };
+  if (phase === 'rising' || phase === 'hunt' || phase === 'late') return { to: 'sound', ms: Math.max(0, t.soundAt - nowMs) };
   return null;
 }
 /** "4m 07s", "9s" - the seconds rounded UP, so a countdown never reads 0s while time is left (gateLaw.js's law). AUDIT
@@ -128,9 +130,9 @@ export function serpentClock(ms) {
   const s = Math.max(0, Math.ceil((Number.isFinite(ms) ? ms : 0) / 1000));
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
 }
-/** A countdown's words: "rises in 4m 07s", "storm closes in 8m 41s", "dives in 6m 12s" - null for none. AUDIT SERPENT
- *  (words): it DIVES - "sounds", the sailors' word, read as a noise. */
-export const serpentCountdownWords = (cd) => (cd ? `${cd.to === 'rise' ? 'rises' : cd.to === 'seal' ? 'storm closes' : 'dives'} in ${serpentClock(cd.ms)}` : null);
+/** A countdown's words: "rises in 4m 07s", "dives in 6m 12s" - null for none. AUDIT SERPENT (words): it DIVES -
+ *  "sounds", the sailors' word, read as a noise. */
+export const serpentCountdownWords = (cd) => (cd ? `${cd.to === 'rise' ? 'rises' : 'dives'} in ${serpentClock(cd.ms)}` : null);
 
 // ═══ THE ROLLS ════════════════════════════════════════════════════════
 //
@@ -192,8 +194,10 @@ export const serpentBossById = (id) => SERPENT_BOSSES.find((b) => b.id === id) ?
 // say the rest). `near` the port the site lies off ("Sentinel"); `at` a local time ("14:32" - TIME1: a line that names
 // a time names this machine's); `left` a countdown ("4:07").
 export const sightingLine = ({ near, at, boss }) => `Bells ring in the harbours: a great serpent is sighted off ${near}. ${boss} rises at ${at} your time.`;
-export const risingLine = ({ near, boss, left }) => `${boss} rises off ${near}. The storm closes over its waters in ${left}.`;
-export const sealLine = ({ near, boss, at }) => `A storm closes over ${boss}'s waters off ${near} - no ship can join the fight now. It dives at ${at} your time.`;
+/** SERPENT4: its waters open until it dives - the rising counts to the dive, and the storm's breaking says a ship may
+ *  still sail in. */
+export const risingLine = ({ near, boss, left }) => `${boss} rises off ${near}. It dives in ${left} - sail out and join the fight.`;
+export const sealLine = ({ near, boss, at }) => `A storm breaks over ${boss}'s waters off ${near} - every ship may still join the fight. It dives at ${at} your time.`;
 export const soundLine = ({ near, boss }) => `${boss} dives off ${near} and is gone into the deep.`;
 /** The Bay hears the kill (the relay's word, fanned by the hub): "Sethrakul is slain off Sentinel by Ama, Bel and Cor."
  *  AUDIT SERPENT (words): the whole Bay hears it - its hoard is said to be the ships' that fought it, never everyone's. */
@@ -206,6 +210,8 @@ export function slainLine({ near, boss, top }) {
 /** The brain's law version a client fights by: the relay refuses an `in` below SERPENT_BRAIN_MIN in words that say
  *  reload (the gate's GATE-RELOAD law), so a tab loaded before a deploy is never judged by attacks it cannot draw.
  *  SERPENT3 (2): its Maelstrom forms where it swims (a tab before it drew the whirl's wind-up at the waters' heart) and a
- *  pair's blows land at serpentStrike.js SERPENT_PAIR_SHARE (one before it took them whole). */
-export const SERPENT_BRAIN_V = 2;
-export const SERPENT_BRAIN_MIN = 2;
+ *  pair's blows land at serpentStrike.js SERPENT_PAIR_SHARE (one before it took them whole). SERPENT4 (3): its body is
+ *  greater (serpentBody.js SERPENT_GIRTH - a tab before it aimed at, and the relay judged, a body two fifths its girth)
+ *  and its throws lighter (a tab before it threw its own ship twice as far). */
+export const SERPENT_BRAIN_V = 3;
+export const SERPENT_BRAIN_MIN = 3;

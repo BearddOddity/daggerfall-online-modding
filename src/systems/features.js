@@ -999,7 +999,8 @@ export const FEATURES = Object.freeze([
   modFeature('pcaao', 'Takes effect at once.', 'combat'),
   modFeature('unleveledLoot', 'Takes effect on the next drop or shop restock.', 'loot'),
   modFeature('weapon-widget', 'Takes effect at once.', 'combat'),   // WW1: the widget reads its switches every frame
-  modFeature('shield-widget', 'Takes effect at once.', 'combat'),   // SW1: the same - every switch is read on the frame
+  modFeature('shield-widget', 'Takes effect at once.', 'combat'),
+  modFeature('readied-spellcasting-hands', 'Takes effect at once.', 'combat'),   // RSH1: the rig reads its switch on the frame it draws   // SW1: the same - every switch is read on the frame
   modFeature('diverse-weapons', 'Takes effect when a weapon is next drawn.', 'combat'),
   modFeature('roleplay-realism-items', 'Takes effect when the game next loads.', 'loot'),   // RRI1: the template patches are merged at load (ItemHelper.LoadItemTemplates); the classes read their switches live; RRI2: the nine modules read theirs at each roll (a corpse, a shelf, a price), the starting kit and spellbook at the next character   // DW1: the atlas name is chosen at the weapon's load (FPSWeapon.cs:637-644), and the rig's cache key carries it
   modFeature('roleplay-realism', 'Takes effect when the game next loads.', 'loot'),   // RR1: the class enemies' appearance is written into the basics at load (RoleplayRealism.cs:186-189); every other arm reads its switch at the roll

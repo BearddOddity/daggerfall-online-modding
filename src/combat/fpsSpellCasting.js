@@ -352,3 +352,27 @@ export function drawSpellCastHands(renderer, canvas, art, frameIndex, {
   renderer.drawScreenQuad(rec.tex, right, RIGHT_HAND_UV, tint ?? undefined);
   return true;
 }
+
+/**
+ * RSH1 (2026-10-11, Mac: "can we implement this mod into the source"): READIED SPELLCASTING HANDS 1.3 (jefetienne,
+ * vendor/readied-spellcasting-hands/, MIT). The mod's whole change is AnimateSpellCast
+ * (Modded_FPSSpellCasting_Ready.cs, the coroutine): every step it shows FRAME 0 of the readied spell's element while
+ *
+ *   `pef.HasReadySpell && pef.ReadySpell.Settings.TargetType != TargetTypes.CasterOnly && !psc.IsPlayingAnim`
+ *
+ * and nothing (`currentFrame = -1`) otherwise. Its SetCurrentAnims, UpdateSpellCast and the two aligns are DFU's own,
+ * unchanged - the port's (above) - so the hands it draws are drawSpellCastHands at this frame, with the element's own
+ * archive. This answers that frame: 0, or -1 for no hands.
+ *
+ *   - `spell` is the readied spell record (scenes/hostMagic.js readiedSpell), or null for HasReadySpell false;
+ *   - CasterOnly is the port's rangeType 0 (spellcast.js, the classic range byte DFU's TargetTypes is read from);
+ *   - `castPlaying` is PlayerSpellCasting.IsPlayingAnim - the real cast owns the hands while it plays, from frame 0;
+ *   - an element with no archive (ElementTypes.None: GetMagicAnimFilename throws in DFU) draws nothing, as for the cast.
+ */
+export const READIED_HANDS_FRAME = 0;
+export function readiedHandsFrame(spell, castPlaying) {
+  if (!spell || castPlaying) return -1;
+  if (spell.rangeType === 0) return -1;   // TargetTypes.CasterOnly: cast the moment it is readied - nothing to hold
+  if (!magicAnimFilename(spell.element)) return -1;
+  return READIED_HANDS_FRAME;
+}

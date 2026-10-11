@@ -139,6 +139,40 @@ export function tagOf(id) {
   return (h % (36 ** 4)).toString(36).padStart(4, '0');
 }
 
+/** CHAT-FIND (2026-10-11, the owner: "search for a player's name in the chat in every ui"): THE SEARCH, pure. A query
+ *  is a piece of a name, case and the spaces round it ignored, at most CHAT_FIND_MAX characters; '' is no search. A
+ *  query that starts with '#' is a TAG - the four characters drawn beside a name (tagOf), the one way to tell two
+ *  players of one name apart. The panel (ui/chatPanel.js) is the one surface that draws it, and it is the same panel
+ *  on the classic skin, the enhanced skin and the touch layer - so this is every UI's search. */
+export const CHAT_FIND_MAX = 32;
+/** CHAT-FIND: the query as the search reads it. */
+export const findQuery = (q) => String(q ?? '').trim().toLowerCase().slice(0, CHAT_FIND_MAX);
+/** CHAT-FIND: does `query` find the player with this name and id - a piece of the name, or ('#') the start of their
+ *  tag. Pure. */
+export function playerFound(name, id, query) {
+  const q = findQuery(query);
+  if (!q) return false;
+  if (q.startsWith('#')) { const t = q.slice(1); return !!t && tagOf(id).startsWith(t); }
+  return String(name ?? '').toLowerCase().includes(q);
+}
+/** CHAT-FIND: is a line one the search for `query` shows - said BY a player it finds, or (a plain query) a line whose
+ *  words name them. A line the game said (a notice, the server's red line, the Dungeon Master's) is nobody's. Pure. */
+export function lineFound(line, query) {
+  const q = findQuery(query);
+  if (!q || !line || line.system) return false;
+  if (playerFound(line.name, line.id, q)) return true;
+  return !q.startsWith('#') && String(line.text ?? '').toLowerCase().includes(q);
+}
+/** CHAT-FIND: every tab's lines the search shows, oldest first - EVERY tab's, the hidden ones' too (a party left keeps
+ *  its history), and a line kept on more than one tab once. Pure. */
+export function findLines(tabs, query) {
+  const q = findQuery(query);
+  if (!q) return [];
+  const out = new Map();
+  for (const tab of tabs ?? []) for (const line of tab?.messages ?? []) if (!out.has(line.seq) && lineFound(line, q)) out.set(line.seq, line);
+  return [...out.values()].sort((a, b) => a.seq - b.seq);
+}
+
 export class ChatLog {
   constructor({ tabs = CHAT_TABS, keep = CHAT_KEEP, now = () => Date.now() } = {}) {
     this.tabs = tabs.map((t) => ({ id: t.id, label: t.label, room: t.room, link: t.link !== false, hint: t.hint ?? '', place: null, messages: [], unread: 0, shown: t.hidden !== true, peekAll: t.peekAll === true }));
