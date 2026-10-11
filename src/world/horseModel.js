@@ -274,37 +274,59 @@ export const TEXEL_GUTTER = 2;
  * deep, so a filtered or mipped sample at an edge is dyed with it.
  */
 export function horseTexelMap(bake, width, height) {
+  const job = startTexelMap(bake, width, height);
+  while (!job.step()) { /* the whole map at once */ }
+  return job.map;
+}
+
+/** Steps a texel map's build takes (TEXEL_MAP_STEPS): its triangles laid out in four, its gutter's rings one each, its
+ *  texels placed in four - each some 5-10 ms, so a renderer builds the map over a few frames (world/horseRig.js). */
+export const TEXEL_MAP_STEPS = 4 + TEXEL_GUTTER + 4;
+
+/**
+ * horseTexelMap a step at a time: `{ step(), map }` - `step()` does the next slice and answers whether the map is
+ * done (`map` then whole; null before).
+ */
+export function startTexelMap(bake, width, height) {
   const body = bake.meshes.find((m) => m.part === 'body');
   const hide = horseHide(bake);
   const n = width * height;
   const own = new Int32Array(n).fill(-1);   // the triangle a texel is in
   const bary = new Float32Array(n * 3);
   const I = body.indices, UV = body.uvs;
-  for (let t = 0; t < I.length; t += 3) {
-    const ax = UV[I[t] * 2] * width, ay = (1 - UV[I[t] * 2 + 1]) * height;
-    const bx = UV[I[t + 1] * 2] * width, by = (1 - UV[I[t + 1] * 2 + 1]) * height;
-    const cx = UV[I[t + 2] * 2] * width, cy = (1 - UV[I[t + 2] * 2 + 1]) * height;
-    const den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
-    if (Math.abs(den) < 1e-12) continue;
-    const x0 = Math.max(0, Math.floor(Math.min(ax, bx, cx))), x1 = Math.min(width - 1, Math.ceil(Math.max(ax, bx, cx)));
-    const y0 = Math.max(0, Math.floor(Math.min(ay, by, cy))), y1 = Math.min(height - 1, Math.ceil(Math.max(ay, by, cy)));
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      const px = x + 0.5, py = y + 0.5;
-      const w0 = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / den;
-      const w1 = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / den;
-      const w2 = 1 - w0 - w1;
-      if (w0 < -1e-6 || w1 < -1e-6 || w2 < -1e-6) continue;
-      const i = y * width + x;
-      own[i] = t; bary[i * 3] = w0; bary[i * 3 + 1] = w1; bary[i * 3 + 2] = w2;
+  const tris = I.length / 3, rows = height;
+  const hideMask = new Uint8Array(n), planes = new Float32Array(n * 9), up = new Float32Array(n);
+  const p = [0, 0, 0], nr = [0, 0, 0];
+  let stage = 0;
+  const job = { map: /** @type {any} */ (null), step };
+  /** Triangles [t0, t1) laid out on the picture: each texel inside one takes it and its weights. */
+  function raster(t0, t1) {
+    for (let t = t0 * 3; t < t1 * 3; t += 3) {
+      const ax = UV[I[t] * 2] * width, ay = (1 - UV[I[t] * 2 + 1]) * height;
+      const bx = UV[I[t + 1] * 2] * width, by = (1 - UV[I[t + 1] * 2 + 1]) * height;
+      const cx = UV[I[t + 2] * 2] * width, cy = (1 - UV[I[t + 2] * 2 + 1]) * height;
+      const den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+      if (Math.abs(den) < 1e-12) continue;
+      const x0 = Math.max(0, Math.floor(Math.min(ax, bx, cx))), x1 = Math.min(width - 1, Math.ceil(Math.max(ax, bx, cx)));
+      const y0 = Math.max(0, Math.floor(Math.min(ay, by, cy))), y1 = Math.min(height - 1, Math.ceil(Math.max(ay, by, cy)));
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const px = x + 0.5, py = y + 0.5;
+        const w0 = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / den;
+        const w1 = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / den;
+        const w2 = 1 - w0 - w1;
+        if (w0 < -1e-6 || w1 < -1e-6 || w2 < -1e-6) continue;
+        const i = y * width + x;
+        own[i] = t; bary[i * 3] = w0; bary[i * 3 + 1] = w1; bary[i * 3 + 2] = w2;
+      }
     }
   }
-  // the gutter: a texel outside every island takes its nearest inside neighbour's place, ring by ring
-  for (let ring = 0; ring < TEXEL_GUTTER; ring++) {
+  /** One ring of the gutter: a texel outside every island takes its nearest inside neighbour's place. */
+  function ring() {
     const was = own.slice(), wasB = bary.slice();
     for (let i = 0; i < n; i++) {
       if (was[i] >= 0) continue;
       const x = i % width, y = (i - x) / width;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+      for (const [dx, dy] of NEIGHBOURS) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
         const j = ny * width + nx;
@@ -314,24 +336,35 @@ export function horseTexelMap(bake, width, height) {
       }
     }
   }
-  const hideMask = new Uint8Array(n), planes = new Float32Array(n * 9), up = new Float32Array(n);
-  const p = [0, 0, 0], nr = [0, 0, 0];
-  for (let i = 0; i < n; i++) {
-    const t = own[i];
-    if (t < 0) continue;
-    p[0] = p[1] = p[2] = nr[0] = nr[1] = nr[2] = 0;
-    for (let k = 0; k < 3; k++) {
-      const v = I[t + k], w = bary[i * 3 + k];
-      for (let j = 0; j < 3; j++) { p[j] += w * body.positions[v * 3 + j]; nr[j] += w * body.normals[v * 3 + j]; }
+  /** Rows [r0, r1) placed: each texel's bind position and normal between its triangle's corners, its faces, its height. */
+  function place(r0, r1) {
+    for (let i = r0 * width; i < r1 * width; i++) {
+      const t = own[i];
+      if (t < 0) continue;
+      p[0] = p[1] = p[2] = nr[0] = nr[1] = nr[2] = 0;
+      for (let k = 0; k < 3; k++) {
+        const v = I[t + k], w = bary[i * 3 + k];
+        for (let j = 0; j < 3; j++) { p[j] += w * body.positions[v * 3 + j]; nr[j] += w * body.normals[v * 3 + j]; }
+      }
+      const l = Math.hypot(nr[0], nr[1], nr[2]) || 1;
+      nr[0] /= l; nr[1] /= l; nr[2] /= l;
+      hideMask[i] = p[2] >= hide.crown ? 1 : 0;
+      texelPlanes(p, nr, hide, planes, i * 9);
+      up[i] = hide.height > 0 ? (p[2] - hide.crown) / hide.height : 1;
     }
-    const l = Math.hypot(nr[0], nr[1], nr[2]) || 1;
-    nr[0] /= l; nr[1] /= l; nr[2] /= l;
-    hideMask[i] = p[2] >= hide.crown ? 1 : 0;
-    texelPlanes(p, nr, hide, planes, i * 9);
-    up[i] = hide.height > 0 ? (p[2] - hide.crown) / hide.height : 1;
   }
-  return { width, height, hide: hideMask, planes, up };
+  function step() {
+    if (job.map) return true;
+    if (stage < 4) raster(Math.floor((tris * stage) / 4), Math.floor((tris * (stage + 1)) / 4));
+    else if (stage < 4 + TEXEL_GUTTER) ring();
+    else { const k = stage - 4 - TEXEL_GUTTER; place(Math.floor((rows * k) / 4), Math.floor((rows * (k + 1)) / 4)); }
+    stage++;
+    if (stage >= TEXEL_MAP_STEPS) job.map = { width, height, hide: hideMask, planes, up };
+    return !!job.map;
+  }
+  return job;
 }
+const NEIGHBOURS = Object.freeze([[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]);
 
 /**
  * A picture's mip chain (`{ width, height, rgba }` a level, the first the picture), each level the 2x2 mean of the

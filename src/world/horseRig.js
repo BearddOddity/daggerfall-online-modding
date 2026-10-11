@@ -8,8 +8,8 @@
 //    OWN palette (renderer.createSkinPalette - a picture queued in a sprite batch is drawn at the flush, so each horse
 //    keeps the pose it was queued in) and its own gait.
 //  - ONE PICTURE A LOOK. The body's picture is dyed per look (systems/horseCoats.js dyeHorseTexelRows, the sprites'
-//    law on the horse's own surface - world/horseModel.js horseTexelMap), DYE_ROWS a frame so no frame pays a look's
-//    whole 50-120 ms, and uploaded with its mips once done; a horse whose look is not up yet wears the bay's. Past
+//    law on the horse's own surface - world/horseModel.js startTexelMap, built once a slice a frame), DYE_ROWS a frame
+//    so no frame pays a look's whole 50-120 ms, and uploaded with its mips once done; a horse whose look is not up yet wears the bay's. Past
 //    HORSE_LOOKS_KEPT looks, the one longest undrawn is let go. The mane and tail's picture is the art's on every look.
 //  - THE DRAWS. A horse alone is a Morrowind mesh in the world, so it draws as the Morrowind body does - a picture
 //    through the sprite pass at the arm's dial (render/characterSprite.js drawRigSpriteBox, MW_ARM_PIXEL); a horse under
@@ -18,7 +18,7 @@
 //    drew its riding sprite (drawFirstPerson).
 //
 // Not a DFU member: Daggerfall's horse is a sprite. Ledger A (COATS3D).
-import { HORSE_MODEL_URL, HORSE_PICTURE_URLS, horseSkinStream, horsePaletteShape, horsePoseScratch, horseGait, stepHorseGait, writeHorsePalette, horseTexelMap, rgbaMips, horseHide } from './horseModel.js';
+import { HORSE_MODEL_URL, HORSE_PICTURE_URLS, horseSkinStream, horsePaletteShape, horsePoseScratch, horseGait, stepHorseGait, writeHorsePalette, startTexelMap, rgbaMips, horseHide } from './horseModel.js';
 import { dyeHorseTexelRows, horseLookCode, horseLookOfCode } from '../systems/horseCoats.js';
 import { drawRigSpriteBox } from '../render/characterSprite.js';
 import { MW_ARM_PIXEL, CHAR_SPRITE_RT_SIZE } from '../render/renderer.js';
@@ -53,7 +53,7 @@ export function createHorseRig({ renderer, fetchJson = (u) => fetch(u).then((r) 
   /** @type {any} */ let bake = null;
   let base = null, shape = null, stream = null, hide = null, seatBone = -1, seatLocal = null;
   /** @type {{ width: number, height: number, data: Uint8Array } | null} */ let body = null;
-  let hairTex = null, map = null, failed = null;
+  let hairTex = null, map = null, mapJob = null, failed = null;
   /** @type {Promise<void> | null} */ let loading = null;
   const looks = new Map();   // code -> { tex, last }
   const asked = [];   // codes waiting for their dye, oldest first
@@ -98,8 +98,9 @@ export function createHorseRig({ renderer, fetchJson = (u) => fetch(u).then((r) 
     frame++;
     if (!base || !body) return;
     if (!job && asked.length) {
+      // the texel map first, a slice a frame (world/horseModel.js startTexelMap - built once, some 40-85 ms whole)
+      if (!map) { mapJob ??= startTexelMap(bake, body.width, body.height); if (!mapJob.step()) return; map = mapJob.map; mapJob = null; return; }
       const code = /** @type {number} */ (asked.shift());
-      map ??= horseTexelMap(bake, body.width, body.height);
       job = { code, look: horseLookOfCode(code), out: new Uint8Array(body.data), row: 0 };
     }
     if (job) {

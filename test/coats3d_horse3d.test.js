@@ -12,7 +12,7 @@ import { PNG } from 'pngjs';
 import { bakeHorse, GAIT_STACKS, HORSE_FPS } from '../tools/bakeHorse.mjs';
 import {
   HORSE_GAITS, HORSE_GAIT_FROM, GAIT_HOLD, GAIT_RATES, GAIT_FADE, gaitFor, gaitRate, horseGait, stepHorseGait, gaitShare, gaitLocals,
-  horsePaletteShape, horsePoseScratch, writeHorsePalette, horseSkinStream, horseHide, horseTexelMap, TEXEL_GUTTER, rgbaMips,
+  horsePaletteShape, horsePoseScratch, writeHorsePalette, horseSkinStream, horseHide, horseTexelMap, startTexelMap, TEXEL_GUTTER, TEXEL_MAP_STEPS, rgbaMips,
 } from '../src/world/horseModel.js';
 import { createHorseRig, horseRigFor, HORSE_LOOKS_KEPT, DYE_ROWS, HORSE_SEAT, HORSE_SEAT_BONE } from '../src/world/horseRig.js';
 import { horseLookCode, recolorHorse, recolorHorseTexels, dyeHorseTexelRows, texelPlanes, PLANE_SHARPNESS, LEG_BANDS, WHITE_FLOOR_3D, isCoatPixel } from '../src/systems/horseCoats.js';
@@ -167,6 +167,12 @@ test('COATS3D the texel map: every texel the body draws placed on the horse - th
   assert.equal(r3(hide.crown), 0.088, 'halfway between the coffin joint (3.5 cm) and the fetlock (13.5-14.5 cm), the mean of four');
   assert.equal(r3(hide.length), 2.319); assert.equal(r3(hide.front), 1.546); assert.equal(r3(hide.top), 1.979);
   assert.equal(TEXEL_GUTTER, 2);
+  assert.equal(TEXEL_MAP_STEPS, 10);
+  const job = startTexelMap(BAKE, BODY.width, BODY.height);
+  let steps = 0;
+  while (!job.step()) steps++;
+  assert.equal(steps, TEXEL_MAP_STEPS - 1);
+  assert.deepEqual([job.map.hide, job.map.planes, job.map.up], [MAP.hide, MAP.planes, MAP.up], 'a step at a time, the same map');
   const n = BODY.width * BODY.height;
   let drawn = 0, kept = 0;
   for (let i = 0; i < n; i++) {
@@ -284,6 +290,7 @@ test('COATS3D the GL half: one stream, a palette a horse; a look dyed DYE_ROWS a
   assert.equal(r.uploads, 1);
   assert.equal(DYE_ROWS, 32);
   const frames = BODY.height / DYE_ROWS;
+  for (let f = 0; f < TEXEL_MAP_STEPS; f++) { rig.tick(); assert.equal(rig.dyeing(), null, 'the texel map first, a slice a frame'); }
   for (let f = 0; f < frames - 1; f++) { rig.tick(); assert.equal(rig.dyeing(), pinto); }
   rig.tick();
   assert.equal(rig.dyeing(), null); assert.ok(rig.kept().includes(pinto), `up in ${frames} frames`);

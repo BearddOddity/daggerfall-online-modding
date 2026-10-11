@@ -261,7 +261,8 @@ width). The pinto's field is blended before it is cut, so its edges stay crisp.
 - The mane and tail's cards keep their picture, as the sprites keep the mane.
 
 A look's picture is dyed DYE_ROWS (32) rows a frame (`dyeHorseTexelRows` - a whole picture is 50-120 ms) and uploaded
-with its mips once whole; a horse wears the bay's until its look is up; past HORSE_LOOKS_KEPT (12) the one longest
+with its mips once whole, the texel map itself built once before the first, a slice a frame (`startTexelMap`, ten
+steps - whole it is 40-85 ms); a horse wears the bay's until its look is up; past HORSE_LOOKS_KEPT (12) the one longest
 undrawn is let go. The appaloosa's spots were made rounder for both sets at this slice (stretched up to 1.45 a side,
 not 1.9): at the 3D horse's detail the old ovals read as brush strokes.
 
