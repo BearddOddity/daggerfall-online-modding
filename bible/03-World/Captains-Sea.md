@@ -327,7 +327,7 @@ out of a wreck the same). The Captain page lists the charts marked.
 `test/captwaters.test.js` (`tools/mutants/captwaters.json`), `test/spyglass.test.js` (`tools/mutants/spyglass.json`),
 `test/captboard.test.js` (`tools/mutants/captboard.json`), `test/capttrade.test.js` (`tools/mutants/capttrade.json`) -
 every mutant dead; AUDIT CAPTAIN'S SEA's own in `test/auditcaptsea.test.js` (68 tests;
-`tools/mutants/auditcaptsea.json`, 328 records; `01-Overview/Audit-Captains-Sea.md`, which names the 47 suites its fixes
+`tools/mutants/auditcaptsea.json`, 330 records; `01-Overview/Audit-Captains-Sea.md`, which names the 47 suites its fixes
 moved and the one main's merge moved). The suites whose pins moved with the slices say so where they moved (PIN MOVED):
 the crew card's line, the Holdings tabs, the tags and the hails now knowing a ship first (`test/navalSea.mjs knowAll`),
 the action tables, the lens, the sky's and the far ring's lens narrowed with the world's (`test/climb4.test.js`,

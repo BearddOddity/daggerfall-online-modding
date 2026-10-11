@@ -40,7 +40,8 @@ the classic skin (G2), a wild isle's strand floated its casks again on every ret
 carried a ship across the Veil in a moment (P5), and a General Store paid more for a good than the quay that makes it
 asked (B2). The rest: a crew's worth lost at sea, a spyglass that saw through land and night and carried into cabins,
 a crossing question that never came back, legends launched twice online, a bounty's quarry that came back whole, the
-ledger's day kept for one exchange, words wrong, and a record that promised what the code did not do.
+ledger's day kept for one exchange, words wrong, and a record that promised what the code did not do. The runs that
+checked the fixes found seven more (lane V), none a player meets: each a pin or the record.
 
 ## Findings
 
@@ -253,6 +254,22 @@ own id in its test's title) or in the suite its verdict names, and where it chan
 | B16 | NOTE | "None to buy today" for a good never sold there; the other sea's goods listed with the crossing out not the game's | FIXED: "not sold here"; listed where the captain may sail for them or carries some |
 | B17 | DOC | The pay's formula, the dealing's keeping, the shops at base, the site's bearing, the item sweep's row | FIXED in the record |
 
+### V - what the runs over the fixed and merged tree found
+
+The lanes read 4aec81c85; these came out of the runs that checked their fixes - the whole suite over the tree merged
+with main, CI on each head, every test that reads the player's data run with it (ARENA2_PATH), and the touched mutation
+lists (What stands). None reaches a player: each is a pin or the record.
+
+| # | Sev | Finding | Verdict |
+|---|---|---|---|
+| V1 | LOW | G2's word, said once the player stands, stood inside the arrival's statements that `partyBoatTeleportFix` runs over stand-ins of its own: nine of its tests threw on `_unstreamedLanding` | FIXED: the word below them, after `questBridge?.onInitWorld()` - the arrival's statements main's again, line for line (ACS-V1-word-in-the-arrival) |
+| V2 | LOW | At the merge: main's SEA-TOWN HUDS pin (`fb1011c_seatown`) runs world.js's `navalHud` over stand-ins, and the plate is handed the glass's state - no glass stood in its scope | FIXED: PIN MOVED, the glass in its scope, asked down and up (ACS-MERGE-plate-glass-unhanded) |
+| V3 | LOW | CW-host-temper (`captwaters`) gave no verdict: ETHER-SEA put an `else if` after the line it deletes, so the mutant has not parsed since - at 4aec81c85 too, where the slice's list was taken for all dead | FIXED: re-aimed by content - the deep arm `if (false)`, the chain kept - dead |
+| V4 | LOW | SEA-rim-unkept (`ethersea`) died at 4aec81c85 and survived the fixes: H1 gave a port a fall of 1 (0.8 before), whose land's tail past its rim is below nothing and clamps to 0 without the rim, and every "past the rim" pin read Veilhaven | FIXED: the rim asked of a wild isle too, whose fall of 1.5 leaves NaN there without it (`test/ethersea.test.js`); the record dead |
+| V5 | LOW | FIELD-CSA2's retail-data test threw "etherSea is not defined" from ETHER-PORTS on: it mounts world.js's `csaIsPortTown`, which asks an isle's port first - and it runs only with the player's data, so CI skips it | FIXED: PIN MOVED, the mount handed the sea, its law and an isle's port that answers every pixel, and the open Bay asked - a Bay pixel that asked the sea's ports would read a port; 6 of 6 with the data (ACS-V5-bay-asks-the-sea) |
+| V6 | NOTE | At the merge: F212 (`audit26_dungeonfoes`) reads the teleport's first 7,800 characters for its teardown - the needle stood at 7,664 on main and 7,756 on this branch, 7,939 merged | FIXED: PIN MOVED, 8,100 |
+| V7 | DOC | Port-Status counted this branch's two Ledger rows in section A's tally (302) and never named them | FIXED at the third merge: 303 rows, 288 standing - BR5's the 301st, this branch's the 302nd and 303rd |
+
 ## Pins moved
 
 The fixes moved pins in 47 suites, each with its note (PIN MOVED, AUDIT CAPTAIN'S SEA and the finding): the crew's
@@ -267,34 +284,29 @@ The fixes moved pins in 47 suites, each with its note (PIN MOVED, AUDIT CAPTAIN'
 TAP_PX and CONTRACT_PAY_MAX - named what other modules already declared (`mwCamera.js`, `touchGestures.js`,
 `writLaw.js`; `audit24_onehome`), so they and their siblings were renamed: the chart's CHART_WHEEL_STEP, CHART_TAP_PX
 and CHART_PINCH_STEP, the board's BOARD_PAY_MAX and BOARD_STANDING_MAX. G2's landing moved into its own helper
-(`_streamedLanding`), so the teleport's resets keep their place first (AUDIT 39 #62, CLIMB-ARC F6, F212's window).
-Its word, said once the player stands, first stood inside the arrival's statements, which `partyBoatTeleportFix` runs
-over stand-ins of its own: nine of its tests threw, and the whole suite over the merged tree found it. The word now
-stands below them (after `questBridge?.onInitWorld()`), and the arrival's statements are main's again, line for line.
-Main merged in moved two more: `fb1011c_seatown` runs world.js's `navalHud` over stand-ins, and the plate is handed the
-glass's state (SPYGLASS's `glassUp`), so the glass stands among them - and the pin now asks it, down and up; and F212's
-window (`audit26_dungeonfoes`), 7,800 characters of the teleport to 8,100 - G2's landing beside the resets and main's
-own new lines above its needles each fitted it, both together did not.
+(`_streamedLanding`), so the teleport's resets keep their place first (AUDIT 39 #62, CLIMB-ARC F6, F212's window). The
+runs over the fixed and merged tree moved three more, each its finding in lane V: `fb1011c_seatown` (V2), `field_csa2`
+(V5) and F212's window in `audit26_dungeonfoes` (V6); and `ethersea` asks its rim of a wild isle (V4). G2's word moved
+instead of a pin (V1).
 
 ## Mutants
 
-- `tools/mutants/auditcaptsea.json` - 328 records, one or more a finding and one the pin main's merge moved
-  (ACS-MERGE-plate-glass-unhanded): all dead but four equivalent as recorded, each with its why - X2-yes-sailing (a helm
-  let go is a helm `CurrentBoat` no longer names), X4-mouth-host (the law asks the mouth again), D17-fight (a ship in a
-  fight is never let fade), B4-mine-not (a quarry of mine is done before she is dropped). Every survivor of the first
-  runs was a pin that could not fail, made one that can: the compass's disguise (S4: a provoked trader), the player's
-  own unbinding with K still shared (S14), the havens' bounds (P1: literal, the game's own sizes), the ports' lettering
-  (X14: against a chart of its ports alone), the host's ashore set (C1), a new day's dealing (B1), the mid-rank meter
-  (L5), the exotic's refusal and the world's switch (B16), the void's word (B4), the room handed from the yard to the
-  exchange (B11), a strand bare from its first cask (D1); and S18's floor of five, and the swimmer's give line's
-  `swim ? null :`, were arms no input reaches - dropped. ACS-P1-types is killed against the player's own data
-  (ARENA2_PATH), the havens' filter run over MAPS.BSA's rows.
+- `tools/mutants/auditcaptsea.json` - 330 records, one or more a finding (lane V's ACS-V1-word-in-the-arrival,
+  ACS-MERGE-plate-glass-unhanded and ACS-V5-bay-asks-the-sea among them): all dead but four equivalent as recorded, each
+  with its why - X2-yes-sailing (a helm let go is a helm `CurrentBoat` no longer names), X4-mouth-host (the law asks the
+  mouth again), D17-fight (a ship in a fight is never let fade), B4-mine-not (a quarry of mine is done before she is
+  dropped). Every survivor of the first runs was a pin that could not fail, made one that can: the compass's disguise
+  (S4: a provoked trader), the player's own unbinding with K still shared (S14), the havens' bounds (P1: literal, the
+  game's own sizes), the ports' lettering (X14: against a chart of its ports alone), the host's ashore set (C1), a new
+  day's dealing (B1), the mid-rank meter (L5), the exotic's refusal and the world's switch (B16), the void's word (B4),
+  the room handed from the yard to the exchange (B11), a strand bare from its first cask (D1); and S18's floor of five,
+  and the swimmer's give line's `swim ? null :`, were arms no input reaches - dropped. ACS-P1-types is killed against
+  the player's own data (ARENA2_PATH), the havens' filter run over MAPS.BSA's rows.
 - 93 records in 35 lists named source the fixes rewrote (`test/mutantdrift.test.js` holds every record to its text):
   each re-aimed BY CONTENT to the code as it stands, the same law mutated - all dead but one, which survives on the base
   as well (What stands).
-- CW-host-temper (`captwaters`) had given no verdict since ETHER-SEA put its `else if` after the line the record
-  deletes: the mutant did not parse at 4aec81c85, where the slice's list was taken for all dead. The touched run over
-  8cf4a1804 found it. Re-aimed BY CONTENT - the deep arm turned off (`if (false)`), the chain kept - it is dead.
+- CW-host-temper (`captwaters`) had given no verdict since ETHER-SEA: re-aimed BY CONTENT, dead (V3). SEA-rim-unkept
+  (`ethersea`), weakened by H1's port fall, is dead again against the rim's new pin (V4).
 - The lists touching every file the fixes changed were run over the fixed tree: see What stands.
 
 ## What stands
