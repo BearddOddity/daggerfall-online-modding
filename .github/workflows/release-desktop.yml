@@ -265,6 +265,13 @@ jobs:
           path: release
           merge-multiple: true
 
+      # BR5: a copy built before the rename asks for its download by the
+      # name it was built with (app/lib/downloads.cjs LEGACY_DOWNLOAD_FILES),
+      # so each download is published under that name too - none meets a
+      # dead link. No manifest names them; an updater reads the new name.
+      - name: Copies under the names older copies ask for
+        run: node scripts/desktopRelease.mjs alias release
+
       # REL5: every download the site links and every manifest an updater
       # reads, by the names app/lib/downloads.cjs promises - a set short
       # of any one publishes nothing.

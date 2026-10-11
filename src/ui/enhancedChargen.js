@@ -811,7 +811,7 @@ function classIoCard() {
     const acts = el('div', 'acts');
     const copy = el('button', 'act primary', 'Copy to clipboard');
     copy.onclick = async () => {
-      try { await globalThis.navigator.clipboard.writeText(classDocText()); say('Copied. Paste it into Import on any Daggerfall Online character.'); }
+      try { await globalThis.navigator.clipboard.writeText(classDocText()); say('Copied. Paste it into Import on any DFO Online character.'); }
       catch { say('The browser would not let this page write the clipboard - save it as a file instead.'); }
     };
     const save = el('button', 'act', 'Save as a file');
@@ -1468,7 +1468,7 @@ function paintInto() {
   const side = el('aside', 'side');
   const brand = el('div', 'brand');
   brand.append(el('h1', null, 'New Character'));
-  brand.append(el('div', 'sub', 'Daggerfall'));
+  brand.append(el('div', 'sub', 'DFO Online'));
   side.append(brand);
 
   const here = stageOf(flow.state);

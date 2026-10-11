@@ -228,7 +228,7 @@ test('SKIN2: the card is two panels, closed to the skin worn - one opens at a ti
   assert.deepEqual(find(card.root, 'skingroup').map(text), FOOT_GROUPS.map((g) => g.label));
   const grids = find(card.root, 'skingrid');
   assert.deepEqual(grids.map((g) => g.children.length), [EOTB_FOOT_SET_COUNT, CLASS_SKINS.length]);
-  assert.equal(grids[1].attrs['aria-label'], 'Daggerfall classes');
+  assert.equal(grids[1].attrs['aria-label'], 'Original classes');   // PIN MOVED: BR5, the original game's classes, not its name
   assert.ok(grids.every((g) => g.parent === grids[0].parent && panelOf(heads()[0]) === grids[0].parent.parent), 'inside the panel it opened');
   // open mounted: on foot closes - one at a time
   heads()[1].onclick();

@@ -149,7 +149,7 @@ test('LOAD1 the key: the PNG goes to the gallery AND the download, the download 
     const said = [];
     const name = await takeScreenshot({ toBlob: (cb) => cb(png) }, { afterDraw: null, doc, later() {}, keep: async (b) => { kept.push(b); return 7; }, said: (l) => said.push(l) });
     await flush();
-    assert.match(name, /^daggerfall-\d{8}-\d{6}\.png$/);
+    assert.match(name, /^dfo-\d{8}-\d{6}\.png$/);   // PIN MOVED: BR5, the product's name
     assert.equal(clicks.length, 1);
     assert.deepEqual(kept, [png], 'the very PNG the download saved');
     assert.deepEqual(said, ['Screenshot kept - see Screenshots in the menu.']);

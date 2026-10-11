@@ -398,11 +398,12 @@
   {
     "name": "the-question-defaults-to-the-mod",
     "file": "src/ui/levelingChoice.js",
-    "old": "      id: LEVELING_CLASSIC,\n      title: 'Daggerfall',",
-    "new": "      id: LEVELING_VIRTUE,\n      title: 'Daggerfall',",
+    "old": "      id: LEVELING_CLASSIC,\n      title: 'Classic',",
+    "new": "      id: LEVELING_VIRTUE,\n      title: 'Classic',",
     "tests": [
       "test/orl1_leveling.test.js"
-    ]
+    ],
+    "note": "BR5 (re-aimed by content): the name, its file form and the legal date moved."
   },
   {
     "name": "the-question-answers-more-than-once",
