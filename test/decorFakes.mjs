@@ -281,8 +281,9 @@ export const yardPiece = (over = {}) => ({ id: 'p1', model: null, flat: [504, 12
  *  `town.pieces` the service's answer for the home (written in place - another writer's), `clock.t` the host's clock (ms:
  *  the town asked again past YARD_TOWN_TTL_MS). AUDIT 05b A5: every model a metre's box (the pipeline's cpu copy - the
  *  decorator's ghost reads its box), and `meshDraws` each model drawn with the table it was drawn with, as it stood then.
- *  AUDIT YARD-LIGHT: `neighbours` more homes in the same pixel - { [buildingKey]: { at, box, pieces } } - another's yards. */
-export function yardWorld({ pieces, season = SEASON.Summer, climate = WOODS, seasonal = null, own = false, iconUrl = async () => null, trees = null, sizes: own_sizes = {}, neighbours = {} } = {}) {
+ *  AUDIT YARD-LIGHT: `neighbours` more homes in the same pixel - { [buildingKey]: { at, box, pieces } } - another's yards.
+ *  HOME-VOTE: `home` more of home 300's registry row (its `score`, `mine`), read at every ask - written in place, a vote. */
+export function yardWorld({ pieces, season = SEASON.Summer, climate = WOODS, seasonal = null, own = false, iconUrl = async () => null, trees = null, sizes: own_sizes = {}, neighbours = {}, home = {} } = {}) {
   const made = [];
   const uploads = [];
   const animated = [];
@@ -303,7 +304,7 @@ export function yardWorld({ pieces, season = SEASON.Summer, climate = WOODS, sea
   const sizes = { 504: [40, 120], 505: [44, 130], 201: [30, 20], ...own_sizes };
   const yards = createHomeYards({
     api: { yards: async () => ({ ok: true, data: { yards: [{ buildingKey: 300, pieces: town.pieces }, ...Object.entries(neighbours).map(([k, n]) => ({ buildingKey: Number(k), pieces: n.pieces }))] } }) },
-    homes: { homeAt: (m, k) => (k === 300 ? { owner: 'Tomas', own, look: null } : neighbours[k] ? { owner: 'Ilsa', own: false, look: null } : null) },
+    homes: { homeAt: (m, k) => (k === 300 ? { owner: 'Tomas', own, look: null, ...home } : neighbours[k] ? { owner: 'Ilsa', own: false, look: null } : null) },
     built: () => built, translation: () => shift, feet: () => (own ? [18, 0, 10] : [100, 0, 100]), outside: () => true, eye: () => (own ? [18, 1.6, 10] : [100, 1.6, 100]),
     collider: () => ({ addMesh() {}, removeBucket() {} }),
     meshes: { getGpuMesh: async (id) => ({ id, subMeshes: [{ textureArchive: SWAPPED, textureRecord: 0 }] }), cpuModels: { get: () => box } },

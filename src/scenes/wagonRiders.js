@@ -169,6 +169,7 @@ export function createWagonRiders(deps) {
       return;
     }
     ride.lost = null;
+    if (r.held && ride.seat != null) { getDown(RIDE_TEXT.lifted); return; }   // AUDIT WARDEN1 C10: the town watch lifts it - down where I sat (its seat stood at the landing before the throw)
     const seats = WAGON_KINDS[r.model]?.seats ?? 0;
     const mine = r.passengers.find((e) => e[0] === me() && e[1] < seats);   // WAGONS2 (AUDIT): a seat the wagon has
     if (ride.seat == null) {

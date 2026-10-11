@@ -15,6 +15,7 @@
 import { OnlineSession } from './online.js';
 import { cellRoomOfWire } from './wire.js';
 import { validHccRecord, HCC_WIRE_KIND } from '../systems/horseCartWire.js';
+import { thrownRecord } from '../systems/wagonWarden.js';   // AUDIT WARDEN1 R9: a caravan the town watch threw stands where it landed
 
 import { CARAVAN_STANDS_NATIVES } from '../systems/caravanRoom.js';   // the caravan the room stands on, where it stands - one reach for the visit and the owner's own room
 export { CARAVAN_STANDS_NATIVES };
@@ -25,6 +26,10 @@ export function caravanStands(raw, at) {
   return !!w && w.kind === HCC_WIRE_KIND.Deployed && w.model === 'caravan' && Array.isArray(at)
     && Math.abs(w.position[0] - at[0]) <= CARAVAN_STANDS_NATIVES && Math.abs(w.position[2] - at[2]) <= CARAVAN_STANDS_NATIVES;
 }
+
+/** The record a cell's word stands its team on (`e` its park word): where the town watch threw it when it did (`y`) -
+ *  the pool draws it there and a visitor walks in there (WARDEN1). Pure. */
+export const caravanRecordOf = (/** @type {any} */ e) => (e?.r != null && Number.isFinite(e.y) ? thrownRecord(e.r) : e?.r ?? null);
 
 /** `onGone(why)` the caravan moved on or went ('gone') or its door shut on me ('shut'); `onLook(look)` its owner painted
  *  it again; `may(w, visit)` (WAGONS2-VISIT AUDIT) whether its door, as its record's word says it now (`w` the record's
@@ -57,8 +62,8 @@ export function createCaravanVisitLink({ onGone, onLook = null, may = null, Sess
         close();
         source = main; cell = room; visit = { k: v.k, at: [...v.at], room: v.privateRoom, owner: v.cabinOwner ?? null }; lookKey = JSON.stringify(v.look ?? null);
         link = new Session({ url: main.url, id: main.id, secret: main.secret, name: main.name, look: main.look, mintToken: main.mintToken, presence: false });
-        link.onParks = (r, list) => { if (r === cell) judge((Array.isArray(list) ? list : []).find((e) => e?.k === visit?.k)?.r ?? null); };
-        link.onPark = (r, e) => { if (r === cell && e?.k === visit?.k) judge(e.r ?? null); };
+        link.onParks = (r, list) => { if (r === cell) judge(caravanRecordOf((Array.isArray(list) ? list : []).find((e) => e?.k === visit?.k))); };
+        link.onPark = (r, e) => { if (r === cell && e?.k === visit?.k) judge(caravanRecordOf(e)); };
       }
       if (link.room !== cell) link.join(cell, null);
       link.tick();

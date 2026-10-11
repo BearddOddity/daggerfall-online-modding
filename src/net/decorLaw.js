@@ -27,6 +27,7 @@
 // ═══════════════════════════════════════════════════════════════════
 import { PROVENANCE_RE, makerName } from './recipeLaw.js';   // PROF4: a crafted piece's id and mark, one home
 import { TEMPLATES } from '../systems/itemKinds.js';   // INT9: the kept-back list's templates - a leaf
+import { isNpcFlat } from '../world/npcFlatArchives.js';   // DECOR-FIGURE: a person's flat (RDBLayout.NPCFlatArchives) - a leaf
 
 /** The items kept back by name: paper worth money or a house (a letter of credit, a deed) and the book of the
  *  player's own spells - set down in a home, it would be out of reach wherever the player went (DECOR2a; INT9: its home
@@ -135,6 +136,22 @@ export function decorFlatMirrored(piece) {
   return Number.isFinite(yaw) && Math.abs(yaw) > 90;
 }
 
+/**
+ * DECOR-FIGURE (2026-10-10, the owner: "remove the scaling option for npc sprites with house decoration
+ * interior/exterior"): A FIGURE STANDS AT ITS OWN SIZE. A piece that is one of Daggerfall's people - a flat in a person's
+ * archive (RDBLayout.NPCFlatArchives; the catalogue's Vendors), never one's own item - is placed, moved and drawn at
+ * scale 1: the placer takes no size step for it (systems/decorPlacer.js), the bar offers none (ui/decorPanel.js), the
+ * service refuses one written at another (decorScaleOk - server-account/src/decor.js), and one grown or shrunk before
+ * this stands at its own size for every visitor (decorDrawnScale - scenes/decorRoom.js), its record kept as it was paid.
+ */
+export function decorIsFigure(piece) {
+  return !!piece && piece.model == null && !piece.item && Array.isArray(piece.flat) && isNpcFlat(piece.flat[0]);
+}
+/** DECOR-FIGURE: the scale a piece is drawn at - a figure's own size, any other its record's. */
+export const decorDrawnScale = (piece) => (decorIsFigure(piece) ? 1 : piece?.scale ?? 1);
+/** DECOR-FIGURE: whether a piece's scale is one the service writes - a figure's is 1, any other's the law's range. */
+export const decorScaleOk = (piece) => !decorIsFigure(piece) || piece.scale === 1;
+
 /** DECOR2c: how far a mount hangs off its surface, in metres - the blood marks' own hair (combat/bloodDecals.js
  *  SURFACE_LIFT), so it wins the depth test against the wall behind it. */
 export const DECOR_MOUNT_LIFT = 0.02;
@@ -178,6 +195,9 @@ export function decorWhatOf(raw) {
     && Number.isSafeInteger(flat[0]) && flat[0] >= 0 && flat[0] <= DECOR_ARCHIVE_MAX
     && Number.isSafeInteger(flat[1]) && flat[1] >= 0 && flat[1] <= DECOR_RECORD_MAX) {
     if (item === null) return { model: null, flat: [flat[0], flat[1]] };
+    // AUDIT HOME-VOTE II C1: an own item is never one of Daggerfall's people - an item said beside a person's flat made it
+    // no figure (decorIsFigure), and stood one at any size past the figure's law; no item's picture is in their archives
+    if (isNpcFlat(flat[0])) return null;
     const own = decorItemOf(item);
     return own ? { model: null, flat: [flat[0], flat[1]], item: own } : null;
   }

@@ -587,7 +587,7 @@ test('SCALE5b relayCfg: a setting is one of four names and a string of at most R
   assert.equal(C.relayCfgValue([], {}, 'sdRole'), undefined);
   assert.equal(C.mayRelayCfg(['dev']), true);
   for (const g of [['dm'], ['shadowfang'], ['mod'], [], null, 'dev']) assert.equal(C.mayRelayCfg(g), false, String(g));
-  assert.equal(C.relayCfgSupported('world190'), false); assert.equal(C.relayCfgSupported('world191'), true); assert.equal(C.relayCfgSupported('x'), false);
+  assert.equal(C.relayCfgSupported('world191'), false, 'main\'s WARDEN1 relay takes none (PIN MOVED: world192 at the merge)'); assert.equal(C.relayCfgSupported('world192'), true); assert.equal(C.relayCfgSupported('x'), false);
   const { parseStaffCommand, STAFF_HELP_LINES } = await import('../src/net/staffCommands.js');
   assert.deepEqual(parseStaffCommand('/relay'), { cmd: 'relay' });
   assert.deepEqual(parseStaffCommand('/relay bossbody {"enforce": true}'), { cmd: 'relay', k: 'bossBody', v: '{"enforce": true}' });
@@ -668,9 +668,9 @@ test('SCALE5b the client: a session sends a relay setting only on the hub\'s lin
     s.onRelayCfg = (m) => heard.push(m);
     s.join('chat:world');
     sockets[0].open();
-    sockets[0].receive({ t: 'welcome', id: 'mac-0001', peers: [], n: 1, v: 'world190', now: 1_000_000 });
-    assert.equal(s.sendRelayCfg({ k: 'gateRole', v: '1' }), false, 'a relay before it takes none');
     sockets[0].receive({ t: 'welcome', id: 'mac-0001', peers: [], n: 1, v: 'world191', now: 1_000_000 });
+    assert.equal(s.sendRelayCfg({ k: 'gateRole', v: '1' }), false, 'a relay before it takes none - main\'s WARDEN1 world191 among them (PIN MOVED: world192 at the merge)');
+    sockets[0].receive({ t: 'welcome', id: 'mac-0001', peers: [], n: 1, v: 'world192', now: 1_000_000 });
     assert.equal(s.sendRelayCfg({ k: 'gateRole', v: '1' }), true);
     assert.equal(s.sendRelayCfg({ k: 'nope', v: '1' }), false);
     assert.deepEqual(JSON.parse(sockets[0].sent.at(-1)), { t: 'cfg', k: 'gateRole', v: '1' });

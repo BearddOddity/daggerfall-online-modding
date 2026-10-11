@@ -65,6 +65,8 @@ on:
       - "src/systems/guildFactions.js"
       - "src/net/homeLaw.js"
       - "src/net/decorLaw.js"
+      - "src/world/npcFlatArchives.js"
+      - "src/net/homeVoteLaw.js"
       - "src/net/guildLaw.js"
       - "src/net/hallLaw.js"
       - "src/net/heraldryLaw.js"

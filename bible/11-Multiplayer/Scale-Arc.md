@@ -63,12 +63,12 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | HALO-THIN | A cell's halos hear my pose when it is due - its first, a new map pixel, 8 m on, standing at a new place, the heartbeat - not every pose; whole while my own cell's socket is down, while a halo reaches a player in range who does not hold my cell, or while a referee may stand in one (a duel, a serpent's fight); a halo pinged on its own clock | No | **Built** (2026-10-10, PR #761; client only) |
 | SCALE5 | Past about 1-2k players: the hub split (presence and social state per account, world chat over shard rooms), slimmer or binary poses, pose-only halo frames | Yes | **Planned** as the slices below (THE PLAN PAST 2,000) |
 | SCALE2c | The reconnect wave spread by the hub's own count; a full foes frame that says nothing said once - client only | No | **Built** (2026-10-10, this branch) |
-| SCALE4f | The mint's realm row read once (four statements in one), and its guild membership once (three in one); every statement's D1 wait, rows and a replica's serving on the metrics point; an overloaded D1 a 503 | No | **Built** (2026-10-10, this branch; acct111) - the writes stay, with their reasons |
-| SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | **Built** (2026-10-10, this branch; acct111) |
-| SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | **Built** (2026-10-10, this branch; relay world191, NOT YET DEPLOYED) - with the relay's settings at run time and its word of its referees for a halo (`rf` - HALO-THIN, below, the halos' one law) |
+| SCALE4f | The mint's realm row read once (four statements in one), and its guild membership once (three in one); every statement's D1 wait, rows and a replica's serving on the metrics point; an overloaded D1 a 503 | No | **Built** (2026-10-10, this branch; acct112) - the writes stay, with their reasons |
+| SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | **Built** (2026-10-10, this branch; acct112) |
+| SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | **Built** (2026-10-10, this branch; relay world191 on its branch, folded into world192 past main's WARDEN1; NOT YET DEPLOYED) - with the relay's settings at run time and its word of its referees for a halo (`rf` - HALO-THIN, below, the halos' one law) |
 | SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | **Built** (2026-10-11, this branch; relay world192, NOT YET DEPLOYED) - the hub's sixteen shards and each region's four, the World and Region tabs' lists and the search |
 | SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | **Part one built** (2026-10-11, this branch; world192) - a crowded place overflows into layers; the event rooms next |
-| SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | **Built** (2026-10-11, this branch; acct111) - measured first: written less at the source, not moved - Renown coalesced, the session touched hourly, the metrics by table; a token bound to a key considered |
+| SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | **Built** (2026-10-11, this branch; acct112) - measured first: written less at the source, not moved - Renown coalesced, the session touched hourly, the metrics by table; a token bound to a key considered |
 | SCALE6 | Abuse and backups: Turnstile on guest creation, /64 IPv6 rate keys, bans, report and ignore, `ALLOWED_ORIGIN`, R2 snapshots, a hub export | Some | Alongside |
 
 **Relay deploy policy (SCALE):** relay changes are batched into as few deploys as possible, each in a window announced beforehand. A deploy drops every player, and until SCALE2 every reconnect is a D1 write storm.
@@ -1029,11 +1029,11 @@ the room's 4 MiB/s foes budget, past which the relay drops frames silently, real
 `tools/mutants/scale2c.json`: 17 mutants, 17 dead. One more survived its first run, `sent` checking a cell that `skip`
 already checks. It was redundant, so it is gone.
 
-## SCALE4f: built (2026-10-10, this branch - acct111, no migration)
+## SCALE4f: built (2026-10-10, this branch - acct112, no migration)
 
 acct107, then acct108 and acct109, on the branch: main's LW15 (#749) took acct107 first, TECH1 (#746) acct108 and
-PATRON-LOAD (#763) acct109 and PATRON-LOAD II (#767) acct110, so the merges moved this deploy to acct111 and every
-ACCOUNT_VERSION pin with it.
+PATRON-LOAD (#763) acct109, PATRON-LOAD II (#767) acct110 and HOME-VOTE (#762) acct111, so the merges moved this
+deploy to acct112 and every ACCOUNT_VERSION pin with it.
 
 The account service's half of the plan, first part.
 
@@ -1159,14 +1159,15 @@ PIN MOVED:
   INT7-AUDIT-REALM-ANOTHERS-ARMS and -THE-LEVEL-UNJUDGED, LEGACY7-dead-held-at-the-door (still equivalent: a death clears
   the lease) and -tomb-wears-house, LEGACY7-mint-no-house, and REALM-DOOR-rc-any-realm-shaped-id and -rc-any-account.
   All dead. And SCALE1-B-statements-uncounted, whose prepare is timed now.
-- ACCOUNT_VERSION's pins (18 files, and the fb1004d and gatekeys records) to acct107, then acct108 at the merge past LW15, then acct109 at the merge past TECH1, then acct110 at the merge past PATRON-LOAD, then acct111 at the merge past PATRON-LOAD II.
+- ACCOUNT_VERSION's pins (18 files, and the fb1004d and gatekeys records) to acct107, then acct108 at the merge past LW15, then acct109 at the merge past TECH1, then acct110 at the merge past PATRON-LOAD, then acct111 at the merge past PATRON-LOAD II, then acct112 at the merge past
+  HOME-VOTE.
 
 **Found on the way, fixed.** LEGACY7-model-rewritten survived, on main too: a line's model change sent with the stored
 copy's `base` reached the UPDATE, which keeps the model column, and would have written a record that says another
 model. Only a write with no `base` was pinned, and the stale path refused that one. `test/legacy7_service.test.js` now
 sends one made from the stored copy, and the mutant dies.
 
-## SCALE4g: built (2026-10-10, this branch - acct111, beside SCALE4f; no migration)
+## SCALE4g: built (2026-10-10, this branch - acct112, beside SCALE4f; no migration)
 
 SCALE4d put the mint's reads on a D1 session opened `first-primary`. The reads a tab keeps asking - the heartbeat
 (every minute in a town), the account view, the realm's list, the professions' state and the day's motherlodes - still
@@ -1224,7 +1225,7 @@ PIN MOVED:
 **Also fixed:** SCALE4f's `d1Overloaded` had been inserted between SCALE4d's comment and the constant it describes.
 They stand together again.
 
-## SCALE5b: built (2026-10-10, this branch - relay world191, NOT YET DEPLOYED: one announced drop)
+## SCALE5b: built (2026-10-10, this branch - relay world191 on it, folded into world192 past main's WARDEN1; NOT YET DEPLOYED: one announced drop)
 
 The plan's fifth slice: the relay's hygiene and the wire's second form, in the one relay deploy it costs. A socket that
 offers nothing hears every frame byte for byte as world190 said it, so an open tab from before it keeps playing.
@@ -1233,7 +1234,7 @@ offers nothing hears every frame byte for byte as world190 said it, so an open t
 - **Offered by the hello.** A session asked for it (`wire2`, which the world host asks on every socket the page holds -
   the presence session, its halo, each chat link and the hall) says `w2: 1` in its hello. The relay keeps it on the
   socket's attachment. Any other value is read as no offer rather than refused, so a later build's third form still
-  gets in on the wire both know. A relay before world191 reads no such field and speaks the first wire, which the
+  gets in on the wire both know. A relay before world192 (main's WARDEN1 world191 among them) reads no such field and speaks the first wire, which the
   client still reads.
 - **A room's poses, batched and slim.** A pose fanned to a `w2` socket is owed it as a slim entry `[id, pose]`, built
   once a pose, and every socket's owed entries go out as one `{t:'poses', l}` frame each POSE_BATCH_MS (50 ms, one
@@ -1463,7 +1464,7 @@ PIN MOVED, each a pin that read a line SCALE5c moved:
   AUDIT-WB12d-T-relay-hello-word-in-every-room
   re-aimed and still equivalent, as recorded.
 
-**The deploy.** One announced relay drop, with SCALE5b's world191 (neither is deployed). The account service (acct111)
+**The deploy.** One announced relay drop, world192, carrying SCALE5b (neither is deployed). The account service (acct112)
 ships first or with it. No database migration.
 
 **Left:** nothing of the slice - part two, below, is the region channels.
@@ -1554,11 +1555,11 @@ relay starting. AUDIT-ACC F2's pin (test/accountdeploy.test.js) failed on it bef
 **Left:** part two - the event rooms (a gate's court, a Super dungeon's realm) as copies around one fight. Only those two
 can fill: a siege seats 48 fighters and 60 watchers, and the arena 60 watchers and a bout's two.
 
-## SCALE4h: built (2026-10-11, this branch - acct111, no migration, no drop)
+## SCALE4h: built (2026-10-11, this branch - acct112, no migration, no drop)
 
 The plan's eighth slice: "A player's hot rows (the session, the play clock, the Renown tally, the rate windows) off the
 one primary: per-account objects or account shards, chosen once SCALE4f's metrics say how busy the primary really is."
-SCALE4f's metrics are not deployed yet (acct111 is on this branch), so the slice measured first, with a tool of its own.
+SCALE4f's metrics are not deployed yet (acct112 is on this branch), so the slice measured first, with a tool of its own.
 
 **Measured first** (`node tools/hotWritesBench.mjs`): one player-hour through the real account Worker over node:sqlite
 (test/accountDb.mjs), each clock the client's own constant - the heartbeat at the board's pace with the box, the post
@@ -1656,7 +1657,7 @@ the plan for that point, built when `/v1/auth/token`'s D1 wait (`double5`, SCALE
 - **The checkpoint** is now 59% of a fighting hour's statements and 71% of its rows. Each is one batch: the realm row
   twice (the save's UPDATE and the verdict's), `realm_wealth_hours` once, and the ledger's reads. Folding the two
   UPDATEs rewrites the INT5 judge's own guards (SCALE4f). The pace (ONLINE_CHECKPOINT_MS, 2 minutes while the save
-  moves) is how much a crash loses. It is the next lever, chosen by `double11` once acct111 is deployed.
+  moves) is how much a crash loses. It is the next lever, chosen by `double11` once acct112 is deployed.
 - **The play beat** stays every five minutes: the budget reads `played_s` at each checkpoint, and a coarser clock is
   a coarser allowance.
 - **A crash's loss.** A page that dies without `pagehide` loses what it earned since its last report: up to five

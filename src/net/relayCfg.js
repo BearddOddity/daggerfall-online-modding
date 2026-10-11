@@ -25,8 +25,9 @@ export const RELAY_CFG_VALUE_MAX = 512;
 export const RELAY_CFG_TTL_MS = 60_000;
 /** The hub's internal door a room asks the settings at. */
 export const RELAY_INTERNAL_CFG = '/internal/relay/cfg';
-/** The first relay that takes the frame (RELAY_VERSION's number). */
-export const RELAY_CFG_RELAY_MIN = 191;
+/** The first relay that takes the frame (RELAY_VERSION's number) - world192: SCALE5b's world191 was renumbered into it at
+ *  the merge past main's WARDEN1, whose world191 takes none. */
+export const RELAY_CFG_RELAY_MIN = 192;
 /** Does the relay at version `v` take a setting? */
 export const relayCfgSupported = (v) => Number(/^world(\d+)$/.exec(String(v ?? ''))?.[1]) >= RELAY_CFG_RELAY_MIN;
 /** May a player whose verified glyphs are `glyphs` set the relay's settings? The Developer's alone - a Dungeon Master's

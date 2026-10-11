@@ -40,6 +40,7 @@ const DECLARED = Object.freeze({
   'src/characters/enemyAnchor.js': 'a size for a foe\'s anchor - it draws nothing',
   'src/world/rmbFlats.js': 'mobileBillboardSize\'s own home - it draws nothing',
   'src/characters/residentWalker.js': 'the walker itself - its hosts draw it (world.js, travellerSprites.js)',
+  'src/scenes/wagonWardenShow.js': 'WARDEN1\'s thrower - a guard of the watch in the city guards\' picture with a wagon riding over its head (Mac: "lift the wagon/horse on top of their sprite"); a body has no lift to stand it in, and the watch\'s own guards stand in bodies (cityGuards.js)',
 });
 
 test('MWNPC-CENSUS every source that draws a living actor\'s sprite stands it in a body or is declared with its reason', () => {
