@@ -15,7 +15,7 @@ function markers(raw, drawn, hidden = new Set()) {
   const _peerMapPoses = new Map();
   const drawable = drawn;
   const start = world.indexOf('    _peerMapPoses.clear();');
-  const stop = world.indexOf('    const visiblePeers =', start);
+  const stop = world.indexOf('    const ranged = peerRange.cut(', start);   // PIN MOVED (PEER-RANGE): the draw distance's cut is the first reader after the map's poses - the poses are taken off the whole list before it
   // eslint-disable-next-line no-new-func
   new Function('_peerMapPoses', 'drawable', 'hccOn', 'hcc', 'campToWire', world.slice(start, stop))(_peerMapPoses, drawable, () => false, null, (q) => q);   // PIN MOVED (WAGONS3): the drivers' glue after the map's poses - no wagons here
   // eslint-disable-next-line no-new-func

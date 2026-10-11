@@ -824,44 +824,14 @@
     "note": "/relay takes nothing after it"
   },
   {
-    "name": "SCALE5b-halo-never-thinned",
-    "file": "src/net/online.js",
-    "old": "if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
-    "new": "if (false) continue;",
-    "tests": [
-      "test/scale5b.test.js"
-    ],
-    "note": "every pose to every halo, as before"
-  },
-  {
     "name": "SCALE5b-halo-rf-unread",
     "file": "src/net/online.js",
-    "old": "if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
-    "new": "if (this._thinOk.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
+    "old": "if (!whole && !this._rfOn.get(h.ws) && !haloPoseDue(",
+    "new": "if (!whole && !haloPoseDue(",
     "tests": [
       "test/scale5b.test.js"
     ],
-    "note": "a judging cell's halo thinned - its referee misses the fighter"
-  },
-  {
-    "name": "SCALE5b-halo-old-relay-thinned",
-    "file": "src/net/online.js",
-    "old": "if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
-    "new": "if (!this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
-    "tests": [
-      "test/scale5b.test.js"
-    ],
-    "note": "a relay that cannot say thinned"
-  },
-  {
-    "name": "SCALE5b-halo-swing-held",
-    "file": "src/net/online.js",
-    "old": "if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue;",
-    "new": "if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS) continue;",
-    "tests": [
-      "test/scale5b.test.js"
-    ],
-    "note": "a swing held for the halo's slot"
+    "note": "The relay's referee word read nowhere - a halo whose cell judges poses thinned by HALO-THIN's law. Re-aimed by content at the merge past main's HALO-THIN, the halos' one law now."
   },
   {
     "name": "SCALE5b-halo-rf-frame-unread",
@@ -872,26 +842,6 @@
       "test/scale5b.test.js"
     ],
     "note": "the cell's later word unread"
-  },
-  {
-    "name": "SCALE5b-says-more-ts",
-    "file": "src/net/wire.js",
-    "old": "const POSE_PLACE = Object.freeze({ x: 1, y: 1, z: 1, yaw: 1, pitch: 1, ts: 1 });",
-    "new": "const POSE_PLACE = Object.freeze({ x: 1, y: 1, z: 1, yaw: 1, pitch: 1 });",
-    "tests": [
-      "test/scale5b.test.js"
-    ],
-    "note": "every pose says more - its send time moved"
-  },
-  {
-    "name": "SCALE5b-says-more-removal",
-    "file": "src/net/wire.js",
-    "old": "  for (const k of Object.keys(a)) if (!POSE_PLACE[k] && !(k in b)) return true;\n",
-    "new": "",
-    "tests": [
-      "test/scale5b.test.js"
-    ],
-    "note": "a field taken away says nothing"
   },
   {
     "name": "SCALE5b-rf-welcome-unsaid",

@@ -1516,27 +1516,6 @@ export function wire2Batch(items) {
   return f.length === 1 ? f[0] : `{"t":"fb","f":[${f.join(',')}]}`;
 }
 
-/** SCALE5b: A HALO HEARS MY POSE AT A WALKING RATE. Every pose a player says goes to its own cell and to each neighbour
- *  its halo holds open (WORLD6b-iii(b)), and each of those fans it to everyone in range there - a crowd at a cell's
- *  edge was heard in full in up to four rooms. A halo now hears a pose that only moved at most every HALO_POSE_MS; a
- *  pose that says anything more (a swing, a cast, a stop, a mount, a death) goes at once, and a halo whose relay says
- *  it judges the poses that reach it (`rf`: a duel, the Wild zone, a serpent's fight) hears every one. */
-export const HALO_POSE_MS = 250;
-/** SCALE5b: the first relay that says whether a cell judges poses (RELAY_VERSION's number) - a halo of an older one is
- *  never thinned, for it cannot say. */
-export const HALO_THIN_RELAY_MIN = 191;
-export const haloThinSupported = (v) => Number(/^world(\d+)$/.exec(String(v ?? ''))?.[1]) >= HALO_THIN_RELAY_MIN;
-/** SCALE5b: the fields a pose may move without saying anything more - where the player stands, which way it faces, and
- *  when it was said. */
-const POSE_PLACE = Object.freeze({ x: 1, y: 1, z: 1, yaw: 1, pitch: 1, ts: 1 });
-/** SCALE5b: does pose `b` say anything pose `a` (the last a halo heard) did not, beyond its place? True with no `a`. */
-export function poseSaysMore(a, b) {
-  if (!a) return true;
-  for (const k of Object.keys(b)) if (!POSE_PLACE[k] && a[k] !== b[k]) return true;
-  for (const k of Object.keys(a)) if (!POSE_PLACE[k] && !(k in b)) return true;
-  return false;
-}
-
 /** A pose the room will relay, or null. */
 export function validPose(p) {
   if (!p || typeof p !== 'object') return null;

@@ -80,12 +80,12 @@ import { tabStorage } from '../systems/appStorage.js';   // the tab's own storag
 import { REALM_CHARACTER_RE } from './identityToken.js';   // AUDIT LEGACY III O1: a wed frame's stamped realm character, by the token's own shape
 import { wrapAngle } from '../world/mat4.js';   // ONCRASH1: the port's one angle wrap, which cannot loop
 
-import { isGateRoom } from './gateLaw.js';   // WB3: a gate's arena is one room of its own
+import { isGateRoom, PIXEL_M } from './gateLaw.js';   // WB3: a gate's arena is one room of its own
 import { isBattleRoom, isRoyalRoom } from './siegeRef.js';   // SEAT2a part four: a siege's battle is one room of its own   // CROWN1 part two: and a Royal Tourney's
 import { privateInteriorOf, caravanKeyOf } from './privateInterior.js';   // NET-SMOOTH: an owned interior's poses are MapsFile's frame; WAGONS2-VISIT: a caravan's own room
 import { relaySupportsCaravan, validCaravanData } from './wire.js';   // WAGONS2-VISIT: what a caravan's owner placed, said to its room
 import { isArenaRoom, validArenaIn } from './arenaLaw.js';   // ARENA4: the arena's hall and its bouts
-import { poseChanged, POSE_TS_MOD, poseTsDiff, SOCKETS_MAX, WORLD_CELL, RANGE_PIXELS, PIXEL_UNITS, CLOSE_REPLACED, CLOSE_POLICY, CLOSE_BUSY, WORLD_FRAME_MAX, worldFrameMaxFor, isCellRoom, hitOwnerOf, validPose, validLook, sanitizeName, readBadge, readAura, readRibbon, sanitizeChat, chatGate, redGate, dmGate, relaySupportsDm, muteGate, subOf, mutedUntilOf, worldRoom, inRange, relayUrl, isWorldRoom, isChatRoom, foesGate, FOES_FRAME_MAX, MAX_FRAME_BYTES, hitGate, actGate, actFrameFits, whoGate, WHO_RETRY_MS, HEARTBEAT_MS, PING_MS, relayVersionOf, chatInGate, CHAT_ROOM_HZ_MAX, socialGate, partyGate, validPartyPose, validSocialFrame, validPartyFrame, PARTY_SEND_MS, validSocialAct, socialInGate, noteInGate, partyInGate, SOCIAL_IN_HZ_MAX, NOTE_IN_HZ_MAX, INBOUND_FRAME_MAX, questInGate, validQuestFrame, QUEST_SEND_MS, QUEST_HUB_MIN_MS, PARTY_MAX, tokenGate, validTradeData, tradeGate, tradeInGate, validCastData, castGate, castInGate, CAST_FRAME_MAX, CAST_IN_HZ_MAX, relaySupportsCast, TRADE_IN_HZ_MAX, relaySupportsTrade, TRADE_FRAME_MAX, parkGate, relaySupportsPark, PARK_CELL_MAX, PARK_KEY_RE, PARK_TTL_MS, relaySupportsChannels, CHAT_LINE_CHANNELS, partyChatInGate, PARTY_CHAT_ROOM_HZ_MAX, relaySupportsRoll, rollGate, validRollSpec, validRoll, relaySupportsEmote, validCardData, cardGate, cardInGate, CARD_FRAME_MAX, CARD_IN_HZ_MAX, relaySupportsCard, validPageData, pageGate, pageInGate, PAGE_FRAME_MAX, PAGE_IN_HZ_MAX, relaySupportsPage, validDuelData, duelGate, duelInGate, DUEL_FRAME_MAX, DUEL_IN_HZ_MAX, relaySupportsBossRef, bodyWordGate, relaySupportsDuelRef, validDuelRefOut, validWedData, wedGate, wedInGate, WED_FRAME_MAX, WED_IN_HZ_MAX, relaySupportsWed, readRenown, renownGate, relaySupportsRenown, RENOWN_ORDER_KEEP_MS, RENOWN_RESEND_MS, lookGate, relaySupportsLook, relaySupportsPartyTravel, relaySupportsRestOpt, relaySupportsEvent, relayKnowsLiveEvent, eventGate, validLiveEvent, LIVE_EVENTS, isSocialRoom, validGateIn, validGateOut, gateGate, relaySupportsGate, relaySupportsOwn, relaySupportsGateSpent, relaySupportsGateSite, relaySupportsGateHeal, gatePlaceWire, readGuildTag, readHouse, relaySupportsGuild, GUILD_ORDER_KEEP_MS, guildChatInGate, GUILD_CHAT_ROOM_HZ_MAX, validRaidIn, validRaidOut, raidGate, relaySupportsRaid, validRaidTownsIn, isRegionRoom, validTravellerMark, validTravellerFrame, relaySupportsTravellers, travInGate, TRAV_SEND_MIN_MS, TRAV_WELCOME_MAX, TRAV_STALE_MS, relaySupportsPartyWalk, relaySupportsPartyLead, relaySupportsPartyMap, validAmapFrame, amapBody, AMAP_SEND_MS, AMAP_HUB_MIN_MS, validSiegeIn, validSiegeOut, siegeGate, relayFightsBattles, relayRunsRoyal, validRiteIn, validRiteOut, riteGate, relaySupportsRite, arenaGate, relaySupportsArena, readArenaOut, validWildData, validWildOut, wildDirected, wildGate, wildInGate, WILD_IN_HZ_MAX, WILD_FRAME_MAX, relaySupportsWildRef, validWildRefOut, relaySupportsWdun, relaySupportsWdunGiants, validWdunIn, validWdunOut, BUSY_TOKEN_UNREAD, WIRE2_BATCH_MAX, HALO_POSE_MS, haloThinSupported, poseSaysMore } from './wire.js';   // SCALE5a: a busy close's word that the token went unread   // SOC2: the hub's law, at home; AUDIT SOC B3/B11/B20: the act's projection, the inbound gates, the inbound bound
+import { poseChanged, POSE_TS_MOD, poseTsDiff, SOCKETS_MAX, WORLD_CELL, RANGE_PIXELS, PIXEL_UNITS, CLOSE_REPLACED, CLOSE_POLICY, CLOSE_BUSY, WORLD_FRAME_MAX, worldFrameMaxFor, isCellRoom, hitOwnerOf, validPose, validLook, sanitizeName, readBadge, readAura, readRibbon, sanitizeChat, chatGate, redGate, dmGate, relaySupportsDm, muteGate, subOf, mutedUntilOf, worldRoom, inRange, relayUrl, isWorldRoom, isChatRoom, foesGate, FOES_FRAME_MAX, MAX_FRAME_BYTES, hitGate, actGate, actFrameFits, whoGate, WHO_RETRY_MS, HEARTBEAT_MS, PING_MS, relayVersionOf, chatInGate, CHAT_ROOM_HZ_MAX, socialGate, partyGate, validPartyPose, validSocialFrame, validPartyFrame, PARTY_SEND_MS, validSocialAct, socialInGate, noteInGate, partyInGate, SOCIAL_IN_HZ_MAX, NOTE_IN_HZ_MAX, INBOUND_FRAME_MAX, questInGate, validQuestFrame, QUEST_SEND_MS, QUEST_HUB_MIN_MS, PARTY_MAX, tokenGate, validTradeData, tradeGate, tradeInGate, validCastData, castGate, castInGate, CAST_FRAME_MAX, CAST_IN_HZ_MAX, relaySupportsCast, TRADE_IN_HZ_MAX, relaySupportsTrade, TRADE_FRAME_MAX, parkGate, relaySupportsPark, PARK_CELL_MAX, PARK_KEY_RE, PARK_TTL_MS, relaySupportsChannels, CHAT_LINE_CHANNELS, partyChatInGate, PARTY_CHAT_ROOM_HZ_MAX, relaySupportsRoll, rollGate, validRollSpec, validRoll, relaySupportsEmote, validCardData, cardGate, cardInGate, CARD_FRAME_MAX, CARD_IN_HZ_MAX, relaySupportsCard, validPageData, pageGate, pageInGate, PAGE_FRAME_MAX, PAGE_IN_HZ_MAX, relaySupportsPage, validDuelData, duelGate, duelInGate, DUEL_FRAME_MAX, DUEL_IN_HZ_MAX, relaySupportsBossRef, bodyWordGate, relaySupportsDuelRef, validDuelRefOut, validWedData, wedGate, wedInGate, WED_FRAME_MAX, WED_IN_HZ_MAX, relaySupportsWed, readRenown, renownGate, relaySupportsRenown, RENOWN_ORDER_KEEP_MS, RENOWN_RESEND_MS, lookGate, relaySupportsLook, relaySupportsPartyTravel, relaySupportsRestOpt, relaySupportsEvent, relayKnowsLiveEvent, eventGate, validLiveEvent, LIVE_EVENTS, isSocialRoom, validGateIn, validGateOut, gateGate, relaySupportsGate, relaySupportsOwn, relaySupportsGateSpent, relaySupportsGateSite, relaySupportsGateHeal, gatePlaceWire, readGuildTag, readHouse, relaySupportsGuild, GUILD_ORDER_KEEP_MS, guildChatInGate, GUILD_CHAT_ROOM_HZ_MAX, validRaidIn, validRaidOut, raidGate, relaySupportsRaid, validRaidTownsIn, isRegionRoom, validTravellerMark, validTravellerFrame, relaySupportsTravellers, travInGate, TRAV_SEND_MIN_MS, TRAV_WELCOME_MAX, TRAV_STALE_MS, relaySupportsPartyWalk, relaySupportsPartyLead, relaySupportsPartyMap, validAmapFrame, amapBody, AMAP_SEND_MS, AMAP_HUB_MIN_MS, validSiegeIn, validSiegeOut, siegeGate, relayFightsBattles, relayRunsRoyal, validRiteIn, validRiteOut, riteGate, relaySupportsRite, arenaGate, relaySupportsArena, readArenaOut, validWildData, validWildOut, wildDirected, wildGate, wildInGate, WILD_IN_HZ_MAX, WILD_FRAME_MAX, relaySupportsWildRef, validWildRefOut, relaySupportsWdun, relaySupportsWdunGiants, validWdunIn, validWdunOut, BUSY_TOKEN_UNREAD, WIRE2_BATCH_MAX } from './wire.js';   // SCALE5a: a busy close's word that the token went unread   // SOC2: the hub's law, at home; AUDIT SOC B3/B11/B20: the act's projection, the inbound gates, the inbound bound
 import { relaySupportsHoldem, holdemGate, validHoldemIn, validHoldemOut, relaySupportsIliac, validIliacIn, validIliacOut } from './wire.js';   // CARDS5: the relay's card table, both ways
 import { RAID_TOWNS_CHUNK } from './raidLaw.js';   // RAID-ROLL: the towns table's pieces
 import { dungeonRoomTag } from './wire.js';   // SD-ONLINE: a dungeon's room carries the size it was built at
@@ -129,6 +129,45 @@ export const TOKEN_WAIT_MS = 8000;
 
 export const GAP_MIN_MS = 50;
 export const GAP_MAX_MS = 1000;
+/** HALO-THIN (2026-10-10, the owner: "For you when you are near a player ... Theres 10 position updates every time.
+ *  Multiply it by the times the player is near you and its an insane bottleneck"): A HALO HEARS WHERE I AM, NOT EVERY
+ *  STEP. My pose went down my cell's socket AND every halo's at the full rate (sendPose), and a listener holding two,
+ *  three or four of those rooms heard each pose once per room it shares - two copies astride a cell's edge, four at its
+ *  corner, every one of them parsed, gated and dropped as a copy (NET-SMOOTH 2, SCALE2b's `ts`), and every one fanned by
+ *  its room. By WORLD6b-iii(b)'s own symmetry (wire.js cellHaloFor) everyone within range of me holds MY cell, so its
+ *  fan alone reaches them all, which is why foes are never streamed to a halo (`_halo`). A halo hears my pose so that its
+ *  fan ranges me as a LISTENER (inRange, on the map pixel) and ranks me among its nearest (wire.js poseFan, by ground
+ *  distance), and so its roster places me. That needs where I am, not my every step. So a halo hears a pose when it is
+ *  due (`haloPoseDue`): its first since its welcome, a new map pixel (the range's own grain, and a raid's word), HALO_STEP_M
+ *  moved on the ground since the last it heard (the near tier's ranking), standing at a place it has not heard (a stop),
+ *  and the heartbeat. A fall is sendDeath's, down every socket. Every pose still goes to a halo (whole):
+ *   - while my own cell's socket takes none (AUDIT WORLD6b-iii(b) A5: the halos carry me then);
+ *   - while the halo reaches a player in range who does not hold my cell (`_haloAlone`) - the symmetry is where everyone
+ *     WANTS to be, and a socket into my cell still opening, backing off or refused busy leaves its player hearing me
+ *     through this halo alone (AUDIT PEER-RANGE + HALO-THIN, B F1);
+ *   - while the host says a referee may stand in a halo (`haloWhole`: a duel, a serpent's fight - the relay's duelPose and
+ *     a fight's trail read the pose of the room the bout is in, and a duel's room is the one my opponent is heard
+ *     through). A word for a referee down a halo (a duel's, a rite's) brings that halo my latest pose first
+ *     (`_haloCurrent`), so the judge reads where I am. And a halo is pinged on its own clock (RELAY-H1's cadence), since
+ *     its poses no longer keep it busy. */
+export const HALO_STEP_M = 8;
+/** HALO_STEP_M in the pose's own units - a halo is a world cell's, and a cell's poses are MapsFile's frame. */
+export const HALO_STEP_UNITS = HALO_STEP_M * (PIXEL_UNITS / PIXEL_M);
+/**
+ * HALO-THIN: is `pose` (going out now) due to a halo whose last pose from me was `last` ({ x, z, mv, at }, or null for
+ * none since the halo's welcome)? Pure.
+ * @param {{ x: number, z: number, mv: number, at: number }|null|undefined} last
+ * @param {{ x: number, z: number, mv?: number }} pose
+ * @param {number} now
+ */
+export function haloPoseDue(last, pose, now) {
+  if (!last) return true;
+  if (now - last.at >= HEARTBEAT_MS) return true;
+  if (!(pose.mv | 0) && ((last.mv | 0) !== 0 || pose.x !== last.x || pose.z !== last.z)) return true;   // standing: a stop, or a place the halo has not heard (AUDIT B F3: a walk under the step, then a stop)
+  if (Math.floor(pose.x / PIXEL_UNITS) !== Math.floor(last.x / PIXEL_UNITS) || Math.floor(pose.z / PIXEL_UNITS) !== Math.floor(last.z / PIXEL_UNITS)) return true;
+  const dx = pose.x - last.x, dz = pose.z - last.z;
+  return dx * dx + dz * dz >= HALO_STEP_UNITS * HALO_STEP_UNITS;
+}
 /** SLAM3: HOW OFTEN TO SPEAK IN A CROWD.
  *
  *  SLAM1 bounded who hears a pose; this bounds how often one is said. The room's cost is senders x POSE_FAN_MAX x
@@ -293,7 +332,7 @@ const scOf = (m) => (typeof m?.sc === 'string' && REALM_CHARACTER_RE.test(m.sc) 
 //      every room not named `world:` - but a siege's battle, a Royal Tourney and an owned interior or boat carry their
 //      poses in MapsFile's frame too (scenes/world.js `nativeFrame`), 40 to the metre: a 0.75 m snap, so a runner at
 //      10 Hz (0.8 m a pose) teleported on nearly every pose. The snap is the ROOM's frame's now (nativePoseRoom).
-//   2. ONE POSE, SEVERAL ROOMS, NO ORDER. A player's pose goes down its cell's socket AND every halo's (sendPose), each
+//   2. ONE POSE, SEVERAL ROOMS, NO ORDER. A player's pose goes down its cell's socket AND each halo it is due to (sendPose, HALO-THIN), each
 //      room a Durable Object of its own; a listener sharing two of them hears it twice, and the two copies need not
 //      arrive in order. Only an identical copy was dropped (C6) - an OLDER copy landing second was eased toward, and
 //      the peer walked backwards. The frame carries no sequence to order them by, so a peer is heard through ONE room
@@ -472,7 +511,6 @@ export class OnlineSession {
     this._lastAmapAt = -Infinity; // PARTY-MAP: the client's own floor between two sends (AMAP_SEND_MS)
     this.onStaffTeleport = null;
     this.staffTeleportOk = false;
-    this._thinOk = new WeakMap();  // SCALE5b: socket -> its relay says whether a cell judges poses (haloThinSupported, at its welcome)
     this._rfOn = new WeakMap();    // SCALE5b: socket -> its cell judges the poses that reach it (`rf`) - a halo's are never thinned then
     this.onFound = null;          // SCALE5c: ({q, l, busy}) => void - the hub's answer to a search of everyone online by name
     this.guildOnline = new Map(); // SCALE5c: id -> my guild's members online on every shard, as the hub last said (`sendGuildWho`)
@@ -694,6 +732,11 @@ export class OnlineSession {
     this.terminal = false;     // the relay closed with a reason a retry will not change (replaced, refused)
     this.terminalAt = null;    // when it did (the session's clock): rejoin() waits on it
     this._welcomed = new WeakSet();   // SD-HELLO: the sockets their room has welcomed - each says its hello, then nothing more until it is here (_send)
+    this._haloPosed = new WeakMap();   // HALO-THIN: a halo's socket -> the last pose it heard from me ({ x, z, mv, at }) - a new socket has heard none
+    this._haloPinged = new WeakMap();   // HALO-THIN (AUDIT B F2): a halo's socket -> when it was last pinged on its own clock
+    /** HALO-THIN: the host's word that a referee may stand in a halo room this frame (a duel, the open zone, a serpent's
+     *  fight) - every pose goes to every halo whole while it is true. */
+    this.haloWhole = false;
     this._claimAt = null;      // AUDIT ONESEAT C1: when the claim was made (the session's clock), null for none - `claim` below
     this.claim = false;        // ONE-SEAT: the hub link's hello CLAIMS the player's one seat (`cl`) until the hub welcomes it - world.js chatStart sets it, and resume() for "Play online here"
     this.superseded = false;   // ONE-SEAT: another tab of this player took the seat, or this tab's own id was replaced - STICKY: no join, rejoin or retry until resume()
@@ -735,7 +778,7 @@ export class OnlineSession {
     this._closedByUs = false;
     this.stats = { sent: 0, poses: 0, received: 0, reconnects: 0, chats: 0, worlds: 0, foes: 0, hits: 0, acts: 0, threw: 0, chatsDropped: 0 };
     this.stats.socials = 0; this.stats.parties = 0;   // SOC2: the acts that left, the party poses that left (on their own line: AUDIT WORLD D12 pins the line above as it stands)
-    this.stats.socialsDropped = 0; this.stats.partiesDropped = 0; this.stats.oversize = 0;   // AUDIT SOC B3/B20: hub frames and party poses refused at the inbound gates; frames dropped unparsed for their size
+    this.stats.socialsDropped = 0; this.stats.partiesDropped = 0; this.stats.oversize = 0; this.stats.haloThinned = 0;   // HALO-THIN: poses a halo was not due   // AUDIT SOC B3/B20: hub frames and party poses refused at the inbound gates; frames dropped unparsed for their size
     /** ONCRASH1: what the last contained handler threw, for a person - `{ kind, text, at }` or null. */
     this.threw = null;
     this._threwKinds = new Set();   // said in full once a kind; the rest are counted
@@ -1333,6 +1376,7 @@ export class OnlineSession {
     if (!gate.pass) return false;
     const s = JSON.stringify({ t: 'duel', data: d });
     if (s.length > DUEL_FRAME_MAX) return false;   // the relay's own door on a duel frame - over it the relay closes the socket
+    this._haloCurrent(ws);   // HALO-THIN (AUDIT D3): a halo's judge reads where I am
     try { ws.send(s); } catch { return false; }
     this._duelBucket = gate.bucket; this.stats.sent++; this.stats.duels = (this.stats.duels ?? 0) + 1;
     return true;
@@ -1548,6 +1592,7 @@ export class OnlineSession {
     if (!ws) return false;
     const gate = riteGate(this._riteBucket, this._now());
     if (!gate.pass) return false;
+    this._haloCurrent(ws);   // HALO-THIN (AUDIT D3): riteNear reads the pose this socket last brought
     try { ws.send(JSON.stringify({ t: 'rite', ...w })); } catch { return false; }
     this._riteBucket = gate.bucket; this.stats.sent++;
     return true;
@@ -1951,18 +1996,52 @@ export class OnlineSession {
     if (now - this._lastSentAt < 1000 / poseHzFor(this.peers.size)) return false;   // SLAM3: a crowd is spoken to less often
 
     if (now - this._lastSentAt < HEARTBEAT_MS && !poseChanged(this._lastSent, pose)) return false;
-    // WORLD6b-iii(b): the halo rooms hear my pose too - their fans range me by it and their rosters place me. AUDIT
-    // WORLD6b-iii(b) A5: through every OPEN socket, my own cell's down or not (the halos rode out nothing while the
-    // fan sat behind the primary's send)
+    // WORLD6b-iii(b): the halo rooms hear my pose too - their fans range me by it and their rosters place me - each when it
+    // is due (HALO-THIN, haloPoseDue); AUDIT WORLD6b-iii(b) A5: through every OPEN socket, my own cell's down or not (the
+    // halos rode out nothing while the fan sat behind the primary's send), and then whole
     if (!(this._ws && this.status === 'open') && ![...this._halo.values()].some((h) => h.status === 'open' && h.ws)) return false;   // nowhere to say it: nothing stamped
     const out = { ...pose, ts: this._stampTs() };   // SCALE2b: one send time for every room's copy - that is what lets a listener order them
     let went = this._send({ t: 'pose', p: out });
-    // SCALE5b: a halo hears a pose that only moved at most every HALO_POSE_MS - unless its relay cannot say whether it
-    // judges poses, or says it does (`rf`), or the pose says more than the last it heard (wire.js poseSaysMore)
-    if (this._halo.size) { let s = null; for (const [, h] of this._halo) if (h.status === 'open' && h.ws && this._welcomed.has(h.ws)) { if (this._thinOk.get(h.ws) && !this._rfOn.get(h.ws) && now - (h.posedAt ?? -Infinity) < HALO_POSE_MS && !poseSaysMore(h.posed, out)) continue; try { h.ws.send(s ??= JSON.stringify({ t: 'pose', p: out })); this.stats.sent++; went = true; h.posedAt = now; h.posed = out; } catch { /* the close will say */ } } }
+    // HALO-THIN: a halo hears the pose when it is due - every one while my own cell's socket took none, the host says a
+    // referee may stand in a halo, the halo's own cell says one does (SCALE5b's `rf`, the relay's word of its duels, Wild
+    // zone and serpent fights), or the halo reaches a player in range who does not hold my cell
+    const whole = !went || this.haloWhole;
+    let s = null;
+    for (const [room, h] of this._halo) {
+      if (h.status !== 'open' || !h.ws || !this._welcomed.has(h.ws)) continue;
+      if (!whole && !this._rfOn.get(h.ws) && !haloPoseDue(this._haloPosed.get(h.ws), out, now) && !this._haloAlone(room, out)) { this.stats.haloThinned++; continue; }
+      try { h.ws.send(s ??= JSON.stringify({ t: 'pose', p: out })); this.stats.sent++; went = true; this._haloPosed.set(h.ws, { x: out.x, z: out.z, mv: out.mv | 0, at: now }); } catch { /* the close will say */ }
+    }
     if (!went) return false;
     this._lastSent = { ...pose }; this._lastSentAt = now; this.stats.poses++;
     return true;
+  }
+
+  /** HALO-THIN (AUDIT B F1): does this halo room report a player in range of `pose` that my own cell's room does not - one
+   *  whose socket into my cell is still opening, backing off or refused busy, and who hears me through this halo alone?
+   *  A member my own room has not reported yet (its roster cut, a join on its way) counts: an extra pose, never a lost one. */
+  _haloAlone(room, pose) {
+    const there = this._rooms.get(room);
+    if (!there?.size) return false;
+    const mine = this._rooms.get(this.room);
+    for (const id of there) {
+      if (mine?.has(id)) continue;
+      const p = this.peers.get(id);
+      const at = p?.shown ?? p?.pose;
+      if (at && inRange(room, pose, at)) return true;
+    }
+    return false;
+  }
+
+  /** HALO-THIN (AUDIT D3): a word for a referee down a halo (a duel's, a rite's) - the relay judges it by the pose that socket
+   *  last brought (duelOpen's ring, riteNear's reach), so the halo hears my latest pose first when its last is not that. */
+  _haloCurrent(ws) {
+    const pose = this._pose;
+    if (!pose || !ws || ws === this._ws || !this._welcomed.has(ws)) return;
+    const last = this._haloPosed.get(ws);
+    if (last && last.x === pose.x && last.z === pose.z && (last.mv | 0) === (pose.mv | 0)) return;
+    const out = { ...pose, ts: this._stampTs() };
+    try { ws.send(JSON.stringify({ t: 'pose', p: out })); this.stats.sent++; this._haloPosed.set(ws, { x: out.x, z: out.z, mv: out.mv | 0, at: this._now() }); } catch { /* the close will say */ }
   }
 
   /** PCORPSE1: THE LAST POSE. A dying player's body where it fell, flagged `dd`, sent ONCE through every open socket
@@ -2678,7 +2757,7 @@ export class OnlineSession {
       else { const h = this._halo.get(room); if (h) h.lookOk = relaySupportsLook(relayV); }   // PROFILE2: a halo says for itself
       if (primary) this.staffTeleportOk = staffTeleportSupported(relayV);
       if (primary) this.relayCfgOk = relayCfgSupported(relayV);   // SCALE5b
-      { const ws = primary ? this._ws : this._halo.get(room)?.ws; if (ws) { this._thinOk.set(ws, haloThinSupported(relayV)); this._rfOn.set(ws, m.rf === 1); } }   // SCALE5b: whether its cell judges poses, a halo's thinning's word
+      { const ws = primary ? this._ws : this._halo.get(room)?.ws; if (ws) this._rfOn.set(ws, m.rf === 1); }   // SCALE5b: whether its cell judges poses - a halo there hears every one (HALO-THIN)
       if (primary) this.travOk = relaySupportsTravellers(relayV);   // TV3
       if (primary) this.amapOk = relaySupportsPartyMap(relayV);   // PARTY-MAP
       // TV3: A REGION'S WELCOME SAYS ITS TRAVELLERS (`tr`), and says none when there are none - so it REPLACES the book,
@@ -3412,6 +3491,13 @@ export class OnlineSession {
       for (const [, h] of this._halo) if (h.status === 'open' && h.ws) { try { h.ws.send('{"t":"ping"}'); } catch { /* the halo's own retry */ } }
       if (went) this._lastPingAt = now;
     }   // CHAT1: a channel's keepalive, answered without waking the room
+    // HALO-THIN (AUDIT B F2): a halo hears a pose only when it is due, so it keeps RELAY-H1's cadence on its own clock - its
+    // last pose, its last ping here, or the shared ping above, whichever was latest
+    if (this.presence) for (const [, h] of this._halo) {
+      if (h.status !== 'open' || !h.ws) continue;
+      if (now - Math.max(this._haloPosed.get(h.ws)?.at ?? -Infinity, this._haloPinged.get(h.ws) ?? -Infinity, this._lastPingAt, h.since ?? -Infinity) < PING_MS) continue;
+      try { h.ws.send('{"t":"ping"}'); this._haloPinged.set(h.ws, now); } catch { /* the halo's own retry */ }
+    }
     if (this.presence && this.status === 'open') this._askRound(now);   // SLAM9: the fair ask over every peer not yet introduced
     if (this._rnOrder) this._flushRenown(now);   // AUDIT RENOWN1 WIRE-2: a rise a room has not confirmed goes again, on each socket's own gate
     if (this._gdHeld.length) this._flushGuild(now);   // GUILD1c: a held guild order a socket's gate kept back goes now

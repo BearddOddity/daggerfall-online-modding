@@ -350,12 +350,12 @@
   {
     "name": "SCALE2b-stamp-per-room",
     "file": "src/net/online.js",
-    "old": "try { h.ws.send(s ??= JSON.stringify({ t: 'pose', p: out }));",
-    "new": "try { h.ws.send(s ??= JSON.stringify({ t: 'pose', p: { ...pose, ts: this._stampTs() } }));",
+    "old": "h.ws.send(s ??= JSON.stringify({ t: 'pose', p: out }));",
+    "new": "h.ws.send(JSON.stringify({ t: 'pose', p: { ...pose, ts: this._stampTs() } }));",
     "tests": [
       "test/scale2b.test.js"
     ],
-    "note": "Each room's copy stamped apart - a listener cannot tell them for one pose. SCALE5b (re-aimed by content): the halo's send thinned (HALO_POSE_MS)."
+    "note": "Each room's copy stamped apart - a listener cannot tell them for one pose."
   },
   {
     "name": "SCALE2b-stamp-not-monotonic",

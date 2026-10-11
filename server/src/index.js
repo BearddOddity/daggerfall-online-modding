@@ -966,8 +966,8 @@ export class Room {
   _fanRoster(ws, out) { for (const [other, b] of (this._vper.size ? this._reals() : this._all())) if (other !== ws && b.id && !other.virtual) { if (b.w2) this._owe(other, out, ROSTER_BATCH_MS); else this._send(other, out); } }   // SCALE5c: a shard's sockets hear their own shard's roster - the bus's walk is its own sockets'
   /** SCALE5b: DOES THIS CELL JUDGE THE POSES THAT REACH IT - a duel's bout (INT8), the Wild zone's fighters (INT9), a sea
    *  serpent's fight (SERPENT1, INT11's trails and INT13's hulls)? Each reads every pose a fighter's socket here says, a
-   *  halo's copy too, and a client thins what it says to a halo that is none of these (wire.js HALO_POSE_MS) - so the
-   *  room says which it is: in its welcome (`rf`) and, when it moves, to the second wire's sockets (`_rfSay`). */
+   *  halo's copy too, and a client thins what it says to a halo that is none of these (online.js haloPoseDue, HALO-THIN) -
+   *  so the room says which it is: in its welcome (`rf`) and, when it moves, to the second wire's sockets (`_rfSay`). */
   _refereesPoses() { return !!(this._duelRef?.bouts?.size || this._wildRef?.fighters?.size || this._serpents?.size); }
   /** SCALE5b: the referee's word, said again - `{t:'rf', on}` to every socket of the second wire, each a halo's or a cell's. */
   _rfSay() {

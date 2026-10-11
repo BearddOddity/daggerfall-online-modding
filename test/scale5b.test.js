@@ -683,20 +683,7 @@ test('SCALE5b the client: a session sends a relay setting only on the hub\'s lin
   assert.match(world, /if \(tab\.room === SOCIAL_ROOM\) \{\s*relayCfgLink = link;[^\n]*\n\s*link\.onRelayCfg = \(m\) => chatLog\.push\(relayCfgTab \?\? tab\.id,/);
 });
 
-// ═══ PART FIVE: A HALO HEARS MY POSE AT A WALKING RATE ═════════════════════════════════════════════════════════════
-
-test('SCALE5b poseSaysMore: a pose says more than the last a halo heard when any field but its place, its turn and its send time differs - one added or taken away too (mutants: the send time read; the turn read; a field taken away unread)', async () => {
-  const { poseSaysMore, HALO_POSE_MS, haloThinSupported } = await import('../src/net/wire.js');
-  const a = { x: 1, y: 2, z: 3, yaw: 0.1, pitch: 0, mv: 1, an: 4, ts: 10 };
-  assert.equal(poseSaysMore(null, a), true);
-  assert.equal(poseSaysMore(a, { ...a, x: 9, y: 9, z: 9, yaw: 2, pitch: 1, ts: 99 }), false, 'moved, turned, later - nothing more');
-  for (const k of ['mv', 'an']) assert.equal(poseSaysMore(a, { ...a, [k]: 0 }), true, `${k} moved`);
-  assert.equal(poseSaysMore(a, { ...a, dd: 1 }), true, 'a field added - a death');
-  const { an, ...noSwing } = a; void an;
-  assert.equal(poseSaysMore(a, noSwing), true, 'a field taken away');
-  assert.equal(HALO_POSE_MS, 250);
-  assert.equal(haloThinSupported('world190'), false); assert.equal(haloThinSupported('world191'), true);
-});
+// ═══ PART FIVE: THE RELAY'S WORD OF ITS REFEREES, FOR A HALO ═════════════════════════════════════════════════════════
 
 test('SCALE5b the relay\'s referee word: a cell that judges the poses reaching it - a duel, the Wild zone, a serpent\'s fight - says so in its welcome (`rf`), and when that moves says it to the second wire\'s sockets, once (mutants: the welcome\'s word unsaid; the change unsaid; said every pose; said to the first wire)', async () => {
   const { newWildRef } = await import('../src/net/wildRef.js');
@@ -724,10 +711,9 @@ test('SCALE5b the relay\'s referee word: a cell that judges the poses reaching i
   });
 });
 
-test('SCALE5b the session thins what a halo hears: a pose that only moved goes to a halo at most every HALO_POSE_MS while its own cell hears every one; a pose that says more goes at once; a halo whose cell judges poses, or whose relay cannot say, hears every one (mutants: the halo never thinned; the referee word unread; an older relay thinned; a swing held)', async () => {
-  const { HALO_POSE_MS } = await import('../src/net/wire.js');
+test('SCALE5b the session hears the relay\'s referee word: a halo whose cell says it judges the poses that reach it (`rf`, its welcome or a later word) hears every pose; one that does not, HALO-THIN\'s due poses alone - main\'s HALO-THIN is the halos\' one law, this word one more reason it goes whole (mutants: the referee word unread; the later word unread)', async () => {
   await quiet(() => {
-    const run = ({ v = 'world191', rf = false, swingEvery = 0, word = null } = {}) => {
+    const run = ({ rf = false, word = null } = {}) => {
       const { FakeWS, sockets } = fakeSocketClass();
       let t = 1_000_000;
       const s = new OnlineSession({ url: 'wss://relay.test', name: 'Mac', id: 'mac-0001', secret: 'secret-of-mac-0001', WebSocketImpl: FakeWS, now: () => t, rand: () => 0 });
@@ -736,36 +722,26 @@ test('SCALE5b the session thins what a halo hears: a pose that only moved goes t
       s.setHalo([`world:${Math.floor(BX / 16) + 1},${Math.floor(BY / 16)}`]);
       for (const ws of sockets) ws.open();
       const [cellWs, haloWs] = sockets;
-      cellWs.receive({ t: 'welcome', id: 'mac-0001', peers: [], v, now: t });
-      haloWs.receive({ t: 'welcome', id: 'mac-0001', peers: [], v, now: t, ...(rf ? { rf: 1 } : {}) });
+      cellWs.receive({ t: 'welcome', id: 'mac-0001', peers: [], v: 'world192', now: t });
+      haloWs.receive({ t: 'welcome', id: 'mac-0001', peers: [], v: 'world192', now: t, ...(rf ? { rf: 1 } : {}) });
       const sentPoses = (ws) => ws.sent.filter((x) => x.startsWith('{"t":"pose"')).length;
       const c0 = sentPoses(cellWs), h0 = sentPoses(haloWs);
-      let swings = 0;
+      const heard = [];
       for (let i = 1; i <= 40; i++) {
         if (word && word[i] !== undefined) haloWs.receive({ t: 'rf', on: word[i] });   // the cell's later word
         t += 110;
-        const p = at(i * 300);
-        if (swingEvery && i % swingEvery === 0) p.an = ++swings;
-        else p.an = swings;
-        s.sendPose(p);
+        const before = sentPoses(haloWs);
+        s.sendPose(at(i * 40));   // a metre a pose: under HALO-THIN's step, in one map pixel
+        heard.push(sentPoses(haloWs) > before);
       }
-      return { cell: sentPoses(cellWs) - c0, halo: sentPoses(haloWs) - h0, heard: haloWs.sent.filter((x) => x.startsWith('{"t":"pose"')).map((x) => JSON.parse(x).p) };
+      return { cell: sentPoses(cellWs) - c0, halo: sentPoses(haloWs) - h0, heard };
     };
     const thin = run();
     assert.equal(thin.cell, 40, 'its own cell hears every pose');
-    const every = Math.ceil(HALO_POSE_MS / 110);   // a pose every 110 ms: the halo hears every third
-    assert.equal(thin.halo, Math.ceil(40 / every), `the halo one a HALO_POSE_MS (${thin.halo} of 40)`);
-    assert.equal(run({ rf: true }).halo, 40, 'a halo whose cell judges poses hears every one');
-    assert.equal(run({ v: 'world190' }).halo, 40, 'a relay that cannot say is never thinned');
+    assert.ok(thin.halo > 0 && thin.halo < 10, `a halo whose cell judges nothing hears HALO-THIN's due poses alone (${thin.halo} of 40)`);
+    assert.equal(run({ rf: true }).halo, 40, 'a halo whose cell says it judges poses hears every one');
     const turned = run({ word: { 1: 1, 21: 0 } });
-    assert.equal(turned.heard.slice(0, 20).length, 20, 'a cell that says it judges from now hears every pose from now');
-    assert.equal(turned.halo, 20 + Math.floor(20 / every), 'and one a HALO_POSE_MS again once it says it no longer does - from the last it heard');
-    const swung = run({ swingEvery: 5 });
-    for (let n = 1; n <= 8; n++) {
-      const first = swung.heard.find((p) => p.an === n);
-      assert.ok(first, `swing ${n} heard by the halo`);
-      assert.equal(first.x, (BX + 0.5) * PIXEL_UNITS + 5 * n * 300, `swing ${n} heard in the pose that said it, not a later one`);
-    }
-    assert.ok(swung.halo < 40, 'and the poses between still thinned');
+    assert.deepEqual(turned.heard.slice(0, 20), Array(20).fill(true), 'a cell that says it judges from now hears every pose from now');
+    assert.ok(turned.heard.slice(20).filter(Boolean).length < 5, 'and HALO-THIN\'s due poses again once it says it no longer does');
   });
 });
