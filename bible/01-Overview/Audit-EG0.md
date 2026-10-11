@@ -21,7 +21,7 @@ WHILE THE VERIFIER IS READING*). Then every finding was verified by hand:
 | 4. game design and the player's experience | scaling from 1 to 8, the one life, the bosses, the rewards, the first breach | 16 |
 | 5. lore, words and the bible's rules | canon, the vocabulary's collisions, the conventions | 18 |
 
-There were **105 findings**. Verdicts:
+There were **105 findings**, and a sixth lane later found 28 more in the revision (below). Verdicts:
 
 - **CONFIRMED**: the finding is true as stated.
 - **PARTIAL**: true in substance, wrong in a detail, which is named.
@@ -37,7 +37,7 @@ the revised page that carries it.
 | C1 | HIGH | `i` called "an order id"; it is every order's issue time. `egopen`/`egadmit` are not in `ORDER_KINDS` | CONFIRMED (`identityToken.js`: `orderValid` reads `c.e - c.i <= ORDER_TTL_S`) | 21: `ez` is the order id; `ORDER_KINDS` gains both, a relay version |
 | C2 | HIGH | "every blow the gate ships keeps the floor" is false under Colossal (slamR 8.5) | CONFIRMED (`gateMods.js` colossal) | 12.2: the floor CLAMPS; the gate's tightest blows named against the escape build |
 | C3 | HIGH | `restackStones` is a load-time fold, not a restack to a service count; the purse adds serpent embers | CONFIRMED (`gateSpoils.js`, `EMBERS_EARNED_SQL`) | 5: no restack exists, EG2 builds it; the precedent is `insigniaPurse` |
-| C4 | HIGH | `amap` is the dungeon automap share, not a world mark | CONFIRMED (`wire.js` PARTY-MAP) | 6: the arch reaches the company on the hub's party channel (21) |
+| C4 | HIGH | `amap` is the dungeon automap share, not a world mark | CONFIRMED (`wire.js` PARTY-MAP) | 6: the hub's call (`k:'call'`) on the party channel; 21: its frame |
 | C5 | HIGH | `orreryOf` takes a slot, reads the slot's own Hour marks for its fray and has no turns-band parameter | CONFIRMED (`sdBrain.js`) | 8.4: EG4 widens `orreryOf(s, {turnsMin, turnsMax, fray})` |
 | C6 | MED | the membrane's colours and heights are compiled into the shader; no scale uniform | CONFIRMED (`gatePass.js` `MEMBRANE_FS`) | 6: EG9 adds tint and scale uniforms |
 | C7 | MED | `shapeStamp` carries only the marks' changes, not a full shape | CONFIRMED (`sdRemnant.js`) | 19: a full shape stamp, new |
@@ -63,7 +63,7 @@ the revised page that carries it.
 | C27 | LOW | `claimGate`'s context has no `rand` | CONFIRMED (`accounts.js`) | 5: it gains `rand` |
 | C28 | LOW | song names break the 8-character stems | CONFIRMED (a convention: GATEWAR1, HOURHOLW) | 24: eight-character names |
 | C29 | LOW | the lowest-piece law is in Sigil-Sets section 2 | CONFIRMED | 17 |
-| C30 | LOW | 600 m is the beacon's height, not its reach | CONFIRMED | 6, 21 |
+| C30 | LOW | 600 m is the beacon's height, not its reach | CONFIRMED | 6 |
 | C31 | LOW | existing files written without `src/` read as planned; planned tools name no directory | CONFIRMED | throughout: existing paths carry `src/`; planned tools are "under tools/" |
 
 ## Lane 2 - numbers and consistency
@@ -129,7 +129,7 @@ the revised page that carries it.
 | G7 | HIGH | the roster contradicts itself, repeats the gate, and relies on tells the engine cannot give | CONFIRMED (Feud's feint grammar; WB13a T8) | 12.3: the pool law; Ozzath replaced by the Armsmaster's duel; the Colossus climbed, the Wyrm's pillars, Ilthys's banners; feints and umbral discs, no shadow tells |
 | G8 | MED | the count and the session (the rest running, absence, wasted time, the model) | CONFIRMED | 6: the rest holds the count, the respite, the surplus, absence never on the stair; 16: the model re-run |
 | G9 | MED | the all-time ratchet decides the season board; one bracket for 2 and 8 | CONFIRMED | 15: the season's ratchet, half the best at a season's start; 18: three brackets |
-| G10 | MED | the span's toll rewards standing still | CONFIRMED | 10: a toll by islands missed; a gentler cast-back; THE GOLD RUN; THE HIGH ROAD |
+| G10 | MED | the span's toll rewards standing still | CONFIRMED | 10: a toll by islands missed, THE HIGH ROAD; 8: a gentler cast-back; 8.2: THE GOLD RUN |
 | G11 | MED | depth past Hall 56 is numbers only, and fury speeds blows up (against Mac's WBX *"nothing gets faster"*) | CONFIRMED (`World-Bosses.md` WB13) | 12.2: fury adds waves and chained blows, never speed; 16: the rites, the deep growth x1.03; 13: four decrees and ranks |
 | G12 | MED | five kinds for ever; health between halls unstated | CONFIRMED (`courtRules`) | 7: the rhythm; 8.7: the twists; 8: health between halls; 8.4: the Athenaeum worked together and rewarded |
 | G13 | MED | melee idle against fliers; the dark hides foes | CONFIRMED | 12.3: chains a blade strikes, grounded windows; 23: rim lights |
@@ -159,6 +159,43 @@ the revised page that carries it.
 | L16 | LOW | smaller collisions (Muster, Fleet, Executioner, Brotherhood, Banner, Wellspring, Soul-Warden, Hall of Wards, Sentinel, spires, an unnamed aura) | CONFIRMED | 4, 11, 12, 13, 14, 17, 18: the descent, Fleetfoot, Culling Edge, Fallen's Due, Spire's Standard, Rift-Torn, the Cairn-Keeper, the Deepest Redoubts, the Lurker, pillars, Firstlight. Two proposed renames were themselves taken (Oathbound, an Aetheric set; Last Stand, a loot power): Challenger's Oath and Battlemage's Reprieve stand instead |
 | L17 | LOW | canon the page omitted (Imago Storm; the Wellhead's arena; the Seducers' wings; the council's titles) | PARTIAL (used; that Storm "ran Clan Dagon" afterwards is not carried, only that he turned on his Prince) | 3: Storm, the arena, the wings; the Armsmaster and Spellmaster |
 | L18 | LOW | writing (capitalisation; "closes each Ward"; the door in circle 1; Normal and Regular; the herald's words; hedges; an unflagged placeholder; the test plan) | CONFIRMED | 2, 3, 4, 5, 18, 29 |
+
+## Re-verification - a sixth cold lane on the revision
+
+The revision was frozen again and read by a sixth lane against every row above, for leftover words, internal
+consistency, the new code claims and clarity. It found **28** problems (3 HIGH, 17 MEDIUM, 8 LOW). Each was verified
+and fixed in place; none was refuted.
+
+| id | sev | finding | verdict | resolution |
+|---|---|---|---|---|
+| R1 | HIGH | the Examination lost what the company does, and its window went negative for *n* = 5-8 and under the errand floor at 4 | CONFIRMED | 12.3: each rune stood in order; `10 + 4 x max(0, runes - n)`, pinned |
+| R2 | HIGH | the first hall's wake was undefined (no pull before it) | CONFIRMED | 7: it wakes when the company has arrived, or when the open window ends |
+| R3 | HIGH | the stake: a void both spent and returned; a force deploy could not return a spent one; the clock cut voids short; "the opening" undefined | CONFIRMED | 21: spent by a `w` or a non-void `x`; returned by `v` or `x` `'void'`; the clock after 7 days; the opening defined (and in 6) |
+| R4 | MED | "Twelve lords" (there are thirteen); "three season boards" (one is all-time) | CONFIRMED | the summary |
+| R5 | MED | "the first hall" meant Hall 1 in places where a breach may start deeper | CONFIRMED | 5, 15, 16, 17, 18: Hall 1 |
+| R6 | MED | the fixed first circle broke the rhythm | CONFIRMED | 7: Rift-Yard, Span, Proving Walk, Rampart, Court |
+| R7 | MED | "five families, so four" did not follow; the Bargain's fifth decree; rank II undefined | CONFIRMED | 13: the formula caps at four, the Bargain may add a fifth; a rank II column |
+| R8 | MED | three families and a two-of-three lean conflicted | CONFIRMED | 14: one card from the leaned family |
+| R9 | MED | "1 in 3 at a Valkynaz's Redoubt" had been dropped | CONFIRMED | 17 |
+| R10 | MED | tell grammar: mirrors, Feud's feint, Watchfire's dashes | CONFIRMED (`Feud-Arc.md` 7.3) | 12.2: every real blow glints, Feud's grammar exactly; 12.4: the true lord's rim light; 14: Watchfire pulses solid |
+| R11 | MED | relay-applied Vestiges do read the client's blow kind | CONFIRMED | 19: named, and why a lie gains nothing |
+| R12 | MED | the union floor lacked the reaction slack | CONFIRMED | 12.2 |
+| R13 | MED | a chained shape could be built with a 0.6 s wind-up, under the floor | CONFIRMED | 12.2, 13: telegraphed at the landing, landing max(0.6 s, its floor) later |
+| R14 | MED | the Spire's embers never reached `EMBERS_EARNED_SQL`; the sink misread the Broker's stock law | CONFIRMED (`accounts.js`; SET7's day stock) | 17, 21 |
+| R15 | MED | Culling Edge passed the 1.25 cap at every rank | CONFIRMED | 14: declared factors at most 1.25, relay-established at most 1.6 |
+| R16 | MED | a reload returned to the arrival plate, the dodge the socket rule forbids | CONFIRMED | 20 |
+| R17 | MED | The Hour Turns and Unbroken live in `sigilSetPowers.js`; a garbled sentence | CONFIRMED | 14 |
+| R18 | MED | Clan Feud put two lords on a one-fight seam | CONFIRMED (`this._sdFight`) | 16: the band's champion beside the lord, one seam |
+| R19 | MED | the Crossing's escape ran into the void; the walkway's length unbounded | CONFIRMED (`WALK_HALF_W` 3.2) | 12.3: at most 24 m, 3.0 s, the escape along it |
+| R20 | MED | the call's word to the company was missing | CONFIRMED | 6, 21: `k:'call'` and *Answer the call* |
+| R21 | LOW | `hostTeamHpFor` is already exported | CONFIRMED | 11, 27 |
+| R22 | LOW | leftover and colliding words (Kyn Muster, warded, rite, Vengeful and Burning as affixes, respite, chains) | CONFIRMED | Kyn Levy, banned, tides, Searing and Wrathful, a quiet hall, anchors |
+| R23 | LOW | the Leap's floor unnamed; Grath's crack short; the elite Cleave "at the floor"; wind-ups missing | CONFIRMED | 11, 12.2, 12.3 |
+| R24 | LOW | `why` values undefined or missing; a first fall's receipt unstated | CONFIRMED | 21 |
+| R25 | LOW | `BOSS_CARD_PER_MILLE` is per kind | CONFIRMED (`bossCards.js`) | 17 |
+| R26 | LOW | versions moved (`world192`, `acct112`); bare paths; a section reference; "the edge of the Shade" | CONFIRMED | 16, 17, 20, 21 |
+| R27 | LOW | smaller gaps: unshipped Valkynaz, Legion-Lord, the Colossus's hearts, Divers' ground, Marks kinds, earners, resonance, the haven keyline, the Nova's damage, Vengeful in the cap, `egSpoils.js`'s slice, kinds by slice, bodies shared by two kinds | CONFIRMED | 8.2, 11, 12.3, 13, 14, 15, 17, 23, 29 |
+| R28 | LOW | three rows above placed their resolutions wrongly (G10, C30, C4) | CONFIRMED | the rows corrected |
 
 ## What the audit changed, in one place
 
