@@ -36,7 +36,7 @@ import { interiorSceneName, LOOT_CONTAINER_TYPES } from './sceneCache.js';   // 
 import { BUILDING_KEY_0 } from './talkTopics.js';   // RESTORE: the no-key key a ship's room is filed under
 import { firstRestorable } from './saveSlots.js';   // RESTORE: the offline character a realm one came from, on this device
 import { deductGold } from './court.js';
-import { LEVELING_CLASSIC, newCharacterLevelingSystem } from './oblivionLeveling.js';   // LEVEL-ONLINE-2: a character crossing levels the Daggerfall way
+import { LEVELING_CLASSIC, newCharacterLevelingSystem } from './oblivionLeveling.js';   // LEVEL-ONLINE-2: a character crossing levels the classic way
 import { levelUpSkillSumAnchor } from './advancement.js';   // LEVEL-ONLINE-2: ...from the start of the level it has
 import { isGoldPieces } from './inventory.js';
 // AUDIT REALM2 S1: the allowance and the measure live in the law the service reads too (net/realmGoldLaw.js), which holds
@@ -361,9 +361,9 @@ export function reclaimLines(/** @type {{ houses: string[], ship: boolean, piece
 
 /** LEVEL-ONLINE-2: the door's words for an Oblivion-levelling character coming in. */
 export const LEVELING_CROSS_LINE = Object.freeze({
-  before: 'Online characters level the Daggerfall way: this character will level by its skills from here on, starting from its current level.',
-  after: 'Online, this character levels the Daggerfall way, by its skills.',
-  switched: 'Online characters now level the Daggerfall way: you will level by your skills from here on, starting from your current level.',
+  before: 'Online characters level the classic way: this character will level by its skills from here on, starting from its current level.',
+  after: 'Online, this character levels the classic way, by its skills.',
+  switched: 'Online characters now level the classic way: you will level by your skills from here on, starting from your current level.',
 });
 
 /** CUSTOMS-CARRY (2026-09-29): what the door promises before customs runs, whatever it finds - what crosses beside the

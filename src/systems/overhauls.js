@@ -121,13 +121,13 @@ export const OVERHAUL_PANELS = Object.freeze([
     get custom() { return customTextureNote(); },   // AUDIT VE R10: a loose pack alone is no mix of mods
     options: Object.freeze([
       textureOption('classic', 'Classic', {
-        by: 'Daggerfall',
-        blurb: 'The original textures from Daggerfall for adventurers who want that classic look from the old days.',
+        by: 'The original game',
+        blurb: 'The original game\u2019s own textures for adventurers who want that classic look from the old days.',
         isOn: classicTexturesWorn, wear: wearClassicTextures, blocked: classicBlocked,
       }),
       textureOption('vanilla-enhanced', 'Vanilla Enhanced', {
         by: () => { const b = veBase(); return b?.version ? `carademono, version ${b.version}` : 'carademono'; },
-        blurb: 'Daggerfall\u2019s own textures remastered for adventurers who want the classic look, sharper: the ground, the trees and rocks, the city walls and the dungeons.',
+        blurb: 'The original game\u2019s own textures remastered for adventurers who want the classic look, sharper: the ground, the trees and rocks, the city walls and the dungeons.',
         isOn: veWorn, wear: wearVanillaEnhanced, addons: veAddons, vendor: 'vanilla-enhanced',
       }),
     ]),
@@ -137,8 +137,8 @@ export const OVERHAUL_PANELS = Object.freeze([
     effect: 'Takes effect at once.',
     online: null,
     options: Object.freeze([
-      preset('classic', 'Classic', 'classic', SOUND_ROWS, { by: 'Daggerfall', blurb: 'The original sounds from Daggerfall for adventurers who like a retro ambience, classic and timeless.' }),
-      preset('enhanced', 'Enhanced', 'enhanced', SOUND_ROWS, { by: 'The port and Immersive Footsteps', blurb: 'New and improved sounds for Daggerfall Online for adventurers who like some more quality ambience.' }),
+      preset('classic', 'Classic', 'classic', SOUND_ROWS, { by: 'The original game', blurb: 'The original game\u2019s own sounds for adventurers who like a retro ambience, classic and timeless.' }),
+      preset('enhanced', 'Enhanced', 'enhanced', SOUND_ROWS, { by: 'The port and Immersive Footsteps', blurb: 'New and improved sounds for DFO Online for adventurers who like some more quality ambience.' }),
     ]),
   }),
   Object.freeze({
@@ -146,7 +146,7 @@ export const OVERHAUL_PANELS = Object.freeze([
     effect: 'Switching reloads the game.',
     online: 'Online, the chat, your friends, the party and trading keep their own panels over any of these.',
     options: Object.freeze([
-      uiOption('classic', SKIN_NAMES.classic, 'classic', UI_PACK_NONE, { by: 'Daggerfall', blurb: 'The original UI from Daggerfall for adventurers who want to have that classic feel from the old days.' }),
+      uiOption('classic', SKIN_NAMES.classic, 'classic', UI_PACK_NONE, { by: 'The original game', blurb: 'The original game\u2019s own UI for adventurers who want to have that classic feel from the old days.' }),
       // PLUS1 (2026-09-25): the enhanced screens in the refreshed dress. PLUS-ONLY (2026-09-26): and the only enhanced
       // option - plain Enhanced, which stood beside it, is retired (systems/uiSkin.js isEnhancedPlus).
       uiOption('enhanced-plus', SKIN_NAMES.enhanced, 'enhanced', UI_PACK_NONE, { by: 'The port', blurb: 'New and improved UI for adventurers who want a more modern feel. Everything is built for playing with a mouse and keyboard, pad, controller or even a phone. You can tweak some settings the way you want and also tweak the controller bindings.' }),

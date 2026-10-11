@@ -8,6 +8,15 @@
 
 Newest first.
 
+**2026-10-11 - AUDIT BR5.** Mac: *"Audit everything"* - PR #786, the rebrand to DFO Online. Four cold lanes and a live
+one on the frozen branch. Mac's four calls: the downloads keep their new names with copies under the old ones on every
+release (a pre-BR5 Mac or portable copy asks by name and would have met a 404), and a BR5 copy reads its download off
+the release; the terms' rename is not material, so their version stays 2026-09-28, re-hashed; the site's and the
+launcher's wordmark is the logo; the Mac's old app gets a patch note. Fixed as found: three lines still naming the
+original game where it is not owed (A-2, A-4, A-5) and a pin over the files that draw their words; the stale comments
+and docs. Main merged; the account version is acct115. `tools/mutants/auditbr5.json` 24. Record: `10-UI/UI-Arc.md`
+AUDIT BR5.
+
 **2026-10-11 - AUDIT SCALE II.** Mac: *"Lets do an audit on everything. Ensure perfection"* - PR #757, every slice of
 the Scale arc past 2,000. Seven lenses: live in real workerd, and six adversarial reviewers on the frozen head. Two
 critical (a stranger's hello taking a shard player's peer id on the bus, R2-1; a court's copy fighting a boss of its own

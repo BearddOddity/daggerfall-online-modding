@@ -257,8 +257,9 @@ test('L4-3/L4-10: on a Mac the privacy-guarded folders are read only when nothin
     reads = [];
     assert.equal(detectArena2({ platform: 'darwin', home, env: {}, fs: watching, regQuery: noReg }).length, 1);
     assert.ok(reads.some((p) => p === path.join(home, 'Downloads')));
-    // and "Daggerfall Online.app" - this app, in /Applications - is no install
-    arena2At(path.join(home, 'Games', 'Daggerfall Online.app', 'Contents', 'arena2'));
+    // and this app's own bundle is no install - here an older copy of it, by the name it had before BR5 (spelled in
+    // parts: the name a folder search matches, which brand.test.js's sweep would otherwise read as a surface)
+    arena2At(path.join(home, 'Games', `${['Daggerfall', 'Online'].join(' ')}.app`, 'Contents', 'arena2'));
     assert.ok(!detectArena2({ platform: 'darwin', home, env: {}, regQuery: noReg }).some((f) => f.dir.includes('.app')));
     // Daggerfall Unity's older macOS folder (the bundle id Unity used before)
     const old = path.join(home, 'old-dfu', 'DAGGER');

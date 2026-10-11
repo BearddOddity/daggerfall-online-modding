@@ -42,29 +42,39 @@
 // tree, and test/rel4_release.test.js fails any patch-notes file
 // committed to it (PATCH_NOTES_PATH_RE).
 //
+//   node scripts/desktopRelease.mjs alias <dir>           each download copied under its name from before BR5
 //   node scripts/desktopRelease.mjs check <dir>           exit 1 naming any file missing
 //   node scripts/desktopRelease.mjs notes <tag>           the release body, markdown, to stdout (gh api: GH_TOKEN)
 //   node scripts/desktopRelease.mjs renotes <tag> <body>  a published release's body, its notes read again (REL7)
 //   node scripts/desktopRelease.mjs latest <tag> [<cur>]  "true" when <tag> should be marked latest
-import { readdirSync, readFileSync } from 'node:fs';
+import { copyFileSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { isMain } from '../tools/lib/isMain.mjs';
 
 const require = createRequire(import.meta.url);
-const { DOWNLOAD_FILES, RELEASES_URL } = require('../app/lib/downloads.cjs');
+const { DOWNLOAD_FILES, LEGACY_DOWNLOAD_FILES, RELEASES_URL } = require('../app/lib/downloads.cjs');
 const { parseReleaseTag } = require('../app/lib/updateCheck.cjs');
+
+/** BR5: each download and the name a copy from before the rename asks for
+ *  it by (app/lib/downloads.cjs LEGACY_DOWNLOAD_FILES) - [from, to] pairs,
+ *  copied in the release's folder before the set is checked. */
+export const ALIAS_COPIES = Object.freeze(Object.keys(DOWNLOAD_FILES).map((k) => Object.freeze([DOWNLOAD_FILES[k], LEGACY_DOWNLOAD_FILES[k]])));
 
 /** Every file a published release must carry: the four downloads, the
  *  three manifests electron-updater reads (one per OS), and the two
  *  blockmaps its differential download diffs against. The AppImage's
- *  blockmap is embedded in the AppImage; the portable exe has none. */
+ *  blockmap is embedded in the AppImage; the portable exe has none. BR5:
+ *  and the four downloads again under their names from before the rename
+ *  (ALIAS_COPIES), which no manifest names - an updater reads the new. */
 export const EXPECTED_RELEASE_FILES = Object.freeze([
   DOWNLOAD_FILES.winSetup, `${DOWNLOAD_FILES.winSetup}.blockmap`,
   DOWNLOAD_FILES.winPortable,
   DOWNLOAD_FILES.mac, `${DOWNLOAD_FILES.mac}.blockmap`,
   DOWNLOAD_FILES.linux,
   'latest.yml', 'latest-mac.yml', 'latest-linux.yml',
+  ...ALIAS_COPIES.map(([, to]) => to),
 ]);
 
 /** The expected files a list of names does not have. */
@@ -302,6 +312,17 @@ export function pullRequestNotesSince(from, { run = git, api = githubApi, repo =
 
 function main(argv) {
   const [cmd, a, b] = argv;
+  if (cmd === 'alias') {
+    const have = new Set(readdirSync(a));
+    const absent = ALIAS_COPIES.filter(([from]) => !have.has(from)).map(([from]) => from);
+    if (absent.length) {
+      console.error(`nothing to copy under its old name: ${absent.join(', ')} - nothing is published`);
+      return 1;
+    }
+    for (const [from, to] of ALIAS_COPIES) copyFileSync(join(a, from), join(a, to));
+    console.log(`${ALIAS_COPIES.length} downloads copied under their names from before BR5`);
+    return 0;
+  }
   if (cmd === 'check') {
     const missing = missingReleaseFiles(readdirSync(a));
     if (missing.length) {
@@ -341,7 +362,7 @@ function main(argv) {
     console.log(String(shouldMarkLatest(a, b)));
     return 0;
   }
-  console.error('usage: desktopRelease.mjs check <dir> | notes <tag> | renotes <tag> <body-file> | latest <tag> [<current>]');
+  console.error('usage: desktopRelease.mjs alias <dir> | check <dir> | notes <tag> | renotes <tag> <body-file> | latest <tag> [<current>]');
   return 2;
 }
 

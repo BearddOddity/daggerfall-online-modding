@@ -496,7 +496,7 @@ test('PROF7 pages: the Loom at a Clothing Store - the cures for the hides held a
   assert.match(hunting, /Harpy Feathers, Dreugh Shell/);
   const outfitting = page('Outfitting');
   assert.doesNotMatch(outfitting, /not practised/);
-  assert.match(outfitting, /Waits on a second dye Daggerfall's cloth can take/);
+  assert.match(outfitting, /Waits on a second dye the classic cloth can take/);   // PIN MOVED: BR5
   assert.match(outfitting, /Waits on a wagon upgrade to hold/);
   const smithing = page('Smithing');
   assert.match(smithing, /Silver.*rank 25.*Elven, Dwarven.*rank 40.*Mithril.*rank 55/s, 'PROF7 (FOUND): the three AUDIT 30\'s note swallowed');

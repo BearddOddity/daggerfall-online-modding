@@ -44,7 +44,7 @@ import { declareOnlinePrefs } from './onlineLane.js';   // RF4: the lane learns 
 /** The three kinds, in label order. `label` is what the row wears and
  *  the chip says; the colour is the skin's (ui/enhancedStyle.js .kind). */
 export const KINDS = Object.freeze({
-  enhanced: Object.freeze({ label: 'Enhanced', blurb: 'Built in house: the port’s own departures from Daggerfall.' }),
+  enhanced: Object.freeze({ label: 'Enhanced', blurb: 'Built in house: the port’s own departures from the original game.' }),
   mod: Object.freeze({ label: 'Mod Authored', blurb: 'Mods ported 1:1, under their authors’ names.' }),
   classic: Object.freeze({ label: 'DFU Classic', blurb: 'Daggerfall Unity’s own optional features.' }),
 });
@@ -378,7 +378,7 @@ export const FEATURES = Object.freeze([
     group: 'sight',
     title: 'Enhanced environments',
     note: 'A living sky with the sun, both moons and stars, clouds that build with the weather and cast '
-      + 'shadows, falling rain and snow, and grass that bends in the wind. Off brings back Daggerfall’s '
+      + 'shadows, falling rain and snow, and grass that bends in the wind. Off brings back the classic '
       + 'painted sky and weather. The third choice uses Dynamic Skies by BadLuckBurt and carademono (included '
       + 'with permission), and its own settings open on this tile.',
     effect: 'Takes effect when the world next loads.',
@@ -437,7 +437,7 @@ export const FEATURES = Object.freeze([
     note: 'Press Jump at a ledge to climb onto or over it, or moving forward to vault a low wall. Jump at a high '
       + 'ledge to catch it and hang: Forward climbs up, Left and Right move along it, Crouch lets go. Hold '
       + 'Forward against any wall to climb it. Holding on wears out your grip; your Climbing skill sets how long it '
-      + 'lasts, how high you reach and how fast you climb. Off keeps Daggerfall\u2019s climbing.',
+      + 'lasts, how high you reach and how fast you climb. Off keeps the classic climbing.',
     effect: 'Takes effect at once.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'enhancedClimbing', initial: true, online: true }),
@@ -451,7 +451,7 @@ export const FEATURES = Object.freeze([
     group: 'sight',
     title: 'Enhanced water',
     note: 'Seas, rivers and ponds you can see into: waves that grow with the wind, foam where they meet the shore, '
-      + 'ripples where things move, the sky and the moon on the surface. Off brings back Daggerfall’s flat water.',   // WATER-NEXT: what the water is now
+      + 'ripples where things move, the sky and the moon on the surface. Off brings back the classic flat water.',   // WATER-NEXT: what the water is now
     effect: 'Takes effect when the world next loads.',
     kinds: Object.freeze(['enhanced']),
     // WATER-OFF (FIELD BUGS 2026-10-08, SylviaBun: "an option to disable Enhanced Water would be nice (I prefer the
@@ -671,7 +671,7 @@ export const FEATURES = Object.freeze([
     title: 'Loot rarity',
     note: 'Weapons, armour and jewellery can drop as Magic, Rare or Legendary, with extra bonuses you can read '
       + 'and compare. The odds depend on what you killed, where, and your luck, never your level. Rare and '
-      + 'Legendary items drop unidentified. Off is Daggerfall’s loot exactly. Online, some weapons carry a '
+      + 'Legendary items drop unidentified. Off is the classic loot exactly. Online, some weapons carry a '
       + 'sigil that grows with your Renown.',   // SIGIL1
     effect: 'Takes effect on the next drop; items you wear update within a few seconds.',
     kinds: Object.freeze(['enhanced']),
@@ -748,7 +748,7 @@ export const FEATURES = Object.freeze([
     group: 'interface',   // FT18: was sight
     title: 'Enhanced map',
     note: 'One hand-drawn parchment map for the world, towns and dungeons, held in your hands, that you can pan '
-      + 'and zoom. Off uses Daggerfall’s three map windows.',
+      + 'and zoom. Off uses the classic three map windows.',
     effect: 'Takes effect the next time a map is opened.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'heldMap', initial: true, online: 'player' }),   // the player's own: what THEIR map looks like
@@ -778,7 +778,7 @@ export const FEATURES = Object.freeze([
     group: 'interface',
     title: 'Tamriel on the map',
     note: 'The enhanced map zooms out past the Iliac Bay to the whole of Tamriel, hand-drawn: the provinces, their '
-      + 'capitals, the mountains and the seas, joined to Daggerfall’s own coast. Nothing beyond the Bay can be travelled to.',
+      + 'capitals, the mountains and the seas, joined to the Bay’s own coast. Nothing beyond the Bay can be travelled to.',
     effect: 'Takes effect the next time a map is opened.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'tamrielMap', initial: true, online: 'player' }),
@@ -807,7 +807,7 @@ export const FEATURES = Object.freeze([
     group: 'world',
     title: 'Weather as places',
     note: 'Rain, storms and snow move across the land with the wind, so you can see a storm coming, walk into '
-      + 'it and out the other side. Off uses Daggerfall’s weather, the same everywhere in the region.',
+      + 'it and out the other side. Off uses the classic weather, the same everywhere in the region.',
     effect: 'Takes effect at once.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'weatherEvents', initial: true, online: true }),   // WEATHER2b: weatherSim.js weatherFieldOn; forced on online - one sky
@@ -824,7 +824,7 @@ export const FEATURES = Object.freeze([
     title: 'Real forests',
     note: 'Trees grow together in forests, with open grassland between them. Dungeons, ruins, shrines and camps '
       + 'are often hidden in the woods, and towns and farms stand in cleared fields. Deserts are unchanged. '
-      + 'Off spreads the trees evenly, as Daggerfall does.',
+      + 'Off spreads the trees evenly, like the original.',
     effect: 'Takes effect when the world next loads.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'realForests', initial: true, online: true }),
@@ -839,7 +839,7 @@ export const FEATURES = Object.freeze([
     group: 'world',
     title: 'Landforms',
     note: 'Mountains and high ground stand taller, as the map draws them. Roads are cut level into hillsides and built up '
-      + 'over hollows, and rivers run in channels below their banks. Off keeps Daggerfall\u2019s own ground.',
+      + 'over hollows, and rivers run in channels below their banks. Off keeps the classic ground.',
     effect: 'Takes effect when the world next loads.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'landforms', initial: true, online: true }),
@@ -854,7 +854,7 @@ export const FEATURES = Object.freeze([
     group: 'world',
     title: 'Clear roadsides',
     note: 'Trees, bushes, rocks and herbs keep off the roads and tracks, and no branch hangs over them. Off lets them '
-      + 'grow up to the edge of the road, as Daggerfall does.',
+      + 'grow up to the edge of the road, like the original.',
     effect: 'Takes effect when the world next loads.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'roadVerges', initial: true, online: true }),
@@ -869,7 +869,7 @@ export const FEATURES = Object.freeze([
     group: 'world',
     title: 'Blended climates',
     note: 'Where two climates meet, their ground, grass and trees mix across a wide, uneven border instead of changing '
-      + 'along a straight line. Off changes them at a straight edge, as Daggerfall does.',
+      + 'along a straight line. Off changes them at a straight edge, like the original.',
     effect: 'Takes effect when the world next loads.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'climateBlend', initial: true, online: true }),
@@ -884,7 +884,7 @@ export const FEATURES = Object.freeze([
     title: 'Nearby quests',
     note: 'Quests from guilds, temples, nobles and townsfolk send you to towns and dungeons near where you took them, a '
       + 'day or two away at first and farther as you level, until by level fifteen or so anywhere in the region will do. '
-      + 'Off picks anywhere in the region from the start, as Daggerfall does.',
+      + 'Off picks anywhere in the region from the start, like the original.',
     effect: 'Takes effect on the next quest you take; quests you already have keep their places.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'nearbyQuests', initial: true, online: 'player' }),
@@ -900,7 +900,7 @@ export const FEATURES = Object.freeze([
     title: 'Living world',
     note: 'Townsfolk are residents with names, homes, trades and days of their own - they open their shops, meet at '
       + 'the square and the tavern, talk among themselves, sleep at night and remember how you treated them, and '
-      + "everyone online sees the same people. Off, the streets fill with Daggerfall's wandering strangers, gone at dusk.",
+      + "everyone online sees the same people. Off, the streets fill with the classic wandering strangers, gone at dusk.",
     effect: 'Takes effect when a town next loads.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'livingWorld', initial: true, online: 'player' }),
@@ -929,7 +929,7 @@ export const FEATURES = Object.freeze([
     group: 'world',
     title: 'Windmills of Daggerfall by Kamer',
     note: 'Windmills with turning sails on seven farms, with machinery inside and a look for every climate and '
-      + 'season. Off leaves the farms as Daggerfall has them.',
+      + 'season. Off leaves the farms as they were.',
     effect: 'Takes effect when the world next loads.',
     kinds: Object.freeze(['mod']),
     control: Object.freeze({ store: 'prefs', key: WINDMILLS_KEY, initial: true, online: 'player' }),
@@ -1162,8 +1162,8 @@ export const FEATURES = Object.freeze([
     id: 'combat-voices',
     group: 'sound',   // FT18: was combat
     title: 'Combat Voices',
-    note: 'You and your enemies grunt when swinging and cry out when hit. The sounds are in Daggerfall but '
-      + 'never used. On by default in Daggerfall Unity.',
+    note: 'You and your enemies grunt when swinging and cry out when hit. The sounds are in the original game but '
+      + 'go unused. On by default in Daggerfall Unity.',
     effect: 'Takes effect at once.',
     kinds: Object.freeze(['classic']),
     control: Object.freeze({ store: 'settings', key: 'Enhancements/CombatVoices' }),
@@ -1202,7 +1202,7 @@ export const FEATURES = Object.freeze([
     id: 'dungeon-wall-style',
     group: 'sight',
     title: 'Dungeon Wall Style',
-    note: 'Which textures dungeon walls use: Daggerfall’s own (Classic), the region’s climate (Climate), or '
+    note: 'Which textures dungeon walls use: the classic ones (Classic), the region’s climate (Climate), or '
       + 'random (Random). Climate and Random keep main-story dungeons classic; Climate Only and Random Only '
       + 'change them too. Classic by default in Daggerfall Unity.',
     effect: 'Takes effect on the next dungeon you enter.',
@@ -1245,7 +1245,7 @@ export const FEATURES = Object.freeze([
     title: 'Loading screens',
     note: 'While the world loads - starting a game, a dungeon\u2019s door, a fast travel, a save - a screen shows where '
       + 'you are going over one of your screenshots (chosen under Screenshots in the menu) or the menu\u2019s night sky. '
-      + 'Off is Daggerfall\u2019s, with no screen.',
+      + 'Off is the classic one, with no screen.',
     effect: 'Takes effect at the next load.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({
@@ -1261,7 +1261,7 @@ export const FEATURES = Object.freeze([
     group: 'interface',
     title: 'Quest news',
     note: 'A notice slides in when a quest begins, when its journal gains an entry, when a deadline it gave you has '
-      + 'under a day left, and when it ends. Off is Daggerfall’s silence: the journal changes without a word.',   // AUDIT GUIDE H1
+      + 'under a day left, and when it ends. Off is the classic silence: the journal changes without a word.',   // AUDIT GUIDE H1
     effect: 'Takes effect at once.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'questHerald', initial: true, online: 'player' }),   // ui/questHerald.js HERALD_PREF
@@ -1274,7 +1274,7 @@ export const FEATURES = Object.freeze([
     group: 'interface',
     title: 'Quest tracker',
     note: 'A card at the top right shows the quest your journal last changed - its newest entry, where it points and '
-      + 'the time left - or the one you track from the journal. Off is Daggerfall’s HUD, which says nothing of quests.',
+      + 'the time left - or the one you track from the journal. Off is the classic HUD, which says nothing of quests.',
     effect: 'Takes effect at once.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'questTracker', initial: true, online: 'player' }),   // ui/questTracker.js TRACKER_PREF
@@ -1286,7 +1286,7 @@ export const FEATURES = Object.freeze([
     group: 'interface',
     title: 'Quest marks',
     note: 'Your quests\u2019 places are marked on the map, and the one you follow on the compass - only places your map '
-      + 'already holds. Off is Daggerfall\u2019s map and compass, which mark nothing for a quest.',
+      + 'already holds. Off is the classic map and compass, which mark nothing for a quest.',
     effect: 'Takes effect at once.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'questMarks', initial: true, online: 'player' }),   // ui/questMarks.js MARKS_PREF
@@ -1373,7 +1373,7 @@ export const FEATURES = Object.freeze([
     group: 'world',
     title: 'Encounters on the road',
     note: 'While you travel, an enemy far below your level is passed by instead of stopping you, and the rest sometimes '
-      + 'come as a patrol. Off stops for every encounter, as Daggerfall does.',
+      + 'come as a patrol. Off stops for every encounter, like the original.',
     effect: 'Takes effect at once.',
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'roadEncounters', initial: true, online: 'player' }),

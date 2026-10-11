@@ -24,7 +24,7 @@ const versionOf = (info) => (typeof info?.version === 'string' && /^\d+\.\d+\.\d
 /** The HUD line for an update the shell reports. */
 export function updateReadyText(info) {
   const v = versionOf(info);
-  const name = v ? `Daggerfall Online ${v}` : 'A new version of Daggerfall Online';
+  const name = v ? `DFO Online ${v}` : 'A new version of DFO Online';
   return info?.manual
     ? `${name} is out. Download it from the File menu when you are ready - your saves stay where they are.`
     : `${name} is ready. It installs when you quit, or now from File > Restart to Update - save first.`;
