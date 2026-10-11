@@ -118,7 +118,7 @@ export function buildStatsPage(entity, repaint, opts = {}) {
       ? `+${s.crit.hitBonus} hit \u00b7 \u00d7${s.crit.damageMult.toFixed(2)} dmg` : `+${s.crit.hitBonus} to hit`,
     s.crit.kind === 'damage'
       ? 'Critical Strike roll: a success adds to your chance to hit and multiplies the blow.'
-      : 'Critical Strike roll: a success adds to your chance to hit (Daggerfall\u2019s own critical).', 4),
+      : 'Critical Strike roll: a success adds to your chance to hit (the original game\u2019s own critical).', 4),
     tile('Backstab', pct(s.backstab.chance), s.backstab.chance ? `\u00d7${s.backstab.multiplier} from behind` : 'needs skill 2+',
       'When the foe faces away: your Backstabbing skill is the chance the blow does triple damage, and it adds to your chance to hit.', 5),
     tile('Per swing', one(head.perSwing), 'expected damage',
@@ -212,7 +212,7 @@ export function buildStatsPage(entity, repaint, opts = {}) {
 
   const foot = el('p', 'sf-foot sf-rise', s.core === 'overhaul'
     ? 'Rules: Physical Combat And Armor Overhaul. Damage is before the foe\u2019s armour reduces it.'
-    : 'Rules: Daggerfall\u2019s classic combat formulas. Damage is before any armour effects.');
+    : 'Rules: the original game\u2019s combat formulas. Damage is before any armour effects.');
   foot.style.setProperty('--i', '13');
   page.append(foot);
   return page;

@@ -33,6 +33,7 @@ import { PIXEL_STACK, PIXEL_TEXT_SHADOW } from './pixelifyFive.js';
 import { requestFittedIcon, fittedImg } from './textureCanvas.js';
 import { armDrawWatchdog, disarmDraw } from './drawWatchdog.js';
 import { sweepHudLayout } from './hudLayout.js';   // HUD-MOVE: a new stack stands where the player put the last
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export const REVENANT_CARD_STYLE_ID = 'revenant-card-css';
 export const REVENANT_STACK_ID = 'revenant-cards';
@@ -277,6 +278,7 @@ function setPortrait(face, ev) {
 export function showRevenantCard(ev) {
   try {
     if (!ev || !isEnhanced()) return false;
+    noteFirstUse('revenants');   // TUT1
     const d = docOf();
     if (!d?.body || !d.createElement) return false;
     const stack = ensure(d);

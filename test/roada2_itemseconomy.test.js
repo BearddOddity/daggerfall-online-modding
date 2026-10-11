@@ -205,7 +205,9 @@ test('A2 (data-gated): the real BOOKS files price 300..800 off their own first f
 test('A2: a shelved arrow mints at currentCondition 0 (ItemBuilder.cs:359-364)', () => {
   // A weaponsmith at quality 21 with a rolls stream of 0 stocks every
   // weapon template, arrows included.
-  const shelf = stockShopShelf({ buildingType: BUILDING_TYPES.WeaponSmith, quality: 21 }, { level: 1 }, { rolls: () => 0 });
+  // PIN MOVED (SHOP-ARROWS): read off a shelf behind the counter - the counter's own arrows carry its quiver too
+  // (test/arrowsupply.test.js), and this pin is DFU's draw alone
+  const shelf = stockShopShelf({ buildingType: BUILDING_TYPES.WeaponSmith, quality: 21 }, { level: 1 }, { rolls: () => 0, shelfIndex: 1 });
   const arrows = shelf.filter((it) => it.templateIndex === ARROW_TEMPLATE);
   assert.equal(arrows.length, 1, 'the shelf carries arrows');
   const arrow = arrows[0];

@@ -26,6 +26,7 @@ import { registerMerchantService } from './guildServices.js';
 import { LOCATION_TYPES } from '../formats/mapsFile.js';
 import { CAPITAL_MAP_IDS, LARGE_DOCK_MAP_IDS, DOCK_PIXEL_IDS } from './immersiveTravelTables.js';
 import { setFlatFaceOverride } from '../characters/staticNpc.js';   // DRIVER-FACE: FLATS.CFG's dictionary, as Roleplay & Realism writes it
+import { noteFirstUse } from './tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { CAPITAL_MAP_IDS, LARGE_DOCK_MAP_IDS, DOCK_PIXEL_IDS };
 
@@ -397,6 +398,7 @@ export function installImmersiveTravel() {
  *  otherwise the driver's (or the captain's) map. Nothing else is asked - not the sun, not a quest's offer: those are
  *  DaggerfallUI's travel-map door (DaggerfallUI.cs:604-626), which a service's PushWindow never passes. */
 export function immersiveTravelService(door, kind) {
+  noteFirstUse('carriages');   // TUT1
   if (door?.enemiesNearby?.()) { door.messageBox?.(door.enemiesText ?? 'You cannot travel with enemies nearby.'); return false; }
   return !!door?.openImmersiveMap?.(kind);
 }

@@ -70,10 +70,10 @@ export function levelingOptions(s = null, { online = false } = {}) {
   return Object.freeze([
     Object.freeze({
       id: LEVELING_CLASSIC,
-      title: 'Daggerfall',
+      title: 'Classic',
       ...gate(LEVELING_CLASSIC),
       lines: Object.freeze([
-        'Level with your skills, as Daggerfall does.',
+        'Level with your skills, the classic way.',
         'Primary, major and minor skills make a sum;',
         `every ${LEVELUP_SKILL_SUM_PER_LEVEL} points of it is a level.`,
         `Each level rolls ${LEVELUP_BONUS_POOL_MIN} to ${LEVELUP_BONUS_POOL_MAX} attribute points.`,

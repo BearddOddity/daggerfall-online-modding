@@ -116,6 +116,7 @@ import { WAY_MARK_CSS, WAY_BODY_CSS } from '../systems/wayOut.js';   // WAYOUT1:
 import { BOAT_GLYPH_URL } from './boatMarks.js';   // BOAT-MARK: my boats on the strip, a sail over a hull
 import { SERPENT_RING_MAP_CSS } from './serpentMapMark.js';   // SERPENT1: the sea serpent on the strip, in its ring's green
 import { SD_RING_MAP_CSS } from './sdMapMark.js';   // SD2c: the Super dungeon on the strip, in its ring's brass
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /**
  * PX30c (Mac: "is there anyway I can adjust the sizing?"): THE HUD'S
@@ -1255,6 +1256,7 @@ function drawStatus(vitals, opts) {
   powers.push(...techniqueChips(vitals));   // TECH1: and the weapon's technique beside them (the host's - setHudTechniqueChips)
   // SURV5: the needs - one a felt need (survival/status.js), none while every need is met, and none with the switch off
   const needs = survivalOn() ? survivalHudChips(vitals, Math.floor(ownMinutes()), { vampire: !!liveVampirism(vitals), endurance: liveStat(vitals, 'endurance') }) : [];   // AUDIT SURV C: the vampire's strip, the page's drunk bands
+  if (needs.length) noteFirstUse('survival');   // TUT1: the first felt need
   const rested = sharedClockOn() ? { minutes: nightRealMinutesLeft(vitals, ownMinutes()) } : null;   // REST1: the night interval, online
   const all = statusTiles({ spells, powers, afflictions: afflictionRows(vitals), needs, rested });
   const zone = zoneTile();

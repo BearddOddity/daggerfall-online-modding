@@ -79,9 +79,10 @@
   {
     "name": "DA12-12-the-module-is-never-packed",
     "file": "app/package.json",
-    "old": "        \"to\": \"launcher\",\n",
-    "new": "        \"to\": \"pad\",\n",
-    "tests": ["test/da12_directplay.test.js"]
+    "old": "        \"from\": \"../src/ui\",\n        \"to\": \"launcher\",\n",
+    "new": "        \"from\": \"../src/ui\",\n        \"to\": \"pad\",\n",
+    "tests": ["test/da12_directplay.test.js"],
+    "note": "AUDIT BR5 (re-aimed by content): the logo is packed beside the launcher too, so the record names the pad module's own entry."
   },
   {
     "name": "DA12-13-unpacked-serves-a-file-that-is-not-there",

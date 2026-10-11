@@ -1232,10 +1232,11 @@ test('FIELD-GUN17a: the shot leaves the BARREL, and the barrel is measured off t
   // ALL FOUR HOSTS hand it over - the FOUR HOSTS RULE, which this
   // weapon has paid for at every round it forgot one.
   const HOSTS = [
-    ['src/scenes/world.js', /arrows\.fire\(cam\.pos, fwd, \{ fromPlayer: true, weapon: weaponRig\.playerWeapon\.weapon, muzzle: weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\) \}\)/],
-    ['src/scenes/exterior.js', /arrows\.fire\(eye, fwd, \{ fromPlayer: true, weapon: weaponRig\.playerWeapon\.weapon, muzzle: weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\) \}\)/],
-    ['src/scenes/worldModes.js', /interiorArrows\.fire\(player\.eye, eyeDir\(\), \{ fromPlayer: true, weapon: interiorWeapon\.playerWeapon\.weapon, muzzle: interiorWeapon\.thunderlockMuzzle\(fieldOfView\(\)\) \}\)/],
-    ['src/scenes/dungeonContext.js', /fireArrow\(eye, lookDir, playerWeapon\.weapon, true, null, null, weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\)\)/],
+    // PIN MOVED (STUCK-ARROWS): the muzzle, then whether the round was conjured (test/arrowsupply.test.js holds that word)
+    ['src/scenes/world.js', /arrows\.fire\(cam\.pos, fwd, \{ fromPlayer: true, weapon: weaponRig\.playerWeapon\.weapon, muzzle: weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\), summoned: shot\.summoned \}\)/],
+    ['src/scenes/exterior.js', /arrows\.fire\(eye, fwd, \{ fromPlayer: true, weapon: weaponRig\.playerWeapon\.weapon, muzzle: weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\), summoned: shot\.summoned \}\)/],
+    ['src/scenes/worldModes.js', /interiorArrows\.fire\(player\.eye, eyeDir\(\), \{ fromPlayer: true, weapon: interiorWeapon\.playerWeapon\.weapon, muzzle: interiorWeapon\.thunderlockMuzzle\(fieldOfView\(\)\), summoned: shot\.summoned \}\)/],
+    ['src/scenes/dungeonContext.js', /fireArrow\(eye, lookDir, playerWeapon\.weapon, true, null, null, weaponRig\.thunderlockMuzzle\(fieldOfView\(\)\), shot\.summoned \? \{ summoned: true \} : null\)/],
   ];
   for (const [f, re] of HOSTS) assert.match(readFileSync(f, 'utf8'), re, `${f} passes the muzzle`);
 

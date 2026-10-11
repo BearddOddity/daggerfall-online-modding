@@ -41,6 +41,7 @@ import { layoutMessageBox, drawMessageBox, messageBoxHit, MB_BUTTONS, latchBoxRo
 import { noticeFrame, noticeRelease } from './enhancedNotice.js';   // ENH-NOTICE2: the window's own click-anywhere box, as the enhanced panel
 import { firstHotkey } from '../systems/dialogShortcuts.js';   // A8: the DaggerfallShortcut table
 import { isServiceBox } from '../systems/guildServiceFlow.js';   // STATION-ROWS: a box is rows that are a list
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** The window's DaggerfallShortcut.Buttons, in ctor ADD order
  *  (:82-103) - which is the order Panel.ProcessHotkeySequences asks.
@@ -90,6 +91,7 @@ const inRect = ([rx, ry, rw, rh], x, y) => x >= rx + COVEN_PANEL_X && y >= ry + 
  */
 export class CovenWindow {
   constructor(hooks) {
+    noteFirstUse('guilds');   // TUT1: a coven is a guild's door
     this.hooks = hooks;
     this.done = false;
     this.isChoiceWindow = true;   // raw codes through the overlay seam

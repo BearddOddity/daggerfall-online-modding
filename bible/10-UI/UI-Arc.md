@@ -13,6 +13,255 @@ policies one by one.
 
 
 
+## BR5 DFO ONLINE (2026-10-11, Mac's call)
+
+Mac: "So next up I want to replace the current daggerfall online logo
+anywhere it's present with this logo. I want to comprehensively scan the
+repo, ingame, etc for any mentions of daggerfall/daggerfall online and
+change it to DFO Online/DFO. We are rebranding for our own sake and I want
+to do this right." Two questions went back before anything moved, because
+"any mention" reaches past the product: the ORIGINAL GAME's name stands in
+text that is true about it (the files a player brings, the credits), and a
+handful of KEYS carry the old spelling. On the first he chose to MINIMIZE.
+On the second he asked for an opinion on the law; the one given (not a
+lawyer's): ZeniMax holds DAGGERFALL for computer games and has gone after
+fan domains (skyrim.online, skyrim.wiki, a Morrowind name) and DoomRL's
+marks, so the DOMAIN is the exposed key - move the site to a new domain and
+put the two Workers behind it in one switch, a migration of its own; the
+repository can rename with it; the appId, the userData folder and the
+storage keys are no public use of the mark and move nothing but breakage.
+And one flag on the new name itself: Neople (Nexon) holds USPTO filings for
+DFO over online game software - Dungeon Fighter Online, commonly DFO
+(serials 77833542, 87490228; their status unread) - worth a search before
+the mark is public. The name lives in one constant per surface below, so a
+change of it is a sweep and the logo.
+
+THREE LAWS, each pinned in `test/brand.test.js`:
+
+- THE PRODUCT IS DFO ONLINE, DFO where a label is short. Every surface BR4
+  named, swept for the old name whole and split: the landing page (title,
+  `og:title`, its type wordmark - `DFO` over a tracked ONLINE, BR3's ruling
+  standing; AUDIT BR5 made it the logo, Mac's call - and its footer and credits), the game page and its iPhone
+  title (`DFO`), the PWA manifest (`short_name` `DFO`), the desktop shell's
+  `productName` twice, its window titles, its dialogs, the launcher's title
+  and wordmark, the downloads (`DFO-Online-<os>-<arch>`, the two Windows
+  names), the saves zip (`DFO-Online-Saves.zip`), the class importer's
+  refusal and its copy note, the loader's and the second tab's titles, the
+  pause line, the About panel, the intro's aria-label and fallback, the
+  masthead's way home, the new character's masthead (`DFO Online` under
+  New Character, where `Daggerfall` stood), a screenshot's and a loading
+  shot's file names (`dfo-...`), the Patreon link's page title, README,
+  SUPPORT and the prototype pages. The macOS bundle becomes `DFO
+  Online.app`; the folder search already skipped every `.app`, and an
+  older copy by the old name is still skipped (`test/da9_arena2detect.test.js`).
+- THE ORIGINAL GAME IS NAMED ONLY WHERE IT MUST BE. It stays where it is
+  the truth about something that is not this product: the copy a player
+  brings (the landing page's gate now names it whole, The Elder Scrolls II:
+  Daggerfall; the launcher's "Where is Daggerfall?"; the ARENA2 prompts and
+  the shell's folder descriptions), the credits and the licence, a
+  trademark notice (new on the landing page's credits and in the README:
+  The Elder Scrolls and Daggerfall are trademarks of ZeniMax Media Inc.),
+  Daggerfall Unity and the mods by their own names, DFU's own settings text
+  (`systems/settingsText.js`, generated verbatim) and a mod's own switches,
+  and the Iliac Bay's places - the city, the kingdom, its bank, its crown,
+  its ships and songs are the world's, not the brand's. Everywhere else a
+  player reads "the original game" or "classic": the tagline (An
+  open-source reimplementation of a classic 1996 RPG - the landing page,
+  the manifest, the About panel and the README, each then naming the copy a
+  player brings where it says how to play), twenty-two lines of the feature rows ("Off
+  is the classic loot", "like the original" - the shorter words keep the
+  notes inside FT15's budget, which the longer ones broke by 163 characters), the overhaul cards' `by` and blurbs, the
+  classic door (`Classic`), the leveling choice (`Classic`), the crossing
+  line ("the classic way"), the stats card, the profession pages, the decor
+  line, the music, sound and texture pack blurbs, the land-view tier
+  (`Classic (3)`), the skin shelf (`Original classes`) and the port's own
+  mod switches. The pin reads the PRODUCERS (FEATURES, OVERHAUL_PANELS,
+  MOD_SETTINGS, levelingOptions, LEVELING_CROSS_LINE, INSTEAD, FOOT_GROUPS,
+  LAND_VIEW_TIERS), so a new row saying "as Daggerfall does" reddens it
+  wherever it is written. Comments, the bible and the code's DFU names are
+  not what a player reads and are not swept.
+- THE KEYS OTHER SYSTEMS HOLD KEEP THEIR SPELLING, each pinned with what
+  moving it breaks: the relay's and the account service's addresses
+  (`daggerfall-online` / `daggerfall-accounts` on workers.dev - every client
+  dials them), the relay Worker's name (its hostname), the D1 database's
+  name, the Patreon link's key-derivation salt (every linked secret stops
+  opening), the Ko-fi page (`ko-fi.com/daggerfallonline`, an account outside
+  the tree, as the Patreon page is), the shell's package and User-Agent,
+  and - from BR1 - the repository, the domain, the appId, the `Daggerfall
+  JavaScript` userData folder and the live storage keys.
+
+THE LOGO. Mac's file is 800 x 600 with real alpha and its paint in the
+middle; it ships as `src/assets/branding/dfo-online.png`, cut to the
+526 x 322 its paint covers - every pixel inside his, unchanged, and no
+pixel outside with any alpha - and the old `daggerfall-online.png` is
+gone. It draws as it is, no blend mode (BR4's law: its dark outlines and
+its shadow are the art). It is 1.63:1 and painted to its edges where BR4's
+was 2.48:1 with 81 empty rows, so EVERY BOX KEEPS THE HEIGHT IT HAD and
+nothing above or below a mark moves: the door's mark is 321px (BR4's 540px
+x 769/2112 x 526/322) or 50vw, 234px or 33.3vw on a short landscape screen;
+the masthead's mark is 59.5% of its column, centred; the film's title box
+is min(56.5vw, 815px), min(48.7vw, 657px) on a short screen - the box its
+probe measures against the tap target. The margin that pulled the menu up
+over BR4's empty rows is gone with them. And SUPPORT1's CORNERS' BAND, which
+pushes the door's stage below the corner marks wherever the wordmark reaches
+under one, is worked from the wordmark's width: (vw - min(321px, 50vw)) / 2 is
+under the marks' 234px reach below 789px wide, not 1008, so the band is
+`(min-width: 481px) and (max-width: 788px)` (`test/support1_asks.test.js`,
+its threshold mutant re-aimed). In a real browser: `tools/supportAsksProbe.mjs`
+22/22 - the asks on no opaque pixel of the new logo and DOOR-FIT, at 192
+sizes on both skins - and `tools/introProbe.mjs` 29/29, the title clearing
+the tap target on desktop, phone, landscape phone and reduced motion. The
+intro probe had BR4's 2112 x 850 written into it and failed the new mark for
+that alone; it reads the PNG's IHDR now. (Its first page waits 30 s for the
+film, which a cold dev server here took longer than; it passed with the wait
+raised in a scratch copy, the file unchanged on that point.) FOR MAC: at the film's 815px the
+file is drawn 1.55 times its size, and about three times on a 2x screen -
+a larger export of the same art (2,000px or more across) would draw it
+sharp, and nothing else would need to change for it.
+
+THE INTRO TRACK's ID3 title is "DFO Online Main Theme (Remastered x2)",
+retitled as BR1 and BR4 retitled it: the TIT2 frame alone, the tag
+reassembled frame for frame, the MPEG payload's hash unmoved
+(`3a1bc066...`); the cover art carries no name.
+
+THE TERMS AND THE PRIVACY POLICY name their operator, so the rename was
+first made a NEW VERSION of each (2026-10-11). ~~The account service reads
+the versions, so it moves to acct113~~ - AUDIT BR5 put the version back
+(below): the words are renamed and re-hashed at 2026-09-28; their trademark
+sentences, which name the original game as its owners', are unchanged. The
+account service is acct115 for the Patreon page's title alone (acct113 on
+this branch, renumbered past GUILD-SEEN and GUILD3 at the merge) - no
+migration, every ACCOUNT_VERSION pin with it.
+
+THE DOWNLOADS MOVE WITH THE MERGE: the site links
+`releases/latest/download/DFO-Online-...` from its deploy on, and the
+release carrying those names publishes about half an hour later - between
+the two the landing page's download links answer 404 unless the files are
+staged first (AUDIT BR5 C-2, below). The desktop updater reads
+`latest.yml`, which names the file, so a copy on the updater (installed
+Windows, the AppImage) updates across the rename; ~~as BR4's did~~ - BR4's
+names still carried their version, so no copy asked for a file by name
+then. A copy on the notice transport (the Mac, the portable exe) does, and
+AUDIT BR5 found the rename stranded it (below).
+
+Pins: `test/brand.test.js` 8 -> 11 (BR5: the sweep, whole, split and in a
+file name; the original game named only where owed, read off the
+producers; the keys kept); `test/intro.test.js` (the PNG's hash and IHDR,
+the alt text, the retitled track, which now refuses the old name whole);
+`test/terms1.test.js` re-hashed at the new version; the doctrine
+allow-list row; PIN MOVEs where a pin quoted the old words or names - the
+feature rows (FT2, FT4, FT6, FT18, MAP-TOGGLE), the leveling (ORL1's
+knob, LEVEL-ONLINE-3), the skin shelf (SKIN2), the loom's line (PROF7), the
+screenshot names (KB1, AUDIT KB1, LOAD1), the corners' band (SUPPORT1) and
+every ACCOUNT_VERSION pin. The leveling choice's line is "Level with your
+skills, the classic way." - "as the original game does" ran past the
+320-unit game area (ORL1's deep audit). Mutants: `tools/mutants/br5.json` 36; BR4's margin record
+retired with the margin, and its five name records, orl1, rel4 (three),
+rel8, relwin1 (two), terms1 (three) and the account version's four
+re-aimed by content.
+
+
+### AUDIT BR5 (2026-10-11, Mac: "Audit everything")
+
+Four cold lanes on the frozen branch (`61179f8e`) - the copy and the
+producers, the desktop shell and its releases, the site and the docs, the
+pins and their mutants - and a live one of my own, which built the site
+and took the door, the landing page and the launcher in a real browser.
+Mac stopped the lanes' long runs once each had reported ("I feel like we
+can cancel the current runs"). Four findings were his to call, asked
+together; the rest were fixed as found.
+
+HIS FOUR CALLS:
+
+- THE DOWNLOAD NAMES (his: "Whatever is the best for avoiding legal
+  issues"). Every copy on the NOTICE transport - a Mac, a portable exe -
+  asks for its update at `releases/latest/download/<name>` by the name it
+  was built with (REL5), and nothing it holds can learn another; the
+  launcher's Reinstall does the same on every platform. The rename would
+  have answered each of them 404. Kept: the new `DFO-Online-...` names,
+  which keep the mark out of what a player downloads. Added: each release
+  ALSO carries its four downloads under their `DaggerfallOnline-...` names
+  (`app/lib/downloads.cjs` LEGACY_DOWNLOAD_FILES; `scripts/desktopRelease.mjs
+  alias`, a workflow step between collecting the legs' files and checking
+  the set, which now expects all thirteen), so no older copy meets a dead
+  link; and a copy from BR5 on reads its download off the release's own
+  asset list (`releaseAssetUrl`: by its name, else by the platform part of
+  it, only from this repository's GitHub download path), and Reinstall
+  follows the link the last check read - so a later rename needs no alias,
+  and the old names can go once no pre-BR5 copy is left to ask. They are
+  the one place the old name is still published, exempted from BR5's sweep
+  line by line (four, and no more). An updater with no blockmap cached
+  downloads its first update past the rename whole: the differential
+  download looks for the previous release's blockmap under the new name,
+  finds none, and falls back.
+- THE TERMS' MATERIALITY (his: "Your decision"). Not material: the same
+  project, the same terms, under its new name. A new version refuses
+  every account a build older than the service tries to make
+  (`terms-stale`) - every installed desktop copy until it updates - which a
+  rename does not earn. So both stay 2026-09-28, their dates with them,
+  the words re-hashed (`test/terms1.test.js`); BR5's version mutant
+  retired, TERMS1's two date mutants re-aimed back.
+- THE WORDMARK (his: "Use the new logo"). BR5 had kept BR3's TYPE
+  wordmark on the landing page and the launcher, so the site and the
+  launcher said DFO in a face while the game drew the logo. Both draw the
+  logo now, the GAME's own file and no copy of it: the landing page refers
+  to `src/assets/branding/dfo-online.png`, which the build carries for the
+  front door already, at the door's 321px (or 64vw); the launcher's shell
+  serves it out of the same file (`LAUNCHER_LOGO`, packed beside the
+  launcher's page as the pad module is; its CSP takes `img-src 'self'`), 76px
+  high where the type stood. Both reserve the file's own size from its
+  IHDR. U60's no-raster law is BR2's whitelist of one again, for this
+  logo; the heading keeps the wordmark face for its alt text, and the
+  landing probe's "the face loaded" check went with the last glyph set in
+  it.
+- THE MAC'S OLD APP (his: "Patch note only"). The new dmg installs
+  `DFO Online.app` beside the old `Daggerfall Online.app` rather than over
+  it; the saves are the shared userData folder's (BR1's `Daggerfall
+  JavaScript`), so the old app can simply be deleted. Said in the patch
+  notes, with the Windows note that a pinned shortcut may need pinning
+  again under the new name.
+
+FIXED AS FOUND:
+
+- A-2: the Professions page still said "Daggerfall's own potion maker" -
+  the producer walk never read `profPages.js`. Now "The classic potion
+  maker"; and the walk is widened by a new pin over the files that DRAW
+  their words (the profession pages, the stats card, the decor line, the
+  shots pane, the pack blurbs, the menu, the pause line, the class
+  importer, the update notice, the tutorials), read as code with comments
+  out: every line naming the original game must be one of the three owed
+  ARENA2 prompts, each still seen.
+- A-4: "joined to the classic coast" said nothing; the Tamriel map now
+  joins "the Bay's own coast". A-5: "The sounds ship with the game" read
+  as THIS game; now "are in the original game". Both inside FT15's budget
+  (21057 of 21065).
+- A-7, C-9: the comments and docs that said the wrong thing - the
+  downloads' header named a versioned file by the NEW name, the screenshot
+  docstring kept `daggerfall-...`, a REL4 assert called a versioned name
+  "the OLD names", the save-zip pin's comment named BR4 alone, this
+  section's "as BR4's did" (above), the Accounts arc's legal paragraph.
+- C-2, THE 404 BETWEEN THE DEPLOYS (not fixable in the tree: the site
+  runs no script and the release is cut after it). Before merging, stage
+  the current release's four files under their `DFO-Online-...` names on
+  it, as AUDIT INSTALL L3-1 staged REL5's; the site's links then answer
+  from the first minute.
+- Not this PR's, and said once on it: the cinematic workflow's 25-minute
+  timeout is spent by its `npm run check` before the film's probe runs,
+  and the intro probe's "still out in front" reads frame cadence (783 ms
+  frames on that runner) - a timeout to raise, proposed there.
+
+Merged main (#780 GUILD3, #787 GUILD-SEEN, #784, #789 SLIM-FRAME, #785
+TUT1) first: main had taken acct113 and acct114, so BR5's version is
+acct115, with every pin and the four version records. Pins:
+`test/brand.test.js` 11 -> 12 (the drawn words; the old download names
+kept and exempted; the logo on the site and the launcher, sized from the
+IHDR), `test/rel4_release.test.js` 14 -> 15 (the aliases, the step's place,
+a real copy run, the asset lookup), PIN MOVEs in `test/landing.test.js`
+(the whitelist of one), `test/da8_launcher.test.js` (the CSP, the logo's
+serving and packing, the release link first), `test/da11_install_whole.test.js`
+(the logo packed into the archive beside the pad module), `test/terms1.test.js`
+(re-hashed at the kept version). Mutants: `tools/mutants/auditbr5.json`.
+
 ## BR4 DAGGERFALL ONLINE (2026-09-27, Mac's call)
 
 Mac: "So I want to rebrand Daggerfall: Enhanced to Daggerfall Online

@@ -31,7 +31,8 @@ import { backstabChanceOf, enemyPainVoice } from '../scenes/hostCombat.js';
 import { isBackFacing } from '../characters/enemyMotor.js';
 import { hitSoundFor, ENEMY_HIT_VOLUME } from '../systems/soundClips.js';
 import { addItem, ARROW_TEMPLATE } from '../systems/inventory.js';
-import { noteShotRecoverable } from '../systems/shotTally.js';   // ARENA-ARROWS: a recoverable shaft is no shot the healers pay
+import { noteShotRecoverable, shotTallyOpen } from '../systems/shotTally.js';   // ARENA-ARROWS: a recoverable shaft is no shot the healers pay; STUCK-ARROWS: nor one stuck on the sand
+import { RANDOM_TREASURE_ARCHIVE, RANDOM_TREASURE_ICONS } from '../systems/loot.js';   // STUCK-ARROWS: the stuck shaft's container picture (seedPile's icon)
 import { orbArchiveFor, ORB_RECORD, noteOrbColour, ORB_SCALE } from '../characters/thunderlockIds.js';   // FIELD-GUN14: what this weapon's shot LOOKS like - the leaf, so no cycle   // FIELD-GUN17: ...and what colour it is, sampled the one moment the texture is in hand   // FIELD-GUN18: ...and how big it is drawn
 import { playerWeaponHitEntity } from '../systems/worldTick.js';   // DISC10-D H1: OnWeaponHitEntity's one dispatcher (worldTick never reaches this module - no cycle)
 import { sparedByPlayer } from './friendlyFire.js';   // SHIPMATES: the player's shaft passes their own crew by
@@ -39,6 +40,109 @@ import { coverDistance, coverStep } from '../ai/cover.js';   // TACT1: billboard
 import { blowMult, scaleBlowDamage, playerBody } from './techniqueBlow.js';   // TECH1: a technique's shaft - its weight, and never a player's body
 
 export const ARROW_MODEL_ID = 99800;
+
+// ---- STUCK-ARROWS (bible/05-Combat/Arrow-Supply.md) ---------------------------------------------------------------
+// Mac, 2026-10-11: "allow arrows to stick in walls/ground wherever shot and be retrieved". DFU's law for a shaft that
+// meets geometry is LOST (DaggerfallMissile.DoCollision destroys it); the port's departure keeps the PLAYER's: it stays
+// where it struck, drawn as the 99800 shaft along its flight, and is a container of one Arrow in the host's own
+// dropped-loot pool - so the press, quick loot, the plaque and Detect Treasure that every host already runs over its
+// piles take it back, and no host learns a new key. The pile is `drawn: false` (this module draws it, the DW-E5 door),
+// `unsaved` (it outlives no scene: WOD5's LoadID-0 container), and takes nothing put on it (WILD1's `noStore`).
+
+/** STUCK-ARROWS (Mac: "Allow arrows to sometimes be retrieved from enemies"): the share of the player's real shafts that
+ *  survive striking a foe and lodge in its pack (playerArrowHitFoe) - DFU's BowDamage keeps every one. */
+export const ARROW_LODGE_CHANCE = 0.5;
+/** The pool's mark on a stuck shaft's pile (seedPile's `owner`). */
+export const STUCK_ARROW_OWNER = 'stuckArrow';
+/** The most stuck shafts a pool holds - the oldest goes when another sticks. */
+export const STUCK_ARROWS_MAX = 40;
+/** A pile's box is based at its pos and 0.6 tall (droppedLoot lootTargets): the shaft stands at its middle. */
+export const STUCK_ARROW_LIFT = 0.3;
+/** The share of the shaft's length that goes into what it struck. */
+export const STUCK_ARROW_EMBED = 0.25;
+/** The shaft's plaque word (droppedLoot labelFor) and its pile's refusal of a stored item (droppedLootHooks capacity). */
+export const STUCK_ARROW_LABEL = 'Arrow';
+export const STUCK_ARROW_NO_STORE = Object.freeze({ kg: 0, name: 'The arrow' });
+const STUCK_ARROW_ICON = Object.freeze({ archive: RANDOM_TREASURE_ARCHIVE, record: RANDOM_TREASURE_ICONS[0] });
+
+/** Does this shaft stay where it struck? The player's own (never a peer's drawn echo), a real arrow (a conjured one
+ *  vanishes anyway, WeaponManager.cs:554-559's `isArrowSummoned`), never a gun's spent pellet, and never on a bout's sand
+ *  (its healers refund the shot - systems/shotTally.js). */
+export function stickable(m) {
+  return !!m?.fromPlayer && !m.visual && !m.summoned && !orbArchiveFor(m.weapon) && !shotTallyOpen();
+}
+
+/** The stuck shafts' piles of `loot`, oldest first - every one the pool still holds, emptied or not. */
+const stuckPilesOf = (loot) => (loot?._piles ?? []).filter((p) => p.owner === STUCK_ARROW_OWNER && !p.dead);
+/** The shafts still standing - the ones drawn and pressed. */
+export const liveStuckArrows = (loot) => stuckPilesOf(loot).filter((p) => !p.inactive && p.items.length > 0);
+
+/** A shaft sticks at `at` (the point it struck), along `dir`: a pile of one Arrow (bowDamageArrow, the one minter) in
+ *  `loot`, on `pixelKey` (the world host's - it dies with its pixel). The pool keeps STUCK_ARROWS_MAX; the oldest goes. */
+export function stickArrow(loot, at, dir, { pixelKey = null } = {}) {
+  if (!loot?.seedPile || !Array.isArray(at)) return null;
+  const l = Math.hypot(dir[0], dir[1], dir[2]) || 1;   // a crouch-dipped shaft carries |dir| > 1 (missileReach)
+  const pile = loot.seedPile([bowDamageArrow()], [at[0], at[1] - STUCK_ARROW_LIFT, at[2]], STUCK_ARROW_ICON, null, pixelKey,
+    { unsaved: true, drawn: false, owner: STUCK_ARROW_OWNER });
+  pile.label = STUCK_ARROW_LABEL;
+  pile.noStore = STUCK_ARROW_NO_STORE;
+  pile.stuckDir = [dir[0] / l, dir[1] / l, dir[2] / l];
+  const all = stuckPilesOf(loot);
+  for (let i = 0; i < all.length - STUCK_ARROWS_MAX; i++) loot.removePile(all[i]);
+  return pile;
+}
+
+/** A taken shaft's pile goes: emptied by the press (quick loot, the window) or deactivated by releaseEmptied - a
+ *  scene-built container is only ever deactivated, and nothing re-mints a stuck shaft. */
+export function pruneStuckArrows(loot) {
+  for (const p of stuckPilesOf(loot)) if (p.inactive || !p.items.length) loot.removePile(p);
+}
+
+/** How far back from the struck point the shaft's ORIGIN is drawn, so STUCK_ARROW_EMBED of it is in: its tip is the
+ *  front of the mesh's own sphere (`bounds` [cx, cy, cz, r], renderer.createMesh) along +Z - arrowMatrix's forward,
+ *  which flies it nose first - and its length the sphere's diameter. A mesh with no sphere is drawn at the point. */
+export function stuckArrowSetBack(bounds) {
+  if (!bounds || !(bounds[3] > 0)) return 0;
+  return bounds[2] + bounds[3] - STUCK_ARROW_EMBED * 2 * bounds[3];
+}
+
+/** A stuck shaft's model matrix, from its pile - read live, so a recentre (offsetAll) or the ground's move carries it. */
+export function stuckArrowMatrix(pile, bounds = null) {
+  const d = pile.stuckDir, back = stuckArrowSetBack(bounds);
+  return arrowMatrix([pile.pos[0] - d[0] * back, pile.pos[1] + STUCK_ARROW_LIFT - d[1] * back, pile.pos[2] - d[2] * back], d);
+}
+
+/** Where a shaft's step from `a` to `b` went into the bare ground (the collider's heightAt floor, which the mesh
+ *  raycast never sees): the crossing between the two heights, set on the ground there. */
+export function groundEntry(a, b, c) {
+  const da = a[1] - c.heightAt(a[0], a[2]), db = b[1] - c.heightAt(b[0], b[2]);
+  const t = da > 0 && da - db > 0 ? Math.min(1, da / (da - db)) : 0;
+  const x = a[0] + (b[0] - a[0]) * t, z = a[2] + (b[2] - a[2]) * t;
+  return [x, c.heightAt(x, z), z];
+}
+
+/** THE DUNGEON'S HALF (scenes/dungeonContext.js): its meshes are a list of `{ gpu, object: { matrix } }` it draws
+ *  (dynamicDraws), so a stuck shaft is an entry there for as long as its pile stands. `held` maps pile -> entry;
+ *  `meshOf` answers the 99800 mesh (null while it loads), asked only when a shaft is still to be drawn. */
+export function syncStuckArrowDraws(loot, draws, held, meshOf) {
+  pruneStuckArrows(loot);
+  const live = liveStuckArrows(loot);
+  for (const [p, d] of held) {
+    if (live.includes(p)) continue;
+    const i = draws.indexOf(d);
+    if (i >= 0) draws.splice(i, 1);
+    held.delete(p);
+  }
+  if (live.every((p) => held.has(p))) return;
+  const gpu = meshOf();
+  if (!gpu) return;
+  for (const p of live) {
+    if (held.has(p)) continue;
+    const d = { gpu, object: { matrix: stuckArrowMatrix(p, gpu.bounds) } };
+    draws.push(d);
+    held.set(p, d);
+  }
+}
 
 /** TECH1: a piercing technique shaft that has just struck `ref` - it notes the foe and flies on while it has foes left to
  *  strike (`pierce`, its number); answers whether it flies on. Every other shaft stops on what it strikes. Shared by the
@@ -76,9 +180,14 @@ export class ArrowFlight {
    * @param collider   Collider, or () => Collider for hosts whose
    *                   collider rebuilds (the weaponRig canvas rule)
    */
-  constructor({ getGpuMesh, collider = null, effects = null }) {
+  constructor({ getGpuMesh, collider = null, effects = null, loot = null, pixelKeyAt = null }) {
     this.getGpuMesh = getGpuMesh;
     this._collider = collider;
+    // STUCK-ARROWS: the host's dropped-loot pool a player's shaft sticks into (null: it is LOST, DFU's law), and the
+    // map pixel it lies on (the world host's - null everywhere else); the 99800 mesh the stuck shafts are drawn with
+    this._loot = loot;
+    this._pixelKeyAt = pixelKeyAt;
+    this._stuckGpu = null;
     // FIELD-GUN14: the host's own one-shot billboard pool (hitEffects),
     // which every host already builds. A shot that flies as an ORB is
     // drawn through it rather than through `getGpuMesh` - see `fire`.
@@ -129,6 +238,7 @@ export class ArrowFlight {
     onPlayerArrowHitFoe = null, boxTargets = null, onPlayerArrowHitBox = null } = {}) {
     let live = 0;
     const c = typeof this._collider === 'function' ? this._collider() : this._collider;
+    if (this._loot) pruneStuckArrows(this._loot);   // STUCK-ARROWS: a taken shaft's pile goes
     for (const m of this.arrows) {
       if (m.dead) { this._releaseOrb(m); continue; }   // FIELD-GUN14: the flat goes out with the flight - `arrows` is not compacted until every record is dead
       live++;
@@ -159,8 +269,9 @@ export class ArrowFlight {
       const { unit, reach } = missileReach(m.dir, step);   // ROAD-H tail: displacement.magnitude + ColliderRadius along the NORMALISED direction (DaggerfallMissile.cs:333 builds the displacement, :337 casts it - an ARROW always takes that Raycast arm, never the :339 SphereCast) - a crouch-dipped shaft carries |dir| > 1
       // TACT1: a tree, a crate - cover stops a shaft; AUDIT TACT B5: by touch, the bodies before it tested first
       const cs = c ? coverStep(coverDistance(c, m.pos, unit, reach), c.raycast(m.pos, unit, reach), reach, reach - step * Math.hypot(m.dir[0], m.dir[1], m.dir[2]), step * Math.hypot(m.dir[0], m.dir[1], m.dir[2])) : null;
-      if (cs && Number.isFinite(cs.stop)) { m.dead = true; continue; }   // met geometry: the arrow is LOST (DFU)
+      if (cs && Number.isFinite(cs.stop)) { this._stick(m, [m.pos[0] + unit[0] * cs.stop, m.pos[1] + unit[1] * cs.stop, m.pos[2] + unit[2] * cs.stop], unit); m.dead = true; continue; }   // met geometry: the arrow is LOST (DFU); STUCK-ARROWS: the player's stays where it struck - the RAY's point (`unit`, the collider's units)
       const adv = cs ? step * cs.advance : step;
+      const from = m.fromPlayer ? [m.pos[0], m.pos[1], m.pos[2]] : null;   // STUCK-ARROWS: the step's start, for the ground's crossing
       const was = boxTargets?.length && m.fromPlayer ? [m.pos[0], m.pos[1], m.pos[2]] : null;   // SERPENT4: the step's start, for a box
       m.pos[0] += m.dir[0] * adv;
       m.pos[1] += m.dir[1] * adv;
@@ -238,9 +349,23 @@ export class ArrowFlight {
       }
       // The mesh raycast never sees bare TERRAIN (the collider's
       // heightAt fallback floor) - an arrow at or under it has landed.
-      if (c && m.pos[1] <= c.heightAt(m.pos[0], m.pos[2])) m.dead = true;
+      if (c && m.pos[1] <= c.heightAt(m.pos[0], m.pos[2])) { if (from) this._stick(m, groundEntry(from, m.pos, c), m.dir); m.dead = true; }   // STUCK-ARROWS: in the ground where the step crossed it
     }
     if (!live && this.arrows.length) { for (const m of this.arrows) this._releaseOrb(m); this.arrows.length = 0; }
+  }
+
+  /** STUCK-ARROWS: a shaft that met the world stays there when it is the player's real arrow and the host has a pool. */
+  _stick(m, at, dir) {
+    if (this._loot && stickable(m)) stickArrow(this._loot, at, dir, { pixelKey: this._pixelKeyAt?.() ?? null });
+  }
+
+  /** STUCK-ARROWS: the 99800 mesh, fetched once the first shaft stands (the host's pipeline caches it). */
+  _stuckMesh() {
+    if (this._stuckGpu === null) {
+      this._stuckGpu = false;
+      Promise.resolve(this.getGpuMesh(ARROW_MODEL_ID)).then((g) => { if (g) this._stuckGpu = g; }, () => {});
+    }
+    return this._stuckGpu || null;
   }
 
   /** FIELD-GUN14: an orb's flat, taken down. Idempotent - a record
@@ -256,6 +381,7 @@ export class ArrowFlight {
   clear() {
     for (const m of this.arrows) { this._releaseOrb(m); m.dead = true; }
     this.arrows.length = 0;
+    this._stuckGpu = null;   // STUCK-ARROWS: a new scene asks its own pipeline again
   }
 
   /** Draw every live arrow (the host's mesh pass, after update). */
@@ -267,6 +393,10 @@ export class ArrowFlight {
       // a shaft is the only thing in this module that is a mesh.
       if (!m.dead && !m.orb && m.gpu) renderer.drawMesh(m.gpu, arrowMatrix(m.pos, m.dir), texRemap);
     }
+    // STUCK-ARROWS: the shafts that stayed where they struck - the pool's own piles, read live
+    const stuck = this._loot ? liveStuckArrows(this._loot) : [];
+    const gpu = stuck.length ? this._stuckMesh() : null;
+    if (gpu) for (const p of stuck) renderer.drawMesh(gpu, stuckArrowMatrix(p, gpu.bounds), texRemap);
   }
 }
 
@@ -370,7 +500,10 @@ export function playerArrowHitFoe(m, foe, {
   // round, so every foe the Thunderlock killed dropped Arrows it had
   // never been shot with. A Dwemer Pellet is spent. Said off the same
   // leaf the orb is, so the two answers cannot drift apart.
-  if (foe.entity?.items && !orbArchiveFor(m.weapon)) {
+  // STUCK-ARROWS (bible/05-Combat/Arrow-Supply.md): and a CONJURED shaft is never added (WeaponManager.cs:554-559's
+  // isArrowSummoned - it vanishes), and a real one survives the strike ARROW_LODGE_CHANCE of the time - the roll last, on
+  // the blow's own stream, so every roll above is drawn as it was
+  if (foe.entity?.items && !orbArchiveFor(m.weapon) && !m.summoned && rolls() < ARROW_LODGE_CHANCE) {
     addItem(foe.entity.items, bowDamageArrow());   // MAC-N1: one minter, not a bare literal with no value
     if (!foe.entity.bout && foe.rival == null) noteShotRecoverable(ARROW_TEMPLATE);   // ARENA-ARROWS: lodged in a pack that can be looted - not the bout's to pay (a bout fighter's goes with it, and a relay opponent's stand-in is no corpse)
   }

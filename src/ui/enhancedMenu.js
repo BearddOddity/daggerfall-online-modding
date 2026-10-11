@@ -95,6 +95,7 @@ import { questRail, shelvedRail, journalLines, questTitleOf, QUEST_URGENT_SECOND
 import { entryTarget, targetWords, WHERE_TEXT } from './questLens.js';   // GUIDE2: where a quest points, and the way there   // MAC-K2: the ONE quest walk, shared with the chronicle
 import { questTracker, followOn, trackButton } from './questTracker.js';   // GUIDE4: the HUD's card - the Track toggle, and the quest the journal opens on
 import { closeOnOutsideTap } from './enhancedOverlays.js';   // OT1: a tap on the scrim resumes
+import { drawTutorialsPane, releaseTutorialsPane } from './tutorialsPane.js';   // TUT1: the Tutorials tab and section - every tutorial page, to read again
 import { drawShotsPane, releaseShotsPane } from './shotsPane.js';   // LOAD1: the Screenshots pane - the gallery the PrintScreen key keeps
 import { TEST_PRESETS, TEST_RIDE, TEST_SEA, TEST_LOOT } from '../systems/testRoom.js';   // TR3: the one home the pane shows; TSR4: the ride; LR3: the loot ladder
 import { mwRaceId } from '../formats/mwNpc.js';
@@ -248,7 +249,7 @@ import { maxRoundsRemaining } from './hudActiveSpells.js';   // BUFF-END: a bund
 // by it. Empty at FT0; the Enhanced category of Settings and the Mods
 // section keep their rows until each one's slice moves it here
 // (bible/10-UI/Features-Arc.md).
-const SECTIONS_BOOT = ['Continue', 'New Game', 'Load Game', 'Online', 'Test Room', 'Settings', 'Overhauls', 'Screenshots', 'About'];   // ORG2: Features is Settings' tabs now   // LOAD1: the gallery (ui/shotsPane.js)   // OVH1: the three looks   // FT16: Controls is a Settings CATEGORY, not a rail door   // FT14: Mods is gone - every mod is a tile on Features, and what the pane carried besides stands under them   // ONLINE1: the shared world's door
+const SECTIONS_BOOT = ['Continue', 'New Game', 'Load Game', 'Online', 'Test Room', 'Settings', 'Overhauls', 'Tutorials', 'Screenshots', 'About'];   // TUT1: the tutorials, to read before the game (ui/tutorialsPane.js)   // ORG2: Features is Settings' tabs now   // LOAD1: the gallery (ui/shotsPane.js)   // OVH1: the three looks   // FT16: Controls is a Settings CATEGORY, not a rail door   // FT14: Mods is gone - every mod is a tile on Features, and what the pane carried besides stands under them   // ONLINE1: the shared world's door
 // FD1 (Mac, 2026-09-11): the CLASSIC skin opens on this same door. Its
 // three game doors collapse into BEGIN, which leads into the classic
 // start sequence - the title, the film, Daggerfall's own start window -
@@ -257,7 +258,7 @@ const SECTIONS_BOOT = ['Continue', 'New Game', 'Load Game', 'Online', 'Test Room
 // SO1: ENHANCED left the rail for a category of Settings (settingsMap).
 // ONLINE1: ONLINE joins it - Mac: "if using classic, you'd see the
 // other user's paperdoll" - the same pane, the same save brought in.
-const SECTIONS_CLASSIC = ['Begin', 'Online', 'Settings', 'Overhauls', 'Screenshots', 'About'];   // ORG2   // LOAD1: the key keeps its shots under either skin   // OVH1   // FT14; FT16: Controls is a Settings category
+const SECTIONS_CLASSIC = ['Begin', 'Online', 'Settings', 'Overhauls', 'Tutorials', 'Screenshots', 'About'];   // TUT1   // ORG2   // LOAD1: the key keeps its shots under either skin   // OVH1   // FT14; FT16: Controls is a Settings category
 
 // U51: the same rail with the boot-only questions swapped for the
 // in-game ones. Continue and New Game answer "which game", which is
@@ -270,7 +271,7 @@ const SECTIONS_CLASSIC = ['Begin', 'Online', 'Settings', 'Overhauls', 'Screensho
 // mode's doors), and the pane says so in words. A rail that drops the
 // row instead teaches the player the door was never there - the same
 // argument the Mods section is built on.
-const SECTIONS_PAUSE = ['Resume', 'Save Game', 'Load Game', 'Settings', 'Overhauls', 'Screenshots', 'About', 'Exit'];   // ORG2   // LOAD1   // OVH1   // FT14; FT16: Controls is a Settings category
+const SECTIONS_PAUSE = ['Resume', 'Save Game', 'Load Game', 'Settings', 'Overhauls', 'Tutorials', 'Screenshots', 'About', 'Exit'];   // TUT1: a landing's shell (the window's own door is its Tutorials tab)   // ORG2   // LOAD1   // OVH1   // FT14; FT16: Controls is a Settings category
 
 const idOf = (label) => label.toLowerCase().split(' ')[0];
 
@@ -921,8 +922,8 @@ function paneNew(body) {
 // enhanced screen stands between the player and it.
 function paneBegin(body) {
   const c = el('div', 'card');
-  c.append(el('h3', null, 'Daggerfall'));
-  c.append(el('p', 'meta', 'The classic start: the title, the intro and Daggerfall\u2019s original menu (Load Game, Start New Game, Exit).'));
+  c.append(el('h3', null, 'Classic'));
+  c.append(el('p', 'meta', 'The classic start: the original game\u2019s own title, intro and menu (Load Game, Start New Game, Exit).'));
   c.append(acts([{ label: 'Begin', primary: true, onClick: () => onAction('begin') }]));
   body.append(c);
 }
@@ -2881,9 +2882,9 @@ function packsCard() {
   const later = ' It takes full effect the next time an area loads.';
   c.append(acts([
     { label: 'Attach music pack', onClick: async () => { const ds = await import('../scenes/dataSource.js'); await ds.pickMusicFolder(); render(); } },
-    ...(replacementCount() > 0 ? [remove('Remove music pack', 'Remove music pack', 'This clears your music files from this browser; Daggerfall\u2019s own songs play again. A sound pack stays.', (d) => d.clearStoredMusic())] : []),
+    ...(replacementCount() > 0 ? [remove('Remove music pack', 'Remove music pack', 'This clears your music files from this browser; the original game\u2019s own songs play again. A sound pack stays.', (d) => d.clearStoredMusic())] : []),
     { label: 'Attach sound pack', onClick: async () => { const ds = await import('../scenes/dataSource.js'); await ds.pickSoundFolder(); render(); } },   // SNDREP1
-    ...(soundReplacementCount() > 0 ? [remove('Remove sound pack', 'Remove sound pack', 'This clears your sound files from this browser; Daggerfall\u2019s own sounds play again. A music pack stays.', (d) => d.clearStoredSounds())] : []),
+    ...(soundReplacementCount() > 0 ? [remove('Remove sound pack', 'Remove sound pack', 'This clears your sound files from this browser; the original game\u2019s own sounds play again. A music pack stays.', (d) => d.clearStoredSounds())] : []),
     { label: 'Attach texture pack', onClick: async () => { const ds = await import('../scenes/dataSource.js'); await ds.pickTextureFolder(); render(); } },
     ...(textureReplacementCount() > 0 ? [remove('Remove texture pack', 'Remove texture pack', `This clears the loose texture files (a folder pick) from this browser. Attached .dfmod texture mods stay.${later}`, (d) => d.clearStoredTexturePack())] : []),
   ]));
@@ -3748,8 +3749,8 @@ function featureRow(f) {
 // ── ABOUT ────────────────────────────────────────────────────────
 function paneAbout(body) {
   const c = el('div', 'card');
-  c.append(el('h3', null, 'Daggerfall Online'));   // the public name (BR1, BR4); project-dagger is the repo
-  c.append(el('p', 'meta', 'An open-source reimplementation of The Elder Scrolls II: Daggerfall.'));
+  c.append(el('h3', null, 'DFO Online'));   // the public name (BR1, BR4, BR5); project-dagger is the repo
+  c.append(el('p', 'meta', 'An open-source reimplementation of a classic 1996 RPG.'));
   c.append(stats([
     ['Update', UPDATE ?? 'a development build'],   // REL8: the player's update number (scripts/updateNumber.mjs)
     ['Build', BUILD_TAG],
@@ -3939,6 +3940,7 @@ function renderHome() {
   // the shared-sections law hold.
   for (const label of sections) {
     if (label === 'About' || label === 'Screenshots') continue;   // LOAD1: Screenshots stands in the foot, beside About
+    if (label === 'Tutorials') continue;   // TUT1: the foot's left plaque (an eighth door ran the list past a 720-pixel screen)
     const id = idOf(label);
     // PX31: THE DOOR'S BUTTONS CARRY THEIR OWN NAME. Until now they
     // were classless, and nine probes still reached for `.railbtn` -
@@ -3994,6 +3996,16 @@ function appendPxFoot(home) {
   const about = el('button', 'px-about', 'About');
   about.onclick = () => go('about');
   foot.append(build, about);   // MENU-TOGGLE: the skin pair that stood between them is retired
+  // TUT1: the tutorials' plaque stands over the build line, at the LEFT - the book a new player reads before the game. A
+  // third plaque in About's box ran into the menu's column on a 1280x720 screen, and three stacked overran a phone's foot.
+  if (mode !== 'pause' && sections.includes('Tutorials')) {
+    const tuts = el('button', 'px-about px-tuts door-tutorials', 'Tutorials');
+    tuts.onclick = () => go('tutorials');
+    const left = el('div', 'px-footleft');
+    build.remove();
+    left.append(tuts, build);
+    foot.prepend(left);
+  }
   // LOAD1: the gallery's plaque stands beside About, in About's own box, so the foot keeps one shape - the centre
   // runs under the menu's last rows on a 720-pixel screen. The door's face only: the pause window's System rail carries
   // it as a row (SYSTEM_PANES).
@@ -4013,7 +4025,9 @@ function appendPxFoot(home) {
 // player owns and who follows them moved off the Stats rail onto a tab of their own (pauseHoldings, below).
 // LEGACY3 (2026-10-05, Mac: "implement it into the pause menu as a new tab"): Project Legacy's family - its tree, its house
 // and the Hall of Ancestors - on a tab of its own (pauseFamily, below; ui/familyPages.js).
-const PAUSE_TABS = Object.freeze([['quests', 'Quests'], ['stats', 'Stats'], ['holdings', 'Holdings'], ['family', 'Family'], ['system', 'System']]);
+// TUT1 (2026-10-11, Mac: "a menu section where tutorials can be revisited"): every tutorial page, on a tab of its own
+// (pauseTutorials, below; ui/tutorialsPane.js) - the same pane the front door's Tutorials section draws.
+const PAUSE_TABS = Object.freeze([['quests', 'Quests'], ['stats', 'Stats'], ['holdings', 'Holdings'], ['family', 'Family'], ['tutorials', 'Tutorials'], ['system', 'System']]);
 /** HOLDINGS: every tab a landing may name (mountEnhancedMenu's `at`). */
 export const PAUSE_TAB_IDS = Object.freeze(PAUSE_TABS.map(([id]) => id));
 /** LEGACY3: a tab drawn now - the Family tab while Project Legacy is on (a landing on it with the mod off lands on System). */
@@ -4036,7 +4050,7 @@ function pauseWindow() {
   win.append(tabs);
 
   const body = el('div', 'px-body');
-  ({ quests: pauseQuests, stats: pauseStats, holdings: pauseHoldings, family: pauseFamily, system: pauseSystem })[pauseTab](body);
+  ({ quests: pauseQuests, stats: pauseStats, holdings: pauseHoldings, family: pauseFamily, tutorials: drawTutorialsPane, system: pauseSystem })[pauseTab](body);   // TUT1
   win.append(body);
   return win;
 }
@@ -4426,7 +4440,7 @@ function statsMaster(detail, m) {
   back.classList.add('px-master-back');
   detail.append(back, pxDivider('Master Skills'));
   const lead = !ms.on
-    ? (ms.switchable ? 'Off \u2013 your skills stop at 100, as in Daggerfall.' : 'Off.')
+    ? (ms.switchable ? 'Off \u2013 your skills stop at 100, as in the original game.' : 'Off.')
     : 'Choose the skills that may climb past 100, up to 200. A choice is permanent.';
   detail.append(el('div', 'px-master-lead', lead));
   if (_masterNote) detail.append(el('div', 'px-master-note', _masterNote));
@@ -5105,7 +5119,7 @@ function renderInto() {
   // (onKey); this is the one a finger can see.
   const homeMark = el('button', 'brand-home');
   homeMark.type = 'button';
-  homeMark.setAttribute('aria-label', 'Daggerfall Online — main menu');
+  homeMark.setAttribute('aria-label', 'DFO Online — main menu');
   homeMark.append(brandMark());
   homeMark.onclick = () => go('home');
   h1.append(homeMark);
@@ -5147,6 +5161,7 @@ function renderInto() {
         save: paneSave, exit: paneExit,
         overhauls: paneOverhauls,   // OVH1
         screenshots: drawShotsPane,   // LOAD1
+        tutorials: drawTutorialsPane,   // TUT1
         about: paneAbout, begin: paneBegin,   // FD1: the classic rail's door; SO1: Enhanced is a Settings category now
       })[section](body);
     }
@@ -5453,6 +5468,7 @@ export function mountEnhancedMenu(host, {
       stopTimers();   // TIMERS1
       releaseShotsPane();   // LOAD1: the gallery's pictures and its listener
       stopPost();   // SERVER-POST: and the mailbox's ticks
+      releaseTutorialsPane();   // TUT1: the next visit opens on the first page
       // FIX-F: and the rebind pane's own capture listener, which is on
       // the DOCUMENT and would outlive this screen exactly as the one
       // above would.

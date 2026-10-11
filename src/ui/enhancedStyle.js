@@ -2225,22 +2225,25 @@ ${badgeCss()}
 /* INTRO2: one supplied wordmark, at its natural aspect ratio. BR4: it
    carries its own alpha, so it draws with no blend mode - screen would
    erase its black outlines and the ONLINE lettering. */
-.px-wordmark:has(.brand-logo) { width: min(540px, 84vw); line-height: 0; flex-shrink: 0; }
+/* BR5: the DFO mark is 526 x 322 (1.63:1) and painted to its edges, where
+   BR4's was 2.48:1 with its last 81 of 850 rows empty. Each box keeps the
+   HEIGHT it had, so nothing above or below it moves: the door's old mark
+   stood 540 x 769/2112 tall, and the same height at the new ratio is
+   540 x 769/2112 x 526/322 = 321px wide (84vw -> 50vw; the short landscape
+   screen's 394px -> 234, 56vw -> 33.3vw). */
+.px-wordmark:has(.brand-logo) { width: min(321px, 50vw); line-height: 0; flex-shrink: 0; }
 .brand-logo { display: block; width: 100%; height: auto; object-fit: contain;
   image-rendering: auto; }
-/* BR4: the file's last 81 of its 850 rows are empty canvas below the
-   banner, so the door and the masthead pull what follows up over them
-   (a margin in % is of the WIDTH: 81 of 2112). With that, and 540px
-   where INTRO2's 3:1 mark had 590, the taller mark spends the door's old
-   height - at 590 it pushed the menu off a 720px screen. Not the intro:
-   its title is centred on its box, and the box is what its probe
-   measures against the tap target. */
-.px-wordmark .brand-logo, .brand-home .brand-logo { margin-bottom: calc(-100% * 81 / 2112); }
+/* BR5: the masthead's mark spent 769/2112 of the column's width in height
+   (BR4's file less its empty rows); the DFO mark spends the same height at
+   769/2112 x 526/322 = 59.5% of the width, centred. No margin pulls
+   anything up any more - the file has no empty rows. */
+.brand-home .brand-logo { width: 59.5%; margin: 0 auto; }
 .brand-home { display: block; width: 100%; border: 0; padding: 0; background: transparent; cursor: pointer; }
 .brand-home:focus-visible { outline: 2px solid var(--brass); outline-offset: 6px; }
 .shell .brand h1:has(.brand-logo) { line-height: 0; }
 @media (max-height: 560px) and (min-width: 600px) {
-  .px-wordmark:has(.brand-logo) { width: min(394px, 56vw); }   /* BR4: INTRO2's 430px, at the same height */
+  .px-wordmark:has(.brand-logo) { width: min(234px, 33.3vw); }   /* BR4: INTRO2's 430px, at the same height; BR5: BR4's 394px, at the same height */
 }
 .px-wordmark small { display: block; font-family: ${PIXEL_STACK};
   font-size: 16px; letter-spacing: 0.5em; text-indent: 0.5em;
@@ -2281,6 +2284,9 @@ ${badgeCss()}
 .px-foot .px-about { grid-column: 3; }
 /* LOAD1: the Screenshots plaque - About's box, beside it on the right. */
 .px-footright { grid-column: 3; justify-self: end; display: flex; align-items: flex-end; gap: 10px; }
+/* TUT1: the Tutorials plaque - About's box, over the build line at the left. */
+.px-footleft { grid-column: 1; justify-self: start; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.px-footleft .px-about { justify-self: auto; }
 /* The About box: the ONE box on the boxless face, which is what makes
    it read as a plaque rather than a menu row. 2px border in whole
    pixels, gold on hover by the same pair. */
@@ -2355,8 +2361,9 @@ ${badgeCss()}
 }
 /* SUPPORT1: ON THE FRONT DOOR THE CAPTION IS BOUNDED IN PIXELS. Its two lines' 14ch and 22ch are the font's - up to
    158px in Pixelify Sans - and a reach that is the font's cannot be the band's (THE CORNERS' BAND, below). 140px keeps
-   "No character yet" whole (123px) and holds the mark's reach to 234px, so the band ends at 1007 and a 1024x768 door
-   still fits without a scroll; a character's longer line ends in its ellipsis three letters sooner. */
+   "No character yet" whole (123px) and holds the mark's reach to 234px, so the band ended at 1007 under BR4's 540px
+   mark and a 1024x768 door still fit without a scroll (BR5's 321px mark ends it at 788); a character's longer line
+   ends in its ellipsis three letters sooner. */
 .px-home:not(.px-over) .px-profilename { max-width: min(14ch, 140px); }
 .px-home:not(.px-over) .px-profilesub { max-width: min(22ch, 140px); }
 .px-profile:hover .px-profilename, .px-profile:focus-visible .px-profilename {
@@ -2649,6 +2656,7 @@ ${SUPPORT_MARKS_CSS}
   .px-foot .px-about { grid-area: about; grid-column: auto; }
   /* LOAD1: on a phone the two plaques stack at the right - inside the 132px the stage keeps for the foot (PX8) */
   .px-footright { grid-area: about; grid-column: auto; flex-direction: column; gap: 8px; }
+  .px-footleft { grid-area: build; grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .px-ground { animation: none; } }
 /* PX8, caught by the tap probe TWICE: centering the list on a SHORT
@@ -2679,12 +2687,12 @@ ${SUPPORT_MARKS_CSS}
    clear of the corner marks over a game. With a mark in each top corner, the door's stage starts below them wherever
    the wordmark is wide enough to reach under either: the asks reach 122px in (18, their 98, the Plus frame's 6), the
    profile 234 (18, its 58px portrait, the 12px gap, its caption's 140px bound, the frame's 6), and
-   (vw - min(540px, 84vw)) / 2 is less than 234 at every width under 1008 - and on a phone, where the marks stand 10px
-   in and the caption is hidden, always. Measured rather than argued: tools/supportAsksProbe.mjs maps the logo's own
+   (vw - min(321px, 50vw)) / 2 is less than 234 at every width under 789 (BR5: BR4's min(540px, 84vw) took it to
+   1008) - and on a phone, where the marks stand 10px in and the caption is hidden, always. Measured rather than argued: tools/supportAsksProbe.mjs maps the logo's own
    opaque pixels onto the screen across 192 sizes, a caption at its bound among them. The band costs height, and where
    the door no longer fits it scrolls (DOOR-FIT, above); its foot keeps the one-row foot's 68px, so the last row can be
    scrolled clear of About and Screenshots. */
-@media (min-width: 481px) and (max-width: 1007px) {
+@media (min-width: 481px) and (max-width: 788px) {
   .px-home:not(.px-over) > .px-stage:not(.px-acctstage) { padding: 84px 24px 76px; }
 }
 @media (max-width: 480px) {

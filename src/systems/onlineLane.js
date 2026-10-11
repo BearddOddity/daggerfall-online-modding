@@ -140,6 +140,7 @@ export function declareOnlinePrefs(table) {
 /** The switches the lane deliberately leaves to the player (SURV-TIERS: and one tier, the survival pref) -
  *  the pin fails on a boolean uiPrefs key that is in neither list. */
 export const ONLINE_PLAYERS_OWN_PREFS = [
+  'tutorialPopups',   // TUT1: the tutorial's popups are each player's to keep or turn off
   'touchAnalogStick', 'touchGyroLook', 'touchHaptics', 'touchFullscreen',   // TI2: how this phone is held
   'showFps',          // FPS1: a diagnostic over the game
   'hudLocked',        // HUD-MOVE: where THIS player keeps their HUD - a layout on one screen, nothing the room agrees on
