@@ -177,7 +177,7 @@ test('MWNPC18d EVERY DECOR ROOM\'S FIGURES ARE OFFERED - the rooms\' on the inte
   const modes = rd('src/scenes/worldModes.js'), world = rd('src/scenes/world.js');
   const o = modes.indexOf('offerDecorFigures(interiorDecor.figures(), peopleBodies, _peopleOn, figureCtx, mwv.eye, dt);');
   assert.ok(o > 0 && o < modes.indexOf('    peopleBodies.draw(canvas, proj, view, mwv.eye, dt);'), 'a room\'s, before its people draw');
-  assert.match(rd('src/scenes/homeYards.js'), /figures: \(\) => \{ yardFigs\.length = 0; for \(const y of yards\.values\(\)\) for \(const e of y\.pool\.figures\(\)\) yardFigs\.push\(e\); return yardFigs; \},/);
+  assert.match(rd('src/scenes/homeYards.js'), /figures: \(\) => \{\n      yardFigs\.length = 0;\n      const eye = deps\.eye\?\.\(\) \?\? null;\n      for \(const y of yards\.values\(\)\) if \(nearEye\(y, eye\)\) for \(const e of y\.pool\.figures\(\)\) yardFigs\.push\(e\);\n      return yardFigs;\n    \},/, 'one list kept; only a yard within its reach, as its flats are (YARD-RANGE)');   // PIN MOVED (main's YARD-RANGE merged: a yard's flats are drawn only within its reach, and its figures stand only there)
   // AUDIT MWNPC16-18 D2: a room's figure is of the race its building's region names (the yards' read) - the quest scene's
   // context names none, and every room's figure stood a Breton
   assert.match(modes, /get race\(\) \{ const i = interiorBuilding\?\.regionIndex \?\? host\.currentRegionIndex\?\.\(\) \?\? -1; return REGION_RACES\[i\] != null \? REGION_RACES\[i\] \+ 1 : null; \},/);

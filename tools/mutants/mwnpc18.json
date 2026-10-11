@@ -252,5 +252,14 @@
   "tests": [
    "test/mwnpc18_decorfigures.test.js"
   ]
+ },
+ {
+  "name": "AUDIT-MWNPC16-18-R-yard-figures-past-reach",
+  "file": "src/scenes/homeYards.js",
+  "old": "      for (const y of yards.values()) if (nearEye(y, eye)) for (const e of y.pool.figures()) yardFigs.push(e);",
+  "new": "      for (const y of yards.values()) for (const e of y.pool.figures()) yardFigs.push(e);",
+  "tests": [
+   "test/mwnpc18_decorfigures.test.js"
+  ]
  }
 ]

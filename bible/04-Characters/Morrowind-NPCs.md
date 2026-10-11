@@ -2090,7 +2090,7 @@ PROVEN. `test/mwnpc18_decorfigures.test.js` (4): figureLook's sex, role, race
 (by name and by id), seed, its pictures kept and its file asked again; the
 caption's roles in order; the offer and the drawn picture where no look
 stands; the decor rooms' hosts enumerated and wired before their draws, by
-source. `tools/mutants/mwnpc18.json`: 10 mutants, 10 dead (28 after the
+source. `tools/mutants/mwnpc18.json`: 10 mutants, 10 dead (29 after the
 audit, section 27). The yards'
 figures are offered before the yards' keepers, so AUDIT MW-NPC II P1's pin
 (the keepers' offer just before the street's draw) stands as it was.
@@ -2280,7 +2280,7 @@ PROVEN.
   titles; every record those files kill judged again (43: 42 dead, one
   equivalent as recorded).
 - Mutant records: `tools/mutants/mwnpc16.json` 46 and `mwnpc17.json` 28,
-  all dead; `mwnpc18.json` 28, 27 dead and one equivalent as recorded (the
+  all dead; `mwnpc18.json` 29, 28 dead and one equivalent as recorded (the
   figures' set let go at a take-down: memory, which no pin sees) - the
   second look's (below) among them.
 
@@ -2323,6 +2323,11 @@ was left was reproduced, fixed and pinned.
   "iron and steel up to dwarven, orcish and ebony" still describes. The
   weights stand: they are Daggerfall's materials, and a body draws the map's
   answer for them.
+- THE MERGE OF MAIN (#796, YARD-RANGE). A yard's flats are now drawn only
+  within the yard's reach, the distance the player sets (homeYards.js
+  `nearEye`). Its figures are offered only there too: a body never stands
+  where its picture would not be drawn. 18d pins it, by source, and a record
+  dies on it.
 - THE FOUR HOSTS (rule 17e). The lane's dissolve read is net/peerBodies.js's,
   under every host's NPC lanes. scenes/world.js, scenes/worldModes.js,
   scenes/dungeonContext.js and scenes/exterior.js are WIRED through
@@ -2333,7 +2338,7 @@ was left was reproduced, fixed and pinned.
   17b (the rogue, and 400 priests at the door); and
   `test/mwnpc18_decorfigures.test.js` 18b (the rows' order and case) and 18d
   (both contexts' FLATS.CFG). Records: 5 in `mwnpc16.json`, 2 in
-  `mwnpc17.json`, 12 in `mwnpc18.json`. Five older records were re-aimed by
+  `mwnpc17.json`, 13 in `mwnpc18.json`. Five older records were re-aimed by
   content to the same laws (MWNPC16-grown-cast, MWNPC16-veiled-cast,
   OW-PEERS-a-body-unleaned, MWNPC5-lane-drops-fxof and
   AUDIT-E5-a-burnt-body-s-shadow). Pins moved: PR-BOW1's and PR-BOW1b's
