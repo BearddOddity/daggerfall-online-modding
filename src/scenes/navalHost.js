@@ -221,6 +221,19 @@ export const BLAST_SHAKE = 3.2;
  *  the CPU, their rigging stepped as a near one's). */
 export const NEAR_LIFE_M = 600;
 export const FAR_LIFE_EVERY = 4;
+/** PEER-HULL-RANGE: ANOTHER'S SHIP FAR OFF STANDS NO HULL HERE. Every peer in the room says their sea in their word
+ *  (applyWord), so a client held every player's ships wherever they sailed - 30-40 of them, most 80-700 km off - and
+ *  Come Sail Away's pool walked and baked each one every frame (scenes/comeSailAwayPool.js frame: her objects' walk and
+ *  her sails' FixDeformations), a third of the main thread on a desktop (38-45 FPS against 103-150 with them gone).
+ *  Her record sails on as ever (her stander's word, her fires, the claims); only her hull waits: built within
+ *  PEER_HULL_NEAR_M of the eye, back to the pool past PEER_HULL_FAR_M (the gap keeps one on the edge from being built
+ *  and torn down frame by frame). Both past where a peer's own sea reaches me (NAVAL_SHARE_RADIUS + LINER_DROP_M).
+ *  AUDIT PEER-HULL-RANGE: AND PAST THE FOG ON EVERY LANE - the first cut's 3,000 / 3,500 m stood inside it (the enhanced
+ *  lane's linear fog ends at 2400 x Land View / 3, world/weather.js scaleFogForDistance: 4,000 m at its default 5,
+ *  4,800 m at 6), so a ship came into being 63-75% fogged. At 5,000 m every row DFU, the port and Dynamic Skies draw
+ *  has closed (test/peerhullrange.test.js); the ships this is for were 80-700 km off, so the frame's saving is the same. */
+export const PEER_HULL_NEAR_M = 5000;
+export const PEER_HULL_FAR_M = 5500;
 /**
  * AUDIT NAV1 (the presentation, #14) - THE SEA AT A GLANCE (one card for the ship within 6 degrees of the look was all
  * the sea said, and a pirate turning on me said nothing). A TAG over each ship within NAVAL_TAG_RANGE of the eye and
@@ -1951,11 +1964,33 @@ export function createNavalHost(deps) {
     seenVolleys.delete(owner);
   }
 
+  /** PEER-HULL-RANGE: a ship whose hull stands - mine always, another's within PEER_HULL_NEAR_M of the eye. */
+  const peerHullNear = (e, eye) => !e.owner || !eye || dist2d(e.ship.pos, eye) <= PEER_HULL_NEAR_M;
+  /** PEER-HULL-RANGE: another's ship past PEER_HULL_FAR_M of the eye gives her hull back to the pool - never one I
+   *  board, nor one with bodies on her deck - and buildOne stands it again as she comes within PEER_HULL_NEAR_M. */
+  function shedFarHulls(eye) {
+    if (!eye) return;
+    for (const e of sea.values()) {
+      if (!e.owner || !e.boat || e.deck?.length || boarding?.shipId === e.id) continue;
+      if (dist2d(e.ship.pos, eye) <= PEER_HULL_FAR_M) continue;
+      deps.pool.remove(e.boat);
+      e.boat = null;
+      // AUDIT PEER-HULL-RANGE: what her record remembered of that hull goes with it (poseShip's canvas by height, the
+      // colours and wake it last set), so the next one wears her record; her fires out of sight and their loops still
+      // until poseShip stands them on her again; and she fades in when she is built again (SHIP-FADE), as a new ship does
+      e.sailsByHeight = null; e.colours = null; e.wake = false;
+      for (const f of e.fires ?? []) f.handle?.show?.(false);
+      e.fireLoop?.stop?.(); e.fireLoop = null;
+      e.sinkLoop?.stop?.(); e.sinkLoop = null;
+      e.shed = true;
+    }
+  }
   /** One build a frame: the first sea ship with no hull yet (SpawnBoat is the frame's heaviest single act). */
   function buildOne() {
     if (!deps.pool?.ready?.()) return;
+    const eye = deps.look?.()?.origin ?? deps.feet();
     for (const e of sea.values()) {
-      if (e.boat) continue;
+      if (e.boat || !peerHullNear(e, eye)) continue;   // PEER-HULL-RANGE
       try {
         e.boat = deps.pool.spawnSeaNow(new Boat(e.ship.hull, e.ship.variant));
         if (e.boat) {
@@ -1963,6 +1998,7 @@ export function createNavalHost(deps) {
           e.boat.IdleObject?.setActive?.(false);
           e.boat.ActiveObject?.setActive?.(true);
           e.boat.flagColor = NAVAL_FACTIONS[e.ship.cls?.faction]?.flag ?? null;   // her colours: the faction's own pennant
+          if (e.shed) { e.shed = false; e.fade = 0; }   // AUDIT PEER-HULL-RANGE: a hull given back and built again fades in
         }
       } catch (err) {
         console.warn('[naval] a ship would not build', err);
@@ -3964,6 +4000,7 @@ export function createNavalHost(deps) {
     // an owner gone from the room takes their ships with them (checked every OWNER_SWEEP_S)
     if (deps.online && clock - lastSweep >= OWNER_SWEEP_S) { lastSweep = clock; sweepOwners(new Set((deps.online.peers?.() ?? []).map((p) => p.id))); }
     tendClaims();
+    shedFarHulls(deps.look?.()?.origin ?? deps.feet());   // PEER-HULL-RANGE
     buildOne();
     const eye = deps.look?.()?.origin ?? deps.feet();   // AUDIT NAV1 (#17): her rigging's life by her range from it
     for (const e of [...sea.values()]) fadeStep(e, total);   // SHIP-FADE
