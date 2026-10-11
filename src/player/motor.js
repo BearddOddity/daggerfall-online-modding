@@ -3245,7 +3245,7 @@ export class PlayerMotor {
 
     // HandleJumpInput, verbatim gates: 0.1 s of grounded time (the
     // bunny-hop gate - a HELD jump re-fires each landing past it, as
-    // classic), slowfall cancels outright; the boost multiplier is
+    // classic), slowfall no longer cancels it (JUMP-SLOW, below); the boost multiplier is
     // the scene's jumpSpeedMultiplier (Jumping skill; athleticism +
     // jump spell pend); crouched jumps scale by crouchingJumpDelta;
     // a MOVING jump adds forward * jumpSpeed * 0.05 of momentum.
@@ -3272,7 +3272,10 @@ export class PlayerMotor {
     // HandleJumpInput while the player wades a record-0 tile and
     // refuses the leap; the port granted the full JUMP_SPEED * boost.
     // (The paralysis clause is covered host-side by the zeroed bag.)
-    if (this.grounded && input.jump && !this.slowFalling && !this._pkJumpLatch   // AUDIT CLIMB1 F7: not the Jump a move spent
+    // JUMP-SLOW (FIELD BUGS 2026-10-11b, Mac: "Give the jump back"; a departure, Port-Ledger A): DFU's IsSlowFalling
+    // clause of this cancel (AcrobatMotor.cs:68) is dropped - the rise is the jump's, and the spell's 2.1 m/s takes the
+    // descent from the apex (ApplyGravity below). Still ground-gated (0.1 s): no jump from the air, so no climbing on air.
+    if (this.grounded && input.jump && !this._pkJumpLatch   // AUDIT CLIMB1 F7: not the Jump a move spent
         && !this.onExteriorWater
         && this.transportMode !== TRANSPORT_MODES.Cart
         && (this.climb?.wasClimbing || this.groundedTime >= GROUNDED_JUMP_GATE_S)) {
@@ -3304,7 +3307,7 @@ export class PlayerMotor {
     // fallStart re-anchored every tick (expiry mid-fall only bills
     // the rest of the drop); otherwise integrate normally.
     if (!this.grounded) {
-      if (this.slowFalling && this.falling) {
+      if (this.slowFalling && this.falling && !(this.jumping && this.velY > 0)) {   // JUMP-SLOW: a jump's rise is the jump's
         this.fallStart = this.pos[1];
         this.velY = -SLOWFALL_VELOCITY;   // F032: DFU's step, not ours
       } else {
