@@ -38,7 +38,7 @@
   {
     "name": "PERF-EXT1-5-the-replay-asks-the-sphere-alone",
     "file": "src/render/shadowPass.js",
-    "old": "          if (b._place && !placementsInVolumeOf(b, quadRadius(r, wl, law, b), planes, vname < 0 ? (vname = SHADOW_TUNING.volumeMemo === false ? 0 : volumeName(planes)) : vname)) { this.stats.culled++; continue; }   // PERF-VOL: the answer kept from the last frame's same planes\n",
+    "old": "            if (!(vname === 0 ? placementsInVolume(b, rad, planes) : placementsInVolumeOf(b, rad, planes, vname))) { this.stats.culled++; continue; }\n",
     "new": "",
     "tests": [
       "test/perfexta.test.js"

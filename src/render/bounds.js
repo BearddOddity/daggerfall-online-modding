@@ -415,11 +415,22 @@ export function placementsInVolume(b, rad, planes) {
   return false;
 }
 
-/** PERF-VOL: how many plane sets the table holds, and how many answers a grid keeps, before either starts over. */
+/** PERF-VOL: how many named plane sets the table holds (and how many first sights it remembers), and how many answers a
+ *  grid keeps, before each starts over. */
 export const VOLUME_TABLE_MAX = 512;
 export const VOLUME_MEMO_MAX = 128;
-let _volTable = new Map(), _volCount = 0, _volNext = 1;
+let _volNamed = new Map(), _volNamedCount = 0, _volNext = 1;
+const _volSeen = new Set();
 const _volBits = new WeakMap();
+/** PERF-VOL: the hash a set of plane words is filed under - FNV-1a over the 24 words, each step folded down
+ *  (AUDIT PERF-ARENA V3: `imul` carries a difference only upward, so plain FNV-1a over words let sign-only differences
+ *  cancel - a lamp's opposite faces at the origin, or lamps on the axes, hashed alike). A hash only files: a hit is the
+ *  words compared. Exported for the pins, which build two sets of one hash from it. */
+export function volumeHash(u) {
+  let h = 2166136261;
+  for (let i = 0; i < 24; i++) { h = Math.imul(h ^ u[i], 16777619); h ^= h >>> 15; }
+  return h;
+}
 /**
  * PERF-VOL (2026-10-11, Mac: "Lets do the biggest remaining lever"): the NAME of a replay's six planes, so the answers
  * of placementsInVolume can be kept across frames. Measured in the real game (Knightstale by night, the freeware
@@ -429,32 +440,39 @@ const _volBits = new WeakMap();
  * batch's origin and height and the quad's radius; this names the planes by their BITS (the float32 words), so two
  * sets with one name are the same numbers and give the same arithmetic.
  *
- * 0 - no name, ask afresh - for a set seen for the FIRST time, and for anything but a Float32Array(24): a lantern
- * carried (its faces move every frame) or a cascade following a walking camera never repeats, and naming them would
- * only make garbage. A set seen again is given a name, and names are never reused: the table starts over past
- * VOLUME_TABLE_MAX sets with the count going on, so an old name a grid still holds can never match a new set.
+ * 0 - no name, ask afresh - for a set seen for the FIRST time, and for anything but a Float32Array(24). A first sight
+ * keeps only its hash (AUDIT PERF-ARENA R4/O4: it kept a copy of the words, ~0.4-0.7 KB, for a carried lantern's faces
+ * that never come again); the second sight of that hash is named and its words kept. A hash two sets share only names
+ * the second of them early - the words decide every hit. Names are never reused: the named table starts over past
+ * VOLUME_TABLE_MAX sets with the count going on, so an old name a grid still holds can never match a new set; the
+ * first sights start over on their own, past as many hashes, and forget no name.
  * @param {ArrayLike<number>} planes
  */
 export function volumeName(planes) {
   if (!(planes instanceof Float32Array) || planes.length !== 24) return 0;
   let u = _volBits.get(planes);
   if (u === undefined) { u = new Uint32Array(planes.buffer, planes.byteOffset, 24); _volBits.set(planes, u); }
-  let h = 2166136261;
-  for (let i = 0; i < 24; i++) h = Math.imul(h ^ u[i], 16777619);
-  let list = _volTable.get(h);
+  const h = volumeHash(u);
+  const list = _volNamed.get(h);
   if (list !== undefined) {
     find: for (let j = 0; j < list.length; j++) {
       const e = list[j];
       for (let i = 0; i < 24; i++) if (e.bits[i] !== u[i]) continue find;
-      if (e.id === 0) e.id = _volNext++;   // the second sight: named from now on
       return e.id;
     }
   }
-  if (_volCount >= VOLUME_TABLE_MAX) { _volTable = new Map(); _volCount = 0; list = undefined; }
-  if (list === undefined) { list = []; _volTable.set(h, list); }
-  list.push({ bits: Uint32Array.from(u), id: 0 });
-  _volCount++;
-  return 0;
+  if (!_volSeen.has(h)) {   // the first sight: its hash alone
+    if (_volSeen.size >= VOLUME_TABLE_MAX) _volSeen.clear();
+    _volSeen.add(h);
+    return 0;
+  }
+  _volSeen.delete(h);   // the second: named from now on
+  if (_volNamedCount >= VOLUME_TABLE_MAX) { _volNamed = new Map(); _volNamedCount = 0; }
+  const e = { bits: Uint32Array.from(u), id: _volNext++ };
+  const into = _volNamed.get(h);
+  if (into !== undefined) into.push(e); else _volNamed.set(h, [e]);
+  _volNamedCount++;
+  return e.id;
 }
 /** PERF-VOL: placementsInVolume through the grid's kept answers. `name` is volumeName(planes) - 0 asks afresh. An answer
  *  is kept on the batch's own grid (a move mints a new grid, so the old answers go with the old placements) against

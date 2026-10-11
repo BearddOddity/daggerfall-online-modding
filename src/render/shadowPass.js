@@ -56,7 +56,7 @@
 //     the culling above is what makes 24 face replays cheap.
 
 import { lookAt, multiply, ortho, perspective } from '../world/mat4.js';
-import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInCubeOf, placementsInVolumeOf, volumeName } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements; PERF-VOL: their answers kept by the planes' name
+import { spherePlanes, transformSphere, matrixScale, transformSphereScaled, recordVisible, subMeshVisible, batchVisible, sphereInPlanes, batchSphere, ZERO_ORIGIN, placementRadius, placedHalfDiagonal, placementsInCube, placementsInCubeOf, placementsInVolume, placementsInVolumeOf, volumeName } from './bounds.js';   // EL5: the cull; PERF-EXT1: and a batch's placements; PERF-VOL: their answers kept by the planes' name
 import { billboardKey } from './billboardKey.js';   // AUDIT 68 S16-bbkey-stale-shadow-reach: re-keyed here, however the batch reached the records
 import { aabbOutside } from './frustum.js';   // SHADOW-REACH: a host's box against the cascades
 import { getPref } from '../systems/uiPrefs.js';
@@ -2429,7 +2429,14 @@ export class ShadowPass {
           // PERF-EXT1: a pixel-wide batch passes the sphere test in every cascade and face of its pixel; asked of its
           // quads it is drawn only where one of them stands (the census's noon city: cascade 0 drew 123 flat batches a
           // frame for 7 with a tree in it, cascade 1 144 for 79). A skip here is a batch that rasterises nothing.
-          if (b._place && !placementsInVolumeOf(b, quadRadius(r, wl, law, b), planes, vname < 0 ? (vname = SHADOW_TUNING.volumeMemo === false ? 0 : volumeName(planes)) : vname)) { this.stats.culled++; continue; }   // PERF-VOL: the answer kept from the last frame's same planes
+          if (b._place) {
+            // PERF-VOL: the answer kept from the last frame's same planes - a LANTERN's alone (AUDIT PERF-ARENA V2: the sun
+            // turns every frame and a cascade follows the eye, so no cascade's planes ever come again); the name is asked
+            // at the replay's first placed batch, and a replay with none asks the walk itself, as before
+            const rad = quadRadius(r, wl, law, b);
+            if (vname < 0) vname = lightPos && SHADOW_TUNING.volumeMemo !== false ? volumeName(planes) : 0;
+            if (!(vname === 0 ? placementsInVolume(b, rad, planes) : placementsInVolumeOf(b, rad, planes, vname))) { this.stats.culled++; continue; }
+          }
           // WEEDS1: F5's sphere test used to sit here and is GONE, because
           // it can no longer decide anything. A single-flat batch's radius
           // is hypot(w, h) / 2, so F5 fired only when hypot(w, h) < 4 texels

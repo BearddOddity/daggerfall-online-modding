@@ -61,7 +61,7 @@ function counted(b) {
   return n;
 }
 
-test('PERF-VOL: the kept answer is the asked answer - over random woods (one cell and sixteen, an upside-down flame\'s negative height), lantern faces and cascades, frame after frame through the replay\'s one reused Float32Array, with the radius, each origin axis (the array written in place, as a pixel\'s is), the height and a lantern\'s place each moved alone, a grid re-minted by a move, a NaN and a signed zero: every answer equals placementsInVolume\'s and a walk of every placement, each moved number flipped answers, and a still frame reads no placement (mutants: PERFVOL-no-rad, PERFVOL-no-ox, PERFVOL-no-oy, PERFVOL-no-oz, PERFVOL-no-h, PERFVOL-stale-answer, PERFVOL-one-memo)', () => {
+test('PERF-VOL: the kept answer is the asked answer - over random woods (one cell and sixteen, an upside-down flame\'s negative height), lantern faces and cascades, frame after frame through the replay\'s one reused Float32Array, with the radius, each origin axis (the array written in place, as a pixel\'s is), the height and a lantern\'s place each moved alone, a grid re-minted by a move, a NaN and a signed zero: every answer equals placementsInVolume\'s and a walk of every placement, each moved number flipped answers, and a still frame reads no placement (mutants: PERFVOL-no-rad, PERFVOL-no-ox, PERFVOL-no-oy, PERFVOL-no-oz, PERFVOL-no-h, PERFVOL-stale-answer, PERFVOL-one-memo, PERFVOL-rad-tolerant, PERFVOL-origin-tolerant, PERFVOL-h-abs)', () => {
   const rand = rng(7);
   const woods = Array.from({ length: 14 }, () => wood(rand));
   const vols = volumes(rand, 40);
@@ -119,6 +119,52 @@ test('PERF-VOL: the kept answer is the asked answer - over random woods (one cel
   live.set(vols[0]); const name = volumeName(live);
   for (let i = 0; i < 3; i++) assert.equal(placementsInVolumeOf(b, NaN, live, name), placementsInVolume(b, NaN, live), 'a NaN radius: the asked answer');
   assert.equal(n.walks, 6, `and asked afresh each time - its own walk and the check's (${n.walks})`);
+  // AUDIT PERF-ARENA V1: THE KEY IS EXACT - the smallest move of the radius, of the origin, and the height's SIGN (the lift
+  // is half of h, so an upside-down flame stands on the other side of its placement with the same radius), each flipping
+  // the answer kept a moment before
+  const flipAt = (lo, hi, ask) => {   // lo and hi answer differently; close them in to within 1e-7
+    const at = ask(lo);
+    for (let i = 0; i < 80 && hi - lo > 1e-7; i++) { const mid = (lo + hi) / 2; if (ask(mid) === at) lo = mid; else hi = mid; }
+    return [lo, hi];
+  };
+  let boundaries = 0, radii = 0, origins = 0;
+  for (let v = 0; v < vols.length && boundaries < 3; v++) {
+    live.set(vols[v]); volumeName(live); live.set(vols[v]);
+    const nm = volumeName(live);
+    const z0 = { _place: placementGrid([[0, 0, 0], [3, 0.5, -2], [-4, 0.2, 5]]), origin: [0, 0, 0], size: { w: 1, h: 2 } };
+    // a place for the wood where the radius decides: walk the origin until a small radius misses and a large one hits
+    let placed = false;
+    for (let t = 0; t < 400 && !placed; t++) {
+      z0.origin = [(rand() * 2 - 1) * 70, rand() * 8 - 4, (rand() * 2 - 1) * 70];
+      placed = !placementsInVolume(z0, 0.01, live) && placementsInVolume(z0, 30, live);
+    }
+    if (!placed) continue;
+    // the radius
+    const [r0, r1] = flipAt(0.01, 30, (rr) => placementsInVolume(z0, rr, live));
+    assert.equal(placementsInVolumeOf(z0, r0, live, nm), placementsInVolume(z0, r0, live)); assert.equal(placementsInVolumeOf(z0, r0, live, nm), placementsInVolume(z0, r0, live), 'kept');
+    assert.equal(placementsInVolumeOf(z0, r1, live, nm), placementsInVolume(z0, r1, live), `a radius ${r1 - r0} larger: asked afresh, and flipped`);
+    assert.notEqual(placementsInVolume(z0, r1, live), placementsInVolume(z0, r0, live)); radii++;
+    // the origin, on x
+    const rr = r0, x0 = z0.origin[0];
+    const pass = (x) => { z0.origin[0] = x; return placementsInVolume(z0, rr, live); };
+    let far = null;
+    for (const dx of [40, -40, 80, -80]) if (pass(x0 + dx) !== pass(x0)) { far = x0 + dx; break; }
+    if (far !== null) {
+      const [xa, xb] = far > x0 ? flipAt(x0, far, pass) : flipAt(far, x0, pass).reverse();
+      z0.origin[0] = xa; assert.equal(placementsInVolumeOf(z0, rr, live, nm), placementsInVolume(z0, rr, live)); assert.equal(placementsInVolumeOf(z0, rr, live, nm), placementsInVolume(z0, rr, live), 'kept');
+      z0.origin[0] = xb; assert.equal(placementsInVolumeOf(z0, rr, live, nm), placementsInVolume(z0, rr, live), `an origin ${Math.abs(xb - xa)} along: asked afresh, and flipped`);
+      z0.origin[0] = xa; const ya = placementsInVolume(z0, rr, live); z0.origin[0] = xb; assert.notEqual(placementsInVolume(z0, rr, live), ya); origins++;
+      z0.origin[0] = x0;
+    }
+    // the height's sign: the same radius, the lift on the other side
+    z0.size.h = 2; const up = placementsInVolume(z0, rr, live); z0.size.h = -2; const down = placementsInVolume(z0, rr, live);
+    if (up !== down) {
+      z0.size.h = 2; assert.equal(placementsInVolumeOf(z0, rr, live, nm), up); assert.equal(placementsInVolumeOf(z0, rr, live, nm), up, 'kept');
+      z0.size.h = -2; assert.equal(placementsInVolumeOf(z0, rr, live, nm), down, 'upside down, the same |h|: asked afresh, and flipped');
+      boundaries++;
+    }
+  }
+  assert.ok(boundaries > 0 && radii > 0 && origins > 0, `each boundary was met (the height's sign ${boundaries}, the radius ${radii}, the origin ${origins})`);
   // a signed zero is the same number to the test: +0 kept, -0 asked, the answer one
   const z = { _place: placementGrid([[0, 0, 0], [0.5, 0, 0]]), origin: [0, 0, 0], size: { w: 1, h: 1 } };
   assert.equal(placementsInVolumeOf(z, 0, live, name), placementsInVolume(z, 0, live));
@@ -126,48 +172,61 @@ test('PERF-VOL: the kept answer is the asked answer - over random woods (one cel
   assert.equal(placementsInVolumeOf(z, -0, live, name), placementsInVolume(z, -0, live), 'a signed zero: the same answer');
 });
 
-test('PERF-VOL: volumeName - 0 at a set\'s first sight and for anything but a Float32Array(24) (a carried lantern\'s faces, a walking camera\'s cascades never repeat, and are never kept); a name from the second sight, the same name for the same bits in another array (a subarray of a larger buffer too), another for one word changed, another for two sets whose hash is the same (the words are compared, not the hash); and a name is never reused - past VOLUME_TABLE_MAX sets the table starts over, a set seen before it is first seen again, and the names go on counting (mutants: PERFVOL-named-at-first-sight, PERFVOL-hash-alone, PERFVOL-names-reused, PERFVOL-table-never-forgets, PERFVOL-renamed-every-sight)', () => {
+test('PERF-VOL: volumeName - 0 at a set\'s first sight and for anything but a Float32Array(24); a name from the second sight, the same name for the same bits in another view (a subarray of a larger buffer too) and another for another set in the same buffer, another for one word changed, two names for two sets of ONE hash - at the first words and at the last, through one reused array, their answers kept apart; the first sights start over past VOLUME_TABLE_MAX hashes and forget no name; the named table starts over past VOLUME_TABLE_MAX names and its names go on counting; the two bounds are what the record says (mutants: PERFVOL-named-at-first-sight, PERFVOL-hash-alone, PERFVOL-compare-short, PERFVOL-names-reused, PERFVOL-named-never-forget, PERFVOL-sights-forget-names, PERFVOL-renamed-every-sight, PERFVOL-view-by-buffer, PERFVOL-table-max-raised, PERFVOL-memo-max-raised)', () => {
+  assert.equal(VOLUME_TABLE_MAX, 512, 'the table\'s bound'); assert.equal(VOLUME_MEMO_MAX, 128, 'a grid\'s bound');   // AUDIT PERF-ARENA V5
   const rand = rng(21);
   const set = () => { const p = new Float32Array(24); for (let i = 0; i < 24; i++) p[i] = rand() * 2 - 1; return p; };
+  const named = (p) => { assert.equal(volumeName(p), 0, 'first sight: no name'); const n = volumeName(p); assert.ok(n > 0, 'second sight: a name'); return n; };
   const a = set();
-  assert.equal(volumeName(a), 0, 'first sight: no name');
-  const na = volumeName(a);
-  assert.ok(na > 0, 'second sight: a name');
+  const na = named(a);
   assert.equal(volumeName(a), na, 'and the same name after');
-  const buf = new Float32Array(40); buf.set(a, 7);
+  const buf = new Float32Array(56); buf.set(a, 7);
   assert.equal(volumeName(buf.subarray(7, 31)), na, 'the same bits in a view of another buffer: the same name');
+  const other = set(); buf.set(other, 31);
+  const nOther = named(buf.subarray(31, 55));
+  assert.ok(nOther !== na, 'another set in the same buffer, at another offset: another name (AUDIT PERF-ARENA V4: a view is the ARRAY\'s, not its buffer\'s)');
+  assert.equal(volumeName(buf.subarray(7, 31)), na, 'and the first view still names its own');
   const b = Float32Array.from(a); b[23] = Math.fround(b[23] + 0.001);
-  assert.equal(volumeName(b), 0); const nb = volumeName(b);
-  assert.ok(nb > 0 && nb !== na, 'one word changed: another name');
-  assert.equal(volumeName(Array.from(a)), 0, 'an Array: no name'); assert.equal(volumeName(Array.from(a)), 0, 'ever');
-  assert.equal(volumeName(Float64Array.from(a)), 0, 'a Float64Array: no name'); assert.equal(volumeName(Float64Array.from(a)), 0, 'ever');
-  assert.equal(volumeName(new Float32Array(23)), 0, 'a short array: no name'); assert.equal(volumeName(new Float32Array(23)), 0, 'ever');
-  // two sets with one hash: FNV-1a's first two steps are undone by the second word - w1' = w1 ^ A(w0) ^ A(w0')
-  const c = set(), cu = new Uint32Array(c.buffer);
-  const A = (w) => Math.imul(2166136261 ^ w, 16777619) >>> 0;
-  const d = Float32Array.from(c), du = new Uint32Array(d.buffer);
-  for (let tries = 0; ; tries++) {
-    du[0] = (cu[0] & 0xff800000) | ((cu[0] + 1 + tries) & 0x7fffff);
-    du[1] = (cu[1] ^ A(cu[0]) ^ A(du[0])) >>> 0;
-    if (((du[1] >>> 23) & 0xff) !== 0xff) break;   // a finite float, as a plane's is
-  }
-  const hash = (u) => { let h = 2166136261; for (let i = 0; i < 24; i++) h = Math.imul(h ^ u[i], 16777619); return h; };
-  assert.equal(hash(cu), hash(du), 'the two sets hash alike');
-  assert.notDeepEqual([...cu], [...du], 'and are not the same numbers');
-  volumeName(c); const nc = volumeName(c);
-  assert.equal(volumeName(d), 0, 'the second of one hash: first sight'); const nd = volumeName(d);
-  assert.ok(nc > 0 && nd > 0 && nc !== nd, `one hash, two sets: two names (${nc}, ${nd})`);
-  assert.equal(volumeName(c), nc, 'and each keeps its own');
-  // the woods' answers by those two names stay apart
+  const nb = named(b);
+  assert.ok(nb !== na, 'one word changed: another name');
+  for (const bad of [Array.from(a), Float64Array.from(a), new Float32Array(23)]) { assert.equal(volumeName(bad), 0); assert.equal(volumeName(bad), 0, `${bad.constructor.name}(${bad.length}): never a name`); }
+  // two sets of one hash: the hash's steps are undone at word k+1 - w' = w ^ s_k ^ s'_k, s_k the state after word k
+  const step = (h, w) => { h = Math.imul(h ^ w, 16777619); return h ^ (h >>> 15); };
+  const twin = (src, k) => {
+    const cu = new Uint32Array(src.buffer, src.byteOffset, 24), d = Float32Array.from(src), du = new Uint32Array(d.buffer);
+    let pre = 2166136261;
+    for (let i = 0; i < k; i++) pre = step(pre, cu[i]);
+    for (let t = 1; ; t++) {
+      du[k] = (cu[k] & 0xff800000) | ((cu[k] + t) & 0x7fffff);
+      du[k + 1] = (cu[k + 1] ^ step(pre, cu[k]) ^ step(pre, du[k])) >>> 0;
+      if (((du[k + 1] >>> 23) & 0xff) !== 0xff) return d;   // a finite float, as a plane's is
+    }
+  };
   const w = { _place: placementGrid(Array.from({ length: 30 }, () => [(rand() * 2 - 1) * 5, 0, (rand() * 2 - 1) * 5])), origin: [0, 0, 0], size: { w: 1, h: 1 } };
-  for (const [p, n] of [[c, nc], [d, nd], [c, nc], [d, nd]]) assert.equal(placementsInVolumeOf(w, 1, p, n), placementsInVolume(w, 1, p));
-  // never reused: fill the table past its bound, then the old set is first seen again, and the new name is new
-  const names = new Set([na, nb, nc, nd]);
-  const old = set(); volumeName(old); const nOld = volumeName(old); names.add(nOld);
-  for (let i = 0; i < VOLUME_TABLE_MAX + 1; i++) { const s = set(); volumeName(s); }
-  assert.equal(volumeName(old), 0, 'past the bound the table started over: the old set is first seen again');
-  const nNew = volumeName(old);
-  assert.ok(nNew > 0 && !names.has(nNew), `and named anew - no name given twice (${nNew}; before: ${[...names]})`);
+  const live = new Float32Array(24);
+  for (const k of [0, 22]) {
+    const c = set(), d = twin(c, k);
+    assert.equal(bounds.volumeHash(new Uint32Array(c.buffer)), bounds.volumeHash(new Uint32Array(d.buffer)), `words ${k}-${k + 1}: the two sets hash alike`);
+    assert.notDeepEqual([...c], [...d], 'and are not the same numbers');
+    live.set(c); volumeName(live); live.set(c); const nc = volumeName(live);
+    live.set(d); assert.equal(volumeName(live), 0, `words ${k}-${k + 1}: the second of one hash, first seen`);
+    live.set(d); const nd = volumeName(live);
+    assert.ok(nc > 0 && nd > 0 && nc !== nd, `words ${k}-${k + 1}: one hash, two sets, two names (${nc}, ${nd})`);
+    live.set(c); assert.equal(volumeName(live), nc, 'and each keeps its own');
+    for (const [p, n] of [[c, nc], [d, nd], [c, nc], [d, nd]]) { live.set(p); assert.equal(placementsInVolumeOf(w, 1, live, n), placementsInVolume(w, 1, live), 'their answers apart'); }
+  }
+  // the first sights start over alone: a set seen once is forgotten past the bound, a named set is not
+  const names = new Set([na, nOther, nb]);
+  const kept = set(); const nKept = named(kept); names.add(nKept);
+  const once = set(); assert.equal(volumeName(once), 0);
+  for (let i = 0; i < VOLUME_TABLE_MAX + 1; i++) volumeName(set());
+  assert.equal(volumeName(once), 0, 'past the bound the first sights started over: the set seen once is first seen again');
+  assert.equal(volumeName(kept), nKept, 'and a named set kept its name through it');
+  // the named table starts over past its bound, and the names go on counting
+  for (let i = 0; i < VOLUME_TABLE_MAX + 1; i++) { const s = set(); volumeName(s); names.add(volumeName(s)); }
+  assert.equal(volumeName(kept), 0, 'past the bound the named table started over: the old set is first seen again');
+  const nNew = volumeName(kept);
+  assert.ok(nNew > 0 && !names.has(nNew), `and named anew - no name given twice (${nNew})`);
   assert.ok(nNew > Math.max(...names), `the names go on counting past the start-over (${nNew} after ${Math.max(...names)}): a grid's answer under an old name can never be read for a new set`);
 });
 
@@ -219,13 +278,15 @@ function recordingGl() {
 }
 /** A night town under Steady shadows: swaying woods and a still one, a walker by each lantern, lanterns that hold
  *  still - and a script of frames that each move one thing. `memo` is SHADOW_TUNING.volumeMemo. */
-function town(seed, memo) {
+function town(seed, memo, { sun = false, steady = true, cache = true } = {}) {
   const rand = rng(seed);
   const g = recordingGl();
   const r = new Renderer(g.canvas);
   r.setLightingLane(EL_LANE);
   for (const k of ['504_1', '504_2', '504_3']) r.textures.set(k, { id: `tex-${k}` });
-  r.setLighting(new Float32Array([0.1, 0.1, 0.1]), 0);
+  if (sun) r.setLighting(new Float32Array([0.5, 0.5, 0.5]), 0.55, new Float32Array([1, 1, 1]));
+  else r.setLighting(new Float32Array([0.1, 0.1, 0.1]), 0);
+  if (!cache) r.setShadowCache(false);
   const woods = [];
   for (let k = 0; k < 10; k++) {
     const b = r.createBillboardBatch(504, 1 + (k % 2), { w: 1 + rand() * 3, h: 2 + rand() * 7 }, Array.from({ length: 20 + Math.floor(rand() * 80) }, () => [(rand() * 2 - 1) * 40, rand() - 0.5, (rand() * 2 - 1) * 40]));
@@ -245,7 +306,7 @@ function town(seed, memo) {
   let t = 0;
   const frame = (move) => {
     const was = [SHADOW_TUNING.override, SHADOW_TUNING.volumeMemo];
-    SHADOW_TUNING.override = true; SHADOW_TUNING.volumeMemo = memo;
+    SHADOW_TUNING.override = steady; SHADOW_TUNING.volumeMemo = memo;
     try {
       t++;
       walkers.forEach((b, i) => { b.origin = [lights[i * 4] + Math.sin(t + i) * 2, 0, lights[i * 4 + 2] + Math.cos(t) * 2]; });   // a mover by each lantern: its dynamic faces redraw
@@ -268,11 +329,22 @@ function town(seed, memo) {
   return { frame };
 }
 
-test('PERF-VOL: the replay draws exactly what it drew - every draw of every frame of a night town under Steady shadows (program, VAO, framebuffer, count, offset, in order), against the same pass keeping nothing (SHADOW_TUNING.volumeMemo false), through frames that each move one thing: a lantern swung, the wind risen (the quads\' lean, their radius), a wood\'s origin written in place, a wood\'s height; and the saving by count - the pass that keeps nothing walks the woods\' placements every frame, the one that keeps them walks none on a still frame and only again on a frame that moved something (mutants: PERFVOL-replay-unnamed, PERFVOL-off-arm-ignored, PERFVOL-renamed-every-sight, PERFVOL-key-not-refreshed)', () => {
+test('PERF-VOL: the replay draws exactly what it drew - every draw of every frame of a night town under Steady shadows, and by day, cadenced and with the static cache off (program, VAO, framebuffer, count, offset, in order), against the same pass keeping nothing (SHADOW_TUNING.volumeMemo false), through frames that each move one thing: a lantern swung, the wind risen (the quads\' lean, their radius), a wood\'s origin written in place, a wood\'s height; and the saving by count - the pass that keeps nothing walks the woods\' placements every frame, the one that keeps them walks none on a still frame and only again on a frame that moved something (mutants: PERFVOL-replay-unnamed, PERFVOL-off-arm-ignored, PERFVOL-renamed-every-sight, PERFVOL-key-not-refreshed)', () => {
   const script = [null, null, null, null, 'light', null, null, 'wind', null, null, 'origin', null, null, 'height', null, null];
   // a frame's pass replays the records the frame before drew (frame 0 has none): the first replay names nothing, the
   // second names and keeps; a move is replayed on its own frame or, a record's own number (the wind), on the next
   let compared = 0;
+  // AUDIT PERF-ARENA V8: and the draws by day (the cascades, never named), cadenced (Steady off) and with the static cache off
+  for (const opts of [{ sun: true }, { steady: false }, { cache: false }]) {
+    for (const seed of [6, 7]) {
+      const kept = town(seed, true, opts), asked = town(seed, false, opts);
+      for (let f = 0; f < script.length; f++) {
+        const x = kept.frame(script[f]), y = asked.frame(script[f]);
+        assert.deepEqual(x.shadow, y.shadow, `${JSON.stringify(opts)} seed ${seed}, frame ${f}: the same draws in the same order`);
+        compared += x.shadow.length;
+      }
+    }
+  }
   for (const seed of [3, 4, 5]) {
     const kept = town(seed, true), asked = town(seed, false);
     const walks = [];
@@ -292,14 +364,15 @@ test('PERF-VOL: the replay draws exactly what it drew - every draw of every fram
   assert.ok(compared > 2000, `the comparison drew something (${compared})`);
 });
 
-test('PERF-VOL: the replay asks through the name, once a replay, and only with a placed batch to ask; and the memo SHIPS ON (AUDIT PERF-ARENA O1: every other pin sets the switch for each arm, so a shipped `volumeMemo: false` failed none) (mutant: PERFVOL-shipped-off)', async () => {
+test('PERF-VOL: the replay asks through the name, once a replay, a lantern\'s alone, and only with a placed batch to ask; and the memo SHIPS ON (AUDIT PERF-ARENA O1: every other pin sets the switch for each arm, so a shipped `volumeMemo: false` failed none) (mutant: PERFVOL-shipped-off)', async () => {
   assert.equal(SHIPPED.volumeMemo, true, 'SHADOW_TUNING.volumeMemo ships on');
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/render/shadowPass.js', import.meta.url), 'utf8');
   const body = src.slice(src.indexOf('  replay(f, vp, lightPos,'), src.indexOf('\n  }\n', src.indexOf('  replay(f, vp, lightPos,')));
   assert.match(body, /let vname = -1;/, 'the name is asked lazily');
-  assert.match(body, /placementsInVolumeOf\(b, quadRadius\(r, wl, law, b\), planes, vname < 0 \? \(vname = SHADOW_TUNING\.volumeMemo === false \? 0 : volumeName\(planes\)\) : vname\)/, 'at the first placed batch, by the off arm');
-  assert.doesNotMatch(body, /placementsInVolume\(/, 'and no ask goes round the kept answers');
+  assert.match(body, /if \(vname < 0\) vname = lightPos && SHADOW_TUNING\.volumeMemo !== false \? volumeName\(planes\) : 0;/, 'at the first placed batch, a lantern\'s alone, by the off arm (AUDIT PERF-ARENA V2: no cascade\'s planes come again)');
+  assert.match(body, /if \(!\(vname === 0 \? placementsInVolume\(b, rad, planes\) : placementsInVolumeOf\(b, rad, planes, vname\)\)\) \{ this\.stats\.culled\+\+; continue; \}/, 'named: the kept answers; unnamed: the walk itself');
+  assert.equal((body.match(/placementsInVolume(?:Of)?\(/g) ?? []).length, 2, 'and no other ask');
 });
 
 // ─── PERF-ORDER: the cheapest skip first ──────────────────────────────────────────────────────────────────────────
