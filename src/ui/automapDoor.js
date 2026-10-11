@@ -32,6 +32,7 @@
 import { heldMapWorn } from './mapSkin.js';   // MAP-TOGGLE: the skin AND the player's switch
 import { AutomapWindow, preloadAutomapArt, automapArtLoaded } from './automapWindow.js';
 import { HeldMapWindow } from './heldMap.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { preloadAutomapArt };
 
@@ -58,6 +59,7 @@ export function automapDoorReady() {
  * without its art - so the hosts' `if (win)` guards keep meaning.
  */
 export function createAutomapWindow(deps = {}) {
+  noteFirstUse('automap');   // TUT1
   // `document` for the reason every fork before this one gives: node
   // drives these hosts headless and keeps the canvas window rather than
   // getting a special case written for it.

@@ -508,8 +508,8 @@ export async function relinquishSeat({ db, nowS }, player, env, { character, key
  * (seatGlyphsOf), its guildmaster the title (seatTitleOf). `{ glyphs, title, ts }` - empty and null for a character in no
  * guild, or one holding none.
  */
-export async function seatBadgeOf(db, playerId, character, season = 0) {   // SEASON1: the Season counted, on the title's claim
-  const m = typeof character === 'string'
+export async function seatBadgeOf(db, playerId, character, season = 0, member = undefined) {   // SEASON1: the Season counted, on the title's claim; SCALE4f part two: the mint's one membership read (guilds.js mintMemberOf)
+  const m = member !== undefined ? member : typeof character === 'string'
     ? await db.prepare('SELECT guild_id, rank FROM guild_members WHERE player = ? AND char_id = ?').bind(playerId, character).first() : null;
   if (!m) return { glyphs: [], title: null, ts: null };
   const { results = [] } = await db.prepare('SELECT key, tier, region FROM town_seat_holds WHERE guild_id = ? ORDER BY key').bind(m.guild_id).all();

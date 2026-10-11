@@ -38,6 +38,7 @@ import { isEnhanced } from '../systems/uiSkin.js';
 import { mountEnhancedChunk } from './enhancedChunk.js';   // MENU1: the one lazy-chunk door
 import { registerOverlay } from './enhancedOverlays.js';   // PX28: Tab puts it away
 import { NativeTalkWindow, talkArtLoaded } from './nativeTalk.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** The gate a host asks before it opens a conversation window. The
  *  classic face needs TALK01I0 and its strips; the panel reads none
@@ -53,6 +54,7 @@ export function talkDoorReady() {
  * which the panel runs inside its closing gesture (MAC1).
  */
 export function createTalkWindow(greeting, hooks) {
+  noteFirstUse('talk');   // TUT1
   const model = new NativeTalkWindow(greeting, hooks);
   // `document` for the reason the other doors give: node drives the
   // hosts headless and keeps the canvas window rather than getting a

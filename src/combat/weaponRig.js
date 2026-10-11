@@ -45,7 +45,7 @@ import { installThunderlockSounds, SFX as TL_SFX } from '../systems/thunderlock.
 // separate component in DFU and a separate module here, drawn by the
 // same rig because this is the one surface every FPS-weapon host
 // already mounts - so wiring it here wires all four at once.
-import { fpsSpellCasting, loadSpellCastArt, drawSpellCastHands, magicAnimFilename } from './fpsSpellCasting.js';
+import { fpsSpellCasting, loadSpellCastArt, drawSpellCastHands, magicAnimFilename, readiedHandsFrame } from './fpsSpellCasting.js';   // RSH1: the readied hands
 import { createClimbHands } from './climbHands.js';   // CLIMB-HANDS: the classic lane's hands on the wall
 // MW-D8: the classic sprite is still the DEFAULT and still the fallback,
 // and runs untouched otherwise. The Morrowind arm below is an opt-in
@@ -307,6 +307,8 @@ export async function autoBuildArms(entity, { dataCount = morrowindDataCount, me
  *                     no townTalk at all), so the empty default below
  *                     is unreached,
  *   spellArmed()    - optional: WeaponManager's HasReadySpell leg
+ *   readiedSpell()  - optional (RSH1): PlayerEffectManager.ReadySpell - the readied record, or null - for the
+ *                     Readied Spellcasting Hands mod's raised hands
  *                     (hosts without casting omit it),
  *   abortSpell()    - MAC-O1: EntityEffectManager.AbortReadySpell, the
  *                     other half of that leg. WeaponManager.Update
@@ -433,7 +435,7 @@ export function techniqueDipRect(rect, dip, screenH) {
   return { ...rect, y: rect.y + dip * screenH };
 }
 
-export function createWeaponRig({ renderer, canvas, fetchBytes, palette, audio, entity, camera = null, say = () => {}, spellArmed = () => false, abortSpell = () => {}, bindWorn = true, activateHeld = () => false, envHit = null, missEffect = null, collider = null, actionDown = null, torches = () => null, sheetWindowUp = () => false, dropRefusal = () => null, actTool = () => null, technique = null }) {   // TECH1: `technique` the host's door for a weapon's technique (combat/techniques.js: motor, fireArrow, drainFatigue, face)   // HT1 (KB1): whether a registry action is held, and the hosts' dropped-torch pool   // MAP-WEAPON: whether the travel map window holds the screen   // AUDIT 28 W12: HasAction(ActivateCenterObject) - the drawn bow's un-draw; WW1: the widget's recoil doors
+export function createWeaponRig({ renderer, canvas, fetchBytes, palette, audio, entity, camera = null, say = () => {}, spellArmed = () => false, readiedSpell = () => null, abortSpell = () => {}, bindWorn = true, activateHeld = () => false, envHit = null, missEffect = null, collider = null, actionDown = null, torches = () => null, sheetWindowUp = () => false, dropRefusal = () => null, actTool = () => null, technique = null }) {   // TECH1: `technique` the host's door for a weapon's technique (combat/techniques.js: motor, fireArrow, drainFatigue, face)   // HT1 (KB1): whether a registry action is held, and the hosts' dropped-torch pool   // MAP-WEAPON: whether the travel map window holds the screen   // AUDIT 28 W12: HasAction(ActivateCenterObject) - the drawn bow's un-draw; WW1: the widget's recoil doors
   const playerWeapon = new PlayerWeapon({ liveSpeed: () => (entity ? liveStat(entity, 'speed') : 50) });   // DISC28-D: the swing clock reads the live Speed (FPSWeapon.cs:431/549-556), as the body and the widget already did
   playerWeapon.animCtx = () => ({ entity, weaponType: weaponTypeForItem(playerWeapon.weapon), usingRightHand: playerWeapon.usingRightHand });   // AUDIT-RR F1: GetMeleeWeaponAnimTime(player, weaponType, weaponHands) - the swing clock's own ask, so RR's weaponSpeed and RRI's weaponBalance time the blow that lands, not only the widget's clone
   const poseProbe = () => ({ ...weaponPoseOf(playerWeapon), weaponType: weaponTypeForItem(playerWeapon.weapon) });   // RR1: WeaponManager.Sheathed (the pair through its one law, HARD2c) + ScreenWeapon.WeaponType
@@ -522,6 +524,7 @@ export function createWeaponRig({ renderer, canvas, fetchBytes, palette, audio, 
     renderer.drawScreenQuad(tex, { x: rect.x, y: rect.y, w: rect.width, h: rect.height }, uv, tint ?? undefined);
   }
   const shieldOn = () => modSetting('shield-widget', 'Enabled');
+  const readiedHandsOn = () => modSetting('readied-spellcasting-hands', 'Enabled');   // RSH1: its switch, read on the frame
   /** The left hand's item in the four fields the widget reads.
    *
    *  Read WITHOUT materialising: `equipTableOf` is
@@ -1947,6 +1950,17 @@ export function createWeaponRig({ renderer, canvas, fetchBytes, palette, audio, 
       const fpTint = fpLightingOn() ? (renderer?.flatLightAt?.() ?? null) : null;
       if (c && !fpArm.active() && !eotbHidesSpellHands()) {
         drawSpellCastHands(renderer, c, spellArtFor(fpsSpellCasting.element), fpsSpellCasting.frameIndex, { tint: fpTint });
+        // RSH1 (vendor/readied-spellcasting-hands, Modded_FPSSpellCasting_Ready.cs AnimateSpellCast): A READIED SPELL
+        // RAISES THE HANDS. While a spell that is not CasterOnly waits for the click - and the cast itself is not
+        // playing (readiedHandsFrame) - its element's frame 0 stands where the cast will start from: the same archive,
+        // the same layout, the same light, under the same two lane gates the cast's hands stand under (the Morrowind arm
+        // holds its own spell stance, MW-D39; the Beholder's third person hides both). The weapon is already down here:
+        // shown()'s HasReadySpell leg hides it, which is what left the screen empty until the click.
+        if (readiedHandsOn() && !fpsSpellCasting.isPlayingAnim) {
+          const sp = readiedSpell();
+          const f = readiedHandsFrame(sp, fpsSpellCasting.isPlayingAnim);
+          if (f >= 0) drawSpellCastHands(renderer, c, spellArtFor(sp.element), f, { tint: fpTint });
+        }
       }
       // PROF1 (bible/06-Systems/Professions-Arc.md 5.1, 22; FORAGE0 14.2): AN ACT'S TOOL IN THE HAND. While a
       // profession's act plays with a tool DFU can draw, the hand holds that and nothing else - the Sickle as DFU's own

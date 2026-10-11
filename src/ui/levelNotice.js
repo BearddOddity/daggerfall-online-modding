@@ -73,6 +73,7 @@ import { buttonText } from '../systems/controlsConfig.js';    // GetButtonText -
 // systems/skills.js and a faction constant, and nothing in ui/.
 import { playerEntity } from '../characters/playerEntity.js';
 import { openLevelUpWindow } from './levelUpOpener.js';   // LV3: the strip's level row is a button now
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** The three things this surface announces. */
 export const NOTICE_LEVEL = 'level';
@@ -255,6 +256,7 @@ const DOC = (typeof document === 'undefined' ? null : document);
  * lanes apart without asking the skin a second time.
  */
 export function announceLevelUp(entity, { say = null, open = null, now = nowMs(), doc = DOC } = {}) {
+  noteFirstUse('level-up');   // TUT1
   if (!isEnhanced() || !doc) {
     say?.('You have gained a level!');
     open?.();

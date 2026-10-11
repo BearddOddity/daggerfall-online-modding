@@ -227,11 +227,12 @@
   {
     "name": "SD-HERALD-own-role-unread",
     "file": "server/src/index.js",
-    "old": "sdRole: serpentHeraldRole(this.env?.SD_DISCORD_ROLE, this.env?.GATE_DISCORD_ROLE)",
-    "new": "sdRole: heraldRole(this.env?.GATE_DISCORD_ROLE)",
+    "old": "sdRole: serpentHeraldRole(role('sdRole'), role('gateRole'))",
+    "new": "sdRole: heraldRole(role('gateRole'))",
     "tests": [
       "test/sdherald.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): the roles through relayCfgValue."
   },
   {
     "name": "SD-HERALD-hello-unarmed",

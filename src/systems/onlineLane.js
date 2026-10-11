@@ -140,6 +140,7 @@ export function declareOnlinePrefs(table) {
 /** The switches the lane deliberately leaves to the player (SURV-TIERS: and one tier, the survival pref) -
  *  the pin fails on a boolean uiPrefs key that is in neither list. */
 export const ONLINE_PLAYERS_OWN_PREFS = [
+  'tutorialPopups',   // TUT1: the tutorial's popups are each player's to keep or turn off
   'touchAnalogStick', 'touchGyroLook', 'touchHaptics', 'touchFullscreen',   // TI2: how this phone is held
   'showFps',          // FPS1: a diagnostic over the game
   'hudLocked',        // HUD-MOVE: where THIS player keeps their HUD - a layout on one screen, nothing the room agrees on
@@ -448,6 +449,7 @@ export const ONLINE_PLAYERS_OWN_MODS = [
   'seasons-iliac-bay',     // which texture archives load for the season - a swap in front of the same terrain
   'weapon-widget',         // the first-person weapon's own motion; no damage, no timing, no attack state
   'eye-of-the-beholder',   // third person and your own billboard; peers are drawn by remotePlayers either way
+  'readied-spellcasting-hands',   // RSH1: your own first-person hands on your own screen; the cast itself is unchanged
   'ambient-text',          // flavour lines on your own screen
   'immersive-footsteps',   // your own footstep audio
   'better-ambience',       // ambient audio and the dungeon's darkness, both drawn locally

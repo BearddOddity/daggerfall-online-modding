@@ -166,6 +166,12 @@ export const PREF_DEFAULTS = Object.freeze({
   // on for a probe; this is the player's own switch on the Enhanced
   // pane. Off by default - a number over the game is a diagnostic.
   showFps: false,
+  // TUT1 (2026-10-11, Mac: "our own custom tutorial ... popups for whenever you are interacting with a new system"): the
+  // tutorial's popups (on unless turned off, from the menu's Tutorials tab) and the pages read - ids of
+  // systems/tutorialCatalogue.js, in its order; null is none read. The player's, not the character's
+  // (systems/tutorials.js says why).
+  tutorialPopups: true,
+  tutorialsSeen: null,
   // UXB1-A (2026-09-25, the UX backlog: '"Skip Start Video" in the options. Watching it once is great, having to skip
   // it every time is tedious. Disabled by default, of course.'): open straight onto the menu - no INTRO2 film at the
   // front door, and on the classic skin no ANIM0001 splash before the title (main.js). ?nointro and ?novideo do the

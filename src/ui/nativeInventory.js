@@ -118,6 +118,7 @@ import { expandRowValues } from '../systems/quest/questMacros.js';   // MACROS1:
 import { magicPowersLines } from '../systems/itemPowers.js';   // MACRO-3: %mpw
 import { itemIsIdentified } from '../systems/tradeModes.js';   // MACRO-3: MagicPowers' identified arm
 import { bagMayLeave } from '../systems/materialsBag.js';   // AUDIT2 BAG1 H11: a loaded bag stays - the one test
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export const INV_RECTS = Object.freeze({
   tabWeapons: [0, 0, 92, 10],        // weaponsAndArmorRect
@@ -798,6 +799,7 @@ export class NativeInventoryWindow {
     }
     // PORTAL1: a Portal Stone opens the host's travel map - the pack closes first (the camp's law, the one overlay slot)
     // and the host's door says where the portal stands, or why not. A host with no open world keeps the window and says so.
+    if (r.kind === 'openPortal' && this.hooks.openPortal) noteFirstUse('portal-stone');   // TUT1
     if (r.kind === 'openPortal') {
       if (this.hooks.openPortal) { this._closeSilently(); this.hooks.openPortal(r.item, collection); }
       else this.boxes = [{ rows: [{ text: USE_PENDING.openPortal, center: true }] }];
@@ -806,6 +808,7 @@ export class NativeInventoryWindow {
     // WALLET1: the wallet says what it holds - DFU's own click-anywhere box, its lines; this window is DFU's and keeps
     // DFU's four tabs, the currencies where they always were. The account's silver asked afresh for the next look.
     if (r.kind === 'binder') { this.boxes = [{ rows: BINDER_CARD_LINES.map((text) => ({ text, center: true })) }]; return; }   // CARDS8 (AUDIT CARDS-5 C5): the binder's lines in DFU's box
+    if (r.kind === 'wallet') noteFirstUse('wallet');   // TUT1: the wallet's box read
     if (r.kind === 'wallet') { this.boxes = [{ rows: walletLines(walletContents(this.hooks.items(), this.hooks.entity)).map((text) => ({ text, center: true })) }]; void refreshWalletSilver(); return; }
     // MEND-AIM: a use that asks WHICH (a repair kit, with more than one piece to mend) pushes DFU's list picker over
     // the pack, the choices in the law's order; a row chosen uses the item again, aimed at it, and a click outside

@@ -13,6 +13,8 @@
 //   /me <action>            an ACTION on the active tab - "Bran looks around" (EMOTE1)
 //   /wave /bow ... [name]   a GESTURE, to those near you (Local) - "Bran waves at Ann." (EMOTE1, EMOTES; /emotes lists them)
 //   :smile: :sword: ...     a shortcode is its emoji in anything said (EMOTE1, SHORTCODES)
+//   /find /who <name>       who is online by that name, anywhere in the world - the hub's answer (SCALE5c)
+//   /search <name>          the panel's own search of every tab's lines and the roster - never sent (CHAT-FIND)
 //   /help /?                the list, as lines only you see
 //   //text                  a line that starts with a slash, said as it stands on the active tab
 //
@@ -24,6 +26,7 @@
 
 import { parseRollSpec, ROLL_DICE_MAX, ROLL_SIDES_MAX } from './dice.js';   // DICE1: the dice's grammar
 import { LIVE_EVENTS } from './wire.js';   // EVENT1: the live events a dev may stage
+import { HUB_FIND_MAX } from './hubShards.js';   // SCALE5c: a search's bound
 
 /** The channel commands: each names the tab its text is said on. `wrap` is what the text becomes first. */
 export const CHANNEL_COMMANDS = Object.freeze([
@@ -179,6 +182,8 @@ export const HELP_LINES = Object.freeze([
   '/unstuck - out by the door you came in, or outdoors to the nearest town (/unstuck cancel stops a wait)',   // PVPUNSTUCK
   '/mentor - whether you are mentoring your party (automatic when they are well below your level)',
   '/mail - your mailbox: the developers\' messages, and any item they hold to claim',
+  '/find or /who <name> - who is online by that name, anywhere in the world',   // SCALE5c
+  '/search <name> - every tab\'s lines from or about a player, and who here is online by that name (/search alone clears)',   // CHAT-FIND
   '//text - a line that starts with a slash',
 ]);
 
@@ -195,6 +200,7 @@ export const HELP_LINES = Object.freeze([
  *   { kind: 'emote', text }                 - EMOTE1: a gesture's line, said as an action on the Local tab
  *   { kind: 'emotes' }                      - EMOTE1: the gestures' list
  *   { kind: 'badroll', name }               - a roll the dice's grammar or bounds refuse
+ *   { kind: 'find', q }                     - SCALE5c: a search of everyone online by name (the World tab's link asks)
  * A line starting `//` is said with one slash off it. `extra` is a later slice's own table of commands, each
  * { names, parse(rest) } - parse answers a result of its own or null to decline.
  */
@@ -212,6 +218,7 @@ export function parseChatLine(text, extra = []) {
   if (name === 'roll' || name === 'dice') { const spec = parseRollSpec(rest); return spec ? { kind: 'roll', spec } : { kind: 'badroll', name }; }
   if (name === 'me') return rest ? { kind: 'me', text: rest } : { kind: 'empty', name };
   if (name === 'emotes') return { kind: 'emotes' };
+  if (name === 'find' || name === 'who') return rest ? { kind: 'find', q: rest } : { kind: 'empty', name };   // SCALE5c (Mac's decision 2)
   if (Object.hasOwn(EMOTES, name)) return { kind: 'emote', text: emoteText(name, rest) };
   const chan = CHANNEL_COMMANDS.find((c) => c.names.includes(name));
   if (chan) return rest ? { kind: 'channel', tab: chan.tab, text: rest, wrap: chan.wrap } : { kind: 'empty', name };
@@ -223,6 +230,16 @@ export function parseChatLine(text, extra = []) {
   return { kind: 'unknown', name };
 }
 
+/** CHAT-FIND: `/search <name>` - the panel's own command, answered before the host is asked (it sends nothing and
+ *  says nothing: it fills the panel's search). `{ query }` ('' to clear), or null for any other line. `/find` and `/who`
+ *  stay the hub's search of everyone online (SCALE5c), so a line the panel takes is never one the host answers. Pure. */
+export const FIND_COMMANDS = Object.freeze(['search']);
+export function findCommandOf(text) {
+  const m = /^\/([A-Za-z]+)(?:\s+([\s\S]*))?$/.exec(String(text ?? '').trim());
+  if (!m || !FIND_COMMANDS.includes(m[1].toLowerCase())) return null;
+  return { query: (m[2] ?? '').trim() };
+}
+
 /** The line a refused command leaves in the log - said to the one who typed it, and nobody else. */
 export const unknownCommandText = (name) => `There is no /${name} command. /help lists them.`;
 export const emptyCommandText = (name) => `/${name} needs something to say.`;
@@ -231,6 +248,21 @@ export const badRollText = (name) => `/${name} takes dice like 2d6+3, d20 or 100
 /** A host command in a shape its own test refused (`/red` with nothing to say, `/unstuck now`) - refused in words
  *  too: before this slice such a line fell through to the room and was said there, slash and all. */
 export const hostMisuseText = (name) => (name === 'red' ? emptyCommandText(name) : name === 'unstuck' ? '/unstuck takes nothing after it but cancel.' : `/${name} takes nothing after it.`);   // PVPUNSTUCK: /unstuck cancel
+
+/** SCALE5c: the hub's answer to `/find`, as the line the typer reads - the names (badges aside: a roster row wears
+ *  them), a full answer said to be one, a busy hub said to be busy.
+ * @param {{ q?: string, l?: { name?: string }[], busy?: boolean }} [f] */
+export function foundText({ q, l, busy } = {}) {
+  const names = (Array.isArray(l) ? l : []).map((p) => p?.name).filter((n) => typeof n === 'string' && n);
+  if (busy) return 'Too many are searching right now - try again in a moment.';
+  if (!names.length) return `No one online by "${q}".`;
+  return `Online, by "${q}"${names.length >= HUB_FIND_MAX ? ` (the first ${HUB_FIND_MAX})` : ''}: ${names.join(', ')}.`;
+}
+/** SCALE5c: `/find` with no hub to ask. */
+export const FIND_OFFLINE_TEXT = 'Searching needs the World channel online.';
+/** AUDIT SCALE II C-1: `/find` on a hub whose relay answers no search (one before the shards, world192) - said here and
+ *  never sent, since that relay closes the hub link on it. */
+export const FIND_RELAY_TEXT = 'Searching needs a newer relay than the one online now.';
 
 /** EMOTE1: the gestures, as the lines `/emotes` shows. */
 export const EMOTE_LINES = Object.freeze(['Gestures, to those near you - add a name to make one AT someone:', Object.keys(EMOTES).map((n) => `/${n}`).join(' ')]);

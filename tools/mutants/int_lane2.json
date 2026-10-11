@@ -937,20 +937,22 @@
   {
     "name": "INT7-AUDIT-REALM-ANOTHERS-ARMS",
     "file": "server-account/src/realm.js",
-    "old": "SELECT arms_top, arms_bow FROM realm_characters WHERE id = ? AND player = ?').bind(id, playerId)",
-    "new": "SELECT arms_top, arms_bow FROM realm_characters WHERE id = ? OR player = ?').bind(id, playerId)",
+    "old": "WHERE r.id = ? AND r.player = ?').bind(id, playerId).first();",
+    "new": "WHERE r.id = ? AND (r.player = ? OR 1)').bind(id, playerId).first();",
     "tests": [
       "test/int7_arms.test.js"
-    ]
+    ],
+    "note": "SCALE4f (2026-10-10) re-aimed it by content: the four reads of the realm row are one (realm.js realmMintFacts)."
   },
   {
     "name": "INT7-AUDIT-REALM-THE-LEVEL-UNJUDGED",
     "file": "server-account/src/realm.js",
-    "old": "  const lv = row?.level_seen ?? summary?.level;",
-    "new": "  const lv = summary?.level ?? row?.level_seen;",
+    "old": "  const lv = row.level_seen ?? summary?.level;",
+    "new": "  const lv = summary?.level ?? row.level_seen;",
     "tests": [
       "test/int7_arms.test.js"
-    ]
+    ],
+    "note": "SCALE4f (2026-10-10) re-aimed it by content: the four reads of the realm row are one (realm.js realmMintFacts)."
   },
   {
     "name": "INT8-AUDIT-ANOTHER-DUELS-YES",

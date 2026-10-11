@@ -65,7 +65,7 @@ import { CHAT_MAX } from '../net/wire.js';   // CHAT-POST: a posted item is one 
 import { itemIsIdentified } from '../systems/tradeModes.js';   // PLUS10: MagicPowers' identified arm
 import { PACK_PAGES, PAGE_IDS, pageOf, filterByPage } from './packPages.js';   // PX31: the pack's nine pages (the classic keeps DFU's four)
 import { isCardBinder, isIliacCard, binderDecks } from '../systems/iliacItems.js';   // CARDS8: the binder holds the cards
-import { isWalletItem, walletContents, walletLedger, refreshWalletSilver } from '../systems/walletItem.js';   // WALLET1: the wallet's sheet; WALLET-UI: its ledger
+import { isWalletItem, walletContents, walletLedger, refreshWalletSilver, letterWorthGold } from '../systems/walletItem.js';   // WALLET1: the wallet's sheet; WALLET-UI: its ledger
 import { useItem, isLightSource, usableItem, isPotionRecipe, toggleHood, HOOD_TEXT, nextDrape, drapeCount, DRAPE_TEXT } from '../systems/useItem.js';   // PLUS10: isPotionRecipe, a recipe's second Info box   // HT2: the light source's own act; Mac: Use only where the law has an arm   // HOOD-SAID: the hood's button and its lines   // CLOAK-DRAPE: the drape's
 // QS2: the quickslot model (systems/quickslots.js). This screen is the ONE
 // place a slot is filled - Mac's own words, "in the enhanced menu through the
@@ -162,6 +162,7 @@ import { createReforgeOverlay, reforgeDoorOpen, closeReforgeDoor } from './refor
 import { SOUND } from '../systems/soundClips.js';
 
 import { expandRowValues } from '../systems/quest/questMacros.js';   // MACROS1: a used item's record through its own context (%map)
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 /** Slot id -> where it sits on the body, and what to call it.
  *
  *  THE FIGURE FACES THE READER, so the character's RIGHT arm is drawn
@@ -601,6 +602,7 @@ export function useResultAction(r, { openBook = null, openSpellbook = null, plac
   }
   // PORTAL1: a Portal Stone - close, then hand it to the host's travel map (the camp's shape)
   if (r.kind === 'openPortal') {
+    if (openPortal) noteFirstUse('portal-stone');   // TUT1
     return openPortal
       ? { kind: 'openPortal', item: r.item, closeFirst: true }
       : { kind: 'message', text: USE_PENDING.openPortal };
@@ -3121,6 +3123,7 @@ function infoCard(picked, side, ready = render, { body = false } = {}) {
   // is armour, and `pair` skips a null.
   pair('Damage', line.damage);
   pair('Armour', line.armour);
+  pair('Worth', letterWorthGold(picked));   // TRADE-LOC II: a letter of credit is its worth - the card every pack, shop and trade hover shows says it
   // MAC-M2: under the damage, because it is the same question - how the
   // thing is swung - and above the weight, which is not. Null for
   // everything that is not a weapon, so no book grows an empty row.
@@ -3553,6 +3556,7 @@ function openInfo(item) {
  * (refreshFigure's, the fpArm's), and after the unmount none (JAN2).
  */
 function walletSheet(w) {
+  noteFirstUse('wallet');   // TUT1: the wallet's sheet read
   const box = el('div', 'walletsheet');
   // WALLET-UI: the ledger (systems/walletItem.js walletLedger) - each part under its name, a row a currency, its label
   // left and its figure right, in one column; a figure not counted here gives way to why, a letter's worth stands under

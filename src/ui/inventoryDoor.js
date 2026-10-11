@@ -44,6 +44,7 @@ import { immersiveFootsteps } from '../systems/immersiveFootsteps.js';   // AUDI
 import { racialSuppressInventory } from '../systems/lycanthropy.js';   // DISC10-E L3: GetSuppressInventory, in the window itself
 import { messageBox } from '../systems/notify.js';   // DISC10-E L3: DaggerfallUI.MessageBox, the refusal's voice
 import { ChoiceWindow } from './talkWindow.js';   // REVENANT-FATE: the classic skin's keyed box
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { inventoryArtLoaded };
 
@@ -74,9 +75,11 @@ export function createInventoryWindow(deps = {}) {
   // window has no room for one, so there it is a keyed box - its name, its plea, K kill, S spare, Esc leave it
   // AUDIT (2026-10-02): before the beast's refusal - it refuses the pack, never the judgement (the classic box always
   // came first; the enhanced skin's loot window was refused in beast form)
+  if (deps.fate) { noteFirstUse('revenants'); noteFirstUse('companions'); }   // TUT1: a beaten revenant's judgement - and the oath a spared one swears
   if (deps.fate) return isEnhanced() && typeof document !== 'undefined' ? enhancedInventoryOverlay(deps) : classicFateWindow(deps.fate);
   const sup = racialSuppressInventory(deps.entity);
   if (sup) { messageBox(sup.text); return null; }
+  noteFirstUse(deps.loot && !deps.loot.playerOwned ? 'loot' : 'inventory');   // TUT1: a pile or a body is the loot page; the pack (and a store of the player's own) the inventory's
   // `document` for the reason every fork before this one gives: node
   // drives these hosts headless and keeps the canvas window rather
   // than getting a special case written for it.

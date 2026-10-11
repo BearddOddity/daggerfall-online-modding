@@ -7,6 +7,7 @@
 // and the host's `onClose` runs last.
 import { mountEnhancedChunk } from './enhancedChunk.js';
 import { registerOverlay } from './enhancedOverlays.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** @type {any} */ let _open = null;
 /** Is the board up. */
@@ -19,6 +20,7 @@ export function closeNoticeDoor() { const was = noticeDoorOpen(); _open?.dispose
  * @returns {any} the overlay, or null with no document
  */
 export function createNoticeOverlay(deps) {
+  noteFirstUse('notice-board');   // TUT1
   if (typeof document === 'undefined') return null;
   _open?.dispose();
   let fired = false;

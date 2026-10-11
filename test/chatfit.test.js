@@ -77,7 +77,7 @@ test('CHAT-FIT / TITLE-R: the roster column\'s DOM - head, list and more sit in 
   log.setOpen(true); panel.render?.(); panel.paint?.();
   const who = one(root, 'dfchat-who');
   assert.equal(shape(who), 'dfchat-who-inner', 'the column holds the inner and nothing else');
-  assert.equal(shape(who.children[0]), 'dfchat-whohead dfchat-wholist dfchat-who-more');
+  assert.equal(shape(who.children[0]), 'dfchat-find dfchat-whohead dfchat-wholist dfchat-who-more', 'CHAT-FIND: the search strip above the heading');
   const rows = find(root, 'dfchat-who-row');
   assert.ok(rows.length >= 3, `three rows (${rows.length})`);
   const long = rows.find((r) => one(r, 'dfchat-who-name')?.textContent === 'Palidriel Oakthorn');
@@ -167,7 +167,7 @@ test('CHAT-FIT: by source - the host hands the panel a `badgeOf` read off the AC
   // Local's) are built over that same session, so one session still answers the badge and the row
   assert.match(w, /badgeOf: \(id\) => chatSessionOf\(chatLog\?\.active\)\?\.badgeOf\?\.\(id\) \?\? null,/);
   assert.match(w, /roster: \(\) => chatRosterOf\(chatLog\?\.active\),/, 'the same session the roster reads');
-  assert.match(w, /const chatRosterOf = \(tabId\) => \{\s*const s = chatSessionOf\(tabId\);[^\n]*\n\s*if \(tabId === 'party'\) return partyRosterSource\(social\?\.party, s, [^\n]*\n\s*if \(tabId === 'guild'\) return guildRosterSource\(s, [^\n]*\n\s*if \(tabId === 'local'\) return localRosterSource\(s, /, 'every roster over the one session');   // GUILD1c: the Guild's over it too
+  assert.match(w, /const chatRosterOf = \(tabId\) => \{\s*const s = chatSessionOf\(tabId\);[^\n]*\n\s*if \(tabId === 'party'\) return partyRosterSource\(social\?\.party, s, [^\n]*\n\s*if \(tabId === 'guild'\) \{ s\?\.sendGuildWho\?\.\(\); return guildRosterSource\(s, [^\n]*\n\s*if \(tabId === 'local'\) return localRosterSource\(s, /, 'every roster over the one session');   // GUILD1c: the Guild's over it too
   const p = rd('src/ui/chatPanel.js');
   assert.match(p, /const paintNames = \(\) => \{\s*if \(nameColor\) \{[\s\S]*?\}\s*paintBadges\(\);\s*\};/);
   assert.match(p, /if \(r\.badgeKey === key\) continue;/, 'a line is re-laid only on a change');

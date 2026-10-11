@@ -1523,6 +1523,12 @@ export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
 .notice-merit + .notice-chapter, .notice-worktoday + .notice-chapter { margin-top: -8px; }
 .notice-chapter { margin: 0 4px 12px; padding: 4px 10px; font-size: 12px; letter-spacing: 0.03em; color: #d8cfbb;
   background: rgba(12,10,8,0.5); border-left: 2px solid rgba(79,111,143,0.5); }
+/* GUILD3d (bible/11-Multiplayer/Guilds-Made-Plain.md): a chapter's card - one panel a chapter, its lines on the panel's
+   own dark ground (no strip of their own), its band's effects the brightest line, its duties the quietest */
+.notice-chapter-card { border-left: 2px solid rgba(79,111,143,0.6); }
+.notice-chapter-card .notice-chapter, .notice-chapter-card .notice-merit { margin: 0 0 6px; padding: 0; background: none; border-left: 0; }
+.notice-chapter-card .notice-band { color: #e9e1cf; }
+.notice-chapter-card .notice-duties { color: #b9ab93; }
 .prof-cols { display: grid; grid-template-columns: minmax(180px, 0.9fr) 1.4fr; gap: 14px; }
 .prof-list { display: flex; flex-direction: column; gap: 4px; }
 .prof-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 4px 8px; text-align: left; font: inherit; font-size: 12px;

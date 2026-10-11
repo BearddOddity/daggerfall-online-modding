@@ -197,6 +197,7 @@ test('SD9d THE HOUR TURNS (6): a blow that would kill me does not - the door lea
   const e = wearSet(player(), 'numidium', 6);
   door(e);
   at(10);
+  e.health = 99;   // PIN MOVED (FULL-GUARD, FIELD BUGS 2026-10-11b): a foe's blow from full leaves me at 1 before any death save - a point short of full, the Hour's own save takes it
   const dead = blow(e, 150);
   assert.equal(dead, false, 'no death');
   assert.equal(e.health, 16, 'left at 1, and 15% of 100 back');
@@ -219,6 +220,7 @@ test('SD9d THE HOUR TURNS (6): a blow that would kill me does not - the door lea
   const asc = wearSet(player(), 'numidium', 6, XP[4]);
   door(asc);
   at(5);
+  asc.health = 99;   // PIN MOVED (FULL-GUARD): a point short of full
   blow(asc, 500);
   assert.equal(asc.health, 26, 'Ascendant: a quarter back');
   assert.equal(setPowerStates(5).hourRecoverLeft, 60);
@@ -226,6 +228,7 @@ test('SD9d THE HOUR TURNS (6): a blow that would kill me does not - the door lea
   fresh(); online(1);
   const five = wearSet(player(), 'numidium', 5);
   door(five);
+  five.health = 99;   // PIN MOVED (FULL-GUARD): a point short of full
   assert.equal(blow(five, 150), true, 'five pieces wake no Hour Turns');
   assert.deepEqual(awakeTiersOf(wearSet(player(), 'numidium', 5)).get('numidium').map((t) => t !== null), [true, true, false]);
   fresh(); online(1);
@@ -233,6 +236,7 @@ test('SD9d THE HOUR TURNS (6): a blow that would kill me does not - the door lea
   door(duel);
   setSetsDueling(true);
   assert.equal(awakeTiersOf(duel), null);
+  duel.health = 99;   // PIN MOVED (FULL-GUARD): a point short of full
   assert.equal(blow(duel, 150), true, 'asleep in a duel');
   setSetsDueling(false);
 });

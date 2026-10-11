@@ -55,7 +55,7 @@ export function eventTimerRows(src) {
   if (phase !== 'quiet') coming(`gate:${t.day + GATE_EVERY_DAYS}`, 'gate', 'Next Dagon\'s Breach opens', gateTimes(t.day + GATE_EVERY_DAYS).openAt);
 
   // ── THE SEA SERPENT (serpentLaw: every other game day at the dawn watch - every four real hours: the bells, the
-  // rising, the storm closing its waters, its dive) ── SERPENT-TIMERS (2026-10-04, the owner: "This needs to happen" -
+  // rising, its dive) ── SERPENT-TIMERS (2026-10-04, the owner: "This needs to happen" -
   // the serpent was the one shared event the window did not count). Where it lies is said from its bells on, as the
   // chat says it; the next serpent's rising stands beside it once this one is under way.
   const s = serpentAt(now);
@@ -64,8 +64,9 @@ export function eventTimerRows(src) {
   const off = src?.serpent?.place ? `Off ${src.serpent.place}` : null;
   if (sPhase === 'quiet') coming(`serpent:${s.day}`, 'serpent', `${sName} rises`, s.riseAt, null, 'The harbour bells ring 15 minutes before');
   else if (sPhase === 'omen') coming(`serpent:${s.day}`, 'serpent', `${sName} rises`, s.riseAt, off, 'The harbour bells are ringing - its waters are ringed on your map');
-  else if (sPhase === 'rising' || sPhase === 'hunt') live(`serpent:${s.day}`, 'serpent', `${sName} hunts`, s.sealAt, off, 'A storm closes its waters when this runs out - sail out to join');
-  else if (sPhase === 'late') live(`serpent:${s.day}`, 'serpent', `${sName}'s waters are closed`, s.soundAt, off, 'It dives when this runs out');
+  // SERPENT4 (2026-10-11): its waters stand open until it dives - one row from its rising to its dive, the storm's breaking
+  // no instant a ship sails against
+  else if (sPhase === 'rising' || sPhase === 'hunt' || sPhase === 'late') live(`serpent:${s.day}`, 'serpent', `${sName} hunts`, s.soundAt, off, 'It dives when this runs out - sail out to join');
   if (sPhase !== 'quiet') {
     const nextDay = s.day + SERPENT_EVERY_DAYS;
     coming(`serpent:${nextDay}`, 'serpent', 'Next sea serpent rises', serpentTimes(nextDay).riseAt);
@@ -117,7 +118,7 @@ export function eventTimerRows(src) {
   // ── THE UTC DAY (the daily caps the service counts on its UTC day) ──
   // AUDIT TIMERS1 D10: the caps as they are - the Watch's only where the seats are open
   coming('daily', 'reset', 'Daily reset', (Math.floor(now / DAY_MS) + 1) * DAY_MS, '00:00 UTC',
-    `The day's nodes stand anew; rare hides, Marks and Court writs${src?.seatsOpen ? ', and the Watch' : ''}: their daily limits start again`);   // CAP-OFF: gathering, hides and hauls keep no day's limit
+    `The day's nodes stand anew; rare hides, silver and Court writs${src?.seatsOpen ? ', and the Watch' : ''}: their daily limits start again`);   // CAP-OFF: gathering, hides and hauls keep no day's limit
 
   // ── THE SEAT WEEK (Muster, Reckoning, the Turning - Sunday 18:00 UTC) ──
   // AUDIT TIMERS1 D5: the seats' rows for an account the seats are open to (the service says, `seatBook.open`)

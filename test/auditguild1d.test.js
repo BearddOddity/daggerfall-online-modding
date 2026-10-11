@@ -234,8 +234,11 @@ test('AUDIT GUILD1d S8 + R5: the restore reads a hall as its guild\'s, never a h
   await svc.call('/v1/marks/guild/deposit', { character: gm.character, marks: 800, rid: 'deposit-01' }, gm.secret);
   await svc.call('/v1/guilds/heraldry', { character: gm.character, heraldry: { ...WOLF, device: 'bear' }, rid: 'herald-01' }, gm.secret);
   assert.deepEqual((await view()).marksLedger.map((l) => l.kind), ['heraldry', 'deposit']);
-  assert.equal(GUILD_MARKS_LEDGER_WORDS.heraldry, 'changed the heraldry for');
-  assert.match(src('src/ui/socialPanel.js'), /GUILD_MARKS_LEDGER_WORDS\[l\.kind\] \?\? GUILD_MARKS_LEDGER_WORDS\.deposit/);
+  assert.equal(GUILD_MARKS_LEDGER_WORDS.heraldry, 'changed the guild\'s arms for');   // PIN MOVED: AUDIT GUILD3 W6 - the page is "Arms"
+  // PIN MOVED: GUILD3b (bible/11-Multiplayer/Guilds-Made-Plain.md) - an older service's line (no `raw`) by its kind, as before;
+  // a line with its own kind and way by those (guildSilverLineText)
+  assert.match(src('src/ui/socialPanel.js'), /GUILD_MARKS_LEDGER_WORDS\[l\?\.kind\] \?\? GUILD_MARKS_LEDGER_WORDS\.deposit/);
+  assert.match(src('src/ui/socialPanel.js'), /for \(const l of v\.marksLedger \?\? \[\]\) out\.push\(personRow\(\{ name: guildSilverLineText\(l\) \}\)\);/);
 });
 
 test('AUDIT GUILD1d A1-A9: members rest (the online bed its own permanence), use the forge, workbench and loom, see their chest and cast in their hall; a visitor\'s drop and spell in a hall\'s own words; the plaque-less offer carries the hall; one buy out a house; the doors read again when the guild is known; the decorator neither pays a hall\'s half to the purse nor says it does (mutants: each by source; the offer\'s label; the bump)', () => {

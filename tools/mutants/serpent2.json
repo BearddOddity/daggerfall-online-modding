@@ -27,10 +27,10 @@
     ]
   },
   {
-    "name": "SERPENT2-storm-said-as-rising",
+    "name": "SERPENT2-dive-said-as-rising",
     "file": "src/net/serpentHerald.js",
-    "old": "at ${heraldStamp(t.sealAt, 't')}",
-    "new": "at ${heraldStamp(t.riseAt, 't')}",
+    "old": "dives at ${heraldStamp(t.soundAt, 't')}",
+    "new": "dives at ${heraldStamp(t.riseAt, 't')}",
     "tests": [
       "test/serpent2_herald.test.js"
     ]
@@ -218,11 +218,12 @@
   {
     "name": "SERPENT2-own-role-unread",
     "file": "server/src/index.js",
-    "old": "serpentRole: serpentHeraldRole(this.env?.SERPENT_DISCORD_ROLE, this.env?.GATE_DISCORD_ROLE)",
-    "new": "serpentRole: heraldRole(this.env?.GATE_DISCORD_ROLE)",
+    "old": "serpentRole: serpentHeraldRole(role('serpentRole'), role('gateRole'))",
+    "new": "serpentRole: heraldRole(role('gateRole'))",
     "tests": [
       "test/serpent2_herald.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): the roles through relayCfgValue."
   },
   {
     "name": "SERPENT2-bells-ping-gate-role",
@@ -387,19 +388,19 @@
     ]
   },
   {
-    "name": "SERPENT2-timers-hunt-to-dive",
+    "name": "SERPENT2-timers-hunt-to-storm",
     "file": "src/systems/eventTimers.js",
-    "old": "`${sName} hunts`, s.sealAt,",
-    "new": "`${sName} hunts`, s.soundAt,",
+    "old": "`${sName} hunts`, s.soundAt,",
+    "new": "`${sName} hunts`, s.sealAt,",
     "tests": [
       "test/serpent2_herald.test.js"
     ]
   },
   {
-    "name": "SERPENT2-timers-closed-to-seal",
+    "name": "SERPENT2-timers-late-row-dropped",
     "file": "src/systems/eventTimers.js",
-    "old": "`${sName}'s waters are closed`, s.soundAt,",
-    "new": "`${sName}'s waters are closed`, s.sealAt,",
+    "old": "sPhase === 'hunt' || sPhase === 'late') live(",
+    "new": "sPhase === 'hunt') live(",
     "tests": [
       "test/serpent2_herald.test.js"
     ]

@@ -73,20 +73,6 @@ export function houseOn(/** @type {string} */ recordText, /** @type {unknown} */
   return h;
 }
 
-/**
- * LEGACY7 part two: THE HOUSE OF A REALM CHARACTER - what the identity mint signs beside the guild's tag
- * (src/net/houseLaw.js): its line's surname, the member's given name, a Bloodline's mark, the generation's numeral.
- * Null for a character of no line, a tombstone, another account's - and for a name the name filter refuses (the house
- * is shown to every player, as an account's name is: net/nameFilter.js, the chat's and a player's own law).
- * @param {any} ctx @param {string} playerId @param {unknown} id
- */
-export async function realmHouseOf({ db }, playerId, id) {
-  if (typeof id !== 'string' || !REALM_CHARACTER_RE.test(id)) return null;
-  const row = await db.prepare('SELECT r.person_id AS person, l.record AS record FROM realm_characters r JOIN lineages l ON l.player = r.player AND l.id = r.lineage_id'
-    + ' WHERE r.id = ? AND r.player = ? AND r.dead_at IS NULL').bind(id, playerId).first();
-  return row ? houseOn(row.record, row.person) : null;
-}
-
 /** Every line this account holds online, the newest written first: `{ id, surname, model, rev, record }`. */
 export async function listLineages({ db }, /** @type {string} */ playerId) {
   const r = await db.prepare('SELECT id, surname, model, rev, record FROM lineages WHERE player = ? ORDER BY updated_at DESC LIMIT ?')

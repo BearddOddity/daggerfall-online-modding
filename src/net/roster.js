@@ -66,7 +66,9 @@ export const ROSTER_ROWS_MAX = 200;
  * `title` and `glyphs` are my own badge (ACC3c: the relay never sends me my own row), read by the wire's readBadge.
  * @typedef {{ id?: string|null, name?: string|null, title?: any, glyphs?: any, gt?: string|null,
  *             peers?: Map<string, { id?: string|null, name?: string|null, gt?: string|null }>|null,
- *             roomCount?: number|null, label?: string|null }} RosterSource
+ *             roomCount?: number|null, label?: string|null,
+ *             guildOnline?: Map<string, { id?: string|null, name?: string|null, gt?: string|null }>|null,
+ *             hubOnline?: Map<string, { id?: string|null, name?: string|null, gt?: string|null }>|null }} RosterSource
  */
 
 // PERF-ON3 (2026-10-06, Mac: "I wanna look into how we can continue to improve performance, including for online"):
@@ -175,6 +177,7 @@ export function rosterRows(session) {
   // you reads as a fault in your own account).
   push(session?.id ?? null, session?.name ?? '', true, session);
   for (const p of session?.peers?.values?.() ?? []) push(p?.id ?? null, p?.name ?? '', false, p);
+  for (const p of session?.hubOnline?.values?.() ?? []) push(p?.id ?? null, p?.name ?? '', false, p);   // SCALE5c: and everyone on the hub's other shards, while it is small (a peer of my own shard is listed once, live)
 
   // PERF-ON3: the same rows in the same order as the last call sort to the same list - answer it, frozen, as it was
   let same = rows.length === _lastIn.length;
@@ -225,7 +228,8 @@ export function partyRosterSource(party, hub, acct) {
  * wearing my badge), and every peer the hub link knows wearing my guild's TAG - the World roster's own peers, so a row's
  * badge and its menu are the same peer the World tab offers (a tag is one guild's: the service holds tags unique). The
  * hub introduces at most CHAT_ROSTER_MAX to a welcome, so a member it never introduced is not listed - their lines still
- * arrive. No tag: a list of one (the strip under the chat says why).
+ * arrive. No tag: a list of one (the strip under the chat says why). SCALE5c: and every member the hub says is online on
+ * another of its shards (`guildOnline`, the session's ask - its own shard's peers are all the link knows of the rest).
  * @param {RosterSource|null|undefined} hub   the World tab's link
  * @param {string|null} tag   my guild's tag
  * @returns {RosterSource}
@@ -233,6 +237,7 @@ export function partyRosterSource(party, hub, acct) {
 export function guildRosterSource(hub, tag) {
   const peers = new Map();
   if (tag) for (const [id, p] of hub?.peers ?? []) if (p?.gt === tag) peers.set(id, p);
+  if (tag) for (const [id, p] of hub?.guildOnline ?? []) if (!peers.has(id)) peers.set(id, p);   // SCALE5c: the guild on every shard
   return { id: hub?.id ?? null, name: hub?.name ?? '', title: hub?.title ?? null, glyphs: hub?.glyphs ?? null, gt: hub?.gt ?? null, peers, label: 'Guild' };
 }
 

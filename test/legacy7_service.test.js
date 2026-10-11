@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { standService } from './accountDb.mjs';
 import { freshSave } from './realmSeat.mjs';
 import { ROUTES, ACCOUNT_VERSION } from '../server-account/src/service.js';
-import { REALM_CHARACTERS_MAX, realmCharacterHeld } from '../server-account/src/realm.js';
+import { REALM_CHARACTERS_MAX, realmMintFacts } from '../server-account/src/realm.js';   // PIN MOVED (SCALE4f): realmCharacterHeld is realmMintFacts' `rc`
 import { LINEAGES_MAX, LINEAGE_MAX_BYTES, lineageRecordOf } from '../server-account/src/legacy.js';
 
 const FAM = 'fam-k1x2y3-abc123';
@@ -28,7 +28,7 @@ async function stand() {
 
 test('LEGACY7 the routes: the lines, a line written, the tombstone - behind a session, and the service moved on', () => {
   for (const r of ['/v1/realm/lineages', '/v1/realm/lineage', '/v1/realm/die']) assert.ok(ROUTES.has(r), r);
-  assert.equal(ACCOUNT_VERSION, 'acct111');   // PIN MOVED: acct111, HOME-VOTE (a town's votes on its homes, migration 0108 - acct109, then acct110, on its branch, renumbered past PATRON-LOAD and PATRON-LOAD II at the merges); PIN MOVED: acct110, PATRON-LOAD II (the region's traders read by its own indexes - D1 overloaded; migration 0107); PIN MOVED: acct109, PATRON-LOAD (the region's traders read reckons no patrons - D1 overloaded; no migration); PIN MOVED: acct108, TECH1 (the item law's version 2 - a weapon's technique line, after LW15 took acct107; bible/05-Combat/Weapon-Techniques.md); PIN MOVED: acct107, LW15 (THE PATRONS, migration 0106 - acct105, then acct106, on its branch, renumbered past INT11-INT14 and SCALE4d at the merges); PIN MOVED: acct106, SCALE4d (the token's mint on a D1 session, no migration); PIN MOVED: acct105, INT11-INT14 (the INTEGRITY arc's lane 3, migration 0105); PIN MOVED: acct103, the Chapters (CHAP1-CHAP7b) past UNWITNESSED-ORE's acct102, BAG-CRAFT's acct101, INT1-INT6's acct100, CARDS9-CARDS10's acct99, PERMADEATH-HOUSES' acct98, SERVER-POST's acct97, TAVERN CARDS' acct96 and SCALE4's acct95 at the merges; acct85 at first, past SERPENT-SET's acct84; renumbered past main's YARD-SHED (acct85) and YARD-HEIGHT (acct86) at the merges; STORM-SHED moved it on (acct88), STORM-SHED 2 (acct89), TEXT-F1 (acct90), CAP-OFF (acct91), FOUNDER5 (acct92), CRAFT2-CRAFT5 (acct93), SD9b (acct94 - acct91 on its branch, renumbered past CAP-OFF, FOUNDER5 and CRAFT2-CRAFT5 at the merges), SCALE4a-c (acct95 - acct94 on its branch, renumbered past SD9b at the merge)
+  assert.equal(ACCOUNT_VERSION, 'acct114');   // PIN MOVED: acct114, GUILD3 (the guilds made plain: the silver lines by kind and way, the whole list of holds, the Failing fall, the High Master by the band; no migration; acct112 then acct113 on its branch, renumbered past SCALE4f-h and GUILD-SEEN at the merges); PIN MOVED: acct113, GUILD-SEEN (the guild roster says when each member was last online); PIN MOVED: acct112, SCALE4f + SCALE4g + SCALE4h (acct111 on its branch, renumbered past HOME-VOTE at the merge); PIN MOVED: acct111, HOME-VOTE (a town's votes on its homes, migration 0108 - acct109, then acct110, on its branch, renumbered past PATRON-LOAD and PATRON-LOAD II at the merges); PIN MOVED: acct110, PATRON-LOAD II (the region's traders read by its own indexes - D1 overloaded; migration 0107); PIN MOVED: acct109, PATRON-LOAD (the region's traders read reckons no patrons - D1 overloaded; no migration); PIN MOVED: acct108, TECH1 (the item law's version 2 - a weapon's technique line, after LW15 took acct107; bible/05-Combat/Weapon-Techniques.md); PIN MOVED: acct107, LW15 (THE PATRONS, migration 0106 - acct105, then acct106, on its branch, renumbered past INT11-INT14 and SCALE4d at the merges); PIN MOVED: acct106, SCALE4d (the token's mint on a D1 session, no migration); PIN MOVED: acct105, INT11-INT14 (the INTEGRITY arc's lane 3, migration 0105); PIN MOVED: acct103, the Chapters (CHAP1-CHAP7b) past UNWITNESSED-ORE's acct102, BAG-CRAFT's acct101, INT1-INT6's acct100, CARDS9-CARDS10's acct99, PERMADEATH-HOUSES' acct98, SERVER-POST's acct97, TAVERN CARDS' acct96 and SCALE4's acct95 at the merges; acct85 at first, past SERPENT-SET's acct84; renumbered past main's YARD-SHED (acct85) and YARD-HEIGHT (acct86) at the merges; STORM-SHED moved it on (acct88), STORM-SHED 2 (acct89), TEXT-F1 (acct90), CAP-OFF (acct91), FOUNDER5 (acct92), CRAFT2-CRAFT5 (acct93), SD9b (acct94 - acct91 on its branch, renumbered past CAP-OFF, FOUNDER5 and CRAFT2-CRAFT5 at the merges), SCALE4a-c (acct95 - acct94 on its branch, renumbered past SD9b at the merge)
 });
 
 test('LEGACY7 a line: founded, written only past its rev - a stale write answered with the stored record to merge into - its model the founder\'s for good', async () => {
@@ -50,6 +50,12 @@ test('LEGACY7 a line: founded, written only past its rev - a stale write answere
   assert.deepEqual([listed[0].id, listed[0].surname, listed[0].model, listed[0].rev, listed[0].record.people.length], [FAM, 'Hlaalu', 'bloodline', 5, 2]);
   const model = await call('/v1/realm/lineage', { id: FAM, record: record(6, [{ id: 1 }], { model: 'enduring' }) });
   assert.deepEqual([model.status, model.body.error], [409, 'lineage-model'], 'a Bloodline is never written Enduring');
+  // SCALE4f (found running LEGACY7-model-rewritten, which survived on main too): and not by a copy made from the stored one -
+  // the write above carried no `base`, so the stale path refused it; one made from rev 5 reached the UPDATE, which keeps
+  // the model column and would have written a record that says another
+  const based = await call('/v1/realm/lineage', { id: FAM, record: record(6, [{ id: 1 }], { model: 'enduring' }), base: 5 });
+  assert.deepEqual([based.status, based.body.error], [409, 'lineage-model'], 'made from the stored copy, a Bloodline is never written Enduring either');
+  assert.equal((await call('/v1/realm/lineages', {})).body.lineages[0].rev, 5, 'nothing written');
   for (const bad of [{ id: 'nope', record: record(9) }, { id: FAM, record: { ...record(9), id: 'fam-other-abc123' } }, { id: FAM, record: { ...record(9), v: 2 } },
     { id: FAM, record: record(9, []) }, { id: FAM, record: record(0) }, { id: FAM, record: record(9, [{ id: 'x' }]) }]) {
     assert.equal((await call('/v1/realm/lineage', bad)).status, 400, JSON.stringify(bad).slice(0, 60));
@@ -103,7 +109,7 @@ test('LEGACY7 the tombstone: under the lease, once; never joined, checkpointed o
   assert.deepEqual([join.status, join.body.error], [410, 'dead'], 'never played past a death');
   const cp = await put(a.id, a.lease, 2);
   assert.deepEqual([cp.status, cp.body.error], [410, 'dead'], 'nothing of the dead written again');
-  assert.equal(await realmCharacterHeld({ db: S.env.DB }, g.id, a.id), false, 'the relay\'s door refuses it');
+  assert.equal((await realmMintFacts({ db: S.env.DB }, g.id, a.id)).rc, 0, 'the relay\'s door refuses it');
   const list = async () => (await S.fetch('https://accounts.invalid/v1/realm', { headers: { authorization: `Bearer ${g.secret}` } }).then((r) => r.json())).characters;
   assert.deepEqual((await list()).map((c) => c.id), [], 'off the roster');
   // the line's heir is born; the fallen's person is never born again

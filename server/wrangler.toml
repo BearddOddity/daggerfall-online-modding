@@ -82,6 +82,10 @@ RAID_TOWNS_SHA256 = ""
 # GATE_DISCORD_WEBHOOK` here) - that redeploys the Worker and drops
 # every player once. WITHOUT IT THE RELAY POSTS NOTHING and keeps
 # nothing for it.
+# SCALE5b: each role here is also a setting a developer changes at run
+# time, with no deploy: `/relay gateRole <id>`, `/relay serpentRole <id>`,
+# `/relay sdRole <id>` (src/net/relayCfg.js); the var is the role while
+# the hub holds none.
 # The role: its id handed over 2026-10-02, before the WB12/WB13 merge (it was
 # 1554215379817988167, World Events, from 2026-09-28).
 GATE_DISCORD_ROLE = "1555589839825670258"
@@ -114,8 +118,11 @@ SD_DISCORD_ROLE = ""
 #   {"enforce": true, "body": {"depth": 1, "perS": 0.05},
 #    "hull": {"depth": 0.15, "perS": 0.012}}
 # (bodyConfig: anything it cannot read whole is the default, which
-# enforces nothing). Changing it redeploys this Worker and drops every
-# connected player once.
+# enforces nothing). Changing it here redeploys this Worker and drops
+# every connected player once - SCALE5b: a developer sets it at run time
+# instead, in game: `/relay bossBody <json>` (src/net/relayCfg.js), which
+# the hub keeps and every boss's room reads within a minute; this var is
+# the line while the hub holds none (`/relay bossBody -` hands it back).
 BOSS_BODY = ""
 
 # ═══ WB3: THE RELAY'S ONE SECRET ═══════════════════════════════════

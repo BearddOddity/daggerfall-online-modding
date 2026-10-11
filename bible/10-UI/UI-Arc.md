@@ -175,6 +175,16 @@ DFU IS a `DaggerfallInputMessageBox` subclass, and the tavern's day
 count, CM11). All four push the box now. The `ChoiceWindow.click`
 reconciles: a notice is click-anywhere, a keyed menu keeps the row hit.
 Ledger A row TB1 is struck.
+NOTE-KEYS (2026-10-11, FIELD BUGS 2026-10-06, Skibbster: "when getting to
+this page on the classic/grimoire UI, player key presses are ignored")
+found a fifth: the quest journal's EnterNote (DaggerfallQuestJournalWindow
+.cs:507-526, F160) typed its field into the journal's own art and read
+only the dungeon's `char:` actions - never `typedChar`, the roster's
+needle, which is how the audit missed it, and why no letter landed on the
+native-window hosts that hand it raw codes. It pushes the box now (the
+prompt above, `" > "`, MaxLineLenth 70, WidthOverride 318), and the
+confirm box's Y and N read the shortcut table (`hotkeyHit`); THE ROSTER
+(`test/classicinputbox.test.js`) names it.
 
 **What stays inline, and why.** The bank's transaction amount is a
 `TextBox` IN the panel in DFU too (DaggerfallBankingWindow.cs:185), and
@@ -8586,7 +8596,10 @@ itself, which U58's "no second cart check" caught immediately and
 rightly. The fix was not to weaken the pin but to give the question a
 home: `hasHorse` and `transportItem` now sit beside `hasCart` in
 inventorySession, so the pack, the road and whatever comes next read
-one answer. No template index is read in the window at all.
+one answer. No template index is read in the window at all. (CART-SLOT,
+FIELD BUGS 2026-10-11b: the cart `transportItem` answers is the wagon
+driven - wagonKinds.js activeWagonItem - not the first of the Small
+Cart's template, which a Caravan shares.)
 
 PX21b (Mac: "give it a solid redesign with readability"): THE LOOT
 WINDOW READS. The loot list inherited the DOCK's 56px tile grid -

@@ -56,6 +56,7 @@ import { setIdOf } from '../systems/sigilSets.js';
 import { padFamily } from './padGlyphs.js';
 import { hdGlyphSvg, hdGlyphName } from './padGlyphsHD.js';
 import { registerCrossbar, plusCrossbarMode, crossbarCodeOf, CROSSBAR_SET, CROSSBAR_HOLD } from './plusPad.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** The pref and its two words (systems/features.js 'quickbar-style'). */
 export const HOTBAR_PREF = 'quickbarStyle';
@@ -553,6 +554,7 @@ function slotPicture(img) {
  *  well as in words - a key that looks pressed and did nothing is the
  *  drawn door this UI does not draw. */
 export function pressHotbar(i) {
+  noteFirstUse('quickslots');   // TUT1
   if (!bar) return;
   const entity = liveEntity;
   const ok = hotbarReady(entity, i);
@@ -583,15 +585,32 @@ function strike(i, good) {
   n._hbT = setTimeout(() => n.classList.remove('hb-strike', 'hb-deny'), 460);
 }
 
+/** HOTBAR-LAG: the caption's fade - the sheet's own `hb-cap` keyframes (HOTBAR_CSS), played by the browser's animation
+ *  where it has one; the class (`hb-cap-on`, the keyframes' rule) where it has not. */
+export const CAPTION_ON = 'hb-cap-on';
+export const CAPTION_FADE = Object.freeze([{ opacity: 0, offset: 0 }, { opacity: 1, offset: 0.08 }, { opacity: 1, offset: 0.75 }, { opacity: 0, offset: 1 }]);
+let captionFade = null;
 function showCaption(text, bad = false) {
   if (!caption) return;
   caption.textContent = text ?? '';
   caption.classList.toggle('bad', !!bad);
-  caption.classList.remove('on');
-  void caption.offsetWidth;
-  caption.classList.add('on');
+  // HOTBAR-LAG (2026-10-11, Mac: "spamming or just pressing the hotbar buttons makes the game lag"): THE FADE IS PLAYED,
+  // NOT RE-STYLED. The caption's fade restarted by a class taken off, a forced layout (`void offsetWidth`) and the class
+  // put back - two full restyles of the caption on every press, landed at once. A restyle of this one element is cheap
+  // under the plain skin (0.1 ms) and dear under a dress whose ground for it is a picture held in a custom property (DFO
+  // Grimoire's desk wood, ui/grimoireDress.js `--grim-wood`: the whole picture re-read with the style) - ~5 ms each,
+  // ~10 ms of every press on the main thread, measured. The browser's own animation restarts with no restyle at all;
+  // the class stays the door where there is no animate() (a test's document, an old browser).
   clearTimeout(captionTimer);
-  captionTimer = setTimeout(() => caption?.classList.remove('on'), CAPTION_MS);
+  if (typeof caption.animate === 'function') {
+    captionFade?.cancel?.();
+    captionFade = caption.animate(CAPTION_FADE, { duration: CAPTION_MS, easing: 'linear', fill: 'forwards' });
+    return;
+  }
+  caption.classList.remove(CAPTION_ON);
+  void caption.offsetWidth;
+  caption.classList.add(CAPTION_ON);
+  captionTimer = setTimeout(() => caption?.classList.remove(CAPTION_ON), CAPTION_MS);
 }
 
 /** The modifiers an event carries, as held codes - so a slot bound to a combo (Shift + 1) resolves as one. */
@@ -1046,7 +1065,7 @@ export const HOTBAR_CSS = `
   background: rgba(14,16,19,0.88); border: 1px solid rgba(192,138,62,0.45); color: #e9d9b0;
   text-shadow: 1px 1px 0 #000; opacity: 0; pointer-events: none; }
 .hb-caption.bad { border-color: var(--blood, #8c3a32); color: #f0b8ae; }
-.hb-caption.on { animation: hb-cap ${CAPTION_MS}ms linear forwards; }
+.hb-caption.${CAPTION_ON} { animation: hb-cap ${CAPTION_MS}ms linear forwards; }   /* HOTBAR-LAG: the fade's door where there is no animate() */
 @keyframes hb-cap { 0% { opacity: 0; } 8% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
 .hb-hint { display: none; margin-top: 7px; font-size: 11px; letter-spacing: 0.06em; color: #a89f88;
   text-shadow: 1px 1px 0 #000; }

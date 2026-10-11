@@ -603,7 +603,7 @@ test('SET7 the host\'s seams: online alone (with the omen), stood each frame rig
   assert.match(w, /site: \(\) => gateOmen\.cageSite\(\),/, 'BROKER-CAGE: the breach the clock is about, omen to midnight');
   assert.match(w, /freed: \(day, px, py\) => _relayKeepsRite === false \|\| !!riteHost\?\.isCleared\(day, px, py, _relayKeepsCage !== true\),/, 'BROKER-CAGE: free once every one of the faithful fell - AUDIT C6: the hub\'s word alone where the relay says it; C4: free where the relay stands no faithful');
   assert.match(w, /freedAt: \(day, px, py\) => riteHost\?\.clearedAt\(day, px, py\) \?\? NaN,/, 'AUDIT C8: when the hub said it');
-  assert.match(w, /const onRelayVersion = \(v\) => \{ _relayKeepsRite = relaySupportsRite\(v\); _relayKeepsCage = relaySupportsCage\(v\);/, 'AUDIT C4, C6: read off every welcome\'s relay');
+  assert.match(w, /const onRelayVersion = \(v\) => \{ [^\n]*?_relayKeepsRite = relaySupportsRite\(v\); _relayKeepsCage = relaySupportsCage\(v\);/, 'AUDIT C4, C6: read off every welcome\'s relay (PIN MOVED, SCALE5c: after the page keeps whether the relay has the hub\'s shards)');
   assert.match(w, /let _relayKeepsRite = null, _relayKeepsCage = null;/, 'unknown until a welcome says - caged meanwhile');
   assert.match(w, /heightAt: \(x, z\) => surfaceAt\(x, z\),/, 'the drawn ground, as the circle stands on');
   assert.match(w, /site: \(\) => gateOmen\.cageSite\(\),[^\n]*\n(?:[^\n]*\n){0,12}\s*say: \(text\) => townTalk\.say\(text\),/, 'AUDIT W4: her words to the HUD\'s lines, as a static NPC\'s Info says');

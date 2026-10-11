@@ -471,3 +471,19 @@ test('UI1 AUDIT UI A2/A3/A4: a tiered worn panel keeps its glow under a textured
   assert.ok(!keys.includes('auditA4_0@10x1c4'), 'the oldest went');
   assert.ok(keys.includes(`auditA4_${FIT_CACHE_MAX + 19}@10x1c4`), 'the newest stays');
 });
+
+test('HOTBAR-LAG (2026-10-11, Mac: "spamming or just pressing the hotbar buttons makes the game lag"): a press PLAYS the caption\'s fade - the browser\'s animation, cancelled and played again - never a class off, a forced layout and the class back (two full restyles a press: ~10 ms on the main thread under DFO Grimoire, whose ground for the caption is a picture held in a custom property); the class stays the door where there is no animate() (mutants: the forced layout before the animation, the keyframes drifting from the sheet\'s)', async () => {
+  const src = read('src/ui/enhancedHotbar.js');
+  const fn = src.slice(src.indexOf('function showCaption('), src.indexOf('/** The modifiers an event carries'));
+  const anim = fn.indexOf("if (typeof caption.animate === 'function') {");
+  assert.ok(anim > 0, 'the animation first');
+  assert.ok(fn.indexOf('void caption.offsetWidth') > anim, 'the forced layout only on the fallback, after the animation\'s return');
+  assert.match(fn, /captionFade\?\.cancel\?\.\(\);\n\s+captionFade = caption\.animate\(CAPTION_FADE, \{ duration: CAPTION_MS, easing: 'linear', fill: 'forwards' \}\);\n\s+return;/);
+  const { CAPTION_FADE, CAPTION_ON, HOTBAR_CSS: css } = await import('../src/ui/enhancedHotbar.js');
+  // the played keyframes ARE the sheet's own hb-cap
+  const kf = /@keyframes hb-cap \{ 0% \{ opacity: 0; \} 8% \{ opacity: 1; \} 75% \{ opacity: 1; \} 100% \{ opacity: 0; \} \}/;
+  assert.match(css, kf);
+  assert.deepEqual(CAPTION_FADE.map((k) => [k.offset, k.opacity]), [[0, 0], [0.08, 1], [0.75, 1], [1, 0]]);
+  assert.equal(CAPTION_ON, 'hb-cap-on', 'the fallback\'s class is its own word, never the shared `on` nineteen :has() rules watch');
+  assert.match(css, /\.hb-caption\.hb-cap-on \{ animation: hb-cap /);
+});

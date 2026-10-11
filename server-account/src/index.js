@@ -182,7 +182,7 @@ import {
   ACCOUNT_MAX, ACCOUNT_WINDOW_S,
 } from './accounts.js';
 import { mintToken, mintOrder, mintRenownOrder, mintGuildOrder, mintGuildOutOrder, MAX_TTL_S, TOKEN_V, ID_RE, SEAT_TITLES, CHAPTER_TITLES, TOKEN_MAX_CHARS, TOKEN_BODY_MAX, tokenBodyOf } from '../../src/net/identityToken.js';
-import { ACCOUNT_VERSION, MAX_BODY_BYTES, ROUTES, OPEN_ROUTES, PATREON_OPEN_ROUTES, savePathOf, realmPathOf, SAVE_MAX_BYTES, SHOT_MAX_BYTES, maintaining, REPLICA_ROUTES, replicaDb } from './service.js';   // SCALE4d: the routes a read replica may serve, and the session they are served on
+import { ACCOUNT_VERSION, MAX_BODY_BYTES, ROUTES, OPEN_ROUTES, PATREON_OPEN_ROUTES, savePathOf, realmPathOf, SAVE_MAX_BYTES, SHOT_MAX_BYTES, maintaining, routeDb, d1BookmarkOf, D1_BOOKMARK_RE, d1Overloaded } from './service.js';   // SCALE4d: the routes a read replica may serve, and the session they are served on
 import { listSaves, putCard, putBlob, getBlob, deleteSave, saveCardOf } from './saves.js';
 import { signingKey, gatePublicKey } from './signing.js';
 import { stakeCards, cashoutCards } from './cards.js';   // CARDS6: a card table's stakes, escrowed
@@ -206,7 +206,7 @@ import { claimHome, releaseHome, setHomeEntry, homesInTown, homesOf, setHomeLook
 import { roomsOf, offerRoom, withdrawRoom, rentRoom, collectRent } from './rent.js';   // HOME-RENT: a home's rooms, rented
 import {
   foundGuild, guildOf, invitesOf, inviteToGuild, answerInvite, leaveGuild, removeFromGuild, rankGuildMember, renameGuildRanks,
-  depositToGuild, withdrawFromGuild, handOverGuild, disbandGuild, guildBadgeOf,
+  depositToGuild, withdrawFromGuild, handOverGuild, disbandGuild, guildBadgeOf, mintMemberOf,
   renameGuild,   // GUILD2a
 } from './guilds.js';   // GUILD1: the guilds' routes; GUILD1c: the guild a token carries
 import { vaultOf, vaultPut, vaultTake, vaultGrant } from './guildVault.js';   // GUILD2b: the guild's vault
@@ -244,15 +244,15 @@ import { motherlodesRead, strikeMotherlode, isMotherlodeNode } from './motherlod
 import { marketRead, marketList, marketBuy, marketCancel, marketOrder, marketFill, marketUnorder, marketCollect, marketReport, marketRemove, marketAuction, marketBid, marketGoldCollect, marketVendor, marketVendors, marketMyVendors } from './market.js';   // PROF5: the market; PROF5b: its auctions; GOLD-MARKET: gold held collected
 import {
   listRealm, createRealm, customsRealm, joinRealm, checkpointRealm, getRealmBlob, leaveRealm, deleteRealm, undoRealm,
-  realmCharacterHeld, realmLevelOf, realmArmsOf, grantCustomsPass, REALM_CHARACTERS_MAX, REALM_MAX_BYTES, objectBytesOf,
+  realmMintFacts, grantCustomsPass, REALM_CHARACTERS_MAX, REALM_MAX_BYTES, objectBytesOf,
 } from './realm.js';   // REALM P1: the realm's characters; ARENA4b: the level on a realm character's tile, the token's `cl`
 import { grantSpoils } from './budget.js';   // INT5: a signed win's spoils fill the playing character's budget
 import { reviewAct } from './review.js';   // INT6: the review of the judge's verdicts
 import { isGzip, gzipSizeOf, gunzipText, REALM_TEXT_MAX_BYTES } from '../../src/net/realmSaveCodec.js';   // REALM-GZIP: a save rides packed
 import { tradeRealm, REALM_TRADE_BODY_MAX } from './realmTrade.js';   // REALM P2.1: a trade, settled here
 import { wildFall } from './wild.js';   // INT9: a death in the open zone's drop, taken off the record
-import { listLineages, putLineage, realmDie, realmHouseOf, realmWed, listUnions, LINEAGE_BODY_MAX, isTombstone } from './legacy.js';   // LEGACY7: Project Legacy's lines and the tombstone
-import { measured } from './metrics.js';   // SCALE1: every request counted (Workers Analytics Engine)
+import { listLineages, putLineage, realmDie, realmWed, listUnions, LINEAGE_BODY_MAX, isTombstone } from './legacy.js';   // LEGACY7: Project Legacy's lines and the tombstone
+import { measured, heartbeatPartsOf } from './metrics.js';   // SCALE1: every request counted (Workers Analytics Engine); AUDIT SCALE II A-3: a heartbeat's parts, of the body the route read
 import { runCron } from './cron.js';   // SCALE4b: the service's own clock
 import { heartbeat } from './heartbeat.js';   // SCALE4c: one request for a tab's three clocks
 import { ADMIT_ROUTES, admitWait } from './admit.js';   // ADMIT-LINE: the sign-in line
@@ -543,7 +543,21 @@ async function readBody(request, max = MAX_BODY_BYTES) {
 // SCALE1: THE SERVICE, and below it the handler workerd calls - which serves it and counts it (metrics.js). The
 // service is a plain object, not an export: this module still exports `default` and nothing else.
 const service = {
-  async fetch(request, env) {
+  /** SCALE4g: THE ANSWER CARRIES ITS SESSION'S NEWEST BOOKMARK (`x-d1-bookmark`, exposed to the page), so the tab's next
+   *  read starts no older than everything this one saw and wrote - the routes `route` answers are untouched.
+   *  AUDIT SCALE II A-3: `said` is what the route tells the metrics point (metrics.js measured) - a heartbeat's parts. */
+  async fetch(request, env, said = { parts: '' }) {
+    const held = { session: null, said };
+    const res = await service.route(request, env, held);
+    let mark = null;
+    try { mark = held.session?.getBookmark?.() ?? null; } catch { mark = null; }
+    if (typeof mark !== 'string' || !D1_BOOKMARK_RE.test(mark)) return res;
+    const out = new Response(res.body, res);   // its status and headers, copied - a copy's headers may be set
+    out.headers.set('x-d1-bookmark', mark);
+    out.headers.append('access-control-expose-headers', 'x-d1-bookmark');
+    return out;
+  },
+  async route(request, env, held = { session: null, said: { parts: '' } }) {
     const subtle = crypto.subtle;
     const rand = (b) => crypto.getRandomValues(b);
     const nowS = Math.floor(Date.now() / 1000);
@@ -557,7 +571,7 @@ const service = {
         headers: {
           'access-control-allow-origin': origin,
           'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'access-control-allow-headers': 'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary',   // REALM P1: a checkpoint's lease, sequence and tile
+          'access-control-allow-headers': 'content-type, authorization, x-realm-lease, x-realm-seq, x-realm-summary, x-d1-bookmark',   // REALM P1: a checkpoint's lease, sequence and tile; SCALE4g: the tab's D1 bookmark
           'access-control-max-age': '86400',
         },
       });
@@ -626,8 +640,11 @@ const service = {
     // SCALE4d: the token's mint on one D1 session whose first statement (the session lookup) is the primary's and whose
     // reads after it a replica may serve - the reconnect wave's dozen reads a player off the one primary (service.js
     // REPLICA_ROUTES); every other route on the binding as before
-    const db = REPLICA_ROUTES.has(path) && request.method === 'POST' ? replicaDb(env.DB) : env.DB;
-    const ctx = { db, subtle, rand, nowS };
+    // SCALE4g: and the reads a tab keeps asking, each on the session of the bookmark it carries; the session is held so
+    // the answer can carry its newest bookmark back (`fetch`, below)
+    const db = routeDb(env.DB, path, request.method, d1BookmarkOf(request));
+    if (db !== env.DB) held.session = db;
+    const ctx = { db, primary: env.DB, subtle, rand, nowS };   // SCALE4g: `primary` the binding, for a read-then-store a session must not make (board.js)
 
     try {
       // PATREON-LINK: THE THREE DOORS A BROWSER AND PATREON KNOCK AT. No session: each is proven by what it carries
@@ -818,7 +835,10 @@ const service = {
         const seats = seatsOpenFor(who.player, env);
         const worn = await withChapterTitles(ctx, seats ? { ...who.player, seatTitles: await seatTitlesOf(ctx.db, who.player.id) } : who.player, env);   // CHAP4c: and a chapter's
         const zero = seasonZeroOf(env.SEASON_ZERO_WEEK);   // SEASON1: the Season on a title's claim
-        const seatBadge = seats && renownCharacterOk(body.character) ? await seatBadgeOf(ctx.db, who.player.id, body.character, seasonOf(seatWeekOf(nowS * 1000), zero)?.n ?? 0) : null;
+        // SCALE4f part two: THE CHARACTER'S MEMBERSHIP READ ONCE (guilds.js mintMemberOf) for the seat badge, the ribbon and the
+        // guild's badge below - three reads of one row; each keeps its own law over it
+        const member = renownCharacterOk(body.character) && (seats || body.guild === true) ? await mintMemberOf(ctx, who.player.id, body.character) : undefined;
+        const seatBadge = seats && renownCharacterOk(body.character) ? await seatBadgeOf(ctx.db, who.player.id, body.character, seasonOf(seatWeekOf(nowS * 1000), zero)?.n ?? 0, member) : null;
         const wornT = titleWorn(worn, env);
         // CROWN1 part two: the champion's is the account's own, kept for good - no guildmaster's; SEASON1: and so are a
         // Season's crowned and keeper (seatRoyal.js keptTitleOf)
@@ -832,7 +852,7 @@ const service = {
             : CHAPTER_TITLES.includes(wornT) ? (chapterT ? { t: chapterT.high ? 'highmaster' : wornT, ts: chapterT.ts } : {}) : (wornT ? { t: wornT } : {});   // CHAP6e: a Master's in an Ascendancy signed its High Master
         // SEASON1 part two (Seats-Arc 9.1): AND A SEASON'S BANNER RIBBON - the named character's, where its guild kept a
         // seat through the Season before and it was a member at that Season's last Turning (seatRibbons.js ribbonOf)
-        const rb = seats && renownCharacterOk(body.character) ? await ribbonOf(ctx.db, who.player.id, body.character, seasonOf(seatWeekOf(nowS * 1000), zero)) : null;
+        const rb = seats && renownCharacterOk(body.character) ? await ribbonOf(ctx.db, who.player.id, body.character, seasonOf(seatWeekOf(nowS * 1000), zero), member) : null;
         const wardrobe = {
           ...seatT,
           g: [...glyphsOf(who.player, env, nowS), ...(seatBadge?.glyphs ?? [])],
@@ -864,25 +884,29 @@ const service = {
         // AUDIT MERGE-PLUS A6: AND ONLY A MINT THAT ASKS (`guild: true`). A build from before GUILD1c names its character
         // too (RENOWN1), and a token wearing a guild is what the hub routes the guild's lines to - that build knows no
         // guild channel and filed them on its World tab, where a reply goes to everyone. It wears no guild instead.
-        const guild = renownCharacterOk(body.character) && body.guild === true ? await guildBadgeOf(ctx, who.player.id, body.character) : null;
+        const guild = renownCharacterOk(body.character) && body.guild === true ? await guildBadgeOf(ctx, who.player.id, body.character, member) : null;
         // REALM-DOOR (2026-09-29, the field): AND WHETHER THAT CHARACTER IS THE REALM'S. A realm-era tab goes online only
         // as a realm character and names it here; a build from before the realm names its offline character, or none.
         // The relay refuses a 0 at its door, so online is the realm's at the servers too. Stamped on every mint, a 0
         // included: a token with no `rc` is a service from before this, which the relay still admits.
-        const rc = (await realmCharacterHeld(ctx, who.player.id, body.character)) ? 1 : 0;
-        // ARENA4b: AND THAT REALM CHARACTER'S LEVEL, `cl` - the level on its tile (realm.js realmLevelOf: INT7 - the level
+        // SCALE4f: THE FOUR READS OF ITS ROW IN ONE (realm.js realmMintFacts) - whether it is the realm's, its level, its arms
+        // and its house, each exactly as its own read answered it
+        const facts = await realmMintFacts(ctx, who.player.id, body.character);
+        const rc = facts.rc;
+        // ARENA4b: AND THAT REALM CHARACTER'S LEVEL, `cl` - the level on its tile (realm.js realmMintFacts: INT7 - the level
         // its judge trusts, else its summary, 1..1000), which the relay reads (a bout's vitality) as it reads `lv`. Absent for any
         // other character, none named, or a level out of the claim's bounds - a token without it is a token as before.
-        const cl = rc ? await realmLevelOf(ctx, who.player.id, body.character) : null;
+        const cl = facts.cl;
         // INT7: AND THAT REALM CHARACTER'S ARMS, `wa` - the most reach of its judged pack's lawful weapons and its bow
-        // (realm.js realmArmsOf), every referee's clip of a blow between players. Absent before its first judged checkpoint.
-        const wa = rc ? await realmArmsOf(ctx, who.player.id, body.character) : null;
+        // (realm.js realmMintFacts), every referee's clip of a blow between players. Absent before its first judged checkpoint.
+        const wa = facts.wa;
         // ARENA4: AND THE ACCOUNT'S ARENA RATING this season, for a registered account - the hall queues by it (net/arenaLaw.js
         // pairQueue), off the signature, never a word of the client's. A guest's token carries none (a guest is not queued).
         const ar = who.player.handle ? (await arenaRatingOf(ctx, who.player.id, arenaSeasonOf(nowS))).rating : undefined;
-        // LEGACY7 part two: AND THAT REALM CHARACTER'S HOUSE (legacy.js realmHouseOf: its line's surname, its given name, a
-        // Bloodline's mark, the generation's numeral) - off the line the service holds, never a word of the client's
-        const house = rc ? await realmHouseOf(ctx, who.player.id, body.character) : null;
+        // LEGACY7 part two: AND THAT REALM CHARACTER'S HOUSE (realm.js realmMintFacts, by legacy.js houseOn: its line's
+        // surname, its given name, a Bloodline's mark, the generation's numeral) - off the line the service holds, never a
+        // word of the client's
+        const house = facts.house;
         // AUDIT LEGACY III O1: AND WHICH REALM CHARACTER (`ci`, beside a 1 alone) - the relay stamps it on a wedding's frames,
         // so each half names the character its player saw. Kept when a house is left unsaid: the widest token without a
         // house is under TOKEN_MAX_CHARS with it (test/auditlegacy3)
@@ -1348,6 +1372,8 @@ const service = {
         // next new name may come - each dropped here, so the page could say neither
         if ((r.error === 'guild-name-word' || r.error === 'guild-rank-word') && typeof r.word === 'string') return json({ error: r.error, why: r.word }, GUILD_STATUS[r.error], origin);   // TEXT-F1: a rank's name's word too
         if (r.error === 'guild-rename-soon' && Number.isSafeInteger(r.at)) return json({ error: r.error, at: r.at }, GUILD_STATUS[r.error], origin);
+        // GUILD3c (bible/11-Multiplayer/Guilds-Made-Plain.md): a leave's or a disbanding's refusal names everything that holds the guild
+        if (Array.isArray(r.keeps)) return json({ error: r.error, keeps: r.keeps }, GUILD_STATUS[r.error] ?? 400, origin);
         return no(r.error, GUILD_STATUS[r.error] ?? 400, origin);
       }
 
@@ -1626,6 +1652,7 @@ const service = {
       // as its own route answers it (heartbeat.js), under the one session this request resolved
       if (path === '/v1/heartbeat') {
         if (request.method !== 'POST') return no('method', 405, origin);
+        held.said.parts = heartbeatPartsOf(body);   // AUDIT SCALE II A-3: the parts of the body read above - capped, and behind the session
         return json(await heartbeat(ctx, who.player, env, body), 200, origin);
       }
       if (path === '/v1/account/played' && request.method === 'POST') {
@@ -1893,7 +1920,7 @@ const service = {
       // AUDIT ONLINE A17's law, on this side too: an uncaught error is
       // LOGGED, not lost, and a player is told nothing about it.
       console.error('[account]', path, e?.stack ?? String(e));
-      return no('server', 500, origin);
+      return no('server', d1Overloaded(e) ? 503 : 500, origin);   // SCALE4f: an overloaded primary counted apart
     }
   },
 };

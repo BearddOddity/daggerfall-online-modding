@@ -62,6 +62,7 @@ import {
   anglesOf, rightOf, leanedUp, turnHeading, forwardOf, tvOwnGrow, keysHeading,
 } from '../player/travelCamera.js';
 import { travelRateOf } from '../systems/timeScale.js';   // RATE-LAW: the keys' travel runs at its ground's rate
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** A press that moves further than this (px) before it lifts is a drag (the orbit), not a click (a pick). */
 export const TV_CLICK_SLOP = 6;
@@ -386,6 +387,7 @@ export function createTravelView(deps) {
     const ok = deps.allowed();
     if (!ok?.ok) { if (ok?.why) deps.say?.(ok.why); return false; }
     if (deps.danger?.()) { deps.say?.(TRAVEL_VIEW_TEXT.enemies); return false; }
+    noteFirstUse('travel-view');   // TUT1
     const from = state;
     if (from === 'off') camera = initialCamera(deps.feet(), deps.yaw());
     state = 'rising';
