@@ -22,10 +22,11 @@ import { ACTIONS, DEFAULT_BINDINGS, DEFAULT_SHARES } from '../src/systems/inputA
 import { _resetForTests as resetPrefs, getPref, PREF_DEFAULTS } from '../src/systems/uiPrefs.js';
 import {
   tutorialFirstUse, startTutorialTour, showTutorialNow, tutorialLine, clearTutorialLine, _setTutorialDepsForTests,
-  TutorialBox, SHOW_DELAY_MS, RETRY_MS, SCENE_CHANGE_TUTORIAL_MS, boundKeyName, keyWord,
+  TutorialBox, SHOW_DELAY_MS, RETRY_MS, SCENE_CHANGE_TUTORIAL_MS, INPUT_GRACE_MS, WATCH_MS, boundKeyName, keyWord,
 } from '../src/ui/tutorialPopup.js';
 import { tutorialsMatching } from '../src/ui/tutorialsPane.js';
 import { GAME_START_QUESTS, retireDfuTutorial } from '../src/scenes/questBridge.js';
+import { registerPresenter, windowHeld, _resetNotifyForTests } from '../src/systems/notify.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -179,6 +180,8 @@ function rig({ take = true } = {}) {
     keyName: (a) => `<${a}>`,
     doc: () => null,
     held: () => held,
+    win: () => null,   // no presses watched unless a test hands a window
+    isHeld: () => null,   // no host can say, unless a test answers
   });
   const advance = (ms) => {
     now += ms;
@@ -190,7 +193,9 @@ function rig({ take = true } = {}) {
       t.fn();
     }
   };
-  return { mounted, advance, timers, setTake: (v) => { take = v; }, setHeld: (v) => { held = v; } };
+  // a page is read the way a player reads it: drawn, stood on screen past the grace, then a press
+  const read = (box) => { box.markShown(); advance(INPUT_GRACE_MS); box.input(); };
+  return { mounted, advance, timers, read, setTake: (v) => { take = v; }, setHeld: (v) => { held = v; } };
 }
 const flush = () => new Promise((r) => setTimeout(r, 0));   // the box's onClose is deferred past its dismissal
 
@@ -213,7 +218,7 @@ test('TUT1: the first touch pops its page a beat late, over the window just open
   r.advance(10_000);
   assert.equal(r.mounted.length, 1, 'one at a time');
   assert.equal(isTutorialSeen('inventory'), false, 'raised is not read');
-  box.input();   // a key or a click
+  r.read(box);   // a key or a click
   assert.equal(box.done, true);
   await flush();
   assert.equal(isTutorialSeen('inventory'), true, 'read when dismissed');
@@ -236,7 +241,7 @@ test('TUT1: a box REPLACED before it is read goes back to the front and is offer
   assert.deepEqual(tutorialLine(), { waiting: [['spellbook']], showing: null });
   r.advance(RETRY_MS);
   assert.equal(r.mounted.length, 2, 'offered again');
-  r.mounted[1].input();
+  r.read(r.mounted[1]);
   await flush();
   assert.equal(isTutorialSeen('spellbook'), true);
 
@@ -252,6 +257,96 @@ test('TUT1: a box REPLACED before it is read goes back to the front and is offer
   clearTutorialLine();
 });
 
+test('AUDIT TUT1: a page is read, not swatted - no input before it is drawn and has stood its grace, none from a held key or the click that was already down, the first fresh press after it puts it away', async () => {
+  fresh();
+  const listeners = {};
+  const win = { addEventListener: (type, fn) => { (listeners[type] ??= []).push(fn); } };
+  const r = rig();
+  _setTutorialDepsForTests({ win: () => win });
+  const press = (type, repeat = false) => { for (const fn of listeners[type] ?? []) fn({ repeat }); };
+  tutorialFirstUse('combat');
+  r.advance(SHOW_DELAY_MS);
+  const box = r.mounted[0];
+  press('mousedown');   // the attack click that drew the weapon, down before the page was seen
+  box.input();
+  assert.equal(box.done, false, 'not drawn yet: nothing reaches it');
+  box.markShown();
+  r.advance(INPUT_GRACE_MS - 1);
+  press('keydown');   // W pressed as the page appears...
+  box.input();
+  assert.equal(box.done, false, 'inside the grace');
+  r.advance(1);
+  press('keydown', true);   // ...and held: the browser's repeats
+  box.input();
+  assert.equal(box.done, false, 'a key pressed in the grace and held through it is not a reading');
+  box.input();
+  assert.equal(box.click(), true, 'a click it is not ready for is still its own, never the world\'s');
+  assert.equal(box.done, false, 'a repeat is no fresh press');
+  press('keydown');
+  box.input();
+  assert.equal(box.done, true, 'a fresh press after it appeared puts it away');
+  await flush();
+  assert.equal(isTutorialSeen('combat'), true);
+  clearTutorialLine();
+});
+
+test('AUDIT TUT1: the watchdog - a page no host holds any more (dropped from a slot by hand, told nothing) is offered again; a page merely covered is held and waits', () => {
+  fresh();
+  let holds = true;
+  const r = rig();
+  _setTutorialDepsForTests({ isHeld: () => holds });
+  tutorialFirstUse('inventory');
+  r.advance(SHOW_DELAY_MS);
+  const first = r.mounted[0];
+  r.advance(WATCH_MS * 5);
+  assert.equal(r.mounted.length, 1, 'covered or on top, it is held: it waits');
+  assert.deepEqual(tutorialLine().showing, ['inventory']);
+  holds = false;   // the dungeon's pack crossed to the sheet by writing its slot
+  r.advance(WATCH_MS);
+  assert.deepEqual(tutorialLine().showing, ['inventory'], 'one miss is not enough');
+  r.advance(WATCH_MS);
+  assert.equal(tutorialLine().showing, null, 'twice no: it is let go');
+  holds = true;
+  r.advance(RETRY_MS);
+  assert.equal(r.mounted.length, 2, 'and offered again');
+  assert.notEqual(r.mounted[1], first);
+  clearTutorialLine();
+});
+test('AUDIT TUT1: windowHeld asks every live host - true when one holds the window, false when none does, null when no host can say; the three presenters answer from their stacks', () => {
+  _resetNotifyForTests();
+  const box = {};
+  assert.equal(windowHeld(box), null, 'no presenter');
+  const off1 = registerPresenter({ mount: () => true });
+  assert.equal(windowHeld(box), null, 'a presenter that cannot say');
+  let mine = false;
+  const off2 = registerPresenter({ mount: () => true, holds: (w) => mine && w === box });
+  assert.equal(windowHeld(box), false);
+  mine = true;
+  assert.equal(windowHeld(box), true);
+  const off3 = registerPresenter({ mount: () => true, holds: () => { throw new Error('never asked'); }, active: () => false });
+  assert.equal(windowHeld(box), true, 'a dormant host is not asked');
+  off1(); off2(); off3();
+  _resetNotifyForTests();
+  assert.match(read('src/scenes/townTalk.js'), /\n  registerPresenter\(\{ holds: \(win\) => windows\.containsWindow\(win\) \}\);/);
+  assert.match(read('src/scenes/worldModes.js'), /\n  registerPresenter\(\{ holds: \(win\) => interiorWindows\.containsWindow\(win\) \}\);/);
+  const dc = read('src/scenes/dungeonContext.js');
+  assert.match(dc, /const _unregisterHolds = registerPresenter\(\{ holds: \(win\) => dungeonWindows\.containsWindow\(win\), active: \(\) => _live && !_ctxDead \}\);/);
+  assert.match(dc, /_unregisterPresenter\(\);[^\n]*\n\s+_unregisterHolds\(\);/, 'and it leaves with the context');
+});
+
+test('AUDIT TUT1: a page waits out the loading screen; a scene\'s page is asked for once, by the build that stands it (an Ocean Hole\'s door pops none of its own)', () => {
+  const pop = read('src/ui/tutorialPopup.js');
+  assert.match(pop, /held: \(\) => pauseFlowShowing\(\) \|\| loadingHeld\(\),/);
+  const dc = read('src/scenes/dungeonContext.js');
+  assert.match(dc, /\(Number\(dfLocation\?\.mapTableData\?\.mapId\) >>> 0\) >= 0x60000000 \? 'ocean-holes'/, 'the Ocean Hole\'s page is the build\'s');
+  assert.doesNotMatch(read('src/scenes/worldModes.js'), /noteFirstUse\('ocean-holes'/, 'and its door asks for none');
+  // another player's team is theirs: only my own horse and wagon keys pop a page
+  assert.match(read('src/scenes/horseCartPool.js'), /if \(key === KEY_WAGON \|\| key === KEY_FOLLOWING_WAGON\) noteFirstUse\('wagon'\); else if \(key === KEY_HORSE\) noteFirstUse\('horse'\);/);
+  // a refusal opens nothing, and pops nothing
+  assert.match(read('src/ui/tradeDoor.js'), /if \(sup\) \{ messageBox\(sup\.text\); return null; \}\n {2}noteFirstUse\('shops'\);/);
+  assert.match(read('src/systems/daedraSummoning.js'), /if \(gold < cost\) return \{ kind: 'poor', cost \};\n {2}noteFirstUse\('daedra-summoning'\);/);
+});
+
 test('TUT1: while the menu stands a page waits - never pushed over the pause window - and shows once it is down', () => {
   fresh();
   const r = rig();
@@ -263,7 +358,10 @@ test('TUT1: while the menu stands a page waits - never pushed over the pause win
   r.setHeld(false);
   r.advance(RETRY_MS);
   assert.equal(r.mounted.length, 1);
-  assert.match(read('src/ui/pauseDoor.js'), /export function openPauseFlow\(show, hooks = \{\}\) \{\n  const win = openPauseFlowNow\(show, hooks\);\n  if \(win\) _pauseShown = win;/, 'the door keeps the window it opened');
+  const pd = read('src/ui/pauseDoor.js');
+  assert.match(pd, /export function openPauseFlow\(show, hooks = \{\}\) \{\n  return shown\(openPauseFlowNow\(show, hooks\)\);/, 'the door keeps the window it opened');
+  assert.match(pd, /\? \(\) => shown\(enhancedPauseOverlay\(show, \{ \.\.\.hooks, at: 'settings', onResume: again \}\)\)/, 'AUDIT TUT1: the classic window\'s Settings detour is kept too');
+  assert.match(pd, /return shown\(openClassicPauseFlow\(show, \{ \.\.\.hooks, openSettings \}\)\);/, '...and the classic window its Resume opens again');
   clearTutorialLine();
 });
 
@@ -274,14 +372,14 @@ test('TUT1: a scene change holds its page back; a page read meanwhile, or the po
   tutorialFirstUse('bank');
   r.advance(SHOW_DELAY_MS);
   assert.equal(r.mounted[0].lines[0].text, 'Banks', 'the page that is due goes before the one held back');
-  r.mounted[0].input();
+  r.read(r.mounted[0]);
   await flush();
   r.advance(SHOW_DELAY_MS);
   assert.equal(r.mounted.length, 1, 'the gate\'s page still held');
   r.advance(SCENE_CHANGE_TUTORIAL_MS);
   assert.equal(r.mounted.length, 2);
   assert.match(r.mounted[1].lines[0].text, /Dagon's Breach/);
-  r.mounted[1].input();
+  r.read(r.mounted[1]);
   await flush();
 
   tutorialFirstUse('talk');
@@ -304,10 +402,10 @@ test('TUT1: the welcome tour is ONE box of its unread pages, numbered, first in 
   r.advance(SHOW_DELAY_MS);
   const box = r.mounted[0];
   assert.equal(box.lines[0].text, 'Welcome to DFO  (1 of 4)', 'the tour goes before the combat page, without the page already read');
-  for (let i = 0; i < 3; i++) { box.input(); assert.equal(box.done, false); }
+  for (let i = 0; i < 3; i++) { r.read(box); assert.equal(box.done, false); }
   assert.match(box.lines[0].text, /\(4 of 4\)$/);
   assert.equal(isTutorialSeen('welcome'), false);
-  box.input();
+  r.read(box);
   await flush();
   for (const id of TUTORIAL_TOUR) assert.equal(isTutorialSeen(id), true, `${id} read`);
   r.advance(SHOW_DELAY_MS);
@@ -372,7 +470,7 @@ test('TUT1: the seams, swept both ways - every page that pops has a seam in src/
 
 test('TUT1: the four hosts register the popups\' handler (THE FOUR HOSTS RULE); the two new-game seams start the tour after the game-start quests', () => {
   for (const host of ['src/scenes/world.js', 'src/scenes/exterior.js', 'src/scenes/worldModes.js', 'src/scenes/dungeonContext.js']) {
-    assert.match(read(host), /^import [^;]*from '\.\.\/ui\/tutorialPopup\.js';/m, `${host} loads ui/tutorialPopup.js`);
+    assert.match(read(host), /^import (?:[^;]*from )?'\.\.\/ui\/tutorialPopup\.js';/m, `${host} loads ui/tutorialPopup.js`);
   }
   assert.match(read('src/ui/tutorialPopup.js'), /^setTutorialHandler\(tutorialFirstUse\);$/m, 'the module registers itself');
   for (const host of ['src/scenes/world.js', 'src/scenes/exterior.js']) {

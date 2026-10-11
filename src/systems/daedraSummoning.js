@@ -236,8 +236,8 @@ export function attemptSummoning({
   raining = false, storming = false, rolls = Math.random,
 } = {}) {
   const cost = summoningCost(summonerRep);
-  noteFirstUse('daedra-summoning');   // TUT1
   if (gold < cost) return { kind: 'poor', cost };
+  noteFirstUse('daedra-summoning');   // TUT1: a summoning paid for (AUDIT TUT1: not the purse's refusal)
 
   // Sheogorath's 5% (15% storming) hijack, rolled BEFORE the summoning
   // chance - so the chance that follows is HIS, not the one you paid

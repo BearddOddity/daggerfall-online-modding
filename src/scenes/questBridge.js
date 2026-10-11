@@ -171,7 +171,9 @@ export function retireDfuTutorial(machine) {
   if (!live.length) return { retired: 0, started: false };
   for (const q of live) machine.removeQuest(q);
   const held = [...machine.quests.values()].some((q) => String(q?.questName ?? '').toUpperCase() === RETIRED_TUTORIAL_STARTS);
-  const started = held ? false : !!machine.startQuestByName(RETIRED_TUTORIAL_STARTS);
+  let started = false;
+  // AUDIT TUT1: a start that throws (StartQuestImmediate propagates) costs the curse, never the load around it
+  if (!held) { try { started = !!machine.startQuestByName(RETIRED_TUTORIAL_STARTS); } catch (e) { console.warn('[quest] the curse did not start in the retired tutorial\'s place', e); } }
   return { retired: live.length, started };
 }
 

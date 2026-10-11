@@ -98,6 +98,38 @@ ledger is in it, so its page pops from the two views that show the ledger instea
 `test/tut1_tutorials.test.js` sweeps src/ both ways: every page that says it pops has a seam, every seam names a page,
 and a MENU_ONLY page has none.
 
+## AUDIT TUT1 (2026-10-11, Mac: "Audit and ensure perfection")
+
+An independent read of the whole change found four bugs and three slips; each is fixed and pinned, and every new pin
+was mutation-checked (six mutants, six dead).
+
+1. **A page could vanish and stall the line for the session.** The dungeon's pack crossing to the sheet (and two more
+   of its doors) writes the slot by hand; its stack swaps the top in place and disposes nothing, so a page over the
+   pack was dropped with neither its close nor its replacement told. A watchdog now asks the hosts while a page stands
+   (`systems/notify.js` windowHeld; each host registers a `holds`-only presenter beside its own, answering from its
+   stack - townTalk, worldModes' interior, the dungeon's - so the pinned presenters keep their shape); twice no and the page is offered again. A page merely covered is still held, and waits.
+2. **A held key or the attack click swatted a page unread.** The hosts hand every keydown to the top window, repeats
+   included, and a click to it whatever it is. A page now takes no input until it has stood `INPUT_GRACE_MS` and a
+   fresh press (a key going down, not repeating; a click; a tap; the pad and the touch layer press real keys) has come
+   after the grace - a key pressed as it appeared and held is not a reading. A click it is not ready for is still its
+   own, never the world's.
+3. **A scene's page could land under the loading screen** (the 4 s count starts at the door; a cold dungeon build can
+   take longer) and the first key after arrival put it away. Pages wait out `loadingHeld()`. An Ocean Hole popped two
+   pages back to back (its door's and the build's); the build alone asks now, by the abyss's id.
+4. **The pause hold missed windows the door opens past its own entry** - the classic window's Controls detour to the
+   enhanced Settings, and the fresh classic window its Resume opens. Both are tracked (`pauseDoor.js` `shown`).
+
+The slips: a counter refused to a transformed lycanthrope, and a summoning refused for gold, popped their pages
+though nothing opened (both moved past the refusal); another player's horse or wagon popped the page for the player's
+own (only `KEY_WAGON`, `KEY_FOLLOWING_WAGON` and `KEY_HORSE` do now). And `retireDfuTutorial` keeps a throwing curse
+start from aborting the load around it.
+
+Checked and found sound by the same read: no server or worker bundle reaches the tutorial modules; PlayerWeapon is the
+local player's alone; the per-frame seams call only with something to show (and the read set is kept while the shelf's
+list is the same array - 0.3 microseconds a call); the L and N keys reach the quests and notebook pages; the pane
+writes text only through textContent; the welcome tour starts only for a new character (an heir, the Test Room, a
+headless `?class=`, a new online character), never a loaded save.
+
 ## The menu
 
 The pause window has a **Tutorials** tab (`enhancedMenu.js` PAUSE_TABS, before System); the front door and both shell

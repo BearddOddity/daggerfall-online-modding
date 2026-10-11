@@ -1241,7 +1241,7 @@ export function createHorseCartPool({
    *  inside the mod's own reach, else DFU's "too far" (AUDIT HCC O6, the dropped torch's arm). ACT-MENU: `mode` is
    *  the plaque row the player lit (null where no plaque stands: the interaction mode decides, as the mod's does). */
   function activate(key, distance, say = null, tooFar = null, mode = null) {
-    noteFirstUse(key === KEY_WAGON || key === KEY_FOLLOWING_WAGON ? 'wagon' : 'horse');   // TUT1
+    if (key === KEY_WAGON || key === KEY_FOLLOWING_WAGON) noteFirstUse('wagon'); else if (key === KEY_HORSE) noteFirstUse('horse');   // TUT1: my own team - another player's is theirs (AUDIT TUT1)
     if (!runtime) return false;
     if (key === KEY_WAGON && mode === CARAVAN_ENTER_ROW) {   // WAGONS1: into the caravan, at the mod's own reach
       if (!(distance <= ACTIVATION_REACH)) { tooFar?.(); return true; }   // the mod's own reach

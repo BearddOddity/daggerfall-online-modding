@@ -33,7 +33,6 @@ export function tradeDoorReady() {
  * for the pack.
  */
 export function createTradeWindow(hooks = {}) {
-  noteFirstUse('shops');   // TUT1
   // DISC10-E L3: DaggerfallTradeWindow.OnPush/Update (:369-376, :355-366) -
   // the inventory window's own suppression, inherited: a transformed
   // lycanthrope opens no counter of any mode (Identify, Repair, the guild
@@ -41,6 +40,7 @@ export function createTradeWindow(hooks = {}) {
   // nothing (ui/inventoryDoor.js has the full note).
   const sup = racialSuppressInventory(hooks.entity);
   if (sup) { messageBox(sup.text); return null; }
+  noteFirstUse('shops');   // TUT1: a counter that opens (AUDIT TUT1: not the beast's refusal)
   if (isEnhanced() && typeof document !== 'undefined') {
     return enhancedTradeOverlay(hooks);
   }

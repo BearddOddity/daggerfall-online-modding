@@ -200,11 +200,12 @@ export const familyPageAt = (at) => at === 'family' || FAMILY_PAGE_SECTIONS.some
  *  (ui/tutorialPopup.js), rather than being pushed over the menu the player is reading. */
 let _pauseShown = null;
 export const pauseFlowShowing = () => !!_pauseShown && !_pauseShown.done;
+/** AUDIT TUT1: every pause window this door raises is the one shown - the classic window's Controls detour to the
+ *  enhanced Settings and its Resume back to a fresh classic window open theirs without passing openPauseFlow. */
+const shown = (win) => { if (win) _pauseShown = win; return win; };
 
 export function openPauseFlow(show, hooks = {}) {
-  const win = openPauseFlowNow(show, hooks);
-  if (win) _pauseShown = win;
-  return win;
+  return shown(openPauseFlowNow(show, hooks));
 }
 
 function openPauseFlowNow(show, hooks) {
@@ -237,9 +238,9 @@ function openPauseFlowNow(show, hooks) {
 function classicPauseWithSettings(show, hooks) {
   const again = () => classicPauseWithSettings(show, hooks);
   const openSettings = typeof document !== 'undefined'
-    ? () => enhancedPauseOverlay(show, { ...hooks, at: 'settings', onResume: again })
+    ? () => shown(enhancedPauseOverlay(show, { ...hooks, at: 'settings', onResume: again }))   // AUDIT TUT1: the detour is a pause window too
     : null;
-  return openClassicPauseFlow(show, { ...hooks, openSettings });
+  return shown(openClassicPauseFlow(show, { ...hooks, openSettings }));
 }
 
 /**

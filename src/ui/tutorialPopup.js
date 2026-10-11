@@ -17,16 +17,31 @@
 // the trigger (SHOW_DELAY_MS) so that window holds the slot first and the page is pushed OVER it, never under it.
 // While one page stands, the next waits for its close.
 //
+// IT IS READ, NOT SWATTED (AUDIT TUT1). Hosts hand every keydown to the top window, auto-repeats included, and a click
+// to it whatever it is: a page that pops while W is held, or as the attack button goes down, was gone the next frame -
+// and marked read. A page takes no input until it has stood on screen INPUT_GRACE_MS AND a fresh press has come since
+// (a key going down, not repeating; a click; a tap; a pad's button - the pad and the touch layer press real keys).
+//
+// IT IS NEVER LOST (AUDIT TUT1). A host can drop a window from its slot by hand without disposing it (the dungeon's
+// pack crossing to the sheet writes the slot direct, and its stack swaps the top in place), so a page could vanish with
+// neither its close nor its replacement told - and the line waited on it for the rest of the session. While a page
+// stands, a watchdog asks the hosts whether any still holds it (systems/notify.js windowHeld); twice no, and it is
+// offered again. A page merely COVERED (a message pushed over it) is still held, and waits.
+//
+// IT WAITS FOR THE WORLD. Never while the pause window stands, and never while the loading screen does - a scene's
+// page (a gate's court, a dungeon) is asked for at the door and offered once the far side is up.
+//
 // THE WELCOME TOUR is one box of several pages (addNext, DaggerfallMessageBox.AddNextMessageBox): each dismissal
 // turns the page, and the last closes it and marks every page of it read.
 
 import { ActionTextBox } from './actionText.js';
-import { mountWindow } from '../systems/notify.js';
+import { mountWindow, windowHeld } from '../systems/notify.js';
 import { tutorialById, tutorialDue, tutorialRows, markTutorialsSeen, setTutorialHandler, TUTORIAL_TOUR } from '../systems/tutorials.js';
 import { bindings } from './input.js';
 import { codeForAction } from '../systems/inputActions.js';
 import { buttonText } from '../systems/controlsConfig.js';
 import { pauseFlowShowing } from './pauseDoor.js';   // a page waits while the menu stands
+import { loadingHeld } from './loadingScreen.js';   // ...and while the loading screen does
 
 /** The beat between the trigger and the offer. */
 export const SHOW_DELAY_MS = 350;
@@ -36,6 +51,9 @@ export const SCENE_CHANGE_TUTORIAL_MS = 4000;
 /** How long a page no host would take waits before it is offered again, and how many times. */
 export const RETRY_MS = 1500;
 export const MAX_RETRIES = 40;
+/** AUDIT TUT1: how long a page stands before a press can put it away, and how often the watchdog asks after it. */
+export const INPUT_GRACE_MS = 400;
+export const WATCH_MS = 1000;
 /** The caption under the enhanced panel. */
 export const TUTORIAL_HINT = 'click or press any key';
 
@@ -73,13 +91,38 @@ export function boundKeyName(action, store = null) {
   } catch { return null; }
 }
 
-/** A page's box: an ActionTextBox that tells its owner when it is REPLACED rather than read. */
+// AUDIT TUT1: THE LAST FRESH PRESS - a key going down (not a repeat), a click, a tap; the pad and the touch layer press
+// real keys. Watched once, on the window, before anything else hears it.
+let lastPressAt = -Infinity;
+let pressWatched = false;
+function watchPresses() {
+  const w = deps.win();
+  if (pressWatched || !w?.addEventListener) return;
+  pressWatched = true;
+  const note = (e) => { if (!e?.repeat) lastPressAt = deps.now(); };
+  for (const type of ['keydown', 'pointerdown', 'mousedown']) w.addEventListener(type, note, true);
+}
+
+/** A page's box: an ActionTextBox that tells its owner when it is REPLACED rather than read, and takes no input until
+ *  it has been seen (AUDIT TUT1 - see the header). */
 export class TutorialBox extends ActionTextBox {
   constructor(rows, { onClose = null, onReplaced = null } = {}) {
     super(rows, { onClose, noticeHint: TUTORIAL_HINT });
     this.onReplaced = typeof onReplaced === 'function' ? onReplaced : null;
     this.tutorial = true;
+    this.shownAt = null;   // the clock at its first draw
   }
+  /** The host drew it: from now it is on screen. */
+  markShown() { if (this.shownAt == null) this.shownAt = deps.now(); }
+  draw(...args) { this.markShown(); return super.draw(...args); }
+  /** Seen long enough, and a fresh press since the grace ran out (where presses are watched) - a key pressed as the
+   *  page appeared and held through the grace is still that key, and its repeats are not a reading. The window's
+   *  capture listener notes a press before any host hands it to the box, so the press that reads is its own proof. */
+  ready() {
+    if (this.shownAt == null || deps.now() - this.shownAt < INPUT_GRACE_MS) return false;
+    return !pressWatched || lastPressAt >= this.shownAt + INPUT_GRACE_MS;
+  }
+  click() { if (this.ready()) this.input(); return true; }   // a click it is not ready for is still its own - never the world's
   dispose() {
     const cb = this.onReplaced;
     this.onReplaced = null;
@@ -87,7 +130,10 @@ export class TutorialBox extends ActionTextBox {
     if (cb && !this.done) cb();
   }
   input() {
+    if (!this.ready()) return;
+    const before = this.lines;
     super.input();
+    if (this.lines !== before && !this.done) this.shownAt = deps.now();   // a tour's next page is a new page to read
     if (this.done) this.onReplaced = null;   // read: a later dispose is the host tidying a closed box, not a replacement
   }
 }
@@ -106,8 +152,12 @@ let deps = {
   clearTimeout: (t) => globalThis.clearTimeout(t),
   keyName: (action) => boundKeyName(action),
   doc: () => globalThis.document ?? null,
-  held: () => pauseFlowShowing(),   // the menu is up: a page is never pushed over it
+  win: () => (typeof globalThis.addEventListener === 'function' ? globalThis : null),
+  held: () => pauseFlowShowing() || loadingHeld(),   // the menu or the loading screen is up: a page waits for it
+  isHeld: (win) => windowHeld(win),   // does any host still hold this window (null: none can say)
 };
+let watchTimer = null;
+let watchMisses = 0;
 
 const queued = (id) => line.some((e) => e.ids.includes(id)) || !!current?.entry.ids.includes(id);
 
@@ -168,12 +218,27 @@ function offer() {
   current = { entry, box };
   let taken = false;
   try { taken = !!deps.mount(box); } catch (e) { console.warn('[tutorial] a host refused the page', e); }
-  if (taken) return;
+  if (taken) { watchPresses(); watch(); return; }
   // no host would take it (none presenting yet, or a slot that does not push): it waits its turn again
   current = null;
   box.onReplaced = null;
   line.unshift(entry);
   if (++retries <= MAX_RETRIES) schedule(RETRY_MS);
+}
+
+/** AUDIT TUT1: THE WATCHDOG - while a page stands, ask the hosts whether one still holds it. Twice no, and it is treated
+ *  as replaced (its dispose re-queues it). A host that cannot say (none offers `holds`) is believed. */
+function watch() {
+  if (watchTimer != null) return;
+  watchTimer = deps.setTimeout(() => {
+    watchTimer = null;
+    const box = current?.box;
+    if (!box || box.done) { watchMisses = 0; return; }
+    if (deps.isHeld(box) === false) {
+      if (++watchMisses >= 2) { watchMisses = 0; box.dispose(); return; }
+    } else watchMisses = 0;
+    watch();
+  }, WATCH_MS);
 }
 
 /**
@@ -216,13 +281,17 @@ export const tutorialLine = () => ({ waiting: line.map((e) => [...e.ids]), showi
 export function clearTutorialLine() {
   line.length = 0;
   if (timer != null) { deps.clearTimeout(timer); timer = null; }
+  if (watchTimer != null) { deps.clearTimeout(watchTimer); watchTimer = null; }
   timerAt = Infinity;
   retries = 0;
+  watchMisses = 0;
 }
 
 /** Tests: swap the seams, and start from nothing. */
 export function _setTutorialDepsForTests(over = {}) {
   clearTutorialLine();
   current = null;
+  pressWatched = false;
+  lastPressAt = -Infinity;
   deps = { ...deps, ...over };
 }

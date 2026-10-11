@@ -1865,11 +1865,14 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
   const sdEndClock = () => opts.sdClock?.() ?? performance.now() / 1000;   // SD-LOOK: the realm's anchored seconds - every screen's gear ticks together
   const sdEnd = _superTier ? createSdEnd({ renderer, audio, onRift: () => sdRiftStep(), onReturn: () => sdReturnStep(), riftCount: () => sdEndWord()?.count ?? null, look: () => (opts.superRiftLook ? opts.superRiftLook(dfLocation?.sdSlot) : sdEndWord()?.look) ?? null, clock: sdEndClock })   // AUDIT SD II (L6 F5): its plaque counts its Hour; SD-LOOK: and its state is its look
     : _sdRealm ? createSdEnd({ renderer, audio, riftTo: SD_REALM_TEXT.wayBack, onRift: () => opts.sdWayBack?.(), onReturn: () => opts.sdWayHome?.(), retTitle: SD_HOME_TEXT.title, retTo: SD_HOME_TEXT.to, clock: sdEndClock }) : null;   // SD5a: the Shattered Hour's way back - the same Rift, at its Threshold's back; SD10: and its way home, the Return's light where the Remnant fell
-  // TUT1: the page of the place this build stands - read inside it, a beat after the step through: Dagon's Breach's
-  // court, the arena's sand, the Abyss Dungeon or its Shattered Hour, or the first dungeon past the starting cave (the
-  // welcome tour told that one). An Ocean Hole's flooded dungeon pops its own at its door (worldModes.js enterAbyss).
+  // TUT1: the page of the place this build stands - read inside it, a beat after the step through and never while the
+  // loading screen stands (ui/tutorialPopup.js holds it): Dagon's Breach's court, the arena's sand, the Abyss Dungeon or
+  // its Shattered Hour, an Ocean Hole's flooded dungeon (its id the abyss's own, 0x60000000 and up - getAbyssMapId), or
+  // the first dungeon past the starting cave (the welcome tour told that one). ONE page a build (AUDIT TUT1: an Ocean
+  // Hole's door popped its own and the build a second, back to back).
   noteFirstUse(isGateArena(dfLocation) ? 'oblivion-gate' : isArenaFloor(dfLocation) ? 'arena' : _superTier || _sdRealm ? 'abyss'
-    : isStartDungeon(dfLocation) ? null : 'dungeons', { after: SCENE_CHANGE_TUTORIAL_MS });
+    : (Number(dfLocation?.mapTableData?.mapId) >>> 0) >= 0x60000000 ? 'ocean-holes'
+      : isStartDungeon(dfLocation) ? null : 'dungeons', { after: SCENE_CHANGE_TUTORIAL_MS });
   // SD6c (Super-Dungeons.md section 8): THE ORRERY'S HALL in the Shattered Hour (scenes/sdHall.js) - its stones,
   // plaques, dial and bridge, stood the first frame I stand here; a handle's turn sent through the outer host (the realm
   // judges it), the realm's word on the hall read from it every frame
@@ -2552,6 +2555,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
     active: () => _live && !_ctxDead,
     priority: 20,
   });
+  const _unregisterHolds = registerPresenter({ holds: (win) => dungeonWindows.containsWindow(win), active: () => _live && !_ctxDead });   // TUT1 audit: whether this host's stack still holds a window (systems/notify.js windowHeld) - a registration of its own, no `mount`, so the presenter above keeps its shape
   // AUDIT 64 F34: SetMidScreenText ends with the SAME
   // `Notebook.AddMessage(message)` PopupText.AddText carries
   // (DaggerfallHUD.cs:371 / PopupText.cs:123), so the label files into
@@ -10464,6 +10468,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
     destroy() {
       _ctxDead = true;   // NT1 (F213): before anything frees - the warm-window continuations read it
       _unregisterPresenter();   // ENH-NOTICE3: the registration leaves with the context (the dead latch above is what REFUSES a box in the meantime - pushDungeonWindow reads it, AUDIT ENH-NOTICE3 F2)
+      _unregisterHolds();   // TUT1 audit: and its holds-only twin
       // PX21c: the plaque leaves with the host that raised it - AFTER
       // the latch, which NT1 pins as the first act of this function.
       destroyWorldPlaque();

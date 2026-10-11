@@ -443,7 +443,7 @@ import { loadGraceActive as dwLoadGraceActive } from '../world/deepWaterRuntime.
 import { livingWorldOn } from '../systems/livingWorld/livingSwitch.js';   // HALT-ONE: the living watch's lane, for a watch called into a building
 import { chapterHallFactor, chapterHallShelf, chapterHallShut, CHAPTER_HALL_SHUT_LINE, seatedBook } from '../net/npcChapterLaw.js';   // CHAP3c: a hall's chapter's band on its training, spells and shelf; CHAP4b: a seat's rank at its halls
 import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
-import { SCENE_CHANGE_TUTORIAL_MS } from '../ui/tutorialPopup.js';   // TUT1: and the popup's handler, registered by this host (the four hosts' rule)
+import '../ui/tutorialPopup.js';   // TUT1: the popup's handler, registered by this host (the four hosts' rule)
 /** BOUNTY1: the plaque over a town's bounty board. */
 const BOUNTY_BOARD_TEXT = 'Bounty Board';
 const NOTICE_BOARD_TEXT = 'Notice Board';   // ONE-BOARD: a town's Notice Board, while it is open to this account
@@ -9090,7 +9090,6 @@ export function createWorldModes(host) {
    *  host's word for the template pixel's climate and season. */
   async function enterAbyss(dfLocation, site) {
     if (mode !== 'exterior' || !dfLocation?.hasDungeon) return false;
-    noteFirstUse('ocean-holes', { after: SCENE_CHANGE_TUTORIAL_MS });   // TUT1: an Ocean Hole's flooded dungeon, read inside it
     const hit = { dfLocation, climateBase: site?.climateBase ?? 2, season: site?.season ?? 0, group: `abyss:${dfLocation.mapTableData?.mapId ?? 0}`, door: null, dfBlock: null, recordIndex: -1 };
     return tryEnterDungeon(hit, [], { preferEnterMarker: false });
   }
@@ -12536,6 +12535,7 @@ export function createWorldModes(host) {
   // own (the town's and the dungeon's are the two), so it offers no
   // hudText. No unregister: the mode machine lives as long as the page.
   registerPresenter({ mount: (win) => showQuestOverlay(win), priority: 10 });
+  registerPresenter({ holds: (win) => interiorWindows.containsWindow(win) });   // TUT1 audit: whether this host's stack still holds a window (systems/notify.js windowHeld) - a registration of its own, no `mount`, so the presenter above keeps its shape (the dungeon's answers for its own)
   return {
     get mode() { return mode; },
     /**
