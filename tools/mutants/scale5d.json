@@ -122,22 +122,22 @@
   {
     "name": "SCALE5d-layer-unread",
     "file": "server/src/index.js",
-    "old": "    const ly = isLayered(key) ? layerOf(request.headers.get(LAYER_HEADER)) : 0;",
+    "old": "    const ly = isLayered(key) || isGateRoom(key) ? layerOf(request.headers.get(LAYER_HEADER)) : 0;",
     "new": "    const ly = 0;",
     "tests": [
       "test/scale5d.test.js"
     ],
-    "note": "a layer that does not know it is one"
+    "note": "a layer that does not know it is one SCALE5d part two (re-aimed by content): the court's copies beside it."
   },
   {
     "name": "SCALE5d-channel-given-layer",
     "file": "server/src/index.js",
-    "old": "    const ly = isLayered(key) ? layerOf(request.headers.get(LAYER_HEADER)) : 0;",
+    "old": "    const ly = isLayered(key) || isGateRoom(key) ? layerOf(request.headers.get(LAYER_HEADER)) : 0;",
     "new": "    const ly = layerOf(request.headers.get(LAYER_HEADER));",
     "tests": [
       "test/scale5d.test.js"
     ],
-    "note": "a room that does not layer told it does"
+    "note": "a room that does not layer told it does SCALE5d part two (re-aimed by content): the court's copies beside it."
   },
   {
     "name": "SCALE5d-welcome-silent",

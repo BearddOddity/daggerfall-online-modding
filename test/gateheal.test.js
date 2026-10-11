@@ -290,5 +290,5 @@ test('GATE-HEAL the plumbing, read: the ally-cast door - which never hears my ow
   assert.match(w, /sendHeal: \(heal\) => !!online\?\.sendGate\?\.\(\{ k: 'heal', \.\.\.heal \}\),/);
   const r = read('server/src/index.js');
   assert.match(r, /if \(m\.k === 'heal'\) \{\n\s*const pose = a\.pose \? this\._courtOf\(a\.pose\) : null;/);
-  assert.match(r, /const healer = this\._idFirst\(by\)\?\.\[1\]\?\.sub \?\? null;[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*const got = healer \? applyHeal\(f, a\.sub, healer, n, pose, now\) : 0;/);   // PIN MOVED (AUDIT INT11): what it believed, the count's too (bodyHealed); PIN MOVED (SCALE5b): the healer by the id index
+  assert.match(r, /const healer = this\._courtIdFirst\(by\)\?\.\[1\]\?\.sub \?\? null;[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*const got = healer \? applyHeal\(f, a\.sub, healer, n, pose, now\) : 0;/);   // PIN MOVED (AUDIT INT11): what it believed, the count's too (bodyHealed); PIN MOVED (SCALE5b): the healer by the id index; PIN MOVED (SCALE5d part two): the court's and its copies' (`_courtIdFirst`)
 });

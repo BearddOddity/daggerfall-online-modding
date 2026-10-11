@@ -67,7 +67,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | **Built** (2026-10-10, this branch; acct112) |
 | SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | **Built** (2026-10-10, this branch; relay world191 on its branch, folded into world192 past main's WARDEN1; NOT YET DEPLOYED) - with the relay's settings at run time and its word of its referees for a halo (`rf` - HALO-THIN, below, the halos' one law) |
 | SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | **Built** (2026-10-11, this branch; relay world192, NOT YET DEPLOYED) - the hub's sixteen shards and each region's four, the World and Region tabs' lists and the search |
-| SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | **Part one built** (2026-10-11, this branch; world192) - a crowded place overflows into layers; the event rooms next |
+| SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | **Built** (2026-10-11, this branch; world192) - a crowded place overflows into layers; a gate's court into copies around its one fight (the realm, a siege and the arena are capped below a room by their own laws) |
 | SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | **Built** (2026-10-11, this branch; acct112) - measured first: written less at the source, not moved - Renown coalesced, the session touched hourly, the metrics by table; a token bound to a key considered |
 | SCALE6 | Abuse and backups: Turnstile on guest creation, /64 IPv6 rate keys, bans, report and ignore, `ALLOWED_ORIGIN`, R2 snapshots, a hub export | Some | Alongside |
 
@@ -1555,6 +1555,81 @@ relay starting. AUDIT-ACC F2's pin (test/accountdeploy.test.js) failed on it bef
 **Left:** part two - the event rooms (a gate's court, a Super dungeon's realm) as copies around one fight. Only those two
 can fill: a siege seats 48 fighters and 60 watchers, and the arena 60 watchers and a bout's two.
 
+### SCALE5d part two: a gate's court, copied (2026-10-11, this branch - the same world192, re-hashed)
+
+**Which rooms can fill, read off their own laws first** (a read-only survey of the gate's court and the Super dungeon's
+realm):
+- **A Super dungeon's realm** admits SD_FIGHTERS_MAX accounts (256) by its own admission list, and the wire carries no
+  more (`n <= 256`). One seat an account, so its sockets never pass SOCKETS_MAX: the 257th account is the realm's
+  `full`, not the room's. Copies would add nothing there. Raising the realm's count is a game decision.
+- **A siege and the arena** are capped lower by their laws (48 + 60, 60 + 2).
+- **A gate's court** admits anyone while its gate admits, and any fighter of its fight after. Its fighters are capped at
+  GATE_FIGHTERS_MAX (256) by its brain, but its watchers are not. So the 257th was refused `room full` at the door,
+  even with fighter seats free.
+
+**The design** (`src/net/hubShards.js` isCourtCopy, courtOfCopy, upOf, courtHands; `server/src/index.js` _courtHello,
+_courtPose, _courtSockets, _courtSendAll):
+- **The court stays as it was.** It keeps its fight and its first SOCKETS_MAX sockets. A court that never fills runs no
+  new line: every path below is asked only while it holds a copy's socket.
+- **Past it, its copies.** The Worker walks a gate's key as it walks a crowded place (part one's layerWalk), from the
+  court itself whatever the page asks. A copy is `gate:<n>#<k>`. Each copy is a crowd of its own: its sockets see each
+  other, never the court's or another copy's.
+- **A copy hands the court its fight, over the shards' machinery:**
+  - each socket's hello (`h`), after the copy's own welcome;
+  - its poses (`p`) as its own room takes them, unfanned there;
+  - its gate words (`f`) as they came;
+  - its leaves (`x`, `r`).
+
+  The court makes each a ShardSocket, metered and struck by the court's own gates.
+- **Admission is the court's.** A copy asks only the clock (gateHolds). The court asks its own law (_gateAdmit: a
+  fighter always, a newcomer while the gate admits) and refuses in its own words, closed through the copy. One seat an
+  account across the court and every copy: the newer hello replaces the older, wherever each stands.
+- **The court hands back:** each answer and receipt to its socket, each beat once per copy (`{all}`), and its closes.
+- **A copy's socket is never the court's index** (`_setAttach` keeps it on the ShardSocket). So no crowd walk there - a
+  pose's fan, a roster, a line, a leave - can reach it. Only the fight's own paths read it, through _courtSockets:
+  - the census (bodies, its trails for the judge);
+  - who is present when a full fight frees a seat;
+  - the beat's `here`;
+  - the kill's `here` and its receipts;
+  - the count's body words;
+  - a heal's healer (_courtIdFirst).
+- **A copy holds no fight.** Its gate words go up, so it never mints one.
+- **A woken court holds no copy's socket.** Each copy's sync (its alarm) says them again, as a shard's does.
+
+**Found on the way, fixed - in SCALE5c's machinery too.** A ShardSocket the bus closed (a refusal) was asked its hello
+again by the next pose or frame of its on the way ("unknown"). The hello was refused again, and asked again, in a loop
+that starved every timer. The bus now remembers what it closed (`_vshut`). A pose alone asks nothing; the socket's next
+frame or the sync does.
+
+**What a player sees.** In a court past 256, a newcomer lands in a copy. It hears the boss, fights him (while the brain
+has a seat), earns his receipt and sees the kill, beside the copy's crowd but not the court's. The court's own crowd is
+unchanged.
+
+**Pins.** `test/scale5d_court.test.js` (7):
+- the law;
+- the Worker's walk (the court first);
+- a copy's socket: welcomed by its copy, held by the court outside its index, joining the one fight, hearing the same
+  beats, the crowds apart;
+- the fight hearing a copy's fighter: its blow from its pose, its trail, the census, a copy-mate's heal, the kill's
+  `here` and receipt, its trail gone with it;
+- the door: the court's law through a copy, a refused socket never asked again, one seat across the court and two
+  copies, a copy's leave said to its own crowd alone;
+- a court without copies unchanged, a copy minting no fight;
+- a woken court told again by a woken copy's sync.
+
+`tools/mutants/scale5d_court.json`: 28, all dead. Five survived their first run and their pins were made to reach
+them: one seat across two copies, a trail followed past its seed, a write of an attachment kept out of the index, a
+copy-mate's leave (the first pin's joined after the seal and was refused), and a refused socket's frame on its way.
+
+PIN MOVED: gateheal's healer (now _courtIdFirst); gatereload's hello door (a copy asks the clock alone). Re-aimed by
+content, all dead:
+- AUDWB-A1-nobody-present;
+- GATE-HEAL-the-peer-never-read;
+- GATE-RELOAD-the-window-said-in-a-no;
+- INT11-RELAY-NO-BD;
+- SCALE5c-told-unkept, -unknown-unsaid, -census-the-bus-own and -bus-any-channel;
+- SCALE5d-layer-unread and -channel-given-layer.
+
 ## SCALE4h: built (2026-10-11, this branch - acct112, no migration, no drop)
 
 The plan's eighth slice: "A player's hot rows (the session, the play clock, the Renown tally, the rate windows) off the
@@ -1772,7 +1847,8 @@ slice below measures again with a tool of its own in the tree.
      through a region bus.
 7. **SCALE5d - event rooms and crowds, by the metrics.** The gate's court, the Abyss realm and the arena as copies
    around one fight object that takes their blows batched and fans the boss's state back. Crowded cells: SOCKETS_MAX
-   raised as far as SCALE5b's batching measures room for, then layering (Mac's decision 3).
+   raised as far as SCALE5b's batching measures room for, then layering (Mac's decision 3). (Built, above: layers for a
+   crowded place; copies for a gate's court, the one event room whose law admits past a room.)
 8. **SCALE4h - 10k writes, by the metrics.** A player's hot rows (the session, the play clock, the Renown tally, the
    rate windows) off the one primary: per-account objects or account shards, chosen once SCALE4f's metrics say how
    busy the primary really is. (Built, above: measured, the tally and the touch written less at the source, and the metrics

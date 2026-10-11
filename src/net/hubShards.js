@@ -72,6 +72,27 @@ export const shardOf = (bus, sub) => {
   return `${bus}.${shardHash(sub) % REGION_SHARDS}`;
 };
 
+/**
+ * SCALE5d part two (2026-10-11, the plan's "the gate's court ... as copies around one fight object that takes their blows
+ * batched and fans the boss's state back"; bible/11-Multiplayer/Scale-Arc.md SCALE5d): A GATE'S COURT, COPIED. The court
+ * (`gate:<n>`) keeps its fight and its first SOCKETS_MAX sockets as it always did; a crowd past them goes to its copies,
+ * `gate:<n>#<k>` (net/wire.js layerName, k 1 to LAYERS_MAX - 1, found by the Worker's walk), each a crowd of its own - its
+ * sockets see each other, never the court's - whose fight is the court's: each copy hands it its sockets' hellos, poses
+ * and gate words over the shards' own machinery, and the court hands back the boss's beats, its answers and its closes.
+ * The only event room whose own law admits past SOCKETS_MAX: a Super dungeon's realm admits SD_FIGHTERS_MAX accounts, a
+ * siege and an arena fewer, so none of them can fill a room.
+ */
+export const COURT_COPY_RE = /^(gate:(?:0|[1-9]\d{0,8}))#([1-7])$/;
+/** Is `name` a copy of a gate's court? */
+export const isCourtCopy = (name) => typeof name === 'string' && COURT_COPY_RE.test(name);
+/** The court a copy's name is one of, or null. */
+export const courtOfCopy = (name) => (typeof name === 'string' ? COURT_COPY_RE.exec(name)?.[1] ?? null : null);
+/** The object a shard or a copy hands up to - a channel shard's bus, a court copy's court - or null. */
+export const upOf = (name) => busOf(name) ?? courtOfCopy(name);
+/** The frames a court copy hands its court - the fight's words (`gate`), read off the frame's start as the client writes
+ *  it; a copy keeps every other for its own crowd. */
+export const courtHands = (s) => s.startsWith('{"t":"gate"');
+
 /** A shard's hello, frames and closes, to the bus. */
 export const HUB_INTERNAL_UP = '/internal/hub/up';
 /** The bus's frames and closes for a shard's sockets, to the shard. */

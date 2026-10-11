@@ -282,12 +282,12 @@
   {
     "name": "SCALE5c-told-unkept",
     "file": "server/src/index.js",
-    "old": "    this._toldN.set(hub, n);\n",
+    "old": "    if (!court) this._toldN.set(hub, n);\n",
     "new": "",
     "tests": [
       "test/scale5c.test.js"
     ],
-    "note": "what a shard was told forgotten - told again and again"
+    "note": "what a shard was told forgotten - told again and again SCALE5d part two (re-aimed by content): the court's copies beside it."
   },
   {
     "name": "SCALE5c-bus-count-shardless",
@@ -342,12 +342,12 @@
   {
     "name": "SCALE5c-unknown-unsaid",
     "file": "server/src/index.js",
-    "old": "{ if (kind === 'f') unknown.add(vid); continue; }",
+    "old": "{ if (kind === 'f' && !this._vshut.has(vid)) unknown.add(vid); continue; }",
     "new": "{ continue; }",
     "tests": [
       "test/scale5c.test.js"
     ],
-    "note": "a frame for a socket the bus lost answered nothing"
+    "note": "a frame for a socket the bus lost answered nothing SCALE5d part two (re-aimed by content): the court's copies beside it."
   },
   {
     "name": "SCALE5c-live-unread",
@@ -782,12 +782,12 @@
   {
     "name": "SCALE5c-census-the-bus-own",
     "file": "server/src/index.js",
-    "old": "  _shardAtt(a) { const { key, pose, hm, at, w2, vid, ...att } = a; void key;",
-    "new": "  _shardAtt(a) { const { key, pose, hm, at, w2, vid, lk, ...att } = a; void lk; void key;",
+    "old": "  _shardAtt(a) { const { key, pose, hm, at, w2, vid, ly, ...att } = a; void key;",
+    "new": "  _shardAtt(a) { const { key, pose, hm, at, w2, vid, ly, lk, ...att } = a; void lk; void key;",
     "tests": [
       "test/scale5c.test.js"
     ],
-    "note": "the census counts the bus's own sockets alone"
+    "note": "the census counts the bus's own sockets alone SCALE5d part two (re-aimed by content): the court's copies beside it."
   },
   {
     "name": "SCALE5c-region-list-unanswered",
@@ -802,12 +802,12 @@
   {
     "name": "SCALE5c-bus-any-channel",
     "file": "server/src/index.js",
-    "old": "    else if (this._busKey !== busOf(hub)) return json({ error: 'bad' }, 400);   // and never another channel's\n",
+    "old": "    else if (this._busKey !== upOf(hub)) return json({ error: 'bad' }, 400);   // and never another channel's\n",
     "new": "",
     "tests": [
       "test/scale5c.test.js"
     ],
-    "note": "a bus taking another channel's shard"
+    "note": "a bus taking another channel's shard SCALE5d part two (re-aimed by content): the court's copies beside it."
   },
   {
     "name": "SCALE5c-hop-out-of-channel",
