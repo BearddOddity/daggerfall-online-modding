@@ -30,6 +30,7 @@ import { iilActive, iilInteriorLights, iilDungeonLights, iilTorch, iilSyncLane }
 import { resurrectionSpell } from '../systems/resurrect.js';   // RESURRECT1
 import { sharedCartographySpell } from '../systems/partyMap.js';   // PARTY-MAP
 import { isOnlinePage } from '../systems/onlineLane.js';   // RESURRECT1: the shelf's online arm
+import { horseCareOn } from '../systems/upkeepSwitch.js';   // STEED1: a Stable prices its horses by what they are while horses are cared for
 import { bloodDecalDeps } from '../combat/bloodSwitch.js';   // BLOOD1a
 import { createBloodMarks } from '../combat/bloodMarks.js';   // BLOOD1a
 import { doorWorldAabb, doorWorldPosition, doorWorldNormal, interiorLanding, exteriorLanding, dungeonEntranceLanding, climbLadder, floorLanding, repositionFeetY, standsOnFloor, interiorVoidRescue, standFromVoid, NOTHING_OF_VALUE_TEXT, INTERIOR_VOID_TEXT } from '../player/enterExit.js';   // FIELD BUGS 2026-10-04d VOID-ENTRY: the floor a landing stands on, the failsafe, and their two lines
@@ -184,7 +185,7 @@ import { silverFindAt } from '../systems/silverFinds.js';   // SILVER-FINDS (AUD
 import { staticDoorName, npcHoverName, questResourceName, questStandItem, worldTooltipsOn, hideInteractTooltip,
   houseContainerName, houseContainerHover, actionObjectName, lootPileName,
   BOOKSHELF_TEXT, SHOP_SHELF_TEXT, LADDER_TEXT, BULLETIN_BOARD_TEXT, mobileEntityName, liveEntityName } from '../systems/worldTooltips.js'; import { questFoeSubs } from '../systems/questFoeLine.js';   // WORLD-HOVER: the mod's ladder for the families THIS host stands; QUEST-FOE-LINE: a quest's foe says whose it is   // WORLD-HOVER: the mod's ladder for the families THIS host stands
-import { LOCATION_TYPES, REGION_NAMES } from '../formats/mapsFile.js';   // WORLD-HOVER: .cs:777-782 - a dungeon exit names its town, or the region   // WORLD-HOVER: the texture record is DERIVED at its one reader, off the stored model id
+import { LOCATION_TYPES, REGION_NAMES, REGION_RACES } from '../formats/mapsFile.js';   // WORLD-HOVER: .cs:777-782 - a dungeon exit names its town, or the region   // WORLD-HOVER: the texture record is DERIVED at its one reader, off the stored model id
 import { isShop, isRepairShop, stockShopShelf, stockHouseContainer, PRIVATE_PROPERTY_TEXT_ID, privatePropertyRows, calculateCost, calculateTradePrice, regionPriceAdjustment, SHOP_BUYS_GROUPS, shopBuysItem, stockSoulGems, stockGuildMagicItems, stockGuildPotions, dayShelf, createStockedDate, needsRestock, stockSearched, restockEndless } from '../systems/shopStock.js';   // X6: the soul-gem shelf; G4: the two guild shelves; A2: the daily restock; ENDLESS-STOCK: the bag and the Campfire never sell out
 import { BAG_WORDS, isBagItem, holdsOtherBag } from '../net/bagLaw.js';   // ONE-BAG: one Materials Bag to a character, on the keyed shelf too
 import { identifySpellPass, identifiedTallyText, NOT_ENOUGH_SPELL_POINTS_TEXT, tradeCost, getTradePrice, markCounterBought } from '../systems/tradeModes.js';   // X7: the Identify SPELL's per-item roll; F067: its magicka refusal; FB0929: the keyed rows' prices are the counter's; AUDIT LW-II-2 S1: the counter's mark
@@ -277,7 +278,7 @@ import { reducedRepairCost } from '../systems/guildServices.js';   // R1: Fighte
 import {
   updateRepairTimes, repairJobsAt, repairRefusal, repairStatusLabel,
   isBeingRepaired, isRepairFinished, collectRepaired, calculateItemRepairTime, leaveForRepair,
-  MAGIC_ITEMS_CANNOT_BE_REPAIRED_TEXT_ID, DOES_NOT_NEED_TO_BE_REPAIRED_TEXT_ID, CANNOT_BE_REPAIRED_TEXT,
+  MAGIC_ITEMS_CANNOT_BE_REPAIRED_TEXT_ID, DOES_NOT_NEED_TO_BE_REPAIRED_TEXT_ID, CANNOT_BE_REPAIRED_TEXT, TRANSPORT_CANNOT_BE_REPAIRED_TEXT,
   INTERRUPT_REPAIR_TEXT,
 } from '../systems/repairService.js';
 import { GuildServiceWindow, preloadGuildServiceArt, guildServiceArtLoaded } from '../ui/guildServiceWindow.js';  import { enhancedWindow } from '../ui/enhancedPorts.js';   // PORT4: the service windows, in the enhanced skin
@@ -369,7 +370,7 @@ import { FORGE_FEE, WORKBENCH_FEE, LOOM_FEE, MASON_FEE, COOK_FIRE, JEWEL_FEE, AL
 const DECOR_STATION_NOT_READY = 'The station is not ready yet - try again in a moment.';
 /** AUDIT HOME-STATIONS S7: a maker's refusal whose TEXT.RSC record did not answer. */
 const DECOR_STATION_REFUSED = 'You cannot use the station right now.';
-import { createDecorRoom, decorIdOfKey, askDecorList } from './decorRoom.js';
+import { createDecorRoom, decorIdOfKey, askDecorList, offerDecorFigures } from './decorRoom.js';   // MWNPC18: a placed figure in its body
 // DECOR1d: the decorator itself - the button, the panel, the free camera - and what its catalogue scan reads
 import { createDecorTool } from './decorTool.js';
 import { decorScanDeps } from '../systems/decorScan.js';   // DECOR-DUNGEON: the scan's deps, one constructor for both hosts
@@ -1832,6 +1833,13 @@ export function createWorldModes(host) {
   // 'people' lane under the switch's tier; a person's look read once (their StaticNPC data and their faction's row),
   // never while the faction table is still loading; let go with the room
   const peopleBodies = createPopulationLane({ laneName: 'people', renderer });
+  // MWNPC18: what a placed figure is read by - FLATS.CFG and the region's race, asked only when a figure is first looked at.
+  // AUDIT MWNPC16-18 D2: the race the room's building's region names (REGION_RACES, the yards' read in world.js) - the
+  // quest scene's context is { mapId, locationIndex } and names none, so every room's figure stood a Breton
+  const figureCtx = {
+    get flats() { return pipeline?.flatsFile?.() ?? null; },
+    get race() { const i = interiorBuilding?.regionIndex ?? host.currentRegionIndex?.() ?? -1; return REGION_RACES[i] != null ? REGION_RACES[i] + 1 : null; },
+  };
   const standingLook = (pn) => {
     if (pn._mwLook !== undefined) return pn._mwLook;
     const dict = townTalk?.factionDict ?? null;
@@ -3436,28 +3444,34 @@ export function createWorldModes(host) {
    *  gone through or a talk opened meanwhile makes the press the player's past, and nothing opens (a window opened
    *  then took the interior's slot over whatever stood there, or the talk's in the street). */
   let _yardWait = null;
-  function openYardTrade(kind, regionIndex, tradeMode = 'Buy', name = '') {
+  function openYardTrade(kind, regionIndex, tradeMode = 'Buy', name = '', mapId = 0) {
     if (!validYardKind(kind) || mode !== 'exterior') return false;
     if (!tradeDoorReady() || (!isEnhanced() && !_shopFont)) {
       const first = !_yardWait;
-      _yardWait = { kind, regionIndex, tradeMode, name };
+      _yardWait = { kind, regionIndex, tradeMode, name, mapId };
       if (first) {
         ensureShopFont().then(() => {
           const w = _yardWait;
           _yardWait = null;
           if (!w || mode !== 'exterior' || townTalk?.overlay) return;
           if (!tradeDoorReady() || (!isEnhanced() && !_shopFont)) { setMidScreenText(YARD_TEXT.shut); return; }
-          openYardCounter(w.kind, w.regionIndex, w.tradeMode, w.name);
+          openYardCounter(w.kind, w.regionIndex, w.tradeMode, w.name, w.mapId);
         });
       }
       return true;
     }
-    return openYardCounter(kind, regionIndex, tradeMode, name);
+    return openYardCounter(kind, regionIndex, tradeMode, name, mapId);
   }
-  /** The yard's counter itself, its art and font in. */
-  function openYardCounter(kind, regionIndex, tradeMode, name) {
+  /** The yard's counter itself, its art and font in. STEED1/WAGONS4: the stock of the town (`mapId`) on the world's day -
+   *  the Stable's three horses, none the player owns, priced by what they are while horses are cared for; the oats and
+   *  the kits where they may be sold (merchantYards.js yardStock). */
+  function openYardCounter(kind, regionIndex, tradeMode, name, mapId = 0) {
     const b = yardCounter(kind, regionIndex, name);
-    const win = openTradeWindow({ items: tradeMode === 'Sell' ? [] : yardStock(kind) }, b, tradeMode === 'Sell' ? 'Sell' : 'Buy');
+    const stock = () => yardStock(kind, {
+      mapId, day: Math.floor(worldMinutes() / 1440), online: isOnlinePage(), priced: horseCareOn(),
+      owned: (playerEntity.items ?? []).map((it) => it?.horseSeed).filter(Number.isInteger),
+    });
+    const win = openTradeWindow({ items: tradeMode === 'Sell' ? [] : stock() }, b, tradeMode === 'Sell' ? 'Sell' : 'Buy');
     if (!win) return true;   // DISC10-E L3: the trade door refused the beast (and said so) - handled, nothing to mount
     mountServiceWindow(win);   // the street's slot (townTalk's) - the interior's is never drawn outdoors
     return true;
@@ -6704,6 +6718,7 @@ export function createWorldModes(host) {
       // template, TEXT.RSC 24 for full condition
       const lines = refusal === 'magic' ? _rowsText(rows(MAGIC_ITEMS_CANNOT_BE_REPAIRED_TEXT_ID), 'You cannot repair magic items.')
         : refusal === 'undamaged' ? _rowsText(rows(DOES_NOT_NEED_TO_BE_REPAIRED_TEXT_ID), 'This item does not need to be repaired.')
+        : refusal === 'transport' ? [TRANSPORT_CANNOT_BE_REPAIRED_TEXT]   // WAGONS4
         : [CANNOT_BE_REPAIRED_TEXT];
       mountServiceWindow(new ChoiceWindow({ lines, options: back }));
       return;
@@ -10835,6 +10850,7 @@ export function createWorldModes(host) {
       else pn.standBatch.castOnly = false;
     }
     offerQuestStands(questFlats, peopleBodies, _peopleOn, interiorBuilding?.buildingKey ?? 0, mwv.eye, dt);   // MWNPC8c: and the quest's
+    offerDecorFigures(interiorDecor.figures(), peopleBodies, _peopleOn, figureCtx, mwv.eye, dt);   // MWNPC18: and the figures the home's owner placed
     peopleBodies.draw(canvas, proj, view, mwv.eye, dt);
     host.drawLivingBodies?.(canvas, proj, view, mwv.eye, dt);   // MWNPC10c: the residents the day has in here, in their bodies (their batches ride livingBillboards)
     // BLOOD1 AUDIT (2026-09-20): THE INTERIOR'S OWN MARKS, and they
