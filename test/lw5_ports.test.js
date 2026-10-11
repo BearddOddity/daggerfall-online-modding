@@ -166,7 +166,8 @@ test('LW5 the town reads the ships: a sailor at sea or ashore abroad is in no st
   // the host
   const w = rd('src/scenes/world.js');
   assert.match(w, /const livingSailing = \(\) => !!naval\?\.enabled && !!mapDict;/);
-  assert.match(w, /if \(res\.job !== 'sailor' \|\| res\.town !== town\?\.mapId \|\| !town\?\.port \|\| !livingSailing\(\)\) return null;/, 'its own sailors alone: a visiting crew is the crews\' own');
+  // PIN MOVED (BOOT-TDZ II): the lanes asked only once they stand, ahead of the rest
+  assert.match(w, /if \(\(typeof _lanesReady !== 'undefined' && !_lanesReady\) \|\| res\.job !== 'sailor' \|\| res\.town !== town\?\.mapId \|\| !town\?\.port \|\| !livingSailing\(\)\) return null;/, 'its own sailors alone: a visiting crew is the crews\' own');
   assert.match(w, /return sailorAt\(berthOf\(res, book\.sailors, book\.packets\), portId, livingPacketAt\)\.at;/);
   assert.match(w, /const livingPacketAt = \(b\) => \{ const way = livingLaneWay\(b\.lane\); return way \? packetAt\(b\.lane, way, raidNowMs\(\), b\.k, b\.count\) : null; \};/);
   assert.match(w, /return res \? \[\{ res: res\.id === c\.res\.id \? c\.res : res, berth: c\.berth, inT: t - Math\.max\(0, nowS - \(c\.until - LANE_DWELL_S\)\) \* rate, outT: t \+ Math\.max\(0, c\.until - nowS\) \* rate \}\] : \[\];/);

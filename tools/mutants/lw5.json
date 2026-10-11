@@ -200,8 +200,8 @@
   {
     "name": "LW5-host-visitors-asked",
     "file": "src/scenes/world.js",
-    "old": "    if (res.job !== 'sailor' || res.town !== town?.mapId || !town?.port || !livingSailing()) return null;",
-    "new": "    if (res.job !== 'sailor' || !town?.port || !livingSailing()) return null;",
+    "old": "res.job !== 'sailor' || res.town !== town?.mapId || !town?.port || !livingSailing()) return null;",
+    "new": "res.job !== 'sailor' || !town?.port || !livingSailing()) return null;",
     "tests": [
       "test/lw5_ports.test.js"
     ]

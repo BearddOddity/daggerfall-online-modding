@@ -3173,6 +3173,12 @@ export async function bootWorld(canvas, renderer, params, status) {
   // each where her clock has her (the shared one the naval host stands and steers her by, raidNowMs): aboard under way,
   // ashore at home, or ashore at the far port as her visitors - while the Bay's ships sail (the naval host on); off, a
   // port's sailors keep their own days ashore
+  // BOOT-TDZ II (2026-10-10, the owner's players: "boot failed: cannot access 'WW' before initialization"): THE BAY'S
+  // LANES ARE ASKED ONLY ONCE THEY STAND. Their bindings (laneNet's `_laneNet`, `_laneWays`, laneOpen, laneOpenNative,
+  // raidNowMs) are declared thirty thousand lines below, past the boot's own first build - and that build deals a port
+  // town's trips and crews, which asked them in their temporal dead zone and threw. Until they stand the lanes answer
+  // as the map unread does (lanesFrom: undefined, asked again; no crew ashore, no sailor's berth).
+  let _lanesReady = false;
   const _livingLaneCounts = new Map();
   const livingLaneWay = (lane) => { let way = _laneWays.get(lane.key); if (way === undefined) { way = laneWay(lane, laneOpen, laneOpenNative); _laneWays.set(lane.key, way); } return way; };
   const livingLaneCount = (lane) => {
@@ -3196,7 +3202,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _livingLanesFrom = new Map();
   livingTripWorld.lanesFrom = (town) => {
     if (!town?.port) return [];
-    if (!mapDict) return undefined;
+    if (!mapDict || (typeof _lanesReady !== 'undefined' && !_lanesReady)) return undefined;   // BOOT-TDZ II: the lanes not yet standing are the map unread (typeof: a lifted slice without the flag)
     let got = _livingLanesFrom.get(town.mapId);
     if (!got) {
       const id = maskMapId(town.mapId);
@@ -3211,7 +3217,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _livingBerths = new Map();
   /** Where one of a port's sailors is now ('home', 'sea', 'abroad'), null for anyone else or the ships not sailing. */
   const livingAshore = (town, res) => {
-    if (res.job !== 'sailor' || res.town !== town?.mapId || !town?.port || !livingSailing()) return null;   // its own sailors: a visiting crew is the crews' own
+    if ((typeof _lanesReady !== 'undefined' && !_lanesReady) || res.job !== 'sailor' || res.town !== town?.mapId || !town?.port || !livingSailing()) return null;   // its own sailors: a visiting crew is the crews' own
     const portId = maskMapId(town.mapId);
     let book = _livingBerths.get(portId);
     if (!book) { book = { packets: portPackets(laneNet(), portId, livingLaneCount), sailors: livingSailorsOf(portId) }; _livingBerths.set(portId, book); }
@@ -3220,7 +3226,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** The hands of the packets lying at a port from elsewhere, each ashore from her making fast to her sailing (the
    *  clock's minutes, at its rate now). */
   const livingCrews = (town) => {
-    if (!town?.port || !livingSailing()) return [];
+    if ((typeof _lanesReady !== 'undefined' && !_lanesReady) || !town?.port || !livingSailing()) return [];   // BOOT-TDZ II
     const nowS = raidNowMs() / 1000, t = skyMinutes(), rate = livingBaseRate();
     const day = Math.floor((t - 240) / 1440);
     return crewsAshore(maskMapId(town.mapId), laneNet(), livingLaneCount, livingPacketAt, livingSailorsOf).flatMap((c) => {
@@ -3759,6 +3765,10 @@ export async function bootWorld(canvas, renderer, params, status) {
   // a player with the mod switched off needs in any case.
   let travelOptions = null;
   let tvFar = { at: null, near: -1, list: [] };   // TV5: the far places about the traveller (above its readers: BOOT-TDZ - a load empties it)
+  // BOOT-TDZ II (2026-10-10, "boot failed: cannot access 'PW' before initialization"): THE TRAVEL VIEW'S DUNGEON LISTS
+  // ANSWER NONE UNTIL THEIR BINDINGS STAND - `_tvDungeonRows`, tvPlaceSummary, the spawns' tests, all declared twenty-six
+  // thousand lines below, past the boot's first build that reached them. Set where the last of them is declared.
+  let _tvListsReady = false;
   let tvDng = { at: null, dg: -1, list: [] };   // TV6: the dungeons about the traveller (above its readers: BOOT-TDZ - a load empties it)
   let tvFind = { at: null, dg: -1, n: -1, list: [] };   // AUDIT OW5 D1: the find's own, uncapped (above its readers: BOOT-TDZ - a load empties it)
   let tvDngModels = { at: null, dg: -1, n: -1, list: [] };   // OW-DUNGEONS: the dungeons standing as models under the Overworld (above its readers: BOOT-TDZ - a load empties it)
@@ -30408,6 +30418,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   const tvFiledSpawns = (at) => (params.has('online') ? filedSpawns({ at, rolls: (x, y) => spawnsDungeon(_spawnSalt, x, y),
     filed: (x, y) => hasDiscoveredLocationId(spawnedMapId(_spawnSalt, x, y)), indexed: (x, y) => locationIndex.has(`${x},${y}`), stand: tvSpawnAt }) : []);
   function travelViewDungeons() {
+    if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
     const at = playerTravelPixel();
     const dg = discoveryGeneration();
     // AUDIT OW3 D1/D3: and the grid's reach (what TV2 plates), and the index's churn - a spawn comes as its pixel streams
@@ -30434,6 +30445,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
    *  and a standing Abyss Dungeon among the spawns (its own host stands and takes it - it is known from its rise), the
    *  nearest TV_DUNGEON_MODELS_MAX; read again as TV6's is, when the pixel, the finds or the index move. */
   function tvDungeonModelList() {
+    if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
     const at = playerTravelPixel(), dg = discoveryGeneration(), n = _locIndexGen;
     if (tvDngModels.list.some((g) => g.spawn && !g.loc?.superTier && tvSpawnGone(g.px, g.py))) tvDngModels.at = null;   // AUDIT OW4 D2's law: a spawn whose time ran out goes
     if (tvDngModels.at && tvDngModels.at.x === at.x && tvDngModels.at.y === at.y && tvDngModels.dg === dg && tvDngModels.n === n) return tvDngModels.list;
@@ -30518,6 +30530,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
    *  AUDIT OW5b D1 found the same, and its own list gave way to this one at the merge (the "?" its second half keeps on
    *  the Overworld for such a keep is travelDungeons.js nearDungeons' own). */
   function travelViewFindList() {
+    if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
     const at = playerTravelPixel(), dg = discoveryGeneration(), n = _locIndexGen;
     if (tvFind.at && tvFind.at.x === at.x && tvFind.at.y === at.y && tvFind.dg === dg && tvFind.n === n) return tvFind.list;
     const list = nearDungeons({ at, range: TV_FIND_REACH, max: Infinity, dungeons: (_tvDungeonRows ??= dungeonRows(mapDict)),
@@ -30528,6 +30541,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     tvFind = { at, dg, n, list };
     return list;
   }
+  _tvListsReady = true;   // BOOT-TDZ II: the travel view's dungeon lists' bindings all stand from here
   /** AUDIT OW3 D1: A SPAWN'S PLATE IS A WALK TO IT - TV2's spot journey (it stands in no MAPS table, so no place journey
    *  names it), ending at its exterior's edge on the traveller's side (dungeonApproach). Asked of the live list: a spawn
    *  whose time ran out since the plate was drawn is gone from it, and nothing is walked to.
@@ -31286,6 +31300,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   /** A map pixel of the open sea - the ocean's water, never a lake's - the lanes' and the roadsteads' water. */
   const laneOpen = (px, py) => px >= 0 && py >= 0 && px < 1000 && py < 500 && tvWater(px, py) && maps.getClimateIndex(px, py) === CLIMATES.Ocean;
   const laneOpenNative = (x, z) => { if (!(x >= 0 && z >= 0 && x < 1000 * RAID_NATIVE_PIXEL && z < 500 * RAID_NATIVE_PIXEL)) return false; const p = pixelOfNative(x, z); return laneOpen(p.x, p.y); };
+  _lanesReady = true;   // BOOT-TDZ II: every binding the lanes read stands from here (raidNowMs above it)
   /** The lanes of the whole map - every client's the same - made once. */
   function laneNet() {
     if (!_laneNet) {
