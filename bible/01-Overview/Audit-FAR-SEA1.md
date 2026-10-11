@@ -15,7 +15,11 @@ Where two lanes found the same fault the ids are joined. Each fix carries an `AU
 pinned in `test/audit_farsea1.test.js` (4) or `test/farsea1.test.js` (10, rewritten), or in the moved pin it names;
 it is mutated in `tools/mutants/audit_farsea1.json`: **20 mutants, 20 dead**. The slice's own campaign,
 `farsea1.json`, is **14, 14 dead** after the fixes (seven re-aimed by content at the code they rewrote), and so are the
-records in other campaigns the fixes moved: `perfsun.json` (25, one re-aimed) and `eldistance.json` (5).
+records in other campaigns the fixes moved: `perfsun.json` (25, one re-aimed) and `eldistance.json` (5). PIN MOVED, each
+marked in place: `test/el1_enhancedlighting.test.js` and `test/perf2.test.js` (the ring at the far plane by its
+pass's `depthRange`, no depth write), `test/water.test.js`, `test/waternext.test.js` and `test/waterlit1.test.js` (the
+water's light, Fresnel, lobe and glints through the open sea's one text), and `test/roadc_panelframe.test.js` (the
+bracket names the sea's haze).
 
 ## What it costs
 
