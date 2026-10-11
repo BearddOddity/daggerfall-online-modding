@@ -36,6 +36,7 @@ test('CHAP5a the roll\'s words: its title by guild and region; the chapter\'s st
   assert.equal(chapterRollTitle(DRAGON, DAGGERFALL), 'The Roll of the Knights of the Dragon, Daggerfall');
   for (const [f, r] of [[THIEVES, ANTICLERE], [99, ANTICLERE], [FIGHTERS, 999], [FIGHTERS, null], ['41', ANTICLERE]]) assert.equal(chapterRollTitle(f, r), null, `${f} ${r}`);
   // PIN MOVED (AUDIT CHAP4 C4): the state's line has the chapter its subject
+  // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - the Master's chair, the council, its Councillor; marked by AUDIT GUILD3 R4
   assert.deepEqual(chapterRollLines(FIGHTERS, { strength: 74, seats: [S('officer', 'Bryn'), S('master', 'Alda'), S('officer', 'Cael'), S('officer', 'Dara')] }), [
     'The chapter of the Fighters Guild here is Thriving (Strength 74).', 'Master of the chapter: Alda.', 'Its council: Bryn, Cael and Dara.',
   ]);

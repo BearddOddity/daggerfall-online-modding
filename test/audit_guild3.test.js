@@ -112,6 +112,8 @@ test('AUDIT GUILD3 S3: the silver the guildmaster\'s account has no room for is 
   assert.deepEqual(await keepsOf(s), ['guild-treasury', 'marks-full'], 'said before the press, beside the gold');
   const r = await s.call('/v1/guilds/disband', { character: s.gm.character }, s.gm.secret);
   assert.deepEqual(r.body, { error: 'guild-treasury', keeps: ['guild-treasury', 'marks-full'] }, 'the whole list - the gold first, as ever');
+  assert.deepEqual((await s.call('/v1/guilds/leave', { character: s.gm.character }, s.gm.secret)).body, { error: 'guild-treasury', keeps: ['guild-treasury', 'marks-full'] },
+    'a lone guildmaster\'s leave reads the same room');
   s.raw.prepare("UPDATE guilds SET treasury = 0, moved_by = 'seed', moved_at = ? WHERE id = ?").run(T0, s.gid);
   assert.deepEqual(await keepsOf(s), ['marks-full']);
   assert.deepEqual((await s.call('/v1/guilds/leave', { character: s.gm.character }, s.gm.secret)).body, { error: 'marks-full', keeps: ['marks-full'] });
@@ -290,6 +292,8 @@ test('AUDIT GUILD3 T1: the gate and the guildmaster\'s view read ONE list of hol
   s.raw.prepare("DELETE FROM town_seat_rights WHERE week = 10").run();
   s.raw.prepare("UPDATE npc_chapter_patron_bids SET state = 'lost'").run();
   assert.deepEqual([await keepsOf(s), gate()], [['guild-writ-escrow'], 1]);
+  writ('w-wait-2', 'expired', 0, 20);
+  assert.deepEqual([await keepsOf(s), gate()], [['guild-writ-escrow'], 1], 'a writ\'s and a contract\'s pay both waiting: one word, once');
   assert.deepEqual(GUILD_HOLD_KEEP_CODES, ['guild-stores', 'guild-writs', 'guild-writ-escrow', 'guild-contracts', 'guild-hall', 'guild-vault', 'guild-seat', 'guild-battle', 'guild-patron']);
 });
 

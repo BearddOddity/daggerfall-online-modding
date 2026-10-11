@@ -60,6 +60,7 @@ test('CHAP4b the book held at 7: each Roll guild\'s row above 7, in both books, 
 });
 
 test('CHAP4b the seats said, worded without gender: every seat at the page\'s first word; then each one gained or moved, each one lost; the book\'s hold said by guild (mutants: each arm, the words)', () => {
+  // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - the Master's CHAIR and a council chair, the Masters and councils; marked by AUDIT GUILD3 R4
   assert.equal(seatLineOf({ f: FIGHTERS, region: ANTICLERE, seat: 'master' }), 'You hold the Master\'s chair of the Fighters Guild in Anticlere.');
   assert.equal(seatLineOf({ f: MAGES, region: DAGGERFALL, seat: 'officer' }, false), 'You no longer hold a council chair of the Mages Guild in Daggerfall.');
   const m = { f: FIGHTERS, region: ANTICLERE, seat: 'master' }, o = { f: MAGES, region: DAGGERFALL, seat: 'officer' };

@@ -44,6 +44,7 @@ test('CHAP4c a chapter\'s key and its words: guild x 100 + region, worded withou
   assert.equal(chapterTitleKey(FIGHTERS, ANTICLERE), 4121);
   assert.deepEqual([chapterOfTitleKey(4121), chapterOfTitleKey(36861), chapterOfTitleKey(-1), chapterOfTitleKey(4.5), chapterOfTitleKey('4121')],
     [{ f: 41, region: 21 }, { f: 368, region: 61 }, null, null, null]);
+  // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - the Master's chair, the council, its Councillor; marked by AUDIT GUILD3 R4
   assert.deepEqual([
     chapterTitleText('chaptermaster', [4121, 2]), chapterTitleText('chapterofficer', [4017, 0]), chapterTitleText('formermaster', [36817, 1]),
   ], ['Master of the Fighters Guild, Anticlere', 'Councillor of the Mages Guild, Daggerfall', 'Former Master of the Knights of the Dragon, Daggerfall']);

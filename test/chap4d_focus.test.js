@@ -55,6 +55,7 @@ test('CHAP4d a focused chapter\'s writs: every other writ, from the first, of it
 
 test('CHAP4d the Chronicle in words: a seat taken, risen to, given up for an officer\'s, lost - a member gone since; never a hidden guild\'s, nor a row it has no words for (mutants: each arm, the hidden, the name)', () => {
   const row = (data, extra = {}) => ({ kind: 'seat', faction: FIGHTERS, week: 40, data, name: 'Alda', ...extra });
+  // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - the Master's chair, the council, its Councillor; marked by AUDIT GUILD3 R4
   assert.deepEqual([
     chapterChronicleLine(row({ from: null, to: 'master' })), chapterChronicleLine(row({ from: null, to: 'officer' })),
     chapterChronicleLine(row({ from: 'officer', to: 'master' })), chapterChronicleLine(row({ from: 'master', to: 'officer' })),

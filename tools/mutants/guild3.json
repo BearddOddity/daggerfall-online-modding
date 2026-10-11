@@ -431,8 +431,8 @@
   {
     "name": "GUILD3c-a-disband-asked-a-hand-over",
     "file": "src/ui/socialPanel.js",
-    "old": "const holding = guildMay(me, 'disband') ? guildKeepsOf(v, guildUi.keeps) : [];",
-    "new": "const holding = guildMay(me, 'disband') ? guildKeepsOf(v, guildUi.keeps, { leave: v.members.length > 1 }) : [];",
+    "old": "    ['guild-master-leaves', false],",
+    "new": "    ['guild-master-leaves', (v?.members?.length ?? 1) > 1],",
     "tests": [
       "test/guild3_plain.test.js"
     ]

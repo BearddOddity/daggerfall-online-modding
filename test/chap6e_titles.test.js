@@ -114,6 +114,7 @@ test('CHAP6e a High Master - GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md)
   s.strength(MAGES, ANTICLERE, 95);
   s.strength(MAGES, DAGGERFALL, 89);
   s.event(MAGES, DAGGERFALL, 'ascendancy', 3);   // a retired event's row: no High Master by it
+  // PIN MOVED: GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md) - a High Master by the band, not the Season's event; marked by AUDIT GUILD3 R4
   assert.deepEqual(await s.titlesOf(s.R.id), [['R', 'chaptermaster', [4121, 3], true], ['R', 'chaptermaster', [4017, 3], false]], 'Ascendant from 90 exactly; 89 is Thriving');
   assert.deepEqual(await s.titlesOf(s.other.id), [['other', 'chapterofficer', [4021, 3], false]], 'an officer\'s at an Ascendant chapter: an officer\'s');
   assert.equal((await s.svc.call('/v1/account/title', { title: 'highmaster' }, s.who.secret)).status, 403, 'never worn on its own');

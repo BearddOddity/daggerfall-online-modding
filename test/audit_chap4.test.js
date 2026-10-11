@@ -505,6 +505,7 @@ test('AUDIT CHAP4 T10: the roll\'s and the Hall\'s chapters\' lines flush left u
   };
   assert.equal(lineFormat(chapterRollTokens({ title: 'The Roll', lines: ['Master of the chapter: Alda.'] }), 'Master of the chapter: Alda.'), RSC.JustifyLeft);
   const seat = { key: 3021, name: 'Anticlere', region: ANTICLERE, tier: 'palace' };
+  // PIN MOVED: GUILD3a (bible/11-Multiplayer/Guilds-Made-Plain.md) - the Master's chair; marked by AUDIT GUILD3 R4
   const line = 'In week 40, Alda took the Master\'s chair of the Fighters Guild.';
   assert.equal(lineFormat(hallOfRecordsTokens(seat, [], null, null, { rows: [{ kind: 'seat', faction: FIGHTERS, week: 40, data: { from: null, to: 'master' }, name: 'Alda' }], zero: null }), line), RSC.JustifyLeft);
   const all = (band) => CHAPTER_NEWS[band].map((x) => x.join(' ')).join(' | ');

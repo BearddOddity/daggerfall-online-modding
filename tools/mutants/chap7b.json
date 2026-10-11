@@ -84,7 +84,7 @@
     "name": "CHAP7B-SHEET-TAG",
     "file": "src/net/npcChapterLaw.js",
     "old": "${p.tag ? ` <${p.tag}>` : ''}",
-    "new": "` <${p.tag}>`",
+    "new": "${` <${p.tag}>`}",
     "tests": [
       "test/chap7b_patrons_client.test.js"
     ]

@@ -50,10 +50,13 @@ page reuses rather than rebuilds), `06-Systems/Professions-Arc.md` (PROF0 - Mark
 `11-Multiplayer/Guild-Overhaul.md` (GUILD2 - the players' own guilds, which this page does not touch).
 
 **GUILD3 (2026-10-11, the owner: "Keeping depth, but making it easier to understand"; "These are all of your
-decisions") - `11-Multiplayer/Guilds-Made-Plain.md` changed this record, each change said where it stands below:** the
+decisions") - `11-Multiplayer/Guilds-Made-Plain.md` changed this record, each change said where it stands below,
+and AUDIT GUILD3 (`01-Overview/Audit-Guild3.md`) marked every passage that still read as the law of before - a slice's
+record keeps its day's words as history, each with a "(GUILD3: ...)" note where its law has moved:** the
 Season's events are FIVE (GUILD3e - the Decline and the Ascendancy folded into the Failing and Ascendant bands they
-repeated; section 7's table, Appendix A); the Ascendant band is its own, a fifth off, and its Master the High Master
-while it stands (section 6, CHAP6e); a patron pays the better of its band and Thriving's (section 8); a chapter's ranks 8
+stood for, the Decline's weekly fall the Failing band's since AUDIT GUILD3 R1; section 7's table, Appendix A); the
+Ascendant band is its own, a fifth off, and its Master the High Master while it stands (section 6, CHAP6e); a patron
+pays the better of its band and Thriving's (section 8); a chapter's ranks 8
 and 9 are its Master's CHAIR and its council chairs in every sentence a player reads, rank 8 a Councillor - "seat" is a
 town's Charter alone, the code's `seat` ids unmoved (GUILD3a); the board draws each chapter as one card, its band's
 effects said and its Duties (the receipts' asks) on it (GUILD3d).
@@ -114,7 +117,8 @@ Appendix A names their homes.
   players with the most Merit there, settled at the Seats' weekly Turning. Ranks 0-7 are DFU's law over the server's
   reputation, open to everyone who earns them.
 - **Every Season, every chapter has a story.** At each Season's first Turning a chapter draws one event - a Schism, a
-  Succession, a Crackdown, a Rivalry, a Decline, an Ascendancy - weighted by what its members did, and the Season's
+  Succession, a Crackdown, a Rivalry, a Decline, an Ascendancy (GUILD3: five - the Decline and the Ascendancy folded
+  into the Failing and Ascendant bands) - weighted by what its members did, and the Season's
   Merit decides how it ends.
 - **The living world shows it.** The account service publishes one **chapter sheet**; the living world reads it as one
   more input of its pure function, so every player sees the same hall: crowded or empty, quarrelling or proud, its
@@ -265,7 +269,7 @@ is the client's, and CHAP4b holds it at 7 while the Roll does.
 BUILT (CHAP4b, the client's half): online, while the Roll holds (the tab's `held`, not `stopped`), the book's own rank
 stops at 7 twice over - every adoption of the Roll's word sets a row above 7 to 7, in both books
 (`rollBookCap`, through the tab's `cap` door; said once a hold: "The Fighters Guild keeps ranks 8 and 9 as its
-chapters' seats, won by Merit - your rank there is 7."), and DFU's own review (`updateRank`) takes the host's ceiling
+chapters' seats, won by Merit - your rank there is 7." - GUILD3a: "...for its chapters' Masters and councils..."), and DFU's own review (`updateRank`) takes the host's ceiling
 (`ctx.rankCeiling`, the hall popup's push effects): a member DFU would make 8 or 9 is promoted to 7, one at 7 stays
 unmoved and unannounced, and the review never demotes for it - so DFU's demotion record is never shown for a seat's rule.
 Offline the ceiling is none and every review is DFU's whole. AUDIT CHAP4 C3: the ceiling holds from the page's first
@@ -418,7 +422,9 @@ BUILT, CHAP2b (2026-10-08, Mac: "Keep going with the arc/slices") - the receipt 
   since the receipt is bounded by its own day (a gate one an account a day, a raid `RAID_CLAIMS_DAY_MAX`). So a member's
   gate or raid in a chapter's region is worth +3 to the guild the first time that day and +1 after; a non-member's,
   nothing. The card has no Take - the receipt is the relay's - and says the member's own state ("Done today", "Your next
-  one here fills it", "For members of the ..."); a hidden guild's asks are its members' alone, as its writs are.
+  one here fills it", "For members of the ..."); a hidden guild's asks are its members' alone, as its writs are. (GUILD3d:
+  no card now - the asks are the chapter card's Duties line, `chapterDutiesLine`, its Merit promised only where the reader
+  earns it, AUDIT GUILD3 L2.)
 - **After the receipt, never instead of it** (`server-account/src/npcReceipts.js` creditReceipt): the claim's own row
   first, the credit after it in the claim's answer (`chapters`), as the seats' gate influence is; a credit that fails is
   answered `counted: false` and the claim stands. Each line is kept once by its id (`npc_receipt_credits`, migration
@@ -495,7 +501,7 @@ Merit at all (AUDIT CHAP3 E4: and, above 50, `- 3` toward 50 for a week short of
 | **Failing** | 0-19 | Training and spells cost a quarter more; the shelf shrinks; half the writs |
 | **Steady** | 20-69 | DFU's prices and services |
 | **Thriving** | 70-89 | A tenth off training and spells; the shelf a tier deeper (NARROWED, AUDIT CHAP3 D1: more items, never better - DFU reads a hall's quality for the shelf's count alone); half again the writs |
-| **Ascendant** | 90-100 | As Thriving, and the Season's event weighted toward Ascendancy (7) |
+| **Ascendant** | 90-100 | A fifth off training and spells (GUILD3e: the Ascendancy folded in); Thriving's shelf and writs; its Master the High Master while it stands, Season or none |
 
 DFU's own price law stays the base; Strength is a multiplier laid over it online, never written into it.
 
@@ -539,7 +545,8 @@ the hall the player stands in (its guild's faction, as the hall's service window
 
 - **The prices**: training (DFU's `trainingPrice` - both DFU's chain and RefinedTraining's, offer and gold check), a
   spell bought (DFU's trade price) and a spell made (the spellmaker's gold cost; its spell points DFU's) - x1.25
-  Failing, x0.9 Thriving and Ascendant, rounded, never under 1 (`chapterPriceFactor`, `chapterPriced`). The rest of the
+  Failing, x0.9 Thriving and Ascendant (GUILD3e: x0.8 Ascendant, the band's own), rounded, never under 1
+  (`chapterPriceFactor`, `chapterPriced`). The rest of the
   hall's services - repair, identify, a donation, a cure, recharge, the item maker, a summoning, a teleport - stay DFU's:
   5.2's table names training and spells alone.
 - **The shelf**: the guild's soul gems, potions and magic items stocked as a hall four qualities poorer Failing, four
@@ -661,7 +668,7 @@ BUILT (CHAP4d, 2026-10-09, Mac: "Continue"), the Focus and the Chronicle's reade
   ('no-focus').
 - **The Chronicle's reader** (`/v1/chapters/history`, `chapterChronicle`): a palace's Hall of Records reads, after the
   seat's own Chronicle, "The Chapters of <Region>" - its region's newest sixty seat changes, oldest first, each a
-  sentence worded without gender ("In the third week of the Season of Morning Star, Alda took the Master's seat of the
+  sentence worded without gender (GUILD3a: "...took the Master's chair..." now; "In the third week of the Season of Morning Star, Alda took the Master's seat of the
   Fighters Guild.": took, rose to, gave up and kept an officer's, lost), a character gone since "A member since gone";
   never a hidden guild's. Read only where the Roll holds (online, the Chapters open to the account); a refusal leaves the
   seat's book as it was.
@@ -673,7 +680,7 @@ BUILT (CHAP4c, 2026-10-08, Mac: "Your call"), the seats' titles:
   its guild faction x 100 + its region, `chapterTitleKey`), refused without it and the claim refused beside any title
   that rides alone (`titleClaimed`). The relay stamps and reads the claim as a seat title's (`net/wire.js` badged,
   readBadge) - a relay change: `world183` (`world182` until CARDS10's took it at the merge of main), NOT YET DEPLOYED.
-- **Worded without gender** (Seats-Arc 7.4) - "Master of the Fighters Guild, Anticlere", "Officer of the Mages Guild,
+- **Worded without gender** (Seats-Arc 7.4; GUILD3a: rank 8 "Councillor of ..." now) - "Master of the Fighters Guild, Anticlere", "Officer of the Mages Guild,
   Daggerfall", "Former Master of the Knights of the Dragon, Daggerfall" (`chapterTitleText`); NARROWED from the draft's
   "Former Master of the <Region> Chapter": a region keeps a chapter of every guild with a hall there, so the guild is
   named. The guild's own rank titles (Archmage, Patriarch and Matriarch) stay the hall's own window's, where DFU knows
@@ -682,7 +689,8 @@ BUILT (CHAP4c, 2026-10-08, Mac: "Your call"), the seats' titles:
   one of its standing characters holds that seat, and a Master's seat it lost this Season (the Chronicle's rows from the
   Season's first week - the counted Season, or the eight-week block with none counted) while it does not hold that
   Master's seat again; a token signs it, with its claim, only for a character that holds it.
-- **Two more** (CHAP6e, section 7): `highmaster`, signed in a Master's place in its chapter's Ascendancy, and
+- **Two more** (CHAP6e, section 7): `highmaster`, signed in a Master's place in its chapter's Ascendancy (GUILD3e: while
+  its chapter stands Ascendant, Season or none), and
   `seasonmaster`, a Season's Master's for good - the same claim, the same relay version grown in place.
 - **The order of the deploy** (the SHADOW-FANG order): the relay `world183` first - deployed by
   `.github/workflows/relay-deploy.yml` on the merge to main, as the live relay's version differs (it drops every
@@ -702,7 +710,7 @@ BUILT (CHAP4b, 2026-10-08), the seat on the page:
   7. The one exception: the Mages Guild's paid teleport (Travel Options) is pushed from the hall's own service, so its fee
   reads the seat where the character stands (`magesGuildRank`).
 - **The seats said** (`seatLinesOf`, worded without gender - Seats-Arc 7.4): every seat held at the page's first word of
-  the Roll ("You hold the Master's seat of the Fighters Guild in Anticlere."), then each seat gained or moved and each
+  the Roll ("You hold the Master's seat of the Fighters Guild in Anticlere." - GUILD3a: "the Master's chair"), then each seat gained or moved and each
   lost, as the Roll's answers carry them (the tab's `seats`, `onSeats`).
 
 ## 7. Seasons - the chapter's story (CHAP6)
@@ -719,7 +727,7 @@ and a salt, as a Tide is (`net/tideLaw.js`) - from weights its last Season moved
 | **Succession** | 10 | +10 if the chapter was Ascendant | The hall's head steps down. The Master names the successor from the hall's residents at the Season's third Turning; with no Master, the most-Merit member's choice stands |
 | **Crackdown** | 10 | Thieves and Brotherhood x2; +10 if the region's seat holder's Edict is Curfew | The watch or a rival hunts the chapter: its members' own writs earn half again Merit (AUDIT CHAP5 E1 - its writs pay as any), and a chapter under 30 Strength at the Season's end shuts its halls for the next |
 | **Rivalry** | 15 | +10 if a rival chapter (section 8) in the region is Thriving; with no rival chapter in the region its weight is Calm's (AUDIT CHAP R9: a weight of 0 spread its share over every event, where CALL 5 gives it to Calm) | Two chapters in one region race on Merit; the winner takes 10 Strength from the loser at the Season's end |
-| ~~**Decline**~~ | ~~10~~ | ~~+15 if Failing~~ | RETIRED (GUILD3e): it said what the Failing band says - its town's talk is Failing's now |
+| ~~**Decline**~~ | ~~10~~ | ~~+15 if Failing~~ | RETIRED (GUILD3e) into the Failing band: its town's talk Failing's, and (AUDIT GUILD3 R1 - GUILD3e had dropped it) its fall the band's every Failing week, 2 more unless the week's Merit meets twice the target (`failingWeekAfter`) |
 | ~~**Ascendancy**~~ | ~~10~~ | ~~+15 if Ascendant~~ | RETIRED (GUILD3e) into the Ascendant band: its prices a fifth off (where Thriving's tenth stood), its Master the High Master while the band holds |
 
 - **At the Season's end** (the Turning that closes week 8): the event resolves; Strength moves halfway back toward 50;
@@ -766,7 +774,7 @@ BUILT (CHAP6a, 2026-10-09, Mac: "continue"), the roll and the weeks - `src/net/n
   the Season of Morning Star, the Fighters Guild won its rivalry with the Thieves Guild." - a hidden rival is "its rival
   in the shadows": a public line naming the underworld's chapter would say where it keeps its halls), and a 'season'
   row for each Master placed at or before the Turning that opened the Season and sitting still at its end ("Through the
-  Season of Morning Star, Alda held the Master's seat of the Fighters Guild." - never Season 0's, which crowns no one, as
+  Season of Morning Star, Alda held the Master's seat of the Fighters Guild." (GUILD3a: "the Master's chair") - never Season 0's, which crowns no one, as
   the seats' own); the Hall of Records reads both. AUDIT CHAP5 S1/E2: the MASTER'S seat the whole Season - a seat's
   `since` is the character's at the chapter, kept from an officer's seat to the Master's, so an officer who rose to it
   in the Season's last week was crowned; one the Chronicle saw take the Master's seat in the Season (weeks after its
@@ -830,7 +838,8 @@ BUILT (CHAP6c, 2026-10-09, Mac: "continue"), the words and the choices on the cl
   stream is put back as it stood - the same name for every reader. NARROWED: named, not yet walking the hall's streets.
 - **The board** says each chapter's Season under its line - "The chapter is split this Season: Alda Copperham stands
   for cheaper training, Bryn Hearthwing for more writs."; a Succession's three or its heir; a Crackdown, a Rivalry (a
-  hidden rival "a rival in the shadows"), a Decline, an Ascendancy; the doctrine holding; shut halls - and offers a member
+  hidden rival "a rival in the shadows"), a Decline, an Ascendancy (GUILD3e: retired - the bands say them); the doctrine
+  holding; shut halls - and offers a member
   of the guild (its Merit line stands on the board) its choices: "Back a side:" or "Name who follows:", the one it backs
   marked; a press backs it through the door, says so ("You back Alda Copperham, for cheaper training."), reads the list
   again, and an answer after the board closed is said in the chat. **The hall's roll** says the Season after its seats.
@@ -872,7 +881,8 @@ BUILT (CHAP6e, 2026-10-09, Mac: "continue"), the Season's two titles - `src/net/
 `kept`), `server-account/src/npcChapters.js` (`chapterTitlesOfAccount`), the mint (`server-account/src/index.js`), the
 badge (`src/ui/playerBadge.js`):
 
-- **The High Master**: a Master's seat at a chapter whose Ascendancy is this counted Season's (the event the chapter drew
+- **The High Master** (GUILD3e: now a Master's chair at a chapter that stands Ascendant, by its Strength, Season or none -
+  `CHAPTER_ASCENDANT_FROM`; `test/chap6e_titles.test.js` pins it): a Master's seat at a chapter whose Ascendancy is this counted Season's (the event the chapter drew
   for it) is signed `highmaster` on the token in the Master's place, with the Master's own claim - "High Master of the
   Fighters Guild, Anticlere". NARROWED: no title of its own in the wardrobe - an account wears its Master's title and
   the mint adds "High" for the Season, so the Master who wore it before keeps wearing it, and nothing is left worn and
@@ -903,7 +913,8 @@ badge (`src/ui/playerBadge.js`):
   The watch is no chapter: it is a Crackdown's hunter alone (7). BUILT (CHAP6a): `CHAPTER_RIVAL_PAIRS`, fourteen pairs.
 - **Patrons** (DECIDED, CALL 6): a player guild (GUILD1) may be a chapter's **patron** for a Season - one patron a
   chapter, the highest Marks bid at the Season's first Turning, the winner's bid burnt and every other bid returned.
-  A patron's banner hangs in the chapter's halls, its members pay the Thriving band's prices there whatever the
+  A patron's banner hangs in the chapter's halls, its members pay the Thriving band's prices (GUILD3e: or the band's, where
+  better - an Ascendant chapter's fifth) there whatever the
   chapter's Strength, and the Chronicle names it. **A patron gains no seat influence**: a gate kill already raises
   influence (Seats-Arc 4.2), as an Orc Raid's camp does (9.3), and letting the same act raise Merit, Strength and
   influence for one guild would count it three times into a war the Seats' caps were balanced without (AUDIT CHAP R6:
@@ -954,7 +965,8 @@ BUILT (CHAP7b, 2026-10-09, Mac: "continue"), the patrons on the client - `src/ne
 
 - **The members' prices**: a hall's price factor for a reader whose player guild is its chapter's patron this Season is
   the Thriving band's (0.9) whatever the chapter's Strength - a Failing chapter's patron's members pay 0.9, not 1.25 -
-  and an Ascendancy's and the training doctrine's tenths lie on it as on anyone's; the shelf is the band's (8 named
+  and an Ascendancy's and the training doctrine's tenths lie on it as on anyone's (GUILD3e: `Math.min` of the band's and
+  Thriving's, the doctrine's tenth on it; no Ascendancy now); the shelf is the band's (8 named
   the prices alone). The host hands the hall the playing account's guild (its GuildBook's) - AUDIT CHAP5 C1: asked
   again when the book's look is old, and at once where the hall's chapter has a patron (the hall's popup asks the
   chapter first); the book looked first at the Guild tab, so a fresh page's member paid the band's price. A patron of a
@@ -1011,7 +1023,8 @@ classic skin, the row off, the service unreachable - the living world is exactly
   has no board, and placing one in DFU's own block geometry is a decor change of its own; its BOOKSHELF is the hall's
   reading (DFU's `DaggerfallBookshelf`, as the palace's shelf is the Hall of Records), so the roll is the shelf's first
   book - "The Roll of the Fighters Guild, Anticlere": the chapter's state (the board's line), "Master of the chapter:
-  Alda.", "Its officers: Bryn, Cael and Dara." (or the seats empty), worded without gender (`npcChapterLaw.js`
+  Alda.", "Its officers: Bryn, Cael and Dara." (or the seats empty - GUILD3a: "Its council: ...", "The Master's chair stands
+  empty."; AUDIT GUILD3 W8: an Ascendant chapter's "High Master of the chapter: ..."), worded without gender (`npcChapterLaw.js`
   chapterRollTitle, chapterRollLines; `ui/chapterRoll.js`). The roll is public, so whoever DFU's shelf refuses - a stranger to the guild, a
   member below its rank, and every member of the Fighters Guild and the knightly orders, whose shelves DFU opens to no
   one (`canAccessLibrary`) - reads the roll alone, and after it DFU's own refusal line, as the shelf says it offline
@@ -1228,10 +1241,10 @@ is Mac's to overrule.
 | Seat eligibility | 14 days in the guild, account 7 days old | 6 |
 | Merit window | 4 weeks | 6 |
 | Unearned seat | vacant | 6 |
-| Patron | one a chapter a Season, highest Marks bid, burnt, every other home; at least 1,000, sealed, raised never lowered (`CHAPTER_PATRON_MIN`, `patronBidOk`, `patronWinnerOf`; CHAP7a); the board's offers 1,000, 2,000 or 5,000 for a first bid, 500, 1,000 or 5,000 more on a standing one (`CHAPTER_PATRON_RAISES`, `chapterPatronBidsOf`; CHAP7b); its members' price the Thriving band's, 0.9 (`CHAPTER_PATRON_BAND`, `CHAPTER_PATRON_PRICE`; CHAP7b - AUDIT CHAP5 R17); every open bid home at the opening (AUDIT CHAP5 S6) | 8 |
+| Patron | one a chapter a Season, highest Marks bid, burnt, every other home; at least 1,000, sealed, raised never lowered (`CHAPTER_PATRON_MIN`, `patronBidOk`, `patronWinnerOf`; CHAP7a); the board's offers 1,000, 2,000 or 5,000 for a first bid, 500, 1,000 or 5,000 more on a standing one (`CHAPTER_PATRON_RAISES`, `chapterPatronBidsOf`; CHAP7b); its members' price the better of the band's and Thriving's 0.9 (GUILD3e; `CHAPTER_PATRON_BAND`, `CHAPTER_PATRON_PRICE`; CHAP7b - AUDIT CHAP5 R17), said on the patron's line where the hall sells training (AUDIT GUILD3 L6); every open bid home at the opening (AUDIT CHAP5 S6) | 8 |
 | Holder's Merit | no carry - a sitting holder keeps an EQUAL standing (`chapterSeatPlan`'s first tie-break; AUDIT CHAP4 E1, decided: the x1.2 it carried made a holder at 2000 of the four weeks' 2400 unbeatable) | 6 |
 | Event weights | Calm 30, Schism 15, Succession 10, Crackdown 10, Rivalry 15 (GUILD3e: five - the Decline's 10 and the Ascendancy's 10 retired); moved as section 7's table says (AUDIT CHAP R11; `CHAPTER_EVENTS`, `chapterEventWeights`, drawn on `CHAPTER_EVENT_SALT`, scaled over the sum - `drawOf`, AUDIT CHAP5 E3); a Schism's weight Calm's for a guild of one doctrine (AUDIT CHAP5 D3) | 7 |
-| ~~Decline's weekly fall~~ | RETIRED with the Decline (GUILD3e) | 7 |
+| Failing's weekly fall | 2 more after the week's step, unless the week's Merit meets twice the target, never under 0 - the Decline's, the band's since AUDIT GUILD3 R1 (`CHAPTER_FAILING_FALL`, `CHAPTER_FAILING_MEETS`, `failingWeekAfter`) | 5.2 |
 | ~~Ascendancy's prices~~ | RETIRED into the Ascendant band's x0.8 (GUILD3e) | 7 |
 | Rivalry's swing | 10 Strength, the loser's whole, the winner's never past 100 (`rivalrySwing`); one race a chapter a Season, any other rivalry even (AUDIT CHAP5 E5) | 7 |
 | Crackdown's Merit | a member's own writ's, half again, whole (`crackdownMerit`; AUDIT CHAP5 E1 - its writs pay as any, `crackdownPay` retired) | 7 |
@@ -1240,7 +1253,7 @@ is Mac's to overrule.
 | A Succession | three candidates, named at the Season's third Turning (`SUCCESSION_CANDIDATES`, `SUCCESSION_TURNING`) | 7 |
 | The Chronicle the Hall reads | a region's newest 60 rows, the hidden guilds' left out first (`CHAPTER_CHRONICLE_ROWS`, `server-account/src/npcChapters.js`; AUDIT CHAP4 S3) | 6 |
 | A name on the hall's roll | 32 characters at most, the realm's own cap (`CHAPTER_ROLL_NAME_MAX`) | 9 |
-| The Season's titles | a High Master for its chapter's Ascendancy, signed in the Master's place; a Season's Master for good, its newest Season signed (`chapterTitlesOf`, `chapterTitlesOfAccount`; CHAP6e) | 7 |
+| The Season's titles | a High Master for its chapter standing Ascendant (GUILD3e: by the band, Season or none - it was its chapter's Ascendancy), signed in the Master's place; a Season's Master for good, its newest Season signed (`chapterTitlesOf`, `chapterTitlesOfAccount`; CHAP6e) | 7 |
 | The hall's evenings by band | none shut (`GUILD_DAYS_SHUT`, CHAP6d), Failing 1, Steady 2, Thriving and Ascendant 3 a week, from the member's own day and three and five after it (`GUILD_DAYS_BY_BAND`, `GUILD_DAY_OFFSETS`, `src/systems/livingWorld/dayPlan.js` - the living world's own law module, as LW0 keeps it) | 9 |
 | The town's talk of a chapter | on 2 days of the week, its own, three apart (`CHAPTER_NEWS_DAYS`, `src/systems/livingWorld/lines.js`); none Steady | 9 |
 | The seats' beat on the tab | 10 minutes with nothing to claim before the Roll is asked again (`ROLL_SEATS_MS`, AUDIT CHAP4 C1) | 6 |
