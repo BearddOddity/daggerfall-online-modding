@@ -61,18 +61,19 @@ async function cell(fn, { speakers = 3 } = {}) {
   } finally { Date.now = realNow; }
 }
 
-test('SCALE5b slimPose: a validated pose without its defaults, its place in whole world units and its turn to a ten-thousandth - validPose reads it back as the pose it was, over every field the wire carries (mutants: a default kept; a field dropped that is not at its default; the place unrounded; the turn rounded coarser)', () => {
+test('SCALE5b slimPose: a validated pose without its defaults, its place in its room\'s units (SLIM-FRAME: a cell\'s x and z whole world units, its height the scene\'s metres to the centimetre) and its turn to a ten-thousandth - validPose reads it back as the pose it was, over every field the wire carries (mutants: a default kept; a field dropped that is not at its default; the place unrounded; the turn rounded coarser)', () => {
   assert.equal(relay.slimPose, slimPose, 'one home, both ends');
   assert.equal(relay.POSE_BATCH_MS, POSE_BATCH_MS);
   const rnd = roll(11);
   let full = 0, slim = 0, n = 0, dropped = 0;
   for (let i = 0; i < 4000; i++) {
     const p = drawn(rnd);
-    const s = slimPose(p);
+    const s = slimPose(p, KEY);
     const back = validPose(JSON.parse(JSON.stringify(s)));
     assert.deepEqual(Object.keys(back).sort(), Object.keys(p).sort(), 'the same fields, every one');
     for (const k of Object.keys(p)) {
-      if (k === 'x' || k === 'y' || k === 'z') { assert.ok(Math.abs(back[k] - p[k]) <= 0.5, `${k} within half a unit`); assert.ok(Number.isInteger(s[k]), `${k} whole`); }
+      if (k === 'x' || k === 'z') { assert.ok(Math.abs(back[k] - p[k]) <= 0.5, `${k} within half a unit`); assert.ok(Number.isInteger(s[k]), `${k} whole`); }
+      else if (k === 'y') { assert.ok(Math.abs(back.y - p.y) <= 0.005 + 1e-9, `y within half a centimetre (${back.y} for ${p.y})`); assert.equal(s.y, Math.round(p.y * 100) / 100, 'y to the centimetre'); }
       else if (k === 'yaw') { let d = Math.abs(back.yaw - p.yaw); if (d > Math.PI) d = 2 * Math.PI - d; assert.ok(d <= 5.0001e-5, `yaw within half a ten-thousandth (${d})`); }
       else if (k === 'pitch') assert.ok(Math.abs(back.pitch - p.pitch) <= 5.0001e-5, 'pitch within half a ten-thousandth');
       else assert.equal(back[k], p[k], k);
@@ -84,7 +85,7 @@ test('SCALE5b slimPose: a validated pose without its defaults, its place in whol
   assert.ok(slim < full * 0.6, `the slim pose under three fifths of the whole (${(slim / n).toFixed(1)} of ${(full / n).toFixed(1)} bytes)`);
   // a player standing: the pose the wire said every keepalive, against the second wire's
   const stand = validPose({ x: 6_869_221.734, y: -1_412.25, z: 9_111_000.5, yaw: 1.234567, pitch: -0.0123456, ts: 4_100 });
-  assert.equal(JSON.stringify(slimPose(stand)), '{"x":6869222,"y":-1412,"z":9111001,"yaw":1.2346,"pitch":-0.0123,"ts":4100}');
+  assert.equal(JSON.stringify(slimPose(stand, KEY)), '{"x":6869222,"y":-1412.25,"z":9111001,"yaw":1.2346,"pitch":-0.0123,"ts":4100}', 'SLIM-FRAME: the height in metres, kept to the centimetre');
 });
 
 test('SCALE5b the relay: a `w2` listener hears the batch\'s poses as ONE `poses` frame of slim entries in the order they were said; a listener that said no `w2` hears each pose at once, byte for byte the frame it always heard (mutants: the batch skipped; the entry the whole pose; the legacy frame slimmed; the hello\'s `w2` unread; another offer refused; another offer read as this one)', async () => {
@@ -112,7 +113,7 @@ test('SCALE5b the relay: a `w2` listener hears the batch\'s poses as ONE `poses`
       assert.equal(ws.sent.length, 1, 'one frame for the batch');
       const [f] = ws.sent;
       assert.equal(f.t, 'poses');
-      assert.deepEqual(f.l, order.map(([id, p]) => [id, JSON.parse(JSON.stringify(slimPose(p)))]), 'each pose as its slim entry, in order');
+      assert.deepEqual(f.l, order.map(([id, p]) => [id, JSON.parse(JSON.stringify(slimPose(p, KEY)))]), 'each pose as its slim entry, in order - SLIM-FRAME: in the units of the room it was said in');
     }
     R.room._flushOwed();
     assert.equal(w2.sent.length, 1, 'a flush with nothing owed says nothing');
@@ -127,7 +128,7 @@ test('SCALE5b the relay: a `w2` socket\'s owed poses go out AHEAD of any other f
     const kinds = (ws) => ws.sent.map((f) => f.t);
     assert.deepEqual(kinds(old), ['pose', 'leave']);
     assert.deepEqual(kinds(w2), ['poses', 'leave'], 'the pose first, then its sayer\'s leave');
-    assert.deepEqual(w2.sent[0].l, [['spk-0', JSON.parse(JSON.stringify(slimPose(p)))]]);
+    assert.deepEqual(w2.sent[0].l, [['spk-0', JSON.parse(JSON.stringify(slimPose(p, KEY)))]]);
     // the second listener closes owing a pose: nothing is kept for it, and nothing sent
     await speak(said[1], drawn(rnd));
     assert.equal(R.room._owed.has(w2b), true);

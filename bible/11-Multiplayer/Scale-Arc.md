@@ -69,6 +69,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | **Built** (2026-10-11, this branch; relay world192, NOT YET DEPLOYED) - the hub's sixteen shards and each region's four, the World and Region tabs' lists and the search |
 | SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | **Built** (2026-10-11, this branch; world192) - a crowded place overflows into layers; a gate's court into copies around its one fight (the realm, a siege and the arena are capped below a room by their own laws) |
 | SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | **Built** (2026-10-11, this branch; acct112) - measured first: written less at the source, not moved - Renown coalesced, the session touched hourly, the metrics by table; a token bound to a key considered |
+| SLIM-FRAME | The second wire's place in its own units: a pose's height to the centimetre in every room, a dungeon's, a town's and a building's x and z with it, a cell's x and z whole world units - the relay's fan says the room | Yes, once | **Built** (2026-10-11, this branch; relay world194, one drop at the merge) |
 | SCALE6 | Abuse and backups: Turnstile on guest creation, /64 IPv6 rate keys, bans, report and ignore, `ALLOWED_ORIGIN`, R2 snapshots, a hub export | Some | Alongside |
 
 **Relay deploy policy (SCALE):** relay changes are batched into as few deploys as possible, each in a window announced beforehand. A deploy drops every player, and until SCALE2 every reconnect is a D1 write storm.
@@ -1276,8 +1277,10 @@ before this is main's world191, WARDEN1; and the pins hold the frames parsed and
 - **A room's poses, batched and slim.** A pose fanned to a `w2` socket is owed it as a slim entry `[id, pose]`, built
   once a pose, and every socket's owed entries go out as one `{t:'poses', l}` frame each POSE_BATCH_MS (50 ms, one
   timer a room). `slimPose` leaves out the fields at the value validPose would fill them with, and rounds the place to
-  whole world units (2.5 cm) and the turn to a ten-thousandth of a radian; validPose reads it back as the pose it was.
-  A standing pose goes from about 157 bytes to 66.
+  what a reader can see - a native room's x and z to whole world units (2.5 cm), the height and every other room's place
+  to the centimetre (SLIM-FRAME, below: as built here it rounded all three to whole units in every room, and a height is
+  metres) - and the turn to a ten-thousandth of a radian; validPose reads it back as the pose it was. A standing pose
+  goes from about 157 bytes to 66 (two or three more since SLIM-FRAME: the height's centimetres).
 - **A channel's roster, batched a second.** A channel's join and leave to a `w2` socket are owed it for ROSTER_BATCH_MS
   (a second): a hub's reconnect wave of N joins was N^2/2 frames, one a join a listener.
 - **One order.** Everything owed a socket is one queue in the order the room said it, and goes out ahead of any other
@@ -1833,6 +1836,45 @@ RENOWN1-hour-spend-matches-nothing, SCALE1-B-statements-uncounted, and SCALE4f-b
 -point-as-before.
 
 The pins' D1 (test/accountDb.mjs) answers `rows_written` in its meta, as D1's does, so a point can be read over it.
+
+## SLIM-FRAME: built (2026-10-11, this branch - relay world194, one drop at the merge)
+
+The owner: *"I notice some players look like they are walking off the ground."*
+
+**The cause.** SCALE5b's second wire rounds each pose it batches (`src/net/wire.js` slimPose), and it rounded x, y and z
+to whole units, reading all three as MapsFile's world unit - 32768 to a map pixel, 2.5 cm. That is true of one thing:
+the x and z of a pose said in a native room (a world cell, a siege's battle or a Royal Tourney, an owned interior or
+boat - nativePoseRoom). A pose's HEIGHT is the scene's metres in every room: `scenes/world.js` sends
+`player.pos[1] - state.compensation[1]`, the feet with only the floating origin shed, and its reader adds the origin back
+(`onlineToScene`). So every peer a client heard on the second wire - every peer, since the world host offers `w2` on
+every socket and every relay from world192 on answers it - stood on a whole metre of height: up to half a metre in the air or
+sunk to the shins, and stepping a metre at a time up a slope. Which players floated depended on where they stood (a
+player at 34.6 m drew at 35, one at 34.4 drew at 34), hence "some players". Off the overworld it was worse and had not
+been reported yet: a dungeon's, a town's or a building's x and z are metres too, and a peer there walked a one-metre
+grid. The first wire never rounded, and the renderers all stand a peer at the pose's feet (`net/remotePlayers.js`,
+`peerBodies.js`, `peerRiders.js`), so nothing on the client could see the loss.
+
+**The law.** `slimPose(p, key)` rounds in the units of the room the pose was said in: a native room's x and z to whole
+world units, as SCALE5b meant; the height in every room, and x and z in every other, to the centimetre
+(`SLIM_SCENE_STEPS`, 100). A pose handed no room is rounded as the scene's - finer, never wrong. `nativePoseRoom` moved
+from `net/online.js` into `wire.js` (`online.js` re-exports it for every caller and pin that knew it there), so the relay
+asks the same question the session's snap asks, of one law; the relay's fan hands it the sender's room
+(`server/src/index.js`, `slimPose(m.p, a.key)`). The cost, measured over 5,000 drawn poses: a cell's slim pose 79.2 bytes
+to 82.1, a dungeon's 70.0 to 78.6 - still well under half the first wire's.
+
+**The deploy.** The relay's law changed, so RELAY_VERSION is world194 and relay-deploy.yml drops every player once at
+the merge. A client from before it reads the new relay's poses through the same door; a client after it against the
+old relay sees the old rounding until the deploy lands.
+
+**Pinned** (`test/slimframe.test.js`, 2; `tools/mutants/slimframe.json`, 6, all dead): the law over every room kind
+(a height within half a centimetre everywhere, x and z whole in a native room and within half a centimetre elsewhere,
+one nativePoseRoom for session and relay), and the relay to the screen - a speaker in a cell and in a dungeon at heights
+and places that are no whole metre, each pose's batch entry kept, and the peer a second-wire session stands within half
+a centimetre of where a first-wire session stands them. Mutants: SCALE5b's rounding verbatim, the height whole, a scene
+room's place whole, the room unread, the relay's fan unkeyed, the steps coarse. PIN MOVED: SCALE5b's slimPose pin read
+the height whole (`"y":-1412` for -1412.25 - the bug, pinned); it reads the centimetre now, and its batch pins name the
+room. `SCALE5b-place-unrounded`, the three relay-fan records and the two `NETSMOOTH-1` records (to `wire.js`) re-aimed by
+content. The relay's version pins moved to world194.
 
 ## THE PLAN PAST 2,000 (2026-10-10)
 
