@@ -411,6 +411,23 @@ function routRaid(raid) {
 }
 
 const liveRaiders = (key) => _live.filter((e) => e.key === key && e.kind === 'raider' && !e.routed && !e.foe.dead && (e.foe.entity?.health ?? 1) > 0);
+/** FIELD BUGS 2026-10-11g RAID-WORD: the raid on the map pixel I stand on that I fought (a death tallied, or a blow
+ *  struck) - the word the relay credits from anywhere on the town's pixel, rect or not. */
+function raidOnMyPixel(now) {
+  const px = host().playerPixel?.();
+  if (!px) return null;
+  return state.raids.find((r) => raidActive(r, now) && r.px === px.x && r.py === px.y && (r.killed > 0 || r.struck)) ?? null;
+}
+/**
+ * FIELD BUGS 2026-10-11g RAID-WORD: a jump's sweep (scenes/world.js `exteriorFoes.clearLive()` - a death's respawn, a
+ * fast travel, Recall, /unstuck) empties the foe pool and marks no one dead, so every raider and defender it took stood
+ * on here alive: the raid's 25 places held by nobody, and a player back in the town stood no raider for the rest of it -
+ * the raid stalled short of its target and withdrew. They are let go here, a death not yet tallied kept for the tally.
+ */
+export function raidPoolCleared() {
+  cancelPending();
+  _live = _live.filter((e) => e.kind === 'raider' && e.foe.dead && !e.counted);
+}
 /** Is a raid on in the town the player stands in? The host's watch reads it (the raid brings its defenders
  *  whatever the watch's own switch says). */
 export function raidDefendingHere(now = (host().now ?? worldMinutes)()) {
@@ -532,8 +549,14 @@ export function raidFrame(dt = 0) {
   // F. is the player standing in a raid [IL_0de4]?
   const town = h.townHere?.() ?? null;
   const raid = town ? state.raids.find((r) => raidActive(r, now) && r.regionIndex === town.regionIndex && r.locationIndex === town.locationIndex) : null;
+  // RAID3: my word to the town's ledger, whoever runs the raid. FIELD BUGS 2026-10-11g RAID-WORD ("Doesn't register raid
+  // 20%ish of the time"): the relay credits a word said from the town's PIXEL (server/src/index.js _raidWord's `here`,
+  // the mod's own reward test), and the rect is narrower - a hamlet's ~300 m in an 819 m pixel. A fight that drifted past
+  // the rect tallied its deaths here and never said them: the town's count stood short of its target, nothing was
+  // cleansed, and the raid withdrew. Past the rect, on the pixel, a raid I fought is still said; it stands no one there.
+  const said = raid ?? (relay ? raidOnMyPixel(now) : null);
+  if (relay && said) sayToRelay(said);
   if (!raid) { cancelPending(); _myClaims.clear(); return 'idle'; }
-  if (relay) sayToRelay(raid);   // RAID3: my word to the town's ledger, whoever runs the raid
   // RAID2: online, the one who runs it stands its foes - every other player here stands them as puppets
   if (sharedClockOn() && !runsRaid(raid)) { cancelPending(); return 'standing-by'; }
   // G. one foe in flight [IL_0661-IL_06d1]

@@ -11,8 +11,8 @@
   {
     "name": "EVENT-TIP-no-deaths-said-as-none",
     "file": "src/ui/eventMapMarks.js",
-    "old": "if (r.killed > 0 && r.attackAmount > 0) lines.push",
-    "new": "if (r.attackAmount > 0) lines.push",
+    "old": "if (killed > 0 && target > 0) lines.push",
+    "new": "if (target > 0) lines.push",
     "tests": [
       "test/eventtip.test.js"
     ]
@@ -20,8 +20,8 @@
   {
     "name": "EVENT-TIP-deaths-past-the-target",
     "file": "src/ui/eventMapMarks.js",
-    "old": "`${Math.min(r.killed, r.attackAmount)} of ${r.attackAmount} driven off`",
-    "new": "`${r.killed} of ${r.attackAmount} driven off`",
+    "old": "`${Math.min(killed, target)} of ${target} driven off`",
+    "new": "`${killed} of ${target} driven off`",
     "tests": [
       "test/eventtip.test.js"
     ]
@@ -227,7 +227,7 @@
   {
     "name": "EVENT-TIP-the-host-hands-no-raids",
     "file": "src/scenes/world.js",
-    "old": "      raids: () => (raidingPartiesOn() ? raidMapMarks(raidState().raids, worldMinutes(), { regionName: (r) => REGION_NAMES[r] ?? '', localTime: sharedClockOn() ? eventLocalTime : null }) : []),   // TIME1: online the withdrawal in local time\n",
+    "old": "      raids: () => (raidingPartiesOn() ? raidMapMarks(raidState().raids, worldMinutes(), { regionName: (r) => REGION_NAMES[r] ?? '', localTime: sharedClockOn() ? eventLocalTime : null, relay: raidRelayState }) : []),   // TIME1: online the withdrawal in local time\n",
     "new": "",
     "tests": [
       "test/eventtip.test.js"
@@ -236,8 +236,8 @@
   {
     "name": "EVENT-TIP-raids-with-the-mod-off",
     "file": "src/scenes/world.js",
-    "old": "raids: () => (raidingPartiesOn() ? raidMapMarks(raidState().raids, worldMinutes(), { regionName: (r) => REGION_NAMES[r] ?? '', localTime: sharedClockOn() ? eventLocalTime : null }) : []),",
-    "new": "raids: () => raidMapMarks(raidState().raids, worldMinutes(), { regionName: (r) => REGION_NAMES[r] ?? '', localTime: sharedClockOn() ? eventLocalTime : null }),",
+    "old": "raids: () => (raidingPartiesOn() ? raidMapMarks(raidState().raids, worldMinutes(), { regionName: (r) => REGION_NAMES[r] ?? '', localTime: sharedClockOn() ? eventLocalTime : null, relay: raidRelayState }) : []),",
+    "new": "raids: () => raidMapMarks(raidState().raids, worldMinutes(), { regionName: (r) => REGION_NAMES[r] ?? '', localTime: sharedClockOn() ? eventLocalTime : null, relay: raidRelayState }),",
     "tests": [
       "test/eventtip.test.js"
     ]

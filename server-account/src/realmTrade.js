@@ -53,7 +53,12 @@ function outcomeFor(t, playerId, { id, seq, half }) {
   const side = t.a_player === playerId && t.a_char === id && t.a_seq === seq && t.a_half === said ? 'a'
     : t.b_player === playerId && t.b_char === id && t.b_seq === seq && t.b_half === said ? 'b' : null;
   if (!side) return { error: 'trade-spent' };
-  if (t.state === 'refused') return { state: 'refused', why: t.why ?? 'refused' };
+  if (t.state === 'refused') {
+    // FIELD BUGS 2026-10-11g HELD-SIDE: a hold's refusal is kept with the side it held (`trade-held:a`), and each side is
+    // told whose it was - the word itself as every client reads it, `held` beside it
+    const m = /^(trade-held|record-unjudged):([ab])$/.exec(t.why ?? '');
+    return m ? { state: 'refused', why: m[1], held: m[2] === side ? 'mine' : 'theirs' } : { state: 'refused', why: t.why ?? 'refused' };
+  }
   let result = null;
   try { result = JSON.parse(t.result); } catch { result = null; }
   const mine = result?.[side];
@@ -131,8 +136,11 @@ export async function tradeRealm({ db, bucket, rand, nowS }, playerId, body) {
   // INT3: A SIDE THE JUDGE HOLDS GIVES NOTHING - its goods and its gold are what the hold keeps from every other player
   const gives = (/** @type {any} */ h) => h.give.items.length > 0 || h.give.gold > 0;
   // (its own word: 'trade-held', or 'record-unjudged' - AUDIT INT, a record no checkpoint had read was told it was held)
-  const heldBy = (gives(firstHalf) ? holdRefusal(other) : null) ?? (gives(half) ? holdRefusal(row) : null);
-  if (heldBy) return refuse(db, sid, heldBy.error, playerId, asker, true);
+  const heldA = gives(firstHalf) ? holdRefusal(other) : null;
+  const heldBy = heldA ?? (gives(half) ? holdRefusal(row) : null);
+  // FIELD BUGS 2026-10-11g HELD-SIDE ("Cant trade after yesterdays character lockout": every trade refused as "a
+  // character in this trade" is reviewed, and nothing said whose): the refusal keeps the side the hold is on
+  if (heldBy) return refuse(db, sid, `${heldBy.error}:${heldA ? 'a' : 'b'}`, playerId, asker, true);
 
   // EACH RECORD AS ITS OWN LAST CHECKPOINT LEFT IT
   const [objA, objB] = await Promise.all([bucket.get(other.obj), bucket.get(row.obj)]);

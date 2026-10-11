@@ -33,7 +33,7 @@ import { skillValue, SKILLS } from '../src/systems/skills.js';
 import { liveStat } from '../src/systems/statMods.js';
 import { attachTouch } from '../src/ui/touch.js';
 import { setPref, _resetForTests as resetPrefs } from '../src/systems/uiPrefs.js';
-import { HOLDEM_FIRST_MS } from '../src/net/holdemTable.js';
+import { HOLDEM_FIRST_MS, newTable, sit, tableLook } from '../src/net/holdemTable.js';
 import { STARTER_DECK } from '../src/net/iliacCards.js';
 import { relaySupportsHoldem, HOLDEM_RELAY_MIN, RELAY_VERSION } from '../src/net/wire.js';
 import { RemotePlayers } from '../src/net/remotePlayers.js';
@@ -341,6 +341,36 @@ test('AUDIT CARDS-6 E8: a Hold\'em sit at a cloth that plays Iliac Hand - the re
   assert.ok(c.ws.sent.some((m) => m.t === 'iliac' && m.state?.seats?.length === 2), 'watching the game under way');
   c.api.standFromCardTable();
 }));
+
+test('FIELD BUGS 2026-10-11g ALL-IN ("went all in and got this" - TypeError: Cannot read properties of null (reading \'view\')): the relay stands him up broke at the hand\'s end, and the interior frame draws the cloth again that frame with no table under it; the cloth that plays Iliac Hand the same (mutants: the draw reads the table it let go)', () => {
+  const eye = [0, 1.2, 0.5];
+  const draw = (h) => h.api.cardDrawGame(h.api.cardGame, mirrorProjectionX(perspective(1, W / H, 0.02, 100)), lookAt(eye, [0, 0.8, -0.6], [0, 1, 0]), eye);
+  // the interior frame's own draw site, as worldModes' frame() calls it
+  assert.match(WM, /\n {4}if \(cardGame\?\.scene\) cardDrawGame\(cardGame, proj, view, mwv\.eye\);/);
+  const h = host({ online: true, id: 'peer-me' });
+  h.api.sitAtCardTable(0);
+  const g = h.api.cardGame, chair = h.api.cardSeat.seat, t = newTable({ chairs: 4, bb: 10 });
+  for (const [id, name, c] of [['peer-me', 'Mac', chair], ['peer-b', 'Bob', (chair + 1) % 4]]) {
+    for (const m of sit(t, { id, name, chair: c, now: 0 })) if (m.to == null || m.to === 'peer-me') h.api.cardOnlineFrame({ t: 'holdem', table: 0, now: 0, ...m.frame, at: 1000 });
+  }
+  h.api.cardGameFrame(1000);
+  assert.equal(g.remote.confirmed, true, 'the relay seated him');
+  draw(h);
+  // all in, and lost: net/holdemTable.js after() - `leave`, broke, and his chair empty in the state that follows
+  const st = tableLook(t, 'peer-me', 0)[0].frame.state;
+  h.api.cardOnlineFrame({ t: 'holdem', table: 0, now: 0, events: [{ t: 'leave', seat: chair, name: 'Mac', broke: true, at: 0 }], state: { ...st, seats: st.seats.map((x, i) => (i === chair ? null : x)), hand: null }, at: 1000 });
+  h.api.cardGameFrame(1016);
+  assert.deepEqual([g.phase, g.why, g.remote], ['over', 'broke', null], 'stood up broke, the relay\'s table let go');
+  assert.ok(g.scene, 'the cloth kept - it plays the hand that broke him out');
+  assert.doesNotThrow(() => draw(h), 'the frame that follows draws it');
+  // AUDIT CARDS-6 E8's refusal takes the same branch: the cloth plays Iliac Hand
+  const o = host({ online: true, id: 'peer-me' });
+  o.api.sitAtCardTable(0);
+  o.api.cardOnlineFrame({ t: 'holdem', table: 0, now: 0, error: 'other game', at: 1 });
+  o.api.cardGameFrame(2);
+  assert.deepEqual([o.api.cardGame.why, o.api.cardGame.remote, !!o.api.cardGame.scene], ['other game', null, true]);
+  assert.doesNotThrow(() => draw(o));
+});
 
 test('AUDIT CARDS-6 E7: the relay\'s Hold\'em table offers Iliac Hand and the house\'s packs whenever he is not in a hand - alone, two waiting for the deal - and not while a hand holds him; the press stands him up from Hold\'em and opens the other game (mutants: the offer\'s gate; in a hand)', () => withRelay(async ({ r, tick, local, seat }) => {
   const a = await seat('peer-a', 0);

@@ -64,6 +64,17 @@ export const FLOOR_FACE_NY = FLOOR_NY;
 export const faceInkOf = (ny) => (ny > FLOOR_FACE_NY ? 'floor' : ny < -0.6 ? 'ceiling' : 'wall');
 /** The floor's lean as FS_A's literal. */
 const FNY = FLOOR_FACE_NY.toFixed(6);
+/** FIELD BUGS 2026-10-11g SLOPE-ALL ("the Automap is not showing certain slopes within the dungeons", "mostly not
+ *  present without the use of the 'all' option"): under ALL-FLOORS a floor face leaning off level past this CLIMBS
+ *  between storeys, and no row's own storey cut takes it apart. Daggerfall's own ramp is 1:4 - 14.04 degrees, n.y
+ *  0.97014 - and a literal 0.97 (14.07 degrees) missed it by three hundredths of a degree, so every such ramp was cut at
+ *  its lower storey's slice. A level floor reads 0.9999 and over; 2.56 degrees is no floor a storey stands on. */
+export const CLIMB_NY = 0.999;
+/** The face FS_A's ALL-FLOORS cut spares, by its lean (`ny`) and its riser mark (`mark`, the normal's w: 1.4 a flight's
+ *  tread). */
+export const climbsOf = (ny, mark = 1) => (ny > FLOOR_FACE_NY && ny < CLIMB_NY) || (mark > 1.2 && mark < 1.5);
+/** The climb's bound as FS_A's literal. */
+const CNY = CLIMB_NY.toFixed(6);
 
 const VS_A = `#version 300 es
 in vec3 aPos; in vec4 aNrm; in float aWater; in float aRowY;
@@ -110,7 +121,7 @@ void main() {
     float base = uStoreys[0];
     for (int i = 0; i < 32; i++) { if (i >= uStoreyN) break; if (uStoreys[i] <= vRowY + 0.75) base = max(base, uStoreys[i]); }
     clipHere = min(uClipY, base + uSliceAbove);
-    bool climbs = (n.y > ${FNY} && n.y < 0.97) || (vN.w > 1.2 && vN.w < 1.5);
+    bool climbs = (n.y > ${FNY} && n.y < ${CNY}) || (vN.w > 1.2 && vN.w < 1.5);   // climbsOf
     if (vW.y > clipHere && !climbs) discard;
     // the player's storey in full, the others faint
     if (abs(base - uFocus) > 0.75) dim = uOther;

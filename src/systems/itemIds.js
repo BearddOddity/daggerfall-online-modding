@@ -23,6 +23,7 @@
 
 import { ITEM_UID_RE, lawTemplate } from './itemLaw.js';
 import { LETTER_OF_CREDIT_TEMPLATE } from './inventory.js';
+import { TRADE_HELD_NOTICES } from '../net/realmTradeLaw.js';   // FIELD BUGS 2026-10-11g HELD-SIDE: the hold's words, one home
 /** The tiers a piece wears that make it valuable (rarityTier.js ROLLED_TIERS, and the two minted whole). */
 const VALUABLE_TIERS = Object.freeze(['magic', 'rare', 'legendary', 'aetheric', 'gilded']);
 
@@ -61,13 +62,9 @@ export function stampItemIds(entity, rand) {
 
 // ── INT3: what the player is told ────────────────────────────────────
 
-/** The hold, as its player hears it (server-account/src/verdict.js holdOf's reasons). */
-export const TRADE_HELD_NOTICES = Object.freeze({
-  law: 'The realm is reviewing this character: something it carries is not as the game makes it. Trading is frozen until it is gone.',
-  dupe: 'The realm is reviewing this character: copies of an item were found. Trading is frozen until staff have looked.',
-  budget: 'The realm is reviewing this character: its wealth rose faster than play could earn it. Trading is frozen until play catches up.',
-  staff: 'The realm\'s staff have frozen this character\'s trading.',
-});
+/** The hold, as its player hears it (server-account/src/verdict.js holdOf's reasons) - kept in net/realmTradeLaw.js, the
+ *  leaf a trade's refusal reads it from too (FIELD BUGS 2026-10-11g HELD-SIDE). */
+export { TRADE_HELD_NOTICES };
 export const TRADE_OPEN_NOTICE = 'This character\'s trading is open again.';
 /** The law's hold, naming the piece it found (`name`, its template's). */
 export const tradeHeldLawNotice = (/** @type {string} */ name) => `The realm is reviewing this character: a ${name} it carries is not as the game makes it. Trading is frozen until it is gone.`;

@@ -388,3 +388,12 @@ factions first in the dictionary, so a law that forgot the region would pay them
 pool's own fallback) - a flash on my screen and nothing more: its owner refuses the blow, so no guard takes damage and
 no crime crosses the wire.
 
+## RAID-WORD - the deaths reach the ledger, a jump frees the raid's places (FIELD BUGS 2026-10-11g)
+
+The Discord's "Doesn't register raid 20%ish of the time". Two roads left the relay's count short while the raid looked
+over here: a raider of mine that fell past the location's rect - still on the town's map pixel, where the relay credits
+a word - was tallied and never said (step F said the word from inside the rect alone); and a jump's sweep
+(`scenes/world.js` `exteriorFoes.clearLive()`) took every raider out of the pool without a death, so the raid kept them
+standing and stood no one under its cap. Step F says a raid I fought from anywhere on its pixel now, and
+`raidPoolCleared()` runs beside the sweep. The held map's card counts the town's ledger (`raidRelayState`) against the
+town's target, not this machine's share. The record: `01-Overview/Field-Bugs-2026-10-11g.md` RAID-WORD.

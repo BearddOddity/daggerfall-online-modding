@@ -1017,7 +1017,12 @@ export function createWorldModes(host) {
    *  and a bet being carried under the cursor. */
   function cardDrawGame(g, proj, view, eye) {
     const now = performance.now();
-    const p = g.scene.poses(now / 1000, (g.remote ?? g.session).view(), g.drag ? { seat: g.scene.playerSeat, amount: g.drag.bet.amount } : null);   // AUDIT CARDS-3 C8: the chips carried are off the stack
+    // FIELD BUGS 2026-10-11g ALL-IN ("went all in and got this" - TypeError: Cannot read properties of null (reading
+    // 'view')): the relay stands a player up broke at the hand's end (net/holdemTable.js after()), cardRemoteFrame's
+    // `lost` lets the relay's table go and keeps the cloth, and the same frame drew the cloth through the table it let
+    // go. The cloth plays the hand that broke him out with no table under it - CardScene.poses reads no view as none.
+    const table = g.remote ?? g.session;
+    const p = g.scene.poses(now / 1000, table?.view() ?? null, g.drag ? { seat: g.scene.playerSeat, amount: g.drag.bet.amount } : null);   // AUDIT CARDS-3 C8: the chips carried are off the stack
     const dt = Math.min(0.1, Math.max(0, (now - (g.drawnAt ?? now)) / 1000));
     g.drawnAt = now;
     g.frame = { proj, view: Float32Array.from(view), eye: eye.slice() };
@@ -2338,6 +2343,20 @@ export function createWorldModes(host) {
    *  of the Arena", "Red Banner Recruiter", ...) and the undercroft's (the Pit Master, the Keeper of the Hall), or null:
    *  the plaque, the Info click and the talk door ask it before StaticNPC.DisplayName, so the three never disagree. */
   const officeName = (pn) => arenaGatePersonName(pn) ?? (pn?.arenaRole ? ARENA_TEXT.undercroft.names[pn.arenaRole] ?? null : null);   // ARENA-FIX 4: the undercroft's people with an office
+  /** FIELD BUGS 2026-10-11g QUEST-NAME ("Quest NPCs are inactive": "not being able to interact with the quest NPCs"): a
+   *  quest PERSON stand named on World Tooltips' plaque as the room's own people are. The mod asks its StaticNPC arm
+   *  (Modded_HUDTooltipWindow.cs:325-393, `ret = npc.DisplayName`) before its quest-resource arm, and AddQuestNPC gives a
+   *  quest Person's billboard a StaticNPC (GameObjectHelper.cs:1060-1062) - so the mod names him. The port read the
+   *  quest-resource arm's `is Item` gate alone and named him nothing, and he stood among named people looking
+   *  unclickable. The name is StaticNPC.DisplayName off the stand's own layout data - the one Info's "You see" line and
+   *  the click's LastNPCClicked read (questStandNpcData). `list` the host's stands, `buildingKey` the click's. */
+  const questStandPersonName = (list, key, buildingKey) => {
+    const st = list[Number(key.split(':')[1])];
+    const res = st?.behaviour?.targetResource ?? null;
+    if (res?.isPerson !== true || !questBridge) return null;
+    const t = npcHoverName(npcDisplayName(questStandNpcData(st, res, buildingKey)), { archive: st.archive ?? -1, record: st.record ?? -1 });
+    return t ? { title: t } : null;
+  };
 
   let interiorOverlay = null;
   /** ROAD-B B1: ...and the DEPTH under it. `interiorOverlay` stays the
@@ -2709,11 +2728,13 @@ export function createWorldModes(host) {
     itemName: (st) => interiorHoverName(`questflat:${questFlats.indexOf(st)}`)?.title ?? null,   // the plaque's own word for it
     foeName: (f) => enemyDisplayName(f.mobileType),
   }));
-  /** .cs:483-512 - a quest ITEM stand is named by the long name, and one billboard by hand. A quest PERSON or FOE stand
-   *  answers nothing, exactly as the mod's `is Item` gate does. The dungeon's arm of the plaque's ladder (registered at
-   *  the mount); GUIDE8: hoisted, so the Exact tier's marks name an item by the plaque's one word. */
+  /** .cs:483-512 - a quest ITEM stand is named by the long name, and one billboard by hand; a quest FOE stand answers
+   *  nothing, as the mod's `is Item` gate does. A quest PERSON is the StaticNPC arm's (.cs:325-393, QUEST-NAME:
+   *  questStandPersonName). The dungeon's arm of the plaque's ladder (registered at the mount); GUIDE8: hoisted, so the
+   *  Exact tier's marks name an item by the plaque's one word. */
   const dungeonQuestFlatName = (key) => {
     if (typeof key !== 'string' || !key.startsWith('questflat:')) return null;   // AUDIT-WH2 L2-F5: C1's guard
+    const named = questStandPersonName(dungeonQuestFlats, key, 0); if (named) return named;   // QUEST-NAME: a dungeon has no building - the click's 0
     const st = dungeonQuestFlats[Number(key.split(':')[1])];
     const res = st?.behaviour?.targetResource ?? null;
     if (!res || res.isPerson === true || res.isFoe === true) return null;
@@ -3233,9 +3254,11 @@ export function createWorldModes(host) {
         const t = npcHoverName(display, { archive: pn.archive ?? -1, record: pn.record ?? -1 });
         return t ? { title: t } : null;
       }
-      // .cs:483-512 - a quest ITEM stand only; a person or foe stand
-      // answers nothing, as the mod's `is Item` gate does.
+      // .cs:483-512 - a quest ITEM stand; a foe stand answers nothing,
+      // as the mod's `is Item` gate does. A quest PERSON is the StaticNPC
+      // arm's (.cs:325-393) - QUEST-NAME, the click's own building key.
       if (key.startsWith('questflat:')) {
+        const named = questStandPersonName(questFlats, key, interiorBuilding?.buildingKey ?? 0); if (named) return named;
         const st = questFlats[Number(key.split(':')[1])];
         const res = st?.behaviour?.targetResource ?? null;
         if (!res || res.isPerson === true || res.isFoe === true) return null;
