@@ -22,7 +22,7 @@ import { INTERIOR_AMBIENT, INTERIOR_NIGHT_AMBIENT, INTERIOR_LIGHT_DIR } from '..
 import { isNight } from '../world/worldClock.js';   // AUDIT 23 (C12)
 import { skyMinutes } from '../systems/worldTick.js';   // AUDIT 23 (C12); TIME1: the sky's night
 import { nearestLights } from '../world/cityLights.js';
-import { syncLightingLane } from '../render/enhancedLighting.js';   // EL1
+import { syncLightingLane, interiorLightColor, interiorGrade } from '../render/enhancedLighting.js';   // EL1; INTERIOR-DIM: a room's lamps and its grade
 import { INTERIOR_MARKER } from '../world/interiorLayout.js';
 import { lookAt, perspective, mirrorProjectionX, UP_Y } from '../world/mat4.js';   // HANDEDNESS: the one mirror (mat4's law)
 import { fetchBytes, seasonOverride, ensureAudio } from './shared.js';
@@ -368,9 +368,10 @@ export async function bootInterior(canvas, renderer, params, status) {
     const lit = _iil
       ? nearestLights(_iil.lights, cam.pos, renderer.maxPointLights, _iil.ranges, _iil.colorOf)
       : nearestLights(ctx.lights, cam.pos, renderer.maxPointLights, ctx.lights.map((l) => l.range),   // EL1: the installed set's cap
-        (l) => [l.color[0] * l.intensity, l.color[1] * l.intensity, l.color[2] * l.intensity]);
+        (l) => interiorLightColor(!!renderer.lightingLane, l.color, l.intensity));   // INTERIOR-DIM (worldModes.js's interior arm)
     renderer.setPointLights(lit.data, null, lit.colors);
     renderer.everyLightCasts();   // DISC15: the dev route draws the building whole too
+    renderer.setSceneGrade?.(interiorGrade(!!renderer.lightingLane));   // INTERIOR-DIM: the room's grade (worldModes.js's interior arm)
     renderer.beginFrame(proj, view, INTERIOR_LIGHT_DIR, WORLD_FRAME);   // AUDIT-EL F5: a WORLD frame - the lane replays its records for this one
     for (const d of ctx.drawList) renderer.drawMesh(d.mesh, d.matrix, ctx.texRemap);
     // WM4b: the mill's machinery turns at Kamer's rate, in here too.
