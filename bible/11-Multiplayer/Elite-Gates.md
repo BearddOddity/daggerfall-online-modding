@@ -1,7 +1,9 @@
-# Elite Gates - the Elite Breach and the Battlespire (EG)
+# Elite Gates - the Elite Breach and the Battlespire's torn halls (EG)
 
-> Design page, written 2026-10-11 before the arc's first slice. The code's comments will cite this page by section
-> number; where the page and a pin disagree, the pin is what runs. Each slice adds its record under section 24.
+> Design page, written 2026-10-11 before the arc's first slice, and revised the same day by AUDIT EG0. That audit was
+> five cold lanes on the frozen first draft (177a3acd6), 105 findings, each with its verdict, recorded in
+> `01-Overview/Audit-EG0.md`. The code's comments will cite this page by section number; where the page and a pin
+> disagree, the pin is what runs. Each slice adds its record under section 29.
 
 ## What Mac asked for
 
@@ -18,550 +20,786 @@ questions (the tier reading, the party size, what a death costs, run-only powers
 5. *"Yes, a key item you can obtain from regular oblivion gates, a super rare drop from dungeons based on dungeon tier"*
 
 And: *"I want you to make any and all decisions and make this the best content that it can be. Utilize all available
-resources, be extremely detailed and dont half ass the work"*.
+resources, be extremely detailed and dont half ass the work"*. Then, of the first draft: *"Do a comprehensive audit and
+ensure this is the best and most detailed it can be"*.
 
 So, as decided here (each decision is argued in its section):
 
-- **The gate gets the dungeons' three tiers.** Dagon's Breach (`World-Bosses.md`), as shipped, is the gate's Regular
-  tier. This arc builds the **Elite Breach**, the tier above it. The Abyss tier of the gate is named and reserved, the
-  way the gate arc named the instanced dungeons it was not building (section 2).
-- **Where it leads: the Battlespire.** Canon (UESP, Lore:Battlespire): the Imperial Battlemages' war academy, a
-  void-castle between the planes. It was taken by Dagon's legions in 3E 398, barred to the Legion with a Daedric Sigil,
-  and destroyed when Dagon was banished. In 3E 417 its broken halls hang over the Deadlands, still garrisoned by the
-  Kyn. It fits section 19 of the gate's page: a door opened from within, which the Covenant never barred and always
-  fights (section 3).
-- **The key: the Spire Sigil**, a shard of the Sigil that barred the Spire. It is ACCOUNT-HELD: the account service
-  keeps the count and the item is its face, because every dungeon drop today is the client's own dice. It drops from
-  Dagon's Breach, and very rarely from dungeons, by tier. The service rolls every drop (section 4).
-- **Timed like a gate.** The arch rises at the opener's feet, sealed for one game hour. It opens for one game hour,
-  then the Covenant's count runs, on the shared clock in game minutes like the gate's own (section 5).
-- **A company of eight.** The opener's party at the rising, frozen, up to `PARTY_MAX` (8, already the party's size).
-  Only the opener spends a Sigil (section 5).
-- **Endless, procedural, one floor at a time.** A run is HALLS, five to a WARD, generated from the breach's seed. Each
-  hall is a made level, like the Burning Court and the Shattered Hour, entered under the gate's veil (sections 6-9).
-- **Five kinds of hall**, plus the Kyn's Court that closes each Ward:
-  - the Muster-Yard (relentless waves out of Wellhead rifts)
-  - the Span (generated platforming)
-  - the Rampart (a walkway under fire)
-  - the Athenaeum (a seeded Orrery under pressure)
-  - the Proving Walk (span, champion, span) (section 7)
+- **The gate gets the dungeons' three tiers.** Dagon's Breach (`World-Bosses.md`) is the gate's Regular tier. This arc
+  builds the **Elite Breach**, the tier above it. The Abyss tier is named and reserved (section 2).
+- **Where it leads.** Canon: the Battlespire was taken by Dagon's legions in 3E 398, then partly destroyed, and the
+  Empire sealed its gates with every link to Oblivion broken. **The port's invention**, marked as such: the halls that
+  tore away when those links broke fell back along the road the legions came, and the Kyn still hold them as a proving
+  ground (section 3).
+- **The key: the Weir Key.** In canon, the Imperial Secretary surrendered the Spire's portal keys to the invaders. The
+  Kyn carry them still; Dagon's covens hoard them.
+  - It is ACCOUNT-HELD: the account service keeps the balance, and the item is its face.
+  - The service rolls every drop. It drops from Dagon's Breach, from the Abyss Dungeon's Remnant, and very rarely
+    from elite foes in dungeons, by tier (section 5).
+- **Timed like a gate.** The arch rises at the opener's feet, sealed for one game hour, then opens for one game hour
+  at most. The company answers THE CALL from anywhere outdoors.
+  - **The count** starts when the first hall wakes: 30 minutes, +15 for each Redoubt taken, never more than 30 in
+    hand.
+  - **The last word** ends every breach three hours after the opening (section 6).
+- **A company of eight.** The opener's party when the open reaches the hub, frozen, up to `PARTY_MAX` (8). Only the
+  opener spends a key (section 6).
+- **Endless, procedural, one hall at a time.**
+  - A run is HALLS, five to a circle. Each circle ends in a **Court**, whose fall takes a **Redoubt**.
+  - Each hall is generated from the breach's seed: a made level like the Burning Court and the Shattered Hour,
+    entered under the gate's veil.
+  - Halls follow a fixed rhythm: fight, traverse, mixed, fight, Court (sections 7-9).
+- **Five kinds of hall and a Court** (section 8): the Rift-Yard (relentless waves out of Wellhead rifts), the Span
+  (generated platforming), the Rampart (a walkway under fire), the Athenaeum (a seeded Orrery under pressure) and the
+  Proving Walk (span, champion, span). Seeded **twists** turn about one hall in four from circle 3.
 - **Four bands deep**, retracing the legions' march of 3E 398 in reverse: the Broken Galleries, the Soul Cairn, the
-  Shade Perilous, and the Havoc Wellhead, which never ends (section 6).
-- **Relentless adds the relay runs.** Nine add kinds, three of them the Legion-Lord's, widened from the gate's
-  `stepHost` into a wave runner of their own (section 10).
-- **Nine bosses and the Valkynaz.** Each a brain of its own on ONE relay boss seam. A Valkynaz, a Prince of the Kyn,
-  holds every fifth Ward (section 11).
-- **Brands, Vestiges, Wards.**
-  - Brands: the run's modifiers, merged by the Hour's own `sdMarksLaw` rule (section 12).
-  - Vestiges: three offered at every Ward, one taken, kept for the breach. My decision on question 4: yes, with every
-    bonus to damage told to the relay so the trust law still bounds it (section 13).
-  - Wards: the checkpoints. One life a breach; a fall or a leave keeps everything banked at the last Ward lit, and the
-    TALLY since then is lost. A Ward lit is also a place to start from next time (section 14).
-- **Depth grows in mechanics before numbers** (Balance-Arc's law). Brands stack, waves quicken, spans tighten and a
-  boss slow to fall turns to fury. Every wind-up keeps a floor a player can always run out of. The count bounds the run
-  (section 15).
+  Shade Perilous, and the Havoc Wellhead, which never ends (section 7).
+- **Relentless adds the relay runs.** Nine kinds, three of them the Legion-Lord's, in one wave runner widened from the
+  gate's (section 11).
+- **Twelve lords and their Valkynaz.**
+  - Nine Court lords, three to a band and the Wellhead's two.
+  - A Valkynaz, a warrior duke of Dagon's council, at every fifth Redoubt.
+  - Every one is its own brain on ONE relay boss seam.
+  - Every errand scales from one member to eight (section 12).
+- **Two floors keep every blow fair**:
+  - the wind-up floor (a shape you can always run out of);
+  - the union floor (never a trap of several shapes at once).
+  - **Nothing gets faster with depth** (Mac, WBX: *"I dont think making mechanics faster is the play"*).
+  - Depth adds decrees, kinds, pieces and waves. It never shortens a wind-up, a beat or a crumble (sections 12, 16).
+- **Decrees, Vestiges, Redoubts.**
+  - **Decrees**: Dagon's decrees on the next circle, one per family, up to four (section 13).
+  - **Vestiges**: run-only powers, three offered at every Redoubt and one taken. My decision on question 4. They are
+    capped and never stack eightfold, and death saves recover only at a Redoubt (section 14).
+  - **Redoubts**: the checkpoints, read through Mac's answer to *what a death costs*: *"Checkpoints"*.
+    - One life a member.
+    - A fall is recalled ONCE, at the next Redoubt the living take. A second fall is final.
+    - The fallen witness the run.
+    - **Reliquaries**, sealed at every Redoubt and opened only by walking home, are what a company risks by going on
+      (section 15).
+- **The wall is the count and the last word, not a multiplier.** A model of the pace says where companies stop
+  (section 16).
 - **The chance, not the promise.**
-  - Embers, Marks and spoils at every Ward.
-  - THE BATTLEMAGE'S PANOPLY, nine Aetheric pieces.
-  - Each boss's tavern card.
+  - Spoils and Marks at every Redoubt, paid once a week for each Redoubt; Deadlands Embers at the Valkynaz Redoubts
+    and for new depth.
+  - THE BATTLEMAGE'S PANOPLY (nine Aetheric pieces, with a pity count).
+  - Each lord's tavern card.
   - Titles and auras by depth.
-  - Two season boards.
-  - No Gilded piece: the Hourlock stays the one (section 16).
+  - Three season boards.
+  - No Gilded piece: the Hourlock stays the one (section 17).
 
-Daggerfall has no Elite Breach, no Battlespire and no other players, so none of this is a DFU member. Its Ledger A row
-is ELITE-GATES, written by the first slice that ships code.
+Daggerfall has no Elite Breach, no torn halls and no other players, so none of this is a DFU member. Its Ledger A row,
+ELITE-GATES, is opened by the first file that cites it, since `test/doctrine.test.js` fails a cite with no row (SD2a's
+record). It lists the Spire's departures from DFU: Resurrect refused, Levitate and Slowfall warded, and no
+DEATH-PENALTY inside.
 
 ## 1. The shape, end to end
 
 ```
- a SPIRE SIGIL (account-held) ─► used outdoors, online ─► /v1/eg/open: one spent, an OPEN ORDER signed
+ a WEIR KEY (account-held) ─► used outdoors, online ─► /v1/eg/open: one staked, an OPEN ORDER signed
    │
    ▼
- the relay room `eg:<b>` spends the order ─► asks the hub for the opener's party ─► the COMPANY, frozen (≤ 8)
-   │ the ARCH rises at the opener's feet: sealed 1 game hour (5 real min) ─► OPEN ≤ 1 game hour, or until Hall 1's door
+ the HUB: verifies the order ─► freezes the COMPANY from its party record (≤ 8) ─► EG_INTERNAL_OPEN to `eg:<b>`
+   │ the ARCH rises at the opener's feet: sealed 1 game hour (5 real min)
+   │ OPEN ≤ 1 game hour: the opener steps through the arch; the company answers THE CALL from anywhere outdoors
    │ each member: /v1/eg/admit ─► an ADMIT ORDER ─► the room spends it ─► through the veil
    ▼
- HALL 1 ─► HALL 2 ─► HALL 3 ─► HALL 4 ─► HALL 5: the KYN'S COURT ─► the WARD lit
-   (yard · span · rampart · athenaeum · proving, drawn by the circle law)      │
-   │                                                                           ├─ an `e1` RECEIPT to every living member:
-   │   each hall: GATHER 8 s ─► the trial ─► the DOOR ─► MUSTER ─► the stair  │  depth banked, spoils thrown, embers, marks
-   │                                                                           ├─ the COUNT held: +3 game hours (15 min)
-   │                                                                           ├─ three VESTIGES offered, one taken
-   │                                                                           ├─ the next circle's BRANDS shown
-   │                                                                           └─ the WAY HOME (leave, keeping all)
+ the first hall WAKES (the count starts) ─► the arch sinks behind the company
+   │
+   │  each hall: ARRIVAL ─► GATHER 8 s ─► the TRIAL ─► the DOOR ─► the DESCENT (20-45 s) ─► the PULL ─► the stair
+   │  the rhythm:  fight · traverse · mixed · fight · the COURT
    ▼
- ... HALL 6 ─► ... ─► HALL 25: a VALKYNAZ ─► ... the Havoc Wellhead, without end
+ the COURT's lord falls ─► a REDOUBT taken
+   ├─ an `e1` RECEIPT to every living EARNER: the depth, the week's spoils thrown, Marks, embers for new depth
+   ├─ a sealed RELIQUARY to each earner (opened only by the way home)
+   ├─ the COUNT +15 min (30 in hand at most); the REST holds the count
+   ├─ three VESTIGES offered, one taken; the next circle's DECREES shown
+   ├─ the FALLEN recalled (once each)
+   └─ the WAY HOME (leave, keeping all, the Reliquaries opened)
+   ▼
+ ... Hall 25: a VALKYNAZ ─► ... the Havoc Wellhead, without end
    │
    ▼
- the END: every member fallen or gone home, or the COUNT spent ("The Covenant tears the breach shut.")
-   ─► each entrant's end receipt ─► the arch sinks (10 s)
+ the END: every member out (fallen twice, forsaken, gone home), the COUNT spent (the tear), or the LAST WORD
+   ─► each entrant's end receipt ─► the room keeps its tombstone
 ```
 
 ## 2. The tiers of the gate - Regular, Elite, Abyss
 
 The dungeons have three tiers and one law that names them: `dungeonTier` in `src/systems/dungeonTier.js`, with the
-words *Regular Dungeon*, *Elite Dungeon* and *Abyss Dungeon* (ABYSS-NAME). The gate gets the same shape: one leaf law,
+words *Regular Dungeon*, *Elite Dungeon* and *Abyss Dungeon* (ABYSS-NAME). Mac said *"Normal"*; the player reads
+*Regular*, the word the game already shows (`DUNGEON_TIER_TEXT`). The gate gets the same shape: one leaf law,
 `systems/gateTier.js` (EG1), with `gateTier(x)`:
 
 | tier | code | the event | what it is | built |
 |---|---|---|---|---|
 | Regular | `'regular'` | **Dagon's Breach** | the world boss on the shared clock: one a game day, everyone, the Warden | shipped (WB) |
-| Elite | `'elite'` | **Elite Breach** | a key's breach for one company: the Battlespire, endless, one life | this arc |
-| Abyss | `'super'` | **Abyss Breach** | reserved; the code keeps the word `super` for the Abyss tier, as the dungeons do | NOT this arc |
+| Elite | `'elite'` | **Elite Breach** | a key's breach for one company: the torn halls, endless, one life and its one recall | this arc |
+| Abyss | `'super'` | **Abyss Breach** | reserved; the code keeps `super` for the Abyss tier, as the dungeons do | NOT this arc |
 
-`GATE_TIER_TEXT` holds the words. The Regular tier's word is its own name, because the event already has one. An Elite
-Breach is said as *an Elite Breach*, and its place as *the Battlespire*:
+`GATE_TIER_TEXT` holds the words. The Regular tier's word is its own name, because the event already has one. Shown:
 
-- **the arch's plaque** (World Tooltips): *Elite Breach*, sub *The Battlespire*. To anyone outside the company, a second
-  sub: *<opener>'s company*;
+- **the arch's plaque** (World Tooltips): *Elite Breach*, sub *The Battlespire*; to anyone outside the company, a
+  second sub *<opener>'s company*;
 - **the sight line**: *You see an Elite Breach 140 metres to the North!* (the Elite dungeon's line, its law);
-- **the Timers row** (`eventTimerRows`, a new kind `'elite'` beside `'gate'` and `'super'`): *Elite Breach opens 4:12*,
-  *Elite Breach - Hall 17*, *The breach holds 24:10*. The row is the company's only;
-- **the held map**: a mark at the arch's pixel for the company (it is not a place in MAPS.BSA);
-- **on entering a hall**: one line, *Hall 12 - the Broken Galleries*. A Ward's hall says *Hall 15 - the Kyn's Court*.
+- **the Timers row** (`eventTimerRows` in `src/systems/eventTimers.js`, a new kind `'elite'` beside `'gate'` and
+  `'super'`, the company's alone): *Elite Breach opens 4:12*, then *Hall 17 - the count 24:10*;
+- **the held map**: the arch's mark for the company while it stands (it is not a place in MAPS.BSA);
+- **on entering a hall**: one line, *Hall 12 - the Broken Galleries*, and *Hall 15 - the Court* at a Court.
 
-**Why the Abyss tier is not built here.** The Abyss Dungeon's Rift already is an otherworldly door at the top of the
-content, and its feat is one Hollow at a time for the whole world. An Abyss Breach would be the pinnacle of the gate's
-own ladder: a world-scale event, not a company's. It is named so it is not mistaken for missing. The tier law answers
-`'super'` for nothing until it is built.
+**Why the Abyss tier is not built here.** The Abyss Dungeon's Rift is already the otherworldly door at the top of the
+content: one Hollow at a time, for the whole world. An Abyss Breach would be the pinnacle of the gate's own ladder, a
+world-scale event and not a company's. It is named so it is not mistaken for missing. The tier law answers `'super'`
+for nothing until it is built.
 
-## 3. The Battlespire in 3E 417 - the lore
+## 3. The lore - canon, and what the port adds
 
-The gate's own lore law (`World-Bosses.md` section 19) is binding: the Covenant of Akatosh bars every Prince from
-forcing a door into Tamriel. It never barred a door opened from within, and it fights every breach. Dagon's legions
-taking the Battlespire in the Simulacrum's years is the precedent section 19 cites. This arc goes there.
+The gate's own lore law (`World-Bosses.md` section 19) is binding. The Covenant of Akatosh bars every Prince from
+forcing a door into Tamriel; it never barred a door opened from within, and it fights every breach. The port's shipped
+book on the breaches (`src/systems/portBooks.js`) is canon for this game. Three of its lines bind this page:
 
-**What canon gives** (UESP, Lore:Battlespire and Lore:Kyn):
+- *"No Prince walks through such a wound himself. He sends a lord of his house... a Dremora of the rank they call
+  valkynaz."*
+- *"Should the Warden fall... the breach fails at once. It is his will that holds the door."*
+- Of the Battlespire: *"his legions took the Battlespire itself... and held it until a single apprentice drove them
+  out."*
 
-- The Battlespire was the war academy of the Imperial Battlemages and a testing ground for the Imperial Guard, a
-  void-castle between the planes.
-- The Impostor, Jagar Tharn, gave it to Mehrunes Dagon in 3E 398. Dagon's forces mustered in the **Havoc Wellhead**,
-  rampaged through the **Shade Perilous** and the **Soul Cairn**, and took the Spire, killing nearly every Battlemage.
-- The Daedra barred the Spire to the Legion with a **Daedric Sigil**. The Spire was destroyed when Dagon was banished.
-- The Dremora, the Kyn, keep ranks: Churl, Caitiff, Kynval, Kynreeve (a clan's sheriff), Kynmarcher, Markynaz (a
-  grand duke), Valkynaz (a prince). Valkynaz Ruhn, the Warden, is one.
+**Canon** (UESP: Lore:Battlespire, Lore:Weir Gate, Lore:Kyn, Lore:Soul Cairn, Lore:Shade Perilous, Lore:Havoc Wellhead,
+Lore:Imago Storm):
 
-**What this arc adds, and says it adds:**
+- The Battlespire was the war academy of the Imperial Battlemages and a testing ground for the Imperial Guard: a
+  void-castle in a slipstream realm, with a council whose masters bore titles such as Armsmaster and Spellmaster.
+- The Impostor, Jagar Tharn, gave it to Mehrunes Dagon. In 3E 398 Dagon's legions, led by Imago Storm of Clan Dremora,
+  mustered in the **Havoc Wellhead** (whose arena hosted honourable fights between clans), rampaged through the
+  **Shade Perilous** (a pocket realm of Nocturnal's Evergloam) and the **Soul Cairn** (the Ideal Masters' realm of
+  the dead), and took the Spire, killing nearly every Battlemage.
+- The Imperial Secretary surrendered the Spire's **portal keys**, and the invaders sealed its **Weir Gate** against
+  the Legion with Dagon's own sigil.
+- An apprentice drove them out. The Spire was partly destroyed; the Empire reclaimed the ruins and sealed its gates,
+  every link to Oblivion broken. Imago Storm later turned on his Prince.
+- The Dremora, the Kyn, keep eight major ranks: Varlet, Churl, Caitiff, Kynval, Kynreeve (a clan's officer or
+  sheriff), Kynmarcher (the officer of a citadel or outpost, the lowest called lord), Markynaz (a grand duke) and
+  Valkynaz (a warrior duke of his Prince's council). Valkynaz Ruhn, the Warden, is one.
+- Dagon gave the Dark Seducers their bat wings. The Fire and Frost Daedra are clans of their own, and rivals.
 
-- **The Spire's halls did not fall whole.** They broke along the road the legions came. The upper halls still hang
-  over the Deadlands. The lower ones fell back down the march: through the Soul Cairn, through the Shade Perilous, to
-  the Havoc Wellhead itself. To descend the Spire is to walk the invasion of 3E 398 backwards (the bands, section 6).
-- **The Kyn kept it as a proving ground.** It was one for the Battlemages too. A Dremora rises in rank by holding one
-  of its Wards, so the deeper halls are held by higher ranks: Kynreeves, then Kynmarchers and Markynaz, then a Valkynaz
-  at every fifth Ward.
-- **The Sigil shattered with the Spire.** Its shards are what a Valkynaz holds a breach open with, which is why the
-  Warden's fall can drop one. Dagon's covens hoard them in the deep places, which is why the hardest dungeons give
-  them up likeliest. A shard in a mortal hand opens the way from within.
-- **The Covenant fights it as it fights every breach.** The door holds only while the Battlemages' old Wards are lit.
-  Each Ward-stone, lit again, holds it a little longer. When the count runs out the Covenant tears it shut. That is
-  the gate's own fiction of the seal and the Wrath, moved from the clock to the company's pace.
-- **The Vestiges are what the Battlemages left in their Wards**: a lesson that clings to whoever lights one, until the
-  breach closes.
+**The port's invention** (said so, everywhere it is said):
 
-**The words.** The event is an **Elite Breach** and the arch is *the gate*. The place is **the Battlespire**, or *the
-Spire*. A floor is a **Hall** and a checkpoint is a **Ward**, its stone a **Ward-stone**. The key is a **Spire
-Sigil**, never a sigil stone (section 19 of the gate's page retired that word for the Crisis it belongs to). Lines
-are short (Mac at WB12: *"less explanatory and less AI"*).
+- **The torn halls.** When the Spire's links to Oblivion broke, the halls that hung on them tore away. They fell back
+  along the road the legions came: the Soul Cairn, then the Shade Perilous, then the Havoc Wellhead itself. The
+  Imperial ruin stays sealed. The Elite Breach goes to what tore away, and to descend it is to walk the invasion of
+  3E 398 backwards (the bands, section 7).
+- **The Kyn hold them as a proving ground**, as the Wellhead's own arena was one. The Spire was a proving ground for
+  the Battlemages too. A Dremora rises in rank by holding a Court there, so the deeper halls are held by higher ranks:
+  Kynreeves, then Kynmarchers, then Markynaz, and a Valkynaz at every fifth Redoubt. These are the Kyn who stayed
+  Dagon's when Imago Storm did not.
+- **The Weir Keys.** The portal keys the Secretary surrendered still open the Weir Gate's road from this side. That
+  road no longer reaches the sealed Spire; it reaches its torn halls. The Kyn carry the keys as trophies: Ruhn wears
+  one, which is why his fall can drop one. Dagon's covens hoard others in the deep places, which is why the hardest
+  dungeons give them up likeliest.
+- **The door is the key's, not a lord's.** Dagon's Breach is held by the Warden's will, and fails when he falls. The
+  Elite door is held by the key and by the Battlemages' old Redoubts, so felling a lord does not close it. Each Redoubt
+  taken makes the door more the Battlemages' own, and the Covenant presses on it less: the count gains time. In the
+  first circle no Redoubt is taken yet, and the count's thirty minutes are the key's own strength. When the count is
+  spent, the Covenant tears the door shut. The last word is the most any key can hold against it.
+- **The Vestiges** are what the Battlemages left in their Redoubts: a lesson that clings to whoever takes one, until
+  the breach closes.
+- **The raised masters.** Two of the Spire's council, fallen in 3E 398, are the Kyn's captives: the Last Spellmaster
+  and the Last Armsmaster.
 
-## 4. The Spire Sigil - the key
+## 4. The words
 
-**The item.** Template **575**, the first free index after the gate's 570-574, a row beside `PORTAL_STONE_TEMPLATES`
-in `src/systems/gateSpoils.js`:
+Every term the page and the game use, what it means, and what it is NOT. The renames follow AUDIT EG0's word lane:
+each new word was checked against `src/` and the player's existing vocabulary.
+
+| word | means | is not | why this word |
+|---|---|---|---|
+| **Elite Breach** | the event: a key's breach | "Oblivion Gate" (retired by WB12) | the gate tier's word |
+| **the gate**, **the arch** | the black-and-gold arch at the opener's feet | - | WB12 kept "the gate" for the arch |
+| **the Battlespire**, **the Spire** | where the torn halls came from | the sealed Imperial ruin | canon place, invented fate |
+| **Weir Key** | the key item, template 575, account-held | a sigil stone (retired by WB12) | canon's portal keys and the Weir Gate; "weir" is unused |
+| **hall**; **Hall 12** | one floor; numbered when named | a guild hall | lowercase in prose |
+| **circle** | five halls, the fifth a Court | - | - |
+| **Court** | a circle's fifth hall, where its lord stands; capitalised | a court disc (lowercase) | the gate's own word |
+| **lord** | a Court's boss | "Kyn" (only Dremora are Kyn) | AUDIT EG0 L5 |
+| **Redoubt**; **Redoubt 5** | the checkpoint a Court's fall takes; its beacon is lit | a Ward-Bearer's ward | "Ward" had seven meanings on the first draft; "redoubt" is unused |
+| **the count** | the breach's timer | the key balance, BOSS_BODY's census | - |
+| **the last word** | the three-hour bound on any breach | - | - |
+| **the balance** | how many Weir Keys an account holds | - | - |
+| **a stake** | a key held against a breach until it settles | the count | CARDS6's stake orders |
+| **decree** | a rule laid on the next circle (the code's *marks*) | a Sigil Set (Dagon's Brand) | "brand" collided three ways |
+| **Vestige** | a run-only power | - | - |
+| **Stone, Blade, Hunt, Arcana, Fellowship** | the Vestige families | the Sigil Sets' Bulwark, Brand, Shroud, Mantle | the first draft reused set names |
+| **Reliquary** | a sealed spoils roll, opened only by the way home | - | - |
+| **the descent** | the beat after a hall's door opens | the Town Seats' *Muster* | AUDIT EG0 L16 |
+| **witness** | a fallen member who watches the run | - | - |
+| **the legion** | the adds | the Imperial Legion; the Fellowship family | lowercase |
+
+Capitalisation: Court, Redoubt and the band names are capitalised; hall, circle, decree, the count and the legion are
+not, except when numbered or named (*Hall 12*, *Redoubt 5*).
+
+## 5. The Weir Key
+
+**The item.** Template **575**, free today (the gate's 570-572 and the Ayleid stones' 573-574 come before it). It is a
+row beside `PORTAL_STONE_TEMPLATES` in `src/systems/gateSpoils.js`:
 
 - `{index:575, baseWeight:0.25, hitPoints:1000, basePrice, rarity:20, bound:true, stackable:true}`, in the miscellany
   group (`UselessItems2`), never a gem (PORTAL1's lesson: every Gems piece is a crystal a slot takes);
-- its art: a shard of black-gold stone (the arch's own palette, section 20), until then TEXTURE.254's nearest record;
+- its art: a key of black iron and gold, painted in code into the Spire's first pseudo-archive (section 23). EG2 ships
+  it with that art, never a borrowed record, because Port-Doctrine allows no placeholder shipped silently;
 - named in `BOUND_TEMPLATES` (`src/net/realmTradeLaw.js`), so the realm's trade refuses it as the client does;
-- its line: *A shard of the Sigil that barred the Battlespire. It opens the way from within.*
+- its line: *One of the Spire's portal keys, surrendered to the Kyn in 3E 398. It opens the Weir Gate's road from
+  this side.*
 
-**The count is the account's.** Every dungeon drop is the client's own `Math.random` (the INT ledger measures it after
-the fact and does not enforce). A Sigil from a forged drop would open a real relay instance. So the Sigil is the
-Broker's ember balance again: the service holds the truth, and the item is its face.
+**The balance is the account's.** Every dungeon drop is the client's own `Math.random`: the INT ledger measures it
+after the fact and does not enforce. A key from a forged drop would open a real relay instance, so the key is a
+service-side balance and the item is its face.
 
-- `players.eg_sigils` (migration, EG2) is the count. The stack on every character of the account shows that count,
-  restacked from each service answer that carries it (`restackStones` is the precedent: the Broker's insignia already
-  spend a service-side ember balance, `gate_kills.stones - insignia_spent`);
-- a Sigil the service does not count does nothing: *The Sigil crumbles.*, and the stack is restacked;
-- it is bound to the account, never traded, and lost from no death.
+- `players.eg_keys` (migration, EG2) is the balance. The service-side precedent is the Broker's purse: `insigniaPurse`
+  over `EMBERS_EARNED_SQL`, which is gate and serpent embers less `insignia_spent` (`server-account/src/accounts.js`).
+- **No code today restacks a pack to a service count.** `restackStones` is SS1's load-time fold in the save, and on
+  an insignia sale the client simply takes the stones from the pack. EG2 builds the restack: every service answer
+  that carries the balance (`/v1/eg/keys`, a claim, an open) sets the Weir Key stack on the account's character to
+  the balance, single-flight and coalesced (ASYNC NEVER DROPS).
+- A key the service does not count does nothing: *The key turns to rust.*, and the stack is restacked.
+- It is bound to the account, never traded, and never lost to a death.
 
-**Where they come from.** The service rolls every one with its own `rand`, at a claim it already verifies. This is the
-`sdHonoursRoll` way: AUDIT SD III R4 moved the Hour's honours off the receipt seed because the page can read it.
+**Where they come from.** The service rolls every one with its own `rand`, at a claim it already verifies. This is
+the `sdHonoursRoll` way: AUDIT SD III R4 moved the Hour's honours off the receipt seed because the page can read the
+seed. `claimGate`'s context gains `rand`, which it lacks today (`claimSd`'s has it).
 
-| source | when the service rolls | odds | why that much |
+| source | when the service rolls | odds | what that means |
 |---|---|---|---|
-| **Dagon's Breach** | `claimGate`, a recorded kill | **1 in 6** | the gate feeds the Elite. At a gate or two a real day, a regular fighter earns one every three to six days |
-| **...having broken the rite** | `claimGate`, a recorded kill with `r=1` | **1 in 4** (instead) | the rite is the gate's harder half (WB12d) |
-| **...the first ever** | `claimGate`, the account's first `gate_kills` row | **certain** | every gatebreaker sees the Spire once |
+| **Dagon's Breach** | `claimGate`, a recorded kill (`earned != 'rite'`) | **1 in 6** | at one or two gates a real day, a key every three to six days |
+| **...having broken the rite** | the same, with `r=1` | **1 in 4** (instead) | the rite is the gate's harder half (WB12d) |
+| **...the first ever** | the account's first `gate_kills` row with `earned != 'rite'` | **certain** | every gatebreaker sees the Spire once |
 | **the Abyss Dungeon's Remnant** | `claimSd`, a recorded Hour | **1 in 3** | the hardest fight the port has, witnessed by the relay |
 | **an Abyss Dungeon's elite foe** | `/v1/eg/find`, below | **1 in 60** | six elites a Hollow: about one Hollow in ten |
 | **an Elite Dungeon's elite foe** | `/v1/eg/find` | **1 in 150** | three or four a dungeon: about one in forty |
 | **a Regular dungeon's elite foe** | `/v1/eg/find` | **1 in 400** | one dungeon in five has one: about one in two thousand |
 
-**The dungeon's find.** No relay witnesses an ordinary dungeon, so the find is asked. A death handler on the elite foe
-(`registerEnemyDeathHandler`, the seam `dropFoeCard` uses for a foe's card) asks `/v1/eg/find` with the dungeon's tier
-when an elite foe (`eliteFoe`) dies in a dungeon online. The service rolls at that tier's odds. A yes adds one to the
-count and throws the item from the body, as a card is thrown. A forged client can lie about a kill, so the asks are
-capped: **12 a tier, per account, per real day**. At the cap, forging is worth about 0.31 Sigils a day, less than an
-honest gate-goer earns, and every one of them still has to be played. `EG_FIND_PER_DAY` and the odds live in the
-service. The INT budget measures the asks.
+**The dungeon's find.** No relay witnesses an ordinary dungeon, so the find is asked. When an elite foe (`eliteFoe`)
+dies in a dungeon online, the find is asked:
 
-**The launch gift.** Every account with a `gate_kills` row when EG2 ships finds one Sigil in the server mailbox
-(SERVER-POST, `server_post`), worded *From the Battlespire*. PORTAL-GIFT is the precedent.
+1. **who asks**: the death handler (`registerEnemyDeathHandler`, the seam `dropFoeCard` uses for a foe's card) runs
+   on the foe's owner, so the owner names the killing blow's account (`_killedBy`) on the foes stream. The killer's
+   client asks `/v1/eg/find` with the dungeon's tier, not the owner's;
+2. **the roll**: the service rolls at that tier's odds;
+3. **a yes** adds one to the balance and throws the item from the body, as a card is thrown.
 
-**Using it.** Use is a registered arm (`registerItemUseHandler` -> `{kind:'openBreach'}`), routed on every reader, as
+A forged client can lie about a kill and a tier, so:
+
+- asks are capped at **6 a tier, per account, per real day** (`EG_FIND_PER_DAY`). At the cap a forger's ceiling is
+  6/400 + 6/150 + 6/60 ≈ **0.155 keys a day**, under an honest gate-goer's 0.17-0.5;
+- finds pay at most **2 keys a week** (`EG_FIND_KEYS_PER_WEEK`);
+- `/v1/eg/find` and `/v1/eg/open` both need a handle and either a non-rite `gate_kills` row or a Redoubt taken, so a
+  fresh account cannot farm or open.
+
+The INT budget measures the asks.
+
+**The launch gift.** When EG2 ships, every account with a non-rite `gate_kills` row gets one key. The migration adds
+it to `eg_keys` itself, and a server-post letter (`server_post`) only words it, *From the Battlespire*. The send is
+HOURS-FIRST's precedent (migration 0094). PORTAL-GIFT is not: it is a client-side gift given at save load.
+
+**Using it.** Use is a registered arm (`registerItemUseHandler` -> `{kind:'openBreach'}`), routed on every reader as
 the Portal Stone's is. Its refusals, in order, each a line of `EG_TEXT`:
 
-1. offline, or on the `?exterior` bench: *The Sigil is cold here.*
-2. not in the open world (interior, dungeon, a made level): *Not here.*
-3. the Portal Stone's holds (`portalHold`: busy, duel, siege, enemies, journey), and water or a boat;
+1. offline, or on the `?exterior` bench: *The key is cold here.*
+2. not in the open world (an interior, a dungeon, a made level): *Not here.*
+3. the Portal Stone's holds (`portalHold` in `src/systems/portalStone.js`: busy, duel, siege, enemies, journey),
+   water, or a boat;
 4. inside a location's own footprint (a town's walls, a farm's yard): *Not within <place>.*
 5. within 300 m of a standing Dagon's Breach, or 150 m of another Elite arch: *Another breach stands near.*
-6. the opener already in a breach, or with an arch of their own standing: *You hold a breach already.*
-7. no room for the arch: the Portal Stone's `portalPlace` law (ground probe, wall gap) at the arch's own clearance,
+6. the opener already in a breach, or with a stake unsettled: *You hold a breach already.*
+7. the Spire draining for a deploy, or the hub at `EG_LIVE_MAX` live breaches: *The Spire is closed for a while.*
+8. no room for the arch: the Portal Stone's `portalPlace` law (ground probe, wall gap) at the arch's clearance,
    `EG_ARCH_CLEAR_M` 8: *There is no room for it here.*
 
-Then the **start window** asks where in the Spire. The choices are **Hall 1** and every Ward the opener has lit,
-deepest first (section 14). The classic skin asks with DFU's MessageBox, Hall 1 and the three deepest Wards; the
-enhanced skin lists them all. The answer goes to `/v1/eg/open`. The service spends one, HOLDS it against the breach,
-and signs the **open order** (section 19). A hold no receipt settles within an hour is returned to the count: the
-client crashed before the room heard it, and a Sigil is never lost to a dropped socket.
+Then the **start window** asks where in the Spire:
 
-## 5. The breach - the arch, its clock, the company
+- **the choices**: *The first hall* (Hall 1), and every Redoubt the opener may start at (section 15), deepest first;
+- **the classic skin** asks with DFU's DaggerfallListPickerWindow (`src/ui/listPicker.js`, PICK00I0.IMG; the boat
+  variant picker is the precedent), so the native-window rule holds: a list of DFU's own, no free-styled geometry;
+- **the enhanced skin** asks with `src/ui/enhancedPicker.js`;
+- **a warning line**, when one of the opener's quests falls due within three hours: *A quest falls due before the
+  breach can close.*
+
+The answer goes to `/v1/eg/open` (section 21), which stakes one key.
+
+## 6. The breach - the arch, the call, the clock, the company
 
 ### The arch
 
 The gate's own model, `buildGateModel` in `src/world/gateModel.js` (Mac's Blender bake), drawn at **0.62 scale**:
-about 10 m tall and 4.8 m to each side. It is re-skinned in the Spire's colours: Imperial white marble inlaid with gold,
-cracked through with the Warden's basalt. The membrane turns gold-white while sealed and red-gold when open, through the
-gate's own pass (`render/gatePass.js`) with its uniforms. The beacon is gold and **600 m** tall, half the gate's
-`BEACON_HEIGHT_M`: a company's door should not outshine Dagon's. It climbs out of the ground over the gate's
-`GATE_RISE_MS` (20 s) and sinks over `GATE_COLLAPSE_MS` (10 s). Its clearing is a second key in the rock sweep
-(`src/world/gateClearance.js`, keyed by the breach id, never the clock's gate).
+about 10 m tall and 4.8 m to each side.
 
-It stands at the opener's feet, ahead: the Portal Stone's `portalPlace` (`PORTAL_AHEAD` 2 m), turned to face the
-opener. Its site travels as a word on the opener's world cell (section 19), so everyone near sees it. Party members
-anywhere see its mark on the party map (the hub's party share, `amap`).
+- **The skin**: Imperial white marble inlaid with gold, cracked through with the Warden's basalt.
+- **The membrane**: the gate's pass (`src/render/gatePass.js`) has the membrane's colours and the arch's heights
+  compiled into its shader. EG9 widens it with a tint uniform and a scale uniform; the gate's own draw passes the
+  gate's values.
+- **The beacon**: gold and 600 m tall, half the gate's `BEACON_HEIGHT_M`, seen from kilometres away. A company's door
+  should not outshine Dagon's.
+- **Rising and sinking**: it climbs out of the ground over the gate's `GATE_RISE_MS` (20 s) and sinks over
+  `GATE_COLLAPSE_MS` (10 s).
+- **Its clearing**: `createGateClearSweep` (`src/world/gateClearance.js`) tracks one key today. EG9 widens it to a set
+  of keys, the clock's gate and every standing arch, each keyed by its breach id.
+- **Where it stands**: at the opener's feet, ahead (the Portal Stone's `portalPlace`, `PORTAL_AHEAD` 2 m), facing the
+  opener.
+- **How peers see it**: its site travels as a word on the opener's world cell (section 21) while the opener stands
+  there.
+- **How long it stands**: through the rising and the open window only. When the first hall wakes, the arch sinks
+  behind the company. A breach is a door, not a monument, and nothing outside needs to stand for three hours.
+- **What the room keeps**: the arch's site in its state, so a cast-out member is landed at it with the arch gone.
+
+### The call
+
+Eight players across the Bay cannot all walk to one arch in ten minutes. So the company **answers the call**:
+
+- **The opener** steps through the arch.
+- **Every other member**, standing outdoors in the open world during the open window (the Portal Stone's holds
+  apply), may answer. The Portal Stone's vortex (`src/scenes/portalFx.js`) opens at their feet for
+  `PORTAL_OPEN_MS` (30 s), and stepping into it is their admission.
+- **Admission never depends on place**: the room checks orders and the company, never where a member stood.
+- **Landing**: each member's answer is stored as their LANDING. A fall, the way home, the tear or the end lands them
+  there. The opener lands at the arch's site: `gateLandingFor` (`src/world/gateArena.js`) is widened to take an arch
+  record (a site and a yaw), since today it takes only a gate's day.
 
 ### The clock - the count
 
-On the shared clock (`sharedClassicMinutes`: a game minute is 5 real seconds, a game day 2 real hours), in game
-minutes from the moment the room accepts the open order, as the gate counts from its day:
+On the shared clock (`sharedClassicMinutes`: a game minute is 5 real seconds, a game day 2 real hours). The breach
+counts in game minutes from the moment the room accepts the open order, as the gate counts from its day:
 
 | phase | game | real | what |
 |---|---|---|---|
-| **rising, sealed** | 60 min | 5 min | the arch climbs and stands sealed. *The gate opens in 4:12.* The company gathers. The gate's own rise-to-open is the same hour |
-| **open** | until Hall 1's door, at most 60 min | at most 5 min | the company steps through. A member who comes later: *The breach has gone deep.* |
-| **the count** | starts at 360 min | 30 min | from the opening. *The breach holds 24:10.* |
-| **a Ward lit** | +180 min | +15 min | added to the count, never more than 360 min (30 min) left after it |
-| **the Covenant's last word** | 2160 min from the opening | 3 h | no count runs past it, however many Wards |
-| **the tear** | when the count is spent | - | *The Covenant tears the breach shut.* Everyone inside is cast out |
-| **collapse** | 10 s | 10 s | the arch sinks. The opener may raise another (a new Sigil) |
+| **rising, sealed** | 60 min | 5 min | the arch climbs and stands sealed: *The gate opens in 4:12.* The company gathers. (The gate's own rise-to-open is the same hour.) |
+| **open** | until the first hall wakes, at most 60 min | at most 5 min | the opener steps through; the company answers the call. Later: *The breach has gone deep.* |
+| **the count starts** | when the first hall wakes | - | 360 game min (30 real min): *The count: 30:00.* The arch sinks |
+| **a Redoubt taken** | +180 game min | +15 min | `remaining = min(remaining + EG_REDOUBT_HOLD_MIN, EG_COUNT_CAP_MIN, lastWord - elapsed)` |
+| **the rest** | 90 s | 90 s | the count HOLDS while a Redoubt's rest runs: *The Redoubt holds the count.* |
+| **a respite** | up to 10 min | up to 10 min | at a Valkynaz's Redoubt, if every living member agrees, the count holds; the last word does not |
+| **the last word** | 2160 game min from the opening | 3 h | no breach runs past it, however many Redoubts |
+| **the tear** | when the count is spent | - | *The Covenant tears the breach shut.* Everyone inside is cast out to their landing |
+| **the end** | - | - | the room mints the end receipts and keeps its tombstone |
 
-Constants (`net/egLaw.js`): `EG_RISE_MIN` 60, `EG_ADMIT_MAX_MIN` 60, `EG_COUNT_START_MIN` 360, `EG_WARD_HOLD_MIN` 180,
-`EG_COUNT_AHEAD_MAX_MIN` 360, `EG_LAST_WORD_MIN` 2160. `egTimes(rec)` answers every phase's relay time and
-`egPhase(rec, ms)` the phase: `'rising' | 'sealed' | 'open' | 'deep' | 'torn' | 'collapsing' | 'gone'`. These are
-`gateTimes` and `gatePhase` again, for a record instead of a day.
+Constants (`net/egLaw.js`): `EG_RISE_MIN` 60, `EG_ADMIT_MAX_MIN` 60, `EG_COUNT_START_MIN` 360, `EG_REDOUBT_HOLD_MIN`
+180, `EG_COUNT_CAP_MIN` 360, `EG_REST_S` 90, `EG_RESPITE_MAX_S` 600, `EG_LAST_WORD_MIN` 2160. `egTimes(rec)` answers
+every phase's relay time and `egPhase(rec, ms)` the phase: `'rising' | 'sealed' | 'open' | 'deep' | 'torn' |
+'ended'`. These are `gateTimes` and `gatePhase` again, for a record instead of a day.
 
-**Why the count is shaped so.** "Timed like oblivion gates" is a window with an end the room can see coming, and an
-endless run needs that end to come from the run. A fixed window caps every company at the same clock, and the board
-then measures only speed. A count that only grows would let a perfect company stand in the Spire for ever, and the
-relay pays for every awake second (RELAY-H1). Thirty minutes to start, fifteen more for each Ward, and never more than
-thirty in hand:
+**The surplus.** Time the cap turns away is not wasted. Every 5 real minutes the cap refuses becomes a **Surplus**
+(at most `EG_SURPLUS_MAX` 3). At any Redoubt, a Surplus buys a fourth Vestige card or a reroll of the three. A fast
+company is paid for its speed in choices, not in hours.
 
-- early Wards come faster than fifteen minutes, so a good company banks time, up to the cap;
-- deep Wards take longer than fifteen, so the count drains;
-- the depth a company reaches is where its pace meets the Spire's (section 15).
+**Why the count is shaped so.** "Timed like oblivion gates" is a window with an end the company can see coming, and an
+endless run needs that end to come from the run:
 
-The three-hour last word bounds the relay instance. The tear is not a death: nobody is killed, no death penalty runs,
-and what was banked stays banked. The tally is lost (section 14).
+- a fixed window would cap every company at the same clock;
+- a count that only grows would let a perfect company stand in the Spire for ever, and the relay pays for every awake
+  second (RELAY-H1);
+- with thirty minutes to start, fifteen for each Redoubt and thirty in hand at most, early circles bank time (and
+  Surplus), and deep circles drain it.
+
+How deep a company gets is where its pace meets the Spire's (section 16). The tear is not a death: nobody is killed,
+no DEATH-PENALTY runs, and what was banked stays banked. The Reliquaries are lost (section 15).
 
 ### The company
 
-- **Who.** The opener's party at the moment the room accepts the open order, as the hub knows it: a new internal
-  route, `EG_INTERNAL_COMPANY` (`/internal/eg/company`, the `_wdunKinOf` pattern of DO-to-DO `fetch`). It answers the
-  strict roster of the opener's party. It is not the kin question, whose ten-minute truce memory (`partyWas`) is too
-  loose for a door. The company is FROZEN there, up to `PARTY_MAX` (8): one who joins the party later is not in it,
-  and one who leaves it is still in it. A party of one is a company.
-- **Admission.** Each member at the open arch asks `/v1/eg/admit`. The service checks that the member:
-  - has a handle (no guests: the Spire's feats are recorded);
-  - has lit the breach's start Ward (section 14);
-  - holds no other live breach (`eg_live`).
-  It then signs an **admit order**. The room spends it once and checks the member is in the company, not fallen here,
-  and in the open window. Through the veil (`stepThroughFire`), into Hall 1.
+- **Who.** The opener's party at the moment the HUB accepts the open, from the hub's own `party:` record.
+  - The hub is the one room every client always holds, and it already keeps the rosters, so no other room needs to
+    ask it anything and its silence cannot freeze the wrong company.
+  - The company is FROZEN there, up to `PARTY_MAX` (8). One who joins the party later is not in it; one who leaves the
+    party is still in it.
+  - A party of one is a company.
+- **Admission** (section 21):
+  - Each member asks `/v1/eg/admit` and gets an **admit order**. The service checks:
+    - a handle (no guests: the Spire's feats are recorded);
+    - that the member may start at the breach's start Redoubt (section 15);
+    - no other live breach (`eg_live`).
+  - The member's hello to `eg:<b>` carries the order. The room spends it once, then checks the member is in the
+    company, not fallen twice, not forsaken, not gone home, and the open window.
+  - The level claim (`lv`, 1-60) is frozen at the first admission.
 - **Outside the company.** Touching the arch: *The breach answers only to <opener>'s company.*
-- **One breach at a time** for every account, opener or member.
-- **The absent.** A member whose socket is gone for **120 s** (`EG_ABSENT_MS`) is counted fallen. A tab closed before
-  a killing blow is not a life saved. A member back within it returns to the hall's arrival plate.
+- **One breach at a time** for every account, opener or member, enforced by the service's `eg_live` (section 21).
+- **The absent.** A member whose socket is gone keeps their BODY at its last pose (the socket flap rule, section 20).
+  They are counted fallen only after **180 s gone in a trial** (`EG_ABSENT_TRIAL_S`). Absence on the stair or at a
+  rest never counts. A reload, or a slow machine on the stair, is not a fall. A tab closed before a killing blow is
+  not a life saved: the body still stands where it stood and takes the blow.
+- **Return.** A member whose page reloaded is offered *Return to the Spire* (section 20), into the current hall.
 
-## 6. A run - halls, circles, bands
+## 7. A run - halls, circles, bands, the beats
 
-**Halls and Wards.** Hall *h* (1, 2, 3...) belongs to circle *c* = ceil(*h*/5). Halls 5*c*-4 to 5*c*-1 are the
-circle's four trials. Hall 5*c* is the **Kyn's Court**, whose fall lights **Ward c**. A breach that starts at Ward *w*
-begins at Hall 5*w*+1.
+**Halls and circles.** Hall *h* (1, 2, 3...) belongs to circle *c* = ceil(*h*/5). Halls 5*c*-4 to 5*c*-1 are the
+circle's four trials. Hall 5*c* is the **Court**, whose fall takes **Redoubt c**. A breach that starts at Redoubt *w*
+begins at Hall 5*w*+1, *the first hall* of that breach.
 
-**One hall at a time, the company together.** The relay's room holds one live hall. The company moves as one through
-its beats:
+**The rhythm.** Every circle runs the same five beats, so a company can feel its place:
+
+| slot | beat | kinds drawn |
+|---|---|---|
+| 1 | **fight** | the Rift-Yard or the Rampart |
+| 2 | **traverse** | the Span |
+| 3 | **mixed** | the Proving Walk, or the Athenaeum (at most one a circle, never in circle 1) |
+| 4 | **fight** | the Rift-Yard or the Rampart, whichever slot 1 was not |
+| 5 | **the Court** | the circle's lord (section 12) |
+
+An account's very first circle is fixed: Rift-Yard, Span, Rampart, Proving Walk, Court. Its Court is the Hound or the
+Armsmaster, never the Spellmaster, whose Examination is no first lesson.
+
+**One hall at a time, the company together.** The room holds one live hall, and the company moves through its beats as
+one:
 
 | beat | what | how long |
 |---|---|---|
-| **arrival** | each member steps out of the stair onto the hall's ARRIVAL PLATE (gold), the hall built from its spec | as they come |
-| **gather** | after the last living member arrives (or the muster's end), the hall wakes: *The hall wakes.* | `EG_GATHER_S` 8 s |
-| **the trial** | the hall's kind (section 7) | the trial's |
+| **arrival** | each member steps off the stair onto the hall's ARRIVAL PLATE (gold), the hall built from its spec, and says `here` | as they come |
+| **gather** | the hall wakes when every living member has said `here`, or `EG_ARRIVE_MAX_S` (30 s) after the pull: *The hall wakes.* | `EG_GATHER_S` 8 s |
+| **the trial** | the hall's kind (section 8) | the trial's |
 | **the door** | the relay judges the trial done, and a gold door opens at the hall's END PLATE | - |
-| **muster** | each member steps through the door when ready | `EG_MUSTER_FIGHT_S` 20 s, or `EG_MUSTER_SPAN_S` 45 s for a hall a span ends |
-| **the pull** | at the muster's end, every living member still in the hall is pulled down. After a span, the Spire takes its toll | toll: `EG_PULL_TOLL` 20% of max health, never lethal (`spare`) |
+| **the descent** | each member steps through the door when ready (`down`, accepted only within `EG_DOOR_REACH_M` 3 m of it) | `EG_DESCENT_FIGHT_S` 20 s, or `EG_DESCENT_SPAN_S` 45 s after a span |
+| **the pull** | at the descent's end, every living member still in the hall is pulled down | after a span, the toll (section 10) |
 
-A span's door opens when the FIRST living member stands on its end plate. The muster then gives the rest 45 s to make
-the crossing, and the pull carries whoever did not, at the toll's cost. Skill is paid and nobody is stranded. Nothing
-waits on the slowest player for ever, and nothing is skipped for free.
+No member is targeted or judged before their `here`. A span's door opens when the FIRST living member stands on its end
+plate with a fair trail (section 19). The descent then gives the rest 45 s to cross, and the pull carries whoever did
+not, at the toll's cost. Skill is paid and nobody is stranded. Nothing waits on the slowest player for ever, and
+nothing is skipped for free.
 
 **The stair.** Between halls, the veil (`stepThroughFire`) shows the fall through the void, past the Spire's broken
-underside, to the next hall's arrival plate (section 20). Each hall is a fresh made level: a dungeon transition over
-`egHallLocation(spec)`, as the Shattered Hour is entered over `sdRealmLocation`. The host cannot swap a level's parts in
-place (every layout is fixed when its module loads, and there is no re-stand path), and a transition per hall is the
-seam the gate and the Hour already prove.
+underside, to the next hall's arrival plate (section 23). Each hall is a fresh made level: a dungeon transition over
+`egHallLocation(spec)`, as the Shattered Hour is entered over `sdRealmLocation`. The host cannot swap a level's parts
+in place: every layout is fixed when its module loads, and there is no re-stand path. A transition per hall is the
+seam the gate and the Hour already prove. Every hall of a breach has one presence room, `{kind:'eg', b}`, so the
+stair never switches the presence socket.
 
-**The bands.** Every 25 halls (five Wards) the Spire has fallen further down the legions' road:
+**The bands.** Every 25 halls (five Redoubts) the halls have fallen further down the legions' road. Each band adds
+kinds; earlier kinds stay.
 
-| band | halls | what it is | look | its legion | its Kyn |
-|---|---|---|---|---|---|
-| **the Broken Galleries** | 1-25 | the academy's upper halls, still over the Deadlands | white marble and gold, burnt Battlemage blue, the fire-sea below | Imps, Fire and Frost Daedra, Daedroth, Gargoyles | Kynreeves; Valkynaz Ilthys at Ward 5 |
-| **the Soul Cairn** | 26-50 | halls fallen into the Ideal Masters' plane of the dead | violet-grey stone, soul-gem light, a sea of mist | + Wraiths, Ghosts, Liches | Kynmarchers; Valkynaz Morvayn at Ward 10 |
-| **the Shade Perilous** | 51-75 | halls fallen into Nocturnal's dusk | near-black, moon-silver, light only where braziers burn | + Harpies, Daedra Seducers, Vampire Ancients, Giant Bats | Markynaz; Valkynaz Seyth at Ward 15 |
-| **the Havoc Wellhead** | 76 onward | the muster-ground of 3E 398, the Spire's last fragments in it | basalt and molten iron, eruptions | + every Atronach, Dragonlings, Daedra Lords as elite adds | Markynaz; a Valkynaz every fifth Ward, without end |
+| band | halls | what it is | look | its legion adds | its lords | its champion |
+|---|---|---|---|---|---|---|
+| **the Broken Galleries** | 1-25 | the academy's upper halls, still over the Deadlands | white marble and gold, burnt Battlemage blue, the fire-sea below | Harriers, Sappers, Ward-Bearers, Breakers, Casters, Lurkers | the Hound, the Last Spellmaster, the Last Armsmaster; Valkynaz Ilthys at Redoubt 5 | a Kynreeve |
+| **the Soul Cairn** | 26-50 | halls fallen into the Ideal Masters' realm of the dead | violet-grey stone, soul-gem light, a sea of mist | Binders, Wraiths | the Cairn-Keeper, the Twin Lords; Valkynaz Morvayn at Redoubt 10 | a Kynmarcher |
+| **the Shade Perilous** | 51-75 | halls fallen into Nocturnal's dusk | near-black, moon-silver, light only where braziers burn | Divers | the Mother of Dusk, the Night-Stalker; Valkynaz Seyth at Redoubt 15 | a Markynaz |
+| **the Havoc Wellhead** | 76 onward | the muster-ground of 3E 398, the Spire's last fragments in it | basalt and molten iron, eruptions | a Daedra Lord as an elite add, one wave in six | the Bound Colossus, the Wellhead Wyrm; Valkynaz Garoth at Redoubt 20 and every fifth after | a Markynaz |
 
-The bands are the arc's progression. Each changes the look, the score, the legion and the Kyn. The Wellhead is the
-endless floor of the Spire: from Hall 76 its bands do not change again, and depth is all that grows.
+The bands are the arc's progression: each changes the look, the score, the legion, the lords and the champion. The
+Wellhead is the endless floor of the Spire. From Hall 76 its band does not change again, and depth grows by decrees
+and the Wellhead's rites (section 16). A decree never draws a kind, a piece or a lord its band has not unlocked.
 
-## 7. The halls
+## 8. The halls
 
 Every hall is laid along +Z, from its arrival plate (z = 0) to its end plate, over the void. Falling below a hall's
 floor (y < `SD_VOID_Y`, -30) is never a death. It casts back to the last checkpoint island or plate stood on, at the
-Steps' own cost, `SD_CAST_BACK_LOSS` (15% of max health, never lethal), exactly as the Unmoored Steps do. The void
-punishes in time and health. It does not take the one life.
+Spire's own cost: 10% of max health, never below 25% health (`EG_CAST_BACK_LOSS`, `EG_CAST_BACK_FLOOR`). That is gentler
+than the Steps' 15%, because in the Spire it is a long run's attrition, not one course's. The void punishes in time
+and health. It does not take the one life.
 
-### 7.1 The Muster-Yard (`yard`) - relentless waves
+**Health between halls.** The Spire keeps the court's rule: no natural regeneration (`src/systems/courtRules.js`,
+WBX6). Health comes back from:
 
-A court disc of radius 22-28 m (the gate's `COURT_R` is 24), with **Wellhead rifts** on its rim. These are tears into
-the Havoc Wellhead the legions came through, each a standing body:
+- a Redoubt's rest;
+- the member's own potions and spells;
+- Vestiges (Rally, Second Wind);
+- the Scriptorium twist.
 
-- **rifts**: `clamp(2 + ceil(n/3), 3, 5)` for *n* living members. Each holds 12 s of the company's reference damage
-  shared over the rifts (the crystals' law, `crystalHpFor`), at least `HOST_HP_MIN`;
-- **each rift pours a wave** every `max(9, 20 - 0.5(c-1))` s while it stands: the band's kinds, sized by *n*
-  (section 10). The waves do not wait for the last to die. That is the relentlessness;
-- **the legion's cap**: no more than `clamp(4 + n, 6, 14)` standing. A rift whose wave would pass the cap holds it, and
-  the next one is larger by one;
-- **the end**: the last rift closed. Every add still standing crumbles (the host's `adie`), and the door opens.
+### 8.1 The Rift-Yard (`yard`) - relentless waves
+
+A court disc of radius 22-28 m (the gate's `COURT_R` is 24), with **Wellhead rifts** on its rim: tears into the Havoc
+Wellhead the legions came through, each a standing body.
+
+- **Rifts**: `clamp(2 + ceil(n/3), 3, 5)` for *n* living members.
+- **Each rift's health**: 12 s of the company's reference damage, through `hostTeamHpFor` (the gate's, with its
+  `HOST_HP_MIN` floor), times the depth `(1 + 0.04(c-1))`. All of the rifts together hold 12 s for each rift.
+- **Each rift pours a wave** every `max(9, 20 - 0.5(c-1))` s while it stands: the band's kinds, sized by *n* (section
+  11). The waves never wait for the last body to die. That is the relentlessness.
+- **The legion's cap**: no more than `clamp(2 + ceil(1.5n) + floor((c-1)/5), 3, 14)` standing. A rift whose wave
+  would pass the cap holds it, and the next wave is one body larger.
+- **The end**: the last rift closed. Every add still standing crumbles (the host's `adie`), and the door opens.
 
 Split up and close rifts in parallel, or stand together and be buried. An eight-member company closes five rifts in
-three groups. A pair closes three, back to back.
+three groups; a pair closes three, back to back, against a legion sized for two.
 
-### 7.2 The Span (`span`) - platforming
+### 8.2 The Span (`span`) - platforming
 
-A generated course (section 9) of 12-28 platforms in two to four sections, with checkpoint islands between them, from
-the arrival plate to the end plate. Harriers hover after the company over it (Imps hover, `HOST_HOVER_M` 0.9). From
-the Soul Cairn, Divers dive at it from the air. The door opens on the first living member at the end (section 6).
+A generated course (section 10) of 12-28 platforms in two to four sections, with checkpoint islands between them,
+from the arrival plate to the end plate.
 
-### 7.3 The Rampart (`rampart`) - a walkway under fire
+- **Harriers** hover after the company over it (Imps hover, `HOST_HOVER_M` 0.9).
+- **Divers** dive at it from the air, from the Shade.
+- **The door** opens on the first living member at the end with a fair trail (section 7).
+- **THE GOLD RUN**: every living member across before the descent's 15th second adds one real minute to the count.
+  Past the cap, it adds Surplus credit instead.
 
-A walkway 90-160 m long and 3-4.5 m wide, over the void:
+### 8.3 The Rampart (`rampart`) - a walkway under fire
 
-- **fire vents** cross it on a cycle, each a lane telegraphed 1.0 s before it erupts (20% of max health, fire);
-- **the legion marches along it** toward the company. The relay runs them on a line, the walkway's own axis, which
-  needs no navmesh;
-- **casters** stand on pillars beside it, 8-14 m out, throwing discs. Reach them by short side-spans, or answer them
-  with arrows and spells;
-- **Breakers** charge along it and push 6 m. A push off the edge is a cast-back, not a death;
-- **at its end, a portcullis** held by two Ward-Bearers (the Legion-Lord's, pulsing). When both fall, the door opens.
+A walkway 90-160 m long and 3-4.5 m wide, over the void.
 
-### 7.4 The Athenaeum (`athenaeum`) - the lock
+- **Fire vents** cross it on a cycle: each a lane 2.5 m wide across the walkway, telegraphed 1.0 s before it erupts
+  (20% of max health, fire).
+- **The legion marches along it** toward the company. The relay runs them on a line, the walkway's own axis, so it
+  needs no navmesh.
+- **Casters** stand on pillars beside it, 10-18 m out, throwing discs. Reach them by short side-spans, or answer them
+  with arrows and spells.
+- **Breakers** charge ACROSS the walkway from the side-spans, never along it. A lane along a 3 m walkway would leave
+  no floor to escape to (AUDIT EG0 G4). Their push is 6 m, and a push off the edge is a cast-back, not a death.
+- **At its end, a portcullis** held by two Ward-Bearers (the Legion-Lord's, pulsing). When both fall, the door opens.
 
-The Battlemages' library, its heart an **Orrery** drawn by `orreryOf` (`src/net/sdBrain.js`) from the hall's seed. It
-is already procedural: any safe seed gives a fresh lock and its riddles. Its knobs harden with depth:
+### 8.4 The Athenaeum (`athenaeum`) - the lock
 
-- the turns band, `SD_TRUTH_TURNS_MIN`-`_MAX` 12-24 at Ward 0, rising by 2 every five Wards to 20-32;
-- the fray, shortened by the Fraying brand (section 12).
+The Battlemages' library, its heart an **Orrery** drawn by `orreryOf` (`src/net/sdBrain.js`).
 
-The relay judges each turn as `_sdTurn` judges the Hour's: reach, settle, rights, then `orreryStep`. Meanwhile one
-Harrier rises every 15 s while the lock stands. At most one Athenaeum a circle, never in circle 1, never the last hall
-before a Court: a breath, not a wall.
+- **Today**, `orreryOf(s)` takes a Hollow's slot. It reads its fray from that slot's own Hour marks
+  (`sdMarksLaw(sdMarksOf(s)).fray`) and its turns band from the module constants `SD_TRUTH_TURNS_MIN`/`_MAX`, with a
+  64-entry cache.
+- **EG4 widens it** to `orreryOf(s, {turnsMin, turnsMax, fray})`. The Hour's call and its golden draw are unchanged;
+  the cache is keyed on the seed and the band.
+- **The Spire's knobs**: the turns band starts at 16-28 and rises by 2 every five Redoubts. The fray is the Hour's
+  default unless the circle carries the Hour's The Fraying decree (section 13).
+- **The judge**: EG4 extracts the pure judge, `orreryJudge`, out of `_sdTurn` in `server/src/index.js` (reach,
+  settle, rights, `orreryStep`). The Hour's room and the Spire's both call it.
+- **Pressure**: one Harrier rises every 15 s while the lock stands.
+- **Everyone works**: the Orrery's six stones may be turned by six different members (its rights), so the company
+  works the lock together.
+- **The reward**: solving it inside its lowest turn bound grants every member one free Vestige rank at the next
+  Redoubt.
 
-### 7.5 The Proving Walk (`proving`) - span, champion, span
+### 8.5 The Proving Walk (`proving`) - span, champion, span
 
 The Battlespire was a proving ground. A short span (6-10 platforms) leads to a **proving court** (r 14), where the
-hall's **Kynreeve** stands: a champion the relay runs. It is one foe, `PROVE_HP_S` 40 s of the company's reference
-damage, with three of the Warden's blows at 0.8 scale (Cleave, Slam, Charge from `ATTACKS`) and its band's escort of
-two adds. Its fall opens a second span, and that span's end is the door.
+band's **champion** stands: a Kynreeve in the Galleries, a Kynmarcher in the Cairn, a Markynaz below.
 
-### 7.6 The Kyn's Court (`court`) - every fifth hall
+- It is one foe the relay runs: `PROVE_HP_S` 40 s of the company's reference damage, times the depth.
+- It throws three of the Warden's blows at 0.8 SIZE, each lengthened to the wind-up floor (section 12): Cleave, Slam
+  and Charge from `ATTACKS`.
+- It brings an escort of two adds from its band.
+- Its fall opens a second span, whose end is the door.
 
-A short approach (3-5 platforms of the band's first two pieces) to the **Kyn's Court**: a court of radius 26, or the
-boss's own ground (section 11). The boss stands there. Its fall raises the **Ward-stone** at the court's heart, and the
-Ward lights for every living member at once. Touching the stone is not needed: the rest begins (section 14).
+### 8.6 The Court (`court`) - every fifth hall
 
-## 8. The generator - the hall spec
+A short approach (3-5 platforms of the band's first two pieces) leads to the **Court**: a court disc of radius 26, or
+the lord's own ground (section 12). The lord stands there. Its fall raises the **Redoubt's beacon** at the court's
+heart, and the Redoubt is taken for every living member at once: *Redoubt 5 is taken.* Touching the beacon is not
+needed; the rest begins (section 15).
 
-**One pure law, read by both sides.** `hallOf(seed, hall)` (`net/egLaw.js`) answers the **hall spec**:
+### 8.7 The twists
 
-- the kind, the band, the circle;
-- the hall's geometry: its plates, court discs, rifts, walkway, pillars and span course;
-- its brands, as numbers.
+From circle 3, about one hall in four (seeded, never the Court, never two running) carries a **twist**:
+
+| twist | what | on |
+|---|---|---|
+| **Reliquary Vault** | a side span to a cache: an extra Reliquary for each member who reaches it, at the count's cost | a Span or a Proving Walk |
+| **Dagon's Bargain** | a shrine on the arrival plate: accept one more decree for the rest of the circle, and each member gains one Reliquary | any trial hall |
+| **Kynval Squad** | four Kynval champions, each with one affix (Burning, Shielded, Vengeful, Swift), in place of a wave | a Rift-Yard or a Rampart |
+| **The Scriptorium** | a respite hall: heals 30%, no trial, and the door opens after 30 s (the count runs) | slot 3, in place of its kind |
+| **A Battlemage's Shade** | a friendly shade (the relay's host runner, a friendly flag) fights beside the company for the hall | any trial hall |
+
+## 9. The generator - the hall spec
+
+**One pure law, read by both sides.** `egHallOf(seed, hall)` (`net/egLaw.js`) answers the **hall spec**:
+
+- the kind, the band, the circle, the slot and the twist;
+- the hall's geometry: its plates, court discs, rifts, walkway, pillars, side-spans and span course;
+- its decrees, as numbers.
 
 The relay reads it to run the hall's brains: where a court's clamp is, where a rift stands, the walkway's line, where
-a platform is at time *t*. Every client reads it to build the hall (`buildHallModel(spec)`, `hallColliderTris(spec)`,
-the Steps' records for a span). The relay and the clients agree because they compute the same spec. The breach's
-`seed` is drawn by the relay's CSPRNG when the room accepts the open order, and said in its state. A hall's own seed is
-`egSeed(seed, hall)`, the `sdSeed` mix. `EG_SPEC` is the spec's law number in the state: a client that knows another
-is told to reload, as at every brain law.
+a platform is at time *t*. Every client reads it to build the hall (`buildEgHallModel(spec)`, `egHallColliderTris(spec)`,
+the Steps' records for a span). Those builders are ONE construction seam, `egHallParts(spec)`, which builds the
+model, the collider buckets and the riders together (THE ONE CONSTRUCTION SEAM). The relay and the clients agree
+because they compute the same spec.
 
-**The circle law** (`circleOf(seed, c)`) draws halls 1-4 of the circle from the five kinds. Its rules:
+**Seeds.** The breach's `seed` is drawn by the relay's CSPRNG when the room accepts the open order, and said in its
+state. A hall's own seed is `egSeed(seed, hall)`, the `sdSeed` mix. EG5 exports `sdSeed` from `src/net/sdBrain.js`
+(today it is private), and the Spire imports it rather than copying it (ONE DFU MEMBER, ONE EXPORT).
 
-- at least one of {span, proving} and one of {yard, rampart};
-- no kind twice running, across circles too (a Court counts);
-- the Athenaeum at most once, never in circle 1, never the fourth hall.
+**The law's version.** `EG_SPEC` is the spec law's number, recorded per breach as `egv` at the open (section 20).
 
-Weights by band:
+**The circle law** (`egCircleOf(seed, c)`) fills the rhythm's slots (section 7) from their kinds, weighted by band:
 
-| | yard | span | rampart | proving | athenaeum |
+| | yard | rampart | span | proving | athenaeum |
 |---|---|---|---|---|---|
-| the Broken Galleries | 3 | 3 | 2 | 2 | 1 |
-| the Soul Cairn | 3 | 2 | 3 | 2 | 1 |
-| the Shade Perilous | 2 | 3 | 3 | 3 | 1 |
-| the Havoc Wellhead | 3 | 2 | 3 | 3 | 1 |
+| the Broken Galleries | 3 | 2 | (slot 2) | 3 | 1 |
+| the Soul Cairn | 3 | 3 | (slot 2) | 2 | 1 |
+| the Shade Perilous | 2 | 3 | (slot 2) | 3 | 1 |
+| the Havoc Wellhead | 3 | 3 | (slot 2) | 3 | 1 |
 
 **A hall's budget.** Every piece the generator places carries a cost: a platform kind, a rift, a vent lane, a caster
-pillar. A hall's pieces sum to `budget(h)`, which grows with the circle and the brands. The Spire therefore has no
+pillar. A hall's pieces sum to `egBudget(h)`, which grows with the circle and the decrees. The Spire therefore has no
 lucky seeds: two companies at Hall 40 face halls of the same weight, drawn differently. The budget is the measured
-knob of EG's tuning pass.
+knob of EG's tuning pass (EG21).
 
-**Pins.** The spec law is pinned against golden specs for fixed seeds, and every spec field the relay reads is pinned
-against the brain that reads it. A change to the draw changes the relay version, as the Orrery's golden draw does
-(`test/relayversion.test.js`).
+**Where the law lives.** The relay draws halls too, so the span law must not pull client code into the relay bundle:
+`egSpan.js`, `sdSteps`, the motor and the parkour constants all joining `RELAY_GRAPH` would make every motor tweak a
+relay version. Instead:
 
-## 9. The spans - generated platforming
+- the span law is a leaf, `net/egSpanLaw.js`;
+- its motor numbers are copied as `EG_*` constants and held equal to the motor's by a test;
+- the solver is part of that law, so the relay and the client draw the same course;
+- the CLI `egSpanSolve.mjs` (under tools/, as `tools/sdScoreProbe.mjs` is) only drives it.
 
-**The course is the Steps' own record.** `src/world/sdSteps.js` lays the Unmoored Steps as a uniform array:
-`{i, kind, span, x, y, z, w, d, amp, period, phase, beat}`, plus checkpoints `{x, y, z, r}`. That is exactly what a
-generator emits. It is frozen at import today (`layCourse`, `SD_STEPS_COURSE`), and its readers take its length at
-module scope (the pass's uniform count, the waystones, the motes). EG4 turns it into data:
+**Pins.**
 
-- `courseOf(courseSpec)` lays a course;
-- the Hour's course is `courseOf(SD_COURSE_SPEC)`, byte for byte the frozen one, pinned;
-- the readers take a course, and the pass's ghost count becomes a maximum.
+- The spec law is pinned against golden specs for fixed seeds.
+- Every spec field the relay reads is pinned against the brain that reads it.
+- A change to the draw changes the relay version, as the Orrery's golden draw does (`test/relayversion.test.js`).
 
-Then `spanOf(seed, hall, budget, band)` (`world/egSpan.js`) emits a course from a grammar of pieces.
+## 10. The spans - generated platforming
 
-**The pieces.** The Steps' four, and four more:
+**The course is the Steps' own record.** `src/world/sdSteps.js` lays the Unmoored Steps as a uniform array,
+`{i, kind, span, x, y, z, w, d, amp, period, phase, beat}`, plus checkpoints `{x, y, z, r}`: exactly what a generator
+emits.
 
-| piece | from | what | its numbers at Ward 0 -> its floor deepest |
+- **Today** it is frozen at import (`layCourse`, `SD_STEPS_COURSE`). Its module-scope readers are `SD_GHOST_STEPS`
+  (the pass's uniform count), `SD_WAYSTONES` and `SD_VANE`, `sdFx`'s `SD_REWIND_EDGES`, `sdIslandModel` and
+  `abyssLab`. The motes read `SD_COURSE_END` lazily.
+- **EG4 turns it into data**:
+  - `courseOf(courseSpec)` lays a course;
+  - the Hour's course is `courseOf(SD_COURSE_SPEC)`, byte for byte the frozen one, pinned;
+  - the readers take a course, and the pass's ghost count becomes a maximum.
+- **The generator**: `egSpanOf(seed, hall, budget, band)` emits a course from the pieces below.
+
+**Two builds, each for its reason** (AUDIT EG0 N9):
+
+- **THE SPAN BUILD** is SD7b's: Speed 10, Running 0, Jumping 0, the worst build the game makes. Every span law, the
+  solver and the CI sweep use it. A gap is binary, so every build must cross every gap.
+- **THE ESCAPE BUILD** is the modest build: Speed 40, Running 20, `runSpeed` 6.975 m/s. The wind-up floor uses it
+  (section 12), because escaping is continuous and a slow build has Speed and the Fleetfoot Vestige to answer it.
+
+**The pieces.** NOTHING GETS FASTER: every piece keeps the Steps' timing at every depth. Depth adds pieces, combines
+them in one section, spaces the islands further apart, and puts the legion overhead.
+
+| piece | from | what | its numbers, at every depth |
 |---|---|---|---|
-| **Drift** | the Steps | a platform swinging side to side, `stepAt` | amplitude 2-4 m -> 2-5 m; period 4-7 s -> 3.5-6 s |
-| **Beat** | the Steps | there on the beat only, `beatStands` | cycle `SD_BEAT_CYCLE` 3.6 s; solid `SD_BEAT_SOLID` 2.4 s -> 1.8 s; the blink `SD_BEAT_BLINK` 0.4 s always |
-| **Riser** | the Steps | a wall `SD_RISER_H` 2.3 m, run up (CLIMB3) or climbed | fixed: the engine's band |
-| **Crumble** | the Steps | shakes and falls after a foot | delay `SD_CRUMBLE_DELAY` 0.7 s -> 0.45 s; back `SD_CRUMBLE_BACK` 5 s |
-| **Gust** | the Steps (the breath) | a span-wide push, warned 1 s | every `SD_GUST_EVERY` 6 s -> 4 s; `SD_GUST_SPEED` 3 -> 4 m/s |
-| **Rail** | new | a platform that travels along the course between two plates, ridden (`carryBy`) | period 6-9 s -> 5-7 s |
-| **Pendulum** | new | a chained weight swinging across the path, its lane telegraphed | touch: push 6 m + 15%; period 3-5 s |
-| **Vent** | new | a vent under a platform, erupting on a cycle, ringed 1.0 s before | 20% fire; cycle 4-6 s -> 3-4 s |
-| **Descent** | new | a drop to a wide landing (at least 3 m deep) | at most 4.5 m, under `FALL_DAMAGE_THRESHOLD` (5 m) |
+| **Drift** | the Steps | a platform swinging side to side, `stepAt` | `amp` (half the swing) 1.0-2.0 m, period 4-7 s |
+| **Beat** | the Steps | there on the beat only, `beatStands` | cycle `SD_BEAT_CYCLE` 3.6 s, solid `SD_BEAT_SOLID` 2.4 s, blink `SD_BEAT_BLINK` 0.4 s, alternate steps `SD_BEAT_HALF` apart |
+| **Riser** | the Steps | a wall `SD_RISER_H` 2.3 m, run up (CLIMB3) or climbed | the engine's band |
+| **Crumble** | the Steps | shakes and falls after a foot | delay `SD_CRUMBLE_DELAY` 0.7 s, back `SD_CRUMBLE_BACK` 5 s, platforms 2.6 m deep |
+| **Gust** | the Steps (the breath) | a span-wide push, warned 1 s | every `SD_GUST_EVERY` 6 s, `SD_GUST_SPEED` 3 m/s for 1 s |
+| **Rail** | new | a platform that travels along the course between two plates, ridden (`carryBy`) | period 6-9 s |
+| **Pendulum** | new | a chained weight swinging across a GAP, its lane telegraphed | period 3-5 s; a touch is a fall (cast-back) unless Iron Footing III |
+| **Vent** | new | a vent under a platform, erupting on a cycle, ringed 1.0 s before | 20% fire; cycle 4-6 s |
+| **Descent** | new | a drop to a wide landing with a parapet | at most 4.5 m, onto a landing at least 5 m deep with a 1.2 m parapet at its far side |
 
-**Pieces by band.**
+Pieces unlock by band:
 
-- The Broken Galleries: Drift, Beat, Riser, Crumble, Descent.
-- The Soul Cairn adds the Gust and the Rail.
-- The Shade Perilous adds the Pendulum.
-- The Havoc Wellhead adds the Vent: all nine.
+- the Broken Galleries: Drift, Beat, Riser, Crumble, Descent;
+- the Soul Cairn adds the Gust and the Rail;
+- the Shade Perilous adds the Pendulum;
+- the Havoc Wellhead adds the Vent, all nine.
 
-**The engine's envelope** (SD7a's law, amended to the generator). Every number is a bound, never a target:
+**The envelope** (SD7a's law, made the generator's). Every number is a bound, never a target:
 
-- a gap is at least 2.4 m and at most `PLAIN_LEAP + CAPSULE_RADIUS` (about 3.43 m): the plain running jump at a modest
-  build (Speed 40, Running 20: 3.08 m), never a running leap's. Training buys margin, not entry;
-- a riser is taller than the Jumping-100 apex plus 0.5 m, and no taller than `wallRunHeight(0,0) + PARKOUR_REACH_MIN`
-  (the Steps' own band);
-- a step down within a run is under 1 m; a Descent's drop is at most 4.5 m;
-- depth NEVER widens a gap. Distance is the engine's, so a span grows harder in time: shorter beats, quicker crumbles,
-  stronger gusts, more pieces at once, Divers overhead.
+- **a gap** is 2.4-3.2 m. SD7b crosses 3.2 m at the span build; the plain running jump at the modest build reaches
+  more, so training buys margin, not entry;
+- **a riser** is taller than the Jumping-100 apex plus 0.5 m, and no taller than `wallRunHeight(0,0) +
+  PARKOUR_REACH_MIN`;
+- **a step down** within a run is under 1 m;
+- **a Descent's drop** is at most 4.5 m. The motor bills fall damage on distance from the takeoff (`fallStart`), over
+  `FALL_DAMAGE_THRESHOLD` (5 m), so 4.5 m bills nothing. The motor has no air control, though, so a run carries the
+  body on: stepping off at the modest build lands 4.7 m out, and jumping off at Speed 100 lands 11 m out. The landing
+  is therefore 5 m deep and walled by a 1.2 m parapet, which no carry clears;
+- **depth never widens a gap or shortens a time.**
 
-**The timed solver** (`egSpanSolve.mjs`, and its test). SD7a checks distance and SD7b runs the real motor. Neither
-checks time: a Drift's gaps are measured when two platforms line up, and a Beat's windows are not measured at all. The
-generator emits only what the solver proves:
+**The timed solver** (in `net/egSpanLaw.js`). SD7a checks distance and SD7b runs the real motor; neither checks time.
+The generator emits only what the solver proves at the span build:
 
-- for every consecutive pair, a launch window of at least `EG_WINDOW_MIN` 0.5 s in each period in which the plain
-  running jump at the modest build lands (the motor's closed form, over the platforms' positions at *t*);
-- a Beat's solid time, less the blink, covers the crossing;
-- a Crumble's delay is at least the platform's depth over the modest build's run speed, plus 0.15 s;
-- a Pendulum's lane leaves a window of at least 0.8 s to pass;
-- a course that fails is drawn again from the next sub-seed, at most 8 times, then laid from the band's floor pieces
-  alone. The solver is in the law, so the relay and the client draw the same course.
+- **jumps**: for every consecutive pair, a launch window of at least `EG_WINDOW_MIN` 0.5 s in every 12 s of the clock,
+  in which the build's running jump lands (the motor's closed form, over the platforms' positions at *t*);
+- **Beats**: a Beat pair's window is the solid time less `SD_BEAT_HALF` plus the flight, 1.05 s at the Steps' 2.4 s.
+  That is why the Beat never shortens;
+- **Crumbles**: the delay covers the crossing. A 2.6 m platform at the span build's run (5.47 m/s) takes 0.48 s, plus
+  0.15 s of slack is 0.63 s, inside the 0.7 s delay;
+- **Pendulums**: a gap's lane leaves a window of at least 0.8 s to pass;
+- **Vents**: a ring leaves a platform's farthest point 1.5 m from its edge, inside the floor (section 12);
+- **Rails**: a Rail's ride ends on a plate it reaches, at the speed the carry gives;
+- **failure**: a course that fails is drawn again from the next sub-seed, at most 8 times, then laid from the band's
+  floor pieces alone.
 
-CI runs SD7b's harness (the real `PlayerMotor` on the real `Collider` over `stepTris` slabs) across **500 seeds per
-band**. Every course is crossed at Speed 10 and Running 0 with the Steps' own timing.
+**The sweep.** CI runs SD7b's harness (the real `PlayerMotor` on the real `Collider` over `stepTris` slabs) across
+**500 seeds per band**. Every course is crossed at the span build with the Steps' own timing.
 
-**The wards on flight.** `applyMotorEffectFlags` (`src/scenes/shared.js`) wards Levitate under `levitateWarded()`. The
-Spire's predicate joins the Hour's in `registerLevitateWard`. **Slowfall is warded too**, which it is not in the Hour
-today: it drifts down at a flat `SLOWFALL_VELOCITY` and keeps a run's momentum off an edge, so a Descent would be a
-glide. The Jump spell is allowed: it is a build, and the Steps accept it (*"a Jump spell is a way up too"*). Staff
-`/fly` is staff.
+**The toll and the fall** (AUDIT EG0 G10):
 
-**Shared clock, private crumbles.** Platforms move on the anchored clock (`anchoredClock`, `deadlandsSeconds`), so
-every member sees the same Step in the same place. A crumble is each member's own, the Steps' law.
+- **The pull's toll**: 5% of max health for each checkpoint island not reached, at most 20%. Trying and falling short
+  costs less than standing still.
+- **A cast-back**: 10%, never below 25% health (section 8).
+- **THE HIGH ROAD** (from circle 3): a seeded fork, two pieces harder, to a Reliquary cache. It costs time, and it is
+  room for skill.
 
-**The relay judges the end, not the jumps.** The Steps are never the relay's. A span's door opens on a living member's
-pose on the end plate WITH a fair trail (`spanFair`, section 18).
+**The flight bans.** `applyMotorEffectFlags` (`src/scenes/shared.js`) holds Levitate under `levitateWarded()`.
 
-## 10. The legion - relentless adds
+- `registerLevitateWard` keeps ONE function, and registering again replaces it. So the Spire's predicate is OR'd into
+  `src/scenes/world.js`'s one registration, beside the siege and the Hour.
+- **Slowfall is banned too.** It is not banned in the Hour today: it drifts down at a flat `SLOWFALL_VELOCITY` and
+  keeps a run's momentum off an edge, so a Descent would be a glide. EG10 adds the Spire's ban to the same flags write
+  (`player.slowFalling`).
+- **The Jump spell is allowed.** It is a build, and the Steps accept it (*"a Jump spell is a way up too"*).
+- Staff `/fly` is staff's.
 
-**One wave runner, widened from the gate's.** `stepHost` in `src/net/gateBrain.js` runs the Legion-Lord's three kinds,
-tied to the gate's phase, court and trial. EG7 lifts their law into `net/egHost.js`, a runner driven by a hall's
-geometry: a court's rim, a rift's place, a walkway's line, a span's air. The gate keeps its own: `stepHost` stays, its
-frames and pins unchanged, and calls the shared pieces it can (`rimSpots`, the spacing law). This is the SERPENT1 rule
-again: widen a seam whose default is the gate's own bytes.
+**Shared clock, private crumbles.** Platforms move on the anchored clock (`anchoredClock`, `deadlandsSeconds`), so every
+member sees the same Step in the same place. A crumble is each member's own, as on the Steps.
 
-**The kinds.** Bodies are Daggerfall's own mobiles (`MOBILE_TYPES`), so every player can draw them. A Morrowind body
-(`CREATURE_MATCH`) re-skins one where the player's data and the budget allow. Every blow is a shape the telegraph pass
-already draws, apart from the three section 20 adds.
+**The relay judges the end, not the jumps** (section 19).
 
-| id | kind | does | bodies, by band | body | move | its blow |
+## 11. The legion - relentless adds
+
+**One wave runner, widened from the gate's.** In `src/net/gateBrain.js`, the private `stepHost` runs the
+Legion-Lord's three kinds, tied to the gate's phase, court and trial.
+
+- **EG8 lifts their law** into `net/egHost.js`: a runner driven by a hall's geometry (a court's rim, a rift's place, a
+  walkway's line, a span's air).
+- **EG8 exports the shared pieces** it needs (`rimSpots`, the spacing law, `hostTeamHpFor`) from the gate's brain and
+  imports them. The gate's `stepHost` stays, its frames and pins unchanged. This is SERPENT1's rule again: widen a seam
+  whose default is the gate's own bytes.
+
+**The kinds.** Bodies are Daggerfall's own mobiles (`MOBILE_TYPES` in `src/characters/mobileTypes.js`), so every player
+can draw them. A Morrowind body (`CREATURE_MATCH` in `src/characters/creatureBodies.js`) re-skins one where the
+player's data and the budget allow. Every blow is a shape the telegraph pass draws, and every wind-up keeps the floor
+(section 12).
+
+| id | kind | does | bodies (band) | body | move | its blow (wind-up / floor) |
 |---|---|---|---|---|---|---|
-| 0 | **Harrier** | runs at the living member FARTHEST from it, hovering | Imp (1); Giant Bat (3) in the Shade | r 0.5, h 1.5 | 5.0 m/s | Bite: disc r 2, 0.9 s, 12% + 4 (the gate's) |
-| 1 | **Sapper** | walks to its OBJECTIVE: a Court's boss (heals it, the gate's law) or a Yard's nearest closed rift (opens it again at a third) | the Atronachs (35, 38, 36, 37) | r 0.7, h 2.3 | 1.6 m/s | none: it is the objective |
-| 2 | **Ward-Bearer** | stands, pulses, holds a ward on what it guards (a boss, a portcullis) | Fire Daedra (26), Frost Daedra (25), Daedra Seducer (29), Daedroth (27) | r 0.6, h 2.2 | stands | Pulse: disc r 3.5, 1.4 s, 18% + 6 of the band's element (the gate's) |
-| 3 | **Breaker** | winds a charge at a member, runs it, pushes | Daedroth (27); Gargoyle (22) in the Galleries | r 0.8, h 2.4 | 3.0 m/s; the charge 12 m/s | Charge: lane w 2.5 x 14, 1.1 s, 25% + 8, push 6 m |
-| 4 | **Caster** | stands off 10-18 m, throws at a member every 6-9 s | Fire (26) or Frost (25) Daedra; Lich (32) in the Cairn | r 0.6, h 2.2 | 2.0 m/s | Bolt: disc r 3 at the member's feet, 1.6 s, 20% + 6, element, leaves a pool (`POOLS` hellfire's) |
-| 5 | **Diver** | flies at 6-10 m, circles, dives a lane at a member | Harpy (13), Daedra Seducer (29, winged), Dragonling (34) | r 0.6 | 6.0 m/s | Dive: lane w 2 x 10, 1.0 s, 18% + 5 |
-| 6 | **Sentinel** | dormant until a member passes within 6 m (an ambush), then slow and heavy | Gargoyle (22); Iron Atronach (36) in the Wellhead | r 0.9, h 2.6 | 2.2 m/s | Smash: disc r 3, 1.3 s, 30% + 10 |
-| 7 | **Binder** | stands back, raises the last fallen add of its wave once: a 6 s cast, broken by a blow worth a tenth of its health | Lich (32), Ancient Lich (33) | r 0.6, h 2.2 | 1.2 m/s | none: the raise |
-| 8 | **Wraith** | drifts through, tethers the nearest member: 3% of max health a second while within 8 m, broken by putting 10 m between | Wraith (23), Ghost (18) | r 0.5 | 2.5 m/s | Drain: tether (section 20) |
+| 0 | **Harrier** | runs at the living member farthest from its anchor (in a Court, from the lord, as the gate's runs from the Warden; elsewhere, from itself), hovering | Imp (1); Giant Bat (3) in the Shade | r 0.5, h 1.5 | 5.0 m/s | Bite: disc r 2, 12% + 4 (0.9 s / 0.79 s) |
+| 1 | **Sapper** | walks to its OBJECTIVE: a Court's lord (heals it, the gate's law), or a Yard's nearest closed rift (opens it again at a third) | the Atronachs (35, 38, 36, 37) | r 0.7, h 2.3 | 1.6 m/s | none: it is the objective |
+| 2 | **Ward-Bearer** | stands and pulses, holding a ward on what it guards (a lord, a portcullis) | Fire Daedra (26), Frost Daedra (25), Daedroth (27); Daedra Seducer (29) in the Shade | r 0.6, h 2.2 | stands | Pulse: disc r 3.5, 18% + 6 of the band's element (1.4 s / 1.00 s) |
+| 3 | **Breaker** | winds a charge at a member, runs it, pushes | Daedroth (27); Gargoyle (22) in the Galleries | r 0.8, h 2.4 | 3.0 m/s; the charge 12 m/s | Charge: lane w 2.5 x 14, 25% + 8, push 6 m (1.1 s / 0.68 s) |
+| 4 | **Caster** | stands off 10-18 m and throws at a member every 6-9 s | Fire (26) or Frost (25) Daedra; Lich (32) in the Cairn | r 0.6, h 2.2 | 2.0 m/s | Bolt: disc r 3 at the member's feet, 20% + 6, the element, leaving a pool (`POOLS` hellfire's) (1.6 s / 0.93 s) |
+| 5 | **Diver** | flies at 6-10 m, circles, dives a lane at a member; never onto a platform narrower than the lane plus 2 m | Harpy (13), Daedra Seducer (29, winged), Dragonling (34) | r 0.6 | 6.0 m/s | Dive: lane w 2 x 10, 18% + 5 (1.0 s / 0.64 s) |
+| 6 | **Lurker** | dormant until a member passes within 6 m (an ambush), then slow and heavy | Gargoyle (22); Iron Atronach (36) in the Wellhead | r 0.9, h 2.6 | 2.2 m/s | Smash: disc r 3, 30% + 10 (1.3 s / 0.93 s) |
+| 7 | **Binder** | stands back and raises the last fallen add of its wave once, a 6 s cast broken by a blow worth a tenth of its health | Lich (32), Ancient Lich (33) | r 0.6, h 2.2 | 1.2 m/s | none: the raise |
+| 8 | **Wraith** | drifts in and tethers the nearest member: 3% of max health a second while within 8 m, broken by putting 10 m between | Wraith (23), Ghost (18) | r 0.5 | 2.5 m/s | Drain: a tether (section 23) |
 
-The **push** is a new blow effect, applied by the struck client as the Steps' gust is (`collider.move`, capped per
-frame), and resisted by the Iron Footing Vestige. Near an edge it is a cast-back. On a span it is the Spire's sharpest
-tool.
+**The push** is a new blow effect, applied by the struck client as the Steps' gust is (`collider.move`, capped per
+frame), and resisted by the Iron Footing Vestige. Near an edge it is a cast-back.
 
-**Health and the waves.** A kind's health is seconds of reference damage, as the gate's are (Harrier `HARRIER_S` 3 s of
-the hall's mean reference damage). It is shared over a wave where the kind is a team's, scaled by depth:
-`x (1 + 0.04(c-1))`. A wave's size counts the living company as the gate's do, clamped by kind. Its cadence and
-standing cap are the hall's (section 7), quickening with depth (section 15). The kinds unlock by band:
+**Health and the waves.**
 
-- Galleries: 0, 1, 2, 3, 4, 6;
+- **Health**: a kind's health is seconds of reference damage, as the gate's are (the Harrier's `HARRIER_S`, 3 s of the
+  hall's mean reference damage). It is shared over a wave where the kind is a team's, through `hostTeamHpFor`, and
+  scaled by the depth `x (1 + 0.04(c-1))`.
+- **Size**: a wave counts the living company, as the gate's do, clamped by kind.
+- **Cadence and cap**: the hall's (section 8), quickening with depth (section 16).
+
+**Unlocks by band**:
+
+- Galleries: kinds 0, 1, 2, 3, 4, 6;
 - Cairn: + 7, 8;
 - Shade: + 5;
-- Wellhead: all, with a Daedra Lord (31) as an elite add (5x health, the Warden's Cleave) one wave in six.
+- Wellhead: all of them, with a Daedra Lord (31) as an elite add (5x health, the Warden's Cleave at the floor) one wave
+  in six.
 
-**Pure, and the relay's.** The runner's dice are the beat's rng (the relay's CSPRNG), as every brain's are. Its frames
-are the Legion-Lord's: `ad` (a wave risen), `amv` (the walks), `aatk` (a blow), `ah` (a health), `adie` (gone). Blows
-on adds arrive as `ahit` through `applyHostHit`'s hand and purse. A hall with no legion draws no dice.
+**Pure, and the relay's.** The runner's dice are the beat's rng (the relay's CSPRNG), as every brain's are.
 
-## 11. The Kyn - the bosses
+- **Frames out**: the Legion-Lord's: `ad` (a wave risen), `amv` (the walks), `aatk` (a blow), `ah` (a health), `adie`
+  (gone).
+- **Frames in**: blows on adds arrive as `ahit` through `applyHostHit`'s hand and purse.
 
-### 11.1 One seam for every boss
+A hall with no legion draws no dice.
+
+## 12. The lords - the bosses
+
+### 12.1 One seam for every boss
 
 The relay hosts three bosses today, each by hand:
 
-- `_gateTick`/`_gateFrame`/`_gateFall`;
-- `_sdFightTick`/`_sdFightFrame`/`_sdFightFall`;
+- `_gateTick`, `_gateFrame`, `_gateFall`;
+- `_sdFightTick`, `_sdFightFrame`, `_sdFightFall`;
 - the serpent's.
 
-A realm holds ONE fight (`this._sdFight`). The Spire needs a different boss every fifth hall, so EG3 builds **one boss
+A realm holds ONE fight (`this._sdFight`). The Spire needs a different lord every fifth hall, so EG3 builds **one boss
 seam** (`net/bossSeam.js`). It is the shape every brain already keeps by convention, made a contract:
 
 ```
@@ -569,340 +807,506 @@ new(profile, rng)            join(f, sub, name, lv, now, present)      hit(f, su
 step(f, now, bodies, rng) -> frames[]      stateOf(f)      judge(f, blow, trails) -> [{sub, share}]      earned(f, sub)
 ```
 
-The gate, the Remnant and the serpent are re-plugged into it with their pins unchanged and their frames byte for byte.
-The Spire's bosses are written to it. The hand and the purse (`spendBlow`, `spendPurse`), the share's retirement
-(`retireShare`/`restoreShare`), the seat (`freeSeat`), the chart (`damageChart`) and the choice of blow
-(`chooseAttack`) are already exported from the gate's brain, and the Remnant already imports them.
+The gate, the Remnant and the serpent are re-plugged into it with their pins unchanged and their frames byte for
+byte. The Spire's lords are written to it. The gate's brain already exports the hand and the purse (`spendBlow`,
+`spendPurse`), the share's retirement (`retireShare`/`restoreShare`), the seat (`freeSeat`), the chart (`damageChart`)
+and the choice of blow (`chooseAttack`), and the Remnant already imports them.
 
-### 11.2 The law every Kyn keeps
+### 12.2 The law every lord keeps
 
 - **Health**: `ttkRef(c)` seconds of reference damage per fighter (`dpsRef(lv)`, the gate's level claim), added as the
-  gate adds its fighters. `ttkRef(c) = EG_TTK_S (180) x EG_TTK_GROWTH (1.07)^(c-1)` (section 15).
-- **The bucket**: the gate's: `BUCKET_RATE_X` 3, `BUCKET_DEPTH_X` 15, `HIT_CAP_X` 12, each member's times their
-  Vestiges' `bucketX` (section 13).
-- **Blows**: shares of the struck member's own maximum health, resolved on the struck member's machine (co-op's law),
-  scaled with depth: `x min(1.75, 1 + 0.03(c-1))`.
-- **Phases** at the gate's `PHASE_AT` (0.66, 0.33) unless the boss says otherwise, each turn shielded `SHIELD_MS`
+  gate adds its fighters. `ttkRef(c) = 180 x 1.07^(c-1)` to circle 20, then `x 1.03` a circle (`EG_TTK_S`,
+  `EG_TTK_GROWTH`, `EG_TTK_GROWTH_DEEP`).
+- **A fall retires a share**: the fallen's share is retired at the current fraction (`retireShare`, the Remnant's law),
+  and restored on a recall (`restoreShare`). Seven members never face a lord sized for eight.
+- **The bucket**: the gate's (`BUCKET_RATE_X` 3, `BUCKET_DEPTH_X` 15, `HIT_CAP_X` 12), each member's times their
+  Vestiges' factor, capped at 1.25 (section 14).
+- **Blows**: shares of the struck member's own maximum health, resolved on the struck member's machine (co-op's law).
+  Depth and fury together multiply a share by at most **1.5** (`EG_SHARE_X_MAX`).
+- **Phases**: at the gate's `PHASE_AT` (0.66, 0.33) unless the lord says otherwise, each turn shielded `SHIELD_MS`
   (3 s).
-- **Targeting**: the gate's: 60% to the top of threat (`THREAT_PICK`), 40% to a random living member, threat forgetting
-  `THREAT_DECAY` a second.
-- **Fury**, the endless Kyn's Wrath. At `EG_FURY_RATIO` (1.25) x `ttkRef(c)` seconds into the fight, a boss turns to
-  fury: *Ozzath rages.* Every 30 s after, its shares grow by a tenth (`EG_FURY_SHARE_X` 1.10) and its wind-ups shorten
-  by 3% (`EG_FURY_WINDUP_X` 0.97), never under their floor. Fury is not a wall. A company that cannot outdamage it
-  can still outlast it, for as long as it reads every blow. The wall is the count (section 15).
-- **THE WIND-UP FLOOR** (pinned, for every blow of every boss and add, under every brand and every fury):
-  `windup >= escapeS(shape) = farthest point's distance to the shape's edge / EG_ESCAPE_MPS (7.6) + EG_REACT_S (0.35)`.
-  The gate's own promise (*"a player runs 7.6 m/s, and every wind-up is long enough to run out of its shape from its
-  middle"*), written as a law with a reaction's slack. 7.6 m/s is the gate's measure, `runSpeed` at the default build.
-  Every blow the gate ships keeps it, the tightest being the Warden's Slam in his third phase (disc r 7: floor 1.27 s,
-  wind-up 1.6 s x `PHASE3_WINDUP` 0.8 = 1.28 s). A build slower than the default has the Fleet Vestige and its own
-  Speed to answer it.
+- **Targeting**: the gate's. 60% to the top of threat (`THREAT_PICK`) and 40% to a random living member, threat
+  forgetting `THREAT_DECAY` a second.
+- **FURY**, the endless lord's answer to a slow company. At `EG_FURY_RATIO` (1.25) x `ttkRef(c)` seconds into the
+  fight, a lord turns to fury: *Grath rages.* Every 30 s after:
+  - it raises one wave of its band's legion;
+  - its shares grow by a tenth, within the 1.5 cap;
+  - from the second step, its aimed blows chain a second shape 0.6 s after the first lands.
+  - Fury NEVER shortens a wind-up (Mac, WBX: *"nothing gets faster"*). It makes a slow fight crowded and costly, not
+    unreadable.
+- **THE WIND-UP FLOOR** holds for every blow of every lord and add, under every phase, decree and fury:
+  - `windup >= escapeS(shape) + EG_REACT_S (0.5)`, where `escapeS` is the farthest interior point's distance to the
+    shape's edge over the escape build's run (6.975 m/s);
+  - a disc's farthest point is its radius away; a lane's is half its width; a ring's, half its band; a cone's, its
+    inscribed radius;
+  - the floor CLAMPS: it lengthens a wind-up and never refuses a blow;
+  - what the gate ships does not all keep it. The Warden's third-phase Slam (disc r 7, 1.6 s x `PHASE3_WINDUP` 0.8 =
+    1.28 s) has a floor of 1.50 s at the escape build, and Colossal's (r 8.5) one of 1.72 s. In the Spire, the
+    Valkynaz's Slam is therefore lengthened to its floor;
+  - the 0.5 s slack is a human's reaction plus a one-way latency. That is fine where a death is cheap (the gate's
+    0.35 would do there), but not in a long one-life run.
+- **THE UNION FLOOR**. Each shape being escapable alone is not enough: a Breaker's lane, a Bolt and a Slam together
+  can trap a member.
+  - Every beat, the relay tests every member against the UNION of the shapes pending on them, over walkable floor:
+    is there a reachable point outside them all, in each shape's remaining time, at the escape build? This is
+    `perilAt`'s bearing search (`src/scenes/gateCourt.js`) widened to a union and to the hall's floor.
+  - A blow that would break that is held a beat (250 ms), at most four beats, then dropped.
+  - Pendulums and vents are tested on the same floor.
+- **THE CHECK CLASS.** A whole-court blow (no edge to run to), a haven blow, or an errand's failure blow is a CHECK:
+  - its wind-up and its damage are fixed: no phase, fury, decree or depth shortens or raises them;
+  - it carries its own feasibility pin for *n* = 1 to 8 (THE ERRAND FLOOR, below);
+  - the gate exempts its own the same way (`isDagons`, `windupOf`).
+- **THE ERRAND FLOOR** (pinned beside the wind-up floor):
+  - an errand that needs *k* bodies needs `min(k, n)`;
+  - its window is at least a lone runner's route at the escape build plus 1.5 s;
+  - CI solves every lord's errands for *n* = 1 to 8, as the span solver solves spans;
+  - a party of one is a company, and the Alone board is real (section 18).
+- **Tells only the engine can give.** What lands is what the ground shows. A feint follows Feud-Arc section 7.3's
+  grammar: its mark is dashed, cut away at 0.55 of the wind-up, and never glints; the true blow glints with its wind
+  cue. No tell depends on a shadow, which a billboard and a phone cannot promise.
 
-### 11.3 The roster
+### 12.3 The roster
 
-`bossOf(seed, c)` draws a Court's boss from its band's pool, never one of the two before it. **Every fifth Ward (Hall
-25, 50, 75, 100...) is a Valkynaz.** A band whose bosses have not shipped draws from those that have, so the content
-ships band by band (section 24). Bodies are Daggerfall's, drawn large, as Ruhn is (`BOSS_LOOKS`: a mobile and a scale).
+`egBossOf(seed, c)` draws a Court's lord:
+
+- **the pool**: the band's own lords at weight 2, plus every earlier band's at weight 1, re-aspected;
+- **no repeat**: never one of the last `min(2, pool - 1)` Courts';
+- **the Valkynaz**: every fifth Redoubt (Hall 25, 50, 75, 100...) is a Valkynaz, outside the draw;
+- **unshipped bands**: a band whose lords have not shipped draws from those that have, so the content ships band by
+  band (section 29).
+
+Bodies are Daggerfall's, drawn large, as Ruhn is (`BOSS_LOOKS` in `src/world/gateBoss.js`: a mobile and a scale). Each
+lord's errand rules are given for *n* = 1, and its numbers keep the floors.
 
 **The Broken Galleries**
 
 1. **Grath, Hound of the Wellhead** (`hound`; Daedroth 27, x3). The Court is three islands (r 11) joined by narrow
    bridges.
-   - It bounds from island to island (the Warden's Leap). The island it leaves cracks and falls for 15 s: a Crumble at
-     a court's scale.
-   - Gore: a lane, 18 m, pushes 8 m.
+   - It bounds from island to island (the Warden's Leap). The island it leaves cracks, warned 3.5 s (escape to a
+     bridge, about 20 m: 3.37 s), and falls for 15 s. A cast-back from a fallen island lands on a standing one.
+   - Gore: a lane 3 m wide and 18 m long, push 6 m.
    - Savage: a cone, 7 m, 110°.
-   - The Scent: a mark on one member; for 10 s it hunts only them, faster. They kite across the bridges while the
-     rest punish.
-   - Phase 2: the bridges burn by turns. Phase 3: two Scents at once.
+   - **The Scent**: a mark on one member, who is hunted for 8 s at 6.5 m/s, under the escape build's run. The rest
+     punish while it chases. *n* = 1: no Scent; it gores twice as often instead.
+   - Phase 2: the bridges burn by turns. Phase 3: two Scents at once (when *n* ≥ 3).
    - *A fight about ground.*
-2. **The Last Battlemaster** (`battlemaster`; Ancient Lich 33, x2.5): the Spire's own master, raised by the Kyn.
-   - Ward-Rings: two to four lit rings (the HAVEN shape, section 20); everywhere else takes the nova. The gate's dodge,
-     turned inside out.
-   - Arcane Lattice: parallel lanes swept across the court in sequence (the LANES shape).
-   - Mirror Images: three images whose wind-ups are feints; only the true one casts a shadow on the floor.
-   - Blink: across the court.
-   - **The Examination** (phase 2): four runes light on the rim in an order shown above him. Four members must stand
-     on them in that order within 8 s. Failed: 60% to all. Passed: he is stunned 8 s and takes x1.5 (the crystals'
-     law, `STUN_MS`, `STUN_HIT_X`).
-   - **The Final Examination** (phase 3): he binds a member in a ward for 8 s. The company breaks three seals or the
-     bound one takes 999%.
+2. **The Last Spellmaster** (`spellmaster`; Ancient Lich 33, x2.5): the Spire's master of spells, raised by the Kyn.
+   - **Havens**: two to four gold discs (r 3) at radius 13 of the court; everywhere else takes the Haven Nova. The
+     gate's dodge, turned inside out. Its wind-up follows the havens' escape: 4.5 s for two (26.1 m to the nearest
+     haven), 3.5 s for three, 3.0 s for four. A CHECK.
+   - **Arcane Lattice**: parallel lanes 3 m wide, swept across the court in sequence (the LANES shape; 1.4 s each,
+     floor 0.72 s).
+   - **Mirror Images**: three images whose blows are feints under Feud's grammar. A blow shatters an image.
+   - **Blink**: across the court.
+   - **The Examination** (phase 2): runes light on the rim in an order shown above him, with numerals I-IV and a chime
+     each.
+     - Runes: `min(4, max(2, n))`. When *n* is under the rune count, the runes stand on a ring of r 8.
+     - The window: `8 + 4 x (runes - n)` s.
+     - Failed: 60% to all (a CHECK). Passed: he is stunned 8 s and takes x1.5 (the crystals' law, `STUN_MS`,
+       `STUN_HIT_X`).
+   - **The Final Examination** (phase 3): he binds a member in a cage for 8 s. The company breaks `clamp(n-1, 1, 3)`
+     seals, and the bound member may shoot seals from inside. *n* = 1: no bind; three seals rise within 6 m, 8 s to
+     break them. Failed: 70% to the bound (a CHECK; never 999%).
    - *A fight about reading.*
-3. **Kynreeve Ozzath of the Muster-Yard** (`marshal`; Fire Daedra 26, x3).
-   - Shielded while his rifts stand (the Yard's law at a Court's scale, three to five), the waves relentless.
-   - Flame Wall: a lane sweeping the court.
-   - Hellfire: discs under members, the gate's.
-   - The Brand: a mark that erupts 2 s later where the marked member stood. Spread.
-   - Phase 2: Sappers march to heal him (the gate's `SAP_HEAL`). Phase 3: his rifts reopen once.
-   - *A fight about the legion.*
-4. **Valkynaz Ilthys, Prince of the Galleries** (the Valkynaz at Ward 5; section 11.4).
+3. **The Last Armsmaster** (`armsmaster`; Skeletal Warrior 15, x2.6): the Spire's master of arms, raised.
+   - **The Challenge**: he marks a member, and a ring of fire (r 6) rises around the two. This is the duel's own ring
+     law (DUEL1's `_keepInArena`, `clampToRing`).
+     - The challenged must last 15 s or deal a tenth of his health inside it.
+     - Outside, the company breaks the ring's `clamp(n-1, 1, 3)` braziers (each 4 s of the company's reference
+       damage) to open it early, while the legion presses.
+     - *n* = 1: no ring; he duels in the open with his whole kit.
+   - **Riposte**: a cone that answers a blow landed in the 0.6 s after his guard rises. The tell: his blade raised,
+     glinting.
+   - **Lunge**: a lane 2 m wide and 10 m long. **Whirl**: a disc of r 4.
+   - Phase 2: two Challenges at once (when *n* ≥ 4).
+   - Phase 3: **the Last Lesson**. The court's edge closes 1 m every 6 s, to r 12.
+   - *A fight about the duel.*
+4. **Valkynaz Ilthys, Lord of the Galleries**: the Valkynaz at Redoubt 5 (section 12.4).
 
 **The Soul Cairn**
 
-5. **The Soul-Warden** (`soulwarden`; Lich 32, x3).
-   - The Soul Tithe: every 25 s each member takes a soul-mark. It must be laid in one of four soul-gems on the rim
-     (stand 1.5 s) within 9 s, or it bursts: 30%, and a Wraith rises.
-   - When all four gems are full (eight souls each) he is laid bare: stunned, x1.5.
+5. **The Cairn-Keeper** (`cairnkeeper`; Lich 32, x3).
+   - **The Soul Tithe**: every 25 s each member takes a soul-mark. It must be laid in one of four soul-gems on the rim
+     (stand 1.5 s) within 9 s; the gems are placed so the nearest is never more than 12 m away. Otherwise it bursts:
+     30%, and a Wraith rises.
+   - Each gem holds *n* souls, so there are four tithes at any *n*. When all four gems are full he is laid bare:
+     stunned 8 s, x1.5.
    - Wraiths drain.
    - *A fight about eight people's errands.*
-6. **The Twin Kyn, Vael and Isk** (`twins`; Fire Daedra 26 and Frost Daedra 25, x2.6 each). Two courts joined by a
-   walkway.
+6. **The Twin Lords, Vael of the Fire Clan and Isk of the Frost** (`twins`; Fire Daedra 26 and Frost Daedra 25, x2.6
+   each), rivals as Faydra and Moath were. Two courts joined by a walkway.
    - They must fall within 15 s of each other, or the survivor raises the other at half (the Echoes' law,
      `SD_ECHO_PAIR_MS`).
-   - Vael's blows burn pools; Isk's slow.
-   - Every 60 s they cross the walkway and change courts, and anyone on it is struck.
+   - **Fire-touched and Frost-touched**: a member struck by Vael is Fire-touched for 12 s. They deal +25% to Isk and
+     take +25% from Vael. The reverse holds for Isk.
+   - **The Crossing**: every 60 s they cross the walkway and change courts. The walkway is struck along its length
+     (a lane 6.4 m wide, 2.5 s, floor 0.96 s).
+   - *n* ≤ 2: they share one court, with a 20 s window.
    - *A fight about splitting the company.*
-7. **Valkynaz Morvayn of the Cairn** (Ward 10).
+7. **Valkynaz Morvayn of the Cairn**: Redoubt 10.
 
 **The Shade Perilous**
 
-8. **The Mother of Dusk** (`dusk`; Daedra Seducer 29, x3, winged; the Morrowind `winged twilight`, which flies). She
-   circles over the void beyond the court, out of a blade's reach.
-   - Dives (lanes) and Hellfire.
-   - Three chains on the rim: standing at one for 3 s pulls it, while she dives at whoever pulls. With all three
-     pulled she is dragged down and grounded for 20 s, x1.3.
-   - The court is dark outside its braziers. Telegraphs keep their full light (section 20); the floor does not.
-   - Her Eclipse: the braziers gutter in turn.
+8. **The Mother of Dusk** (`dusk`; Daedra Seducer 29, x3, winged; the Morrowind `winged twilight`, which flies). Dagon
+   gave her kind its wings. She circles over the void beyond the court, out of a blade's reach.
+   - Dives (lanes; never onto ground narrower than the lane plus 2 m) and Hellfire.
+   - **Three chains** anchor her to the rim. They are bodies a blade strikes, each 6 s of the company's reference
+     damage. With all three broken she is dragged down and grounded for 30 s, x1.3.
+   - **Gutterdark**: the braziers gutter in turn. The floor goes dark; telegraphs keep their full light, and every foe
+     keeps a rim light (section 23).
    - *A fight about the air.*
 9. **The Night-Stalker** (`stalker`; Vampire Ancient 30, x2.5).
-   - He vanishes; only his shadow walks the floor.
-   - Blood Tether on two members, broken by standing 14 m apart for 2 s; he heals from it.
+   - He vanishes. Where he stands is drawn as an umbral disc on the floor, the telegraph pass's mark kind.
+   - **Blood Tether** on two members, broken by standing 14 m apart for 2 s; it heals him. *n* = 1: it binds a Blood
+     Thrall (a Harrier body) 4 m away; kill it or put 14 m between.
    - Bat swarms: Harriers as Giant Bats.
    - *A fight about distance.*
-10. **Valkynaz Seyth of the Shade** (Ward 15).
+10. **Valkynaz Seyth of the Shade**: Redoubt 15.
 
 **The Havoc Wellhead**
 
 11. **The Bound Colossus** (`colossus`; Iron Atronach 36, x4): the Battlemages' war-engine, Dagon's now.
     - It walks a fixed route down a long court (55 m), stamping lanes.
-    - Four vent-hearts on its route must break before its Overload every 75 s (the Remnant's Hearts and its Reset,
-      `heartCountFor`). Broken in time: stunned 8 s, x1.5. Not: 70% to all.
+    - Its vent-hearts, `3 + floor(n/2)`, at most 8, are on its back. **Rails rise along its flank every 15 s**
+      (`carryBy`) and carry members up to them: the Spire's own platforming, inside the fight.
+    - Break them all before its Overload every 75 s (70% to all, a CHECK): stunned 8 s, x1.5.
     - Chain lightning: discs that leap between members within 6 m. Spread.
-    - *A damage race.*
+    - *A fight you climb.*
 12. **The Wellhead Wyrm** (`wyrm`; Dragonling 34, x5, flying).
-    - It perches on three spires, breathing lanes and cones; it takes flight and drops meteors.
-    - Each spire has health. With its perch broken it lands, x1.3, until it finds another.
-    - *A fight for bows and spells.*
-13. **The Wellhead's Valkynaz** (Ward 20 and every fifth after).
+    - It perches on three pillars, breathing lanes and cones; it takes flight and drops meteors.
+    - Each pillar is reached by a side-span and broken from on top. With its perch broken it lands, x1.3, for 25 s,
+      until it finds another.
+    - *A fight for every build.*
+13. **Valkynaz Garoth of the Wellhead**: Redoubt 20, and every fifth after.
 
-### 11.4 The Valkynaz
+### 12.4 The Valkynaz
 
-ONE brain (`net/egLord.js`) with a signature per band: the Warden's kit made a prince's. Body: Daedra Lord 31, x3.3,
-Ruhn's look in another aspect. The kit:
+ONE brain (`net/egLord.js`) with a signature for each Valkynaz. Body: Daedra Lord 31, x3.3, Ruhn's look under another
+aspect. The kit:
 
-- Cleave, Slam, Charge, the Crushing Leap and the Meteor (the gate's `ATTACKS`, at the depth's shares);
+- Cleave, Slam, Charge, the Crushing Leap and the Meteor (the gate's `ATTACKS`, at the depth's shares, each lengthened
+  to the floor);
 - three courts and their walkways (WB9b's `COURTS` and `WALKS`), crossed as Ruhn crosses them.
 
-The signatures:
-
-| Valkynaz | Ward | aspect | signature |
+| Valkynaz | Redoubt | aspect (`GATE_ASPECTS`) | signature |
 |---|---|---|---|
-| **Ilthys, Prince of the Galleries** | 5 | Burning | **the Conquest**: at each court he plants a banner (a Ward-Bearer that holds his ward) and the Galleries' gold HAVENS appear. Stand in one through his Conquest nova |
-| **Morvayn of the Cairn** | 10 | Venom | **the Harvest**: the Reckoning's crystals (WB9c, `crystalCountFor`) as soul-gems. Break them all before the Harvest lands, or 999% |
-| **Seyth of the Shade** | 15 | Rime | **the Shroud**: the court goes dark but for his own glow, and two mirror princes fight beside him. The true one's blows alone land; his shadow tells |
-| **the Wellhead's Valkynaz** | 20, 25, 30... | each in turn | **the four signatures in turn**, each Valkynaz under the next aspect, under every brand the circle carries |
+| **Ilthys, Lord of the Galleries** | 5 | Burning | **the Conquest**: at each court he plants a banner (a Ward-Bearer body) that claims a third of the court. Claimed ground burns (a pool) until its banner is broken, and while two banners stand they hold his ward (25 s at most) |
+| **Morvayn of the Cairn** | 10 | Venom-Blooded | **the Chaining**: pairs of members are bound by soul-chains for 20 s. A pair stretched past 8 m both take 30% (a CHECK), and a blow on one is shared with the other. An odd member, or a member alone, is chained to a Wraith; kill it to break the chain |
+| **Seyth of the Shade** | 15 | Rime-Wrought | **the Mirrorcourt**: two mirror lords fight beside him and throw real blows at half share. Only the true lord's blows glint. A mirror shatters after 8 s of the company's reference damage and returns 20 s later |
+| **Garoth of the Wellhead** | 20, 25, 30... | each of the four in turn | **the three signatures in turn**, each under the next of the four aspects (Burning, Rime-Wrought, Storm-Crowned, Venom-Blooded), with every decree the circle carries |
 
-A Valkynaz's Ward pays twice (section 16). The first Valkynaz a company fells is their first true feat in the Spire.
+A Valkynaz's Redoubt rolls its spoils twice (section 17). The first Valkynaz a company fells is its first true feat in
+the Spire.
 
-## 12. The brands - what deepens a circle
+## 13. Decrees - what deepens a circle
 
-At each Ward the next circle's **brands** are drawn and shown on the Ward-stone: *The next Ward bears: Unmoored,
-Hunting Pack.* The company knows what is coming before they choose to go on.
+At each Redoubt the next circle's **decrees** are drawn and shown on the beacon: *The next circle bears: Gale-Swept,
+Hunting Pack.* The company knows what is coming before it chooses to go on.
 
-**How many**: circle 1, none. Circle 2 onward: `min(6, 1 + floor((c-2)/2))`, so one in circles 2-3, two in 4-5, up to
-six from circle 12.
+- **How many**: circle 1, none. From circle 2, `min(4, 1 + floor((c-2)/2))`.
+- **One per family**: five families, never two from one, so four is the most a circle carries and a company can track
+  every one.
+- **Ranks**: past four, one decree a circle ranks up to II instead.
+- **Rites**: past circle 20, the Wellhead's **rite** (section 16) joins them.
 
-**From three pools**, merged by the Hour's rule (`sdMarksLaw`: a key ending in `X` multiplies, any other is overridden
-by the last mark that names it):
+| family | decree | what |
+|---|---|---|
+| **blows** | **Chained Blows** | the legion's blows chain a second shape 0.6 s after the first lands |
+| | **Twin Charge** | a Breaker's charge is followed by a second lane 1.2 s after |
+| | **Pyre-Bound** | a slain add bursts: disc r 2.5, 1.0 s (floor 0.86 s), 10% |
+| **legion** | **Hunting Pack** | Harriers on every hall, a wave every 30 s |
+| | **Legion's Tithe** | waves are a quarter larger (`sizeX` 1.25, rounded up) |
+| | **Swarm-Mother** | every wave carries a Binder (from the Cairn) |
+| | **Kyn's Vigil** | every hall's trial begins with the band's champion on the arrival plate |
+| | **Rift-Torn** | Rift-Yards have one rift more (cadence still at least 9 s) |
+| **ground** | **Ashfall** | fire falls on court discs, a meteor's disc every 12 s |
+| | **Gale-Swept** | every span carries a Gust section (from the Cairn) |
+| | **Crumbling Halls** | every span carries a Crumble section, and has one checkpoint island fewer |
+| **count** | **Short Count** | the next Redoubt adds 10 minutes, not 15 |
+| | **Thin Rest** | the next Redoubt's rest heals half |
+| **lord** | **Colossal**, **Unyielding**, **Vengeful**, **Grudge-Bearer** | the gate's boss-general trials, recast as laws (below), on the Court's lord alone |
 
-- **the gate's trials** (`GATE_TRIALS`, `src/net/gateMods.js`), on the Court's boss alone: Colossal, Unyielding,
-  Grudge-Bearer, Vengeful and the rest. The Legion-Lord's is a Court's adds;
-- **the Hour's omens** (`SD_OMENS`, `src/net/sdMarks.js`), where they speak of blows;
-- **the Spire's own**, hall-wide:
+**The merge.** The gate's trials carry no `.law`, and their keys (`hp`, `dmg`, `hit`, `size`, `slamR`, `groundMs`,
+`threatPick`) do not end in `X`. So `sdMarksLaw`'s rule (a key ending in `X` multiplies; any other is overridden by
+the last mark that names it) cannot fold them as they stand. EG5 recasts the four boss-general trials as X-keyed laws:
 
-| brand | what |
-|---|---|
-| **Unmoored** | every span carries a Gust, its push +1 m/s |
-| **Hunting Pack** | Harriers on every hall, a wave every 30 s |
-| **Legion's Tithe** | every wave one body larger (`sizeX` 1.25) |
-| **Ashfall** | fire falls on courts, a meteor's disc every 12 s |
-| **Iron Discipline** | the legion's blows unstoppable, their wind-ups x0.9 (never under the floor) |
-| **Pyre-Bound** | a slain add bursts: disc r 2.5, 1.0 s, 10% |
-| **Crumbling Halls** | every span carries a Crumble; crumble delays x0.8 (never under the floor) |
-| **Kyn's Vigil** | every hall's trial begins with a Kynreeve champion at the arrival plate |
-| **Wellspring** | Yards one rift more, each pouring a fifth faster |
-| **Echoing** | a Breaker's charge echoes, a second lane 1.2 s after |
-| **Swarm-Mother** | every wave carries a Binder |
-| **The Fraying** | the Athenaeum's fray shortened (the Hour's 36) |
-| **Short Count** | the next Ward holds the breach 10 minutes, not 15 |
-| **Thin Wards** | the next Ward's rest heals half |
+- Colossal: `sizeX` 1.25, `hpX` 1.25, `radiusX` 1.2;
+- Unyielding: `shieldX` 2, `hitX` 0.85;
+- Vengeful: `dmgX` 1.25;
+- Grudge-Bearer: `threatPick` 0.85, `threatDecay` 0.
 
-Two from one family never share a circle (blows, legion, ground, count). Every brand is relay-side, or the shared
-clock's law, or a word the relay says (a rest's heal). None asks the client to handicap itself.
+The trials written against the Warden's own attacks (Scarring, Dagon's Favoured, Echoing, Soul-Hungry) are not drawn.
+The Hour's **The Fraying** (`SD_OMENS`, fray 36) is drawn only for a circle with an Athenaeum, through `orreryOf`'s
+fray parameter. The Spire's own decrees never reuse a trial's or an omen's name.
 
-**The profile.** `egFightProfile(marks)` folds them as `sdFightProfile` does. Its cache is keyed by the sorted mark
-string and bounded (LRU 256): the gate's and the Hour's caches assume a bounded set of 185 or 216, and the Spire's
-combinations are not bounded. The Spire's frames carry up to six marks under their own validator. The gate's
-`validGateMods` (three words) is not touched.
+**The profile.** `egFightProfile(decrees)` folds them as `sdFightProfile` does. Its cache is keyed by the sorted decree
+string and bounded (LRU 256): the gate's and the Hour's caches assume a bounded set of 185 or 216, and the Spire's is
+not. The Spire's frames carry up to four decrees and the rite under their own validator. The gate's `validGateMods`
+(three words) is not touched.
 
-## 13. Vestiges - what the Battlemages left
+Every decree is relay-side, the shared clock's law, or a word the relay says (a rest's heal). None asks the client to
+handicap itself.
 
-**My decision on question 4: yes.** An endless run without a build that changes inside it plays the same at Hall 60
-as at Hall 6. Eight members choosing what to become is what makes a company more than eight builds. So:
+## 14. Vestiges - what the Battlemages left
 
-- at each Ward, every living member is offered **three Vestiges**, drawn by the relay's rng, and takes **one** within
-  the Ward's rest (60 s; unpicked, the first is taken);
-- taking one held again ranks it, **I -> II -> III**. An offer never shows one held at III;
-- they last until the breach closes. The room holds each member's, says them to the company (auras need it), and the
-  Ward's receipt carries them.
+**My decision on question 4: yes.** An endless run without a build that changes inside it plays the same at Hall 60 as
+at Hall 6, and eight members choosing what to become is what makes a company more than eight builds.
 
-**The trust law.** A player owns their body (co-op's law). A Vestige that changes only the holder's body (health,
-resistance, speed) is as honest as their save. Every Vestige that raises damage on a relay foe does so through the
-relay: it declares a `bucketX` the relay applies to that member's bucket, or the relay applies it itself because it
-knows the inputs (an add's health, a distance between poses, an ally's place). So a damage Vestige moves the cap
-exactly as far as it moves the damage. No Vestige revives. The one life stays the one life.
+- At each Redoubt, every living member is offered **three Vestiges**, drawn by the relay's rng from three different
+  families, and takes **one** within the rest. Unpicked, the first is taken.
+- Taking one already held ranks it, **I -> II -> III**. An offer never shows one held at III.
+- **The lean**: the first Redoubt's offers lean, two of three, toward the family of the member's most-used blow kind
+  in the circle (the hit's `r`): melee leans to Blade, shaft to Hunt, spell to Arcana. It nudges and never decides;
+  the room knows nothing of classes and should not.
+- **Surplus** (section 6) buys a fourth card or a reroll. A **bequest** (section 15) adds the fallen's card.
+- They last until the breach closes. The room holds each member's, says them to the company (auras need it), and the
+  Redoubt's receipt carries them.
+
+**The trust law.** A player owns their body (co-op's law). A Vestige that changes only the holder's body is as honest
+as their save. Every Vestige that raises damage on a relay foe does so through the relay:
+
+- a **conditional** one (a condition the relay cannot see) declares its EXPECTED gain as a bucket factor;
+- one whose condition the relay itself establishes (a distance between poses, an add's health, an ally's place, an
+  ally fallen) is applied by the relay to that blow;
+- the product of every factor on a member is capped at **`EG_BUCKET_X_MAX` 1.25**. A modified client's ceiling rises
+  by a quarter at most, and the at-cap column of section 16 carries it.
 
 | family | Vestige | I / II / III | applied by |
 |---|---|---|---|
-| **Bulwark** | **Stoneskin** | +10 / 18 / 25% max health | client |
-| | **Iron Footing** | push taken -35 / 65 / 100% (Breakers, Pendulums, gusts) | client |
+| **Stone** | **Stoneskin** | +10 / 18 / 25% max health | client |
+| | **Iron Footing** | push taken -35 / 65 / 100% (Breakers, Pendulums, Gusts) | client |
 | | **Second Wind** | once a hall, falling under 30% heals 15 / 25 / 35% | client |
-| | **Bastion** | allies within 6 m take 4 / 8 / 12% less from blows | each ally's client, from the room's word |
-| | **Warden's Oath** | your threat x1.5 / 2 / 2.5; bosses' blows on you -5 / 10 / 15% | relay (threat), client (blows) |
-| **Brand** | **Searing Edge** | melee blows +3 / 6 / 9 fire | client; `bucketX` 1.05 / 1.10 / 1.15 |
-| | **Momentum** | blows on one target +4% each, to 3 / 4 / 5 stacks | client; `bucketX` 1.06 / 1.08 / 1.10 |
-| | **Cleaving Arc** | melee blows splash 20 / 35 / 50% to adds within 3 m of the target | relay (host hits) |
-| | **Bloodied Fury** | under half health +10 / 18 / 25% damage | client; `bucketX` 1.05 / 1.09 / 1.12 |
-| | **Executioner** | +30 / 45 / 60% on adds under a quarter health | relay (it knows the add's health) |
-| **Shroud** | **Long Sight** | shafts and spells from beyond 12 m +8 / 14 / 20% | relay (it knows both poses) |
-| | **Featherstep** | your crumbles wait +0.2 / 0.35 / 0.5 s; cast-backs cost 10 / 7 / 5% | client (crumbles are private) |
-| | **Fade** | after you strike, adds lose you for 1.5 / 2.5 / 3.5 s | relay (targeting) |
+| | **Bastion** | allies within 6 m take 4 / 8 / 12% less from blows | allies' clients, from the room's word; the relay's body count applies it too |
+| | **Challenger's Oath** | your threat x1.5 / 2 / 2.5; lords' blows on you -5 / 10 / 15% | relay (threat), client (blows) |
+| **Blade** | **Searing Edge** | melee blows +3 / 6 / 9 fire | client; expected factor 1.04 / 1.07 / 1.10 |
+| | **Momentum** | blows on one target +4% each, to 3 / 4 / 5 stacks | client; expected 1.05 / 1.07 / 1.09 |
+| | **Sweeping Arc** | melee blows splash 20 / 35 / 50% to adds within 3 m of the target | relay (host hits) |
+| | **Bloodied Fury** | under half health +10 / 18 / 25% damage | client; expected 1.03 / 1.05 / 1.07 |
+| | **Culling Edge** | +30 / 45 / 60% on adds under a quarter health | relay (it knows the add's health) |
+| **Hunt** | **Long Sight** | shafts and spells from beyond 12 m +8 / 14 / 20% | relay (it knows both poses) |
+| | **Featherstep** | your crumbles wait +0.2 / 0.35 / 0.5 s; cast-backs cost 8 / 6 / 4% | client (crumbles are private) |
+| | **Fade** | after you strike, adds lose you for 1.5 / 2.5 / 3.5 s, once every `EG_FADE_CD_S` 8 s | relay (targeting) |
 | | **Hunter's Mark** | your first shaft on a foe marks it 8 s: the company deals +5 / 8 / 12% to it | relay |
-| | **Fleet** | run speed +4 / 7 / 10% | client (spans are laid for the modest build) |
-| **Mantle** | **Battlemage's Focus** | spell cost -10 / 18 / 25% | client |
-| | **Overcharge** | spell blows +8 / 14 / 20% | client; `bucketX` 1.08 / 1.14 / 1.20 |
-| | **Spellward** | every resistance +10 / 18 / 25 | client (the saving throw) |
-| | **Wardweaver** | your Shield spell soaks +20 / 35 / 50% | client (`hurtPlayer`'s pool) |
-| | **Arcane Echo** | a damage spell repeats at half, 10 / 16 / 22% of casts | client; `bucketX` 1.05 / 1.08 / 1.11 |
-| **Legion** | **Rally** | when a hall's door opens, the company heals 8 / 14 / 20% | each client, from the room's word |
-| | **Banner of the Spire** | allies within 10 m +4 / 7 / 10% damage | relay (`bucketX` while near) |
-| | **Watchfire** | a blow aimed within 12 m of you is told 0.15 / 0.25 / 0.35 s before its wind-up | relay (an early `tell` frame) |
-| | **Brotherhood** | when an ally falls, the living deal +10 / 15 / 20% for the rest of the hall | relay |
-| | **Steadfast Line** | with three allies within 8 m, you take 5 / 10 / 15% less | client, from poses |
+| | **Fleetfoot** | run speed +4 / 7 / 10% | client (spans are laid for the span build) |
+| **Arcana** | **Battlemage's Focus** | spell cost -10 / 18 / 25% | client |
+| | **Overcharge** | spell blows +8 / 14 / 20% | client; expected 1.08 / 1.14 / 1.20 |
+| | **Spellbane** | every resistance +10 / 18 / 25 | client (the saving throw) |
+| | **Shieldweaver** | your Shield spell soaks +20 / 35 / 50% | client (`hurtPlayer`'s pool) |
+| | **Arcane Echo** | a damage spell repeats at half, 10 / 16 / 22% of casts | client; expected 1.05 / 1.08 / 1.11 |
+| **Fellowship** | **Rally** | when a hall's door opens, the company heals 8 / 14 / 20% | each client, from the room's word |
+| | **Spire's Standard** | allies within 10 m +4 / 7 / 10% damage | relay (a factor while near) |
+| | **Watchfire** | blows aimed within 12 m of you are told early to the company (below) | relay |
+| | **Fallen's Due** | when an ally falls, the living deal +10 / 15 / 20% for the rest of the hall | relay |
+| | **Steadfast Line** | with three allies within 8 m, you take 5 / 10 / 15% less | client, from poses; the relay's body count applies it too |
 
-**Offers.** Three from all five families, no two from one family, never one at III. The first Ward's offers lean (2 of
-3) toward the family of the member's highest-damage share in the circle (the chart's `x`). That nudges, never decides:
-the room knows nothing of classes and should not.
+**Watchfire.** Every lord's brain commits each blow `EG_TELL_LEAD_MS` (400 ms) before its wind-up begins, whether or
+not anyone holds Watchfire, so the blow's timing never depends on who does. The holder's company sees the early
+outline drawn in Dagon's crimson, DASHED, with a blue pip on the holder. Blue on a danger shape reads as safe (WB13a
+T8), so the warning is never blue. Rank sets how much of the lead is shown: 0.15 / 0.25 / 0.35 s.
 
-## 14. Wards - checkpoints, one life, what you keep
+**Stacking.** Eight holders of one aura are not eight auras:
 
-**One life a breach.** A death in the Spire (the pose's `dd`), or an absence past 120 s, is a FALL:
+- the same aura from several holders applies the strongest, plus 2% for each other holder, at most +6% over it;
+- every Vestige's damage reduction together is at most 30%;
+- every damage factor together is at most the 1.25 bucket cap.
 
-- the fallen are cast out to the arch's landing, the gate's `gateLandingFor` (10 m before its face, turned away), at
-  half health: *The Spire casts you out.*;
-- the room keeps its dead (`egdead`, SD-ONELIFE's `_sdMarkFallen` keyed by the breach) and its door refuses them after:
-  *The Spire will not take you back.*;
-- no Resurrect in the Spire (SD-ONELIFE's reason: a body raised in place stands in a fight its death has left);
-- **no DFU death penalty**. The loss is the run. (The court runs `applyDeathPenalty` before its own branch; the Spire's
-  fall is exempt, and EG9 checks the court's path while it is there.)
+**Resonance.** Three Vestiges of one family grant that family's capstone, for the breach:
 
-**A Ward is a checkpoint.** When a Court's boss falls, the Ward lights for every living member at once, and each gets
-an `e1` **receipt** (section 19). The receipt banks:
+- **Stone, Rooted**: immune to push, and your threat doubles;
+- **Blade, Bladestorm**: every fifth melee blow strikes every foe within 3 m (relay host hits);
+- **Hunt, Deadeye**: a shaft from beyond 12 m pierces the add behind its target;
+- **Arcana, Spellweave**: every fourth damage spell costs nothing;
+- **Fellowship, Rallying Cry**: Rally's heal and every Second Wind in the company refresh when a hall's door opens.
 
-- **the depth**: the Ward joins the member's lit Wards (`players.eg_ward_max`), a start for every breach after;
-- **the circle's spoils**: rolled from the receipt's seed and thrown at the Ward like the gate's spew (section 16);
-- **embers and Marks**: paid at the claim;
-- **the board's standing** (section 17).
+**Death saves.** Divine Grace, The Hour Turns, Unbroken and the Ghost-King's Vigil (`src/systems/lootPowers.js`) are
+not timers in the Spire. In an `eg:` room each recovers at the next Redoubt taken, and its chip reads *Redoubt*. With
+them, a good build would make one life one a minute; without them, the Brass of Numidium would not be mandatory.
 
-**The tally.** Between Wards, each hall cleared adds to the company's TALLY, shown on the HUD (*Tally: 3 halls*). The
-tally is what the next Ward pays for. Halls cleared count on the board at once (section 17), but their spoils and
-embers are paid only when a Ward lights. **A fall, the tear, or a company wiped loses the tally since the last Ward.**
-That is the push of the Spire: nobody can bank alone, and the Ward lights only for the living.
+## 15. Redoubts, one life, the fallen, the Reliquaries
 
-**The rest** (`EG_WARD_REST_S` 60 s, the count still running):
+**A Redoubt is a checkpoint.** When a Court's lord falls, the Redoubt is taken for every living member at once.
+Each **earner** gets an `e1` **receipt** (section 21). An earner, in that circle:
 
-- health, magicka and fatigue restored (the room's word, each client its own body; half under Thin Wards);
-- the Vestige offer (section 13);
-- the next circle's brands shown;
-- **the way home**: a gold arch beside the stone. Stepping through ends the member's run and keeps everything. It is
-  the only way out but a fall or the tear;
-- then the stair down opens, and the muster law takes everyone left.
+- dealt at least `1/(2n)` of its damage, or
+- stood active (not idle `EG_IDLE_MS`, 60 s, in a trial) in at least three of its five halls.
 
-**Starting deeper.** A breach may start at any Ward its opener has lit (section 4). Its members must each have lit
-that Ward to be admitted. The Spire is a ratchet: every Ward lit is a door into it that stays. No carries: a member
-who has not reached the start Ward cannot be brought past it.
+The rule is the seam's `earned(f, sub)`, over the circle. An idle account pulled from hall to hall earns nothing (AUDIT
+EG0 A6). A receipt banks:
 
-## 15. Depth - the numbers that grow, and the wall
+- **the depth**: the Redoubt joins the member's taken Redoubts, this season and all time;
+- **the week's spoils** of that Redoubt, rolled from the receipt's seed and thrown at the beacon like the gate's spew
+  (section 17);
+- **Marks**, and the embers section 17 pays;
+- **a sealed Reliquary** (below);
+- **the board's standing** (section 18).
 
-**Mechanics first** (Balance-Arc: *"a band-aid is a multiplier on every foe's health"*). What grows with the circle
-*c*, in the order a company feels it:
+**The rest** (`EG_REST_S` 90 s, the count held):
 
-1. **brands**: none, then one to six (section 12);
-2. **new kinds and pieces** by band (sections 9, 10);
-3. **cadence**: a rift's wave every `max(9, 20 - 0.5(c-1))` s; the legion's cap `clamp(4 + n, 6, 14)`; a Harrier's
-   retarget shortens;
-4. **span timing**: the pieces' numbers walk from their Ward-0 values to their floors (section 9), linearly over
-   circles 1-20, then hold;
-5. **numbers, gently**: boss health `ttkRef(c)`; add health `x (1 + 0.04(c-1))`; shares `x min(1.75, 1 + 0.03(c-1))`;
-6. **fury**, for a company slow against its boss.
+- health, magicka and fatigue restored (the room's word, each client its own body; half under Thin Rest). The relay's
+  body count is restored with it, outside the mend budget;
+- the Vestige offer (section 14);
+- the next circle's decrees, shown on the beacon;
+- **the recall** of the fallen (below);
+- **the way home**: a gold arch beside the beacon. Stepping through ends the member's run, keeps everything, and
+  OPENS their Reliquaries. It and a fall are the only ways out before the tear;
+- **a respite**, at a Valkynaz's Redoubt (section 6);
+- then the stair down opens, and the descent's law takes everyone left.
 
-Bounded by **THE WIND-UP FLOOR** (section 11.2), **THE SPAN ENVELOPE** and **THE TIMED SOLVER** (section 9). No growth
-reaches past them.
+**The Reliquaries** are what a company risks. Each Redoubt taken seals one Reliquary into each earner's satchel: one
+more spoils roll at that Redoubt's tier, at twice the Panoply chance.
 
-**The bosses' clock** (`ttkRef`, at the company's reference damage, and at the trust law's cap, the gate's
-`(TTK - BUCKET_DEPTH_X) / BUCKET_RATE_X`):
+- It opens only through the way home: the end receipt with `why:'home'` carries the count, rolled from that receipt's
+  seed.
+- A fall, the tear or a wipe loses every one.
+- The HUD shows them: *Reliquaries: 4*.
+- Every Redoubt is now the question the Spire was built to ask: walk home with four, or push for a fifth. One member
+  walking home weakens the company, and that is the social tension a company of eight should feel.
 
-| circle | Ward | ttkRef | at reference | at the cap |
-|---|---|---|---|---|
-| 1 | 1 | 180 s | 3:00 | 55 s |
-| 5 | 5 | 236 s | 3:56 | 1:14 |
-| 10 | 10 | 331 s | 5:31 | 1:45 |
-| 15 | 15 | 464 s | 7:44 | 2:30 |
-| 20 | 20 | 651 s | 10:51 | 3:32 |
-| 25 | 25 | 913 s | 15:13 | 5:00 |
-| 30 | 30 | 1280 s | 21:20 | 7:02 |
+**One life, one recall.** A death in the Spire (the pose's `dd`), or 180 s gone in a trial, is a FALL:
 
-**The wall is the count.** A circle's time is its four halls, its Court, its rest and its musters. Fifteen minutes
-come back with each Ward. A model, to be measured in the field by EG's tuning pass:
+- the fallen's Reliquaries are lost, and their lord's share is retired;
+- they become a **witness** (below);
+- **THE RECALL**: the next Redoubt the living take re-admits each fallen member, ONCE a breach. They return at the
+  rest with full health. They earn nothing for the circle they were out, and their newest Vestige is lost. A second
+  fall is final: *The Spire will not take you back.*;
+- **a wipe** (no living member) ends the breach: there is no one to take the Redoubt;
+- **solo stays literally one life**: no one living can recall you;
+- **no Resurrect** in the Spire (SD-ONELIFE's reason: a body raised in place stands in a fight its death has left).
+  **No DEATH-PENALTY** either: that is the port's own (Ledger A, AN ONLINE DEATH COSTS A TENTH OF THE PURSE), and the
+  world host's respawn runs it before it reads the realm. EG10 exempts a Spire fall there.
 
-- **a company at reference damage**: circle 1 takes about 16 minutes and drains slowly. The count runs out around
-  **Ward 7-8 (Hall 35-40)**;
-- **a company at twice reference**: banks to the 30-minute cap early and breaks even around circle 15. It reaches
-  about **Ward 18-20 (Hall 90-100)**;
-- **a company at the cap all fight** (the strongest builds, perfect play, and what a modified client could at most
-  deal): about **Ward 25-30**.
+This reads Mac's *"Checkpoints"* as what a death costs, and *"one life on the line"* as the company's: a fall costs the
+fallen their spoils at risk and the company a member until the next Redoubt. Losing the whole company still costs the
+run. The purist keeps a mark of their own: a company that takes Redoubt 10 with no fall since its first hall holds the
+title *the Unfallen* and a flame on its board row (section 18).
 
-So the board's top lies past Hall 100, where the Wellhead never changes again, and no law sets a ceiling. The trust law
-sets the cap, the count sets the pace, and the floor keeps every blow readable. How far a company gets is how well it
-plays.
+**The witness.** The fallen stay in `eg:<b>` as witnesses:
 
-## 16. Spoils, the Panoply and the honours
+- no body and no blows (the room already refuses them);
+- the camera rides a living member's relayed pose over the hall built from the spec;
+- a ping every 10 s, a blue mark the living see;
+- **a bequest**: at the fall, the fallen names one of their Vestiges. It joins the living's offers at the next
+  Redoubt as a fourth card;
+- **forsaking**: a witness may forsake the breach. Their end receipt is minted, `eg_live` is cleared, and the recall
+  is forfeited. Nobody is held in a run they no longer want.
 
-**At every Ward**, to each living member, at the claim of their `e1` receipt:
+**Starting deeper.** A breach may start at any Redoubt its opener may start at:
+
+- any Redoubt they have taken this season;
+- or, until they take one this season, `floor(best / 2)` of their all-time best.
+
+Every member must be able to start there too, or the admit is refused: *You have not taken Redoubt 12 this season.*
+No carries: a member who has not reached the start cannot be brought past it. The ratchet is per season, so a new
+season's first breaches start at half depth and the season's boards start level.
+
+## 16. Depth - what grows, and the wall
+
+**Mechanics first, and nothing faster.** Balance-Arc: *"a band-aid is a multiplier on every foe's health"*. Mac at
+WBX: *"I dont think making mechanics faster is the play"*. What grows with the circle *c*, in the order a company
+feels it:
+
+1. **decrees**: none, then one to four, then ranks (section 13);
+2. **new kinds, pieces and lords**, by band (sections 7, 10, 11, 12);
+3. **more at once**: a rift's wave every `max(9, 20 - 0.5(c-1))` s; the legion's cap `clamp(2 + ceil(1.5n) +
+   floor((c-1)/5), 3, 14)`; spans combining pieces with fewer islands;
+4. **the Wellhead's rites**: past circle 20, one rite a circle, from four:
+   - **The Wellhead Erupts**: vents in every court;
+   - **Clan Feud**: a Court's lord comes with a second lord at 0.6 health;
+   - **Kyn Muster**: every hall begins with a Kynval squad;
+   - **Hungering Dark**: the rest heals half and Rally a third;
+5. **numbers, gently**: lord health `ttkRef(c)` (x1.07 a circle, x1.03 past 20); add health `x (1 + 0.04(c-1))`;
+   shares `x (1 + 0.03(c-1))` within the 1.5 cap;
+6. **fury**, for a company slow against its lord: waves and chained blows, never speed (section 12).
+
+All of it is bounded by THE WIND-UP FLOOR, THE UNION FLOOR, THE CHECK CLASS and THE ERRAND FLOOR (section 12), and THE
+ENVELOPE and THE TIMED SOLVER (section 10). Nothing shortens a wind-up, a beat, a crumble or a period below its value
+at Redoubt 0.
+
+**The lords' clock** (`ttkRef`, at the company's reference damage and at the trust law's cap, the gate's `(TTK -
+BUCKET_DEPTH_X) / BUCKET_RATE_X`, before and with the Vestiges' 1.25):
+
+| circle | Redoubt | ttkRef | at reference | at the cap | at the cap, Vestiges 1.25 |
+|---|---|---|---|---|---|
+| 1 | 1 | 180 s | 3:00 | 55 s | 43 s |
+| 5 | 5 | 236 s | 3:56 | 1:14 | 58 s |
+| 10 | 10 | 331 s | 5:31 | 1:45 | 1:23 |
+| 15 | 15 | 464 s | 7:44 | 2:30 | 1:59 |
+| 20 | 20 | 651 s | 10:51 | 3:32 | 2:49 |
+| 25 | 25 | 755 s | 12:35 | 4:07 | 3:16 |
+| 30 | 30 | 875 s | 14:35 | 4:47 | 3:48 |
+
+**The wall is the count and the last word.** The model below is AUDIT EG0's simulation (lane 2), re-run under the
+revised rules:
+
+- the count starts when the first hall wakes, and the rest holds it;
+- lord health grows x1.03 a circle past 20;
+- rifts hold 12 s each;
+- at most four decrees;
+- the Vestiges' 1.25.
+
+Its assumptions:
+
+- a trial is a fixed part (traversal and errands: 55 s, growing with pieces and decrees) plus a damage part (70 s at
+  reference, growing with add health, cadence and decrees, over the company's damage);
+- 29 s of gather, descent and stair a hall;
+- 26 s of shields and approach a Court;
+- a 90 s rest;
+- 80% uptime.
+
+Company size drops out, since every health is counted per fighter. EG21 measures it in the field.
+
+| company | last Redoubt in one breach from the first hall | stopped by | with the count alone (no last word) |
+|---|---|---|---|
+| at reference damage | about 5 (Hall 25) | the count, at about 100 min | 5 |
+| at twice reference | about 11 (Hall 55) | the last word | 14 |
+| at the cap (3x) | about 12 (Hall 60) | the last word | 20 |
+| at the cap with Vestiges | about 14 (Hall 70) | the last word | 32 |
+
+So from the first hall, one breach reaches the Soul Cairn at reference and the edge of the Shade at the cap. **The
+last word, not the count, stops a strong company.** **Starting deeper is how the Wellhead is reached.** A company that
+starts at its deepest Redoubt gets a fresh thirty minutes at depth, and the count alone stops a cap company around
+Redoubt 20-32. That is where the board's deepest rows will stand. No law sets a ceiling: the trust law sets the cap,
+the count sets the pace, and the floors keep every blow readable. How far a company gets is how well it plays.
+
+## 17. Rewards and the economy
+
+**What a Redoubt pays**, to each earner, at the claim of their `e1` receipt. **A Redoubt's number pays once per
+account per arena week** (the season's weeks, `arenaSeasonOf`). Taken again in the same week it pays gold alone. This
+is also the weekly reason to come back. Without it, a company with keys could farm one Redoubt daily (AUDIT EG0 G6).
 
 | what | how much | its law |
 |---|---|---|
-| **Deadlands Embers** | `1 + floor(w/5)`: Wards 1-4 one, 5-9 two, 10-14 three... | the Broker's currency (`BROKER_PRICES`) |
-| **Marks** | 20 | a new faucet `MARKS_FAUCETS.eg`, inside `MARKS_COMBAT.perDay` (150) shared with the gate, the raids and the serpent |
-| **a guild's deed** | 25 to the treasury, when three members of one guild light the same Ward | the gate's deed law, at most 4 a guild a day |
-| **spoils** | rolled on the receipt's seed, thrown at the Ward: `rollEgSpoils(seed, level, w)` | below |
+| **spoils** | rolled on the receipt's seed and thrown at the beacon: `rollEgSpoils(seed, level, w)` | below |
+| **a Reliquary** | sealed; opens at the way home | section 15 |
+| **Marks** | 20 | a new faucet, `MARKS_FAUCETS.eg`, inside `MARKS_COMBAT.perDay` (150), shared with the gate, the raids and the serpent (`src/net/marksLaw.js`) |
+| **a guild's deed** | 25 to the treasury, when three members of one guild, each 7 days in it (`tenureS`), take the same Redoubt | the gate's deed law, at most 4 a guild a day |
+| **Deadlands Embers** | at a Valkynaz's Redoubt, `1 + floor(w/10)`; and 1 for each Redoubt taken for the first time this season | the Broker's currency (`BROKER_PRICES`, `src/systems/sigilBroker.js`) |
 
-**The spoils** (`systems/egSpoils.js`, `rollSdSpoils`' order, every new draw after the last one SET6's law allows):
+Embers are paid where they are earned, not by the hour. A gate pays one or two. The insignia (30 and 50 embers, Mac's
+*"expensive and sought after"*) stay a season's work, not a week's.
+
+**The spoils** (`systems/egSpoils.js`, in `rollSdSpoils`' order; every new draw after the last, as SET6's law requires):
 
 - gold;
-- one Rare or Legendary piece. The Legendary's chance is 20% at Ward 1, +4% a Ward, to 80%;
+- one Rare or Legendary piece; the Legendary's chance is 20% at Redoubt 1, +3% a Redoubt, to 65%;
 - one to three `magicOrBetter`;
-- **a Panoply piece**: 1 in `max(4, 12 - floor(w/2))`, so 1 in 12 at Ward 1 and 1 in 4 from Ward 16; **1 in 3** at a
-  Valkynaz's Ward;
-- the boss's **card** (`bossCardRoll('spire')`, 200 per mille, the gate's rate). Each of the thirteen Kyn has its own
-  card (CARDS9's law: a boss's own card);
+- **a Panoply piece**: 1 in `max(4, 12 - floor(w/2))`, so 1 in 12 at Redoubt 1 and 1 in 4 from Redoubt 16;
+- **the lord's card**: `bossCardRoll(bossKey, rolls)`, each lord its own key in `BOSS_CARDS` (`src/systems/bossCards.js`,
+  which holds one card per kind today: gate, serpent, abyss), at `BOSS_CARD_PER_MILLE` 200, the gate's rate;
 - sockets, gems and the technique pass, as the gate's.
 
-A Valkynaz's Ward rolls its spoils **twice** (two seeds from the receipt's).
+A Valkynaz's Redoubt rolls its spoils **twice**, two seeds from the receipt's. At 1 in 3 each, a Panoply piece comes
+5 times in 9.
 
-**THE BATTLEMAGE'S PANOPLY** is the war-gear the Imperial Battlemages wore in the Spire, taken by the Kyn: nine Aetheric
-pieces of Mithril make, light enough for a spellsword. It is a Sigil Set: each piece's sigil names the set, and the set
-grows by its lowest piece (`Sigil-Sets.md` section 5).
+**The pity count.** The service counts each account's Panoply misses (`eg_pity`). After 10 rolls without a piece, the
+next roll gives one.
+
+**The sink.** The Sigil Broker sells one Panoply piece of the buyer's choice a week, for 20 Deadlands Embers, under
+her stock law (one a character a week).
+
+**THE BATTLEMAGE'S PANOPLY**: the war-gear the Imperial Battlemages wore in the Spire, taken by the Kyn. Nine Aetheric
+pieces of Mithril make, light enough for a spellsword. It is a Sigil Set: each piece's sigil names the set, and the
+set's stage is its lowest worn piece's (`Sigil-Sets.md` section 2), levelled as a whole (section 5).
 
 | piece | template |
 |---|---|
@@ -912,177 +1316,313 @@ grows by its lowest piece (`Sigil-Sets.md` section 5).
 | The Battlemage's Gauntlets | Gauntlets |
 | The Battlemage's Greaves | Greaves |
 | The Battlemage's Boots | Boots |
-| The Spire-Ward | Kite Shield |
+| The Spire-Shield | Kite Shield |
 | The Spire-Saber | Saber |
 
 | pieces | ability | Faint -> Ascendant |
 |---|---|---|
-| 2 | **Ward of the Spire**: every resistance and your magicka | +5 -> +15; +10 -> +30 magicka |
+| 2 | **Battlemage's Bearing**: every resistance, and your magicka | +5 -> +15; +10 -> +30 magicka |
 | 4 | **Battlemage's Discipline**: a spell cast arms your next weapon blow with its element; a weapon blow returns some of your last spell's cost | +20% -> +50% of the blow; 5% -> 15% of the cost |
-| 6 | **The Last Ward**: a blow that takes you under 20% (never a killing blow) raises a ward that soaks part of your max health for 6 s, half of it shared with allies within 8 m; then it must recover | 15% -> 40%; recovers 240 -> 120 s |
+| 6 | **Battlemage's Reprieve**: a blow that takes you under 20% (never a killing blow) raises a shield that soaks part of your max health for 6 s, half of it shared with allies within 8 m; then it must recover | 15% -> 40%; recovers 240 -> 120 s |
 
 **No Gilded piece.** Mac, of the Hourlock: *"The most rare and gilded item in the entire game"*. GILDED1 made it the
-one. The Spire's top drop is the Panoply.
+one, and the Spire's top drop is the Panoply.
 
-**The honours** (service-recorded, `players.eg_honours` bits beside `eg_ward_max`; added as `titles.js` adds every
-honour: the id in `TITLES`/`AURAS`, the branch in `titlesHeld`/`aurasHeld`, the words in `playerBadge.js`):
+**The honours** (service-recorded: `players.eg_honours` bits, beside the deepest Redoubts). They are added as
+`server-account/src/titles.js` adds every honour:
+
+- the id in `TITLES`/`AURAS` (in `src/net/identityToken.js`, which is in the relay bundle, so this takes a relay
+  version);
+- the branch in `titlesHeld`/`aurasHeld`;
+- the words in `playerBadge.js`.
 
 | at | title | aura |
 |---|---|---|
-| Ward 2 (Hall 10) | **Spirewalker** | - |
-| Ward 5 (Hall 25, the first Valkynaz) | **Ward-Lighter** | - |
-| Ward 10 (Hall 50) | **Kynbane** | **Wardlight** (gold-white motes) |
-| Ward 15 (Hall 75) | **Battlemage of the Spire** | - |
-| Ward 20 (Hall 100) | **Wellhead-Walker** | **The Burning Stair** (falling embers) |
-| a season's top ten (section 17) | **Spire Champion**, held through the next season | - |
-| the first company ever to light Ward 10 | **First of the Spire** | a unique Wardlight |
+| Redoubt 2 (Hall 10) | **Spirewalker** | - |
+| Redoubt 5 (Hall 25, the first Valkynaz) | **Beacon-Lighter** | - |
+| Redoubt 10 (Hall 50) | **Kynbane** | **Beaconlight** (gold-white motes) |
+| Redoubt 10 with no fall in the company since its first hall | **the Unfallen** | - |
+| Redoubt 15 (Hall 75) | **Battlemage of the Spire** | - |
+| Redoubt 20 (Hall 100) | **Wellhead-Walker** | **The Burning Stair** (falling embers) |
+| a season's top ten on the Descent, any bracket (section 18) | **Spire Champion**, held through the next season | - |
+| the first company ever to take Redoubt 10 | **First of the Spire** | **Firstlight** |
 
-*First of the Spire* is granted as *Hour's First* was: a list in the service's config and the mailbox. Titles are
-earned, never bought: the Broker's insignia stay the gate's.
+*First of the Spire* is granted as *Hour's First* was: a list in the service's config, and the mailbox. Titles are
+earned, never bought. The Broker's insignia stay the gate's.
 
-## 17. The boards and the herald
+## 18. The boards and the herald
 
-**The boards** (`/v1/eg/board`, `egBoardOf`; the season is the arena's, `arenaSeasonOf`, eight weeks; rows from
-`topWithMe` and names from `boardNamesOf`, `iliacBoardOf` being the precedent):
+**The boards** (`/v1/eg/board`, `egBoardOf`). The season is the arena's (`arenaSeasonOf` in `src/net/arenaLaw.js`,
+eight weeks). Rows come from `topWithMe`, which EG14 exports from `server-account/src/arena.js` (it is private today),
+and names from `boardNamesOf`; `iliacBoardOf` is the precedent.
 
 | board | who | ranked by | the row |
 |---|---|---|---|
-| **The Descent** | companies of 2-8 | the deepest hall cleared in one breach this season, then the fewest seconds from the opening to that hall's door | the company's names (up to 8), the start Ward, the band |
-| **Alone** | companies of one | the same | the name, the start Ward |
-| **The Hall of Wards** | every account, all time | the deepest Ward ever lit | the name, the Ward, when |
+| **The Descent** | three brackets: Alone (1), the Few (2-4), the Company (5-8) | the deepest hall cleared in one breach BEGUN AT THE FIRST HALL, this season; then the fewest seconds from the first hall's wake to that hall's door | the company's names (up to 8), the band, the Unfallen's flame |
+| **The Depths** | every account | the deepest hall cleared this season, from any start | the name, the hall, the start Redoubt |
+| **The Deepest Redoubts** | every account, all time | the deepest Redoubt ever taken | the name, the Redoubt, when |
 
-A hall cleared counts when the relay clears it (sections 6 and 18), whether or not the next Ward was lit. The board
-measures depth. The Wards pay. A row shows its start Ward, so a Descent that began at Ward 8 says so. The Descent's and
-Alone's top ten at a season's end hold **Spire Champion** for the season after (`iliacHonoursOf`'s pattern).
+- **The Descent is "how far with one life"**: the same thirty minutes and the same first hall for every company. The
+  start-Redoubt ratchet cannot buy a row there (AUDIT EG0 A12). The Depths is the ratchet's board.
+- **Clearing**: a hall counts when the relay clears it (sections 7 and 19), whether or not the next Redoubt was taken.
+- **Who counts**: a company's size counts its earning entrants. The receipt carries `co` (the company's subs), and a
+  company's row takes the deepest `h` of its members.
+- **Champions**: each bracket's top ten at a season's end hold *Spire Champion* through the next season
+  (`iliacHonoursOf`'s pattern).
 
-**The herald** (`net/egHerald.js`, pure builders like `src/net/gateHerald.js`; the gate's webhook, its role as the
-fallback the Hour's and the serpent's use, no ping):
+**The herald** (`net/egHerald.js`: pure builders, as `src/net/gateHerald.js` is). It uses the gate's webhook and the
+gate's role as the fallback the Hour's and the serpent's use, with no ping:
 
-- a company lighting Ward 10, 20, 30...: *<opener>'s company lit the Tenth Ward of the Battlespire (Hall 50) in
+- a company taking Redoubt 10, 20, 30...: *<opener>'s company took Redoubt 10 of the Battlespire (Hall 50) in
   1:42:10.*;
-- a new top of the Descent;
+- a new top of the Descent in any bracket;
 - *First of the Spire*.
 
 An opening is never heralded: a company's breach is its own.
 
-## 18. Integrity - what the relay judges
+## 19. Integrity - what the relay judges
 
-The gate's trust law, kept whole:
+The gate's trust law, kept whole, and where it was not enough, widened:
 
-- **blows on the Kyn and the legion**: `applyHit`'s hand and purse, the bucket by the level claim times the Vestiges'
-  `bucketX`, a melee pose within reach, from the hall's floor;
-- **the Kyn's blows on members**: ONE judge for every shape (`net/bossRef.js` widened). The gate, the Remnant and the
-  serpent each have a judge of their own (`judgeGate`, `judgeRemnant`, `judgeSerpent`), but every Spire blow is a
-  telegraph shape (`TELEGRAPH_KIND`) stamped on its frame (`shapeStamp`). So `judgeShapes` tests any blow against the
-  pose trails the relay holds (`posAt`/`posAfter`, `deepIn`, `BODY_AFTER_MS`) and feeds `bossBody` (`bodyStruck`,
-  `bodyCensus`). The Spire runs it from the first slice that has a blow;
-- **a span's end**: `spanFair(trail, spec)`. The member's pose trail across the span must hold no step faster than the
-  fastest legal move (the run with Fleet III and the Jump spell, x1.25 slack) and no stretch outside the course's
-  corridor (the spec's platforms, plus the gusts' and the rails' reach). An unfair trail opens no door, and its
-  measures ride the receipt (`m`);
-- **a hall cleared**: only the relay says so (the legion broken, the lock solved, the champion or the boss fallen, a
-  fair end);
-- **the board and the Wards**: from receipts alone. The service never takes a client's word for a depth;
-- **the Sigil**: the service's count (section 4).
+- **Blows on lords and the legion**: `applyHit`'s hand and purse, the bucket by the level claim times the Vestiges'
+  capped factor, a melee pose within reach, from the hall's floor. The blow's kind `r` is the client's word (`HIT_KINDS`),
+  so no Vestige's condition is ever read from it: the lean reads it, which changes no damage.
+- **The lords' blows on members**: ONE judge for every shape. `src/net/bossRef.js` holds a judge for each boss
+  (`judgeGate`, `judgeRemnant`, `judgeSerpent`).
+  - Every Spire blow travels with a FULL shape stamp, its kind and every number, which is new. The Remnant's
+    `shapeStamp` carries only what its marks changed.
+  - So one `judgeShapes` tests any blow against the pose trails the relay holds (`posAt`/`posAfter`, `deepIn`,
+    `BODY_AFTER_MS`) and feeds `src/net/bossBody.js` (`bodyStruck`, `bodyCensus`).
+- **A span's end**: `spanFair`.
+  - The relay's body trails (`BODY_TRAIL_MS` 2000, `BODY_TRAIL_MAX` 24) are seconds long, and a crossing takes tens of
+    seconds. So `spanFair` is an ONLINE accumulator the room keeps per member: the fastest step, air time since the
+    last support, the last checkpoint.
+  - It is checkpointed. After a wake, it restarts as "fair from the next island".
+  - A pose within 0.3 m of a platform's top must lie inside that platform's footprint at that time (`stepAt` and
+    `beatStands` on the anchored clock).
+  - No airborne stretch may pass `EG_AIR_MAX_S` (2.5 s).
+  - The crossing must take at least `EG_CROSS_MIN(spec)`, from the solver.
+  - Poses between a member's `down` and their next `here` are never judged; a pose sent mid-stair belongs to no hall.
+  - An unfair trail opens no door, and its measures ride the receipt (`m`).
+- **The descent**: `down` is accepted only within 3 m of the door.
+- **A hall cleared**: only the relay says so (the legion broken, the lock solved, the champion or the lord fallen, a
+  fair end).
+- **The board and the Redoubts**: from receipts alone. The service never takes a client's word for a depth.
+- **The key**: the service's balance and stake (sections 5 and 21).
+- **The body count**: the relay's count applies Bastion, Challenger's Oath and Steadfast Line itself, and the rest
+  restores it, so holders do not drain their budgets or skew the measures staff read.
 
-A modified client can still refuse to take damage (a player owns their body). Under `BOSS_BODY` enforcement the relay's
-count fells it as it fells a gate's fighter. The Spire's board is measured with enforcement on: EG13 turns it on for
-`eg:` rooms when the board opens, whatever the gate's setting is.
+A modified client can still refuse to take damage (a player owns their body). Under `BOSS_BODY` enforcement, the
+relay's count fells it as it fells a gate's fighter. The Spire's boards are measured with enforcement on: EG14 turns it
+on for `eg:` rooms when the boards open, whatever the gate's setting.
 
-## 19. The wire
+## 20. Failure and recovery
 
-**The room family.** `eg:<16 hex>`, the breach id the service mints with the open order. Its law:
+A breach is a three-hour instance on infrastructure that restarts. Every failure has a rule (AUDIT EG0 A5, A10, A17).
 
-- `isEgRoom` (`/^eg:[0-9a-f]{16}$/`) in `net/egLaw.js`;
-- the Worker's prefix gate (a `startsWith('eg:')` line beside `gate:` and `sd:`): an unknown key gets no object;
-- its tick, `_egTick`, in the `alarm()` chain before `_alarmRest`, stepping every `BRAIN_TICK_MS` (250) while a hall
-  lives;
-- its state checkpointed every `CHECKPOINT_MS` (2 s), the gate's.
+**A deploy.** `relay-deploy.yml` drops every socket and restarts every Durable Object. The client deploys on every
+merge; the relay waits out the siege blackout. So:
 
-**Orders**, signed by the service with `IDENTITY_PRIVATE_KEY`, checked by the relay with `verifyOrder` against
-`IDENTITY_PUBLIC_KEY`, spent once in room storage (CARDS6's stake orders are the precedent):
+- **THE DRAIN**: the relay deploy waits on `/v1/eg/live`, as it waits on `/v1/seats/sieges/live`.
+  - Once the deploy sets the service's drain flag, opens are refused: *The Spire is closed for a while.*
+  - The deploy waits until no breach is live, or the last word of the longest has passed.
+  - A `force` deploy voids every live breach. Their stakes are returned, and their Redoubts taken stay taken.
+- **A LAW PIN PER BREACH**: the breach records `egv`, the spec law it was opened under.
+  - Both sides keep `EG_LAWS` (the current law and the one before) for `egHallOf` and `courseOf`. A client deployed
+    ahead of the relay still draws the breach's own halls.
+  - Frames are self-describing (a full shape stamp), so a brain's tuning needs no pin.
+  - A woken relay that does not know a breach's `egv` ends it with `why:'void'`: the stake is returned, and the
+    Redoubts taken stay.
+
+**A restart or an eviction.** A Durable Object can be evicted or restarted at any time.
+
+- **Checkpoints**: the gate's `CHECKPOINT_MS` (2 s), and also a forced checkpoint at the open, every admission, every
+  beat change, a fall, a pick and the end, and at a Redoubt BEFORE its receipts go out.
+- **Deterministic receipts**: their seeds come from the breach's seed, the member and the Redoubt, and they are kept,
+  so a re-woken room sends the same receipt and never a second roll.
+- **Storage, not memory**: offers, picks, spent order ids, the fallen, the witnesses, the Reliquaries, the `spanFair`
+  accumulators and the Athenaeum's hall all live in storage (hibernation keeps nothing else).
+- **Time survives the restart**: a member's absence is counted from `max(lastSeen, wakeAt)`, and any beat gap over
+  `EG_GAP_MS` (2 s) is added to the count and to the hall's timers.
+
+**A dropped socket.** A closed socket would drop its body from the census, and returning at the arrival plate would
+dodge a 999% blow. So the body stays at its last pose for the absence window, takes what lands there, and resumes
+there.
+
+**A reload.** Saves are refused inside (the court's law, WBX W6), so a reloaded page boots outside. `/v1/eg/keys`
+answers the account's live breach, and the world host offers *Return to the Spire*: a hello as an entrant (no new
+order), into the current hall's arrival plate.
+
+**Unknown rooms.** An `eg:<16hex>` the hub never opened writes nothing and arms no alarm, except a void (section 21),
+which writes its one tombstone.
+
+**The cost.** One Durable Object per breach, awake for up to three hours. So:
+
+- the beat is 250 ms only while a trial runs, 1 s otherwise, and none while the arch rises;
+- the hub enforces `EG_LIVE_MAX` (64) live breaches at once;
+- every breach ends at the last word.
+
+## 21. The wire
+
+**The room family.** `eg:<16 hex>`, the breach id the service mints with the open order.
+
+- **The key law**: `isEgRoom` (`/^eg:[0-9a-f]{16}$/`) in `net/egLaw.js`.
+- **The Worker's prefix gate**: a `startsWith('eg:')` line beside `gate:` and `sd:`, so an unknown key mints no
+  object.
+- **The tick**: `_egTick`, in the `alarm()` chain before `_alarmRest`.
+- **Presence**: the room is each entrant's presence room for the whole breach (`roomIdentity` `{kind:'eg', b}`).
+
+**Opening runs through the hub** (AUDIT EG0 A4). The hub holds every client's socket and every party's roster.
+
+1. The client sends `{t:'eg', k:'open', z, site}` to the hub.
+2. The hub verifies the order, freezes the company from its own `party:` record, and checks `EG_LIVE_MAX` and the
+   drain.
+3. It forwards the order, the company and the arch's site to `eg:<b>` by internal fetch (`EG_INTERNAL_OPEN`), the
+   DO-to-DO pattern `_wdunKinOf` uses.
+4. It keeps `eglive:<sub>` for each member, and fans the arch to the company on the party channel.
+5. Receipts for a member with no socket in the room are held by the hub as `egrc:<sub>` for their next hello, under
+   the gate's receipt law (the `gaterc` sweep, widened by one prefix).
+
+**Orders**, signed by the service with `IDENTITY_PRIVATE_KEY` and checked by the relay with `verifyOrder` against
+`IDENTITY_PUBLIC_KEY` (`src/net/identityToken.js`). Every order already carries `i` and `e` (issued and expires, at
+most `ORDER_TTL_S` 60 s apart). `egopen` and `egadmit` join the frozen `ORDER_KINDS`, which is a relay-bundle edit and
+a version. Their fields are `EG_ORDER_FIELDS`, exclusive as `STAKE_FIELDS` are, so no other kind carries them and they
+carry no other kind's. The first draft's `st` is a siege pass field (`SIEGE_PASS_FIELDS`) and would have been refused.
 
 | order | fields | life |
 |---|---|---|
-| `o:'egopen'` | `b` (the breach id), `s` (the opener's sub), `st` (the start Ward), `i` (an order id) | 120 s |
-| `o:'egadmit'` | `b`, `s` (the member's sub), `i` | 60 s |
+| `o:'egopen'` | `s` (the opener's sub), `eb` (the breach id), `ez` (the order id, `[a-z0-9]{16,32}`), `ew` (the start Redoubt), `i`, `e` | 60 s |
+| `o:'egadmit'` | `s` (the member's sub), `eb`, `ez`, `ew`, `i`, `e` | 60 s |
 
-**The hub's route.** `EG_INTERNAL_COMPANY` (`/internal/eg/company`): body `{sub}`, answer `{members: [sub...]}`, the
-opener's party's strict roster, or the opener alone. Asked once, when the room accepts the open order.
+The room checks `eb` against its own key, `s` against the hello's subject, `ew` against the breach's, and spends `ez`
+once.
+
+**The stake** (AUDIT EG0 A1; CARDS6's void law). The key is never returned by a clock:
+
+- **Open** (`/v1/eg/open`) is idempotent on the client's request id `rq`. A crashed client asking again gets the same
+  order back. One conditional `UPDATE ... RETURNING` (the insignia-spend pattern) takes one key, writes the stake
+  `eg_stakes(ez, account, b, until, state)` and sets `eg_live`.
+- **SPENT**: on any `e1` naming its `ez`, or once its `until` (the breach's whole life, about 3 h 21 min) passes.
+- **RETURNED**: only on a relay-signed **void** (`e1`, kind `'v'`). `eg:<b>` mints a void for an order it never
+  accepted. It writes the order spent first, as `_holdemVoid` does, so it can never accept it after.
+- **The tombstone**: after the end the room keeps `egdone` for `EG_VOID_MAX_S` (7 days) and refuses older voids (the
+  `HOLDEM_STAKE_VOID_S` precedent).
+
+**`eg_live`** (AUDIT EG0 A2) is `{b, until}`, `until` being the stake's. `/v1/eg/open` and `/v1/eg/admit` each write
+it in one conditional `UPDATE` (`WHERE eg_live IS NULL OR b = ? OR until < now`). An end receipt or a void clears it,
+and a lapsed one counts as clear. No lost receipt can lock an account out.
 
 **The arch on the cell.** The opener's client says the arch on its world cell (`{t:'eg', k:'arch', b, x, z, yaw, px,
-py, riseAt, openAt, o}`) on full frames while within 600 m (the beacon's reach). Peers stand it from it, as
-`portalWire` rides a peer's frame. The relay reads none of it. Admission never depends on seeing it.
+py, riseAt, openAt, o}`) on full frames while it stands there, as `portalWire` rides a peer's frame. Peers stand the
+arch from it until the open window ends. The relay reads none of it, and admission never depends on seeing it.
 
-**Frames** (`{t:'eg', k, ...}`, `EG_KINDS` / `EG_OUT_KINDS` in `net/wire.js`, each with its validator):
+**Frames** (`{t:'eg', k, ...}`; `EG_KINDS` and `EG_OUT_KINDS` in `src/net/wire.js`, each with its validator):
 
 | frame | way | what |
 |---|---|---|
-| `{k:'open', z}` | opener -> room | the open order |
-| `{k:'in', z, lv}` | member -> room | the admit order and the level claim (1-60) |
-| `{k:'st', ...}` | room -> all | the breach: seed, `EG_SPEC`, hall, kind, beat (arrival, gather, trial, door, muster, rest), the count's end, the tally, the company (each `m1..`: alive, fallen, home), the brands |
-| `{k:'wake', at}` | room -> all | the trial begins |
-| `{k:'door', at, until}` | room -> all | the door opens; the muster ends |
-| `{k:'down'}` | member -> room | stepped through the door |
-| `{k:'hit', q, d, r}` / `{k:'ahit', i, q, d, r}` | member -> room | a blow on the boss / on add `i` |
-| `ad`, `amv`, `aatk`, `ah`, `adie` | room -> all | the legion (the Legion-Lord's) |
-| `{k:'atk', i, a, sh, at}` | room -> all | a boss blow: the body, the attack, its stamped shape, when it lands |
-| `{k:'tell', i, a, sh, at}` | room -> those near a Watchfire holder | the blow told early (section 13) |
-| `hp`, `ph`, `fury`, `fell` | room -> all | the boss's bar, phase, fury and fall |
+| `{k:'open', z, site}` | opener -> hub | the open order and the arch's site |
+| `{k:'in', z, lv}` | member -> room | the admit order and the level claim (frozen at the first admission) |
+| `{k:'here', h}` / `{k:'down'}` | member -> room | arrived in hall `h` / stepped through the door |
+| `{k:'st', ...}` | room -> all | the breach: seed, `egv`, hall, kind, slot, twist, beat, the count's end, the company (each `m1..`: alive, witness, home, forsaken), each member's Reliquaries, the decrees, the arch's site |
+| `{k:'wake', at}` / `{k:'door', at, until}` | room -> all | the trial begins / the door opens and the descent ends |
+| `{k:'hit', q, d, r}` / `{k:'ahit', i, q, d, r}` | member -> room | a blow on the lord / on add `i` |
+| `ad`, `amv`, `aatk`, `ah`, `adie` | room -> all | the legion (the Legion-Lord's frames) |
+| `{k:'atk', i, a, sh, at, f}` | room -> all | a lord's blow: the body, the attack, its full shape, when it lands, a feint flag |
+| `{k:'tell', i, a, sh, at}` | room -> a Watchfire holder's company | the blow told early (section 14) |
+| `hp`, `ph`, `fury`, `fell` | room -> all | the lord's bar, phase, fury and fall |
 | `{k:'pz', ...}` | member -> room | an Athenaeum turn (the Orrery's `SD_PZ_*` bounds) |
-| `{k:'ward', w}` | room -> all | the Ward lit |
-| `{k:'rcpt', r}` | room -> one | that member's `e1` receipt |
-| `{k:'offer', v:[id,id,id]}` / `{k:'pick', v}` | room -> one / one -> room | the Vestiges |
+| `{k:'redoubt', w}` | room -> all | the Redoubt taken |
+| `{k:'rcpt', r}` | room -> one | that member's `e1` |
+| `{k:'offer', v:[...]}` / `{k:'pick', v}` | room -> one / one -> room | the Vestiges |
+| `{k:'surplus', use}` | member -> room | a Surplus spent (a fourth card, or a reroll) |
+| `{k:'respite', y}` | member -> room | a vote for a respite |
+| `{k:'ping', x, z}` / `{k:'bequest', v}` / `{k:'forsake'}` | witness -> room | the witness's acts |
 | `{k:'home'}` | member -> room | the way home |
-| `{k:'end', why}` | room -> all | why: `'tear'` (the count spent), `'gone'` (every member out) or `'last'` (the last word) |
+| `{k:'void', z}` | client -> room | an order never accepted, asked to be voided |
+| `{k:'end', why}` | room -> all | why: `'tear'`, `'gone'`, `'last'` or `'void'` |
 
-**The receipt** `e1` (`net/egReceipt.js`, `mintEgReceipt`/`verifyEgReceipt`, signed by `GATE_SIGNING_KEY` as every
-relay receipt is). Two kinds:
+**The receipt** `e1` (`net/egReceipt.js`: `mintEgReceipt`/`verifyEgReceipt`, signed by `GATE_SIGNING_KEY` as every
+relay receipt is):
 
 | kind | claims |
 |---|---|
-| `k:'w'`, a Ward lit | `b`, `w` (the Ward), `h` (the hall), `s` (the sub), `c` (the seed), `x` (the share dealt), `t` (seconds since the opening), `n` (the company's size), `st` (the start Ward), `vs` (the Vestiges), `m` (bossRef's measures), `z` (the open order's id) |
-| `k:'x'`, the member's end | `b`, `h` (the deepest hall cleared), `s`, `t`, `n`, `st`, `why` (`'fall'`, `'home'`, `'tear'` or `'empty'`), `z` |
+| `k:'w'`, a Redoubt taken | `b`, `w` (the Redoubt), `h` (the hall), `s` (the sub), `c` (the seed), `x` (the share dealt), `t` (seconds since the first hall woke), `n` (earning entrants), `st` (the start Redoubt), `vs` (the Vestiges), `m` (the measures), `z` (the order id), `co` (the company's subs) |
+| `k:'x'`, the member's end | `b`, `h` (the deepest hall cleared), `s`, `t`, `n`, `st`, `co`, `rl` (Reliquaries opened, with `why:'home'`), `c` (their seed), `why` (`'fall'`, `'home'`, `'tear'`, `'forsake'`, `'empty'` or `'void'`), `z` |
+| `k:'v'`, a void | `b`, `z`, `s` (the opener) |
 
-The opener gets a `k:'x'` even if nobody entered. It settles the open order's hold, so a raised but empty breach keeps
-its Sigil spent.
-
-**The account service** (EG2, EG13):
+**The account service** (EG2, EG8, EG14):
 
 | route | does |
 |---|---|
-| `/v1/eg/sigils` | the count, for restacking |
-| `/v1/eg/find` | a dungeon's find: the tier, the roll, the cap |
-| `/v1/eg/open` | spends one, holds it, signs `egopen`, writes `eg_live` |
-| `/v1/eg/admit` | checks the handle, the start Ward and `eg_live`; signs `egadmit` |
-| `/v1/eg/claim` | `claimEg`: verifies `e1`, refuses another's, answers guests `guest`. For `w`: `INSERT OR IGNORE eg_wards (b, account, w)`, embers, Marks, the deed, `eg_ward_max`, the honours. For `x`: `eg_runs (b, account)`, the board's row, settles the hold, clears `eg_live` |
+| `/v1/eg/keys` | the balance and the live breach, for restacking and *Return to the Spire* |
+| `/v1/eg/find` | a dungeon's find: the tier, the roll, the caps |
+| `/v1/eg/open` | idempotent on `rq`: stakes one, signs `egopen`, sets `eg_live` |
+| `/v1/eg/admit` | checks the handle, the start Redoubt and `eg_live`; signs `egadmit`; sets `eg_live` |
+| `/v1/eg/claim` | `claimEg`: verifies `e1`, refuses another's, answers guests `guest`. For `w`: one row in `eg_redoubts (b, account, w)`, the week's pay, Marks, the deed, the depth, the honours, the pity. For `x`: `eg_runs (b, account)`, the board's row, the Reliquaries, settles the stake, clears `eg_live`. For `v`: returns the stake |
 | `/v1/eg/board` | `egBoardOf` |
+| `/v1/eg/live` | the drain's question: any breach live, and until when |
 
-Migrations: the next free numbers when each slice lands, today `0109` (EG2: `players.eg_sigils`, `eg_holds`, `eg_finds`,
-`eg_live`) and `0110` (EG13: `eg_wards`, `eg_runs`, `players.eg_ward_max`, `players.eg_honours`).
+**Migrations**: the next free numbers when each slice lands, today 0109 (EG2: `players.eg_keys`, `eg_finds`, the
+launch gift) and 0110-0111 (EG8 and EG14: `eg_stakes`, `players.eg_live`, `eg_redoubts`, `eg_runs`, `eg_pity`, the
+depths and `eg_honours`).
 
 **Versions.** Each slice that moves the relay bundle bumps `RELAY_VERSION` (`world191` on this tree) with its `LAW` row,
-and a game that does not know it is told to reload. Each that moves the service bumps `ACCOUNT_VERSION` (`acct111`). The
-new titles and auras join `TITLES`/`AURAS` in `src/net/identityToken.js`, which is in the relay bundle.
+and a game that does not know it is told to reload. Each that moves the service bumps `ACCOUNT_VERSION` (`acct111`).
+The new titles and auras join `TITLES` and `AURAS` in `src/net/identityToken.js`.
 
-## 20. The look
+## 22. The made level's rules
+
+The world host gates the court and the Hour at many separate sites today: 19 for `gateArenaDay` and 38 for
+`sdRealmSlot` in `src/scenes/world.js`. A third made level would add a third copy of each, and one would be forgotten
+(THE FOUR HOSTS RULE's own failure). EG7 makes them one law:
+
+- `madeLevelOf(loc)` answers `'court'`, `'hour'`, `'spire'` or null;
+- a table, `MADE_LEVEL_RULES`, says what each turns off;
+- a source-sweep test refuses any new per-level check outside it (THE ONE CONSTRUCTION SEAM).
+
+The court and the Hour are re-plugged with their behaviour unchanged.
+
+| rule | court | hour | spire |
+|---|---|---|---|
+| saves (the exit autosave included) | refused | refused | refused |
+| rest, the travel map's journeys | refused | refused | refused |
+| the automap | off | off | off |
+| Mark and Recall | refused | refused | refused |
+| the Portal Stone | refused | refused | refused |
+| companions (GATE-ALONE, SD-ALONE) | kept out | kept out | kept out |
+| natural regeneration (`courtRules`) | off | as today | off |
+| Levitate | as today | banned | banned |
+| Slowfall | as today | as today | banned |
+| Resurrect | as today | refused | refused |
+| a death | cast out | final for the Hollow | a fall (section 15) |
+| DEATH-PENALTY | as today | as today | none |
+
+**The world's clock does not stop.** The shared clock turns during a three-hour breach (a game day and a half). A
+quest's deadline can lapse inside, which is why the start window warns of it (section 5).
+
+## 23. The look
 
 SD-LOOK's four rules are kept (`Super-Dungeons-Look.md`): the void is dark, structure does not glow, light appears only
-where it means something, and every surface reads as Daggerfall pixel art. Textures are painted in code into the Spire's
-pseudo-archives, **38231** onward (the next free range after the Hour's 382xx: 38231-38239 the arch and the Ward-stone,
-38241-38249 the Galleries, 38251-38259 the Cairn, 38261-38269 the Shade, 38271-38279 the Wellhead).
+where it means something, and every surface reads as Daggerfall pixel art. Textures are painted in code into the
+Spire's pseudo-archives, free today from **38231** (after the merchant yard's 38221):
+
+- 38231-38239: the arch, the key and the beacon;
+- 38241-38249: the Galleries;
+- 38251-38259: the Cairn;
+- 38261-38269: the Shade;
+- 38271-38279: the Wellhead.
 
 **Five lights, five meanings, and no others:**
 
 | light | means | where |
 |---|---|---|
-| **gold** | the way, and safety | arrival and end plates, doors, Ward-stones, checkpoint islands, HAVENS, the way home |
+| **gold** | the way, and safety | arrival and end plates, doors, the Redoubt's beacon, checkpoint islands, havens, the way home |
 | **Dagon red** | his blows | every telegraph (the pass's `dagon` style and its elements) |
-| **Battlemage blue** | yours | Vestiges, allies' auras, the company's marks over heads, Watchfire's early outline |
+| **Battlemage blue** | yours | Vestiges, allies' auras, the company's marks over heads, a witness's ping, the Watchfire holder's pip |
 | **white** | the place's own timed hazard | vents ringing, pendulums' lanes, a Beat's blink |
 | **the band's own** | where you are | soul-gem violet in the Cairn, moon-silver in the Shade, molten orange in the Wellhead; the Galleries keep marble and gold |
 
-**The bands' ramps** (sRGB, five steps at least, as SD-LOOK's):
+**The bands' ramps** (sRGB, at least five steps each, as SD-LOOK's are):
 
 - the Galleries: marble `[150,146,138]`-`[214,210,200]`, gold leaf `[140,98,40]`-`[246,206,120]` (the Hour's brass,
   reused), Battlemage blue `[36,52,96]`-`[92,124,196]`, the Deadlands' red sky;
@@ -1090,28 +1630,39 @@ pseudo-archives, **38231** onward (the next free range after the Hour's 382xx: 3
 - the Shade: `[6,6,10]`-`[60,64,80]`, moon-silver `[160,166,176]`-`[214,220,228]`;
 - the Wellhead: basalt (SD-LOOK's) and iron, molten `[255,120,30]`.
 
-**The new telegraph kinds** in `TELEGRAPH_KIND` (`src/render/gateTelegraph.js`), each a seam whose default draws the
-gate's own:
+**The telegraph pass** (`src/render/gateTelegraph.js`). Three new kinds join `TELEGRAPH_KIND`, each a seam whose default
+draws the gate's own:
 
 - **haven**: a gold disc that is safe while everything else fills red;
 - **lanes**: parallel lanes, a Lattice;
 - **tether**: a line between two bodies.
 
-The pass's shape counts (`TELEGRAPH_POINTS_MAX` 10, `TELEGRAPH_SPOKES_MAX` 8) are raised to carry a Court's blows and
-a legion's at once (24 shapes a frame). **Readability law**: in the Shade's dark, telegraphs keep their full light;
-darkness takes the floor, never the warning.
+The pass draws ONE shape a call. It is widened to draw up to 24 shapes a frame, one call each, so a Court's blows and
+a legion's can stand at once. `TELEGRAPH_POINTS_MAX` (10) and `TELEGRAPH_SPOKES_MAX` (8) stay per-shape limits.
 
-**The arch** (section 5) and **the stair** between halls: the veil plays the fall past the Spire's broken underside,
-its marble ribs and hanging chains, to the next hall's gold plate: 1.2 s, frame-synced, the same every time.
+**Readability.**
 
-**Phones** (TI2): the HUD's count, hall and tally sit in the gate's boss-bar row (`src/ui/gateBossBar.js`
-`bossBarModel` takes a Spire model). A Ward's rest window is one column on a phone.
+- In the Shade's dark, telegraphs keep their full light and every foe keeps a rim light. Darkness takes the floor,
+  never the warning or the foe.
+- **Accessibility**:
+  - havens wear a white keyline and inward chevrons, so they never rely on gold against red, a deuteranopia pair;
+  - danger shapes keep their grain;
+  - the Examination's order is told by numerals and a chime per rune as well as light;
+  - every blow aimed at you, a lord's or an add's, gives you a personal audio sting.
 
-## 21. The score
+**The arch** (section 6) and **the stair** between halls: the veil plays the fall past the Spire's broken underside,
+its marble ribs and hanging chains, to the next hall's gold plate. It lasts 1.2 s, frame-synced, the same every time.
 
-Written as notes for the game's own player and FM bank (`makeSong`, `w.note`, `w.hit`), in `systems/egScore.js`.
-E Phrygian, the Kyn's colour against the Imperial brass: the Battlemages' fanfare, broken, answered by the legion's
-drums. Chosen by a pure law, `spireScoreFor(place)`:
+**Phones** (TI2): the HUD sits in the gate's boss-bar row (`src/ui/gateBossBar.js`, whose `bossBarModel` takes a Spire
+model), and a Redoubt's rest window is one column.
+
+## 24. The score
+
+Written as notes for the game's own player and FM bank, in `systems/egScore.js`. Each score module writes its own
+`makeSong`, as `src/systems/sdScore.js` and `src/systems/gateScore.js` do. The key is E Phrygian, the Kyn's colour
+against the Imperial brass: the Battlemages' fanfare, broken, answered by the legion's drums. A pure law,
+`spireScoreFor(place)`, chooses the song. The names are 8-character stems, as every made song's are (GATEWAR1,
+HOURWAR1):
 
 | song | where | tempo / length |
 |---|---|---|
@@ -1119,73 +1670,129 @@ drums. Chosen by a pure law, `spireScoreFor(place)`:
 | SPIRECRN | the Cairn's halls | 88 BPM, 32 bars |
 | SPIRESHD | the Shade's halls | 92 BPM, 32 bars |
 | SPIREWEL | the Wellhead's halls | 110 BPM, 32 bars |
-| SPIREYRD | a Yard's or a Rampart's trial (the band's motif in the brass) | 132 BPM, 32 bars |
-| SPIREKYN1 / 2 / 3 | a Court, by phase | 138 / 144 / 152 BPM, 32 bars each |
-| SPIRELORD | a Valkynaz, all phases, rising | 148 BPM, 48 bars |
-| SPIREWARD | the Ward lit and its rest: the Battlemages' hymn | 72 BPM, 16 bars |
+| SPIREYRD | a Rift-Yard's or a Rampart's trial (the band's motif in the brass) | 132 BPM, 32 bars |
+| SPIRLRD1 / 2 / 3 | a Court, by phase | 138 / 144 / 152 BPM, 32 bars each |
+| SPIRVALK | a Valkynaz, all phases, rising | 148 BPM, 48 bars |
+| SPIRREDT | a Redoubt taken, and its rest: the Battlemages' hymn | 72 BPM, 16 bars |
 | SPIRECNT | the count's last 2 minutes, over anything | 160 BPM, 16 bars |
 | SPIREEND | the tear, a fall, the end | 70 BPM, 12 bars |
 
-Measured as the Hour's were (`tools/sdScoreProbe.mjs`'s law, `egScoreProbe.mjs`): every song sounding, peaks under
-the ceiling, the war louder by phase, the end decaying in its time.
+The songs are measured as the Hour's were, by `egScoreProbe.mjs` (under tools/, `tools/sdScoreProbe.mjs`'s law):
+every song sounding, peaks under the ceiling, the war louder by phase, and the end decaying in its time.
 
-## 22. The four hosts
+## 25. The HUD and the first breach
+
+**The HUD** (the boss-bar row, section 23):
+
+- the count;
+- the hall and its band;
+- the Reliquaries;
+- the decrees (icons, with their words on hover or hold);
+- the company's pips (alive, witness, home, forsaken);
+- on spans, a *last across* warning and the descent's ring;
+- at a Court, the lord's bar with its phase marks, ward and fury.
+
+**The first breach.** An account's first breach opens with a card of four lines: *The count. The Redoubts. One life,
+one recall. Reliquaries open only on the way home.* Its first circle is the fixed one (section 7).
+
+**Words.** Lines are short (Mac at WB12: *"less explanatory and less AI"*). Every player-facing line is a constant in
+`EG_TEXT`, worded once and pinned.
+
+## 26. The four hosts
 
 - `src/scenes/world.js` - WIRED:
-  - the Sigil's arm and its refusals; the start window; the arch pool (`egArchPool`, the gate pool's law);
+  - the key's arm and its refusals; the start window; the arch pool (`egArchPool`, the gate pool's law); the call's
+    vortex;
   - the Timers row, the sight line, the company's map mark;
-  - the room link and the orders; each hall's transition;
-  - the HUD (count, hall, tally) and the rest window; the claim queue (`createEgClaims`);
-  - the score; the flight wards; no Resurrect; a death as a fall.
-- `src/scenes/worldModes.js` - WIRED: `enterEgHall(spec)` as `enterSdRealm`; every hall's step under `stepThroughFire`;
-  the arena clamp per hall (`realmClamp` over the spec's floors).
-- `src/scenes/dungeonContext.js` - WIRED: `standEgHall(ctx)` stands the hall (meshes, collider buckets, the span's
-  riders, the lights, as `standSdRealm`); the span's ride (`sdStepsRide`, generalised in EG4).
-- `src/scenes/exterior.js` - FLAGGED: the `?exterior` bench is offline. There is no Elite Breach there, and the Sigil
-  says so (*The Sigil is cold here.*).
+  - the hub's open and the room link; each hall's transition;
+  - the HUD and the rest window; the claim queue (`createEgClaims`); *Return to the Spire*;
+  - the score; the flight bans (OR'd into the one ward registration); no Resurrect; a death as a fall;
+  - DEATH-PENALTY exempted; the witness's camera.
+- `src/scenes/worldModes.js` - WIRED: `enterEgHall(spec)` as `enterSdRealm`; `standEgHall(ctx)` beside `standSdRealm`
+  (meshes, collider buckets, lights, through `egHallParts`); every hall's step under `stepThroughFire`; the arena clamp
+  per hall (`realmClamp` over the spec's floors); `madeLevelOf`.
+- `src/scenes/dungeonContext.js` - WIRED: the span's riders (`sdStepsRide`, generalised in EG4); no foes stream in a
+  made level (every foe is the relay's).
+- `src/scenes/exterior.js` - FLAGGED: the `?exterior` bench is offline. There is no Elite Breach there, and the key says
+  so (*The key is cold here.*).
 
 Every slice record below names all four, each wired or flagged.
 
-## 23. What it does not do, said so
+## 27. How the arc keeps the Process rules
+
+`bible/Home.md`'s Process rules bind every change. Where this arc meets each:
+
+- **THE FOUR HOSTS RULE**: section 26, and every slice record names all four.
+- **THE MODAL CONTRACT**: `worldModes.frame()`'s Spire branch returns the same type from every exit, and EG10 pins it in
+  a test.
+- **ONE DFU MEMBER, ONE EXPORT**:
+  - the gate's constants (`BUCKET_*`, `PHASE_AT`, `SHIELD_MS`, `THREAT_*`, `ATTACKS`, `POOLS`) are imported, never
+    copied;
+  - `sdSeed`, `rimSpots`, `hostTeamHpFor` and `topWithMe` are exported once and imported;
+  - `EG_ESCAPE_MPS` is computed from `runSpeed` at the escape build, never a literal;
+  - the span law's copied motor numbers are held equal by a test.
+- **A PIN MUST FAIL**: every slice ships `eg<N>_*.test.js` under test/ and its mutant records, `eg<N>.json` under
+  tools/mutants/, every mutant dead; laws are pinned with deepEqual against their tables, never inequalities.
+- **TEST THE SHAPE THE PRODUCER MINTS**: receipts, orders, specs and courses are tested as `mintEgReceipt`,
+  `identityToken`, `egHallOf` and `courseOf` mint them, never as hand-built literals.
+- **THE SLOT IS EMPTIED BEFORE THE OCCUPANT IS TOLD**: the start window, the rest window and the Vestige offer are
+  overlays. Each is closed by the room's `st` or `end`, with the slot nulled first and one callback.
+- **ASYNC NEVER DROPS**:
+  - the open is single-flight on `rq`;
+  - claims are coalesced per (breach, Redoubt, kind);
+  - the restack coalesces;
+  - every refusal is checked again when its async answer lands.
+- **EVERY ALLOCATION HAS AN OWNER**:
+  - each transition frees the old hall's meshes, colliders and riders;
+  - band textures are cached per band and freed at the breach's end;
+  - the arch pool owns its arches.
+- **RETIRING A FLAG DELETES THE SENTENCE**: any INTERIM this arc opens is retired by deleting its sentence.
+- **A SLICE CLOSES ITS LEDGER ROW**: ELITE-GATES (Ledger A) is narrowed slice by slice.
+- **A CITE NAMES WHAT IT POINTS AT**: the slices' docs cite by anchor.
+
+## 28. What it does not do, said so
 
 - **No Abyss Breach.** The gate's third tier is named (section 2) and not built.
-- **No revives.** No Vestige, spell or Ward raises the fallen.
-- **No spectating.** The fallen are out. The company's progress reaches them on the Timers row and in party chat.
-- **No company changes.** One who joins the party after the rising is not in the breach.
-- **No trading or selling Sigils.** They are the account's.
+- **No revive past the recall.** One recall a breach, at a Redoubt; no Vestige, spell or power raises the fallen.
+- **No company changes.** One who joins the party after the open is not in the breach.
+- **No trading or selling keys.** They are the account's.
 - **No Elite Breach offline.** Offline there is no relay to run it.
 - **No ordinary dungeon foes inside.** Every foe in the Spire is the relay's, or the one life would be a client's word.
 - **No Gilded piece.** The Hourlock stays the one.
-- **No weekly seed.** The budget (section 8) makes halls of a depth weigh the same. A shared seed would make the board
-  a race to scout it.
+- **No weekly seed.** The budget (section 9) makes halls of a depth weigh the same, and a shared seed would make the
+  boards a race to scout it.
+- **Nothing gets faster.** No depth, decree or fury shortens a wind-up, a beat, a crumble or a period.
 
-## 24. Slices and their records
+## 29. Slices and their records
 
-The order the arc ships in. Each slice can ship and be checked without the next; the content arrives band by band.
+The order the arc ships in. Each slice can ship and be checked without the next, and the content arrives band by band.
+Every slice ships its tests (`eg<N>_*.test.js` under test/) and mutant records (`eg<N>.json` under tools/mutants/),
+every mutant dead, and its record names the four hosts and the Ledger rows it opened or moved.
 
 | slice | what | moves |
 |---|---|---|
-| **EG0** | this page | the bible |
+| **EG0** | this page, and AUDIT EG0 | the bible |
 | **EG1** | THE GATE'S TIERS: `systems/gateTier.js`, `GATE_TIER_TEXT`; the Regular tier's words unchanged | client |
-| **EG2** | THE SIGIL: template 575, the service's count (migration), the rolls in `claimGate` and `claimSd`, `/v1/eg/find` and its death handler, `/v1/eg/sigils`, the restack, the launch gift | client, service |
+| **EG2** | THE WEIR KEY: template 575 and its art; the balance (migration); the rolls in `claimGate` (which gains `rand`) and `claimSd`; `/v1/eg/find`, the killer's ask and the caps; `/v1/eg/keys`; the restack, new; the launch gift (a send migration) | client, service |
 | **EG3** | THE BOSS SEAM: `net/bossSeam.js`; the gate, the Remnant and the serpent re-plugged, frames and pins unchanged | relay (a version) |
-| **EG4** | THE COURSE AS DATA: `courseOf`; the Hour's course byte for byte; the readers take a course | client |
-| **EG5** | THE HALL LAW: `net/egLaw.js` (the record, the clock, the circle, the bands, the spec, the brands, the waves), pure, pinned with golden specs | client, relay bundle |
-| **EG6** | THE SPAN GENERATOR AND THE TIMED SOLVER: `world/egSpan.js`, `egSpanSolve.mjs`, the 500-seed sweep | client |
-| **EG7** | THE ROOM: the `eg:` family, the orders, the hub's company route, the run director (`net/egBrain.js`), the wave runner (`net/egHost.js`), `spanFair`, `judgeShapes`, the `e1` receipt | relay (a version), service |
-| **EG8** | THE ARCH: the arm, the refusals, the start window, the arch pool, the cell word, the Timers row, the sight line, the map mark | client |
-| **EG9** | THE HALLS ON THE PAGE: `world/egHall.js`, `scenes/egHall.js`, the transitions, gather, muster and pull, the HUD, the flight wards, the fall | client |
-| **EG10** | THE YARD, THE RAMPART, THE ATHENAEUM, THE PROVING WALK: the kinds 3-8, the push, haven, lanes and tether | client, relay (a version) |
-| **EG11** | THE WARD: lit, receipts, spoils thrown, the rest, the Vestiges (law, offer, effects, the relay's half), the way home | client, relay (a version) |
-| **EG12** | THE GALLERIES' KYN: the Hound, the Battlemaster, Ozzath, Valkynaz Ilthys (`net/egLord.js`) | relay (a version), client |
-| **EG13** | THE CLAIM, THE HONOURS, THE BOARDS: `claimEg`, the migration, titles and auras, the boards, the season's champions, `BOSS_BODY` on in `eg:` rooms, the herald | service, relay (a version), client |
-| **EG14** | THE PANOPLY AND THE CARDS | client |
-| **EG15** | THE LOOK: the bands' art, the arch's skin, the stair, the skies | client |
-| **EG16** | THE SCORE | client |
-| **EG17** | THE SOUL CAIRN: the Soul-Warden, the Twin Kyn, Morvayn, the Cairn's legion and pieces | relay (a version), client |
-| **EG18** | THE SHADE PERILOUS: the Mother of Dusk, the Night-Stalker, Seyth | relay (a version), client |
-| **EG19** | THE HAVOC WELLHEAD: the Bound Colossus, the Wellhead Wyrm, the Valkynaz in turn | relay (a version), client |
-| **EG20** | AUDIT EG, and the tuning pass: the budget and the count measured in the field | all |
+| **EG4** | THE COURSE AS DATA: `courseOf`, with the Hour's course byte for byte; `orreryOf` widened and `orreryJudge` extracted, with the Hour's draw and judge unchanged | client, relay (a version) |
+| **EG5** | THE HALL LAW: `net/egLaw.js` (the record, the clock, the rhythm, the circle, the bands, the spec, the decrees and the recast trials, the waves) and `net/egSpanLaw.js`; `sdSeed` exported | client, relay bundle |
+| **EG6** | THE SPAN GENERATOR AND THE TIMED SOLVER: `egSpanOf`, the solver in the law, `egSpanSolve.mjs`, the 500-seed sweep at the span build | client |
+| **EG7** | THE MADE LEVEL'S RULES: `madeLevelOf`, `MADE_LEVEL_RULES` and the sweep test; the court and the Hour re-plugged unchanged | client |
+| **EG8** | THE ROOM: the `eg:` family; the orders (`ORDER_KINDS`, `EG_ORDER_FIELDS`); stakes, voids and `eg_live`; the hub's open (`EG_INTERNAL_OPEN`, `eglive`, `egrc`); the run director (`net/egBrain.js`); the wave runner (`net/egHost.js`); the `spanFair` accumulator; `judgeShapes` and the full shape stamp; the union floor; `e1`; durability, the drain and the law pin | relay (a version), service |
+| **EG9** | THE ARCH AND THE CALL: the arm, the refusals, the start window, the arch pool, the pass's tint and scale, the clear sweep's keys, the cell word, the vortex, the landings, the Timers row, the sight line, the map mark | client |
+| **EG10** | THE HALLS ON THE PAGE: `world/egHall.js`, `scenes/egHall.js`, `egHallParts`, the transitions, arrival, gather, descent and pull, the HUD, the flight bans, the fall, DEATH-PENALTY exempted, *Return to the Spire*, the modal contract's pin | client |
+| **EG11** | THE HALL KINDS, THE TWISTS AND THE LEGION: Rift-Yard, Rampart, Athenaeum, Proving Walk; the kinds 3-8; the push; haven, lanes and tether | client, relay (a version) |
+| **EG12** | THE REDOUBT: receipts, Reliquaries, the rest, the Vestiges (law, offers, effects, the relay's half, the caps, resonance, the death saves), the fallen (recall, witness, bequest, forsaking), the way home, the surplus and the respite | client, relay (a version) |
+| **EG13** | THE GALLERIES' LORDS: the Hound, the Last Spellmaster, the Last Armsmaster, Valkynaz Ilthys (`net/egLord.js`), each with its errand pins for *n* = 1 to 8 | relay (a version), client |
+| **EG14** | THE CLAIM, THE ECONOMY, THE HONOURS, THE BOARDS: `claimEg`, the migrations, the week's pay, the embers, the pity, the Broker's sink, titles and auras, the three boards, the season's champions, `BOSS_BODY` on in `eg:` rooms, the herald | service, relay (a version), client |
+| **EG15** | THE PANOPLY AND THE CARDS | client |
+| **EG16** | THE LOOK: the bands' art, the arch's skin, the stair, the skies, accessibility | client |
+| **EG17** | THE SCORE | client |
+| **EG18** | THE SOUL CAIRN: the Cairn-Keeper, the Twin Lords, Valkynaz Morvayn, the Cairn's legion and pieces | relay (a version), client |
+| **EG19** | THE SHADE PERILOUS: the Mother of Dusk, the Night-Stalker, Valkynaz Seyth | relay (a version), client |
+| **EG20** | THE HAVOC WELLHEAD: the Bound Colossus, the Wellhead Wyrm, Valkynaz Garoth, the rites | relay (a version), client |
+| **EG21** | AUDIT EG, and the tuning pass: the budget, the count and the pace measured in the field | all |
 
 Each slice's record goes below as it lands: what shipped, its pins and mutant records, the four hosts, the Ledger rows
 it opened or moved, and where it departs from this page.
@@ -1194,13 +1801,40 @@ it opened or moved, and where it departs from this page.
 
 The design, whole, before any code. Grounded in the shipped tree at `d9a3ced2`:
 
-- the gate's clock (`net/gateLaw.js`);
-- the made levels (`world/gateArena.js`, `world/sdRealm.js`);
-- the brains and their shared hand (`net/gateBrain.js`, `net/sdRemnant.js`);
-- the marks (`net/gateMods.js`, `net/sdMarks.js`);
-- the Steps (`world/sdSteps.js`) and the engine's envelope (`player/motor.js`, `player/parkour.js`);
+- the gate's clock (`src/net/gateLaw.js`);
+- the made levels (`src/world/gateArena.js`, `src/world/sdRealm.js`);
+- the brains and their shared hand (`src/net/gateBrain.js`, `src/net/sdRemnant.js`);
+- the marks (`src/net/gateMods.js`, `src/net/sdMarks.js`);
+- the Steps (`src/world/sdSteps.js`) and the engine's envelope (`src/player/motor.js`, `src/player/parkour.js`);
 - the party (`PARTY_MAX` 8) and the hub's rosters;
 - the receipts and their claims, the boards (`server-account/src/arena.js`) and the Portal Stone.
 
-THE FOUR HOSTS: `scenes/world.js`, `scenes/worldModes.js`, `scenes/dungeonContext.js` and `scenes/exterior.js` are all
-untouched. A page moves no host.
+THE FOUR HOSTS: `src/scenes/world.js`, `src/scenes/worldModes.js`, `src/scenes/dungeonContext.js` and
+`src/scenes/exterior.js` are all untouched. A page moves no host.
+
+### AUDIT EG0 - 2026-10-11 (Mac: "Do a comprehensive audit and ensure this is the best and most detailed it can be")
+
+Five cold lanes on the frozen first draft (177a3acd6), no edit made until every lane had returned (17l):
+
+- code truth, about 210 claims checked;
+- numbers and consistency, with simulations of the pace, the motor and the drifts;
+- architecture, trust and failure;
+- game design and the player's experience;
+- lore, words and the bible's rules.
+
+There were **105 findings**: 31, 23, 17, 16 and 18. Each was verified against the tree, the maths or UESP, and each
+has its verdict and its place in this revision in `01-Overview/Audit-EG0.md`. The revision moved the page whole:
+
+- **the lore** set right: the Spire's fate, a Valkynaz a warrior duke, the door held by the key and not a lord's will,
+  and the torn halls marked as the port's invention;
+- **the words** renamed: Weir Key, Redoubt, decree, the Vestige families, lord;
+- **the protocol** rebuilt: the hub's open, stakes and voids, `eg_live`'s expiry, orders fit to `identityToken`, the
+  drain, the law pin, durability;
+- **the floors**: the escape build, the union floor, the CHECK class, the errand floor, and nothing faster;
+- **the fallen** given a recall, a witness's seat and a bequest;
+- **the risk**: Reliquaries;
+- **the economy** rebalanced: weekly pay, embers where earned, a pity count, a sink;
+- **the boards** made honest: the Descent from the first hall, by bracket;
+- **the pace** re-modelled: the walls now stand where the rules put them.
+
+THE FOUR HOSTS: untouched, as at EG0.
