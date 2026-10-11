@@ -764,7 +764,7 @@ export function routeKey(e, ctx, setPlayerPos = null, keys = null) {
     // window alone (`loadsUnder`) - a load from under the pack or a
     // counter left the window holding what it took off the old game,
     // and its close handed it to the loaded one.
-    if (ctx.overlayWindow?.()?.loadsUnder === true && actionsOf(e, keys).includes('QuickLoad') && !retroToggleKey(e, keys)) { ctx.quickLoad?.(setPlayerPos); return true; }   // AUDIT 58 (f3/input): the Set rides in here too, so a QuickLoad rebound to a COMBO still answers from under a window; AUDIT RETRO1 C1: never Shift-F11, the retro toggle's chord on this key
+    if (ctx.overlayWindow?.()?.loadsUnder === true && actionsOf(e, keys).includes('QuickLoad') && !retroToggleKey(e, keys)) { ctx.quickLoad?.(setPlayerPos); return true; }   // AUDIT 58 (f3/input): the Set rides in here too, so a QuickLoad rebound to a COMBO still answers from under the death screen; AUDIT RETRO1 C1: never Shift-F11, the retro toggle's chord on this key
     return false;
   }
   // AUDIT 64 F36/F37 - THE HUD'S OWN SHORTCUTS (DaggerfallHUD.cs

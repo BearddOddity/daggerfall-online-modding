@@ -9268,11 +9268,11 @@ export async function bootWorld(canvas, renderer, params, status) {
     const key = rec?.companion;
     if (isRevenantCompanionKey(key)) return openSwornPack(rec);   // REVENANT-COMPANION: a sworn one's pack - its record's own list
     if (!naval?.companionPack?.(key) || !inventoryDoorReady()) return false;
-    // AUDIT WK-P3: his pack read by his key at every look - a quickload under the window stands a restored party, and a
+    // AUDIT WK-P3: his pack read by his key at every look - a load stands a restored party (one under the window did, before DUPE-LOAD), and a
     // list taken once kept the unloaded pack's items to be taken again (each F9/F11 a duplicate)
     let orphan = null;
     // COMPANION-WEIGHT: and it carries what a person of his strength can - AUDIT ECON C5: his LIVE body's, looked up by
-    // his key at every store as his items are (a quickload under the window stands another, or none); gone from the
+    // his key at every store as his items are (a load stands another, or none); gone from the
     // party, his pack takes nothing (itemTransfer.js packGoneText) - what it took would go into the stand-in list
     const named = naval?.companionPack?.(key)?.name ?? null;
     const capacity = () => {
@@ -14699,12 +14699,11 @@ export async function bootWorld(canvas, renderer, params, status) {
     townTalk.say(RESURRECT_TEXT.raised(rez.name));
     if (spared > 0) townTalk.say(RESURRECT_TEXT.spared(spared));
   }
-  /** AUDIT RISE-REST F1: CLOSE WHICHEVER DEATH SCREEN IS UP - townTalk's slot (a death outdoors) or the mode's own (a
-   *  building's, a dungeon's: modes.clearDeath), the fall's pitch handed back either way. The Resurrect's close and a
-   *  respawn that threw share it: the respawn's catch knew townTalk's slot alone, so a death in a building or a
-   *  dungeon whose rise threw before (or inside) forceExitToExterior kept its screen, its one reset spent. */
-  /** DUPE-LOAD: every window in the street's slot down through its own close, the top first and then each it was laid
-   *  over - never the death screen (closeDeathScreen's). Bounded: a close that keeps opening a successor stops at 16. */
+  /** DUPE-LOAD: the street's slot down through each window's own close, the top first and then each it was laid over -
+   *  never the death screen (closeDeathScreen's) - and, under ANY death screen (the street's, a building's, a dungeon's),
+   *  every window waiting beneath it disposed uncalled. A building's or a dungeon's windows over the slot are their mode's
+   *  (forceExitToExterior's); a load reaches those only from the pause, which opens over none. Bounded: a close that
+   *  keeps opening a successor stops at 16. */
   function closeWindowsForLoad() {
     for (let n = 0; n < 16 && townTalk.overlay && !(townTalk.overlay instanceof DeathScreen); n++) townTalk.closeOverlay();
     // AUDIT DUPE-LOAD: and what waits BENEATH the death screen - a window a box covered when the death took the top, a
@@ -14713,6 +14712,10 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (townTalk.overlay instanceof DeathScreen) townTalk.discardBeneath(townTalk.overlay);
     modes?.discardBeneathDeath?.();
   }
+  /** AUDIT RISE-REST F1: CLOSE WHICHEVER DEATH SCREEN IS UP - townTalk's slot (a death outdoors) or the mode's own (a
+   *  building's, a dungeon's: modes.clearDeath), the fall's pitch handed back either way. The Resurrect's close and a
+   *  respawn that threw share it: the respawn's catch knew townTalk's slot alone, so a death in a building or a
+   *  dungeon whose rise threw before (or inside) forceExitToExterior kept its screen, its one reset spent. */
   function closeDeathScreen() {
     const ov = townTalk.overlay;
     if (ov instanceof DeathScreen) { ov.restoreView(); townTalk.closeOverlay(ov); }
@@ -15738,12 +15741,13 @@ export async function bootWorld(canvas, renderer, params, status) {
       const snap = picked ?? (key != null || mostRecent ? pickedSaveSnap({ key, mostRecent })   // MW-EARLY: the pick the boot's early build read (AUDIT MW-EARLY F3: the boot hands its one parse in)
         : quickLoadSlot(playerEntity.name, undefined, playerEntity.characterId ?? null));   // CHARID1: my own QuickSave, never a namesake's
       if (!snap) { townTalk.say('No saved game.'); return; }
-      // DUPE-LOAD (2026-10-11): EVERY WINDOW DOWN BEFORE THE SAVE IS READ - and before the first await, where a window
-      // left up could still be played. A window holds what it took off the old game (the pack's drops, a counter's
-      // staged goods, a loot window's pile); its close hands that back, and a close AFTER the restore handed it to the
-      // loaded game - the pack the save restored plus the pile the close minted. Closed here, its close lands on the old
-      // game the restore overwrites (a pile it mints is swept with every other, droppedLoot.restoreWorld). The death
-      // screen stays: closeDeathScreen takes it down below, its view handed back.
+      // DUPE-LOAD (2026-10-11): THE WINDOWS DOWN BEFORE THE SAVE IS READ (closeWindowsForLoad: the street's slot, and
+      // what waits under any death screen) - and before the first await, where a window left up could still be played.
+      // A window holds what it took off the old game (the pack's drops, a counter's staged goods, a loot window's pile);
+      // its close hands that back, and a close AFTER the restore handed it to the loaded game - the pack the save
+      // restored plus the pile the close minted. Closed here, its close lands on the old game the restore replaces (the
+      // pack is the save's once restored; where the load teleports, a pile it mints is swept with every other -
+      // droppedLoot.restoreWorld). The death screen stays: closeDeathScreen takes it down below, its view handed back.
       closeWindowsForLoad();
       // MAC-L4: the table this save is READ WITH, before it is read. The
       // boot fires `loadMagicRegistries` and does not await it (every

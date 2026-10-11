@@ -307,7 +307,7 @@ test('AUDIT RETRO1 C1: Shift-F11 under an open window loads nothing - it is the 
   assert.equal(retroToggleKey(ev(true)), true);
   assert.equal(retroToggleKey(ev(false)), false, 'F11 alone is QuickLoad\'s');
   let loads = 0;
-  const ctx = { uiOverlayActive: true, overlayIsNative: false, overlayInput() {}, overlayWindow: () => ({ loadsUnder: true }), quickLoad: () => { loads++; } };   // DUPE-LOAD: the death screen, the one window F11 loads from under
+  const ctx = { uiOverlayActive: true, overlayIsNative: false, overlayInput() {}, overlayWindow: () => ({ loadsUnder: true }), quickLoad: () => { loads++; } };   // PIN MOVED (DUPE-LOAD): the death screen, the one window F11 loads from under
   _resetRetroPostprocessing();
   routeKey(ev(true), ctx, null, new Set(['ShiftLeft']));
   assert.equal(loads, 0, 'Shift-F11 under a window: no load');
