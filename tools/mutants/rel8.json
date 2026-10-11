@@ -105,11 +105,12 @@
   {
     "name": "REL8-pause-line-the-commit-alone",
     "file": "src/ui/pauseWindow.js",
-    "old": "const ver = UPDATE ? `Daggerfall Online ${UPDATE} (${BUILD_TAG})` : `Daggerfall Online ${BUILD_TAG}`;",
-    "new": "const ver = `Daggerfall Online ${BUILD_TAG}`;",
+    "old": "const ver = UPDATE ? `DFO Online ${UPDATE} (${BUILD_TAG})` : `DFO Online ${BUILD_TAG}`;",
+    "new": "const ver = `DFO Online ${BUILD_TAG}`;",
     "tests": [
       "test/rel8_updates.test.js"
-    ]
+    ],
+    "note": "BR5 (re-aimed by content): the name, its file form and the legal date moved."
   },
   {
     "name": "REL8-about-without-the-row",

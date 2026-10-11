@@ -417,6 +417,6 @@
     "tests": [
       "test/auditscale2_acct.test.js"
     ],
-    "note": "the version pin's history renamed as the merge left it. GUILD-SEEN (re-aimed by content, PIN MOVED): acct113 heads the history now."
+    "note": "the version pin's history renamed as the merge left it. GUILD-SEEN (re-aimed by content, PIN MOVED): acct113 heads the history now. BR5 (re-aimed, PIN MOVED): acct115 heads it, GUILD3's acct114 and GUILD-SEEN's acct113 after it - the text this renames is unmoved."
   }
 ]

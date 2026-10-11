@@ -1718,7 +1718,7 @@ export function createWorldModes(host) {
     // body, every mode), this arm's own arrow lane, its fatigue door (its collapse law), the view turned on a foe
     technique: {
       motor: () => player,
-      fireArrow: (from, dir, o) => interiorArrows.fire(from, dir, { fromPlayer: true, weapon: o?.weapon ?? interiorWeapon.playerWeapon.weapon, muzzle: o?.sky ? { world: [...from] } : interiorWeapon.thunderlockMuzzle(fieldOfView()), technique: o?.technique ?? null, ...(o?.speedScale ? { speedScale: o.speedScale } : {}) }),
+      fireArrow: (from, dir, o) => interiorArrows.fire(from, dir, { fromPlayer: true, weapon: o?.weapon ?? interiorWeapon.playerWeapon.weapon, muzzle: o?.sky ? { world: [...from] } : interiorWeapon.thunderlockMuzzle(fieldOfView()), technique: o?.technique ?? null, ...(o?.speedScale ? { speedScale: o.speedScale } : {}), ...(o?.summoned ? { summoned: true } : {}) }),   // STUCK-ARROWS: a conjured round's shaft is never given back
       drainFatigue: (n) => drainInteriorFatigue(n),
       face: (p, from) => { if (!Array.isArray(p)) return; const o = Array.isArray(from) ? from : player.pos; cam.yaw = Math.atan2(p[0] - o[0], p[2] - o[2]); },   // AUDIT TECH1: from where the body lands
       fx: (recipe, at, o) => magic?.techniqueFx?.(recipe, at, o),   // TECH-FX: a technique's burst, in the world's cast engine's impact pass (an interior's is the world's)
@@ -1728,7 +1728,7 @@ export function createWorldModes(host) {
   });
   // C13: the interior arrow flights (collider late-resolved - each
   // building brings its own).
-  const interiorArrows = new ArrowFlight({ getGpuMesh: pipeline.getGpuMesh, collider: () => interiorCtx?.collider, effects: interiorHitEffects });   // FIELD-GUN14: the orb's flat rides the host's own one-shot pool, which this frame already draws
+  const interiorArrows = new ArrowFlight({ getGpuMesh: pipeline.getGpuMesh, collider: () => interiorCtx?.collider, effects: interiorHitEffects, loot: interiorDropped });   // STUCK-ARROWS: a player's shaft that meets the walls sticks into the building's pile pool   // FIELD-GUN14: the orb's flat rides the host's own one-shot pool, which this frame already draws
   let _arrowsCtx = null;
   const viewOut = createViewOut();   // RW1: this host's view out through a building's glass (render/realWindows.js)
   /** RW1 (AUDIT): the view out goes with the building - its target freed (it held up to 8 MB through the whole street
@@ -10896,10 +10896,11 @@ export function createWorldModes(host) {
       // EVERY RANGED WEAPON, not only the bow: `isBowWeapon` is
       // "scored on Archery", which is what the Thunderlock is too.
       if (isBowWeapon(interiorWeapon.playerWeapon.weapon)) {
-        if (spendAmmoFor(playerEntity.items, interiorWeapon.playerWeapon.weapon)) {
+        const shot = { summoned: false };   // STUCK-ARROWS: DFU's isArrowSummoned, carried by the shaft
+        if (spendAmmoFor(playerEntity.items, interiorWeapon.playerWeapon.weapon, shot)) {
           drainInteriorFatigue(SWING_FATIGUE_COST);
           tallySwingSkills(playerEntity, interiorWeapon.playerWeapon.weapon);
-          interiorArrows.fire(player.eye, eyeDir(), { fromPlayer: true, weapon: interiorWeapon.playerWeapon.weapon, muzzle: interiorWeapon.thunderlockMuzzle(fieldOfView()) }); interiorWeapon.noteShot?.(interiorWeapon.playerWeapon.weapon);   // SPELLFX1: the peers draw it   // FIELD-GUN17: the barrel's own offset when the hand holds the gun, null for every bow - the rig answers, the lane forks   // #64: LastBowUsed rides the shaft - the impact prices off it   // ROAD-H H1c: ArrowFlight.fire applies GetAimPosition's player arm (the bow hand), as DFU's missile does its own
+          interiorArrows.fire(player.eye, eyeDir(), { fromPlayer: true, weapon: interiorWeapon.playerWeapon.weapon, muzzle: interiorWeapon.thunderlockMuzzle(fieldOfView()), summoned: shot.summoned }); interiorWeapon.noteShot?.(interiorWeapon.playerWeapon.weapon);   // SPELLFX1: the peers draw it   // FIELD-GUN17: the barrel's own offset when the hand holds the gun, null for every bow - the rig answers, the lane forks   // #64: LastBowUsed rides the shaft - the impact prices off it   // ROAD-H H1c: ArrowFlight.fire applies GetAimPosition's player arm (the bow hand), as DFU's missile does its own
         }
         continue;
       }

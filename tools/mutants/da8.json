@@ -138,9 +138,10 @@
   {
     "name": "DA8-26-the-notice-downloads-a-page-not-the-file",
     "file": "app/main.cjs",
-    "old": "download: file ? latestDownloadUrl(file) : url",
+    "old": "download: file ? listed ?? latestDownloadUrl(file) : url",
     "new": "download: url",
-    "tests": ["test/da8_launcher.test.js"]
+    "tests": ["test/da8_launcher.test.js"],
+    "note": "BR5 (re-aimed by content, AUDIT BR5): the release's own link to the file comes first now."
   },
   {
     "name": "DA8-27-enter-presses-whatever-button-is-first",

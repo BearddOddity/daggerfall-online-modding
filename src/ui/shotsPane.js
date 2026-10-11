@@ -82,7 +82,7 @@ export const LOADING_WORDS = Object.freeze({
   shots: 'Loading screens show the screenshots marked for them below.',
   art: `Loading screens show the night sky - choose Your screenshots on Loading screens (${optionPath('feat:loading-screen')}) to show these.`,   // ORG2
   off: `Loading screens are off - turn them on in ${optionPath('feat:loading-screen')}.`,
-  classic: 'Loading screens are drawn under the enhanced UI - the classic UI keeps Daggerfall\u2019s loads.',
+  classic: 'Loading screens are drawn under the enhanced UI - the classic UI keeps the original game\u2019s loads.',
 });
 /** Which of the words above stands: the skin first (the classic UI draws no loading screen), then the row. */
 export const loadingWordsKey = () => (isEnhanced() ? loadingMode() : 'classic');
@@ -250,7 +250,7 @@ function saveFile(s) {
   const url = URL.createObjectURL(s.blob);
   const a = el('a');
   a.href = url;
-  a.download = `daggerfall-shot-${s.id}.jpg`;
+  a.download = `dfo-shot-${s.id}.jpg`;
   document.body.append(a);
   a.click();
   a.remove();

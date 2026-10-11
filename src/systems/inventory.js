@@ -458,12 +458,12 @@ export function removeOne(list, templateIndex, opts) {
  *  shortest life first - so the arrows that are about to vanish are the
  *  ones that get used. Four hosts fire bows; this is the one home.
  *
- *  ROUTED, deliberately: DFU also carries `isArrowSummoned` out to the
- *  missile, where its ONLY use is to skip adding the arrow to the
- *  target's inventory on a hit (WeaponManager.cs:554-559). The port has
- *  no arrow-recovery rule at all yet - a real arrow does not land in a
- *  corpse either - so the flag would have nothing to suppress. It lands
- *  with the recovery rule it exists to qualify. */
+ *  DFU also carries `isArrowSummoned` out to the missile, where its ONLY
+ *  use is to skip adding the arrow to the target's inventory on a hit
+ *  (WeaponManager.cs:554-559). STUCK-ARROWS carries it: spendAmmoFor's
+ *  `shot` answers it, the hosts hand it to the shaft (`summoned`), and
+ *  neither the foe's recovery (arrowFlight.js playerArrowHitFoe) nor the
+ *  stuck shaft (arrowFlight.js stickable) gives a conjured one back. */
 export const spendArrow = (list) => removeOne(list, ARROW_TEMPLATE,
   { group: 'Weapons', allowQuestItem: false, priorityToConjured: true });
 
@@ -479,13 +479,14 @@ export const spendArrow = (list) => removeOne(list, ARROW_TEMPLATE,
  * A bow, or anything else that reaches here, still spends an Arrow:
  * the answer for every classic weapon is unchanged.
  */
-export function spendAmmoFor(list, weapon) {
+export function spendAmmoFor(list, weapon, shot = null) {
   const template = ammoTemplateFor(weapon) ?? ARROW_TEMPLATE;
   const opts = { group: 'Weapons', allowQuestItem: false, priorityToConjured: true };
   // ARENA-ARROWS: a REAL round spent is a shot the bout's tally counts (systems/shotTally.js) - asked before it goes
   const real = !isSummoned(getItem(list, opts.group, template, opts));
   if (!removeOne(list, template, opts)) return false;
   if (real) noteShot(list, template);
+  if (shot) shot.summoned = !real;   // STUCK-ARROWS: DFU's isArrowSummoned (WeaponManager.cs:404-407), for the shaft to carry
   return true;
 }
 

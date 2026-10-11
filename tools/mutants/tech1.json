@@ -430,8 +430,8 @@
   {
     "name": "TECH1-a-shaft-untallied",
     "file": "src/combat/techniques.js",
-    "old": "for (; n < t.arrows; n++) { if (!spendAmmoFor(items, weapon)) break; tallySwingSkills(ctx.entity, weapon); }",
-    "new": "for (; n < t.arrows; n++) { if (!spendAmmoFor(items, weapon)) break; }",
+    "old": "conjured.push(shot.summoned); tallySwingSkills(ctx.entity, weapon); }",
+    "new": "conjured.push(shot.summoned); }",
     "tests": [
       "test/tech1_runner.test.js"
     ]
@@ -484,8 +484,8 @@
   {
     "name": "TECH1-the-shot-at-plain-speed",
     "file": "src/combat/techniques.js",
-    "old": "pierce: t.through }, speedScale: t.speed });",
-    "new": "pierce: t.through } });",
+    "old": "pierce: t.through }, speedScale: t.speed, summoned: shot.summoned });",
+    "new": "pierce: t.through }, summoned: shot.summoned });",
     "tests": [
       "test/tech1_runner.test.js"
     ]
@@ -675,12 +675,12 @@
   {
     "name": "TECH1-AUDIT-the-service-behind-the-law",
     "file": "server-account/src/service.js",
-    "old": "export const ACCOUNT_VERSION = 'acct115';",
+    "old": "export const ACCOUNT_VERSION = 'acct116';",
     "new": "export const ACCOUNT_VERSION = 'acct107';",
     "tests": [
       "test/tech1_roster.test.js"
     ],
-    "note": "GUILD-SEEN (PIN MOVED): acct113. SCALE4f + SCALE4g (re-aimed by content, PIN MOVED): the service is acct110, past TECH1's acct108 and PATRON-LOAD's acct109 at the merges - a service before law 2's acct108 still fails. Re-aimed to acct112 at the merge past HOME-VOTE (acct111)."
+    "note": "CRAFT-HOLD (PIN MOVED, acct115 on its branch, renumbered past BR5 at the merge): acct116. BR5 (PIN MOVED, acct113 on its branch, renumbered past GUILD-SEEN's acct113 and GUILD3's acct114 at the merge): acct115. GUILD-SEEN (PIN MOVED): acct113. SCALE4f + SCALE4g (re-aimed by content, PIN MOVED): the service is acct110, past TECH1's acct108 and PATRON-LOAD's acct109 at the merges - a service before law 2's acct108 still fails. Re-aimed to acct112 at the merge past HOME-VOTE (acct111)."
   },
   {
     "name": "TECH1-AUDIT-the-turn-from-mid-dash",

@@ -117,5 +117,26 @@
       "test/realm1.test.js",
       "test/auditrealm2_client.test.js"
     ]
+  },
+  {
+    "name": "CRAFT-HOLD-account-version-unmoved",
+    "file": "server-account/src/service.js",
+    "old": "export const ACCOUNT_VERSION = 'acct116';",
+    "new": "export const ACCOUNT_VERSION = 'acct115';",
+    "tests": [
+      "test/legacy7_service.test.js",
+      "test/founder5.test.js"
+    ],
+    "note": "acct115 on its branch, renumbered past BR5 at the merge: acct116, and the mutant is the version main left."
+  },
+  {
+    "name": "CRAFT-HOLD-wrangler-version-unmoved",
+    "file": "server-account/wrangler.toml",
+    "old": "ACCOUNT_VERSION = \"acct116\"\n",
+    "new": "ACCOUNT_VERSION = \"acct115\"\n",
+    "tests": [
+      "test/realm1.test.js",
+      "test/founder5.test.js"
+    ]
   }
 ]
