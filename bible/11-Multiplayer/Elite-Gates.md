@@ -48,9 +48,12 @@ So, as decided here (each decision is argued in its section):
   - Each hall is generated from the breach's seed: a made level like the Burning Court and the Shattered Hour,
     entered under the gate's veil.
   - Halls follow a fixed rhythm: fight, traverse, mixed, fight, Court (sections 7-9).
-- **Five kinds of hall and a Court** (section 8): the Rift-Yard (relentless waves out of Wellhead rifts), the Span
-  (generated platforming), the Rampart (a walkway under fire), the Athenaeum (a seeded Orrery under pressure) and the
-  Proving Walk (span, champion, span). Seeded **twists** turn about one hall in four from circle 3.
+- **Fragments** (sections 10.1-10.8): modeled areas a course passes through. Oblivion Caverns and their kin stand in
+  every band; every platform is a modeled object; a fork offers a High Road over the void and a Low Road through the
+  caverns beneath; the Deepway is a hall of fragments; and the lords fight on modeled ground.
+- **Six kinds of hall and a Court** (section 8): the Rift-Yard (relentless waves out of Wellhead rifts), the Span
+  (generated platforming), the Rampart (a walkway under fire), the Athenaeum (a seeded Orrery under pressure), the
+  Proving Walk (span, champion, span) and the Deepway (a hall of fragments). Seeded **twists** turn about one hall in four from circle 3.
 - **Four bands deep**, retracing the legions' march of 3E 398 in reverse: the Broken Galleries, the Soul Cairn, the
   Shade Perilous, and the Havoc Wellhead, which never ends (section 7).
 - **Relentless adds the relay runs.** Nine kinds, three of them the Legion-Lord's, in one wave runner widened from the
@@ -105,7 +108,7 @@ DEATH-PENALTY inside.
  the first hall WAKES (the count starts) ─► the arch sinks behind the company
    │
    │  each hall: ARRIVAL ─► GATHER 8 s ─► the TRIAL ─► the DOOR ─► the DESCENT (20-45 s) ─► the PULL ─► the stair
-   │  the rhythm:  fight · traverse · mixed · fight · the COURT
+   │  the rhythm:  fight · traverse (a Span through fragments, or the Deepway) · mixed · fight · the COURT
    ▼
  the COURT's lord falls ─► a REDOUBT taken
    ├─ an `e1` RECEIPT to every living EARNER: the depth, the week's spoils thrown, Marks, embers for new depth
@@ -185,7 +188,9 @@ Lore:Imago Storm):
 - **The torn halls.** When the Spire's links to Oblivion broke, the halls that hung on them tore away. They fell back
   along the road the legions came: the Soul Cairn, then the Shade Perilous, then the Havoc Wellhead itself. The
   Imperial ruin stays sealed. The Elite Breach goes to what tore away, and to descend it is to walk the invasion of
-  3E 398 backwards (the bands, section 7).
+  3E 398 backwards (the bands, section 7). They did not fall as stepping stones: whole caverns of the Deadlands,
+  collapsed wings of the academy and the vaults of the dead came with them, and a course passes through them (the
+  fragments, section 10.1).
 - **The Kyn hold them as a proving ground**, as the Wellhead's own arena was one. The Spire was a proving ground for
   the Battlemages too. A Dremora rises in rank by holding a Court there, so the deeper halls are held by higher ranks:
   Kynreeves, then Kynmarchers, then Markynaz, and a Valkynaz at every fifth Redoubt. These are the Kyn who stayed
@@ -230,6 +235,10 @@ each new word was checked against `src/` and the player's existing vocabulary.
 | **Reliquary** | a sealed spoils roll, opened only by the way home | - | - |
 | **the descent** | the beat after a hall's door opens | the Town Seats' *Muster* | AUDIT EG0 L16 |
 | **witness** | a fallen member who watches the run | - | - |
+| **fragment** | a modeled area a course passes through: a **passage**, a **chamber** or a **shaft** (section 10.1) | a shader's fragment (the code says `egFrag`) | the halls fell in fragments |
+| **fight floor** | a flat floor where blows may land | traversal ground | - |
+| **the High Road**, **the Low Road** | a span's fork: over the void, or through the caverns beneath | - | - |
+| **the Deepway** | a hall built of fragments end to end | - | "Underway" is ordinary game text |
 | **the legion** | the adds | the Imperial Legion; the Fellowship family | lowercase |
 
 Capitalisation: Court, Redoubt and the band names are capitalised; hall, circle, decree, the count and the legion are
@@ -437,7 +446,7 @@ begins at Hall 5*w*+1, *the first hall* of that breach.
 | slot | beat | kinds drawn |
 |---|---|---|
 | 1 | **fight** | the Rift-Yard or the Rampart |
-| 2 | **traverse** | the Span |
+| 2 | **traverse** | the Span; from circle 3, the Deepway one time in three |
 | 3 | **mixed** | the Proving Walk, or the Athenaeum (at most one a circle, never in circle 1) |
 | 4 | **fight** | the Rift-Yard or the Rampart, whichever slot 1 was not |
 | 5 | **the Court** | the circle's lord (section 12) |
@@ -513,6 +522,8 @@ Wellhead the legions came through, each a standing body.
   would pass the cap holds it, and the next wave is one body larger.
 - **The end**: the last rift closed. Every add still standing crumbles (the host's `adie`), and the door opens.
 
+From circle 2, one Yard in three stands in a chamber (section 10.3), its rifts set in the walls.
+
 Split up and close rifts in parallel, or stand together and be buried. An eight-member company closes five rifts in
 three groups; a pair closes three, back to back, against a legion sized for two.
 
@@ -522,8 +533,9 @@ A generated course (section 10) of 12-28 platforms in two to four sections, with
 from the arrival plate to the end plate.
 
 - **Harriers** hover after the company over it (Imps hover, `HOST_HOVER_M` 0.9).
-- **Divers** dive at it from the air, from the Shade: only at its islands and plates, since no platform is 4 m wide.
+- **Divers** dive at it from the air, from the Shade: only at its islands and plates, since no platform is 5 m wide.
 - **The door** opens on the first living member at the end with a fair trail (section 7).
+- **Fragments**: a span may pass through a fragment, or fork into a High Road and a Low Road (section 10.3).
 - **THE GOLD RUN**: every living member across before the descent's 15th second adds one real minute to the count.
   Past the cap, it adds Surplus credit instead.
 
@@ -531,7 +543,7 @@ from the arrival plate to the end plate.
 
 A walkway 90-160 m long and 3-4.5 m wide, over the void.
 
-- **Fire vents** cross it on a cycle: each a lane 2.5 m wide across the walkway, telegraphed 1.0 s before it erupts
+- **Fire vents** cross it on a cycle: each a lane 3 m wide across the walkway, telegraphed 1.0 s before it erupts
   (20% of max health, fire).
 - **The legion marches along it** toward the company. The relay runs them on a line, the walkway's own axis, so it
   needs no navmesh.
@@ -570,6 +582,7 @@ band's **champion** stands: a Kynreeve in the Galleries, a Kynmarcher in the Cai
   and Charge from `ATTACKS`.
 - It brings an escort of two adds from its band.
 - Its fall opens a second span, whose end is the door.
+- From circle 2, one proving court in three is a chamber: the Fallen Stacks' broken dome (section 10.3).
 
 ### 8.6 The Court (`court`) - every fifth hall
 
@@ -590,12 +603,28 @@ From circle 3, about one hall in four (seeded, never the Court, never two runnin
 | **The Scriptorium** | a quiet hall: heals 30%, no trial, and the door opens after 30 s (the count runs) | slot 3, in place of its kind |
 | **A Battlemage's Shade** | a friendly shade (the relay's host runner, a friendly flag) fights beside the company for the hall | any trial hall |
 
+### 8.8 The Deepway (`deepway`) - a hall of fragments
+
+From circle 3, the traverse slot draws the Deepway one time in three instead of the Span. It is a hall built of
+fragments end to end (section 10.1), a crawl through the band's deep places:
+
+1. a passage;
+2. a chamber where the legion holds the way: two rifts in its walls, under the Rift-Yard's law at half its count;
+3. a shaft down;
+4. a second passage;
+5. the end plate.
+
+The door opens on the first fair arrival, as a span's does, and the descent's law takes the rest. Each band has its
+own: the Oblivion Caverns in the Galleries, the Ossuary and the Mist Stair in the Cairn, the Gloam Thicket in the
+Shade, and the Forge Gut in the Wellhead.
+
 ## 9. The generator - the hall spec
 
 **One pure law, read by both sides.** `egHallOf(seed, hall)` (`net/egLaw.js`) answers the **hall spec**:
 
 - the kind, the band, the circle, the slot and the twist;
 - the hall's geometry: its plates, court discs, rifts, walkway, pillars, side-spans and span course;
+- its fragments: each one's kind, class, socket and seed, and so its law half (section 10.4);
 - its decrees, as numbers.
 
 The relay reads it to run the hall's brains: where a court's clamp is, where a rift stands, the walkway's line, where
@@ -612,15 +641,17 @@ state. A hall's own seed is `egSeed(seed, hall)`, the `sdSeed` mix. EG5 exports 
 
 **The circle law** (`egCircleOf(seed, c)`) fills the rhythm's slots (section 7) from their kinds, weighted by band:
 
-| | yard | rampart | span | proving | athenaeum |
+| | yard | rampart | span or deepway | proving | athenaeum |
 |---|---|---|---|---|---|
 | the Broken Galleries | 3 | 2 | (slot 2) | 3 | 1 |
 | the Soul Cairn | 3 | 3 | (slot 2) | 2 | 1 |
 | the Shade Perilous | 2 | 3 | (slot 2) | 3 | 1 |
 | the Havoc Wellhead | 3 | 3 | (slot 2) | 3 | 1 |
 
+Slot 2 is always the traverse: the Span, or from circle 3 the Deepway one time in three (section 8.8).
+
 **A hall's budget.** Every piece the generator places carries a cost: a platform kind, a rift, a vent lane, a caster
-pillar. A hall's pieces sum to `egBudget(h)`, which grows with the circle and the decrees. The Spire therefore has no
+pillar, a fragment and each of its hazards. A hall's pieces sum to `egBudget(h)`, which grows with the circle and the decrees. The Spire therefore has no
 lucky seeds: two companies at Hall 40 face halls of the same weight, drawn differently. The budget is the measured
 knob of EG's tuning pass (EG21).
 
@@ -628,7 +659,8 @@ knob of EG's tuning pass (EG21).
 `egSpan.js`, `sdSteps`, the motor and the parkour constants all joining `RELAY_GRAPH` would make every motor tweak a
 relay version. Instead:
 
-- the span law is a leaf, `net/egSpanLaw.js`;
+- the span law is a leaf, `net/egSpanLaw.js`, and the fragments' law another beside it, `net/egFragLaw.js`
+  (section 10.4);
 - its motor numbers are copied as `EG_*` constants and held equal to the motor's by a test;
 - the solver is part of that law, so the relay and the client draw the same course;
 - the CLI `egSpanSolve.mjs` (under tools/, as `tools/sdScoreProbe.mjs` is) only drives it.
@@ -639,7 +671,7 @@ relay version. Instead:
 - Every spec field the relay reads is pinned against the brain that reads it.
 - A change to the draw changes the relay version, as the Orrery's golden draw does (`test/relayversion.test.js`).
 
-## 10. The spans - generated platforming
+## 10. The spans and the fragments - generated platforming, modeled areas
 
 **The course is the Steps' own record.** `src/world/sdSteps.js` lays the Unmoored Steps as a uniform array,
 `{i, kind, span, x, y, z, w, d, amp, period, phase, beat}`, plus checkpoints `{x, y, z, r}`: exactly what a generator
@@ -719,8 +751,8 @@ The generator emits only what the solver proves at the span build:
 - **The pull's toll**: 5% of max health for each checkpoint island not reached, at most 20%. Trying and falling short
   costs less than standing still.
 - **A cast-back**: 10%, never below 25% health (section 8).
-- **THE HIGH ROAD** (from circle 3): a seeded fork, two pieces harder, to a Reliquary cache. It costs time, and it is
-  room for skill.
+- **THE FORK** (from circle 2): the High Road over the void and the Low Road through the caverns beneath (section
+  10.3).
 
 **The flight bans.** `applyMotorEffectFlags` (`src/scenes/shared.js`) holds Levitate under `levitateWarded()`.
 
@@ -736,6 +768,193 @@ The generator emits only what the solver proves at the span build:
 member sees the same Step in the same place. A crumble is each member's own, as on the Steps.
 
 **The relay judges the end, not the jumps** (section 19).
+
+### 10.1 Fragments - the halls the course passes through
+
+Mac, 2026-10-11: *"I really want to enhance the experience where sometimes platforms can lead to oblivion caverns, or
+different types of modeled areas instead of simple platforms"*.
+
+A course of platforms alone is a path over the void. The torn halls did not fall as stepping stones: they fell in
+**fragments** - whole caverns, collapsed rooms, broken stairs - and a course passes through them. A fragment is a
+modeled area with a mouth and an exit, its own floors, walls and ceilings, its own hazards, and room for the legion.
+There are three classes:
+
+| class | what | where it stands | blows land |
+|---|---|---|---|
+| **passage** | a tunnel, a collapsed corridor, a toppled colonnade: entered at its mouth and left at its exit, with ledges, gaps and hazards inside | in place of a span section | on its landings only (its fight floors) |
+| **chamber** | a room with one or more flat fight floors inside walls: a magma hall, a crypt, a pit | in place of a court disc (a Rift-Yard's, a Proving court, a lord's ground), or inside a Deepway | yes |
+| **shaft** | a vertical fragment: down through ledges and drops | the Low Road's way down, and the Deepway's | no |
+
+**Every platform is dressed too.** The law decides each platform's footprint, and the model fills it exactly: a
+toppled column drum in the Galleries, a bone raft in the Cairn, a black-glass shard in the Shade, a slag raft or a
+chained anvil in the Wellhead. **The top you see is the top you stand on**: the model's walkable face is the
+collider's face, and its edge is drawn as an edge (a rim line), so a handsome platform never lies about where it ends.
+
+### 10.2 The library, band by band
+
+| band | fragment | classes | what it is | its own hazard (the place's white light) |
+|---|---|---|---|---|
+| the Broken Galleries | **Oblivion Caverns** | passage, chamber, shaft | the Deadlands' lava tubes under the torn halls: basalt walls, magma channels cut in the floor, chained bridges over magma, openings onto the burning sky | **magma surges** along a channel (a lane, ringed 1.0 s, 20% fire); **fire falls**, curtains across a passage on a cycle (pass between them); **falling basalt** (a disc, 1.2 s) |
+| | **The Fallen Stacks** | passage, chamber | an Athenaeum wing fallen on its side: floors become walls, bookcases become platforms, a broken dome becomes a chamber | **toppling shelves** (a lane across the way, 1.2 s) |
+| | **The Broken Colonnade** | passage | a colonnade toppled across the void: drums as steps, arches to run along | none: the gaps are the hazard |
+| the Soul Cairn | **The Ossuary** | passage, chamber | the vaults of the dead: ribcage bridges, skull pillars, soul-gem niches | **bone bridges** that crumble (the Crumble's law); **soul-wisps** drifting a fixed path (a touch tethers, the Wraith's drain) |
+| | **The Mist Stair** | shaft, passage | stairs wound down a pit of mist | **mist surges**: a rising band that hides the floor below a line for 3 s, while telegraphs keep their light |
+| the Shade Perilous | **The Gloam Thicket** | passage, chamber | a wood of black glass, its branches the platforms, moonbeams the only light | **moon-bound branches**, solid only while a moving moonbeam lies on them (the Beat's law, driven by the beam) |
+| | **The Eclipse Vault** | chamber | a dark hall crossed by moving shafts of moonlight | **the Eclipse** (a CHECK): every 40 s, everyone outside the moon-shafts takes 30%; stand in the light |
+| the Havoc Wellhead | **The Forge Gut** | passage, chamber | Dagon's war-forges: conveyors, molten channels, anvils as platforms | **hammer drops** (a disc, 1.4 s), **conveyors** (Rails), **slag spills** (a lane, 1.2 s) |
+| | **The Clan Pit** | chamber | the Wellhead's arena of honourable fights between clans (canon), sunk in basalt | none: the Pit is for fighting |
+| | **Oblivion Caverns, deep** | all three | the Wellhead's own magma caverns: wider, brighter, the magma higher | the Caverns' three, more of them at once |
+
+Every hazard keeps the wind-up floor, the union floor and THE WIDTH RULE (sections 12.2 and 10.6). NOTHING GETS
+FASTER: depth adds hazards and fragments, never shorter cycles.
+
+### 10.3 Where fragments stand
+
+- **In a Span** (section 8.2). A span's platforms run up to a fragment's mouth (a cavern opening in a floating rock
+  mass, a fallen doorway) and on from its exit, to more platforms or the end plate. How many: in circles 1-2, one span
+  in three carries one passage; in circles 3-10, one or two; deeper, up to three, as the budget chooses.
+- **THE FORK: the High Road and the Low Road.** From circle 2, one span in three forks at a checkpoint island:
+  - **the High Road** stays over the void: two pieces harder and faster, with a Reliquary cache at its hardest point;
+  - **the Low Road** drops into the deep, by a Descent or a shaft, into an Oblivion Caverns passage (or the band's
+    own fragment) beneath the course. It is half as long again, with fewer falls and more foes (Lurkers in alcoves,
+    Harriers along its graph), and a **Battlemage's niche** that heals 20%, once each;
+  - the two rejoin at the end plate. The door opens on the first fair arrival by either road, and the descent's law
+    takes the rest. A company may split: the fast and the safe are the company's choice.
+- **The Deepway** (`deepway`, a hall kind, section 8.8): a hall built of fragments end to end.
+- **Chambers in other halls**: from circle 2, one Rift-Yard in three stands in a chamber, its rifts set in the walls,
+  and one Proving court in three is a chamber (the Fallen Stacks' broken dome). The lords below fight on modeled ground
+  (section 12.3): Grath in an Oblivion Caverns magma hall, the Cairn-Keeper in an Ossuary crypt, the Mother of Dusk over
+  a Gloam glade open to the sky, the Bound Colossus down the Forge Gut, the Wellhead Wyrm in an open-sky cavern of
+  pillars.
+- **Never**: a fragment in the Athenaeum (the lock is the hall), or two chambers running.
+
+### 10.4 The fragment record - the law half
+
+Every fragment, built in code or authored in Blender, has a **law half** the relay reads and a **mesh half** only the
+client draws. The relay has no ARENA2 and never reads a BSA: none of the relay bundle's files does. So it cannot know a
+real Daggerfall block's shape, and every fragment is the port's own geometry. Its law is a small, pure record:
+
+```
+{ id, band, class, variant,
+  sockets: { in: {x, y, z, yaw, w, h}, out: [{x, y, z, yaw, w, h}, ...] },   // where it joins the course
+  floors: [{ y, poly: [[x, z], ...], fight: bool }],                          // walkable regions; edges are walls
+  open:  [[a, b], ...],                                                        // floor edges open to the void
+  ceil:  [{ y, poly }],                                                        // headroom
+  graph: { nodes: [[x, y, z, r], ...], edges: [[a, b], ...] },                 // where the legion walks
+  anchors: { rift: [...], caster: [...], lurker: [...], niche: [...], hazard: [...] },
+  hazards: [{ kind, shape, at, period, windup, pct }],                         // on the shared clock
+  course: [ ... ],                                                             // inner platforms, the Steps' records
+  proof: { crossMin, moves },                                                  // the timed solver's answer
+  cost, reverb, lights: [[x, y, z, kind], ...] }
+```
+
+- **Sockets** join it to the course. A fragment's exit socket faces +Z, so a hall stays laid along +Z (section 8)
+  whatever a fragment does inside. A socket may change height: that is how a Low Road goes down.
+- **Floors** are polygons, each at one height. Those marked `fight` are where blows may land (section 10.6).
+- **The graph** is where the legion walks (section 10.6).
+- **The course** is the fragment's own platforms (a chasm crossed on ledges), in the Steps' record shape, proven by
+  the timed solver like any span (section 10).
+- **The proof** gives `EG_CROSS_MIN` for `spanFair` (section 19).
+- It lives in `net/egFragLaw.js`, beside the span law in the relay bundle. A change to a fragment's law is a relay
+  version; a change to its mesh is not.
+
+### 10.5 How a fragment is built
+
+Two sources, one record:
+
+1. **Code-built kits** (EG6b first, then each band's). A kit is a generator. `egFragOf(seed, kind, class, budget)`
+   emits the law half (pure, and the relay's too), and `buildEgFragModel(law, seed)` the mesh half (the client's).
+   An Oblivion Caverns passage, for example:
+   - a profile (a flat floor 4-8 m wide, walls and a vault at least 3.5 m clear above it) swept along a seeded path
+     that leaves facing +Z;
+   - the walls and the vault displaced by noise, never the floor: blows land on flat ground;
+   - features placed by the budget: a magma channel cut in the floor, basalt pillars (collider cylinders), fire
+     falls, a chasm crossed on ledges, an opening onto the burning sky;
+   - its collider a low-poly PROXY of the floors, the wall planes and the vault (at most 3,000 triangles), never the
+     visual mesh. This is the `realmColliderTris` pattern: the Hour collides on 386 proxy triangles and draws 7,700.
+2. **Authored hero fragments** (EG6c, as Mac authors them), modeled in Blender:
+   - **the bake**: through `tools/fbxMesh.mjs`, the general bake that keeps UVs and normals (`tools/shipBake.mjs` drops
+     UVs);
+   - **the law half**: authored in the same scene as named markers (`floor.*` planes, `floor.fight.*` for fight
+     floors, `socket.in`, `socket.out.*`, `node.*`, `anchor.*`, `hazard.*`, `light.*`) and baked to a small JSON
+     beside the mesh;
+   - **each fragment its own bake script and byte-for-byte test**, as every bake in the port has;
+   - **each fragment its own `.fbx`**. The gate's 8.6 MB whole-scene source is the warning.
+
+**One kit of mesh tools.** Today every made level carries its own box, extrude and pack helpers (`packFaces`,
+`packRealmFaces`, `quadFacing`, `away`, `facing`). The fragments use one shared kit, `world/meshKit.js`: box, prism,
+extrude, lathe, sweep, and the pack into `createMesh`'s shape with Uint32 indices. The court and the Hour may move
+onto it later; that is not required.
+
+**One registry of pseudo-archives.** The pseudo-archive numbers are scattered constants today (38001-38221), and they
+have already collided once (AUDIT SD IV R6, the large boat's 38151). EG6b adds `world/pseudoArchives.js`, the one place
+every made level's archive is registered, with a test that refuses a collision. The Spire's 38231-38279 are registered
+there.
+
+**Daggerfall's own fire.** The Oblivion Caverns' fire falls wear Daggerfall's own TEXTURE.356: the Mantellan Crux's fire
+walls, emissive in records 0, 2 and 3 (`FIRE_WALLS_ARCHIVE`). They are read from the player's own ARENA2 at runtime
+through the data pipeline (`getTexture`), never shipped. Vanilla Enhanced does not repaint 356, so it draws as
+Daggerfall drew it. Everything else is painted in code into the band's archives (section 23).
+
+### 10.6 Fighting in a fragment
+
+- **Fight floors.** Blows land only on flat **fight floors** (`floors[].fight`), each a polygon at one height.
+  - Today the telegraph pass (`src/render/gateTelegraph.js`) draws ONE plane at one height: `TELEGRAPH_LIFT` over a
+    court's `y`. A shape on a higher ledge hides under it; on a lower one it floats.
+  - EG6b widens it: a shape is drawn once for each fight floor it touches, clipped to that floor's polygon at that
+    floor's height.
+  - Stairs, slopes, ledges and inner platforms are traversal. No lord or add aims a blow at a member standing there;
+    only the place's own hazards reach them, each drawn by its own pass on its own surface.
+- **Walls bound the escape.** `perilAt` and `wayOut` (`src/scenes/gateCourt.js`) search 24 bearings bounded only by a
+  court's circle, straight through walls. In a fragment, the union floor (section 12.2) searches over the fight floor's
+  polygon, whose edges are walls unless marked open. An escape never runs into rock.
+- **The relay's judge is 2D** (`judgeShapes`, section 19). It judges a blow per fight floor, and counts a member only
+  while their pose's height lies within that floor's band (±1 m).
+- **THE WIDTH RULE.** `deepIn` (`src/net/bossBody.js`) counts a body only when its point and eight probes 1.5 m out lie
+  inside the shape, so a shape narrower than 3 m is never counted.
+  - Every aimed blow in the Spire is at least 3 m across at its narrowest.
+  - Section 11's Charge and Dive and section 12.3's Lunge are widened to 3 m; their floors become 0.72 s.
+- **The legion walks the graph.**
+  - Ground kinds walk a fragment's graph from node to node (a search over a dozen nodes), as the Rampart's legion
+    walks its line.
+  - Harriers hover along the graph, never through rock.
+  - Lurkers wait at `anchors.lurker`, Casters stand at `anchors.caster`, and rifts open at `anchors.rift`.
+  - Divers dive only in fragments open to the sky.
+
+### 10.7 Moving through a fragment
+
+- **Headroom.** Every passage keeps at least **3.5 m** clear over its floors, and every chamber **6 m**. The
+  third-person cameras collide:
+  - the Morrowind lane's pivot rides 1.77 m up and drops at most 0.14 m under a ceiling (`src/player/mwCamera.js`);
+  - Eye of the Beholder's camera rides 0.5 m over the eye and 2 m behind it, and casts twice its offset upward
+    (`checkBounds`, `src/player/eotbCamera.js`), so it wants about 2.7 m for its whole offset.
+  - 3.5 m gives both their whole offset with room for a ledge's step. No fragment asks for a crouch.
+- **The collider** takes the proxy (section 10.5) in one bucket per fragment: `addMesh`, then `removeBucket` at the
+  hall's end. The fine grid's query cost follows the triangles in each 2 m cell, so a proxy keeps the walls and the
+  vault apart from the floor in plan.
+- **The clamp.** The motor's analytic clamp (`player.arena.clamp`, `realmClamp` over floor lists) is OFF inside a
+  fragment. Its walls bound it, and its open edges fall to the void.
+- **Magma is the void.** Falling into magma, a chasm or the mist is a cast-back (section 8), with the place's fire on
+  the magma's.
+- **`spanFair`** (section 19) knows fragments: a pose near a floor's height must lie inside that floor's polygon, or on
+  an inner platform's footprint at that time.
+
+### 10.8 Light, sound and budgets
+
+- **Light.** A fragment's light markers join the hall's list nearest-first (the Hour's `realmLightsWith` precedent),
+  under the renderer's cap (`CLASSIC_MAX_LIGHTS` 16, 48 on the enhanced lane).
+  - Magma glows by emission, never by a light, so the cap is spent on gold (the way) and on the band's own colour.
+  - Magma is the band's molten orange, darker than Dagon's crimson, so a telegraph is never mistaken for the floor
+    (section 23's readability law).
+- **Sound.** A fragment carries a reverb preset (`src/systems/reverbPresets.js`): Cave (2.91 s) in caverns, Stoneroom in
+  the Stacks and the Ossuary, Quarry in open fragments. The Spire's reverb law owns `audio.setReverb` while a hall
+  stands, and tells Better Ambience, which caches its own (`reverbOn`), so the two never fight.
+- **Budgets.** None are documented for the port today, so the Spire sets its own:
+  - a fragment: at most 15,000 drawn triangles, 3,000 collider triangles and 6 lights;
+  - a hall: at most three fragments, 40,000 drawn triangles and 80 mesh draws.
+- **The cull.** The dungeon arm reads `d.culled`, and nothing sets it today. EG6b sets it from each fragment's and each
+  section's bounds against the frustum, and marks decorative parts `noShadow`. EG21 measures all of it on SwiftShader
+  and a phone.
 
 ## 11. The legion - relentless adds
 
@@ -758,9 +977,9 @@ player's data and the budget allow. Every blow is a shape the telegraph pass dra
 | 0 | **Harrier** | runs at the living member farthest from its anchor (in a Court, from the lord, as the gate's runs from the Warden; elsewhere, from itself), hovering | Imp (1); Giant Bat (3) in the Shade | r 0.5, h 1.5 | 5.0 m/s | Bite: disc r 2, 12% + 4 (0.9 s / 0.79 s) |
 | 1 | **Sapper** | walks to its OBJECTIVE: a Court's lord (heals it, the gate's law), or a Yard's nearest closed rift (opens it again at a third) | the Atronachs (35, 38, 36, 37) | r 0.7, h 2.3 | 1.6 m/s | none: it is the objective |
 | 2 | **Ward-Bearer** | stands and pulses, holding a ward on what it guards (a lord, a portcullis) | Fire Daedra (26), Frost Daedra (25); Daedra Seducer (29) in the Shade | r 0.6, h 2.2 | stands | Pulse: disc r 3.5, 18% + 6 of the band's element (1.4 s / 1.00 s) |
-| 3 | **Breaker** | winds a charge at a member, runs it, pushes | Daedroth (27) | r 0.8, h 2.4 | 3.0 m/s; the charge 12 m/s | Charge: lane w 2.5 x 14, 25% + 8, push 6 m (1.1 s / 0.68 s) |
+| 3 | **Breaker** | winds a charge at a member, runs it, pushes | Daedroth (27) | r 0.8, h 2.4 | 3.0 m/s; the charge 12 m/s | Charge: lane w 3 x 14, 25% + 8, push 6 m (1.1 s / 0.72 s) |
 | 4 | **Caster** | stands off 10-18 m and throws at a member every 6-9 s | Fire (26) or Frost (25) Daedra; Lich (32) in the Cairn | r 0.6, h 2.2 | 2.0 m/s | Bolt: disc r 3 at the member's feet, 20% + 6, the element, leaving a pool (`POOLS` hellfire's) (1.6 s / 0.93 s) |
-| 5 | **Diver** | flies at 6-10 m, circles, dives a lane at a member; never onto a platform narrower than the lane plus 2 m | Harpy (13), Daedra Seducer (29, winged), Dragonling (34) | r 0.6 | 6.0 m/s | Dive: lane w 2 x 10, 18% + 5 (1.0 s / 0.64 s) |
+| 5 | **Diver** | flies at 6-10 m, circles, dives a lane at a member; never onto a platform narrower than the lane plus 2 m (5 m) | Harpy (13), Daedra Seducer (29, winged), Dragonling (34) | r 0.6 | 6.0 m/s | Dive: lane w 3 x 10, 18% + 5 (1.0 s / 0.72 s) |
 | 6 | **Lurker** | dormant until a member passes within 6 m (an ambush), then slow and heavy | Gargoyle (22); Iron Atronach (36) in the Wellhead | r 0.9, h 2.6 | 2.2 m/s | Smash: disc r 3, 30% + 10 (1.3 s / 0.93 s) |
 | 7 | **Binder** | stands back and raises the last fallen add of its wave once, a 6 s cast broken by a blow worth a tenth of its health | Lich (32), Ancient Lich (33) | r 0.6, h 2.2 | 1.2 m/s | none: the raise |
 | 8 | **Wraith** | drifts in and tethers the nearest member: 3% of max health a second while within 8 m, broken by putting 10 m between | Wraith (23), Ghost (18) | r 0.5 | 2.5 m/s | Drain: a tether (section 23) |
@@ -857,6 +1076,8 @@ and the choice of blow (`chooseAttack`), and the Remnant already imports them.
     `perilAt`'s bearing search (`src/scenes/gateCourt.js`) widened to a union and to the hall's floor.
   - A blow that would break that is held a beat (250 ms), at most four beats, then dropped.
   - Pendulums and vents are tested on the same floor.
+- **THE WIDTH RULE** (section 10.6): every aimed blow is at least 3 m across at its narrowest, or the relay's count could
+  never see it.
 - **THE CHECK CLASS.** A whole-court blow (no edge to run to), a haven blow, or an errand's failure blow is a CHECK:
   - its wind-up and its damage are fixed: no phase, fury, decree or depth shortens or raises them;
   - it carries its own feasibility pin for *n* = 1 to 8 (THE ERRAND FLOOR, below);
@@ -887,8 +1108,8 @@ lord's errand rules are given for *n* = 1, and its numbers keep the floors.
 
 **The Broken Galleries**
 
-1. **Grath, Hound of the Wellhead** (`hound`; Daedroth 27, x3). The Court is three islands (r 11) joined by narrow
-   bridges.
+1. **Grath, Hound of the Wellhead** (`hound`; Daedroth 27, x3). The Court is an Oblivion Caverns magma hall (section
+   10.3): three basalt islands (r 11) joined by narrow bridges over the magma.
    - It bounds from island to island (the Warden's Leap). The island it leaves cracks, warned 3.7 s (escape to a
      bridge, at most 22 m: 3.65 s), and falls for 15 s. A cast-back from a fallen island lands on a standing one.
    - Gore: a lane 3 m wide and 18 m long, 1.3 s (floor 0.72 s), push 6 m.
@@ -927,7 +1148,7 @@ lord's errand rules are given for *n* = 1, and its numbers keep the floors.
      - *n* = 1: no ring; he duels in the open with his whole kit.
    - **Riposte**: a cone (3.5 m, 90°) that answers a blow landed in the 0.6 s after his guard rises, 0.8 s (floor
      0.71 s). The tell: his blade raised, glinting.
-   - **Lunge**: a lane 2 m wide and 10 m long, 1.0 s (floor 0.64 s). **Whirl**: a disc of r 4, 1.3 s (floor 1.07 s).
+   - **Lunge**: a lane 3 m wide and 10 m long, 1.0 s (floor 0.72 s). **Whirl**: a disc of r 4, 1.3 s (floor 1.07 s).
    - Phase 2: two Challenges at once (when *n* ≥ 4).
    - Phase 3: **the Last Lesson**. The court's edge closes 1 m every 6 s, to r 12.
    - *A fight about the duel.*
@@ -935,7 +1156,7 @@ lord's errand rules are given for *n* = 1, and its numbers keep the floors.
 
 **The Soul Cairn**
 
-5. **The Cairn-Keeper** (`cairnkeeper`; Lich 32, x3).
+5. **The Cairn-Keeper** (`cairnkeeper`; Lich 32, x3), in an Ossuary crypt.
    - **The Soul Tithe**: every 25 s each member takes a soul-mark. It must be laid in one of four soul-gems on the rim
      (stand 1.5 s) within 9 s; the gems are placed so the nearest is never more than 12 m away. Otherwise it bursts:
      30%, and a Wraith rises.
@@ -958,7 +1179,7 @@ lord's errand rules are given for *n* = 1, and its numbers keep the floors.
 **The Shade Perilous**
 
 8. **The Mother of Dusk** (`dusk`; Daedra Seducer 29, x3, winged; the Morrowind `winged twilight`, which flies). Dagon
-   gave her kind its wings. She circles over the void beyond the court, out of a blade's reach.
+   gave her kind its wings. She circles over a Gloam glade open to the sky, beyond the court and out of a blade's reach.
    - Dives (lanes; never onto ground narrower than the lane plus 2 m) and Hellfire.
    - **Three anchors** hold her to the rim. They are bodies a blade strikes, each 6 s of the company's reference
      damage. With all three broken she is dragged down and grounded for 30 s, x1.3.
@@ -976,14 +1197,14 @@ lord's errand rules are given for *n* = 1, and its numbers keep the floors.
 **The Havoc Wellhead**
 
 11. **The Bound Colossus** (`colossus`; Iron Atronach 36, x4): the Battlemages' war-engine, Dagon's now.
-    - It walks a fixed route down a long court (55 m), stamping lanes.
+    - It walks a fixed route down the Forge Gut's long forge hall (55 m), stamping lanes.
     - Its vent-hearts, `3 + floor(n/2)` (3 to 7), are on its back. **Rails rise along its flank every 15 s**
       (`carryBy`) and carry members up to them: the Spire's own platforming, inside the fight.
     - Break them all before its Overload every 75 s (70% to all, a CHECK): stunned 8 s, x1.5.
     - Chain lightning: discs that leap between members within 6 m. Spread.
     - *A fight you climb.*
 12. **The Wellhead Wyrm** (`wyrm`; Dragonling 34, x5, flying).
-    - It perches on three pillars, breathing lanes and cones; it takes flight and drops meteors.
+    - In an open-sky cavern, it perches on three pillars, breathing lanes and cones; it takes flight and drops meteors.
     - Each pillar is reached by a side-span and broken from on top. With its perch broken it lands, x1.3, for 25 s,
       until it finds another.
     - *A fight for every build.*
@@ -1412,7 +1633,7 @@ The gate's trust law, kept whole, and where it was not enough, widened:
   (`judgeGate`, `judgeRemnant`, `judgeSerpent`).
   - Every Spire blow travels with a FULL shape stamp, its kind and every number, which is new. The Remnant's
     `shapeStamp` carries only what its marks changed.
-  - So one `judgeShapes` tests any blow against the pose trails the relay holds (`posAt`/`posAfter`, `deepIn`,
+  - So one `judgeShapes` tests any blow, per fight floor (section 10.6), against the pose trails the relay holds (`posAt`/`posAfter`, `deepIn`,
     `BODY_AFTER_MS`) and feeds `src/net/bossBody.js` (`bodyStruck`, `bodyCensus`).
 - **A span's end**: `spanFair`.
   - The relay's body trails (`BODY_TRAIL_MS` 2000, `BODY_TRAIL_MAX` 24) are seconds long, and a crossing takes tens of
@@ -1423,6 +1644,7 @@ The gate's trust law, kept whole, and where it was not enough, widened:
     `beatStands` on the anchored clock).
   - No airborne stretch may pass `EG_AIR_MAX_S` (2.5 s).
   - The crossing must take at least `EG_CROSS_MIN(spec)`, from the solver.
+  - In a fragment, a pose near a floor's height must lie inside that floor's polygon (section 10.7).
   - Poses between a member's `down` and their next `here` are never judged; a pose sent mid-stair belongs to no hall.
   - An unfair trail opens no door, and its measures ride the receipt (`m`).
 - **The descent**: `down` is accepted only within 3 m of the door.
@@ -1679,6 +1901,9 @@ a legion's can stand at once. `TELEGRAPH_POINTS_MAX` (10) and `TELEGRAPH_SPOKES_
   - the Examination's order is told by numerals and a chime per rune as well as light;
   - every blow aimed at you, a lord's or an add's, gives you a personal audio sting.
 
+**Fragments** (section 10): painted in each band's kit. The Caverns' fire falls are Daggerfall's own TEXTURE.356, and
+magma is the band's molten orange, darker than Dagon's crimson.
+
 **The arch** (section 6) and **the stair** between halls: the veil plays the fall past the Spire's broken underside,
 its marble ribs and hanging chains, to the next hall's gold plate. It lasts 1.2 s, frame-synced, the same every time.
 
@@ -1735,10 +1960,11 @@ one recall. Reliquaries open only on the way home.* Its first circle is the fixe
   - the Timers row, the sight line, the company's map mark;
   - the hub's open and the room link; each hall's transition;
   - the HUD and the rest window; the claim queue (`createEgClaims`); *Return to the Spire*;
-  - the score; the flight bans (OR'd into the one ward registration); no Resurrect; a death as a fall;
+  - the score and the Spire's reverb law; the flight bans (OR'd into the one ward registration); no Resurrect; a death
+    as a fall;
   - DEATH-PENALTY exempted; the witness's camera.
 - `src/scenes/worldModes.js` - WIRED: `enterEgHall(spec)` as `enterSdRealm`; `standEgHall(ctx)` beside `standSdRealm`
-  (meshes, collider buckets, lights, through `egHallParts`); every hall's step under `stepThroughFire`; the arena clamp
+  (meshes, collider buckets, lights and the hall's fragments, through `egHallParts`); every hall's step under `stepThroughFire`; the arena clamp
   per hall (`realmClamp` over the spec's floors); `madeLevelOf`.
 - `src/scenes/dungeonContext.js` - WIRED: the span's riders (`sdStepsRide`, generalised in EG4); no foes stream in a
   made level (every foe is the relay's).
@@ -1759,7 +1985,8 @@ Every slice record below names all four, each wired or flagged.
     copied;
   - `sdSeed`, `rimSpots` and `topWithMe` are exported once and imported (`hostTeamHpFor` already is);
   - `EG_ESCAPE_MPS` is computed from `runSpeed` at the escape build, never a literal;
-  - the span law's copied motor numbers are held equal by a test.
+  - the span law's copied motor numbers are held equal by a test;
+  - one mesh kit (`world/meshKit.js`) and one registry of pseudo-archives (`world/pseudoArchives.js`).
 - **A PIN MUST FAIL**: every slice ships `eg<N>_*.test.js` under test/ and its mutant records, `eg<N>.json` under
   tools/mutants/, every mutant dead; laws are pinned with deepEqual against their tables, never inequalities.
 - **TEST THE SHAPE THE PRODUCER MINTS**: receipts, orders, specs and courses are tested as `mintEgReceipt`,
@@ -1772,7 +1999,8 @@ Every slice record below names all four, each wired or flagged.
   - the restack coalesces;
   - every refusal is checked again when its async answer lands.
 - **EVERY ALLOCATION HAS AN OWNER**:
-  - each transition frees the old hall's meshes, colliders and riders;
+  - each transition frees the old hall's meshes, colliders and riders, its fragments' with them (the court's and the
+    Hour's meshes are built once and never freed today; the Spire's are not);
   - band textures are cached per band and freed at the breach's end;
   - the arch pool owns its arches.
 - **RETIRING A FLAG DELETES THE SENTENCE**: any INTERIM this arc opens is retired by deleting its sentence.
@@ -1788,6 +2016,9 @@ Every slice record below names all four, each wired or flagged.
 - **No Elite Breach offline.** Offline there is no relay to run it.
 - **No ordinary dungeon foes inside.** Every foe in the Spire is the relay's, or the one life would be a client's word.
 - **No Gilded piece.** The Hourlock stays the one.
+- **No Morrowind architecture.** The Morrowind layer has no statics, cell or collision path (it reads `STAT` records
+  only for spell effects), so every fragment is the port's own geometry.
+- **No real Daggerfall blocks inside.** The relay reads no BSA and could not know their floors.
 - **No weekly seed.** The budget (section 9) makes halls of a depth weigh the same, and a shared seed would make the
   boards a race to scout it.
 - **Nothing gets faster.** No depth, decree or fury shortens a wind-up, a beat, a crumble or a period.
@@ -1806,21 +2037,23 @@ every mutant dead, and its record names the four hosts and the Ledger rows it op
 | **EG3** | THE BOSS SEAM: `net/bossSeam.js`; the gate, the Remnant and the serpent re-plugged, frames and pins unchanged | relay (a version) |
 | **EG4** | THE COURSE AS DATA: `courseOf`, with the Hour's course byte for byte; `orreryOf` widened and `orreryJudge` extracted, with the Hour's draw and judge unchanged | client, relay (a version) |
 | **EG5** | THE HALL LAW: `net/egLaw.js` (the record, the clock, the rhythm, the circle, the bands, the spec, the decrees and the recast trials, the waves) and `net/egSpanLaw.js`; `sdSeed` exported | client, relay bundle |
-| **EG6** | THE SPAN GENERATOR AND THE TIMED SOLVER: `egSpanOf`, the solver in the law, `egSpanSolve.mjs`, the 500-seed sweep at the span build | client |
+| **EG6a** | THE SPAN GENERATOR AND THE TIMED SOLVER: `egSpanOf`, the solver in the law, `egSpanSolve.mjs`, the 500-seed sweep at the span build | client |
+| **EG6b** | THE FRAGMENTS: `net/egFragLaw.js` and the sockets; the Oblivion Caverns kit (passage, chamber, shaft) and the dressed platforms; THE FORK; `world/meshKit.js`; `world/pseudoArchives.js`; the cull; telegraphs per fight floor; THE WIDTH RULE; the reverb law | client, relay bundle |
+| **EG6c** | HERO FRAGMENTS: authored in Blender and baked through `tools/fbxMesh.mjs`, each with its law markers and its byte-for-byte test, as Mac authors them | client |
 | **EG7** | THE MADE LEVEL'S RULES: `madeLevelOf`, `MADE_LEVEL_RULES` and the sweep test; the court and the Hour re-plugged unchanged | client |
 | **EG8** | THE ROOM: the `eg:` family; the orders (`ORDER_KINDS`, `EG_ORDER_FIELDS`); stakes, voids and `eg_live`; the hub's open (`EG_INTERNAL_OPEN`, `eglive`, `egrc`); the run director (`net/egBrain.js`); the wave runner (`net/egHost.js`); the `spanFair` accumulator; `judgeShapes` and the full shape stamp; the union floor; `e1`; durability, the drain and the law pin | relay (a version), service |
 | **EG9** | THE ARCH AND THE CALL: the arm, the refusals, the start window, the arch pool, the pass's tint and scale, the clear sweep's keys, the cell word, the vortex, the landings, the Timers row, the sight line, the map mark | client |
 | **EG10** | THE HALLS ON THE PAGE: `world/egHall.js`, `scenes/egHall.js`, `egHallParts`, the transitions, arrival, gather, descent and pull, the HUD, the flight bans, the fall, DEATH-PENALTY exempted, *Return to the Spire*, the modal contract's pin | client |
-| **EG11** | THE HALL KINDS, THE TWISTS AND THE LEGION: Rift-Yard, Rampart, Athenaeum, Proving Walk; the kinds 3, 4 and 6; the push; haven, lanes and tether | client, relay (a version) |
+| **EG11** | THE HALL KINDS, THE TWISTS AND THE LEGION: Rift-Yard, Rampart, Athenaeum, Proving Walk, the Deepway, the chambers; the kinds 3, 4 and 6; the push; haven, lanes and tether | client, relay (a version) |
 | **EG12** | THE REDOUBT: receipts, the spoils (`systems/egSpoils.js`), Reliquaries, the rest, the Vestiges (law, offers, effects, the relay's half, the caps, resonance, the death saves), the fallen (recall, witness, bequest, forsaking), the way home, the surplus and the respite | client, relay (a version) |
-| **EG13** | THE GALLERIES' LORDS: the Hound, the Last Spellmaster, the Last Armsmaster, Valkynaz Ilthys (`net/egLord.js`), each with its errand pins for *n* = 1 to 8 | relay (a version), client |
+| **EG13** | THE GALLERIES' LORDS: the Hound (in its magma hall), the Last Spellmaster, the Last Armsmaster, Valkynaz Ilthys (`net/egLord.js`), each with its errand pins for *n* = 1 to 8; the Galleries' other fragments (the Fallen Stacks, the Broken Colonnade) | relay (a version), client |
 | **EG14** | THE CLAIM, THE ECONOMY, THE HONOURS, THE BOARDS: `claimEg`, the migrations, the week's pay, the embers, the pity, the Broker's sink, titles and auras, the three boards, the season's champions, `BOSS_BODY` on in `eg:` rooms, the herald | service, relay (a version), client |
 | **EG15** | THE PANOPLY AND THE CARDS | client |
 | **EG16** | THE LOOK: the bands' art, the arch's skin, the stair, the skies, accessibility | client |
 | **EG17** | THE SCORE | client |
-| **EG18** | THE SOUL CAIRN: the Cairn-Keeper, the Twin Lords, Valkynaz Morvayn, the Cairn's legion (Binders and Wraiths, kinds 7 and 8) and pieces | relay (a version), client |
-| **EG19** | THE SHADE PERILOUS: the Mother of Dusk, the Night-Stalker, Valkynaz Seyth, the Divers (kind 5), the Pendulum | relay (a version), client |
-| **EG20** | THE HAVOC WELLHEAD: the Bound Colossus, the Wellhead Wyrm, Valkynaz Garoth, the tides | relay (a version), client |
+| **EG18** | THE SOUL CAIRN: the Cairn-Keeper, the Twin Lords, Valkynaz Morvayn, the Cairn's legion (Binders and Wraiths, kinds 7 and 8), pieces and fragments (the Ossuary, the Mist Stair) | relay (a version), client |
+| **EG19** | THE SHADE PERILOUS: the Mother of Dusk, the Night-Stalker, Valkynaz Seyth, the Divers (kind 5), the Pendulum, the fragments (the Gloam Thicket, the Eclipse Vault) | relay (a version), client |
+| **EG20** | THE HAVOC WELLHEAD: the Bound Colossus, the Wellhead Wyrm, Valkynaz Garoth, the tides, the fragments (the Forge Gut, the Clan Pit, the deep Caverns) | relay (a version), client |
 | **EG21** | AUDIT EG, and the tuning pass: the budget, the count and the pace measured in the field | all |
 
 Each slice's record goes below as it lands: what shipped, its pins and mutant records, the four hosts, the Ledger rows
@@ -1868,3 +2101,31 @@ has its verdict and its place in this revision in `01-Overview/Audit-EG0.md`. Th
 - **the pace** re-modelled: the walls now stand where the rules put them.
 
 THE FOUR HOSTS: untouched, as at EG0.
+
+### EG0b - 2026-10-11 (the fragments; Mac: "sometimes platforms can lead to oblivion caverns, or different types of modeled areas instead of simple platforms")
+
+Sections 10.1-10.8 and 8.8 are new. The design behind them:
+
+- **fragments** (passages, chambers and shafts), with a library of ten across the four bands;
+- every platform dressed, the top you see being the top you stand on;
+- THE FORK (the High Road and the Low Road);
+- the Deepway;
+- chambers for Yards, proving courts and the lords' grounds;
+- the fragment record, a law half the relay reads and a mesh half it never sees;
+- code-built kits and authored hero fragments, with one mesh kit and one registry of pseudo-archives;
+- fight floors, telegraphs per floor, walls that bound the escape, and THE WIDTH RULE (three blows widened to 3 m);
+- headroom for both third-person cameras;
+- light, sound, budgets and the cull.
+
+They are grounded in:
+
+- the gate's and the ships' bakes (`tools/bakeGate.mjs`, `tools/shipBake.mjs`, `tools/fbxMesh.mjs`);
+- the collider (`src/player/collider.js`);
+- the telegraph pass, and how flat it is (`src/render/gateTelegraph.js`);
+- `deepIn`'s margin (`src/net/bossBody.js`);
+- the cameras (`src/player/mwCamera.js`, `src/player/eotbCamera.js`);
+- the light caps;
+- the reverb presets;
+- TEXTURE.356, the Mantellan Crux's fire walls.
+
+THE FOUR HOSTS: untouched.
