@@ -435,7 +435,7 @@ test('STEED1 THE HOSTS (world.js, exterior.js): the upkeep built before the mod\
     assert.ok(s.indexOf('const upkeep = createUpkeep({') > 0 && s.indexOf('const upkeep = createUpkeep({') < s.indexOf('const hccRuntime = createHorseCartRuntime({'), `${host}: before the runtime`);
     assert.match(s, /horseCare: horseCareOn, wagonUpkeep: wagonUpkeepOn,\n\s*where: \(\) => horseWhereOf\(hccRuntimeOn\(\)\?\.stableView\(\) \?\? null\),/, host);
     assert.match(s, /setGallopGate\(\(mode, mods\) => upkeep\.gallopGate\(mode, mods\)\);\n\s*registerUpkeepUses\(upkeep, \{/, host);
-    assert.match(s, /player\.rideSpeedScale = upkeep\.rideScale\(player\.transportMode, wagonLoadShare\(\)\);[^\n]*\n\s*if \(_overlayHeld[^\n]*player\.holdFrame\(\);/, `${host}: the pace before the step`);
+    assert.match(s, /player\.rideSpeedScale = upkeep\.rideScale\(player\.transportMode, wagonLoadShare\(\)\);[^\n]*\n\s*playerBlowFrame\(\{ motor: player,[^\n]*\n\s*if \(_overlayHeld[^\n]*player\.holdFrame\(\);/, `${host}: the pace before the step (and before its blow frame - TELL6e's and DISC8-G's order kept)`);
     assert.match(s, /_surfPath = !!_surf\.path;\n[\s\S]{0,400}?const odo = player\.odometer\?\.h \?\? 0, metres = _upkeepOdo == null \? 0 : Math\.max\(0, odo - _upkeepOdo\);/, `${host}: the metres off the odometer, after the surface`);
     assert.match(s, /galloping: !_overlayHeld && mode === TRANSPORT_MODES\.Horse && !!player\.isRunning && !player\.standing, moving: !player\.standing,/, host);
     assert.match(s, /running: player\.isRunning && !player\.standing && upkeep\.riderPaysGallop\(player\.transportMode\),/, `${host}: the gallop the horse's breath`);
