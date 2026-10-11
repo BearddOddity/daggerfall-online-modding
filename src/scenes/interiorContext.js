@@ -494,7 +494,8 @@ export async function buildInteriorContext(deps, dfBlock, blockIndex, recordInde
   // the merge (AUDIT TAVERN-TABLE H1): staticBatch.js reads a key's archive as a number, and the prop's string archive
   // came out NaN - the table collided, seated and dealt, and was never drawn; its own mesh draws it, one draw. Its mesh
   // is this context's (freed by destroy); its two painted textures the renderer's, uploaded once. A room with no enter
-  // marker or no such floor stands none.
+  // marker or no such floor stands none - nor one whose only floor for it is in the way (WAY-ROUND: a corridor, a
+  // doorway, the mouth of an opening).
   // TAVERN-TABLES (section 30; the owner, told one table let its first sitter shut the other kind out: "Two tables per
   // tavern"): AND A SECOND - the GOLD table, at the index the relay holds every staked sit to (net/holdemTable.js
   // HOLDEM_GOLD_TABLE), its felt red. Found by the same walk with the first already stood (in the collider, so the walk
@@ -517,7 +518,7 @@ export async function buildInteriorContext(deps, dfBlock, blockIndex, recordInde
     while (tables.length < TAVERN_CARD_TABLES) {
       const gold = holdemGoldTable(tables.length), felt = gold ? GOLD_FELT_RECORD : FELT_RECORD;
       const spot = enter ? placedTableSpot(CARD_TABLE_BOX, [enter.x, enter.y, enter.z], probe, avoid) : null;
-      if (!spot) { console.warn(`[interior] no ${gold ? 'gold ' : ''}card table stood: ` + (!enter ? 'the room has no enter marker' : `no clear floor near the entrance${gold ? ' for a second' : ''}`)); break; }
+      if (!spot) { console.warn(`[interior] no ${gold ? 'gold ' : ''}card table stood: ` + (!enter ? 'the room has no enter marker' : `no clear floor near the entrance${gold ? ' for a second' : ''} out of the way`)); break; }
       if (!propMeshes.length) renderer.uploadTexture(CARD_TABLE_ARCHIVE, WOOD_RECORD, paintWood(), { mips: true, opaque: true });   // a model's material: opaque, with its mip chain, as a TEXTURE archive's
       renderer.uploadTexture(CARD_TABLE_ARCHIVE, felt, paintFelt(gold ? GOLD_FELT_RGB : FELT_RGB), { mips: true, opaque: true });
       const cpu = cardTablePropModel({ felt });

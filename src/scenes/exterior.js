@@ -2547,7 +2547,7 @@ export async function bootExterior(canvas, renderer, params, status) {
       bob: [0, player.bobOffset ? player.bobOffset[1] : 0],   // IG1: the bob's vertical feeds the first-person offset
       move: motionBagOf(player),   // MW-D26: the movement-settings vector, the reference's own selection source; MW-D39 added the jump-state inputs; WW2: the one bag (a partial copy left the bob's idle gate unsent)
       climb: climbRigInput(player, cam.yaw) }),   // CLIMB6: the climb's snapshot - the body's limbs on the stone (player/climbPose.js)
-    spellArmed: () => magic.spellArmed(), abortSpell: () => magic.abortReadySpell(),   // M2: HasReadySpell hides the weapon; MAC-O1: WeaponManager.Update:251 - the key puts a readied spell away and draws
+    spellArmed: () => magic.spellArmed(), readiedSpell: () => magic.readied?.() ?? null,   /* RSH1: the readied hands */ abortSpell: () => magic.abortReadySpell(),   // M2: HasReadySpell hides the weapon; MAC-O1: WeaponManager.Update:251 - the key puts a readied spell away and draws
     // TECH1 (bible/05-Combat/Weapon-Techniques.md): the weapon technique's door into this host - world.js's twin: its motor,
     // its arrow lane (a Volley's shafts from the sky), its fatigue door, the view turned on a foe
     technique: {

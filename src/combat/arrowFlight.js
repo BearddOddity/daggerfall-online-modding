@@ -25,6 +25,7 @@ import { trs } from '../world/mat4.js';
 import { SWING_MODS, foeUnaware } from './playerWeapon.js';   // CalculateSwingModifiers, read live at the arrow's impact (SET2: and whether the shaft's foe had noticed me)
 import { bloodHit } from './bloodDecals.js';   // BLOOD1b: the blow, in the shape the mark's ladder reads
 import { calculateAttackDamage } from './formulas.js';
+import { segmentBoxEntry } from '../systems/naval/navalBallistics.js';   // SERPENT4: a shaft's step through a box - the guns' own test
 import { bowDamageArrow } from './enemyEquipment.js';   // MAC-N1: the recovered shaft is CreateWeapon's arrow, value and all
 import { backstabChanceOf, enemyPainVoice } from '../scenes/hostCombat.js';
 import { isBackFacing } from '../characters/enemyMotor.js';
@@ -125,7 +126,7 @@ export class ArrowFlight {
   }
 
   update(dt, { playerFeet = null, playerHeight = CAPSULE_HEIGHT, onPlayerHit = null, foeTargets = null, onFoeHit = null,
-    onPlayerArrowHitFoe = null } = {}) {
+    onPlayerArrowHitFoe = null, boxTargets = null, onPlayerArrowHitBox = null } = {}) {
     let live = 0;
     const c = typeof this._collider === 'function' ? this._collider() : this._collider;
     for (const m of this.arrows) {
@@ -160,6 +161,7 @@ export class ArrowFlight {
       const cs = c ? coverStep(coverDistance(c, m.pos, unit, reach), c.raycast(m.pos, unit, reach), reach, reach - step * Math.hypot(m.dir[0], m.dir[1], m.dir[2]), step * Math.hypot(m.dir[0], m.dir[1], m.dir[2])) : null;
       if (cs && Number.isFinite(cs.stop)) { m.dead = true; continue; }   // met geometry: the arrow is LOST (DFU)
       const adv = cs ? step * cs.advance : step;
+      const was = boxTargets?.length && m.fromPlayer ? [m.pos[0], m.pos[1], m.pos[2]] : null;   // SERPENT4: the step's start, for a box
       m.pos[0] += m.dir[0] * adv;
       m.pos[1] += m.dir[1] * adv;
       m.pos[2] += m.dir[2] * adv;
@@ -225,6 +227,14 @@ export class ArrowFlight {
           }
         }
         if (m.dead) continue;
+      }
+      // SERPENT4 (the players: "also let players on the ship be able to hurt it"): A PLAYER'S SHAFT ON A BOX - the sea
+      // serpent's segments (`boxTargets`: `{id, box}`, navalBallistics.js orientedBox's shape - its host's handBoxes): the
+      // step's path meets the box grown by the shaft's own collider radius (segmentBoxEntry, the guns' own test), and the
+      // shaft stops in it, its impact the host's (`onPlayerArrowHitBox(m, target)`)
+      if (was && onPlayerArrowHitBox) {
+        const hit = boxTargets.find((t) => t?.box && segmentBoxEntry(was, m.pos, t.box, MISSILE_COLLIDER_RADIUS));
+        if (hit) { onPlayerArrowHitBox(m, hit); m.dead = true; continue; }
       }
       // The mesh raycast never sees bare TERRAIN (the collider's
       // heightAt fallback floor) - an arrow at or under it has landed.

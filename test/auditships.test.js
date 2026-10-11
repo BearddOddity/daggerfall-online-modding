@@ -20,7 +20,7 @@ import {
 import { LEG, MODE, COIL_R, SWIM_MIN_V, headAt, bodyAt, modeAt, coilAngleAt, coilWeight } from '../src/net/serpentBody.js';
 import { createSerpentLink } from '../src/net/serpentLink.js';
 import { createSerpentHost, WAKE_MS, IN_CHANGE_MS } from '../src/scenes/serpentHost.js';
-import { fleetShare, shipHurt, crushHurt, shapeMeets, ramHead, SERPENT_PAIR_SHARE } from '../src/systems/serpentStrike.js';
+import { fleetShare, shipHurt, crushHurt, shapeMeets, ramHead, SERPENT_PAIR_SHARE, SERPENT_CANVAS_X } from '../src/systems/serpentStrike.js';
 import { serpentTimes, serpentSiteKey, SERPENT_BRAIN_V, SERPENT_NATIVE_PER_M } from '../src/net/serpentLaw.js';
 import { validSerpentOut, cellRoomOfWire, serpentFightId, PIXEL_UNITS } from '../src/net/wire.js';
 import { HULL } from '../src/systems/naval/navalShips.js';
@@ -537,7 +537,7 @@ test('AUDIT SHIPS C3 the pair\'s share is carried blow to blow (shipHurt/crushHu
     for (let i = 0; i < n; i++) { const h = shipHurt(A, whole, k, carry); sum.hull += h.hull; sum.sail += h.sail; sum.crew += h.crew; }
     assert.equal(sum.crew, men, `${n} ${A.key}s: ${men} men`);
     near(sum.hull, n * (A.hull * whole.maxHull + A.base) * k, 0.5, `${A.key}: its hull`);
-    near(sum.sail, n * A.sail * whole.maxSail * k, 0.5, `${A.key}: its canvas`);
+    near(sum.sail, n * A.sail * SERPENT_CANVAS_X * whole.maxSail * k, 0.5, `${A.key}: its canvas`);   // PIN MOVED: SERPENT4 - the canvas a blow tears halved
   }
   const carry = { hull: 0, sail: 0, crew: 0 };
   assert.deepEqual(shipHurt(T.spit, whole, 1, carry), shipHurt(T.spit, whole), 'the whole as it was');

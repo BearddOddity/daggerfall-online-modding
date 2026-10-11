@@ -23,7 +23,8 @@ import {
   ItemMakerWindow, ITEM_RECTS, rowLayout, enchContentH,
   ENCH_SCROLLER_STEP, ROWS_VISIBLE, ROW_START_Y, ROW_H_PLAIN, ROW_GAP,
 } from '../src/ui/itemMakerWindow.js';
-import { QuestJournalWindow, JOURNAL_RECTS, CONFIRM_TEXT, ENTER_NOTE_PROMPT } from '../src/ui/questJournal.js';
+import { QuestJournalWindow, JOURNAL_RECTS, CONFIRM_TEXT, ENTER_NOTE_PROMPT, ENTER_NOTE_LABEL, ENTER_NOTE_WIDTH_OVERRIDE } from '../src/ui/questJournal.js';
+import { InputMessageBoxWindow } from '../src/ui/inputMessageBox.js';
 import { PlayerNotebook } from '../src/systems/notebook.js';
 import { MB_BUTTONS } from '../src/ui/messageBox.js';
 
@@ -252,4 +253,48 @@ test('F160: switching category disarms a pending move (:267)', () => {
   assert.equal(w.selectedEntry, 0, 'armed');
   w.nextCategory();
   assert.equal(w.selectedEntry, null, 'a stale pick must not arm a move in the next mode');
+});
+
+test('NOTE-KEYS (FIELD BUGS 2026-10-06, Skibbster: "when getting to this page on the classic/grimoire UI, player key presses are ignored"): the note field takes its letters by the NATIVE route - the hosts hand this window (isChoiceWindow) the raw CODE and the event, `KeyA` and never `char:a` - and the move/remove box its Y and N the same way: the field is the one DaggerfallInputMessageBox, PUSHED (CM3), and Y/N the shortcut table\'s (mutants: the field reading `char:` alone; the box\'s cap or width lost)', () => {
+  const { nb, w } = journal();
+  assert.equal(w.isChoiceWindow, true, 'a native window: routeKey hands it e.code, e (ui/input.js)');
+  const ev = (key) => ({ key, code: key === ' ' ? 'Space' : /^[0-9]$/.test(key) ? `Digit${key}` : `Key${key.toUpperCase()}` });
+  w.click(JOURNAL_RECTS.title[0] + 4, JOURNAL_RECTS.title[1] + 4, false);   // EnterNote(0)
+  assert.ok(w.noteBox instanceof InputMessageBoxWindow, 'EnterNote pushes the one input box (ui/inputMessageBox.js), never a field in the journal\'s art');
+  assert.deepEqual([w.noteBox.lines.map((l) => l.text), w.noteBox.label, w.noteBox.maxCharacters, w.noteBox.widthOverride],
+    [[ENTER_NOTE_PROMPT], ENTER_NOTE_LABEL, 70, 318], 'the prompt above " > ", MaxLineLenth 70, WidthOverride 318 (:521)');
+  assert.equal(ENTER_NOTE_WIDTH_OVERRIDE, 318);
+  for (const k of 'Met Bran at 3') { const e = ev(k); w.input(e.code, e); }
+  assert.equal(w.noteBox.value, 'Met Bran at 3', 'every letter, the space and the digit, as the hosts route them');
+  w.input('Backspace', { key: 'Backspace', code: 'Backspace' });
+  w.input('Enter', { key: 'Enter', code: 'Enter' });
+  assert.equal(nb.getNotes()[0][2].text, ' Met Bran at ', 'Backspace and Enter by their codes, as ever');
+  w.input('ShiftLeft', { key: 'Shift', code: 'ShiftLeft' });   // a key that types nothing adds nothing
+  // the action map's route still types (a host that hands overlayAction's answer)
+  w.click(JOURNAL_RECTS.title[0] + 4, JOURNAL_RECTS.title[1] + 4, false);
+  for (const ch of 'ok') w.input(`char:${ch}`);
+  assert.equal(w.noteBox.value, 'ok');
+  w.input('back');
+  // Y and N answer the confirm box by the raw route too
+  const notes = nb.getNotes().length;
+  w.click(JOURNAL_RECTS.log[0] + 4, lineY(w, 0), true);
+  assert.ok(w.moveRemoveBox);
+  w.input('KeyN', { key: 'n', code: 'KeyN' });
+  assert.equal(w.moveRemoveBox, null, 'N is No');
+  assert.equal(nb.getNotes().length, notes);
+  w.click(JOURNAL_RECTS.log[0] + 4, lineY(w, 0), true);
+  w.input('KeyY', { key: 'y', code: 'KeyY' });
+  assert.equal(nb.getNotes().length, notes - 1, 'Y is Yes');
+  // ...and the dungeon's spelling of them, as ever
+  w.click(JOURNAL_RECTS.log[0] + 4, lineY(w, 0), true);
+  w.input('char:n');
+  assert.equal(w.moveRemoveBox, null, 'char:n is No');
+  assert.equal(nb.getNotes().length, notes - 1);
+  // a long note stops at MaxLineLenth
+  w.click(JOURNAL_RECTS.title[0] + 4, JOURNAL_RECTS.title[1] + 4, false);
+  for (let i = 0; i < 80; i++) w.input('char:x');
+  assert.equal(w.noteBox.value.length, 70);
+  w.input('Escape', { key: 'Escape', code: 'Escape' });
+  assert.equal(w.noteBox, null, 'Escape closes the pushed box');
+  assert.equal(w.selectedEntry, null, 'and the pick clears with it');
 });

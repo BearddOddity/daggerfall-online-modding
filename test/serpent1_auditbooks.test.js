@@ -13,7 +13,7 @@ import { importReceiptKey } from '../src/net/gateReceipt.js';
 import { importPublicKeyB64 } from '../src/net/identityToken.js';
 import { SOCIAL_ROOM, SERPENT_FIGHT_KEY, SERPENT_TELL_RETRY_MS, serpentFightId, cellRoomOfWire, PIXEL_UNITS } from '../src/net/wire.js';
 import { serpentTimes, serpentSiteKey, SERPENT_BRAIN_V, SERPENT_DIVE_MS, SERPENT_NATIVE_PER_M } from '../src/net/serpentLaw.js';
-import { SERPENT_TICK_MS, SERPENT_LV_MAX, SERPENT_RECEIPT_SHARE, newSerpentFight, joinSerpentFight, serpentEarned, serpentEarnedBy } from '../src/net/serpentBrain.js';
+import { SERPENT_TICK_MS, SERPENT_LV_MAX, SERPENT_RECEIPT_SHARE, SERPENT_PART_SHARE, newSerpentFight, joinSerpentFight, serpentEarned, serpentEarnedBy } from '../src/net/serpentBrain.js';
 import { fakeRooms } from './fakeRoom.mjs';
 import { RELAY_INTERNAL_CFG } from '../src/net/relayCfg.js';   // SCALE5b: the beat's ask of the hub, which the failing hub lets through
 import worker from '../server-account/src/index.js';
@@ -141,7 +141,7 @@ test('AUDIT-D world host by source: the serpent queue\'s own guard, relay clock 
   assert.ok(w.includes('...(serpentSpoils?.heldIds?.(who) ?? [])') && w.includes('serpentSpoils?.saved(who, ids)'));
 });
 
-test('AUDIT-D brain: a level is bounded at the join and kept from the first claim; a ship earns `dealt` at SERPENT_RECEIPT_SHARE of its share, and not below it', () => {
+test('AUDIT-D brain: a level is bounded at the join and kept from the first claim; a ship earns `dealt` at SERPENT_RECEIPT_SHARE of its share, and not below it - a stander\'s at SERPENT_PART_SHARE (SERPENT4)', () => {
   const f = newSerpentFight(DAY, 0, 1e9, 'sethrakul', 0, 0, 0);
   joinSerpentFight(f, 's', 'S', 999, 4, 0, true);
   assert.equal(f.players.s.lv, SERPENT_LV_MAX);
@@ -150,9 +150,16 @@ test('AUDIT-D brain: a level is bounded at the join and kept from the first clai
   joinSerpentFight(g, 's', 'S', 40, 4, 10, true);
   assert.equal(g.players.s.lv, 12, 'a later `in` never raises the level the hoard rolls at');
   f.fell = { at: 1000, top: [], n: 1 }; f.liveMs = 1000;
-  assert.equal(SERPENT_RECEIPT_SHARE, 0.1, 'a tenth of what its ship brought (AUDIT SERPENT E1, Mac: "Must be in the fight")');
-  f.players.s.dealt = SERPENT_RECEIPT_SHARE * f.players.s.share * 0.99;
+  // PIN MOVED: SERPENT4 (the players: "Rewards based on party or individual damage") - a dealer's at 6% of what its ship
+  // brought, a stander's at a part of it (AUDIT SERPENT E1, Mac: "Must be in the fight" - several volleys, never one)
+  assert.equal(SERPENT_RECEIPT_SHARE, 0.06);
+  assert.equal(SERPENT_PART_SHARE, 0.025);
+  f.players.s.dealt = SERPENT_PART_SHARE * f.players.s.share * 0.99;
   assert.ok(!serpentEarned(f, 's'), 'a hair short of its part');
+  f.players.s.dealt = SERPENT_PART_SHARE * f.players.s.share;
+  assert.ok(serpentEarned(f, 's') && serpentEarnedBy(f, 's') === 'stood', 'a part: a stander\'s');
+  f.players.s.dealt = SERPENT_RECEIPT_SHARE * f.players.s.share * 0.99;
+  assert.equal(serpentEarnedBy(f, 's'), 'stood', 'a hair short of a dealer\'s');
   f.players.s.dealt = SERPENT_RECEIPT_SHARE * f.players.s.share;
   assert.ok(serpentEarned(f, 's') && serpentEarnedBy(f, 's') === 'dealt');
 });

@@ -30,8 +30,8 @@ import { SERPENT_TOP_MAX } from './wire.js';
 export const serpentHeraldRole = (own, gate) => heraldRole(own) ?? heraldRole(gate);
 
 /**
- * THE BELLS' POST: where it is sighted, when it rises and when the storm closes its waters - the role pinged first. The
- * chat's own sentence (serpentLaw.js sightingLine), its times in each reader's own clock.
+ * THE BELLS' POST: where it is sighted, when it rises and when it dives (SERPENT4: its waters open till then) - the role
+ * pinged first. The chat's own sentence (serpentLaw.js sightingLine), its times in each reader's own clock.
  * @param {{day: number, place?: string|null, role?: string|null}} o
  */
 export function serpentOmenPost({ day, place = null, role = null }) {
@@ -40,7 +40,7 @@ export function serpentOmenPost({ day, place = null, role = null }) {
   const where = place ? `off ${heraldName(place)}` : 'on the packet lanes';
   const map = place ? '' : ' Its waters are ringed on your map.';
   return {
-    content: `${ping}**Bells ring in the harbours: a great serpent is sighted ${where}.** ${boss.name}, ${boss.nick}, rises ${heraldStamp(t.riseAt, 'R')} (${heraldStamp(t.riseAt, 't')}). A storm closes over its waters at ${heraldStamp(t.sealAt, 't')} - no ship can join after. One ship alone cannot bring it down: sail out together.${map}`,
+    content: `${ping}**Bells ring in the harbours: a great serpent is sighted ${where}.** ${boss.name}, ${boss.nick}, rises ${heraldStamp(t.riseAt, 'R')} (${heraldStamp(t.riseAt, 't')}). It hunts until it dives at ${heraldStamp(t.soundAt, 't')} - every ship may join until then. One ship alone cannot bring it down: sail out together.${map}`,
     allowed_mentions: role ? { roles: [role] } : { parse: [] },
   };
 }

@@ -448,6 +448,7 @@ export const ONLINE_PLAYERS_OWN_MODS = [
   'seasons-iliac-bay',     // which texture archives load for the season - a swap in front of the same terrain
   'weapon-widget',         // the first-person weapon's own motion; no damage, no timing, no attack state
   'eye-of-the-beholder',   // third person and your own billboard; peers are drawn by remotePlayers either way
+  'readied-spellcasting-hands',   // RSH1: your own first-person hands on your own screen; the cast itself is unchanged
   'ambient-text',          // flavour lines on your own screen
   'immersive-footsteps',   // your own footstep audio
   'better-ambience',       // ambient audio and the dungeon's darkness, both drawn locally
