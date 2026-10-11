@@ -3,6 +3,9 @@
 *The owner: "Exterior performance is really bad" - "Interior is fine. It's exterior that's the issue" - "If you need
 to, pull the freeware online and do it yourself".*
 
+The audit (AUDIT PERF-ARENA, "Audit everything") is `01-Overview/Audit-Perf-Arena.md`; what it changed is written into the
+sections below as they now stand.
+
 Every slice below leaves the picture as it was: the same triangles in the same order from the same floats, or the same
 matrix to the bit. None touches the Enhanced Lighting lane's look, the static shadow cache's law or the air pass's.
 
@@ -62,10 +65,13 @@ binds, the calls, `drawOne` and the allocation are the measure.
 ## PERF-ARENA — the still flats share their buffers
 
 `render/renderer.js` createBillboardBatch: a batch built STILL (every town flat, every wood, every lamp; not a gib or a
-blood drop, which move every frame and keep buffers of their own) takes a range of an ARENA's quads - one VAO, one vertex
-buffer and one index buffer for up to BB_ARENA_QUADS (16,384) quads - and its corners are written where its range
-starts (`bufferSubData`). The arena's indices are written once, at its birth: every quad's six, the very six
-createBillboardBatch writes for its own (b, b+2, b+1, b, b+3, b+2 from the quad's first corner). A batch's draw names its
+blood drop, which move every frame and keep buffers of their own) takes a range of an ARENA's quads - one VAO and one
+vertex buffer for up to BB_ARENA_QUADS (16,384) quads - and its corners are written where its range starts
+(`bufferSubData`). The indices are written once: every quad's six, the very six createBillboardBatch writes for its own
+(b, b+2, b+1, b, b+3, b+2 from the quad's first corner) - in ONE index buffer every arena binds (AUDIT PERF-ARENA A4:
+each arena first uploaded its own copy, though quad q's six are the same in every arena; `_bbArenaIndices` keeps one, as
+large as the largest arena, grows it when a larger arena is born - filled once, bound into every standing arena's
+array, the old let go - and an arena's deletion leaves it). A batch's draw names its
 range by the index offset (`_ibOff`) - the main pass (`drawOne`), the shadow replay and the air pass's emitters, the
 three sites that draw a batch. So the same triangles, in the same order, from the same vertices; and the main pass's
 flats bind one VAO where each bound its own.
@@ -76,10 +82,17 @@ flats bind one VAO where each bound its own.
   second free gives nothing, and every replay already skips a batch with no VAO (EL2's `_dead` law), so no shadow record
   from the last frame reaches a range a later batch takes.
 - `moveBillboardBatch` on a still batch (a felled tree, PROF4) rewrites its range in place.
-- An arena emptied whole is deleted, all but the first. AUDIT PERF-ARENA R10: an arena is let go with its last batch,
+- An arena emptied whole is deleted, all but the first, with its records' homes (AUDIT PERF-ARENA A1 pins that: a home
+  left on a deleted arena put the record's next batch in a deleted array, drawing another batch's quads). AUDIT PERF-ARENA R10/A4:
+  in a 2,000-step streamed walk at Knightstale's density the arenas held 99-102 MB of room for 54-72 MB of flats, bounded
+  (five to seven arenas) - and fragmented arenas rarely empty whole. AUDIT PERF-ARENA R10: an arena is let go with its last batch,
   so one live batch holds an arena of up to 27 MB (BB_ARENA_MAX_QUADS, PERF-ARENA2) - a long road through dense woods
   can keep more GPU memory than the woods it stands in; not measured on a long road.
 - The batch is born with its three new fields (`_arena`, `_q0`, `_ibOff`), in `contract.js` - one shape (PERF-EXT10).
+- AUDIT PERF-ARENA A5-A7: the record homes start over past BB_ARENA_HOMES_MAX (4,096 - a home is a hint, and a peer's
+  doll mints a key for good); the free of a batch whose arena is not standing splices nothing (it took the last
+  standing arena out of the list, its buffers never deleted - unreachable in the shipped code, guarded); `destroyBatch`
+  lets a dynamic batch's array go as `destroyBillboardBatch` always did.
 - STRAY ARRAY STATE (the arena's own audit): one array for many batches makes two old hazards wide. A flat whose VAO
   the shadow says is bound skips the bind - with a VAO a batch, a stale shadow could only fool the same batch drawn
   twice; with an arena, any flat after a foreign pass that bound its own array behind the shadow's back would draw from
@@ -89,13 +102,13 @@ flats bind one VAO where each bound its own.
   the last pass left bound - with an arena that is every still flat's indices cut away. It binds no array first now,
   through the renderer. Every other element-buffer bind in src/ binds an array of its own first (audited, 27 sites).
 
-Pins: `test/perfarena.test.js` (5) - the allocator over 6,000 random takes and gives; THE PICTURE: a GL that keeps what is
+Pins: `test/perfarena.test.js` (5 of its 8) - the allocator over 6,000 random takes and gives; THE PICTURE: a GL that keeps what is
 written into its buffers resolves every triangle a draw rasterises (each corner's five floats, at the draw's uOrigin and
 uSize), and a town of forty batches (woods, single flats, three records and a lamp, scaled flats, five pixels) drawn
 through the main pass, the air pass's emitters and the shadow replay resolves to the base's triangles draw for draw,
 with ONE VAO bound for the main pass's forty draws (the base: forty); a batch's life (freed once, the range reused, a
 move, a gib's own buffers, a batch bigger than an arena); the spill and the let-go; the stray array state, both halves.
-Mutants: `tools/mutants/perfarena.json` (15, all dead). Pins moved: `test/hard3_types.test.js` (58 fields), `test/la_cost.test.js`
+Mutants: `tools/mutants/perfarena.json` (15 of its 27, all dead; the audit's nine AUDIT-ARENA-* beside them). Pins moved: `test/hard3_types.test.js` (58 fields), `test/la_cost.test.js`
 (a billboard call 108 -> 107 GL calls, the frame's second 31 -> 30: one VAO bind fewer), `test/blood1_decals.test.js` (the move's write), and three
 harnesses that named a draw by its VAO alone and now name it by VAO and offset (`test/perfexta.test.js`,
 `test/perfextb.test.js`, `test/lpt1_lowpolytrees.test.js`).
@@ -128,8 +141,10 @@ Measured (the same probe, Knightstale by night, the base the PERF-CROWD head, th
 | allocated a frame | 1.42 MB | 1.17 MB | 1.09 MB |
 
 The draws are the same draws in the same order; only where a batch's corners live moved. Pins: `test/perfarena.test.js`
-(the spill test's growth and the record's home; the growth's bound, its sixth); mutants PERFARENA2-no-growth,
-PERFARENA2-unbounded, PERFARENA2-no-home (dead), PERFARENA-no-spill re-aimed by content.
+(the spill test's growth and the record's home, and - AUDIT PERF-ARENA A1-A3 - the let-go's homes, a batch bigger than
+the arena the doubling would open and the first fit's home; the growth's bound, its sixth; the one index buffer and
+the homes' bound, its seventh and eighth); mutants PERFARENA2-no-growth, PERFARENA2-unbounded, PERFARENA2-no-home
+(dead), PERFARENA-no-spill re-aimed by content.
 
 ## PERF-ALLOC1 — the lanterns' face matrices made in place
 
