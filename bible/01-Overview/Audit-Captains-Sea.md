@@ -290,6 +290,9 @@ glass's state (SPYGLASS's `glassUp`), so the glass stands among them - and the p
 - 93 records in 35 lists named source the fixes rewrote (`test/mutantdrift.test.js` holds every record to its text):
   each re-aimed BY CONTENT to the code as it stands, the same law mutated - all dead but one, which survives on the base
   as well (What stands).
+- CW-host-temper (`captwaters`) had given no verdict since ETHER-SEA put its `else if` after the line the record
+  deletes: the mutant did not parse at 4aec81c85, where the slice's list was taken for all dead. The touched run over
+  8cf4a1804 found it. Re-aimed BY CONTENT - the deep arm turned off (`if (false)`), the chain kept - it is dead.
 - The lists touching every file the fixes changed were run over the fixed tree: see What stands.
 
 ## What stands

@@ -129,7 +129,7 @@
     "name": "CW-host-temper",
     "file": "src/scenes/navalHost.js",
     "old": "    if (spec.deep) ship.temper = temperOf(cls, spec.seed, { bold: DEEP_BOLD });   // CAPT-WATERS: the deep waters' pirates bolder\n",
-    "new": "",
+    "new": "    if (false) ship.temper = temperOf(cls, spec.seed, { bold: DEEP_BOLD });   // CAPT-WATERS: the deep waters' pirates bolder\n",
     "tests": [
       "test/captwaters.test.js"
     ]
