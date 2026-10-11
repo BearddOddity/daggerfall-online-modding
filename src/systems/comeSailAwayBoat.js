@@ -54,7 +54,7 @@
 //     audioClips                                                ComeSailAway.audioClips (Start's five)
 //   }
 
-import { PrefabNode, instantiatePrefab } from '../world/prefabNode.js';
+import { PrefabNode, instantiatePrefab, prefabShapeStamp } from '../world/prefabNode.js';
 import { applyRuntimeMaterials, bundleSlots, dfMaterial, gameTextureFromName } from './comeSailAwayModels.js';
 import { createAnimator } from '../world/unityAnimator.js';
 import { instanceParticleSystems } from '../world/unityParticles.js';
@@ -475,8 +475,21 @@ export function setLights(boat, value) {
 
 /** `GetComponent<Animator>()` on a node: its runtime (world/unityAnimator.js), or null. */
 export const animatorOf = (node) => node?.getComponent('Animator')?.animator ?? null;
-/** Every Animator a boat carries, for the frame's step (Unity updates each after the scripts' Update). */
-export const boatAnimators = (boat) => [...boat.GameObject.walk()].flatMap((n) => n.getComponents('Animator').map((c) => c.animator).filter(Boolean));
+/** SEA-TOWN (FIELD BUGS 2026-10-11c): each boat tree's Animators, kept while every tree's shape stands (prefabNode.js
+ *  prefabShapeStamp - prefabColliders.js keeps a tree's colliders by the same stamp). Read-only: the list is shared. */
+const _animators = new WeakMap();   // root -> { stamp, list }
+/** Every Animator a boat carries, for the frame's step (Unity updates each after the scripts' Update). SEA-TOWN: found
+ *  once a tree shape - the walk of every node (a galleon's 1,228) was made for every boat, every frame. A tree's
+ *  Animators change only with its shape: a node hung or a component added (each bumps the stamp), a runtime attached
+ *  only as an instance is imported, before it is hung under its parent (importCustomGameobject). */
+export const boatAnimators = (boat) => {
+  const root = boat.GameObject, stamp = prefabShapeStamp();
+  const had = _animators.get(root);
+  if (had && had.stamp === stamp) return had.list;
+  const list = [...root.walk()].flatMap((n) => n.getComponents('Animator').map((c) => c.animator).filter(Boolean));
+  _animators.set(root, { stamp, list });
+  return list;
+};
 /** CSA-F: every particle system of a boat's tree, as Unity's ParticleSystem update finds them. */
 export const boatParticleSystems = (boat) => [...boat.GameObject.walk()].flatMap((n) => n.getComponents('ParticleSystem').map((c) => c.particleSystem).filter(Boolean));
 
