@@ -131,4 +131,16 @@ records re-aimed by content onto the moved expression (AUDIT637-B2b, PERF-SHADOW
   with a stamp string a pixel; small, and its own slice.
 - **The meshes' vertex arrays**: 508 binds a frame remain, the models' and the terrain's - a mesh arena (indices offset
   by their base corner at upload; WebGL2 draws no base vertex) is the next lever.
-- **The online crowd**: the next measure is `tools/onlineFrameProbe.mjs` at 20 and 60 peers.
+- **The online crowd** (`tools/onlineFrameProbe.mjs`, PEERS=0,20,60, the same head): online with no one there the
+  world host's frame was 24.3 ms (the HUD 1.7, the motor 1.3, `onlineFrame` 1.0 of it); at 20 peers the allocation rose
+  1.79 -> 4.40 MB a frame and the frame 24.3 -> 34.0. READ AT THE PROBE'S RATE (0.27 frames a second, 3.7 s a frame)
+  nearly all of the growth is work on the real clock, not the frame's: the poses arriving (`_receive`/`_arrive`/
+  `_arriveTimed`, `validPose`, `cadenceOf`'s sort, `poseAlong` - ~0.5 MB and ~13 ms a second at 20), the footsteps'
+  Web Audio nodes (`peerSound`), the HUD's 250 ms layout sweep (`readLayout` -> `getPref` -> the online lane's page
+  door), and the play-out walking 3.7 s of path a frame (`_play`). What scales with frames x peers was the peers'
+  billboards (keys, the main pass, the shadow record): ~1.5 ms at 20 on this container. The 60-peer window drew 13 of
+  its 60 bots (the relay's fan on this machine) and is not a measure. `wire.js` (`validPose`, `isCellRoom`) is in the
+  relay's bundle - any slice there is a relay deploy.
+- **The page doors**: `isEnhanced`/`uiSkin`/`skinOverride` read `location.search` on every call - ~0.5 ms a frame of
+  this container's (0.2 on a desktop). PERF-URL already parses once a search; ending the read itself overturns its "not
+  a latch" rule (Performance-Next.md item 4, for Mac) and is left.
