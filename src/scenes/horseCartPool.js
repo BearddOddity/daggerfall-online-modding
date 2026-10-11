@@ -662,7 +662,7 @@ export function createHorseCartPool({
   // following, parked in harness or pulling - is the owner's 3D horse (world/horseRig.js) in the owner's look, drawn in
   // the body pass (draw3d) in place of its billboard: posed off the same team (teamOf), its gait off how far it went
   // this frame, its heading its `forward`, grown with the rig under the Overworld (`g`).
-  /** @type {Map<string, { horse: any, at: number[] | null, speed: number, frame: number, conceal: any }>} */
+  /** @type {Map<string, { horse: any, rig: any, at: number[] | null, speed: number, frame: number, conceal: any }>} */
   const _h3d = new Map();
   let _dt3d = 0;   // the frame's real seconds (frame's `dt`), the 3D horses' gait step
   /** A 3D horse's ground speed is eased toward the frame's over this many seconds (a stride does not flicker on a
@@ -674,7 +674,7 @@ export function createHorseCartPool({
       if (!h.drawn) continue;
       const key = teamKey(owner, i++);
       let e = _h3d.get(key);
-      if (!e) { const horse = rig.horse(seedOfKey(key)); if (!horse) continue; e = { horse, at: null, speed: 0, frame: 0, conceal: null }; _h3d.set(key, e); }
+      if (!e) { const horse = rig.horse(seedOfKey(key)); if (!horse) continue; e = { horse, rig, at: null, speed: 0, frame: 0, conceal: null }; _h3d.set(key, e); }
       const g = h.g ?? 1;
       let v = 0;
       if (e.at && dt > 0) v = Math.hypot(h.position[0] - e.at[0], h.position[2] - e.at[2]) / dt / g;   // the stride the horse's own size covers
@@ -688,18 +688,36 @@ export function createHorseCartPool({
       e.frame = _frameNo; e.conceal = owner ? conceal : null;
     }
   }
-  /** The 3D horses not posed this frame let go - their team gone, a peer away, the lane left. */
+  /** The 3D horses not posed this frame let go - their team gone, a peer away, the lane left. AUDIT COATS3D A7: each
+   *  through the rig that made it - the gate (horses3d) answers null under a beast's stand-in while the rig lives on. */
   function trim3d() {
-    const rig = horses3d?.();
-    for (const [k, e] of _h3d) if (e.frame !== _frameNo) { rig?.release(e.horse); _h3d.delete(k); }
+    for (const [k, e] of _h3d) if (e.frame !== _frameNo) { e.rig?.release(e.horse); _h3d.delete(k); }
   }
+  let _cam3d = null;   // AUDIT COATS3D A5: the body pass's camera, for the veiled horses after the opaque world
   /** COATS3D: the 3D horses, in the host's body pass (between its sprite batch's open and flush - every Morrowind body's
-   *  picture in one bind). Answers how many drew. */
+   *  picture in one bind). Answers how many drew. AUDIT COATS3D A5: a concealed owner's horses are not this pass's - a
+   *  veiled picture blends with no depth of its own, and the world drawn after it would paint it out - but drawVeiled3d's. */
   function draw3d(canvas, { proj, view, eye, up = null }) {
     const rig = horses3d?.();
+    _cam3d = rig ? { canvas, proj, view, eye, up } : null;
     if (!rig) return 0;
     let n = 0;
-    for (const e of _h3d.values()) if (e.frame === _frameNo && rig.draw(e.horse, canvas, { proj, view, eye, up, conceal: e.conceal })) n++;
+    for (const e of _h3d.values()) if (e.frame === _frameNo && !e.conceal && rig.draw(e.horse, canvas, { proj, view, eye, up })) n++;
+    return n;
+  }
+  /** AUDIT COATS3D A5: the concealed owners' 3D horses, translucent, in the host's veiled pass (after its opaque world,
+   *  beside the concealed peers' bodies - net/peerBodies.js drawVeiled) with the body pass's camera. */
+  function drawVeiled3d() {
+    const rig = horses3d?.(), c = _cam3d;
+    if (!rig || !c) return 0;
+    let n = 0;
+    const own = !!renderer?.beginCharacterSpriteBatch && !renderer.characterSpriteBatchOpen;
+    for (const e of _h3d.values()) {
+      if (e.frame !== _frameNo || !e.conceal) continue;
+      if (own && !n) renderer.beginCharacterSpriteBatch();
+      if (rig.draw(e.horse, c.canvas, { proj: c.proj, view: c.view, eye: c.eye, up: c.up, conceal: e.conceal })) n++;
+    }
+    if (own && n) renderer.flushCharacterSpriteBatch();
     return n;
   }
 
@@ -1169,7 +1187,7 @@ export function createHorseCartPool({
     if (!cameraPos) return;
     for (const [owner, team] of _teams) {
       let i = 0;
-      for (const h of team) { if (!h.drawn) continue; const b = _horseBatches.get(teamKey(owner, i++)); if (b) poseHorseBatch(b, cameraPos, h, h.g); }
+      for (const h of team) { if (!h.drawn) continue; const b = _horseBatches.get(teamKey(owner, i++)); if (b) poseHorseBatch(b, cameraPos, h, h.g, lookOfOwner(owner)); }   // AUDIT COATS3D A1: in its owner's look, as poseTeam turned it - without it, the bay's every frame
     }
   }
   /** WAGONS3: the harnesses in the world pass - world-space meshes, casting no shadow (a strap's would be a speckle). */
@@ -1733,7 +1751,7 @@ export function createHorseCartPool({
     // wagon of a KIND - its parts (`partsOf`) and its hitch (`hitchOfKind`) - never the player's driven one (`hitchOf`)
     presentation: { wagonParts, horseArt, hitchOf: () => hitchOf(myKind()), onChanged: () => onChanged?.(), drawWagon, drawWagonSeen, poseHorse: poseHorseBatch, partsOf, hitchOfKind: hitchOf },   // PERF-WAGON: the road's teams by the one verdict
     phys,
-    frame, batches, draw, draw3d, targets, hoverName, tooltipText, activate, offsetAll, destroyAll, clearPeers, shown, groundMoved,
+    frame, batches, draw, draw3d, drawVeiled3d, targets, hoverName, tooltipText, activate, offsetAll, destroyAll, clearPeers, shown, groundMoved,
     wireRecord, applyOwner, sweepOwners, applyKept, replaceKept, pruneKept, parkWord, parkedDoor, mySeat, peerSeat, peerRide, mySeatCount, mySeatsKnown,
     seatDrawn, seatGlue, drawnFrameOf, puppetSeatDrawn, wordSeat,   // WAGONS2: the seats as drawn - the Overworld's grown wagons
     teamOf, driverDrawn, driverSeat, benchKind, driverGlue, cameraHit, cameraFloor, harnessEnds, faceTeams,   // WAGONS3: the team, the driver, the harness, the camera's wall (BENCH-CAM: and the pivot's floor)

@@ -148,7 +148,7 @@ export function createMountRig({
     const id = ++_req;
     loadRidingArt(fetchBytes, palette, renderer, mode, lookNow(mode))
       .then((a) => {
-        if (id !== _req) { if (a.look !== art?.look && a.look !== _lastArt?.look) letGo(a); return; }
+        if (id !== _req) { if (a.look !== art?.look && a.look !== _lastArt?.look && a.look !== lookNow(mode)) letGo(a); return; }   // AUDIT COATS3D A10: never the look the newest load is asking for - its frames are these (uploadTexture's one handle a key)
         if (_lastArt && _lastArt.look !== a.look) letGo(_lastArt);
         _lastArt = a;
         if (player.transportMode === mode) art = a;   // still that mount: a dismount mid-load keeps null

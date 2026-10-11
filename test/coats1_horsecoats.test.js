@@ -227,7 +227,7 @@ test('COATS1 the dye, on the mod\'s own horse: the flank goes grey, the saddle s
   const raw = PNG.sync.read(readFileSync(new URL('../vendor/horse-cart-and-cargo/Textures/horse3.png', import.meta.url)));
   const img = { width: raw.width, height: raw.height, colors: raw.data };
   const grey = recolorHorse(img, code(3));
-  let hide = 0, greyed = 0, tack = 0, tackKept = 0, dark = 0, darkKept = 0;
+  let hide = 0, greyed = 0, tack = 0, tackKept = 0, dark = 0, darkKept = 0, leather = 0, leatherKept = 0;
   const a = new Uint8Array(raw.data.buffer, raw.data.byteOffset, raw.data.byteLength), b = bytes(grey);
   for (let i = 0; i < raw.width * raw.height; i++) {
     const o = i * 4;
@@ -235,14 +235,19 @@ test('COATS1 the dye, on the mod\'s own horse: the flank goes grey, the saddle s
     const [r, g, bl] = [a[o], a[o + 1], a[o + 2]];
     const max = Math.max(r, g, bl), min = Math.min(r, g, bl), s = max ? (max - min) / max : 0;
     const same = b[o] === r && b[o + 1] === g && b[o + 2] === bl;
+    if (isCoatPixel(r, g, bl, false) && !isCoatPixel(r, g, bl, true)) { leather++; if (same) leatherKept++; }   // AUDIT COATS3D A13: the tack rule's own pixels, warm hide but for it
     if (isCoatPixel(r, g, bl)) { hide++; if (Math.max(b[o], b[o + 1], b[o + 2]) - Math.min(b[o], b[o + 1], b[o + 2]) <= 12) greyed++; }
     else if (s >= 0.2) { tack++; if (same) tackKept++; }
     else { dark++; if (same) darkKept++; }
   }
-  assert.ok(hide > 1500, `the hide is most of the horse (${hide})`);
+  assert.ok(hide > 2000 && hide < 2300, `the hide is most of the horse, and no more of it (${hide} - the saddle counted in would pass 2300)`);
   assert.ok(greyed / hide > 0.96, `nearly all of it greyed (${greyed}/${hide} - the rest are lit specks too small to be the horse)`);
   assert.ok(tack > 20 && tackKept === tack, 'every warm pixel the hide is not (the saddle, the bridle) kept');
   assert.equal(darkKept, dark, 'the mane, the tail and the hooves kept');
+  // AUDIT COATS3D A13: the two above hold by construction (both sets are the gate's own complement) - these do not: the
+  // leather the tack rule spares (a dye that dropped the rule would grey it), and the mane's whole count
+  assert.ok(leather >= 150 && leatherKept === leather, `the saddle's leather the tack rule spares, every pixel of it kept (${leatherKept}/${leather})`);
+  assert.ok(dark >= 1000, `the mane, tail and hooves are a thousand pixels (${dark}) - none taken into the hide`);
 });
 
 test('COATS1 the dye: the shape in is the shape out - a Uint32Array stays one, a Uint8ClampedArray stays one', () => {
@@ -308,13 +313,11 @@ test('COATS1 the riding sprite: the horse\'s frames dyed under their own record,
   const src = readFileSync(new URL('../src/systems/riding.js', import.meta.url), 'utf8');
   assert.match(src, /recolorHorse\(frameToColor32\(cfa\.getDFBitmap\(0, f\), palette, null\), c, \{ bottomFirst: false, legs: false, tack: false \}\)/, 'each frame dyed before its upload - its lower edge no hoof, no saddle to spare');
   assert.match(src, /records\.push\(`ride:\$\{fileName\}:\$\{f\}\$\{lookSuffix\(c\)\}`\)/, 'under its look\'s record');
-  const uploads = [];
-  await assert.rejects(loadRidingArt(async () => { throw new Error('no ARENA2'); }, null, { uploadTexture: (...a) => uploads.push(a) }, TRANSPORT_MODES.Horse, look));
-  assert.equal(uploads.length, 0);
+  await assert.rejects(loadRidingArt(async () => { throw new Error('no ARENA2'); }, null, { uploadTexture: () => {} }, TRANSPORT_MODES.Horse, look), 'no art, no riding sprite: a refusal the rig logs');
   const rig = readFileSync(new URL('../src/player/mountRig.js', import.meta.url), 'utf8');
   assert.match(rig, /riddenHorseLook\(playerEntity\?\.items \?\? \[\]\)/, 'the ridden horse\'s look');
   assert.match(rig, /renderer\?\.evictTexture\?\.\(`img_\$\{rec\}`\)/, 'a look left behind is let go');
-  assert.match(rig, /if \(id !== _req\)/, 'and a load overtaken by a newer one is never drawn');
+  assert.match(rig, /if \(id !== _req\) \{ if \(a\.look !== art\?\.look && a\.look !== _lastArt\?\.look && a\.look !== lookNow\(mode\)\) letGo\(a\); return; \}/, 'and a load overtaken by a newer one is never drawn - its look let go unless worn, or the newest load\'s own (AUDIT COATS3D A10: the same records, one handle a key)');
 });
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -351,6 +354,8 @@ test('COATS1 the pool: my horse posed in my look once its pictures are dyed - on
   pool.frame(0, [0, 1, 0]);
   assert.equal(uploads.length, n, 'dyed once, not every frame');
   assert.equal(pool.shown().look, look.v, 'my word says it');
+  pool.faceTeams([3, 1, 0]);
+  assert.ok(mine.record.endsWith(`~${look.v}`), 'AUDIT COATS3D A1: turned to the eye that draws it (faceTeams, every frame after frame()) - still in my look, never the bay\'s');
   look.v = 0; pool.frame(0, [0, 1, 0]);
   assert.doesNotMatch(mine.record, /~/, 'the bay as drawn: the art\'s own record');
 });

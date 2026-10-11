@@ -263,7 +263,10 @@ width). The pinto's field is blended before it is cut, so its edges stay crisp.
 A look's picture is dyed DYE_ROWS (32) rows a frame (`dyeHorseTexelRows` - a whole picture is 50-120 ms) and uploaded
 with its mips once whole, the texel map itself built once before the first, a slice a frame (`startTexelMap`, ten
 steps - whole it is 40-85 ms); a horse wears the bay's until its look is up; past HORSE3D_LOOKS_KEPT (12) the one longest
-undrawn is let go. The appaloosa's spots were made rounder for both sets at this slice (stretched up to 1.45 a side,
+undrawn is let go - never one drawn this frame or the last (a crowd of more looks than that keeps them all rather than
+dye and delete in turn under horses wearing them). The dye runs every frame, on foot as mounted (`mwView.js` ticks the
+rig at the top of its frame - the pool's, the road's and the peers' horses ask for looks whether or not the player
+rides), and a look asked for and then not again for LOOK_ASK_STALE (30) frames leaves the queue undyed. The appaloosa's spots were made rounder for both sets at this slice (stretched up to 1.45 a side,
 not 1.9): at the 3D horse's detail the old ovals read as brush strokes.
 
 ### Astride (`player/seatPose.js` saddleRigInput)
@@ -276,6 +279,11 @@ rider's leg) with the knee forward and out round the barrel, each hand on the re
 leaning into the gallop. Solved on retail's biped the hands and feet land to the millimetre. The body plays no stride
 under it (`seatedCamera`), and its cloak hangs behind the saddle as behind a chair.
 
+The horse stands under the rider's EYE, not the capsule's feet: when the eye is lower than the saddle's
+(`motor.js` RIDE_EYE_HEIGHT) - swimming mounted, or the moment of mounting while the eye rises - the horse is that much
+lower (past a 0.15 m slack that keeps a step's bob out), so a first-person eye is never inside its back. Off its back
+the player's horse is let go, so a remount never gallops in place on the gait it was left in.
+
 ### Where it is ridden
 
 - **The player's own** (`player/mwView.js`): the hosts hand the view `horse` - the ridden horse's look, on a horse and
@@ -287,16 +295,39 @@ under it (`seatedCamera`), and its cloak hangs behind the saddle as behind a cha
   from the eye on its back; the sprite stands down.
 - **Other riders** (`net/peerBodies.js`): a peer on a horse whose Morrowind body stands here sits a 3D horse of its
   own, in the look their pose names (`rc`), stepped at the body's pace; the rider layer yields them
-  (`net/peerRiders.js` sync's `yields`, `scenes/world.js` peerRidesIn3d) - a beast stays the layer's.
+  (`net/peerRiders.js` sync's `yields`, `scenes/world.js` peerRidesIn3d) - a beast stays the layer's. A yielded rider
+  is held for the layer's `settle`, after the bodies have stood: one whose body did not stand this frame (past the
+  bodies' 120 m, the eight bodies full, a stranger, a body still building) is drawn as Eye Of The Beholder's mounted
+  sprite after all, and the bodies are handed the rider either way, so its body can build.
 - **The pool's horses** (`scenes/horseCartPool.js`): on the Morrowind lane (`mwView.js` mwViewHorseRig, handed to the
   pool through `world/wagonModels.js` wagonPoolDeps) every horse the pool stands - alone, following, parked in harness,
-  pulling - is a 3D horse in its owner's look, drawn in the body pass (draw3d) in place of its billboard.
+  pulling - is a 3D horse in its owner's look, drawn in the body pass (draw3d) in place of its billboard. A concealed
+  owner's horses are drawn translucent after the opaque world (drawVeiled3d, beside the concealed peers' bodies): a
+  veiled picture blends with no depth of its own, and the world drawn after it would paint it out.
 - **The road's teams** (`world/roadTeams.js`): likewise, each stranger's horse in its own look.
+
+Every horse alone is drawn only when it is in the view (`horseRig.js` outOfView - not behind the eye, not wholly past a
+side of the lens), and a horse is let go through the rig that made it: the gate (`mwViewHorseRig`) answers null under a
+beast's stand-in while the rig itself lives on, and a palette released through the gate was never given back.
 
 FLAGGED: the town watch's carried team (`scenes/wagonWardenShow.js`) is still the billboards' - a throw of a few
 seconds, its own batches.
 
 `tools/horse3dProbe.mjs` draws the horse through the real renderer in a page - its looks, both flanks, every gait.
+
+### The audit (AUDIT COATS3D, 2026-10-11)
+
+Thirteen findings on the branch, each fixed and pinned (`test/coats3d_horse3d.test.js` "COATS3D AUDIT", and the
+billboard's in `test/coats1_horsecoats.test.js`): the billboards turned to the drawing eye in the bay's every frame
+(`horseCartPool.js` faceTeams lost the look - A1); the 3D dye ran only while the player rode (A2); a yielded rider with
+no standing body was drawn by nobody (A3); the look cache deleted looks on screen past twelve (A4); a concealed owner's
+3D horses drew in the opaque pass (A5); a look chosen on the sprite lane dyed all 136 mounted sprites in one task -
+now HORSE_PRELOAD_A_FRAME (3) a frame (`eotbBody.js`, A6); palettes leaked when the gate dropped (A7); the
+first-person eye inside the horse swimming or mounting (A8); a hue jittered under nought wrapped a channel to 255 -
+the dye's `rgbInto` turns any hue into [0, 360) first (A9); an overtaken riding-sprite load let go the newest load's
+own frames (`mountRig.js`, A10); the player's horse kept its gait over a dismount (A11); the 3D horses had no view test
+(A12); and two COATS1 pins held by construction (A13 - the tack rule's own leather pixels, and the mane's count,
+pinned now).
 
 ## The Stable card
 

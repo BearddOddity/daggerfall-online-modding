@@ -231,7 +231,8 @@ export function createPeerRiders({ renderer = null, urlFor = eotbSpriteUrl, deco
    * deferred beast too (the frame's own, kept like its placing).
    * @param {Array<any>} peers @param {(p: any) => number[]} toScene
    * COATS3D: `yields(peer)` a rider another layer stands - the Morrowind lane's, its body astride the 3D horse
-   * (net/peerBodies.js): never drawn here, so never `isRiding`, and the bodies take them as a peer afoot.
+   * (net/peerBodies.js): held back as a beast is (the host hands them to the bodies as a peer afoot), and `settle` draws
+   * them here after all when no body of theirs stood (AUDIT COATS3D A3: too far, the bodies full, still building).
    * @param {{eye?: number[]|Float32Array|null, right?: number[], dt?: number, defer?: (peer: any) => boolean, yields?: (peer: any) => boolean, conceal?: (id: string) => object|null, grow?: ((feet: number[]) => number)|null}} [opts]
    */
   function sync(peers, toScene, { eye = null, right = [1, 0, 0], dt = 0, defer = () => false, yields = () => false, conceal = () => null, grow = null } = {}) {
@@ -248,8 +249,8 @@ export function createPeerRiders({ renderer = null, urlFor = eotbSpriteUrl, deco
       const beast = pose.wb | 0;
       const riding = pose.rd === POSE_RIDE.Horse || pose.rd === POSE_RIDE.Cart;
       if (!beast && !riding) continue;
-      if (riding && !beast && yields(peer)) continue;   // COATS3D: on the 3D horse - the bodies' (swept here, if it stood)
       seen.add(peer.id);
+      if (riding && !beast && yields(peer)) { deferred.push(peer); continue; }   // COATS3D: on the 3D horse - the bodies', settled below
       if (beast && !riding && defer(peer)) { deferred.push(peer); continue; }   // WEREWOLF1 (AUDIT E4): settled below
       one(peer, pose, beast, riding, toScene, eye, right, dt);
     }
@@ -257,12 +258,14 @@ export function createPeerRiders({ renderer = null, urlFor = eotbSpriteUrl, deco
   }
 
   /** WEREWOLF1 (AUDIT E4): the beasts `sync` held back, now the other layer has stood what it stands this frame - each
-   *  drawn here, or let go where `stands(id)` (its wolf is standing).
-   *  @param {(id: string) => boolean} [stands] */
-  function settle(stands = () => false) {
+   *  drawn here, or let go where `stands(id)` (its wolf is standing). COATS3D: and the riders it yielded, let go where
+   *  `seated(id)` (their body stands astride the 3D horse), else drawn here as every rider is.
+   *  @param {(id: string) => boolean} [stands] @param {(id: string) => boolean} [seated] */
+  function settle(stands = () => false, seated = () => false) {
     for (const peer of deferred) {
-      if (stands(peer.id)) { layer.drop(peer.id); continue; }
-      one(peer, peer.shown, peer.shown.wb | 0, false, hScene, hEye, hRight, hDt);
+      const beast = peer.shown.wb | 0;
+      if (beast ? stands(peer.id) : seated(peer.id)) { layer.drop(peer.id); continue; }
+      one(peer, peer.shown, beast, !beast, hScene, hEye, hRight, hDt);
     }
     deferred.length = 0;
   }

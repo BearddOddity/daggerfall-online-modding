@@ -10,7 +10,9 @@
 //  - ONE PICTURE A LOOK. The body's picture is dyed per look (systems/horseCoats.js dyeHorseTexelRows, the sprites'
 //    law on the horse's own surface - world/horseModel.js startTexelMap, built once a slice a frame), DYE_ROWS a frame
 //    so no frame pays a look's whole 50-120 ms, and uploaded with its mips once done; a horse whose look is not up yet wears the bay's. Past
-//    HORSE3D_LOOKS_KEPT looks, the one longest undrawn is let go. The mane and tail's picture is the art's on every look.
+//    HORSE3D_LOOKS_KEPT looks, the one longest undrawn is let go - never one drawn this frame or the last, so a crowd of
+//    more looks than that keeps them all rather than thrash; a look asked for and then not again for LOOK_ASK_STALE
+//    frames (its horse gone, the lane left) leaves the queue undyed. The mane and tail's picture is the art's on every look.
 //  - THE DRAWS. A horse alone is a Morrowind mesh in the world, so it draws as the Morrowind body does - a picture
 //    through the sprite pass at the arm's dial (render/characterSprite.js drawRigSpriteBox, MW_ARM_PIXEL); a horse under
 //    a rider is in the RIDER's picture (`also`, fpArm.js drawThird); in first person the rider's eye is on its back, so
@@ -29,8 +31,23 @@ import { multiply, trs, transformPoint } from './mat4.js';
 export const HORSE3D_LOOKS_KEPT = 12;
 /** Rows of the body's picture a frame's dye takes: 32 of 256, some 6-15 ms - a look up in eight frames. */
 export const DYE_ROWS = 32;
+/** AUDIT COATS3D A2: frames a look waits in the queue un-asked before it is dropped undyed - every horse on screen asks
+ *  each frame it steps, so only a look nobody draws any more goes stale. */
+export const LOOK_ASK_STALE = 30;
 /** The horse's Z-up frame into the pass's Y-up one - fpArm.js NIF_TO_PASS, the Morrowind body's own basis change. */
 const Z_UP_TO_PASS = trs(0, 0, 0, -90, 0, 0);
+/** Whether a ball (`c` its centre, `r` its reach) stands wholly out of a camera's view: behind its eye, or past a side
+ *  of a perspective lens (`proj` column-major, its x and y scales [0] and [5]; an ortho lens has no sides here). */
+export function outOfView(c, r, view, proj) {
+  if (!view || view.length !== 16) return false;
+  const vx = view[0] * c[0] + view[4] * c[1] + view[8] * c[2] + view[12];
+  const vy = view[1] * c[0] + view[5] * c[1] + view[9] * c[2] + view[13];
+  const vz = view[2] * c[0] + view[6] * c[1] + view[10] * c[2] + view[14];
+  if (vz > r) return true;   // behind the eye (the view looks down -z)
+  if (!proj || proj.length !== 16 || proj[11] === 0) return false;
+  const sx = proj[0], sy = proj[5];
+  return Math.abs(vx) * sx + vz > r * Math.hypot(1, sx) || Math.abs(vy) * sy + vz > r * Math.hypot(1, sy);
+}
 /** The SEAT on the owner's rig (its own frame, metres): the back's lowest between the withers and the croup - its top
  *  stands 1.52 m over the ground from 0 to 0.4 m forward of the rig's origin (measured off the mesh) - and a seated
  *  rider's hips 0.16 m over it (seatPose.js: a chair's 0.45 m top under hips at 0.61). Carried by the Spine bone, so a
@@ -56,7 +73,7 @@ export function createHorseRig({ renderer, fetchJson = (u) => fetch(u).then((r) 
   let hairTex = null, map = null, mapJob = null, failed = null;
   /** @type {Promise<void> | null} */ let loading = null;
   const looks = new Map();   // code -> { tex, last }
-  const asked = [];   // codes waiting for their dye, oldest first
+  const asked = new Map();   // code -> the frame it was last asked for: the codes waiting for their dye, oldest first
   let job = null;   // { code, out, row }
   let frame = 0;
 
@@ -88,7 +105,7 @@ export function createHorseRig({ renderer, fetchJson = (u) => fetch(u).then((r) 
     const c = Number.isInteger(code) && code > 0 ? code : 0;
     const have = looks.get(c);
     if (have) { have.last = frame; return have.tex; }
-    if (!asked.includes(c) && job?.code !== c) asked.push(c);
+    if (job?.code !== c) asked.set(c, frame);   // a look waiting keeps its place, asked again
     return looks.get(0)?.tex ?? null;
   }
 
@@ -97,10 +114,12 @@ export function createHorseRig({ renderer, fetchJson = (u) => fetch(u).then((r) 
   function tick() {
     frame++;
     if (!base || !body) return;
-    if (!job && asked.length) {
+    for (const [c, at] of asked) if (frame - at > LOOK_ASK_STALE) asked.delete(c);   // AUDIT COATS3D A2: nobody draws it now
+    if (!job && asked.size) {
       // the texel map first, a slice a frame (world/horseModel.js startTexelMap - built once, some 40-85 ms whole)
       if (!map) { mapJob ??= startTexelMap(bake, body.width, body.height); if (!mapJob.step()) return; map = mapJob.map; mapJob = null; return; }
-      const code = /** @type {number} */ (asked.shift());
+      const code = /** @type {number} */ (asked.keys().next().value);
+      asked.delete(code);
       job = { code, look: horseLookOfCode(code), out: new Uint8Array(body.data), row: 0 };
     }
     if (job) {
@@ -114,7 +133,9 @@ export function createHorseRig({ renderer, fetchJson = (u) => fetch(u).then((r) 
     }
     while (looks.size > HORSE3D_LOOKS_KEPT + 1) {
       let worst = null, at = Infinity;
-      for (const [c, l] of looks) if (c && l.last < at) { at = l.last; worst = c; }
+      // AUDIT COATS3D A4: never a look drawn this frame or the last (a horse steps before this tick - its texture is
+      // already on its mesh): past the cap with all of them on screen, the cap waits
+      for (const [c, l] of looks) if (c && l.last < frame - 2 && l.last < at) { at = l.last; worst = c; }
       if (worst == null) break;
       renderer.releaseCharacterTexture(looks.get(worst).tex);
       looks.delete(worst);
@@ -185,10 +206,12 @@ export function createHorseRig({ renderer, fetchJson = (u) => fetch(u).then((r) 
     return { center, halfW, halfH, anchor };
   }
 
-  /** A horse alone, through the sprite pass at the Morrowind body's dial. */
+  /** A horse alone, through the sprite pass at the Morrowind body's dial - none out of the view (AUDIT COATS3D A12: a
+   *  horse behind the eye was skinned and drawn all the same, and one at the eye's plane a whole-screen tile). */
   function draw(h, canvas, { proj, view, eye, up = null, conceal = null, hitFlash = 0 }) {
     if (!h?.model || !canvas) return false;
     const bx = box(h);
+    if (outOfView(bx.center, Math.hypot(bx.halfW, bx.halfH), view, proj)) return false;
     drawRigSpriteBox(renderer, canvas, h.mesh, h.model, { ...bx, up, conceal, hitFlash }, proj, view, eye, MW_ARM_PIXEL);
     return true;
   }

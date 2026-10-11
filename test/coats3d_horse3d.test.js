@@ -14,7 +14,10 @@ import {
   HORSE_GAITS, HORSE_GAIT_FROM, GAIT_HOLD, GAIT_RATES, GAIT_FADE, gaitFor, gaitRate, horseGait, stepHorseGait, gaitShare, gaitLocals,
   horsePaletteShape, horsePoseScratch, writeHorsePalette, horseSkinStream, horseHide, horseTexelMap, startTexelMap, TEXEL_GUTTER, TEXEL_MAP_STEPS, rgbaMips,
 } from '../src/world/horseModel.js';
-import { createHorseRig, horseRigFor, HORSE3D_LOOKS_KEPT, DYE_ROWS, HORSE_SEAT, HORSE_SEAT_BONE } from '../src/world/horseRig.js';
+import { createHorseRig, horseRigFor, HORSE3D_LOOKS_KEPT, DYE_ROWS, HORSE_SEAT, HORSE_SEAT_BONE, LOOK_ASK_STALE, outOfView } from '../src/world/horseRig.js';
+import { createRoadTeams } from '../src/world/roadTeams.js';
+import { createPeerRiders } from '../src/net/peerRiders.js';
+import { createEotbBody, HORSE_PRELOAD_A_FRAME } from '../src/player/eotbBody.js';
 import { horseLookCode, recolorHorse, recolorHorseTexels, dyeHorseTexelRows, texelPlanes, PLANE_SHARPNESS, LEG_BANDS, WHITE_FLOOR_3D, isCoatPixel } from '../src/systems/horseCoats.js';
 import { skinStreamFloats, SKIN_STATIC_FLOATS } from '../src/formats/mwGpuSkin.js';
 import { saddleRigInput, saddleRequestFor, seatedCamera, STIRRUP_SIDE, STIRRUP_DROP, STIRRUP_AHEAD, REIN_AHEAD, REIN_UP, REIN_SIDE, SADDLE_LEAN_GALLOP, SEAT_PELVIS_HEIGHT } from '../src/player/seatPose.js';
@@ -379,6 +382,10 @@ test('COATS3D one picture, rider and horse: the union of the two boxes holds bot
 test('COATS3D by source: the view keeps the saddle and lifts RIDE-POV astride; the hosts hand it the horse and the body the saddle; the riding sprite stands down; the peers, the pool and the road ride it; the pass takes the horse in the rider\'s picture', () => {
   const v = rd('src/player/mwView.js');
   assert.match(v, /saddled = !!state\.riding && stepOwnHorse\(state\.horse, feet, yaw, state\.dt \?\? 0\);\n\s*mounted = !!state\.riding && !saddled;/, 'RIDE-POV holds the head only off a 3D horse');
+  assert.match(v, /horseRig\?\.tick\(\);\n\s*if \(!state\.riding\) dropOwnHorse\(\);\n\s*\/\/ EOTB4: the other lane/, 'AUDIT A2/A11: the dye every frame, on foot as mounted, before either lane; my horse let go off its back');
+  assert.match(v, /dropOwnHorse\(\); saddled = false;   \/\/ the sprite lane's rider is its own picture/, 'and on the sprite lane');
+  assert.match(v, /ownSink = fpEye && feet \? Math\.max\(0, RIDE_EYE_HEIGHT - \(fpEye\[1\] - feet\[1\]\) - SINK_SLACK\) : 0;/, 'AUDIT A8: the horse under the eye - sunk with a swimming rider, rising under a mount');
+  assert.match(v, /feet\[1\] - ownSink \* grow,/);
   assert.match(v, /if \(!horse \|\| !horseRig\?\.ready\(\) \|\| !feet \|\| !fpArm\.canThirdPerson\(\)\) \{ dropOwnHorse\(\); return false; \}/, 'no horse, no rig or no Morrowind body: RIDE-POV as it stood');
   assert.match(v, /export const mwViewSaddle = \(\) => \(saddled \? ownSaddle : null\);/);
   assert.match(v, /export function mwViewHorseRig\(\) \{\n\s*return horseRig\?\.ready\(\) && !eotbLane\(\) && fpArm\.canThirdPerson\(\) \? horseRig : null;/, 'the world\'s horses 3D on the Morrowind lane alone');
@@ -408,7 +415,9 @@ test('COATS3D by source: the view keeps the saddle and lifts RIDE-POV astride; t
   const w = rd('src/scenes/world.js');
   assert.match(w, /yields: peerRidesIn3d, conceal: veilOf/);
   assert.match(w, /const peerRidesIn3d = \(d\) => !!peerBodies\?\.enabled\(\) && horseRigFor\(renderer\)\.ready\(\) && d\.shown\?\.rd === POSE_RIDE\.Horse && !d\.shown\?\.wb && !peerBodies\.failureOf\(d\.look, d\.shown, d\.glyphs\);/);
-  assert.match(rd('src/net/peerRiders.js'), /if \(riding && !beast && yields\(peer\)\) continue;/);
+  assert.match(rd('src/net/peerRiders.js'), /if \(riding && !beast && yields\(peer\)\) \{ deferred\.push\(peer\); continue; \}/, 'PIN MOVED (AUDIT A3): held for the settle, never dropped');
+  assert.match(w, /hcc\.drawVeiled3d\(\);   \/\/ AUDIT COATS3D A5/, 'AUDIT A5: a concealed owner\'s horses after the opaque world');
+  assert.match(rd('src/scenes/exterior.js'), /hcc\.drawVeiled3d\(\);   \/\/ AUDIT COATS3D A5/);
   const pool = rd('src/scenes/horseCartPool.js');
   assert.match(pool, /if \(rig\?\.ready\(\)\) \{ pose3dTeam\(rig, owner, team, conceal, _dt3d\); dropTeamBatches\(owner, 0\); return; \}/, 'the pool\'s team 3D, no billboard');
   assert.match(pool, /rig\.step\(e\.horse, \{ feet: h\.position, yaw, speed: e\.speed, dt, look: lookOfOwner\(owner\) \}\);/, 'in its owner\'s look');
@@ -422,4 +431,126 @@ test('COATS3D the mips: each level the 2x2 mean, its colour by its alpha - a car
   assert.deepEqual(m.map((l) => [l.width, l.height]), [[2, 2], [1, 1]]);
   assert.deepEqual([...m[1].rgba], [255, 0, 0, 128], 'red at half cover, not a dark red');
   assert.equal(rgbaMips(256, 256, new Uint8Array(256 * 256 * 4)).length, 9);
+});
+
+test('COATS3D AUDIT the look cache: a look drawn this frame or the last is never let go - past the cap with every look on screen the cap waits; a look nobody asks for again leaves the queue undyed', async () => {
+  const r = recordingRenderer();
+  const rig = createHorseRig({ renderer: r, ...RIG_DEPS });
+  await rig.load();
+  const frames = BODY.height / DYE_ROWS;
+  const looks = Array.from({ length: HORSE3D_LOOKS_KEPT + 2 }, (_, i) => code(3, 0, 0, i + 1));
+  const horses = looks.map((_, i) => rig.horse(i + 1));
+  // the host's order: every horse steps (its look asked, its texture worn), then the view's tick
+  const frame = () => { horses.forEach((h, i) => rig.step(h, { feet: [0, 0, 0], yaw: 0, look: looks[i] })); rig.tick(); };
+  for (let f = 0; f < 10 + looks.length * (frames + 1) + 4; f++) frame();
+  assert.equal(rig.kept().length, looks.length + 1, `all ${looks.length} looks on screen kept past the cap (and the bay)`);
+  assert.equal(r.released.textures, 0, 'none let go while drawn - no horse wears a deleted picture');
+  const made = r.made.textures;
+  for (let f = 0; f < 60; f++) frame();
+  assert.equal(r.made.textures, made, 'and no thrash: nothing dyed again');
+  // the crowd leaves: the looks undrawn are let go down to the cap
+  horses.length = 1;
+  for (let f = 0; f < 4; f++) frame();
+  assert.equal(rig.kept().length, HORSE3D_LOOKS_KEPT + 1, 'the cap back once the looks are off screen');
+  // a look asked once and never again (its horse gone) is dropped from the queue undyed
+  const r2 = recordingRenderer();
+  const rig2 = createHorseRig({ renderer: r2, ...RIG_DEPS });
+  await rig2.load();
+  assert.equal(LOOK_ASK_STALE, 30);
+  // four looks drawn every frame ahead of one asked once: its turn comes past LOOK_ASK_STALE
+  const here = [1, 2, 3, 4].map((s) => code(1, 3, 0, s)), gone = code(5, 1, 0, 9);
+  const ask = () => { for (const c of here) rig2.lookTex(c); };
+  ask(); rig2.lookTex(gone);
+  for (let f = 0; f < 10 + 6 * frames; f++) { ask(); rig2.tick(); }
+  assert.ok(here.every((c) => rig2.kept().includes(c)), 'the looks still asked for dyed');
+  assert.equal(rig2.kept().includes(gone), false, 'the one nobody asked for again never');
+  assert.equal(rig2.dyeing(), null);
+});
+
+test('COATS3D AUDIT the view test: a horse wholly behind the eye or past a side of the lens is not drawn; one in view is, and an ortho lens has no sides', async () => {
+  const I = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  const persp = (fovy, aspect) => { const f = 1 / Math.tan(fovy / 2); return [f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, -1.002, -1, 0, 0, -0.2, 0]; };
+  const P = persp(Math.PI / 3, 1.5);
+  assert.equal(outOfView([0, 0, -10], 1.5, I, P), false, 'ahead');
+  assert.equal(outOfView([0, 0, 1], 1.5, I, P), false, 'at the eye\'s plane, its reach over it: drawn');
+  assert.equal(outOfView([0, 0, 3], 1.5, I, P), true, 'behind');
+  assert.equal(outOfView([40, 0, -10], 1.5, I, P), true, 'far past the right side');
+  assert.equal(outOfView([-9, 0, -10], 1.5, I, P), false, 'its reach over the left edge: drawn');
+  assert.equal(outOfView([0, 30, -10], 1.5, I, P), true, 'over the top');
+  const O = [0.1, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, -0.1, 0, 0, 0, -1, 1];
+  assert.equal(outOfView([400, 0, -10], 1.5, I, O), false, 'an ortho lens: behind alone');
+  const r = recordingRenderer();
+  const rig = createHorseRig({ renderer: r, ...RIG_DEPS });
+  await rig.load();
+  const h = rig.horse(1);
+  rig.step(h, { feet: [0, 0, 20], yaw: 0, dt: 0 });
+  const canvas = { clientWidth: 900, clientHeight: 600 };
+  assert.equal(rig.draw(h, canvas, { proj: new Float32Array(P), view: new Float32Array(I), eye: [0, 0, 0] }), false, 'behind the eye: no picture');
+  rig.step(h, { feet: [0, 0, -20], yaw: 0, dt: 0 });
+  assert.equal(rig.draw(h, canvas, { proj: new Float32Array(P), view: new Float32Array(I), eye: [0, 0, 0] }), true, 'ahead: drawn');
+  assert.equal(r.sprites.length, 1);
+});
+
+test('COATS3D AUDIT the road\'s 3D horses give their palettes back through the rig that made them - the gate down under a beast\'s stand-in, the rig alive', async () => {
+  const r = recordingRenderer();
+  const rig = createHorseRig({ renderer: r, ...RIG_DEPS });
+  await rig.load();
+  let gate = true;
+  const teams = createRoadTeams({ renderer: null, presentation: () => null, horses3d: () => (gate ? rig : null) });
+  const horse = { key: 't1:h0', feet: [0, 0, 0], yaw: 0, moving: false, speed: 0 };
+  teams.sync([horse], [], { dt: 1 / 60 });
+  const made = r.made.palettes, back = r.released.palettes;
+  gate = false;
+  teams.sync([horse], [], { dt: 1 / 60 });
+  assert.equal(r.released.palettes, back + 1, 'the horse\'s palette back while the gate answers null');
+  gate = true;
+  teams.sync([horse], [], { dt: 1 / 60 });
+  gate = false;
+  teams.sync([], [], { dt: 1 / 60 });
+  assert.equal(r.made.palettes - made, 1); assert.equal(r.released.palettes, back + 2, 'and a horse gone with the gate down');
+});
+
+test('COATS3D AUDIT the peers: a rider yielded to the 3D horse whose body did not stand (too far, the bodies full, still building) is drawn as the sprite rider; the frame its body stands, the sprite goes', () => {
+  const riders = createPeerRiders({ renderer: {}, urlFor: () => null, decode: async () => null, art: null });
+  const pose = { x: 0, y: 0, z: 0, rd: 1, wb: 0, yaw: 0 };
+  const peers = [{ id: 'far', shown: pose }, { id: 'near', shown: pose }];
+  const toScene = (p) => [p.x, p.y, p.z];
+  riders.sync(peers, toScene, { yields: () => true });
+  assert.equal(riders.riders.has('far') || riders.riders.has('near'), false, 'held for the settle');
+  riders.settle(() => false, (id) => id === 'near');
+  assert.equal(riders.riders.has('far'), true, 'no body of theirs stood: the sprite rider, this frame');
+  assert.equal(riders.riders.has('near'), false, 'their body stands astride: no sprite');
+  riders.sync(peers, toScene, { yields: () => true });
+  riders.settle(() => false, () => true);
+  assert.equal(riders.riders.has('far'), false, 'the frame its body first stands, the sprite is let go');
+  const w = rd('src/scenes/world.js');
+  assert.match(w, /const afoot = seen\.filter\(\(d\) => \(peerRidesIn3d\(d\) \|\| !peerRiders\.isRiding\(d\.id\)\) && !d\.shown\?\.wb/, 'the bodies take the rider whether or not the sprite stood in last frame - else its body would never build');
+});
+
+test('COATS3D AUDIT the sprite lane\'s rider: a look chosen fetches its mounted sprites HORSE_PRELOAD_A_FRAME a frame, never all in one task', async () => {
+  let asked = 0;
+  const b = createEotbBody({ count: () => 3035, urlFor: (k) => { asked++; return `/art/${k}.png`; }, decode: async () => ({ width: 4, height: 6, colors: new Uint32Array(24) }) });
+  b.attach({ uploadTexture() {}, createBillboardBatch(archive, rec, size) { return { archive, rec, size, origin: [0, 0, 0] }; }, destroyBillboardBatch() {}, drawBillboards() {} }, () => ({}));
+  await new Promise((res) => setTimeout(res, 5));
+  b.tick(1 / 60, {});
+  assert.equal(HORSE_PRELOAD_A_FRAME, 3);
+  asked = 0;
+  b.tick(1 / 60, { horseLook: code(2, 2, 1, 40) });
+  assert.equal(asked, HORSE_PRELOAD_A_FRAME, 'a frame\'s share, not the 136');
+  let frames = 1;
+  for (; frames < 100; frames++) { const was = asked; b.tick(1 / 60, { horseLook: code(2, 2, 1, 40) }); if (asked === was) break; }
+  assert.ok(asked >= 120 && frames > 30, `the mounted tables fetched over ${frames} frames (${asked} sprites)`);
+});
+
+test('COATS3D AUDIT the dye: a hue jittered under nought wraps to the reds, never a channel to 255', () => {
+  // a plain byte array, as the 3D horse's dye writes (horseRig.js's job.out) - a clamped one hid it
+  const hide = () => ({ width: 4, height: 4, colors: new Uint8Array(Array.from({ length: 16 }, () => [120, 2, 0, 255]).flat()) });
+  let dyed = 0;
+  for (let seed = 1; seed < 64; seed++) {
+    const out = recolorHorse(hide(), { coat: 0, pattern: 0, legs: 0, seed }, { legs: false });
+    const px = out.colors;
+    if (px[0] !== 120 || px[1] !== 2) dyed++;
+    assert.ok(px[2] < 40 && px[0] > px[2], `seed ${seed}: a bay stays red (${[...px].slice(0, 3)})`);
+  }
+  assert.ok(dyed > 30, `the seeds' shades dyed (${dyed})`);
 });

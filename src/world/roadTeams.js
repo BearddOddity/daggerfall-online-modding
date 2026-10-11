@@ -45,7 +45,7 @@ export const wagonBucket = (key) => `lwWagon:${key}`;
  *   for the billboards, null otherwise
  */
 export function createRoadTeams({ renderer, presentation, collider = () => null, horses3d = () => null }) {
-  /** @type {Map<string, { batch: any, walk: any, look: number, h3?: any }>} */
+  /** @type {Map<string, { batch: any, walk: any, look: number, h3?: any, h3rig?: any }>} */
   const horses = new Map();
   /** COATS3D: this frame's 3D horses (the Morrowind lane's - `horses3d` the rig, world/horseRig.js), for draw3d. */
   /** @type {any[]} */
@@ -60,7 +60,7 @@ export function createRoadTeams({ renderer, presentation, collider = () => null,
   function dropHorse(key) {
     const h = horses.get(key);
     if (h?.batch) renderer?.destroyBillboardBatch?.(h.batch);
-    if (h?.h3) horses3d()?.release(h.h3);   // COATS3D
+    if (h?.h3) h.h3rig?.release(h.h3);   // COATS3D - AUDIT A7: through the rig that made it, whatever the gate says now
     horses.delete(key);
   }
   function takeDown(key) {
@@ -102,14 +102,14 @@ export function createRoadTeams({ renderer, presentation, collider = () => null,
       }
       s.walk = stepHorseWalk(s.walk, h.moving ? h.speed : 0, dt, !!art?.hasWalk?.());
       if (in3d) {   // COATS3D: the stranger's horse in 3D, in its own look, at its team's pace
-        s.h3 ??= rig.horse(s.look % 65536 || 1);
+        if (!s.h3) { s.h3 = rig.horse(s.look % 65536 || 1); s.h3rig = rig; }
         if (!s.h3) continue;
         rig.step(s.h3, { feet: h.feet, yaw: h.yaw, speed: h.moving ? h.speed : 0, dt, look: s.look });
         if (grow > 1) rig.place(s.h3, h.feet, h.yaw, grow);
         drawn3d.push(s.h3);
         continue;
       }
-      if (s.h3) { rig?.release(s.h3); s.h3 = null; }
+      if (s.h3) { s.h3rig?.release(s.h3); s.h3 = null; s.h3rig = null; }   // AUDIT COATS3D A7: the gate down (a beast's stand-in) - the rig itself lives on
       if (!s.batch || !pres?.poseHorse) continue;
       pres.poseHorse(s.batch, eye, { position: h.feet, forward: [Math.sin(h.yaw), 0, Math.cos(h.yaw)], frame: s.walk.animationFrame ?? 0 }, 1, s.look);   // COATS1: in its look
       if (grow > 1 && s.batch.size) s.batch.size = { w: s.batch.size.w * grow, h: s.batch.size.h * grow };

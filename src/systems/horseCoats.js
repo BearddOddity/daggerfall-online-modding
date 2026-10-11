@@ -256,10 +256,12 @@ function hsv(r, g, b) {
   }
   return [h, max > 0 ? d / max : 0, max / 255];
 }
-/** [hue degrees, saturation, value] -> RGB bytes, written into `out` at `o`. */
-function rgbInto(out, o, h, s, v) {
+/** [hue degrees, saturation, value] -> RGB bytes, written into `out` at `o`. Any hue, turned into [0, 360) first
+ *  (AUDIT COATS3D A9: a hue jittered under 0 - the bay's red, a seed's shade down - wrapped a channel to 255). */
+function rgbInto(out, o, hue, s, v) {
+  const h = ((hue % 360) + 360) % 360;
   const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
-  const k = Math.floor((((h % 360) + 360) % 360) / 60) % 6;
+  const k = Math.floor(h / 60) % 6;
   const [r, g, b] = k === 0 ? [c, x, 0] : k === 1 ? [x, c, 0] : k === 2 ? [0, c, x] : k === 3 ? [0, x, c] : k === 4 ? [x, 0, c] : [c, 0, x];
   out[o] = Math.round((r + m) * 255); out[o + 1] = Math.round((g + m) * 255); out[o + 2] = Math.round((b + m) * 255);
 }

@@ -70,6 +70,8 @@ const FP_DEPTH = -0.25;
 /** [IL] The head the first-person camera point sits at (IL_3e13): 0.9
  *  up from the parent, the standing capsule's half height. */
 const FP_HEAD = 0.9;
+/** AUDIT COATS3D A6: the mounted sprites fetched in a new look a frame (a dye each, some milliseconds). */
+export const HORSE_PRELOAD_A_FRAME = 3;
 /** [IL] `UpdateMaterial`'s three tints (IL_4f1e, IL_4f5f, IL_4f9f):
  *  invisible white at 0.4, a shade BLACK at 0.6, blending white at 0.8.
  *  The renderer's billboard shader draws them through `uConceal`:
@@ -402,6 +404,10 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
   let preloadedForm = null;
   /** COATS1: the look the mounted tables were last fetched in */
   let preloadedLook = 0;
+  /** AUDIT COATS3D A6: the mounted tables' sprites still to fetch in the look - HORSE_PRELOAD_A_FRAME a frame (each a
+   *  dye of some milliseconds; all 136 in one task were a third of a second's frame). The sprite drawn is asked for
+   *  where it is drawn, whatever the queue. */
+  let horseQueue = [];
   /** COATS1: a look chosen fetches its mounted tables whole, as a set chosen does - and lets the last look's dyed
    *  pictures go (EVERY ALLOCATION HAS AN OWNER: a Stable's every press is a look). The bay as drawn is the art's. */
   function preloadHorse() {
@@ -416,10 +422,17 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
         renderer?.evictTexture?.(k.replace(':', '_'));   // the cache's `archive:rec` is the renderer's `archive_rec`
       }
     }
+    horseQueue = [];
     for (const table of Object.keys(STATE_TABLES)) {
       if (!table.endsWith('Horse')) continue;
-      for (let f = 0; f < frameCount(table); f++) for (let o = 0; o < ORIENTATIONS; o++) ensure(spriteFor(table, o, f, lk));
+      for (let f = 0; f < frameCount(table); f++) for (let o = 0; o < ORIENTATIONS; o++) horseQueue.push([table, o, f]);
     }
+  }
+  /** AUDIT COATS3D A6: a frame's share of the mounted tables' fetch, in the look worn now. */
+  function stepHorseQueue() {
+    if (!horseQueue.length) return;
+    const lk = lookNow();
+    for (const [table, o, f] of horseQueue.splice(0, HORSE_PRELOAD_A_FRAME)) ensure(spriteFor(table, o, f, lk));
   }
   /** [IL] `InitializeTextures`: every frame of every table of the
    *  archives the settings pick, fetched up front - the mod's whole
@@ -926,6 +939,7 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
       last = bodyState(state);
       if (renderer && last.lycanthropyType !== preloadedForm) preload(true);   // PR-WW1: a curse caught (or changed) fetches its own beast
       if (renderer && last.horseLook !== preloadedLook) preloadHorse();   // COATS1: a look chosen fetches its mounted tables whole, as a set chosen does
+      stepHorseQueue();   // AUDIT COATS3D A6: a few a frame
       fell = false;
       const was = cam.feet;
       if (state.feet) cam.feet = state.feet;

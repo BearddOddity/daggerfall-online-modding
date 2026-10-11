@@ -6085,6 +6085,7 @@ export async function bootExterior(canvas, renderer, params, status) {
       exteriorFoes.drawVeiledBodies();   // MWNPC5c: the concealed foes' bodies, after the person billboards
       cityGuards.drawVeiledBodies();   // MWNPC6: and the watch's
       folkStreet.drawVeiled();   // MWNPC7: and the walkers'
+      hcc.drawVeiled3d();   // AUDIT COATS3D A5: and a concealed owner's 3D horses
     }
     // WINDFALL1: the leaves and the snow, with the opaque world (world.js's twin note)
     if (windfall.particles && windfall.draw(proj, view, renderer.flatLightAt(walkMode ? player.pos : cam.pos))) renderer.markForeignPass();

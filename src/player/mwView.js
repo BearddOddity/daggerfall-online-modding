@@ -41,6 +41,7 @@ import { modSetting } from '../systems/modSettings.js';
 import { horseRigFor, HORSE_SEAT } from '../world/horseRig.js';   // COATS3D: the 3D horse under the Morrowind body
 import { gaitShare } from '../world/horseModel.js';
 import { SEAT_PELVIS_HEIGHT } from './seatPose.js';
+import { RIDE_EYE_HEIGHT } from './motor.js';   // AUDIT COATS3D A8: the saddle's eye, the horse's ground under it
 
 /**
  * EOTB4: is Eye Of The Beholder the lane this frame?
@@ -156,6 +157,11 @@ export function mwViewFrame({ fpEye, feet, yaw, pitch, heightScale = null, rayca
   // the host's word for the hull sailed, and off the helm a distance past either's own far end comes back to it
   mwCamera.setSeaReach(seaReach);
   eotbCamera.setSeaReach(seaReach);
+  // AUDIT COATS3D A2: the 3D horse rig's dye runs every frame, on foot as mounted - the pool's, the road's and the
+  // peers' horses ask for their looks whether or not I ride - and A11: my own horse let go off its back, so a remount
+  // never gallops in place on the gait it was left in
+  horseRig?.tick();
+  if (!state.riding) dropOwnHorse();
   // EOTB4: the other lane, resolved first and returned whole - its
   // camera keeps its own ladder, its own smoothing and its own
   // obstacle casts (EOTB2), and nothing of Morrowind's runs.
@@ -193,6 +199,7 @@ export function mwViewFrame({ fpEye, feet, yaw, pitch, heightScale = null, rayca
     // it follows in first person too. `cart` and `onExteriorPath` are
     // the host's (TransportMode == Cart, PlayerMotor.OnExteriorPath).
     eotbWagon.tick(frame.dt ?? 0, { feet, yaw, height: frame.motion?.height, cart: !!frame.cart && !eotbCartYields(), onExteriorPath: !!frame.onExteriorPath, raycast });   // DISC10: HCC's wagon, when it trails, is the one cart
+    dropOwnHorse(); saddled = false;   // the sprite lane's rider is its own picture
     return eyeOverride ? { ...out, eye: eyeOverride, ownEye: out.eye } : out;   // TV1: the body's own camera kept - the view rises out of it
   }
   // HT-WAIST: the Morrowind lane has the frame, so the sprite's lantern at the waist (and the light point it drew
@@ -200,6 +207,10 @@ export function mwViewFrame({ fpEye, feet, yaw, pitch, heightScale = null, rayca
   eotbBody.standDown();
   // RIDE-POV: the saddle first, before any queued notch can cross out of the head - COATS3D: unless the body sits a
   // 3D horse (the host's `horse`: the ridden horse's look, on a horse and not the cart), which it can be seen on
+  // AUDIT COATS3D A8: the horse stands under the eye, not under the capsule's feet - swimming mounted (the eye at
+  // SWIM_RIDE_EYE_HEIGHT) it sinks into the water with its rider, and mounting (the eye rising to the saddle's over the
+  // height action) it rises under them: never a first-person eye inside its back. SINK_SLACK keeps a step's bob out.
+  ownSink = fpEye && feet ? Math.max(0, RIDE_EYE_HEIGHT - (fpEye[1] - feet[1]) - SINK_SLACK) : 0;
   saddled = !!state.riding && stepOwnHorse(state.horse, feet, yaw, state.dt ?? 0);
   mounted = !!state.riding && !saddled;
   if (mounted) { mwIntoHead(); pendingClicks = 0; }
@@ -385,6 +396,10 @@ let lastCamera = null;
  *  stutter; a step past HORSE_TELEPORT m/s is a teleport, never a gallop. */
 const SPEED_EASE = 0.12;
 const HORSE_TELEPORT = 40;
+/** AUDIT COATS3D A8: how far the eye stands under the saddle's (RIDE_EYE_HEIGHT), past SINK_SLACK - the horse's ground
+ *  that much under the rider's feet. */
+let ownSink = 0;
+const SINK_SLACK = 0.15;
 
 /** COATS3D: the host's renderer, once - the 3D horse rig's (world/horseRig.js horseRigFor) - and its bake asked for. */
 export function mwViewAttachHorse(renderer) {
@@ -396,7 +411,6 @@ export function mwViewAttachHorse(renderer) {
 /** COATS3D: one frame of the player's own horse - stepped, and its seat made the body's saddle. Answers whether the
  *  body is astride it this frame. */
 function stepOwnHorse(horse, feet, yaw, dt) {
-  if (horseRig) horseRig.tick();
   if (!horse || !horseRig?.ready() || !feet || !fpArm.canThirdPerson()) { dropOwnHorse(); return false; }
   ownHorse ??= horseRig.horse(1);
   if (!ownHorse) return false;
@@ -411,7 +425,7 @@ function stepOwnHorse(horse, feet, yaw, dt) {
   return !!ownSaddle;
 }
 /** The horse's own feet, so its seat stands over the rider's: its origin back from them by the seat's own way forward. */
-const horseFeetUnder = (feet, yaw, grow = 1) => [feet[0] - Math.sin(yaw) * HORSE_SEAT[1] * grow, feet[1], feet[2] - Math.cos(yaw) * HORSE_SEAT[1] * grow];
+const horseFeetUnder = (feet, yaw, grow = 1) => [feet[0] - Math.sin(yaw) * HORSE_SEAT[1] * grow, feet[1] - ownSink * grow, feet[2] - Math.cos(yaw) * HORSE_SEAT[1] * grow];
 function dropOwnHorse() {
   if (ownHorse) horseRig?.release(ownHorse);
   ownHorse = null; ownSaddle = null; lastFeet = null; groundSpeed = 0;
