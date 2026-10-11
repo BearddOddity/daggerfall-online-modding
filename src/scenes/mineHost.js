@@ -49,6 +49,29 @@ import { MOTHERLODE_TEXT } from '../net/motherlodeBook.js';
 /** The item flats' archive; a picture a new ore has none of its own borrows Lodestone's (PROF0 4.8). */
 export const ORE_FLAT_ARCHIVE = 254;
 export const LODESTONE_RECORD = 66;
+/** VEIN-WASH (2026-10-11, from play: "Many ore veins look the same. Copper/lodestone/moonstone/ebony and others all have
+ *  the same basic texture so its very hard to tell the difference when looking for them"): THE WASH AN ORE'S FLATS WEAR
+ *  (render/renderer.js uBatchTint - ARENA5's batch wash, multiplied into the lit flat), PROF0 4.8's "DFU Lodestone, tinted
+ *  per ore" kept at last. DFU gives five metals a picture of their own (Mercury 61, Gold 62, Iron 63, Tin 64, Sulphur 67)
+ *  and two to the rest: Lead, Silver and Platinum share record 65, Copper and Lodestone record 66 - and every new ore
+ *  borrows 66. The first of each shared picture keeps DFU's own colours (Lead, Lodestone); every other ore on it wears its
+ *  own wash, none like another's. The port's own colours (the nodes are no DFU member): each the hue its metal is read by
+ *  - Copper's orange, Silver's cold white, Platinum's pale gold, Moonstone's moonlight, Dwarven Scrap's brass, Mithril's
+ *  sea-green, Adamantium's violet, Ebony's black, Orichalcum's orc-green. */
+export const ORE_WASH = Object.freeze({
+  'metal:copper': Object.freeze([1.45, 0.88, 0.58]),
+  'metal:silver': Object.freeze([1.25, 1.3, 1.45]),
+  'metal:platinum': Object.freeze([1.4, 1.34, 1.08]),
+  'ore:moonstone': Object.freeze([1.12, 1.28, 1.65]),
+  'ore:dwarven': Object.freeze([1.45, 1.12, 0.5]),
+  'ore:mithril': Object.freeze([0.78, 1.36, 1.3]),
+  'ore:adamantium': Object.freeze([1.12, 0.72, 1.4]),
+  'ore:ebony': Object.freeze([0.42, 0.4, 0.48]),
+  'ore:orichalcum': Object.freeze([0.85, 1.28, 0.52]),
+});
+/** VEIN-WASH: a node's flats' wash ([r, g, b]), or null for DFU's own colours - a vein's or a Motherlode's by its ore; a
+ *  boulder's loose stone none. */
+export const mineWash = (node) => (node.what === 'boulder' ? null : ORE_WASH[node.material] ?? null);
 /** A vein is this many of its metal's flats at this times the item's own size, spread this far (m) at the foot. */
 export const VEIN_FLATS = 3;
 export const VEIN_SCALE = 2.2;
@@ -389,7 +412,7 @@ export function mineKind({ book, lodes = null, marks = null }) {
     dungeonNodesOf({ dungeon, day, info, confirmed, wall }) {
       return standDungeonVeins({ dungeon, day, climate: info.climate, confirmed, wall });
     },
-    flatsOf: (n) => [{ archive: ORE_FLAT_ARCHIVE, record: mineRecord(n), scale: n.what === 'boulder' ? STONE_SCALE : n.what === 'motherlode' ? MOTHERLODE_SCALE : VEIN_SCALE, centers: mineFlats(n) }],
+    flatsOf: (n) => [{ archive: ORE_FLAT_ARCHIVE, record: mineRecord(n), scale: n.what === 'boulder' ? STONE_SCALE : n.what === 'motherlode' ? MOTHERLODE_SCALE : VEIN_SCALE, centers: mineFlats(n), tint: mineWash(n) }],   // VEIN-WASH: its ore's own wash
     gone,
     /** NODE-MARKS: every vein and boulder standing; a Prospector's veins from PROSPECT_M off (PROF0 3.3) */
     mark(n, { specs }) {

@@ -1158,7 +1158,9 @@ MWNPC8: 8a stood the building's StaticNPCs; the living world's are here.
 - THE ACTOR (rosterActor, now with `drawn`): walking as the body walks,
   facing its way; each strike begun one blow (the roads hand the edge);
   the fallen (a flat no one talks to) dead on the death's roll off the
-  id; a class's sprite its blade out, the rest nothing drawn; a new person
+  id - but a flat that is nobody (`body: false`, a road camp's fire) stands
+  no body and its flame draws (CAMP-FIRE, FIELD BUGS 2026-10-11b); a class's
+  sprite its blade out, the rest nothing drawn; a new person
   at a key a new id (a new body, never the last one re-dressed).
 - THE DRAW. `drawBodies` offers the last sync's bodies ON THE GROUND ONLY
   - under the Overworld the bands' grown, fading sprites are the far

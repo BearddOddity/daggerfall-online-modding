@@ -2891,6 +2891,19 @@ the sail stopped, a packable boat packed - and `world.js` `_teleportToPixel` rai
 event of its own, before anything it awaits (Port-Ledger A, HELM-JUMP; `01-Overview/Field-Bugs-2026-10-11.md`). An
 anchor set on a deck is still the deck's world point. `test/csa_sailing.test.js`, `test/fb1011_helmjump.test.js`.
 
+## A boat's Animators found once (SEA-TOWN, 2026-10-11 - OURS)
+
+From the field: frames fell in a crowded inland town with "The sea & ships" on, and came back with them off. With no boat
+owned the mods cost nothing there; with boats owned, `animate` (the Animators' step at the head of LateUpdate, (19) of
+the Port-Ledger row) found every boat's Animators by walking her whole tree - a galleon's 1,228 nodes - every frame, for
+every boat the player had placed wherever it lay, and the peers' pose did the same for every other player's boat
+(`scenes/comeSailAwayPeers.js`). `boatAnimators` keeps a tree's list while every tree's shape stands
+(`world/prefabNode.js` `prefabShapeStamp`, the stamp `world/prefabColliders.js` keeps a tree's colliders by): the same
+Animators, in the same order. The step itself is unchanged - a boat standing nowhere is still asked, because that ask is
+how an Animator starts over from its default state when she stands again ((18)). The naval HUD and the helm panel stopped
+making their keys' names for windows they were not showing. Measured, before and after, in
+`01-Overview/Field-Bugs-2026-10-11c.md`; `test/fb1011c_seatown.test.js`.
+
 ## What was already waiting in the port
 
 - Iliac Puddle No More's swim stands down on a boat

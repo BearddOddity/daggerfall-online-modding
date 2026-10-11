@@ -171,7 +171,8 @@
     "new": "  if ((others ?? []).some((r) => ground.some(([px, pz]) => inRect(px, pz, r, -YARD_EDGE_PAD)))) return YARD_ON_OTHER;",
     "tests": [
       "test/fb1001_yard.test.js",
-      "test/homeyard.test.js"
+      "test/homeyard.test.js",
+      "test/fb1011b_homeline.test.js"
     ]
   },
   {
