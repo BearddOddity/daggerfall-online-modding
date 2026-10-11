@@ -57,6 +57,7 @@ import { setPlayerTorchOffsetOverride } from './playerTorch.js';
 import { toScreenOrder } from '../formats/color32Order.js';   // HT3: a SCREEN sprite keeps its rows - see the note there   // TEX1: the SHAPE the upload path reads - `{ colors }`, never a decoded PNG's `{ data }`
 import { decodePng } from './textureReplacement.js';
 import { setLightSource, addLightSourceListener } from './lightSource.js';   // DISC7: the light in hand's one door
+import { noteFirstUse } from './tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export const HANDHELD_TORCHES_VENDOR = 'handheld-torches';
 export const HANDHELD_TORCHES_MOD = Object.freeze({
@@ -487,6 +488,7 @@ export function createHandheldTorches({
 
   /** ToggleLightSourceAction (0x33b8): douse the lit light; else the last stowed one; else the remembered kind; else a lantern, a torch, a candle, a holy candle. */
   function toggleLightSourceAction() {
+    noteFirstUse('torches');   // TUT1
     const l = light();
     if (l) {
       w.lastLightTemplateIndex = l.templateIndex;

@@ -105,6 +105,7 @@ import {
 import { goldAmount } from '../systems/court.js';
 import { firstHotkey, shortcutBinding, sequenceString, normalizeCode } from '../systems/dialogShortcuts.js';
 import { chapterPriced } from '../net/npcChapterLaw.js';   // CHAP3c / AUDIT CHAP3 R12: a hall's band laid over a spell's making
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 // TargetTypes / ElementTypes in DFU's declaration order, which IS the
 // classic rangeType / element index order the record stores.
@@ -425,6 +426,7 @@ export class EffectSettingsEditorWindow {
  */
 export class SpellMakerWindow {
   constructor({ entity, rows = null, onClose = null, priceFactor = null } = {}) {
+    noteFirstUse('spellmaker');   // TUT1
     this.entity = entity;
     this.rows = rows;
     this.onClose = onClose;

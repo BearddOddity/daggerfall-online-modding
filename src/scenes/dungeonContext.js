@@ -324,6 +324,9 @@ import { feudRevealWeak, feudWeakBlow } from '../systems/feudLedger.js';   // RV
 import { blowWire, blowWireKey, applyBlowRecord, puppetBlowTurn, blowClassOf } from '../ai/puppetBlows.js';   // TELL8: a wind-up on the wire - the host's word, the joiner's puppet, each judging its own feet, a blow's class
 import { ambushNight, bedInReach } from '../systems/restAct.js';   // AUDIT REST-PARTY A1: a resting encounter stood breaks the night that rolled it
 import { isBedModel } from '../systems/rrRealism.js';   // FIELD BUGS 2026-10-05 DUNGEON-BEDS: Roleplay Realism's three bed models, the buildings' own
+import { SCENE_CHANGE_TUTORIAL_MS } from '../ui/tutorialPopup.js';   // TUT1: the popups' handler, registered by this host (the four hosts' rule) - its doors' first touches pop their pages
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
+import { isStartDungeon } from '../systems/startDungeon.js';   // TUT1: the starting cave is the welcome tour's
 
 
 
@@ -1869,6 +1872,14 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
   const sdEndClock = () => opts.sdClock?.() ?? performance.now() / 1000;   // SD-LOOK: the realm's anchored seconds - every screen's gear ticks together
   const sdEnd = _superTier ? createSdEnd({ renderer, audio, onRift: () => sdRiftStep(), onReturn: () => sdReturnStep(), riftCount: () => sdEndWord()?.count ?? null, look: () => (opts.superRiftLook ? opts.superRiftLook(dfLocation?.sdSlot) : sdEndWord()?.look) ?? null, clock: sdEndClock })   // AUDIT SD II (L6 F5): its plaque counts its Hour; SD-LOOK: and its state is its look
     : _sdRealm ? createSdEnd({ renderer, audio, riftTo: SD_REALM_TEXT.wayBack, onRift: () => opts.sdWayBack?.(), onReturn: () => opts.sdWayHome?.(), retTitle: SD_HOME_TEXT.title, retTo: SD_HOME_TEXT.to, clock: sdEndClock }) : null;   // SD5a: the Shattered Hour's way back - the same Rift, at its Threshold's back; SD10: and its way home, the Return's light where the Remnant fell
+  // TUT1: the page of the place this build stands - read inside it, a beat after the step through and never while the
+  // loading screen stands (ui/tutorialPopup.js holds it): Dagon's Breach's court, the arena's sand, the Abyss Dungeon or
+  // its Shattered Hour, an Ocean Hole's flooded dungeon (its id the abyss's own, 0x60000000 and up - getAbyssMapId), or
+  // the first dungeon past the starting cave (the welcome tour told that one). ONE page a build (AUDIT TUT1: an Ocean
+  // Hole's door popped its own and the build a second, back to back).
+  noteFirstUse(isGateArena(dfLocation) ? 'oblivion-gate' : isArenaFloor(dfLocation) ? 'arena' : _superTier || _sdRealm ? 'abyss'
+    : (Number(dfLocation?.mapTableData?.mapId) >>> 0) >= 0x60000000 ? 'ocean-holes'
+      : isStartDungeon(dfLocation) ? null : 'dungeons', { after: SCENE_CHANGE_TUTORIAL_MS });
   // SD6c (Super-Dungeons.md section 8): THE ORRERY'S HALL in the Shattered Hour (scenes/sdHall.js) - its stones,
   // plaques, dial and bridge, stood the first frame I stand here; a handle's turn sent through the outer host (the realm
   // judges it), the realm's word on the hall read from it every frame
@@ -2551,6 +2562,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
     active: () => _live && !_ctxDead,
     priority: 20,
   });
+  const _unregisterHolds = registerPresenter({ holds: (win) => dungeonWindows.containsWindow(win), active: () => _live && !_ctxDead });   // TUT1 audit: whether this host's stack still holds a window (systems/notify.js windowHeld) - a registration of its own, no `mount`, so the presenter above keeps its shape
   // AUDIT 64 F34: SetMidScreenText ends with the SAME
   // `Notebook.AddMessage(message)` PopupText.AddText carries
   // (DaggerfallHUD.cs:371 / PopupText.cs:123), so the label files into
@@ -10473,6 +10485,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
       // player outside and, at AutomapNumberOfDungeons = 0, forgets
       // the map the moment you leave (Automap.cs:2530-2534).
       exitDungeonAutomap(classicMinutesRef.value);   // AUDIT-AMAP F11: stamped with the EXIT time (:2155)
+      _unregisterHolds();   // TUT1 audit: the holds-only presenter leaves with the context too (below the exit law: test/automap.test.js measures the walk to it)
       senseGlow.dispose(); sensePulse.clear(); echoPulse.clear(); echoBook.clear(); wayOut.reset(); actions.onPlayed = null;   // SENSE1/ECHO1: the look round's glow is OURS - its program ends with the context
       bloodMarks.dispose();   // BLOOD1a (HARD1): the ring is OURS - a vertex buffer and a VAO handed to nobody - so it ends here, by its own name and not through the hand-off pool
       // ROAD-B B1: RemoveWindow runs OnPop on every window it removes

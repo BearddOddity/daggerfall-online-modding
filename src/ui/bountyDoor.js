@@ -5,6 +5,7 @@
 // stack. Handed to the host's overlay slot (townTalk.showOverlay), so the game stands still while either is up.
 import { mountEnhancedChunk } from './enhancedChunk.js';
 import { registerOverlay } from './enhancedOverlays.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 /** @type {any} */ let _open = null;
 /** Is a bounty window up. */
@@ -19,6 +20,7 @@ export function closeBountyDoor() { const was = bountyDoorOpen(); _open?.dispose
  * @returns {any} the overlay, or null with no document
  */
 export function createBountyOverlay(kind, deps) {
+  if (kind === 'board') noteFirstUse('bounties');   // TUT1: the board, not a finished bounty's notice
   if (typeof document === 'undefined') return null;
   _open?.dispose();
   let fired = false;
