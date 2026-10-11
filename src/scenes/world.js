@@ -15831,8 +15831,8 @@ export async function bootWorld(canvas, renderer, params, status) {
       if (!extras) { townTalk.say('Save version mismatch.'); return; }
       autoBuildArms(playerEntity);   // MWA1: the loaded character's arms (a boot into ?load has no chargenDone until here)
       hccRuntime.handleStartLoad();   // AUDIT HCC H3: SaveLoadManager.OnStartLoad [IL_a714] - the old character's horse, name and parked wagon end HERE, before any await, on every branch below
-      upkeep.reset();   // AUDIT STEED1: the old character's breaths and its keep's clock end with it - a load is no span skipped
       wagonRiders?.clear();   // WAGONS2 (AUDIT): a load ends every ride - mine in another's wagon, and my riders' seats (the loaded character's wagon is the save's)
+      upkeep.reset();   // AUDIT STEED1: the old character's breaths and its keep's clock end with it - a load is no span skipped
       // CameraRecoiler's SaveLoadManager_OnStartLoad (:185-191): the
       // incoming character does not inherit the old one's reel.
       cameraRecoiler.reset();

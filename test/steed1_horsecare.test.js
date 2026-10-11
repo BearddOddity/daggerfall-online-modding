@@ -483,7 +483,7 @@ test('AUDIT STEED1 THE KEEP\'S CLOCK: a load and a new character start it afresh
   assert.equal(items[1].stackCount, 9, 'no sack eaten back across the load');
   assert.deepEqual(said.filter((l) => /ate|sack/i.test(l)), [], 'and none said');
   const world = rd('src/scenes/world.js');
-  assert.match(world, /hccRuntime\.handleStartLoad\(\);[^\n]*\n\s*upkeep\.reset\(\);/, 'the load\'s OnStartLoad');
+  assert.match(world, /hccRuntime\.handleStartLoad\(\);[^\n]*\n\s*wagonRiders\?\.clear\(\);[^\n]*\n\s*upkeep\.reset\(\);/, 'the load\'s OnStartLoad (after WAGONS2\'s riders)');
   assert.ok(world.includes('horseCartLoad: (rec) => { hccRuntime.handleStartLoad(); upkeep.reset();'), 'a same-dungeon load');
   assert.ok(world.includes('  if (!_loadedGame) upkeep.reset();'), 'a new character');
 });
