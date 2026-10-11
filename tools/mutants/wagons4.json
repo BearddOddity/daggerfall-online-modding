@@ -24,7 +24,7 @@
     "old": "* (away ? 1 + MEND_FETCH : 1)", "new": "* 1",
     "tests": ["test/wagons4_upkeep.test.js"] },
   { "name": "WAGONS4-the-kit-to-whole", "file": "src/systems/wagonUpkeep.js",
-    "old": "top = Math.round(KIT_CEILING * max);", "new": "top = max;",
+    "old": "top = Math.round(WAGON_KIT_CEILING * max);", "new": "top = max;",
     "tests": ["test/wagons4_upkeep.test.js"] },
   { "name": "WAGONS4-worn-where-it-stays", "file": "src/systems/upkeepRuntime.js",
     "old": "if (w && wagonGoes && metres > 0 && metres < 1000) {", "new": "if (w && metres > 0 && metres < 1000) {",

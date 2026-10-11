@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs';
 import {
   wagonCondition, wagonConditionMax, wagonSoundness, wagonState, WAGON_STATES, isBrokenWagon, rollWear, journeyWear, wearWagon,
   createWearAccount, mendPrice, mendWagon, kitMendWagon, wagonBrokenWhy, wagonPace, WAGON_UPKEEP_TEXT, WEAR_A_KM, OFFROAD, LOAD_WEAR,
-  KIND_WEAR, JOURNEY_WEAR_A_DAY, JOURNEY_WEAR_MAX, THROWN_WEAR, MEND_SHARE, MEND_LEAST, MEND_FETCH, KIT_MEND, KIT_CEILING, KIT_MINUTES,
+  KIND_WEAR, JOURNEY_WEAR_A_DAY, JOURNEY_WEAR_MAX, THROWN_WEAR, MEND_SHARE, MEND_LEAST, MEND_FETCH, KIT_MEND, WAGON_KIT_CEILING, KIT_MINUTES,
 } from '../src/systems/wagonUpkeep.js';
 import { createUpkeep, registerUpkeepUses } from '../src/systems/upkeepRuntime.js';
 import { newWagonItem, WAGON_KINDS, wagonTeamShort } from '../src/systems/wagonKinds.js';
@@ -74,7 +74,7 @@ test('WAGONS4 WEAR: a kilometre of road 1% of whole, off it 2.5 times, a full lo
 });
 
 test('WAGONS4 MENDING: the Wagon Yard makes it whole for 12% of its kind\'s value (40 at the least) by what it lacks, half again sent out to it; a kit a quarter of whole to 60% at most - a broken wagon too - an hour\'s work (mutants: the share, the least, the fetch, the ceiling, the kit\'s step)', () => {
-  assert.deepEqual([MEND_SHARE, MEND_LEAST, MEND_FETCH, KIT_MEND, KIT_CEILING, KIT_MINUTES], [0.12, 40, 0.5, 0.25, 0.6, 60]);
+  assert.deepEqual([MEND_SHARE, MEND_LEAST, MEND_FETCH, KIT_MEND, WAGON_KIT_CEILING, KIT_MINUTES], [0.12, 40, 0.5, 0.25, 0.6, 60]);
   assert.equal(mendPrice(wagon('caravan', 0)), Math.round(0.12 * WAGON_KINDS.caravan.value), 'whole from broken: 3000');
   assert.equal(mendPrice(wagon('caravan', 700)), 1500);
   assert.equal(mendPrice(wagon('caravan', 700), { away: true }), 2250);

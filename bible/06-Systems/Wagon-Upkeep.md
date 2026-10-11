@@ -68,8 +68,18 @@ journey's fare counts no cart (`scenes/world.js` travelFareDeps hasCart).
 
 ## The Stable page
 
-The wagon's card shows its Repair meter, its state's word and advice, and **Use a repair kit** while a kit would mend
-it; a broken wagon's chip says Broken whatever else it is (`ui/holdingsPages.js` wagonLines).
+The wagon's card shows its Repair meter in its state's tone (sound and worn the kit's verdigris, rickety plain, failing
+and broken blood - STEED-UI), its state's word and advice, what a Wagon Yard asks to make it whole - at the yard, and
+with its wright going out to it (`upkeepRuntime.js` wagonCard's mend and mendAway, `ui/holdingsPages.js` mendLine) -
+and **Use a repair kit** while a kit would mend it; a broken wagon's chip says Broken whatever else it is
+(`ui/holdingsPages.js` wagonLines).
+
+## The saddle panel (STEED-UI - `10-UI/Controls.md`, THE SADDLE PANEL)
+
+On Enhanced Plus, on the bench, the wagon is on screen under the compass (`ui/enhancedSaddle.js`): its state and share
+of whole, its load against its limit, and its doors - **Repair kit** (where a kit would mend it, dark without a kit or
+the wagon's reach), **Cargo** (its load opened with the wagon chosen, where Horse Cart and Cargo's own reach allows -
+`systems/horseCart.js` openWagonCargo), **Climb down**. A failing wagon's line says to mend it before it breaks.
 
 ## Online
 
@@ -84,4 +94,5 @@ throw, and stands the Wagon Yard's wright. `scenes/worldModes.js` and `scenes/du
 (a building or a dungeon puts the driver on foot) and are named, not wired; worldModes.js refuses a wagon at a smith's
 counter (its own repair list).
 
-Pinned: `test/wagons4_upkeep.test.js`; mutants `tools/mutants/wagons4.json`.
+Pinned: `test/wagons4_upkeep.test.js`; mutants `tools/mutants/wagons4.json`. The saddle panel and the page's polish:
+`test/steedui_saddle.test.js`; mutants `tools/mutants/steedui.json`.

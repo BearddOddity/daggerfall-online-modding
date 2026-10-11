@@ -14,7 +14,8 @@
 // Each frame the host hands `tick` what its motor did: the transport (`mode`), whether it galloped (the run on a horse,
 // moving), how far it rolled (its odometer's metres since the last frame), on a road or not, the wagon's load, and
 // whether the wagon went with it (driven, or its team following). The motor asks `rideScale(mode)` for its ride's pace
-// and transport.js's gallop gate asks `gallopGate`; the HUD asks `bar()`; the Stable card `model()` and `act()`.
+// and transport.js's gallop gate asks `gallopGate`; the HUD asks `bar()`; the Stable card `model()` and `act()`; the
+// Enhanced Plus saddle panel (ui/enhancedSaddle.js) `saddle(mode)` and `act()`.
 //
 // A horse's breath is kept here, by its seed (no field: a gallop's breath is not a thing to save), and comes back whole
 // over any span of the clock skipped (steedCare.js SKIP_MINUTES - a rest, a wait, a journey, a load).
@@ -24,11 +25,11 @@ import { activeWagonItem, wagonHorsesOf, wagonKindOf } from './wagonKinds.js';
 import {
   steedStats, stepBreath, freshBreath, breathShare, canGallop, steedSpeedScale, teamDraftScale, tendHorses, feedHorse,
   chooseRiddenHorse, horsesIn, steedFoodOf, STEED_TEXT, SKIP_MINUTES, HUNGER, STEED_STATS, STEED_STAT_TEXT, fedUntil,
-  FULL_AHEAD,
+  FULL_AHEAD, BOND_TIERS,
 } from './steedCare.js';
 import {
   wagonState, wagonSoundness, wagonCondition, wagonConditionMax, rollWear, journeyWear, createWearAccount, wearWagon,
-  wagonBrokenWhy, wagonPace, mendPrice, kitMendWagon, wagonWord, WAGON_UPKEEP_TEXT, THROWN_WEAR, KIT_CEILING,
+  wagonBrokenWhy, wagonPace, mendPrice, kitMendWagon, wagonWord, WAGON_UPKEEP_TEXT, THROWN_WEAR, WAGON_KIT_CEILING,
 } from './wagonUpkeep.js';
 import { isWagonKitItem, UPKEEP_ITEM } from './upkeepItemRows.js';
 import { registerItemUseHandler } from './itemTemplates.js';
@@ -36,6 +37,12 @@ import { HORSE_MODE, WAGON_MODE, TRANSPORT } from './horseCartLaw.js';
 
 /** A breath under this share shows short on the HUD. */
 export const BREATH_LOW = 0.25;
+/** STEED-UI: a bond's way on - the points its word was reached at (`tierAt`), and the next word and the points it is
+ *  reached at (`next`, null at Kindred). Pure. @param {number} bond */
+export function bondWay(bond) {
+  const next = BOND_TIERS.find((x) => x.min > bond) ?? null;
+  return { tierAt: [...BOND_TIERS].reverse().find((x) => bond >= x.min)?.min ?? 0, next: next ? { name: next.name, at: next.min } : null };
+}
 
 /**
  * @param {{ items: () => any[], now: () => number, horseCare?: () => boolean, wagonUpkeep?: () => boolean,
@@ -179,17 +186,32 @@ export function createUpkeep({ items, now, horseCare = () => false, wagonUpkeep 
     return r;
   }
 
-  // ── the Stable card ──────────────────────────────────────────────
-  /** The card's horses and wagon: each horse's look, stats, bond, hunger and breath; the wagon's soundness. */
-  function model({ near = true, name = '' } = {}) {
-    const its = pack(), t = now();
-    const out = { horseCare: !!horseCare(), wagonUpkeep: !!wagonUpkeep(), near: !!near, horses: /** @type {any[]} */ ([]), wagon: /** @type {any} */ (null), oats: 0, apples: 0, kits: 0 };
-    for (const it of [...its, ...store()]) {   // the pack's, and the wagon's load where it is with its owner
+  /** The oats, the apples and the kits to hand: the pack's, and the wagon's load where it is with its owner. */
+  function supplies() {
+    const out = { oats: 0, apples: 0, kits: 0 };
+    for (const it of [...pack(), ...store()]) {
       const food = steedFoodOf(it)?.key;
       if (food === 'oats') out.oats += it.stackCount ?? 1;
       else if (food === 'apple') out.apples += it.stackCount ?? 1;
       if (isWagonKitItem(it)) out.kits += it.stackCount ?? 1;
     }
+    return out;
+  }
+  /** A wagon's card: its kind's word, its state, its share of whole, whether a kit would mend it, and a Wagon Yard's
+   *  price to make it whole - drawn up at the yard, and with its wright going out to it (`mendAway`). */
+  function wagonCard(w) {
+    const s = wagonState(w), share = wagonSoundness(w);
+    return {
+      name: wagonWord(w), state: s.name, stateKey: s.key, tone: s.tone, condition: wagonCondition(w), max: wagonConditionMax(w), share,
+      kitWorks: share < WAGON_KIT_CEILING, mend: mendPrice(w), mendAway: mendPrice(w, { away: true }),
+    };
+  }
+
+  // ── the Stable card ──────────────────────────────────────────────
+  /** The card's horses and wagon: each horse's look, stats, bond, hunger and breath; the wagon's soundness. */
+  function model({ near = true, name = '' } = {}) {
+    const its = pack(), t = now();
+    const out = { horseCare: !!horseCare(), wagonUpkeep: !!wagonUpkeep(), near: !!near, horses: /** @type {any[]} */ ([]), wagon: /** @type {any} */ (null), ...supplies() };
     if (out.horseCare) {
       horsesIn(its).forEach((h, i) => {
         const st = steedStats(h, t);
@@ -198,16 +220,49 @@ export function createUpkeep({ items, now, horseCare = () => false, wagonUpkeep 
         out.horses.push({
           i, ridden: i === 0, name: i === 0 && name ? name : null, look: describeHorseLook(horseLookOf(h)),
           stats: STEED_STATS.map((k) => ({ key: k, name: STEED_STAT_TEXT[k], born: st.born[k], now: st.stats[k] })),
-          bond: st.bond, tier: st.tier, bonus: st.bonus, hunger: HUNGER[st.hunger].name, hungerKey: st.hunger,
-          full: f != null && f - t >= FULL_AHEAD, breath: i === 0 ? breathShare(breathOf(h), st.stats) : 1,
+          ...bondWay(st.bond), bond: st.bond, tier: st.tier, bonus: st.bonus, penalty: st.penalty, hunger: HUNGER[st.hunger].name, hungerKey: st.hunger,
+          fedHours: f != null && f > t ? (f - t) / 60 : 0, full: f != null && f - t >= FULL_AHEAD,
+          breath: i === 0 ? breathShare(breathOf(h), st.stats) : 1, winded: i === 0 && !!breathOf(h).winded,
         });
       });
     }
     const w = activeWagonItem(its);
-    if (out.wagonUpkeep && w) {
-      const s = wagonState(w);
-      out.wagon = { name: wagonWord(w), state: s.name, stateKey: s.key, tone: s.tone, condition: wagonCondition(w), max: wagonConditionMax(w), share: wagonSoundness(w), kitWorks: wagonSoundness(w) < KIT_CEILING };
+    if (out.wagonUpkeep && w) out.wagon = wagonCard(w);
+    return out;
+  }
+
+  /**
+   * STEED-UI: THE SADDLE PANEL'S READ (ui/enhancedSaddle.js) - the horse ridden, or the lead of the team driven (the
+   * pack's first horse either way: horseCoats.js activeHorseItem), and the wagon: the horse's breath while it is ridden
+   * (`mode` 'Horse' - a team in harness never gallops), winded or not; its bond's word, its points, and the next word
+   * and the points it is reached at (null at Kindred). The hunger is the one a hand should feed: astride, the horse
+   * ridden; on a bench, the team's horse whose food runs out first (`feed` its index among the pack's horses, `team`
+   * the team's size) - a Caravan's fourth horse starving drags the team's Strength as surely as its lead would. Its
+   * hours of food, and whether it is full. The wagon's card (wagonCard). The supplies to hand. Each half null with its
+   * switch off, or with nothing to read.
+   * @param {string} mode
+   */
+  function saddle(mode) {
+    const its = pack(), t = now();
+    const out = { horse: /** @type {any} */ (null), wagon: /** @type {any} */ (null), ...supplies() };
+    if (horseCare()) {
+      const h = ridden(), st = steedStats(h, t);
+      if (st) {
+        const riding = mode === 'Horse', b = breathOf(h);
+        const horses = horsesIn(its), w = activeWagonItem(its);
+        const team = riding || !w ? [h] : horses.slice(0, Math.max(1, wagonHorsesOf(wagonKindOf(w))));
+        const needy = team.reduce((a, x) => ((fedUntil(x) ?? Infinity) < (fedUntil(a) ?? Infinity) ? x : a), h);
+        const ns = steedStats(needy, t) ?? st, f = fedUntil(needy);
+        out.horse = {
+          breath: riding ? breathShare(b, st.stats) : null, winded: riding && !!b.winded,
+          hunger: HUNGER[ns.hunger].name, hungerKey: ns.hunger, fedHours: f != null && f > t ? (f - t) / 60 : 0,
+          full: f != null && f - t >= FULL_AHEAD, feed: Math.max(0, horses.indexOf(needy)), team: team.length,
+          tier: st.tier, bond: st.bond, ...bondWay(st.bond),
+        };
+      }
     }
+    const w = wagonUpkeep() ? activeWagonItem(its) : null;
+    if (w) out.wagon = wagonCard(w);
     return out;
   }
 
@@ -251,7 +306,7 @@ export function createUpkeep({ items, now, horseCare = () => false, wagonUpkeep 
   }
 
   return {
-    tick, rideScale, gallopGate, riderPaysGallop, bar, brokenWhy, journey, thrown, model, act,
+    tick, rideScale, gallopGate, riderPaysGallop, bar, brokenWhy, journey, thrown, model, saddle, act,
     /** The yard's price to mend the wagon driven (`away` it is not at the yard), or 0. */
     mendPrice: (away = false) => { const w = activeWagonItem(pack()); return w ? mendPrice(w, { away }) : 0; },
     /** Tests: the ridden horse's breath. */

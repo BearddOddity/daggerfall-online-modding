@@ -299,13 +299,19 @@ export function mwViewFirstPerson() {
  * (RIDE-POV: no saddle to show), and where no body can show at all.
  */
 export function mwViewTogglePerspective() {
-  if (heldThird) return false;
+  if (!mwViewCanTogglePerspective()) return false;
   if (eotbLane()) { eotbCamera.toggleOffset(!eotbCamera.thirdPerson()); return true; }
   if (mwCamera.thirdPerson()) return mwIntoHead();
-  if (!fpArm.canThirdPerson() || mounted) return false;
   mwCamera.restore({ firstPerson: false, baseDistance: mwCamera.baseDistance() });
   fpArm.setViewMode('third');
   return true;
+}
+/** STEED-UI: whether the toggle would turn the view now - the saddle panel's View button stands only where it does
+ *  (a lane with a third person, not held, not in the head of a seat that keeps it - RIDE-POV's `mounted`). */
+export function mwViewCanTogglePerspective() {
+  if (heldThird) return false;
+  if (eotbLane() || mwCamera.thirdPerson()) return true;
+  return !!fpArm.canThirdPerson() && !mounted;
 }
 
 /**

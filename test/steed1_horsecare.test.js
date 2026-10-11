@@ -437,10 +437,11 @@ test('STEED1 THE HOSTS (world.js, exterior.js): the upkeep built before the mod\
     assert.match(s, /setGallopGate\(\(mode, mods\) => upkeep\.gallopGate\(mode, mods\)\);\n\s*registerUpkeepUses\(upkeep, \{/, host);
     assert.match(s, /player\.rideSpeedScale = upkeep\.rideScale\(player\.transportMode, wagonLoadShare\(\)\);[^\n]*\n\s*playerBlowFrame\(\{ motor: player,[^\n]*\n\s*if \(_overlayHeld[^\n]*player\.holdFrame\(\);/, `${host}: the pace before the step (and before its blow frame - TELL6e's and DISC8-G's order kept)`);
     assert.match(s, /_surfPath = !!_surf\.path;\n[\s\S]{0,400}?const odo = player\.odometer\?\.h \?\? 0, metres = _upkeepOdo == null \? 0 : Math\.max\(0, odo - _upkeepOdo\);/, `${host}: the metres off the odometer, after the surface`);
-    assert.match(s, /galloping: !_overlayHeld && mode === TRANSPORT_MODES\.Horse && !!player\.isRunning && !player\.standing, moving: !player\.standing,/, host);
+    assert.match(s, /const galloping = !_overlayHeld && mode === TRANSPORT_MODES\.Horse && !!player\.isRunning && !player\.standing;\n\s*upkeep\.tick\(gamePaused\(\) \? 0 : dt, \{\n\s*mode, galloping, moving: !player\.standing,/, host);   // STEED-UI: the gallop named once, for the upkeep and the saddle panel
     assert.match(s, /running: player\.isRunning && !player\.standing && upkeep\.riderPaysGallop\(player\.transportMode\),/, `${host}: the gallop the horse's breath`);
     assert.match(s, /steed: [^\n]*upkeep\.bar\(player\.transportMode\) : null,/, `${host}: the HUD's bar`);
-    assert.match(s, /upkeep, pass: \(n\) => \{ playerTicker\.advance\(n\); runEncounterTick\(/, `${host}: the Stable page's upkeep and its hour`);
+    assert.match(s, /upkeep, pass: upkeepPass \}\),/, `${host}: the Stable page's upkeep and its hour`);
+    assert.match(s, /const upkeepPass = \(n\) => \{ playerTicker\.advance\(n\); runEncounterTick\(/, `${host}: the hour, one home - the Stable page's, the kit's Use, the saddle panel's (STEED-UI)`);
     assert.match(s, /cartRefusal: \(\) => upkeep\.brokenWhy\(\),/, host);
   }
   assert.match(rd('src/ui/hud.js'), /drawGripBar\(renderer, canvas, art, grip \?\? steed, s\);/, 'the classic HUD: the horse\'s breath in the grip\'s place');

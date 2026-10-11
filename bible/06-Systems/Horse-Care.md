@@ -93,15 +93,24 @@ hitch's jump (HITCH_JUMP_SPEED 30).
 ## The Stable page (`ui/holdingsPages.js`)
 
 Each horse its card: the ridden one's (its name, its look, its coat rows) and every other horse owned. On each, its bond
-and hunger in words, the ridden one's breath, its four stats with the bond's share beside, **Feed oats** and **Give an
-apple** (dark with none, full, or away), and **Ride this one** on every other - the chosen horse made the pack's first
-(`chooseRiddenHorse`), so its look, its breath and its stats are the ridden ones. A horse is fed by hand only within
-Horse Cart and Cargo's own mount reach (a horse waiting across the map is not), and never at the stable
+and hunger in words - a fed horse with the hours its food lasts (STEED-UI) - its **Bond** a bar from its word to the
+next with the points still to go (whole at Kindred), the ridden one's breath (Winded said in words), its four stats
+with the bond's share beside and each stat's making on its tooltip (born, the bond's points, hunger's), **Feed oats**
+and **Give an apple** (dark with none, full, or away), and **Ride this one** on every other - the chosen horse made the
+pack's first (`chooseRiddenHorse`), so its look, its breath and its stats are the ridden ones. A horse is fed by hand
+only within Horse Cart and Cargo's own mount reach (a horse waiting across the map is not), and never at the stable
 (`upkeepRuntime.js` upkeepReach).
 
 The HUD: the ridden horse's breath in the climb's grip bar's place (a rider holds no wall) - the classic HUD's bar
 (`ui/hud.js` drawGripBar), the enhanced HUD's under the word Horse (`ui/enhancedHud.js`); short when winded, under a
 quarter, or starving.
+
+## The saddle panel (STEED-UI - `10-UI/Controls.md`, THE SADDLE PANEL)
+
+On Enhanced Plus, astride or on a wagon's bench, the horse is on screen under the compass (`ui/enhancedSaddle.js`, off
+`upkeepRuntime.js` saddle): its breath, its hunger with its food's hours, its bond to the next word, the gait and the
+pace; and its doors - Feed oats, an Apple, the Stable page, Dismount. On a bench the hunger is the TEAM's (the
+hungriest horse in harness, `saddle`'s `feed` - the one its Feed goes to) and the bond the lead's.
 
 The item: a horse's card says its four born stats and its bond (`systems/itemInfo.js` itemStatRows), so a Stable's
 horses say theirs before they are bought.
@@ -129,4 +138,5 @@ HUD its bar and the Stable page its acts. `scenes/worldModes.js` (interiors) and
 stand no transport - a building or a dungeon puts the rider on foot (`transport.js` dismountOnTransition) - and are
 named, not wired.
 
-Pinned: `test/steed1_horsecare.test.js`; mutants `tools/mutants/steed1.json`.
+Pinned: `test/steed1_horsecare.test.js`; mutants `tools/mutants/steed1.json`. The saddle panel and the page's polish:
+`test/steedui_saddle.test.js`; mutants `tools/mutants/steedui.json`.

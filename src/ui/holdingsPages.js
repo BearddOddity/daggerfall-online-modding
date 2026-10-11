@@ -150,31 +150,54 @@ export function holdingMeter(el, meter, label, now, max, tone) {
   r.append(el('span', 'hld-mn', `${Math.max(0, Math.round(now))} / ${Math.round(max)}`));
   return r;
 }
-/** STEED1: a stat's row - its word, the kit's bar of it out of 100, and the number with its bond's share beside. */
-function statMeter(el, meter, label, now, plus, tone) {
+/** STEED1: a stat's row - its word, the kit's bar of it out of 100, and the number with its bond's share beside.
+ *  STEED-UI: its making on the row's tooltip - what it was born with, what the bond adds, what hunger takes. */
+function statMeter(el, meter, label, now, plus, tone, why = '') {
   const r = el('div', 'hld-meter hld-stat');
   r.append(el('span', 'hld-mk', label));
   r.append(typeof meter === 'function' ? meter(Math.max(0, now), 100, tone) : el('span', null, ''));
   r.append(el('span', 'hld-mn', plus ? `${Math.round(now)} (+${plus})` : `${Math.round(now)}`));
+  if (why) r.title = why;
   return r;
 }
+/** STEED-UI: a stat's making in words - born, the bond's points, hunger's. */
+export const statWhy = (st, bonus, penalty, hunger) => [`Born ${st.born}`, bonus ? `+${bonus} from your bond` : '', penalty ? `−${penalty} ${String(hunger).toLowerCase()}` : ''].filter(Boolean).join(', ');
 /** STEED1: a hunger's chip tone. */
 const HUNGER_TONE = Object.freeze({ fed: '', hungry: 'is-hurt', starving: 'is-lost' });
-/** STEED1: what a hunger costs, in the card's words. */
+/** STEED1: what a hunger costs, in the card's words. STEED-UI: a fed horse says how long its food lasts. */
 const HUNGER_LINE = Object.freeze({
   fed: 'Fed.',
   hungry: 'Hungry - every stat ten lower, and its breath slower back.',
   starving: 'Starving - every stat twenty-five lower, no gallop, and your bond fading. Feed it.',
 });
+/** STEED-UI: the bond's row - the kit's bar of the way from its word to the next, and the points still to go (whole at
+ *  Kindred). */
+function bondMeter(el, meter, h) {
+  const r = el('div', 'hld-meter');
+  r.append(el('span', 'hld-mk', 'Bond'));
+  const span = h.next ? h.next.at - (h.tierAt ?? 0) : 1, got = h.next ? h.bond - (h.tierAt ?? 0) : 1;
+  r.append(typeof meter === 'function' ? meter(Math.max(0, got), span, 'thin') : el('span', null, ''));
+  r.append(el('span', 'hld-mn', h.next ? `${h.next.at - Math.floor(h.bond)} to ${h.next.name}` : 'Whole'));
+  r.title = h.next ? `Fed by your hand, ${h.tier} grows to ${h.next.name} at ${h.next.at}` : 'Kindred - the bond is whole';
+  return r;
+}
+/** STEED-UI: hours of food as a card says them. */
+const foodHours = (hours) => (hours >= 2 ? `${Math.floor(hours)} hours` : hours * 60 >= 2 ? `${Math.round(hours * 60)} minutes` : 'a minute');
+export const hungerLine = (h) => (h.hungerKey === 'fed' && h.fedHours > 0 ? `Fed - food in it for ${foodHours(h.fedHours)}.` : HUNGER_LINE[h.hungerKey] ?? '');
 /**
  * STEED1: a horse's care on its card - its bond and hunger in words, its breath (the one ridden), its four stats, and
  * the acts: oats and an apple from the pack, and the one ridden chosen. `h` a horse of the upkeep's model.
+ * STEED-UI: its bond a bar to the next word, its food's hours, a winded breath said, each stat's making on its tooltip.
  */
 function steedLines(el, meter, h, care, act) {
   const out = [];
-  out.push(el('span', 'hld-sub', `${h.tier} - bond ${Math.floor(h.bond)} of 100${h.bonus ? `, +${h.bonus} to every stat` : ''}. ${HUNGER_LINE[h.hungerKey] ?? ''}`));
-  if (h.ridden) out.push(holdingMeter(el, meter, 'Breath', h.breath * 100, 100, h.breath < 0.25 ? 'blood' : 'verdigris'));
-  for (const st of h.stats) out.push(statMeter(el, meter, st.name, st.now, Math.max(0, st.now - st.born), 'thin'));
+  out.push(el('span', 'hld-sub', `${h.tier} - bond ${Math.floor(h.bond)} of 100${h.bonus ? `, +${h.bonus} to every stat` : ''}. ${hungerLine(h)}`));
+  out.push(bondMeter(el, meter, h));
+  if (h.ridden) {
+    out.push(holdingMeter(el, meter, 'Breath', h.breath * 100, 100, h.breath < 0.25 || h.winded ? 'blood' : 'verdigris'));
+    if (h.winded) out.push(el('span', 'hld-sub hld-why', 'Winded - it will not gallop until its breath is back.'));
+  }
+  for (const st of h.stats) out.push(statMeter(el, meter, st.name, st.now, Math.max(0, st.now - st.born), 'thin', statWhy(st, h.bonus, h.penalty, h.hunger)));
   const row = el('div', 'hld-acts');
   const feed = el('button', h.full ? 'act' : 'act primary', `Feed oats (${care.oats})`);
   feed.title = h.full ? 'It is not hungry' : 'A sack of oats - a day’s food';
@@ -194,13 +217,18 @@ function steedLines(el, meter, h, care, act) {
   out.push(row);
   return out;
 }
-/** WAGONS4: the wagon's soundness on its card - its condition, its state's word, and a kit's act. */
+/** STEED-UI: a wagon's state's bar tone - sound and worn the kit's verdigris, rickety its plain, failing and broken blood. */
+const WAGON_METER_TONE = Object.freeze({ sound: 'verdigris', worn: 'verdigris', rickety: '', failing: 'blood', broken: 'blood' });
+/** STEED-UI: what a Wagon Yard asks to make it whole - at the yard, and with its wright going out to it. */
+export const mendLine = (w) => (w.mend > 0 ? `A Wagon Yard makes it whole for ${w.mend} gold - ${w.mendAway} if its wright must go out to it.` : 'A town’s Wagon Yard mends it.');
+/** WAGONS4: the wagon's soundness on its card - its condition, its state's word, and a kit's act. STEED-UI: its bar in
+ *  its state's tone, and the yard's price. */
 function wagonLines(el, meter, w, care, act) {
   const out = [];
-  out.push(holdingMeter(el, meter, 'Repair', w.share * 100, 100, w.share < 0.3 ? 'blood' : 'verdigris'));
+  out.push(holdingMeter(el, meter, 'Repair', w.share * 100, 100, WAGON_METER_TONE[w.stateKey] ?? 'verdigris'));
   const advice = w.stateKey === 'broken' ? 'Broken down - it goes nowhere until it is mended.' : w.stateKey === 'failing' ? 'Failing - slow, and close to breaking down.'
     : w.stateKey === 'rickety' ? 'Rickety - its team pulls it slower.' : w.stateKey === 'worn' ? 'Worn - a Wagon Yard can make it whole.' : 'Sound.';
-  out.push(el('span', `hld-sub${w.tone ? ' hld-why' : ''}`, `${advice} A town’s Wagon Yard mends it.`));
+  out.push(el('span', `hld-sub${w.tone ? ' hld-why' : ''}`, `${advice} ${mendLine(w)}`));
   if (w.kitWorks) {
     const row = el('div', 'hld-acts');
     const kit = el('button', 'act', `Use a repair kit (${care.kits})`);

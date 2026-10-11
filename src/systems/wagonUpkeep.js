@@ -16,7 +16,7 @@
 //    load still there to take from.
 //  - MENDING: a Wagon Yard mends it whole for MEND_SHARE of its kind's value at most, by what it lacks - MEND_FETCH more
 //    to send a wright to where it stands; a Wagon Repair Kit (systems/upkeepItemRows.js) mends KIT_MEND of it in the
-//    field over KIT_MINUTES, to KIT_CEILING at most - a broken wagon too, so it can be brought in.
+//    field over KIT_MINUTES, to WAGON_KIT_CEILING at most - a broken wagon too, so it can be brought in.
 
 import { isWagonItem, wagonKindOf, WAGON_KINDS, activeWagonItem } from './wagonKinds.js';
 import { templateByIndex, mintCondition, TRANSPORT_SMALL_CART } from './itemTemplates.js';
@@ -113,9 +113,9 @@ export const MEND_SHARE = 0.12;
 export const MEND_LEAST = 40;
 /** A wright sent out to a wagon that is not at the yard: this much more. */
 export const MEND_FETCH = 0.5;
-/** A Wagon Repair Kit mends this share of whole, to KIT_CEILING at most, over KIT_MINUTES. */
+/** A Wagon Repair Kit mends this share of whole, to WAGON_KIT_CEILING at most, over KIT_MINUTES. */
 export const KIT_MEND = 0.25;
-export const KIT_CEILING = 0.6;
+export const WAGON_KIT_CEILING = 0.6;
 export const KIT_MINUTES = 60;
 
 /** What the yard asks to mend `item` whole - by what it lacks of its kind's whole price - and more if `away`. 0 for a
@@ -153,12 +153,12 @@ export function mendWagon(item) {
   item.currentCondition = wagonConditionMax(item);
   return had;
 }
-/** A kit's mend, in place: KIT_MEND of whole on, to KIT_CEILING at most. Answers `{ ok, text }`; the kit is the
+/** A kit's mend, in place: KIT_MEND of whole on, to WAGON_KIT_CEILING at most. Answers `{ ok, text }`; the kit is the
  *  caller's to spend (and the hour its to pass) on ok. */
 export function kitMendWagon(item) {
   if (!isWagonItem(item)) return { ok: false, text: WAGON_UPKEEP_TEXT.noWagon };
   mintCondition(item);
-  const max = wagonConditionMax(item), now = wagonCondition(item), top = Math.round(KIT_CEILING * max);
+  const max = wagonConditionMax(item), now = wagonCondition(item), top = Math.round(WAGON_KIT_CEILING * max);
   if (now >= top) return { ok: false, text: WAGON_UPKEEP_TEXT.kitCeiling(wagonWord(item)) };
   item.currentCondition = Math.min(top, now + Math.round(KIT_MEND * max));
   return { ok: true, text: WAGON_UPKEEP_TEXT.kitDone(wagonWord(item), Math.round(wagonSoundness(item) * 100)) };
