@@ -177,7 +177,8 @@ test('NT1 / AUDIT-WH R6: the world plaque has ONE owner per host, and every one 
   // it does not.
   const destroy = plaque.slice(plaque.indexOf('export function destroyWorldPlaque() {'));
   for (const slot of ['node = null;', 'shownSig = null;', 'lastX = null;', 'lastTop = null;',
-    '_faults = 0;', '_faultSaid = false;', '_gateMark = null;', '_gateOn = false;']) {
+    '_faults = 0;', '_faultSaid = false;', '_gateMark = null;', '_gateOn = false;',
+    '_winKey = null;', '_winFrom = 0;']) {   // FIELD BUGS 2026-10-11g LOOT-SCROLL (PIN MOVED): the scrolled window's pile and top
     assert.ok(destroy.includes(slot), `destroyWorldPlaque leaves ${slot.split(' ')[0]} behind`);
   }
   // THE SIX DOORS. Five of them were unpinned before AUDIT-WH R6, and
@@ -202,7 +203,7 @@ test('NT1 / AUDIT-WH R6: the world plaque has ONE owner per host, and every one 
   // a pending setTimeout - and `_schedule`/`_cancel` are the two clocks
   // a test swaps for it. All three are in the allowlist BECAUSE the
   // destroy-slot list below names the one that is a live resource.
-  assert.doesNotMatch(plaque, /^let (?!node|shownSig|lastX|lastTop|_faults|_faultSaid|_gateMark|_gateOn|_watchdog|_schedule|_cancel)/m,
+  assert.doesNotMatch(plaque, /^let (?!node|shownSig|lastX|lastTop|_faults|_faultSaid|_gateMark|_gateOn|_watchdog|_schedule|_cancel|_winKey|_winFrom)/m,
     'a new module-level slot needs an owner and a line in destroyWorldPlaque');
   // ...and the timer is CANCELLED, not merely forgotten: a dropped
   // handle keeps firing, and in a test run it holds the event loop

@@ -459,5 +459,5 @@ export function quickLootSpend() { _pending = null; }
  *  rows with, so the row seen and the item moved cannot differ. */
 function quickLootItemAt(key, items) {
   if (!_sel || _actionIds || _sel.key !== key) return null;
-  return hoverItemAt(items, _sel.row);
+  return hoverItemAt(items, _sel.row, Infinity);   // LOOT-SCROLL: the lit row may stand past the first HOVER_MAX
 }

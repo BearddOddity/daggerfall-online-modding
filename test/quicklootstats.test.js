@@ -21,7 +21,7 @@ import assert from 'node:assert/strict';
 
 import { itemStatRows, weaponDamageString, armourModString, conditionWord, conditionPercentage } from '../src/systems/itemInfo.js';
 import { hoverLines, HOVER_MAX } from '../src/systems/worldHover.js';
-import { foldQuickLoot, quickLootStats, quickLootWheel, resetQuickLoot, quickLootOn } from '../src/systems/quickLoot.js';
+import { foldQuickLoot, quickLootStats, quickLootWheel, resetQuickLoot, quickLootOn, quickLootRow } from '../src/systems/quickLoot.js';
 import { statsSide } from '../src/ui/worldPlaque.js';
 import { readFileSync } from 'node:fs';
 import { TEMPLATE, SURVIVAL_GROUP } from '../src/systems/survival/food.js';   // a real survival item, not a shape that looks like one
@@ -30,7 +30,7 @@ import { ENHANCED_CSS, PLAQUE_MAX_W, STATS_W, STATS_GAP, STATS_MARGIN } from '..
 const sword = (extra = {}) => ({ name: 'Dagger', group: 'Weapons', templateIndex: 121, material: 3, maxCondition: 200, currentCondition: 150, ...extra });
 const mail = (extra = {}) => ({ name: 'Cuirass', group: 'Armor', templateIndex: 103, material: 0x0202, maxCondition: 100, currentCondition: 100, ...extra });
 const frameOf = (key, items) => {
-  const { shown, rest, empty } = hoverLines(items);
+  const { shown, rest, empty } = hoverLines(items, Infinity);   // FIELD BUGS 2026-10-11g LOOT-SCROLL: resolveHover mints every row
   return { key, kind: 'items', title: 'Loot Pile', subs: [], rows: shown, rest, empty };
 };
 
@@ -139,20 +139,21 @@ test('QUICK-LOOT-STATS: the row carries its ITEM, and the tail row carries none'
   // second time - two walks is two chances for the row SEEN and the row
   // DESCRIBED to disagree.
   const items = Array.from({ length: HOVER_MAX + 3 }, (_, i) => sword({ name: `Dagger ${i}` }));
-  const { shown, rest } = hoverLines(items);
-  assert.equal(shown.length, HOVER_MAX);
-  assert.equal(rest, 3);
+  const { shown, rest } = hoverLines(items, Infinity);
+  assert.equal(shown.length, HOVER_MAX + 3);
+  assert.equal(rest, 0);
   for (let i = 0; i < shown.length; i++) assert.equal(shown[i].item, items[i], `row ${i} carries its own item`);
 
-  // The "and 3 more" tail is not a row, so there is nothing under it to
-  // describe - the same bound `hoverItemAt` already holds for the take.
+  // PIN MOVED (FIELD BUGS 2026-10-11g LOOT-SCROLL): the rows past HOVER_MAX are rows now - the plaque scrolls to them -
+  // so the wheel walks the whole pile, every row describes itself, and the last one clamps
   resetQuickLoot();
   const f = frameOf('loot:2', items);
   foldQuickLoot(f);
-  for (let i = 0; i < HOVER_MAX - 1; i++) { quickLootWheel(1); foldQuickLoot(f); }
-  assert.ok(quickLootStats(f).length > 0, 'the last real row still describes itself');
-  quickLootWheel(1); foldQuickLoot(f);   // clamped, never onto the tail
-  assert.ok(quickLootStats(f).length > 0, 'and the wheel cannot fall off the end onto the tail');
+  for (let i = 0; i < HOVER_MAX + 2; i++) { quickLootWheel(1); foldQuickLoot(f); }
+  assert.equal(quickLootRow(f), HOVER_MAX + 2, 'the wheel reaches the last row');
+  assert.equal(quickLootStats(f).length > 0, true, 'and it describes itself');
+  quickLootWheel(1); foldQuickLoot(f);   // clamped at the pile's end
+  assert.equal(quickLootRow(f), HOVER_MAX + 2, 'the wheel cannot fall off the end');
   resetQuickLoot();
 });
 
