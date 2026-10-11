@@ -33,13 +33,13 @@
   {
     "name": "G4-channel-join-carries-the-look",
     "file": "server/src/index.js",
-    "old": "        const said = JSON.stringify(badged({ t: 'join', id: m.id, name: who.name, sub: who.subject, n: others.length + 1 }, who));",
-    "new": "        const said = JSON.stringify(badged({ t: 'join', id: m.id, name: who.name, sub: who.subject, look: m.look, n: others.length + 1 }, who));",
+    "old": "name: who.name, sub: who.subject, n: shard ? this._hubN(others.length + 1) : others.length + 1 }, who));",
+    "new": "name: who.name, sub: who.subject, look: m.look, n: shard ? this._hubN(others.length + 1) : others.length + 1 }, who));",
     "tests": [
       "test/rosterg.test.js",
       "test/chat1.test.js"
     ],
-    "note": "AUDIT SCALE5a (re-aimed by content): the join says the room's count beside it. SCALE5a (re-aimed by content): the join says `re` for a reconnect beside it."
+    "note": "AUDIT SCALE5a (re-aimed by content): the join says the room's count beside it. SCALE5a (re-aimed by content): the join says `re` for a reconnect beside it. SCALE5c (re-aimed by content): the join n reads the hub count on a shard"
   },
   {
     "name": "G5-cut-removed",
@@ -53,11 +53,12 @@
   {
     "name": "G6-count-from-the-cut-list",
     "file": "server/src/index.js",
-    "old": "n: others.length + 1, v: RELAY_VERSION",
-    "new": "n: named.length + 1, v: RELAY_VERSION",
+    "old": ": others.length + 1, v: RELAY_VERSION",
+    "new": ": named.length + 1, v: RELAY_VERSION",
     "tests": [
       "test/rosterg.test.js"
-    ]
+    ],
+    "note": "SCALE5c (re-aimed by content): the welcome n reads the hub count on a shard"
   },
   {
     "name": "G7-channel-says-host-on-leave",

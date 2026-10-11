@@ -50,6 +50,7 @@ on:
       - "src/net/identityToken.js"
       - "src/net/staffTeleport.js"
       - "src/net/relayCfg.js"
+      - "src/net/hubShards.js"
       - "src/net/privateInterior.js"
       - "src/net/boatIdentity.js"
       - "src/net/handleShape.js"

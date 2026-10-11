@@ -211,12 +211,12 @@
   {
     "name": "GUILD1c-guild-line-to-everyone",
     "file": "server/src/index.js",
-    "old": "for (const [other, b] of this._all()) if (b.id && b.gi === a.gi) this._send(other, line);",
+    "old": "for (const other of [...(this._byGuild().get(a.gi) ?? [])]) this._send(other, line);",
     "new": "for (const [other, b] of this._all()) if (b.id) this._send(other, line);",
     "tests": [
       "test/guild1c.test.js"
     ],
-    "note": "SCALE5a (re-aimed by content): the fans walk the index in place (`_fanBut`, `_sayLine`)."
+    "note": "SCALE5a (re-aimed by content): the fans walk the index in place (`_fanBut`, `_sayLine`). SCALE5c (re-aimed by content): the guild line off the guild index"
   },
   {
     "name": "GUILD1c-guild-line-from-no-guild",

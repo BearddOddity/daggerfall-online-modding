@@ -1,0 +1,702 @@
+[
+  {
+    "name": "SCALE5c-seventeenth",
+    "file": "src/net/hubShards.js",
+    "old": "Number(m[1]) < HUB_SHARDS &&",
+    "new": "Number(m[1]) <= HUB_SHARDS &&",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a seventeenth shard nobody lands on"
+  },
+  {
+    "name": "SCALE5c-leading-zero",
+    "file": "src/net/hubShards.js",
+    "old": " && String(Number(m[1])) === m[1];",
+    "new": ";",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "chat:world.01 a second name for one shard"
+  },
+  {
+    "name": "SCALE5c-subject-unread",
+    "file": "src/net/hubShards.js",
+    "old": "chatHubRoom(shardHash(sub) % HUB_SHARDS)",
+    "new": "chatHubRoom(0)",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "every account on one shard"
+  },
+  {
+    "name": "SCALE5c-hash-prime",
+    "file": "src/net/hubShards.js",
+    "old": "h = Math.imul(h, 0x01000193) >>> 0;",
+    "new": "h = Math.imul(h, 0x01000197) >>> 0;",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a hash the two ends could disagree on"
+  },
+  {
+    "name": "SCALE5c-relay-min",
+    "file": "src/net/hubShards.js",
+    "old": "export const HUB_SHARDS_RELAY_MIN = 192;",
+    "new": "export const HUB_SHARDS_RELAY_MIN = 191;",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "world191 read as a relay with shards"
+  },
+  {
+    "name": "SCALE5c-hop-anywhere",
+    "file": "src/net/hubShards.js",
+    "old": "m.t === 'hub' && (isHubShard(m.key) || m.key === HUB_BUS) ? m.key : null",
+    "new": "m.t === 'hub' && typeof m.key === 'string' ? m.key : null",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a hop to any room the frame names"
+  },
+  {
+    "name": "SCALE5c-fold-spaces",
+    "file": "src/net/hubShards.js",
+    "old": "replace(/['’\\s-]/g, '')",
+    "new": "replace(/['’-]/g, '')",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a search's spaces read"
+  },
+  {
+    "name": "SCALE5c-shard-not-social",
+    "file": "src/net/wire.js",
+    "old": "=== SOCIAL_ROOM || isHubShard(key);",
+    "new": "=== SOCIAL_ROOM;",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard no hub link's room"
+  },
+  {
+    "name": "SCALE5c-hs-unread",
+    "file": "src/net/wire.js",
+    "old": "  if (m.hs === 1) hello.hs = 1;",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the offer read as none"
+  },
+  {
+    "name": "SCALE5c-guild-ask-refused",
+    "file": "src/net/wire.js",
+    "old": "    if (m.g === 1 && m.q === undefined) return { t: 'find', g: 1 };\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the guild ask junk"
+  },
+  {
+    "name": "SCALE5c-frame-not-handed-up",
+    "file": "server/src/index.js",
+    "old": "    if (a.vid && a.id && typeof message === 'string' && isHubShard(a.key) && !shardKeeps(message)) { this._hubForward(ws, a, message); return; }\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard runs a world line itself - the other shards never hear it, and a shared quest meets the shard's door"
+  },
+  {
+    "name": "SCALE5c-forward-unbounded",
+    "file": "server/src/index.js",
+    "old": "    if (message.length > HUB_FRAME_MAX) { this._refuse(ws, 'frame too large'); return; }\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a frame of any size handed up"
+  },
+  {
+    "name": "SCALE5c-forward-ungated",
+    "file": "server/src/index.js",
+    "old": "    if (!g.pass) { this._junk(ws); return; }\n    this._hubUpOwe(a.vid, 'f', message);",
+    "new": "    this._hubUpOwe(a.vid, 'f', message);",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "one socket floods the bus"
+  },
+  {
+    "name": "SCALE5c-pose-handed-up",
+    "file": "src/net/hubShards.js",
+    "old": " || s.startsWith('{\"t\":\"pose\"');",
+    "new": ";",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a pose handed to the bus, which keeps no place"
+  },
+  {
+    "name": "SCALE5c-verdict-kept-wrong",
+    "file": "src/net/wire.js",
+    "old": "    labelVerdicts.set(s, ok);",
+    "new": "    labelVerdicts.set(s, true);",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a refused place name allowed the second time"
+  },
+  {
+    "name": "SCALE5c-hello-not-handed-up",
+    "file": "server/src/index.js",
+    "old": "          this._hubUpOwe(vid, 'h', { att: this._shardAtt(this._attach(ws)), m: { acct: m.acct ?? null, asecret: m.asecret ?? null, ps: m.ps === 1 ? 1 : 0, cl: m.cl ? 1 : 0 } });\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the bus never hears a shard's hello"
+  },
+  {
+    "name": "SCALE5c-words-unsaid",
+    "file": "server/src/index.js",
+    "old": "    await this._hubHelloWords(vws, m, a.sub, now);\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard's player never greeted - no picture, no receipts"
+  },
+  {
+    "name": "SCALE5c-delivery-dropped",
+    "file": "server/src/index.js",
+    "old": "        for (const k of e[1]) if (typeof b.s[k] === 'string' && !this._send(ws, b.s[k])) break;\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the bus's words to a socket dropped at its shard"
+  },
+  {
+    "name": "SCALE5c-greeting-without-id",
+    "file": "server/src/index.js",
+    "old": "const m = { id: p.att.id, ...",
+    "new": "const m = { ...",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the account hello finds the socket replaced and says nothing"
+  },
+  {
+    "name": "SCALE5c-secret-unsaid",
+    "file": "server/src/index.js",
+    "old": "asecret: a.hm?.as ?? null, ps:",
+    "new": "asecret: null, ps:",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a hello said again carries no profile secret - nobody greeted"
+  },
+  {
+    "name": "SCALE5c-hop-unasked",
+    "file": "server/src/index.js",
+    "old": "      if (isHubShard(a.key) && hubOfSubject(who.subject) !== a.key) {",
+    "new": "      if (false) {",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "an account held by a shard not its own"
+  },
+  {
+    "name": "SCALE5c-bus-hop-unasked",
+    "file": "server/src/index.js",
+    "old": "      if (a.key === SOCIAL_ROOM && m.hs === 1 && hubOfSubject(who.subject)) {",
+    "new": "      if (false) {",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a link of this build kept on the bus"
+  },
+  {
+    "name": "SCALE5c-seat-unasked-across",
+    "file": "server/src/index.js",
+    "old": "    if (m.cl) for (const o of held) this._refuse(o, SEAT_ELSEWHERE, CLOSE_REPLACED);\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a claim on a shard leaves the bus's tab seated"
+  },
+  {
+    "name": "SCALE5c-replacement-a-leave",
+    "file": "server/src/index.js",
+    "old": "this._hubUpOwe(b.vid, 'r', 0);",
+    "new": "this._hubUpOwe(b.vid, 'x', 0);",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a reconnect said as a leave"
+  },
+  {
+    "name": "SCALE5c-count-own",
+    "file": "server/src/index.js",
+    "old": "  _hubN(local) { return this._hubTotal != null ? Math.max(this._hubTotal, local) : local; }",
+    "new": "  _hubN(local) { return local; }",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard says its own count as the hub's"
+  },
+  {
+    "name": "SCALE5c-count-unsaid",
+    "file": "server/src/index.js",
+    "old": "    for (const [ws, b] of this._all()) if (b.id) this._send(ws, out);\n  }\n\n  /** (the bus) The hub's count",
+    "new": "  }\n\n  /** (the bus) The hub's count",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the count frame never said"
+  },
+  {
+    "name": "SCALE5c-count-unarmed",
+    "file": "server/src/index.js",
+    "old": "    if (n !== was && !this._hubCountT) this._hubCountT",
+    "new": "    if (false) this._hubCountT",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a moved count never owed the sockets"
+  },
+  {
+    "name": "SCALE5c-tell-nobody",
+    "file": "server/src/index.js",
+    "old": "    for (const [hub, told] of this._toldN) if (told !== n) this._vbatch(hub);\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard told the count only when it is owed a frame anyway"
+  },
+  {
+    "name": "SCALE5c-told-unkept",
+    "file": "server/src/index.js",
+    "old": "    this._toldN.set(hub, n);\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "what a shard was told forgotten - told again and again"
+  },
+  {
+    "name": "SCALE5c-bus-count-shardless",
+    "file": "server/src/index.js",
+    "old": "    let n = this._vsocks.size;\n",
+    "new": "    let n = 0;\n",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the bus's count without its shards"
+  },
+  {
+    "name": "SCALE5c-hello-count-unmoved",
+    "file": "server/src/index.js",
+    "old": "    this._busCountMoved();\n    this._fanRoster(vws,",
+    "new": "    this._fanRoster(vws,",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard's hello never moves the count"
+  },
+  {
+    "name": "SCALE5c-bus-leave-count-unmoved",
+    "file": "server/src/index.js",
+    "old": "    else if (a.key === SOCIAL_ROOM) this._busCountMoved();",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a leave on the bus never moves the count"
+  },
+  {
+    "name": "SCALE5c-shard-leave-untold",
+    "file": "server/src/index.js",
+    "old": "{ this._vidIdx.delete(a.vid); this._hubUpOwe(a.vid, 'x', 0); }",
+    "new": "{ this._vidIdx.delete(a.vid); }",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard's leave kept on the bus until its sync"
+  },
+  {
+    "name": "SCALE5c-rehello-unasked",
+    "file": "server/src/index.js",
+    "old": "        for (const vid of Array.isArray(ans?.unknown) ? ans.unknown : []) this._hubRehello(vid);\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a woken bus never told its shards' sockets again"
+  },
+  {
+    "name": "SCALE5c-unknown-unsaid",
+    "file": "server/src/index.js",
+    "old": "{ if (kind === 'f') unknown.add(vid); continue; }",
+    "new": "{ continue; }",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a frame for a socket the bus lost answered nothing"
+  },
+  {
+    "name": "SCALE5c-live-unread",
+    "file": "server/src/index.js",
+    "old": "      for (const [vid, vws] of [...this._vsocks]) if (vws.hub === hub && !live.has(vid)) await this._vgone(vws, true);\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a ShardSocket kept for a socket its shard let go"
+  },
+  {
+    "name": "SCALE5c-alarm-no-sync",
+    "file": "server/src/index.js",
+    "old": "    if (this._hubKey) { this._hubSyncAt = 0; await this._hubUpFlush();",
+    "new": "    if (this._hubKey) { await this._hubUpFlush();",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard's alarm hands up nothing"
+  },
+  {
+    "name": "SCALE5c-alarm-unarmed",
+    "file": "server/src/index.js",
+    "old": "if (this.state.getWebSockets().length) await this.state.storage.setAlarm(Date.now() + HUB_SYNC_MS); return; }",
+    "new": "return; }",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard syncs once and never again"
+  },
+  {
+    "name": "SCALE5c-find-asker",
+    "file": "server/src/index.js",
+    "old": "      if (w === ws || !b.id || this._dead.has(w) || this._gone.has(w)) continue;\n      let f = this._folds.get(b);",
+    "new": "      if (!b.id || this._dead.has(w) || this._gone.has(w)) continue;\n      let f = this._folds.get(b);",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the asker in its own answer"
+  },
+  {
+    "name": "SCALE5c-find-unbounded",
+    "file": "server/src/index.js",
+    "old": "      if (l.length >= HUB_FIND_MAX) break;\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a search of everyone answers everyone"
+  },
+  {
+    "name": "SCALE5c-find-fold-unkept",
+    "file": "server/src/index.js",
+    "old": "if (f === undefined) this._folds.set(b, f = foldFind(b.name));",
+    "new": "if (f === undefined) this._folds.set(b, f = String(b.name));",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a name unfolded - O'Brien never found as obrien"
+  },
+  {
+    "name": "SCALE5c-find-budget-unasked",
+    "file": "server/src/index.js",
+    "old": "      if (!room.pass) { this._send(ws, JSON.stringify({ t: 'found', q: m.q, l: [], busy: 1 })); return; }\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "every socket a search a second, the whole hub walked each"
+  },
+  {
+    "name": "SCALE5c-guild-ask-unanswered",
+    "file": "server/src/index.js",
+    "old": "      if (m.g === 1) { this._send(ws, JSON.stringify({ t: 'found', g: 1, l: this._guildWho(ws, a) })); return; }\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the guild ask read as a search of nothing"
+  },
+  {
+    "name": "SCALE5c-guild-asker",
+    "file": "server/src/index.js",
+    "old": "      if (w === ws || !b?.id || this._dead.has(w) || this._gone.has(w)) continue;\n      l.push(",
+    "new": "      if (!b?.id || this._dead.has(w) || this._gone.has(w)) continue;\n      l.push(",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the asker in its own guild list"
+  },
+  {
+    "name": "SCALE5c-guild-line-nobody",
+    "file": "server/src/index.js",
+    "old": "      for (const other of [...(this._byGuild().get(a.gi) ?? [])]) this._send(other, line);",
+    "new": "      for (const other of []) this._send(other, line);",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a guild's line to nobody"
+  },
+  {
+    "name": "SCALE5c-guild-index-unkept",
+    "file": "server/src/index.js",
+    "old": "    keyMove(this._giIdx, ws, was?.id && was.gi ? was.gi : null, a?.id && a.gi ? a.gi : null);   // SCALE5c: and the guild index\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a guildmate who said hello after the index was built never hears the guild"
+  },
+  {
+    "name": "SCALE5c-line-a-socket-each",
+    "file": "server/src/index.js",
+    "old": "    if (chat && !S && this._vper.size) { this._vsendAll(out); for (const [other, b] of this._reals()) if (b.id) this._send(other, out); return; }\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a world line one entry a socket - ten thousand a line"
+  },
+  {
+    "name": "SCALE5c-broadcast-out-of-order",
+    "file": "server/src/index.js",
+    "old": "      b.seg.push({ all: this._vframe(b, s) });\n      b.cur = null;",
+    "new": "      b.seg.push({ all: this._vframe(b, s) });",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a frame said after a world line heard before it"
+  },
+  {
+    "name": "SCALE5c-broadcast-undelivered",
+    "file": "server/src/index.js",
+    "old": "        if (typeof s === 'string') for (const [ws, a] of this._all()) if (a.id && a.vid && !this._dead.has(ws) && !this._gone.has(ws)) this._send(ws, s);\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a shard drops a frame for everyone"
+  },
+  {
+    "name": "SCALE5c-offer-unsaid",
+    "file": "src/net/online.js",
+    "old": "    if (isSocialRoom(this.room) && !this._hubBus) frame.hs = 1;",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a hub link never offers the shards"
+  },
+  {
+    "name": "SCALE5c-hop-unread",
+    "file": "src/net/online.js",
+    "old": "      if (primary && isSocialRoom(room) && key && key !== this.room) this.join(key);",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the hub's word on where to go unread"
+  },
+  {
+    "name": "SCALE5c-n-unread",
+    "file": "src/net/online.js",
+    "old": "      if (primary && isChatRoom(room) && Number.isSafeInteger(m.n) && m.n >= 1) this.roomCount = m.n > (this._rooms.get(room)?.size ?? 0) + 1 ? m.n : null;",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the hub's count frame unread"
+  },
+  {
+    "name": "SCALE5c-fallback-late",
+    "file": "src/net/online.js",
+    "old": "++this._shardMiss >= 2)",
+    "new": "++this._shardMiss >= 3)",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a relay before the shards tried a third time"
+  },
+  {
+    "name": "SCALE5c-offer-after-fallback",
+    "file": "src/net/online.js",
+    "old": "this._shardMiss = 0; this._hubBus = true; this._ws = null;",
+    "new": "this._shardMiss = 0; this._ws = null;",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the bus sends a fallen-back link straight back"
+  },
+  {
+    "name": "SCALE5c-guild-ask-unbounded",
+    "file": "src/net/online.js",
+    "old": "    if (now - this._guildWhoAt < HUB_GUILD_WHO_MS) return false;\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the Guild tab asks every frame"
+  },
+  {
+    "name": "SCALE5c-guild-list-unread",
+    "file": "src/net/online.js",
+    "old": "      if (m.g === 1) { this.guildOnline = new Map(read(HUB_GUILD_WHO_MAX).map((p) => [p.id, p])); return; }   // the Guild tab's list\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the guild's answer unread"
+  },
+  {
+    "name": "SCALE5c-busy-unread",
+    "file": "src/net/online.js",
+    "old": "busy: m.busy === 1 }",
+    "new": "busy: false }",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a busy hub read as nobody found"
+  },
+  {
+    "name": "SCALE5c-roster-unmerged",
+    "file": "src/net/roster.js",
+    "old": "  if (tag) for (const [id, p] of hub?.guildOnline ?? []) if (!peers.has(id)) peers.set(id, p);   // SCALE5c: the guild on every shard\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the Guild tab its own shard's alone"
+  },
+  {
+    "name": "SCALE5c-find-unknown",
+    "file": "src/net/chatCommands.js",
+    "old": "  if (name === 'find' || name === 'who') return rest ? { kind: 'find', q: rest } : { kind: 'empty', name };   // SCALE5c (Mac's decision 2)\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "/find no command"
+  },
+  {
+    "name": "SCALE5c-full-unsaid",
+    "file": "src/net/chatCommands.js",
+    "old": "names.length >= HUB_FIND_MAX ?",
+    "new": "names.length > HUB_FIND_MAX ?",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "a full answer read as everyone"
+  },
+  {
+    "name": "SCALE5c-find-unsent",
+    "file": "src/scenes/world.js",
+    "old": "        if (cmd.kind === 'find') { findTab = tabId; if (!chatLinks?.get('world')?.sendFind(cmd.q)) note(FIND_OFFLINE_TEXT); return 'read'; }",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "/find said to the channel as a line"
+  },
+  {
+    "name": "SCALE5c-guild-unasked",
+    "file": "src/scenes/world.js",
+    "old": "if (tabId === 'guild') { s?.sendGuildWho?.(); return",
+    "new": "if (tabId === 'guild') { return",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the Guild tab never asks"
+  },
+  {
+    "name": "SCALE5c-who-unbounded",
+    "file": "src/net/online.js",
+    "old": "    if (now - this._hubWhoAt < HUB_WHO_MS) return false;\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the World tab asks the bus every frame"
+  },
+  {
+    "name": "SCALE5c-who-past-roster",
+    "file": "src/net/online.js",
+    "old": "    if (this.roomCount != null && this.roomCount > CHAT_ROSTER_MAX) { if (this.hubOnline.size) this.hubOnline = new Map(); return false; }\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "everyone asked of a hub of ten thousand"
+  },
+  {
+    "name": "SCALE5c-who-unread",
+    "file": "src/net/online.js",
+    "old": "      if (m.all === 1) { this.hubOnline = new Map(read(CHAT_ROSTER_MAX).map((p) => [p.id, p])); return; }   // the World tab's, while the hub is small\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the bus's list unread"
+  },
+  {
+    "name": "SCALE5c-who-unmerged",
+    "file": "src/net/roster.js",
+    "old": "  for (const p of session?.hubOnline?.values?.() ?? []) push(",
+    "new": "  for (const p of [] ?? []) push(",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the World tab its own shard's alone, at five hundred online"
+  },
+  {
+    "name": "SCALE5c-who-unkept",
+    "file": "server/src/index.js",
+    "old": "    if (this._everyone && now - this._everyone.at < HUB_WHO_KEEP_MS) return this._everyone.s;\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "every ask walks the hub and is its own frame"
+  },
+  {
+    "name": "SCALE5c-who-past-roster-bus",
+    "file": "server/src/index.js",
+    "old": "    if ((this._vsocks.size ? this._busCount() : this._namedCount()) <= CHAT_ROSTER_MAX) {",
+    "new": "    if (true) {",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the bus lists ten thousand"
+  },
+  {
+    "name": "SCALE5c-who-unasked",
+    "file": "src/scenes/world.js",
+    "old": "    if (tabId === 'world') s?.sendHubWho?.();",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the World tab never asks"
+  },
+  {
+    "name": "SCALE5c-who-unanswered",
+    "file": "src/net/wire.js",
+    "old": "    if (m.all === 1 && m.q === undefined && m.g === undefined) return { t: 'find', all: 1 };   // SCALE5c: everyone online, while the hub is small\n",
+    "new": "",
+    "tests": [
+      "test/scale5c.test.js"
+    ],
+    "note": "the ask junk"
+  }
+]

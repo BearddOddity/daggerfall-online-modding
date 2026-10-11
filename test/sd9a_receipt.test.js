@@ -290,7 +290,7 @@ test('SD9a the relay by source: the receipts minted before the fall is said, by 
   assert.ok(at(/f\.rc\[sub\] = await mintSdReceipt/) < at(/f\.said = true;   \/\/ kept before it is said/) && at(/f\.said = true;   \/\/ kept before it is said/) < at(/this\._sdFightFan\(\[\{ k: 'fell', \.\.\.f\.fell \}\]\);/), 'minted, kept, then said');
   assert.match(w, /rc: Object\.entries\(f\.rc \?\? \{\}\), here: f\.here \?\? \[\] \}\), signal: AbortSignal\.timeout\(SD_TELL_RETRY_MS\)/);
   assert.match(w, /await this\._sdKeepReceipts\(c, Date\.now\(\)\);/);
-  assert.match(w, /if \(isSocialRoom\(a\.key\) && who\.subject\) \{ try \{ await this\._sdReceiptTo\(ws, who\.subject, now\); \}/);
+  assert.match(w, /if \(sub\) \{ try \{ await this\._sdReceiptTo\(ws, sub, now\); \}/);   // PIN MOVED, SCALE5c: among the hub's words (`_hubHelloWords`), by the verified subject
   assert.match(w, /'sweep:sdrc'/);
   assert.match(w, /import \{ mintSdReceipt, readSdReceipt, SD_RECEIPT_TTL_S \} from '\.\.\/\.\.\/src\/net\/sdReceipt\.js';/);
   assert.match(read('test/relayversion.test.js'), /'src\/net\/sdReceipt\.js'\]/, 'net/sdReceipt.js in the bundle');   // PIN MOVED (INT12): last still - net/sdRemnant.js walks earlier now, under net/bossRef.js

@@ -65,7 +65,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE4f | The mint's realm row read once (four statements in one), and its guild membership once (three in one); every statement's D1 wait, rows and a replica's serving on the metrics point; an overloaded D1 a 503 | No | **Built** (2026-10-10, this branch; acct110) - the writes stay, with their reasons |
 | SCALE4g | The read routes on read replicas, the client carrying D1's bookmark between its requests | No | **Built** (2026-10-10, this branch; acct110) |
 | SCALE5b | The relay's hygiene and metrics, and the wire's second form (quantised, batched poses; channel rosters as deltas), capability-gated | Yes, once | **Built** (2026-10-10, this branch; relay world191, NOT YET DEPLOYED) - with the relay's settings at run time and a halo at a walking rate |
-| SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | Planned |
+| SCALE5c | The hub split: sixteen hubs by account, `chat:world` the world's bus; then the region channels on the same machinery | Yes, once | **Part one built** (2026-10-11, this branch; relay world192, NOT YET DEPLOYED) - the hub's sixteen shards, the World tab's list and search; the region channels next |
 | SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | Planned, by the metrics |
 | SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | Planned, by the metrics |
 | SCALE6 | Abuse and backups: Turnstile on guest creation, /64 IPv6 rate keys, bans, report and ignore, `ALLOWED_ORIGIN`, R2 snapshots, a hub export | Some | Alongside |
@@ -1250,6 +1250,117 @@ before it shipped (`_hostOf` now asks `_all()` first, as its walk did).
 **The deploy.** One announced relay drop: SCALE2c spreads its reconnect wave, SCALE4e's deploy outlasts the database's
 overload, and the account service (acct108) ships first or with it. Nothing in it needs a database migration.
 
+## SCALE5c part one: built (2026-10-11, this branch - relay world192, NOT YET DEPLOYED: one announced drop with SCALE5b's)
+
+The plan's sixth slice, its hub half. Every player online held one socket in ONE object, the hub (`chat:world`): 2,048
+sockets at most, and every hello, leave, line and friend act ran through it. A hub link now lands on one of sixteen
+shards, which holds it; `chat:world` is the world's bus, and runs every law it ran before over a socket of its own for
+each shard's.
+
+**The shards and the bus** (`src/net/hubShards.js`; `server/src/index.js` ShardSocket):
+- **Which shard.** `chat:world.<k>`, k the verified account's subject hashed (FNV-1a, `shardHash`) mod HUB_SHARDS
+  (16). Every tab of one account lands on one shard, so ONE-SEAT, the account's newest tab and its receipts stay one
+  object's to judge. At 10,000 online that is about 625 sockets a shard.
+- **A shard holds the socket**, its roster (its own shard's), its joins and its leaves, and answers a socket's hello,
+  ping and pose itself. Every other frame goes to the bus as it came, unparsed, in a batch every HUB_BATCH_MS (25 ms),
+  on a gate of the shard's own (HUB_UP_HZ_MAX, 16 a second, a burst of 32 - past it a junk strike) and never past
+  HUB_FRAME_MAX (the hub's largest frame, a shared quest's).
+- **The bus keeps everything it kept** - every account's record, the parties, the receipts, the world's state - and
+  runs each frame over the socket's ShardSocket: an object that answers a socket's four calls, whose sends are owed
+  its shard and whose close closes the real socket there. Nothing is migrated and no law moved. A tab from before this
+  build still joins `chat:world`, and the bus keeps it as the hub always did.
+- **Between them**, a shard's hellos, frames and closes go up (`/internal/hub/up`) and the bus's frames come down
+  (`/internal/hub/down`), each frame once a batch and each socket's in the order said, with one delivery in flight a
+  shard so nothing overtakes. A frame for everyone (a world line, a roll, a red line) is one entry a shard, never one
+  a socket; a guild's line goes to the guild's own sockets (a guild index, kept as the account index is).
+- **The plan said fat hubs** (each fetching its accounts' records from the bus, and calling the others hub to hub).
+  Built instead: thin shards and a fat bus. Nothing moves, the laws are where they were, and the bus's share of a
+  hello and a world line is measured flat to 10,000 (below). Its steady load is the party poses; that is the number
+  to watch.
+- **The doors.** A hello on the wrong shard is told the right one (`{t:'hub', key}`) and closed (CLOSE_HUB, 4001),
+  nothing written. A hello of this build to the bus itself (`hs: 1`) is told its shard the same way, before anything
+  is held, so its close says no leave. A hello that offers nothing is the bus's to keep.
+- **ONE-SEAT across them**: a claim on a shard closes the account's tab on the bus. A reconnect on its shard replaces
+  its ShardSocket with nothing said.
+- **The hub's count** is the bus's: its ShardSockets and its own sockets, never a walk of every socket. Each shard
+  hears it on every delivery, and within HUB_COUNT_MS of any hello or leave. A shard says it to its sockets
+  (`{t:'n', n}`) at most every HUB_COUNT_MS, and its welcome, joins and leaves carry it.
+- **Healing.** A bus woken without its ShardSockets answers a shard's frame for one it lost `unknown`, and the shard
+  says that socket's hello again. Every HUB_SYNC_MS (the shard's alarm) a shard hands up every socket it holds, and
+  the bus lets go of any it does not.
+
+**The client** (`src/net/online.js`, `src/scenes/world.js`): the hub link's hello offers the shards (`hs: 1`) and goes
+where the hub says (`hub`). The page keeps whether its relay has them (`dfjs.hubShards`, read off every welcome's
+version), so the next page goes straight to its own shard. A shard that never opens twice in a row is a relay before
+them: the link goes to the bus and offers the shards no more that session.
+
+**The World tab (Mac's decision 2).** The count is the hub's. The list:
+- its own shard's members, live;
+- while the hub holds no more than a roster says (CHAT_ROSTER_MAX, 512), everyone, asked of the bus at most every
+  HUB_WHO_MS (15 s) while the tab is drawn. The bus keeps its answer a second, so a batch carries one frame. At today's
+  numbers the list is the whole hub, as it was;
+- friends, as the social panel already lists them, every shard's;
+- the Guild tab adds the guild online on every shard (`find` with `g`, every HUB_GUILD_WHO_MS);
+- a search of everyone online by name: `/find <name>` or `/who <name>`. The bus answers HUB_FIND_MAX names whose
+  folded name holds the search's (case, spaces and apostrophes dropped), on a socket's bucket and the hub's
+  (HUB_FIND_ROOM_HZ_MAX, 10 a second). Past it the answer is "too many are searching", said.
+
+**Found on the way, fixed before it shipped:**
+- A shard ran its own pre-parse doors first. The shared quest's door asks the socket's account, which only the bus's
+  ShardSocket carries, so every quest share would have closed its sender's hub link. The forward now comes before
+  every door.
+- The name filter over a party pose's place name was half of what a pose cost the hub (measured). The filter is a
+  pure function of the text, so its verdict is kept (`wire.js` labelAllowed, 512 at most).
+- The bus's count walked every socket on every hello and leave: 0.73 ms a hello at 10,000. It is O(the bus's own
+  sockets) now.
+- A guild ask's dedup by account was code no pin could reach (ONE-SEAT seats an account's one tab), so it was taken out.
+
+**Measured** on the real Room over the pins' fake object (`node tools/hubShardBench.mjs`; each object's own calls
+timed apart, the doors between them stubbed and fed what the other handed it, the token signing not counted):
+
+| | One hub, 2,000 | Sharded, 2,000 | Sharded, 10,000 |
+|---|---|---|---|
+| A hello | 1.23 ms, 2,001 sends | 0.90 ms on its shard, 0.14 ms on the bus | 1.25 ms on its shard, 0.10 ms on the bus |
+| A reconnect wave, whole | - | 279 ms of the bus's, 171 ms of the busiest shard's | 988 ms of the bus's, 822 ms of the busiest shard's |
+| A world line | 3.90 ms, 2,000 sends, one object's | 1.31 ms on the bus (2.8 KiB to the shards), 0.31 ms on the busiest shard | 2.39 ms on the bus (2.8 KiB), 0.83 ms on the busiest shard |
+| Party poses, everyone in a four, one a second | - | 0.046 ms a pose on the bus: 92 ms of its second | 0.032 ms a pose: 317 ms of its second |
+
+At 10,000 everyone's reconnect costs the bus about one second of work spread over the wave. Its share of a world
+line does not grow with the hub. Party poses are its steady load: a third of a core if every player online is in a
+party, which nobody is. If the bus's metrics run hot, the next step is party poses shard to shard.
+
+**Pins.**
+- `test/scale5c.test.js` (12): the law; the bus running a shard's socket as its own (welcome, picture, a world line
+  everywhere, a friend request across shards); a shard's roster and the hub's count, told and said; the hops; ONE-SEAT
+  and a reconnect; the woken bus, a lost hello and the alarm's sync; the search; the session; the bus's fans (a
+  world line one entry a shard in its batch's order, a guild's line, the guild online, the hub's search budget); the
+  World and Guild tabs; a shard's forward (before its doors, bounded, gated); the World tab while the hub is small.
+- `tools/mutants/scale5c.json`: 70 mutants, all dead.
+- `tools/hubShardBench.mjs`: the table above.
+
+PIN MOVED, each a pin that read a line SCALE5c moved:
+- RELAY_VERSION's pins (40 files and the soc1 record) to world192. `test/relayversion.test.js` holds world192's law,
+  and `src/net/hubShards.js` joins the relay's import graph.
+- `.github/workflows/account-deploy.yml` lists `src/net/hubShards.js`: wire.js imports it.
+- The channel whitelist (chat1, chatchan: sixteen more). The hub's hello words moved into `_hubHelloWords` (auditraid,
+  sd3, sd9a, soc1). The welcome and join counts (srvn). The attachment's row (wb9g). The roster fan (scale5a). The
+  calls between rooms (scale2b: twenty-one, seventeen on ROOM_CALL_MS). The session's hello (soc2: `hs`). The hub
+  link's room in world.js (chat1, oneseat and its host harness). The Guild tab's ask (chatfit, guild1c). The relay
+  version's read (set7).
+- Re-aimed by content, all dead: B7-channel-welcome-without-the-clock, AUDWB-A4-the-hello-handed-nothing,
+  EVENT1-relay-every-channel-says-it, GUILD1c-guild-line-to-everyone, RAID3-relay-hello-list-unsaid,
+  G4-channel-join-carries-the-look, G6-count-from-the-cut-list, SCALE2b-walk-keeps-the-unlisted,
+  SCALE5a-last-only-when-unlisted, AUDIT-SCALE5a-n-off-the-join, AUDIT-SCALE5a-n-off-the-leave,
+  SCALE5b-host-kept-past-walk, SCALE5b-id-index-kept-past-walk, SD9A-the-hello-hands-nothing,
+  AUDIT-SERPENT-S5-hello-receipt, S37-picture-before-the-welcome, S6-place-unfiltered (the filter's kept verdict).
+  AUDIT-WB12d-T-relay-hello-word-in-every-room
+  re-aimed and still equivalent, as recorded.
+
+**The deploy.** One announced relay drop, with SCALE5b's world191 (neither is deployed). The account service (acct110)
+ships first or with it. No database migration.
+
+**Left:** the region channels on the same machinery (part two).
+
 ## THE PLAN PAST 2,000 (2026-10-10)
 
 Mac, after #755's merge: "Alright lets now tackle the bigger work. I want to go deep and really future proof our
@@ -1314,7 +1425,7 @@ slice below measures again with a tool of its own in the tree.
    - `BOSS_BODY` and the Discord settings read at run time, so changing one no longer drops every player.
    - A halo hearing a player's pose at a walking rate, with the referees that read halo poses (the serpent's fight,
      INT11's trails, duels, the Wild zone) kept at full rate.
-6. **SCALE5c - the hub split, ONE announced drop.**
+6. **SCALE5c - the hub split, ONE announced drop** (part one built, above - thin shards and a fat bus).
    - **Sixteen hubs, chosen by the account** (`chat:world.<k>`, k from the account's subject). An account's every tab
      lands on the same hub, so ONE-SEAT, the account's record, its receipts and its tabs stay on one object. At 10k
      that is about 625 sockets a hub, room for 32k.

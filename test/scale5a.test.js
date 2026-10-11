@@ -428,7 +428,7 @@ test('SCALE5a the hello\'s walks are methods of their own (`_message` runs inter
   assert.match(relay, /const others = this\._othersOf\(ws\);/);
   assert.match(relay, /this\._fanRoster\(ws, said\);/);   // PIN MOVED (SCALE5b): a channel's join and leave by the roster's fan, which walks in place as `_fanBut` does
   assert.match(relay, /if \(isChatRoom\(a\.key\)\) this\._fanRoster\(ws, out\); else this\._fanBut\(ws, out\);   \/\/ SCALE5a: in place, as the join's/);
-  assert.match(relay, /_fanRoster\(ws, out\) \{ for \(const \[other, b\] of this\._all\(\)\) if \(other !== ws && b\.id\) \{ /, 'the roster\'s fan walks the index itself, never a copy');
+  assert.match(relay, /_fanRoster\(ws, out\) \{ for \(const \[other, b\] of \(this\._vper\.size \? this\._reals\(\) : this\._all\(\)\)\) if \(other !== ws && b\.id && !other\.virtual\) \{ /, 'the roster\'s fan walks the index itself, never a copy (PIN MOVED, SCALE5c: the bus walks its own sockets, a shard\'s hearing its own shard\'s roster)');
   assert.match(relay, /_fanBut\(ws, out\) \{ for \(const \[other, b\] of this\._all\(\)\) if \(other !== ws && b\.id\) this\._send\(other, out\); \}/, 'the fan walks the index itself, never a copy');
   assert.match(src('src/net/online.js'), /for \(const p of this\.peers\.values\(\)\) \{/);
 });

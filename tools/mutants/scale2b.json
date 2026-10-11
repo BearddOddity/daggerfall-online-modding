@@ -34,7 +34,7 @@
   {
     "name": "SCALE2b-walk-keeps-the-unlisted",
     "file": "server/src/index.js",
-    "old": "    if (this._idx.size) { const live = new Set(sockets); for (const ws of [...this._idx.keys()]) if (!live.has(ws)) { this._idx.delete(ws); moved = true; } }",
+    "old": "    if (this._idx.size) { const live = new Set(sockets); for (const ws of [...this._idx.keys()]) if (!live.has(ws) && !ws.virtual) { this._idx.delete(ws); moved = true; } }",
     "new": "",
     "tests": [
       "test/scale2b.test.js",
@@ -45,7 +45,7 @@
       "test/soc1_hub.test.js",
       "test/auditsoc.test.js"
     ],
-    "note": "A socket the runtime no longer holds stays in the index for ever."
+    "note": "A socket the runtime no longer holds stays in the index for ever. SCALE5c (re-aimed by content): the walk keeps a ShardSocket"
   },
   {
     "name": "SCALE2b-hello-bucket-stored-again",

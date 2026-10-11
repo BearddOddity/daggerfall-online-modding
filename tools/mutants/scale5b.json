@@ -384,12 +384,12 @@
   {
     "name": "SCALE5b-host-kept-past-walk",
     "file": "server/src/index.js",
-    "old": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._idIdx = null; this._hostMemo = undefined; }",
-    "new": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._idIdx = null; }",
+    "old": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._idIdx = null; this._giIdx = null; this._hostMemo = undefined; }",
+    "new": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._idIdx = null; this._giIdx = null; }",
     "tests": [
       "test/scale5b.test.js"
     ],
-    "note": "a socket the runtime let go still the host"
+    "note": "a socket the runtime let go still the host SCALE5c (re-aimed by content): the guild index rebuilt beside it"
   },
   {
     "name": "SCALE5b-host-except-unread",
@@ -414,12 +414,12 @@
   {
     "name": "SCALE5b-id-index-kept-past-walk",
     "file": "server/src/index.js",
-    "old": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._idIdx = null; this._hostMemo = undefined; }",
-    "new": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._hostMemo = undefined; }",
+    "old": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._idIdx = null; this._giIdx = null; this._hostMemo = undefined; }",
+    "new": "    if (moved) { this._acctIdx = null; this._subIdx = null; this._giIdx = null; this._hostMemo = undefined; }",
     "tests": [
       "test/scale5b.test.js"
     ],
-    "note": "a socket the runtime let go still a target"
+    "note": "a socket the runtime let go still a target SCALE5c (re-aimed by content): the guild index rebuilt beside it"
   },
   {
     "name": "SCALE5b-id-except-unread",
