@@ -236,11 +236,11 @@ function openPauseFlowNow(show, hooks) {
  *  to the pause window it was opened from (previousWindow), and a player who opened settings from a menu expects that
  *  menu under it. Without a document (a node host) the classic grid stands. */
 function classicPauseWithSettings(show, hooks) {
-  const again = () => classicPauseWithSettings(show, hooks);
+  const again = () => shown(classicPauseWithSettings(show, hooks));   // AUDIT TUT1: the window its Resume opens again is a pause window too
   const openSettings = typeof document !== 'undefined'
     ? () => shown(enhancedPauseOverlay(show, { ...hooks, at: 'settings', onResume: again }))   // AUDIT TUT1: the detour is a pause window too
     : null;
-  return shown(openClassicPauseFlow(show, { ...hooks, openSettings }));
+  return openClassicPauseFlow(show, { ...hooks, openSettings });
 }
 
 /**

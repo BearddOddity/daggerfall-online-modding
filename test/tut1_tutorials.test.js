@@ -331,7 +331,7 @@ test('AUDIT TUT1: windowHeld asks every live host - true when one holds the wind
   assert.match(read('src/scenes/worldModes.js'), /\n  registerPresenter\(\{ holds: \(win\) => interiorWindows\.containsWindow\(win\) \}\);/);
   const dc = read('src/scenes/dungeonContext.js');
   assert.match(dc, /const _unregisterHolds = registerPresenter\(\{ holds: \(win\) => dungeonWindows\.containsWindow\(win\), active: \(\) => _live && !_ctxDead \}\);/);
-  assert.match(dc, /_unregisterPresenter\(\);[^\n]*\n\s+_unregisterHolds\(\);/, 'and it leaves with the context');
+  assert.match(dc, /destroy\(\) \{\n      _ctxDead = true;[\s\S]{0,2000}\n      _unregisterHolds\(\);/, 'and it leaves with the context');
 });
 
 test('AUDIT TUT1: a page waits out the loading screen; a scene\'s page is asked for once, by the build that stands it (an Ocean Hole\'s door pops none of its own)', () => {
@@ -361,7 +361,7 @@ test('TUT1: while the menu stands a page waits - never pushed over the pause win
   const pd = read('src/ui/pauseDoor.js');
   assert.match(pd, /export function openPauseFlow\(show, hooks = \{\}\) \{\n  return shown\(openPauseFlowNow\(show, hooks\)\);/, 'the door keeps the window it opened');
   assert.match(pd, /\? \(\) => shown\(enhancedPauseOverlay\(show, \{ \.\.\.hooks, at: 'settings', onResume: again \}\)\)/, 'AUDIT TUT1: the classic window\'s Settings detour is kept too');
-  assert.match(pd, /return shown\(openClassicPauseFlow\(show, \{ \.\.\.hooks, openSettings \}\)\);/, '...and the classic window its Resume opens again');
+  assert.match(pd, /const again = \(\) => shown\(classicPauseWithSettings\(show, hooks\)\);/, '...and the classic window its Resume opens again');
   clearTutorialLine();
 });
 

@@ -10468,7 +10468,6 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
     destroy() {
       _ctxDead = true;   // NT1 (F213): before anything frees - the warm-window continuations read it
       _unregisterPresenter();   // ENH-NOTICE3: the registration leaves with the context (the dead latch above is what REFUSES a box in the meantime - pushDungeonWindow reads it, AUDIT ENH-NOTICE3 F2)
-      _unregisterHolds();   // TUT1 audit: and its holds-only twin
       // PX21c: the plaque leaves with the host that raised it - AFTER
       // the latch, which NT1 pins as the first act of this function.
       destroyWorldPlaque();
@@ -10476,6 +10475,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
       // player outside and, at AutomapNumberOfDungeons = 0, forgets
       // the map the moment you leave (Automap.cs:2530-2534).
       exitDungeonAutomap(classicMinutesRef.value);   // AUDIT-AMAP F11: stamped with the EXIT time (:2155)
+      _unregisterHolds();   // TUT1 audit: the holds-only presenter leaves with the context too (below the exit law: test/automap.test.js measures the walk to it)
       senseGlow.dispose(); sensePulse.clear(); echoPulse.clear(); echoBook.clear(); wayOut.reset(); actions.onPlayed = null;   // SENSE1/ECHO1: the look round's glow is OURS - its program ends with the context
       bloodMarks.dispose();   // BLOOD1a (HARD1): the ring is OURS - a vertex buffer and a VAO handed to nobody - so it ends here, by its own name and not through the hand-off pool
       // ROAD-B B1: RemoveWindow runs OnPop on every window it removes
