@@ -302,7 +302,7 @@ import { createLefayMonument } from './lefayMonumentHost.js';   // LEFAY1: the m
 import { isLefayTown, lefaySpotOf, carveLefay } from '../world/lefayMonument.js';   // LEFAY1: its town, its spot off the town's navgrid, and the people's navgrid carved round it
 import { createMerchantYards } from './merchantYardsHost.js';   // MERCHANT-YARDS: every city's and town's Stable and Wagon Yard, and their trade
 import { createWardenShows } from './wagonWardenShow.js';   // WARDEN1: the town watch's throw, played
-import { createWagonWarden } from './wagonWardenHost.js';   // WARDEN1: the town watch - my wagon's stamp, the cell's words, the offline clock
+import { createWagonWarden, wardenTownIn } from './wagonWardenHost.js';   // WARDEN1: the town watch - my wagon's stamp, the cell's words, the offline clock; AUDIT WARDEN1 D3: the town under a point, one pure home
 import { WARDEN_VENDOR, isWardenTown } from '../systems/wagonWarden.js';   // WARDEN1: the stamp's save slot, and the towns a watch keeps
 import { yardSitesOf, carveYards, MONUMENT_KEEP_M, yardMeasuresOf, placedModelBox } from '../world/merchantYardSites.js';   // MERCHANT-YARDS: where they stand off the town's layout, and the people's navgrid carved round them
 import { isYardTown, yardKeeper, YARD_KIND_ORDER } from '../systems/merchantYards.js';   // MERCHANT-YARDS: the towns that stand them, who keeps them, the town's people
@@ -20550,7 +20550,8 @@ export async function bootWorld(canvas, renderer, params, status) {
   // and is asked for none. WAGONS2's caravan room had none at all in the wilderness (no town's map id) and a town
   // building's (`owned:...:<map>.<key>`) in a town - its party lost it either way, and no visitor could find it.
   let _caravanKeyFor = null, _caravanKey = null;
-  function myCaravanRoom() {
+  /** My character's park key, or null while it is worked out (WARDEN1: a throw the cell names is mine by it). */
+  function myParkKey() {
     const c = characterIdOf(playerEntity);
     if (!social?.acct || !c) return null;
     const source = `${social.acct}\n${c}`;
@@ -20558,8 +20559,9 @@ export async function bootWorld(canvas, renderer, params, status) {
       _caravanKeyFor = source; _caravanKey = null;
       parkKeyOf(social.acct, c).then((k) => { if (_caravanKeyFor === source) _caravanKey = k; }).catch(() => { if (_caravanKeyFor === source) _caravanKeyFor = null; });
     }
-    return caravanRoomOf(_caravanKey);
+    return _caravanKey;
   }
+  function myCaravanRoom() { return caravanRoomOf(myParkKey()); }
   // WAGONS2-VISIT (FINAL AUDIT): a fresh session (a load inside my caravan, online turned on in it) has had no welcome
   // to say its relay - and with no room it is never welcomed - so the world channel's word stands for it, as the owned
   // rooms' staffTeleportOk does; the frame itself still waits for the primary's own (online.js sendCaravan)
@@ -25013,30 +25015,16 @@ export async function bootWorld(canvas, renderer, params, status) {
   // word's fields, the cell's two words, the offline clock; its throws played (scenes/wagonWardenShow.js) by a guard of
   // the city guards' picture, the wagon drawn as the yards draw theirs, its horses on the flats' axis
   const _wardenT = [0, 0, 0];
-  /** WARDEN1: the scene's x, z in a built town a watch keeps - its map id, its walk grid and the point in the location
-   *  frame (the grid's); null on built ground no watch keeps; undefined where nothing is built. */
-  const wardenTownAt = (x, z) => {
-    let ground = false;
-    for (const p of built.values()) {
-      const t = state.pixelTranslation(p.px, p.py, _wardenT);
-      if (x < t[0] || z < t[2] || x >= t[0] + TERRAIN_SIZE || z >= t[2] + TERRAIN_SIZE) continue;
-      ground = true;
-      const nav = p.wardenTown != null && p.locOrigin ? p.population?.nav : null;
-      if (!nav) continue;
-      const ox = t[0] + p.locOrigin[0], oz = t[2] + p.locOrigin[2], u = x - ox, v = z - oz;
-      if (u < 0 || v < 0 || u >= nav.width * NAV_CELL || v >= nav.height * NAV_CELL) continue;
-      return { town: p.wardenTown, nav, local: [u, v], toScene: (a, b) => [a + ox, b + oz] };
-    }
-    return ground ? null : undefined;
-  };
+  /** WARDEN1: the scene's x, z in a built town a watch keeps (wagonWardenHost.js wardenTownIn, over the built pixels). */
+  const wardenTownAt = (x, z) => wardenTownIn(built.values(), (px, py) => state.pixelTranslation(px, py, _wardenT), TERRAIN_SIZE, x, z);
   const WARDEN_CLIPS = { heave: SOUND.AnimalHorse, throw: SOUND.SwingHighPitch, land: SOUND.BodyFall };
   wardenShows = createWardenShows({
     renderer, getTexture, uploadRecordFrame,
     toScene: campToScene, groundAt: (x, z) => surfaceAt(x, z),
-    showWagon: (r, texRemap, position, rotation, kind, look) => hcc.drawShowWagon(r, texRemap, position, rotation, kind, look),
+    showWagon: (r, texRemap, position, rotation, kind, look, tier, turn, hitched) => hcc.drawShowWagon(r, texRemap, position, rotation, kind, look, tier, turn, hitched),
     wagonBox: (kind) => hcc.partsOf(kind)?.box ?? null,
     horseArt: () => !!hcc.presentation.horseArt.ensureStationary(),
-    hold: (owner, on) => hcc.holdTeam(owner, on),
+    hold: (owner, on, lone) => hcc.holdTeam(owner, on, lone),
     sound: (what, at) => { const d = Math.hypot(cam.pos[0] - at[0], cam.pos[2] - at[2]); if (d < 120) audio.playOneShot(WARDEN_CLIPS[what], 0.7 * (1 - d / 120)); },
     now: () => performance.now() / 1000,
   });
@@ -25046,6 +25034,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     townName: (id) => _townOfMapId.get(id >>> 0)?.name ?? '',
     eye: () => cam.pos, street: () => _mode() === 'exterior' && !_loading,
     notify: (lines) => { for (const l of lines) townTalk.say(l); },
+    myKey: () => myParkKey(),   // AUDIT WARDEN1 C6: a throw of another character's team is not mine
   });
   hcc.setWardenWord((a) => wagonWarden?.word(a) ?? null);   // WARDEN1: my park word carries the stamp - the cell throws on it
   registerModSaveData(WARDEN_VENDOR, {
@@ -33017,6 +33006,9 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // mouse's forward side button by default) - under no window, and never mid-load (hccActionPressed's gate)
     // AUDIT HCC H1: LateUpdate - after the motor and the recentre, before the world pass draws the wagon. WAGONS3: and
     // before the camera, which sits on the bench of the wagon it just stood (`_driverSeat`)
+    // WARDEN1: my wagon's stamp, the cell's throws of it, the offline clock, and the throws in flight - AUDIT WARDEN1 C11:
+    // before the pool's step, so a team set down this frame is posed by it this frame (a landing's frame drew it horseless)
+    try { if (!_loading) wagonWarden?.tick(); if (_mode() === 'exterior') wardenShows?.frame(cam.pos); } catch (e) { console.warn('[warden] the watch', e?.message ?? e); }
     hccTick(dt, now);
     // WAGONS3 (Mac: "sit on the wagon itself, the ledge its built for"): DRIVING FROM A BENCH - my seat where my wagon
     // is drawn this frame (scenes/horseCartPool.js driverSeat): the eye on it in first person, the body on it in third
@@ -33311,7 +33303,6 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     try { quays?.frame(); } catch (e) { console.warn('[quays] pool', e?.message ?? e); }   // QUAYS: the harbours' quays stood or taken down, before the lights (their lanterns) and the world pass
     try { lefay?.frame(); } catch (e) { console.warn('[lefay] monument', e?.message ?? e); }   // LEFAY1: the monument stood where Gothway Garden is built, its flowers in flight and laid
     try { merchantYards?.frame(); } catch (e) { console.warn('[yards] the yards', e?.message ?? e); }   // MERCHANT-YARDS: each town's Stable and Wagon Yard stood where it is built
-    try { if (!_loading) wagonWarden?.tick(); if (_mode() === 'exterior') wardenShows?.frame(cam.pos); } catch (e) { console.warn('[warden] the watch', e?.message ?? e); }   // WARDEN1: my wagon's stamp, the offline clock, and the throws in flight
     // Lanterns on 17:00-08:00, flickering verbatim; pixel-local lights
     // placed under the current compensation, nearest 16 to the camera.
     // WOD2: the mod's lights burn at every hour and each carries its own

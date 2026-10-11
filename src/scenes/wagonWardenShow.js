@@ -8,17 +8,18 @@
 // moved - wagonWarden.js thrownRecord).
 //
 // ONE FRAME A SHOW: its points are metres off where the wagon stood when it began (`origin`, the wire frame - turned to
-// the scene through the host's `toScene` every frame, so a recentre or a re-anchor carries it), the guard's way the
-// host's (`approach` - the town's walk grid), the landing the cell's (`landing`, natives). The clock is the host's
-// (`now`, seconds), started once the guard's picture is in (or SHOW_ART_WAIT has passed - a picture that never comes plays
-// the throw with no guard).
+// the scene through the host's `toScene` every frame, so a recentre carries it; a re-anchor's teardown ends it), the
+// guard's way the host's (`approach` - the town's walk grid), the landing the cell's (`landing`, natives). The clock is
+// the host's (`now`, seconds), started once the guard's picture is in (or SHOW_ART_WAIT has passed - a picture that
+// never comes plays the throw with no guard). A show whose team is no longer the one thrown (the host's `alive` - a
+// summon, a drive off, the cell's word that it moved) ends where it stands, its team the pool's again (AUDIT WARDEN1 C7).
 //
 // Not a DFU member. Ledger A (WARDEN1).
 import { GUARD_TEXTURE, PERSON_GUARD_IDLE_RECORD, MOVE_RECORDS, MOVE_FLIPS } from '../characters/mobilePerson.js';
 import { mobileOrientation } from '../characters/mobileUnit.js';
 import { mobileBillboardSize } from '../world/rmbFlats.js';
 import { quatAngleAxis, quatMultiply, quatRotate } from '../world/quat.js';
-import { calculateHorseOrientation, horseViewFor } from '../systems/horseCartLaw.js';
+import { calculateHorseOrientation, horseViewFor, vsub, vadd } from '../systems/horseCartLaw.js';
 import { HORSE_ARCHIVE, horseStillRecord, HORSE_BILLBOARD_WIDTH, HORSE_BILLBOARD_HEIGHT } from './horseCartPool.js';
 import { pointOnLine } from '../systems/livingWorld/townPaths.js';
 
@@ -33,7 +34,8 @@ export const WARDEN_LIFT_S = 1.4;
 export const WARDEN_TURN_S = 0.7;
 export const WARDEN_PAUSE_S = 0.8;
 export const WARDEN_LEAVE_MIN = 2;
-/** Where the wagon's floor rests over the guard's feet, metres (a keeper's height - merchantYardsHost KEEPER_HEIGHT). */
+/** Where the wagon's floor rests over the guard's feet, metres, until the guard's picture is read - then on the top of
+ *  its standing picture ("on top of their sprite"; AUDIT WARDEN1 D16: a keeper's height said again). */
 export const WARDEN_HEAD = 1.85;
 /** How far beside the wagon's box the guard stands to lift it, metres. */
 export const WARDEN_SIDE_GAP = 0.6;
@@ -79,8 +81,6 @@ export function arcPoint(/** @type {number[]} */ from, /** @type {number[]} */ t
 /** The whole turns a throw of `fly` seconds tumbles - one at least. Pure. */
 export const tumbleTurns = (/** @type {number} */ fly) => Math.max(1, Math.round(fly * WARDEN_TUMBLE));
 
-const vsub = (/** @type {number[]} */ a, /** @type {number[]} */ b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-const vadd = (/** @type {number[]} */ a, /** @type {number[]} */ b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 const qInv = (/** @type {number[]} */ q) => [-q[0], -q[1], -q[2], q[3]];
 
 /**
@@ -88,9 +88,9 @@ const qInv = (/** @type {number[]} */ q) => [-q[0], -q[1], -q[2], q[3]];
  *   renderer?: any, getTexture?: ((archive: number) => Promise<any>)|null,
  *   uploadRecordFrame?: ((archive: number, record: number, frame: number) => void)|null,
  *   toScene: (wire: number[]) => number[], groundAt: (x: number, z: number) => number,
- *   showWagon?: ((r: any, texRemap: any, position: number[], rotation: number[], kind: string, look?: any) => boolean)|null,
+ *   showWagon?: ((r: any, texRemap: any, position: number[], rotation: number[], kind: string, look?: any, tier?: number, turn?: any, hitched?: boolean) => boolean)|null,
  *   wagonBox?: ((kind: string) => (number[]|null))|null, horseArt?: (() => boolean)|null,
- *   hold?: (owner: string, on: boolean) => void, sound?: (what: 'heave'|'throw'|'land', at: number[]) => void,
+ *   hold?: (owner: string, on: boolean, lone?: boolean) => void, sound?: (what: 'heave'|'throw'|'land', at: number[]) => void,
  *   now?: () => number,
  * }} deps  `toScene` the wire frame's point in this scene; `groundAt` the drawn ground (NaN: none built); `showWagon`/
  *   `wagonBox` the HCC pool's wagon of a kind, drawn, and its box in its own frame; `hold` the pool's holdTeam; `now`
@@ -151,6 +151,7 @@ export function createWardenShows({
     const rkey = `${record}#${frame}`;
     if (!renderer.textures?.has?.(`${GUARD_TEXTURE}_${rkey}`)) uploadRecordFrame?.(GUARD_TEXTURE, record, frame);
     const sz = mobileBillboardSize(tex, record);
+    if (!walking && Number.isFinite(sz.h) && sz.h > 0.5 && sz.h < 4) s.head = sz.h;   // the wagon rides on the top of the standing picture
     if (!s.guardBatch) { s.guardBatch = renderer.createBillboardBatch(GUARD_TEXTURE, rkey, { w: sz.w, h: sz.h }, [[0, 0, 0]]); s.guardBatch.origin = [0, 0, 0]; }
     const b = s.guardBatch;
     b.record = rkey; b.size = { w: flip ? -sz.w : sz.w, h: sz.h };
@@ -166,13 +167,14 @@ export function createWardenShows({
       const pos = vadd(s.drawn.at, quatRotate(w.rot, h.off)), fwd = quatRotate(w.rot, h.fwd);
       const view = horseViewFor(calculateHorseOrientation(cam ?? pos, pos, fwd));
       if (!h.batch) { h.batch = renderer.createBillboardBatch(HORSE_ARCHIVE, horseStillRecord(0), { w: HORSE_BILLBOARD_WIDTH, h: HORSE_BILLBOARD_HEIGHT }, [[0, 0, 0]]); h.batch.origin = [0, 0, 0]; }
+      if (s.conceal) h.batch.conceal = s.conceal;   // AUDIT WARDEN1 C13: a concealed owner's horses stay concealed
       if (view) { h.batch.record = horseStillRecord(view.view); h.batch.size = { w: view.flip ? -HORSE_BILLBOARD_WIDTH : HORSE_BILLBOARD_WIDTH, h: HORSE_BILLBOARD_HEIGHT }; }
       h.batch.origin[0] = pos[0]; h.batch.origin[1] = pos[1]; h.batch.origin[2] = pos[2];
     }
   }
   /** Where the wagon's origin stands when its floor rests on the guard's head (`G` the guard's feet, `rot` its turn) -
    *  the lift's end, the wind-up and the throw's start alike. */
-  const overHead = (s, G, rot) => vsub([G[0], G[1] + WARDEN_HEAD, G[2]], quatRotate(rot, s.floor));
+  const overHead = (s, G, rot) => vsub([G[0], G[1] + s.head, G[2]], quatRotate(rot, s.floor));
   /** The wagon's pose this frame, local to the show's origin: its point and its turn - or null once it has landed. */
   function wagonPose(s, t, G) {
     const T = s.times;
@@ -205,12 +207,13 @@ export function createWardenShows({
      * a peer's live word and the cell's kept one), `snap` the team as drawn
      * (horseCartPool teamSnapshot - read before anything moved it), `origin` where it stood in the wire frame, `landing`
      * where it lands ([x, z] natives), `approach(lift, away)` the guard's way to the scene's `lift` point from the town's
-     * inside (`away` the throw's way, [x, z]) - scene [x, z] points ending at `lift`, or null (a straight jog). Answers
-     * whether it began (one show a key at a time; no wagon, no show).
+     * inside (`away` the throw's way, [x, z]) - scene [x, z] points ending at `lift`, or null (a straight jog); `alive()`
+     * whether the team is still the one thrown (none: always). Answers whether it began (one show a key at a time; no
+     * wagon, no show).
      * @param {{ key: string, owners: string[], snap: any, origin: number[], landing: number[],
-     *   approach?: ((lift: number[], away: number[]) => (number[][]|null))|null }} o
+     *   approach?: ((lift: number[], away: number[]) => (number[][]|null))|null, alive?: (() => boolean)|null }} o
      */
-    start({ key, owners, snap, origin, landing, approach = null }) {
+    start({ key, owners, snap, origin, landing, approach = null, alive = null }) {
       if (!key || shows.has(key) || !snap?.kind || !Array.isArray(owners) || !Array.isArray(origin) || !Array.isArray(landing)) return false;
       const box = wagonBox?.(snap.kind) ?? [-1, 0, -2, 1, 2, 2];
       const O = toScene(origin);
@@ -238,21 +241,25 @@ export function createWardenShows({
         off: quatRotate(qInv(rot0), vsub(h.at, snap.at)), fwd: quatRotate(qInv(rot0), h.forward), batch: null,
       }));
       const s = {
-        key, owners: [...owners], kind: snap.kind, look: snap.look ?? null, origin: [origin[0], origin[1], origin[2]], landing: [landing[0], landing[1]],
+        key, owners: [...owners], kind: snap.kind, look: snap.look ?? null, tier: snap.tier ?? 0, turn: snap.turn ?? null, hitched: !!snap.hitched,
+        conceal: snap.conceal ?? null, lone: snap.lone !== false, alive: typeof alive === 'function' ? alive : null, head: WARDEN_HEAD,
+        origin: [origin[0], origin[1], origin[2]], landing: [landing[0], landing[1]],
         rot0, rotT, floor, mid, line, lift, yaw0, yaw1, dyaw, horses, land2,
         side: [away[1], 0, -away[0]], times: null, turns: 1, peak: 0, from: null, to: null,
         t0: null, asked: now(), held: true, said: new Set(), guardBatch: null,
         drawn: null,   // this frame's wagon: { at (scene), rot }
       };
-      for (const o of s.owners) hold(o, true);
+      for (const o of s.owners) hold(o, true, s.lone);
       shows.set(key, s);
       guardArt();
       return true;
     },
     /** One frame: every show stepped on its clock, the guard and the team posed, the landed and the gone ended. */
     frame(/** @type {number[]|null} */ cam = null) {
+      if (!shows.size) return 0;   // AUDIT WARDEN1 C12: a frame with no throw makes nothing
       const tn = now();
-      for (const s of [...shows.values()]) {
+      for (const s of shows.values()) {   // end() deletes the one it is on - a Map's walk goes on past it
+        if (s.held && s.alive && !s.alive()) { end(s); continue; }   // C7: no longer the team thrown
         const O = toScene(s.origin);
         if (s.t0 === null) {
           if (guardArt() === null && tn - s.asked < SHOW_ART_WAIT) { poseTeam(s, O, { at: [0, 0, 0], rot: s.rot0 }, cam); continue; }   // the team stands as it stood while the guard's picture comes
@@ -301,7 +308,7 @@ export function createWardenShows({
     draw(r = renderer) {
       let n = 0;
       if (!showWagon) return n;
-      for (const s of shows.values()) if (s.drawn && s.held && showWagon(r, null, s.drawn.at, s.drawn.rot, s.kind, s.look)) n++;
+      for (const s of shows.values()) if (s.drawn && s.held && showWagon(r, null, s.drawn.at, s.drawn.rot, s.kind, s.look, s.tier, s.turn, s.hitched)) n++;
       return n;
     },
     /** The guards and the carried horses, for the host's flats. */

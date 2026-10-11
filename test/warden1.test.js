@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   validParkData, parkKeyOf, parkKey, PIXEL_UNITS, WARDEN_ROAD_MS, WARDEN_TOWN_CAP, WARDEN_LAND_REACH, WARDEN_TOWN_MAX,
-  wardenVerdicts, wardenDue, validParkYeet, parkSpotOf, parkSameSpot, relaySupportsWarden, WARDEN_RELAY_MIN, POSE_BOUND,
+  wardenVerdicts, wardenDue, validParkYeet, parkSpotOf, parkSameSpot, WARDEN_RELAY_MIN, POSE_BOUND, RELAY_VERSION, WARDEN_SPOT_NATIVES,
 } from '../src/net/wire.js';
 import { fakeRooms } from './fakeRoom.mjs';
 import {
@@ -29,6 +29,8 @@ import {
   WARDEN_LIFT_S, WARDEN_TURN_S, WARDEN_PAUSE_S, WARDEN_LEAVE_MIN, WARDEN_HEAD,
 } from '../src/scenes/wagonWardenShow.js';
 import { createWagonWarden, WARDEN_SHOW_REACH } from '../src/scenes/wagonWardenHost.js';
+import { NAV_CELL } from '../src/world/cityNavigation.js';
+import { mapPixelOfWire } from '../src/net/wire.js';
 import { GUARD_TEXTURE, PERSON_GUARD_IDLE_RECORD } from '../src/characters/mobilePerson.js';
 import { makeWorld } from './hccWorld.mjs';
 import { syntheticWagon41214 } from './hccModel.mjs';
@@ -63,7 +65,7 @@ const road = (extra = {}) => ({ w: W(), ly: LY, tw: 77, rd: 1, ...extra });
 
 // ─── the wire ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
-test('WARDEN1 wire: the park word carries its landing (within a map pixel of its anchor), and with it its town and its road - none of them without a landing; a relay before world191 drops all three', () => {
+test('WARDEN1 wire: the park word carries its landing (within a map pixel of its wagon), and with it its town and its road - none of them without a landing; the relay this client ships with keeps the watch\'s clock (WARDEN_RELAY_MIN)', () => {
   const v = validParkData({ c: CA, a: [AX, AZ], r: { w: W(), ly: LY, tw: 77, rd: 1 } });
   assert.deepEqual(v.r, { w: W(), ly: LY, tw: 77, rd: 1 });
   assert.deepEqual(validParkData({ c: CA, a: [AX, AZ], r: { w: W(), tw: 77, rd: 1 } }).r, { w: W() }, 'no landing: never thrown, so neither the town nor the road rides');
@@ -75,9 +77,8 @@ test('WARDEN1 wire: the park word carries its landing (within a map pixel of its
   for (const tw of [-1, 1.5, '77', WARDEN_TOWN_MAX + 1]) assert.equal('tw' in validParkData({ c: CA, a: [AX, AZ], r: { w: W(), ly: LY, tw } }).r, false, `town ${tw}`);
   assert.equal(validParkData({ c: CA, a: [AX, AZ], r: { w: W(), ly: LY, tw: WARDEN_TOWN_MAX } }).r.tw, WARDEN_TOWN_MAX, 'an unsigned map id');
   assert.equal('rd' in validParkData({ c: CA, a: [AX, AZ], r: { w: W(), ly: LY, rd: 2 } }).r, false, 'the road is 1 or nothing');
-  assert.equal(relaySupportsWarden('world190'), false);
-  assert.equal(relaySupportsWarden(`world${WARDEN_RELAY_MIN}`), true);
   assert.equal(WARDEN_RELAY_MIN, 191);
+  assert.ok(Number(RELAY_VERSION.slice(5)) >= WARDEN_RELAY_MIN, 'AUDIT WARDEN1 D17: relaySupportsWarden had no caller - the version law is the relay\'s own');
 });
 
 test('WARDEN1 wire: wardenVerdicts - a road team WARDEN_ROAD_MS after it came to stand (not a moment before); a town past WARDEN_TOWN_CAP throws its longest parked, ties by key; a team already thrown, or one with no landing, neither thrown nor counted; `next` the soonest road team', () => {
@@ -109,7 +110,7 @@ test('WARDEN1 wire: the cell\'s round is due when it has not read its teams sinc
   assert.equal(wardenDue(undefined, 0), true);
   assert.equal(wardenDue(null, 1e15), false, 'none waits');
   assert.equal(wardenDue(100, 99), false); assert.equal(wardenDue(100, 100), true);
-  assert.deepEqual(validParkYeet({ t: 'parkYeet', at: 5, from: [AX, AZ], to: LY }), { at: 5, from: [AX, AZ], to: LY });
+  assert.deepEqual(validParkYeet({ t: 'parkYeet', at: 5, from: [AX, AZ], to: LY }), { at: 5, from: [AX, AZ], to: LY, k: null });
   assert.equal(validParkYeet({ at: 5, from: [AX, AZ], to: [AX + WARDEN_LAND_REACH + 1, AZ] }), null);
   assert.equal(validParkYeet({ at: 5, from: [POSE_BOUND + 1, AZ], to: [POSE_BOUND + 1, AZ] }), null);
   assert.equal(validParkYeet({ from: [AX, AZ], to: LY }), null);
@@ -118,8 +119,12 @@ test('WARDEN1 wire: the cell\'s round is due when it has not read its teams sinc
   assert.deepEqual(parkSpotOf({ h: H(7, 8) }), [7, 8]);
   assert.equal(parkSpotOf({}), null);
   assert.equal(parkSameSpot({ w: W(), h: H(), n: 'Bess' }, { w: W(), h: H(), n: 'Bessie' }), true, 'a new name moves nothing');
-  assert.equal(parkSameSpot({ w: W() }, { w: W(AX + 1) }), false);
-  assert.equal(parkSameSpot({ w: W() }, { w: W(), h: H() }), false, 'a horse come to stand by it is a new team');
+  // PIN MOVED (AUDIT WARDEN1 R2): the team's spot, not every part exactly - a ground solved again, a horse not yet drawn
+  assert.equal(parkSameSpot({ w: W() }, { w: W(AX + WARDEN_SPOT_NATIVES) }), true);
+  assert.equal(parkSameSpot({ w: W() }, { w: W(AX + WARDEN_SPOT_NATIVES + 1) }), false);
+  assert.equal(parkSameSpot({ w: W() }, { w: W(AX, AZ - WARDEN_SPOT_NATIVES - 1) }), false);
+  assert.equal(parkSameSpot({ w: W() }, { w: W(), h: H() }), true, 'a horse said or not stands the wagon where it stood');
+  assert.equal(parkSameSpot({ w: W() }, { h: H(AX, AZ) }), false, 'a wagon\'s and a lone horse\'s never');
   assert.equal(parkSameSpot(null, { w: W() }), false);
 });
 
@@ -141,7 +146,7 @@ test('WARDEN1 relay: a team on a road ten minutes is thrown at the first frame p
     const fan = thrownFans(bob);
     assert.equal(fan.length, 1);
     assert.equal(fan[0].y, now()); assert.equal(fan[0].k, k); assert.deepEqual(fan[0].data.ly, LY);
-    assert.deepEqual(framesOf(ann, 'parkYeet'), [{ t: 'parkYeet', at: now(), from: [AX, AZ], to: LY }]);
+    assert.deepEqual(framesOf(ann, 'parkYeet'), [{ t: 'parkYeet', at: now(), from: [AX, AZ], to: LY, k }]);
     assert.equal(thrownFans(ann).length, 0, 'the owner is told, never fanned their own');
     assert.equal(w.room(X).store.get(parkKey(k)).y, now());
     await w.room(X).ping(bob);
@@ -181,7 +186,7 @@ test('WARDEN1 relay: an owner away when the watch throws - a joiner\'s list draw
     assert.deepEqual(framesOf(back, 'parks')[0].data, [], 'never handed its own');
     assert.equal(framesOf(back, 'parkYeet').length, 0, 'told only as it speaks for the team');
     await park(X, back, { c: CA, a: [AX, AZ], r: road() });
-    assert.deepEqual(framesOf(back, 'parkYeet'), [{ t: 'parkYeet', at: list[0].y, from: [AX, AZ], to: LY }], 'told when it was thrown, where from and where to');
+    assert.deepEqual(framesOf(back, 'parkYeet'), [{ t: 'parkYeet', at: list[0].y, from: [AX, AZ], to: LY, k }], 'told when it was thrown, where from and where to, and whose');
   });
 });
 
@@ -204,7 +209,7 @@ test('WARDEN1 relay: a woken cell reads its teams at its first frame (a hibernat
     const a2 = await join2(X, 'ann1'), b2 = await join2(X, 'bob1');
     await park2(X, a2, { c: CA, a: [AX, AZ], r: road() });
     step(5 * 60 * 1000);
-    await park2(X, a2, { c: CA, a: [AX + 10, AZ], r: road({ w: W(AX + 10) }) });
+    await park2(X, a2, { c: CA, a: [AX + 100, AZ], r: road({ w: W(AX + 100) }) });   // PIN MOVED (AUDIT WARDEN1 R2): a move past WARDEN_SPOT_NATIVES
     assert.equal(w2.room(X).store.get(parkKey(k)).since, now());
     step(5 * 60 * 1000);
     await w2.room(X).ping(b2);
@@ -244,7 +249,7 @@ test('WARDEN1 relay: a fifth team in a town throws the longest parked there, at 
 
 test('WARDEN1 relay hosts: the frame\'s door runs the round when it is due; the alarm is its other duties\' alone; a socket speaking for a team is marked (`pk`) so the watch can tell it', () => {
   const s = rd('server/src/index.js');
-  assert.match(s, /if \(a\.id && isCellRoom\(a\.key\) && wardenDue\(this\._wardenAt, Date\.now\(\)\)\) await this\._parkWarden\(Date\.now\(\)\);/);
+  assert.match(s, /if \(a\.id && isCellRoom\(a\.key\) && wardenDue\(this\._wardenAt, Date\.now\(\)\)\) \{\n\s+try \{ await this\._parkWarden\(Date\.now\(\)\); \} catch \(e\) \{ this\._parks = null; this\._wardenAt = Date\.now\(\) \+ WARDEN_RETRY_MS;/);   // PIN MOVED (AUDIT WARDEN1 R4): the round's failure is its own
   const alarm = s.slice(s.indexOf('  async alarm() {'), s.indexOf('  /** The alarm\'s duties past the boss rooms\' beats'));
   assert.equal(alarm.includes('_parkWarden'), false, 'the alarm throws nothing');
   assert.match(s, /if \(a\.pk !== k\) \{ a = \{ \.\.\.a, pk: k \}; this\._setAttach\(ws, a\); \}/);
@@ -309,7 +314,8 @@ test('WARDEN1 law: a thrown record has every part moved by the throw, its height
   assert.deepEqual(t.w, [2, AX + dx, 1, AZ + dz, 0, 0, 0, 1, 50, 0]);
   assert.deepEqual(t.h, [AX + 120 + dx, 1, AZ + dz, 0, 1, 0]);
   assert.deepEqual(r.w, W(), 'a fresh record');
-  assert.deepEqual(thrownRecord({ h: H(), ly: LY }).h, [LY[0], 1, LY[1], 0, 1, 0], 'a lone horse lands where it is thrown');
+  const lone = { h: H(), ly: LY };
+  assert.equal(thrownRecord(lone), lone, 'PIN MOVED (AUDIT WARDEN1 R3): a lone horse is no cart - never thrown');
   const r0 = { w: W() };
   assert.equal(thrownRecord(r0), r0, 'no landing: as it is');
   assert.equal(thrownRecord(null), null);
@@ -469,7 +475,8 @@ function fakeRenderer() {
     destroyBillboardBatch: (b) => gone.push(b),
   };
 }
-const guardTex = { getFrameCount: () => 4, getSize: () => ({ width: 40, height: 80 }), getScale: () => ({ x: 0, y: 0 }) };
+// AUDIT WARDEN1: the scale's shape as textureFile.js mints it ({ width, height } - the fixture's { x, y } sized the guard NaN)
+const guardTex = { getFrameCount: () => 4, getSize: () => ({ width: 40, height: 80 }), getScale: () => ({ width: 0, height: 0 }) };
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 test('WARDEN1 show: a throw holds the team under every key it may be drawn under, waits a moment for the guard\'s picture, walks, lifts it over the guard\'s head, throws it to the landing and sets it down there, the guard gone after; every billboard it made is let go; a second throw of one team while the first plays is none', async () => {
@@ -572,7 +579,11 @@ test('WARDEN1 host: my parked wagon is stamped once the ground under it is built
   const s = hw.h.stamp;
   assert.equal(s.tw, 77); assert.equal(s.rd, true); assert.deepEqual(s.a, [AX + 40, AZ]);
   assert.deepEqual(hw.h.word([AX + 40, AZ]), { ly: s.ly, tw: 77, rd: 1 });
-  assert.equal(s.ly[0], Math.round(-WARDEN_LAND_PAST * 40 - 5 * 40 + AX), 'out through the west edge (the nearest), a stray along it');
+  // PIN MOVED (AUDIT WARDEN1 R6): out through the nearest edge whose landing keeps the team in its own map pixel - the
+  // west's (6 m off) and the south's (50 m) leave pixel (100, 150), the north's (52.4 m) stands in it, strayed along it
+  const along = Math.max(0, Math.min(64 * NAV_CELL, 6 + strayOf([AX + 40, AZ]) * WARDEN_LAND_SCATTER));
+  assert.deepEqual(s.ly, [Math.round((along - 5) * 40 + AX), Math.round((64 * NAV_CELL + WARDEN_LAND_PAST - 50) * 40 + AZ)]);
+  assert.deepEqual(mapPixelOfWire(s.ly[0], s.ly[1]), mapPixelOfWire(AX + 40, AZ));
   assert.deepEqual(hw.h.getSaveData(), s, 'the save keeps it');
   hw.step(WARDEN_ROAD_MS - 1); hw.h.tick();
   assert.equal(hw.adopted.length, 0);
@@ -596,6 +607,8 @@ test('WARDEN1 host: my parked wagon is stamped once the ground under it is built
 test('WARDEN1 host: the cell\'s word to me moves my save and plays the throw from where my wagon was drawn; a word about another\'s team plays its throw once, from its live team else its kept one; a word with no landing, or one said already, plays nothing; far off nothing is played', () => {
   const hw = hostWorld({ onlineSession: {}, town: 'here' });
   assert.equal(hw.h.onParkYeet(X, { at: 1, from: [AX, AZ], to: LY }), true);
+  assert.deepEqual(hw.adopted, [], 'PIN MOVED (AUDIT WARDEN1 C4): kept for the next street frame');
+  hw.h.tick();
   assert.deepEqual(hw.adopted, [[[AX, AZ], LY]]);
   assert.equal(hw.started[0].key, 'mine'); assert.deepEqual(hw.told.length, 2);
   const kA = 'a'.repeat(24);

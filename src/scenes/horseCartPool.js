@@ -290,8 +290,12 @@ export function createHorseCartPool({
   let _keptSeq = 0;
   let _lastKey = '';
   // WARDEN1 (systems/wagonWarden.js): the teams the town watch is carrying - '' mine, a peer's key - drawn by its show
-  // (scenes/wagonWardenShow.js) and not here: no wagon, no horse, no harness, no box for the ray or my collider
-  const _held = new Set();
+  // (scenes/wagonWardenShow.js) and not here: no wagon, no horse it carries, no harness, no box for the ray or my
+  // collider, no seat to ride. AUDIT WARDEN1: counted (two shows over one key - a peer's live word - each set it down
+  // only once both have), and `lone` whether a lone horse beside it is carried too (one following its owner, or left
+  // further off, is not: drawn as it stands - C2). owner -> { n, lone }
+  /** @type {Map<string, { n: number, lone: boolean }>} */
+  const _held = new Map();
   let wardenWord = null;   // WARDEN1: setWardenWord's - (anchor) => the park word's watch fields ({ ly, tw?, rd? }) or null
 
   const fetchPng = async (file) => {
@@ -902,7 +906,8 @@ export function createHorseCartPool({
    * away (I own two). A horse with no wagon to pull is itself, alone.
    */
   function teamOf(owner, s = owner === '' ? shown() : null, dt = 0, grows = _lastGrows) {
-    if (_held.has(owner)) { _teamWalk.delete(owner); return []; }   // WARDEN1: on the watch's shoulders
+    const held = _held.get(owner) ?? null;   // WARDEN1: on the watch's shoulders - its lone horse too, unless the throw leaves it
+    if (held?.lone) { _teamWalk.delete(owner); return []; }
     const mine = owner === '';
     const p = mine ? null : _peers.get(owner);
     const w = mine ? s?.wagon ?? null : p?.wagon ?? null;
@@ -919,6 +924,7 @@ export function createHorseCartPool({
     _teamWalk.delete(owner);
     const out = [];
     const inHarness = !!lone && !!w && (w.kind === HCC_WIRE_KIND.Following || (w.kind === HCC_WIRE_KIND.Deployed && !!w.hitched));
+    if (held) return lone && !inHarness ? [{ ...lone, g: 1, drawn: true, hitched: false, side: 0 }] : [];   // WARDEN1: a horse the throw leaves
     if (inHarness && parts) {
       // AUDIT WAGONS3 T2: my pair's wagon left in harness with one horse (a horse sold from under the team, an older
       // save) stands that one beside the pole - its mate was a horse I do not own. A peer's word says no count, so
@@ -1282,6 +1288,7 @@ export function createHorseCartPool({
   /** WAGONS1: seat `k` of another player's wagon as drawn here (where I ride), or null. */
   function peerSeat(owner, k) {
     const p = _peers.get(owner);
+    if (_held.has(owner)) return null;   // AUDIT WARDEN1 C10: lifted - no seat to sit on (wagonRiders.js stands its rider down)
     return p?.wagon && p.shownWagon ? seatWorld(p.wagon.model, p.shownWagon, p.shownRotation ?? p.wagon.rotation, k, p.wagon.kind !== HCC_WIRE_KIND.Deployed || p.wagon.hitched) : null;
   }
   /** WAGONS2 (FINAL AUDIT): seat `k` of another player's wagon where its WORD stands it (the pose the owner's frame
@@ -1295,7 +1302,7 @@ export function createHorseCartPool({
   function peerRide(owner) {
     const p = _peers.get(owner);
     if (!p || p.kept) return null;
-    return { model: p.wagon?.model ?? null, kind: p.wagon?.kind ?? null, passengers: p.wagon?.passengers ?? [], go: p.go ?? null, declined: p.pn ?? [], position: p.shownWagon ?? null, wire: p.wire?.w?.position ?? null };
+    return { model: p.wagon?.model ?? null, kind: p.wagon?.kind ?? null, passengers: p.wagon?.passengers ?? [], go: p.go ?? null, declined: p.pn ?? [], position: p.shownWagon ?? null, wire: p.wire?.w?.position ?? null, held: _held.has(owner) };   // WARDEN1: `held` the town watch lifts it
   }
   /** WAGONS1: the seats my wagon has - its model's, once up (0 for no wagon of mine standing). */
   function mySeatCount() {
@@ -1501,14 +1508,18 @@ export function createHorseCartPool({
     }
   }
 
-  /** WARDEN1: AN OWNER'S TEAM AS DRAWN THIS FRAME ('' mine, a peer's key) - what the town watch lifts: the wagon's kind
-   *  and paint, where it stands and how it is turned (the scene's), and each horse drawn with it (its feet, its facing) -
-   *  or null where no wagon of theirs is drawn. Read before the hold (a held team is drawn nowhere). */
-  function teamSnapshot(owner) {
+  /** WARDEN1: AN OWNER'S TEAM AS DRAWN THIS FRAME ('' mine, a peer's key) - what the town watch lifts: the wagon's kind,
+   *  paint, load (`tier`), wheels (`turn`) and hitch, where it stands and how it is turned (the scene's), the owner's
+   *  concealment (a peer's look), and each horse drawn with it (its feet, its facing) - those in its harness (a hitched
+   *  wagon's horse is its team's, its parts in or not), and a lone one beside it only when `lone` says the throw takes it (AUDIT WARDEN1 C2/C8/C13) - or null where no wagon of theirs
+   *  is drawn. Read before the hold (a held team is drawn nowhere). */
+  function teamSnapshot(owner, lone = false) {
     const f = drawnFrameOf(owner, {});
     if (!f) return null;
-    const horses = (_teams.get(owner) ?? []).filter((h) => h.drawn).map((h) => ({ at: [h.position[0], h.position[1], h.position[2]], forward: [h.forward[0], h.forward[1], h.forward[2]] }));
-    return { kind: f.wagon.model, look: f.wagon.look ?? null, at: [f.at[0], f.at[1], f.at[2]], rotation: [...f.rotation], horses };
+    const horses = (_teams.get(owner) ?? []).filter((h) => h.drawn && (h.hitched || f.hitched || lone)).map((h) => ({ at: [h.position[0], h.position[1], h.position[2]], forward: [h.forward[0], h.forward[1], h.forward[2]] }));
+    const p = owner === '' ? null : _peers.get(owner) ?? null;
+    const w = f.wagon, turn = owner === '' ? w.turn ?? { angle: w.angle ?? 0 } : p?.turn ?? { angle: w.angle ?? 0 };
+    return { kind: w.model, look: w.look ?? null, tier: w.tier ?? 0, turn, hitched: !!f.hitched, conceal: p?.look ?? null, lone: !!lone, at: [f.at[0], f.at[1], f.at[2]], rotation: [...f.rotation], horses };
   }
 
   // ── HCC-PARK: THE CELL'S MEMORY OF A PARKED TEAM (net/wire.js's header)
@@ -1583,7 +1594,12 @@ export function createHorseCartPool({
     /** WARDEN1 (scenes/wagonWardenHost.js): the host's watch fields for my park word's anchor - { ly, tw?, rd? } or null. */
     setWardenWord(fn) { wardenWord = typeof fn === 'function' ? fn : null; },
     /** WARDEN1: an owner's team ('' mine, a peer's key - keptOwner for a kept one) carried by the town watch, or set down. */
-    holdTeam(owner, on) { if (typeof owner !== 'string') return; if (on) _held.add(owner); else _held.delete(owner); },
+    holdTeam(owner, on, lone = true) {
+      if (typeof owner !== 'string') return;
+      const h = _held.get(owner);
+      if (on) { if (h) { h.n++; h.lone = h.lone || !!lone; } else _held.set(owner, { n: 1, lone: !!lone }); }
+      else if (h && --h.n <= 0) _held.delete(owner);
+    },
     get held() { return _held; },
     keptOwner: (k) => keptKey(k),
     teamSnapshot,
@@ -1616,6 +1632,6 @@ export function createHorseCartPool({
     /** MERCHANT-YARDS (scenes/merchantYardsHost.js): A WAGON ON SHOW in a town's Wagon Yard - one of `kind`, standing
      *  empty, unhitched, its wheels at rest and its paint its own, at `position` turned by `rotation` (Unity's quaternion):
      *  drawn as a parked one is (drawWagon). Answers whether it drew (false while its parts still build). */
-    drawShowWagon: (r, texRemap, position, rotation, kind, look = null) => drawWagon(r, texRemap, position, rotation, 0, null, 1, kind, false, look),   // WARDEN1: the watch's carried wagon in its own paint
+    drawShowWagon: (r, texRemap, position, rotation, kind, look = null, tier = 0, turn = null, hitched = false) => drawWagon(r, texRemap, position, rotation, tier, turn, 1, kind, hitched, look),   // WARDEN1: the watch's carried wagon in its own paint, load, wheels and hitch (AUDIT WARDEN1 C8)
   };
 }

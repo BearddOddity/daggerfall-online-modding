@@ -37,6 +37,13 @@ export const WARDEN_FOOT_STEPS = 3;
 /** How far (natives, either axis) the save's anchor may stand from the spot a throw names and still be the team thrown -
  *  the wagon as drawn and the save's axle part by its ground solve. */
 export const WARDEN_SAME_NATIVES = 400;
+/** How near its wagon (natives, either axis) a horse stands to be thrown with it: one in its shafts (the longest hitch,
+ *  the Caravan's 7.7 m, and its pair's side) or left standing beside it - 12 m. One further off is its own (AUDIT WARDEN1
+ *  C1: a horse ridden off and left at a shop leapt with the wagon). */
+export const WARDEN_HORSE_BY_NATIVES = 480;
+/** Whether a horse standing at `horse` is thrown with a wagon standing at `wagon` ([x, z] natives each). Pure. */
+export const horseThrownWith = (/** @type {number[]|null} */ wagon, /** @type {number[]|null} */ horse) =>
+  !!wagon && !!horse && Math.abs(horse[0] - wagon[0]) <= WARDEN_HORSE_BY_NATIVES && Math.abs(horse[1] - wagon[1]) <= WARDEN_HORSE_BY_NATIVES;
 /** What the owner is told. */
 export const WARDEN_TEXT = Object.freeze({
   thrown: (/** @type {string} */ town) => `The town watch has thrown your wagon out of ${town || 'town'}!`,
@@ -68,24 +75,23 @@ export function footprintRoadShare(weightAt, width, height, cell, at, forward, h
 }
 
 /**
- * Where the watch throws a wagon standing at `at` [x, z] in a town whose ground is `rect` [x0, z0, x1, z1] (the location
- * frame, metres): straight out through its nearest edge (a tie goes west, east, south, north in that order),
- * WARDEN_LAND_PAST beyond it, strayed along the edge by `stray` in [-1, 1] times WARDEN_LAND_SCATTER (never past the
- * edge's ends). Pure.
+ * Where the watch may throw a wagon standing at `at` [x, z] in a town whose ground is `rect` [x0, z0, x1, z1] (the
+ * location frame, metres): straight out through each of its edges, the nearest first (a tie goes west, east, south,
+ * north in that order), WARDEN_LAND_PAST beyond it, strayed along the edge by `stray` in [-1, 1] times
+ * WARDEN_LAND_SCATTER (never past the edge's ends). The host takes the first that keeps the team in its own map pixel,
+ * else in its own cell (AUDIT WARDEN1 R6 - wagonWardenHost.js stampAt). Pure.
  * @param {number[]} rect @param {number[]} at @param {number} [stray]
  */
-export function landingOf(rect, at, stray = 0) {
+export function landingsOf(rect, at, stray = 0) {
   const [x0, z0, x1, z1] = rect;
   const d = [at[0] - x0, x1 - at[0], at[1] - z0, z1 - at[1]];
-  let side = 0;
-  for (let i = 1; i < 4; i++) if (d[i] < d[side]) side = i;
   const s = Math.max(-1, Math.min(1, Number.isFinite(stray) ? stray : 0)) * WARDEN_LAND_SCATTER;
   const along = (/** @type {number} */ v, /** @type {number} */ lo, /** @type {number} */ hi) => Math.max(lo, Math.min(hi, v + s));
-  if (side === 0) return [x0 - WARDEN_LAND_PAST, along(at[1], z0, z1)];
-  if (side === 1) return [x1 + WARDEN_LAND_PAST, along(at[1], z0, z1)];
-  if (side === 2) return [along(at[0], x0, x1), z0 - WARDEN_LAND_PAST];
-  return [along(at[0], x0, x1), z1 + WARDEN_LAND_PAST];
+  const out = [[x0 - WARDEN_LAND_PAST, along(at[1], z0, z1)], [x1 + WARDEN_LAND_PAST, along(at[1], z0, z1)], [along(at[0], x0, x1), z0 - WARDEN_LAND_PAST], [along(at[0], x0, x1), z1 + WARDEN_LAND_PAST]];
+  return [0, 1, 2, 3].sort((i, j) => d[i] - d[j] || i - j).map((i) => out[i]);
 }
+/** The nearest of landingsOf's: straight out through the town's nearest edge. Pure. */
+export const landingOf = (/** @type {number[]} */ rect, /** @type {number[]} */ at, stray = 0) => landingsOf(rect, at, stray)[0];
 /** A wagon's stray off its anchor's natives, in [-1, 1] - the same anchor, the same stray. Pure. */
 export function strayOf(/** @type {number[]} */ anchor) {
   let h = (Math.imul(anchor[0] | 0, 73856093) ^ Math.imul(anchor[1] | 0, 19349663)) >>> 0;
@@ -127,16 +133,16 @@ export function wardenWordOf(stamp, anchor) {
 export function offlineDue(/** @type {any} */ stamp, /** @type {number[]} */ anchor, /** @type {number} */ now) {
   return stampFits(stamp, anchor) && stamp.rd === true && !!stamp.ly && now - stamp.at >= WARDEN_ROAD_MS;
 }
-/** A thrown team's park record: each part moved by the throw (the record's `ly` less where it stood - parkSpotOf), its
- *  heights as said (a reader stands it on its own ground). A record with no landing is answered as it is. Pure - a fresh
- *  record. */
+/** A thrown team's park record: the wagon moved by the throw (the record's `ly` less where it stood - parkSpotOf), and its
+ *  horse with it when it stands by it (horseThrownWith - one further off stays), heights as said (a reader stands it on
+ *  its own ground). A record with no wagon or no landing is answered as it is. Pure - a fresh record. */
 export function thrownRecord(/** @type {any} */ r) {
   const from = parkSpotOf(r), to = r?.ly;
-  if (!from || !Array.isArray(to) || to.length !== 2 || !to.every(Number.isFinite)) return r;
+  if (!Array.isArray(r?.w) || !from || !Array.isArray(to) || to.length !== 2 || !to.every(Number.isFinite)) return r;
   const dx = to[0] - from[0], dz = to[1] - from[1];
-  const out = { ...r };
-  if (Array.isArray(r.w)) { out.w = [...r.w]; out.w[1] += dx; out.w[3] += dz; }
-  if (Array.isArray(r.h)) { out.h = [...r.h]; out.h[0] += dx; out.h[2] += dz; }
+  const out = { ...r, w: [...r.w] };
+  out.w[1] += dx; out.w[3] += dz;
+  if (Array.isArray(r.h) && horseThrownWith(from, [r.h[0], r.h[2]])) { out.h = [...r.h]; out.h[0] += dx; out.h[2] += dz; }
   return out;
 }
 /** Where a save's anchor goes when the watch threw its team from `from` to `to` ([x, z] natives each): by the same move -

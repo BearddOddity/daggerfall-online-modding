@@ -47,8 +47,8 @@
   {
     "name": "WARDEN-thrown-counted",
     "file": "src/net/wire.js",
-    "old": "filter((e) => e && typeof e.k === 'string' && !e.y && Array.isArray(e.r?.ly));",
-    "new": "filter((e) => e && typeof e.k === 'string' && Array.isArray(e.r?.ly));",
+    "old": "filter((e) => e && typeof e.k === 'string' && !e.y && Array.isArray(e.r?.w) && Array.isArray(e.r?.ly));",
+    "new": "filter((e) => e && typeof e.k === 'string' && Array.isArray(e.r?.w) && Array.isArray(e.r?.ly));",
     "tests": [
       "test/warden1.test.js"
     ]
@@ -56,8 +56,8 @@
   {
     "name": "WARDEN-landless-thrown",
     "file": "src/net/wire.js",
-    "old": "filter((e) => e && typeof e.k === 'string' && !e.y && Array.isArray(e.r?.ly));",
-    "new": "filter((e) => e && typeof e.k === 'string' && !e.y && !!e.r);",
+    "old": "filter((e) => e && typeof e.k === 'string' && !e.y && Array.isArray(e.r?.w) && Array.isArray(e.r?.ly));",
+    "new": "filter((e) => e && typeof e.k === 'string' && !e.y && Array.isArray(e.r?.w));",
     "tests": [
       "test/warden1.test.js"
     ]
@@ -83,8 +83,8 @@
   {
     "name": "WARDEN-land-anywhere",
     "file": "src/net/wire.js",
-    "old": "Math.abs(ly[0] - a[0]) <= WARDEN_LAND_REACH && Math.abs(ly[1] - a[1]) <= WARDEN_LAND_REACH) {",
-    "new": "Math.abs(ly[0] - a[0]) <= 2 * WARDEN_LAND_REACH && Math.abs(ly[1] - a[1]) <= WARDEN_LAND_REACH) {",
+    "old": "Math.abs(ly[0] - spot[0]) <= WARDEN_LAND_REACH && Math.abs(ly[1] - spot[1]) <= WARDEN_LAND_REACH) {",
+    "new": "Math.abs(ly[0] - spot[0]) <= 2 * WARDEN_LAND_REACH && Math.abs(ly[1] - spot[1]) <= WARDEN_LAND_REACH) {",
     "tests": [
       "test/warden1.test.js"
     ]
@@ -110,8 +110,8 @@
   {
     "name": "WARDEN-yeet-unbounded",
     "file": "src/net/wire.js",
-    "old": "  if (Math.abs(m.to[0] - m.from[0]) > WARDEN_LAND_REACH || Math.abs(m.to[1] - m.from[1]) > WARDEN_LAND_REACH) return null;\n  return { at: m.at,",
-    "new": "  return { at: m.at,",
+    "old": "  if (Math.abs(m.to[0] - m.from[0]) > WARDEN_LAND_REACH || Math.abs(m.to[1] - m.from[1]) > WARDEN_LAND_REACH) return null;\n  if (m.k",
+    "new": "  if (m.k",
     "tests": [
       "test/warden1.test.js"
     ]
@@ -119,8 +119,8 @@
   {
     "name": "WARDEN-spot-blind-to-x",
     "file": "src/net/wire.js",
-    "old": "same(a.w, b.w, [1, 2, 3])",
-    "new": "same(a.w, b.w, [2, 3])",
+    "old": "Math.abs(p[0] - q[0]) <= WARDEN_SPOT_NATIVES && Math.abs(p[1] - q[1])",
+    "new": "Math.abs(p[1] - q[1])",
     "tests": [
       "test/warden1.test.js"
     ]
@@ -236,8 +236,8 @@
   {
     "name": "WARDEN-farthest-edge",
     "file": "src/systems/wagonWarden.js",
-    "old": "  for (let i = 1; i < 4; i++) if (d[i] < d[side]) side = i;",
-    "new": "  for (let i = 1; i < 4; i++) if (d[i] > d[side]) side = i;",
+    "old": "return [0, 1, 2, 3].sort((i, j) => d[i] - d[j] || i - j).map((i) => out[i]);",
+    "new": "return [0, 1, 2, 3].sort((i, j) => d[j] - d[i] || i - j).map((i) => out[i]);",
     "tests": [
       "test/warden1.test.js"
     ]
@@ -245,8 +245,8 @@
   {
     "name": "WARDEN-lands-inside",
     "file": "src/systems/wagonWarden.js",
-    "old": "  if (side === 0) return [x0 - WARDEN_LAND_PAST, along(at[1], z0, z1)];",
-    "new": "  if (side === 0) return [x0 + WARDEN_LAND_PAST, along(at[1], z0, z1)];",
+    "old": "const out = [[x0 - WARDEN_LAND_PAST, along(at[1], z0, z1)],",
+    "new": "const out = [[x0 + WARDEN_LAND_PAST, along(at[1], z0, z1)],",
     "tests": [
       "test/warden1.test.js"
     ]
@@ -290,8 +290,8 @@
   {
     "name": "WARDEN-record-half-moved",
     "file": "src/systems/wagonWarden.js",
-    "old": "  if (Array.isArray(r.w)) { out.w = [...r.w]; out.w[1] += dx; out.w[3] += dz; }",
-    "new": "  if (Array.isArray(r.w)) { out.w = [...r.w]; out.w[1] += dx; }",
+    "old": "  out.w[1] += dx; out.w[3] += dz;",
+    "new": "  out.w[1] += dx;",
     "tests": [
       "test/warden1.test.js"
     ]
@@ -299,8 +299,8 @@
   {
     "name": "WARDEN-horse-left-behind",
     "file": "src/systems/wagonWarden.js",
-    "old": "  if (Array.isArray(r.h)) { out.h = [...r.h]; out.h[0] += dx; out.h[2] += dz; }",
-    "new": "  if (Array.isArray(r.h)) { out.h = [...r.h]; }",
+    "old": "{ out.h = [...r.h]; out.h[0] += dx; out.h[2] += dz; }",
+    "new": "{ out.h = [...r.h]; }",
     "tests": [
       "test/warden1.test.js"
     ]
@@ -344,7 +344,7 @@
   {
     "name": "WARDEN-held-team-stands",
     "file": "src/scenes/horseCartPool.js",
-    "old": "    if (_held.has(owner)) { _teamWalk.delete(owner); return []; }   // WARDEN1: on the watch's shoulders\n",
+    "old": "    if (held?.lone) { _teamWalk.delete(owner); return []; }\n",
     "new": "",
     "tests": [
       "test/warden1.test.js"
@@ -479,7 +479,7 @@
   {
     "name": "WARDEN-show-not-overhead",
     "file": "src/scenes/wagonWardenShow.js",
-    "old": "  const overHead = (s, G, rot) => vsub([G[0], G[1] + WARDEN_HEAD, G[2]], quatRotate(rot, s.floor));",
+    "old": "  const overHead = (s, G, rot) => vsub([G[0], G[1] + s.head, G[2]], quatRotate(rot, s.floor));",
     "new": "  const overHead = (s, G, rot) => vsub([G[0], G[1], G[2]], quatRotate(rot, s.floor));",
     "tests": [
       "test/warden1.test.js"
@@ -542,8 +542,8 @@
   {
     "name": "WARDEN-reader-live-unheld",
     "file": "src/scenes/wagonWardenHost.js",
-    "old": "      return play(key, [e.id, hcc.keptOwner(e.k)], e.r.ly);",
-    "new": "      return play(key, [hcc.keptOwner(e.k)], e.r.ly);",
+    "old": "const [snap, owners] = onSpot(live, spot) ? [live, [e.id, kept]]",
+    "new": "const [snap, owners] = onSpot(live, spot) ? [live, [kept]]",
     "tests": [
       "test/warden1.test.js"
     ]
