@@ -328,7 +328,9 @@ test('U41: the world host mounts the art window and keeps performFastTravel\'s o
   // PIN MOVED (AUDIT LW-II-2 H9), 11600 -> 12000: the stood hideout let go beside the camps, with its note, above the last
   // needle (it stands at 11702); WARDEN1's teardown line (`wardenShows?.destroyAll()`, the re-anchor ending a town watch's
   // throw in flight) stands it at 11920, inside the same window
-  const core = src.slice(k, k + 12000);
+  // PIN MOVED (HELM-JUMP, FIELD BUGS 2026-10-11), 12000 -> 12600: a jump lets go of Come Sail Away's helm first, with its
+  // note, above the needles (the last stands at 12333)
+  const core = src.slice(k, k + 12600);
   for (const needle of ['destroyPixel(bx, by)', 'state.init(px, py)', 'awaitedBuild(first.px']) {
     assert.ok(core.includes(needle), `the core carries ${needle}`);
   }

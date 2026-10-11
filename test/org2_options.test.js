@@ -182,7 +182,9 @@ test('ORG2 by source: one screen - the rail is the tabs and counts what each dra
   const menu = read('src/ui/enhancedMenu.js');
   const pane = menu.slice(menu.indexOf('function paneSettings('), menu.indexOf('\n}\n', menu.indexOf('function paneSettings(')));
   assert.match(pane, /for \(const cat of CATEGORIES\) \{/, 'the rail is the map\'s tabs');
-  assert.match(pane, /list\.append\(optionsToolbar\(body, \{ pause \}\), body\);\s*\n\s*paintOptionsBody\(body, \{ pause \}\);/, 'the toolbar over the body');
+  // PIN MOVED (UNSAVED-MARK, FIELD BUGS 2026-10-11): the toolbar is named, so the list can measure it for the bindings'
+  // sticky head (stickUnderToolbar) - still over the body, still before it paints
+  assert.match(pane, /const tools = optionsToolbar\(body, \{ pause \}\);\s*\n\s*list\.append\(tools, body\);[^\n]*\n\s*stickUnderToolbar\(list, tools\);[^\n]*\n\s*paintOptionsBody\(body, \{ pause \}\);/, 'the toolbar over the body');
   const paint = menu.slice(menu.indexOf('function paintOptionsBody('), menu.indexOf('\n}\n', menu.indexOf('function paintOptionsBody(')));
   assert.match(paint, /if \(q\) \{\s*\n\s*let found = 0;\s*\n\s*for \(const tab of CATEGORIES\) \{/, 'a search reads every tab, not the open one');
   assert.match(paint, /body\.append\(sectionHead\(tab, s, nodes\.filter\(isOptionNode\)\.length, \{ path: true \}\), \.\.\.nodes\);/, 'and says where each find lives');
