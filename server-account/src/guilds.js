@@ -171,7 +171,11 @@ async function actorOf(db, player, character) {
 async function viewOf(db, guildId, me, nowS, marksOpen = false) {
   const g = await db.prepare('SELECT * FROM guilds WHERE id = ?').bind(guildId).first();
   if (!g) return null;
-  const members = await db.prepare('SELECT rowid AS rid, name, rank, joined_at, player, char_id, vault_level, vault_limit, vault_day, vault_taken FROM guild_members WHERE guild_id = ? ORDER BY rank, joined_at, rowid')
+  // GUILD-SEEN: and when each member's account was last at play - its last play beat (ACC4's `played_at`, knocked every
+  // PLAY_BEAT_S while a tab is in the world), or its last authenticated call where it has never beaten. Read in the
+  // roster's own statement: no write, and the players row is found by its key
+  const members = await db.prepare(`SELECT m.rowid AS rid, m.name, m.rank, m.joined_at, m.player, m.char_id, m.vault_level, m.vault_limit, m.vault_day, m.vault_taken,
+    COALESCE(p.played_at, p.last_seen) AS seen_at FROM guild_members m LEFT JOIN players p ON p.id = m.player WHERE m.guild_id = ? ORDER BY m.rank, m.joined_at, m.rowid`)
     .bind(guildId).all();
   // GUILD2b: the vault's shelves - how many are filled of how many (a hall's cupboards add theirs), and this member's
   // standing at it; the pieces themselves are read on the Vault page (guildVault.js vaultOf), never with every look
@@ -207,6 +211,7 @@ async function viewOf(db, guildId, me, nowS, marksOpen = false) {
     members: (members?.results ?? []).map((m) => ({
       member: `m${m.rid}`, name: m.name, rank: m.rank, joinedAt: m.joined_at, you: m.player === me.player && m.char_id === me.char_id,
       vault: standingOf(m),   // GUILD2b: each member's standing - the Members page's grants read it
+      seenAt: Number.isSafeInteger(m.seen_at) ? m.seen_at : null,   // GUILD-SEEN: this service's seconds - the Members page's "last online"
     })),
     invites: (invites?.results ?? []).map((i) => ({ name: i.name, by: i.by_name, at: i.at })),
     ledger: (ledger?.results ?? []).map((l) => ({ at: l.at, who: l.who, kind: l.kind, amount: l.amount, balance: l.balance })),
