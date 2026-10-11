@@ -1,14 +1,5 @@
 [
   {
-    "name": "CHAP6D-ASC-PRICE",
-    "file": "src/net/npcChapterLaw.js",
-    "old": "ascendancyAscendant: 15, ascendancyPrice: 0.9,",
-    "new": "ascendancyAscendant: 15, ascendancyPrice: 1,",
-    "tests": [
-      "test/chap6d_halls.test.js"
-    ]
-  },
-  {
     "name": "CHAP6D-SERVICES",
     "file": "src/net/npcChapterLaw.js",
     "old": "export const CHAPTER_HALL_SERVICES = Object.freeze(['training', 'spells']);",
@@ -29,17 +20,8 @@
   {
     "name": "CHAP6D-FACTOR-BAND",
     "file": "src/net/npcChapterLaw.js",
-    "old": "const band = chapterPatronMember(chapter, guildId) ? CHAPTER_PATRON_PRICE : chapterPriceFactor(chapter.strength);",
-    "new": "const band = chapterPatronMember(chapter, guildId) ? CHAPTER_PATRON_PRICE : 1;",
-    "tests": [
-      "test/chap6d_halls.test.js"
-    ]
-  },
-  {
-    "name": "CHAP6D-FACTOR-ASC",
-    "file": "src/net/npcChapterLaw.js",
-    "old": "* (s.event === 'ascendancy' ? CHAPTER_EVENT_EFFECTS.ascendancyPrice : 1)",
-    "new": "* 1",
+    "old": "const band = chapterPatronMember(chapter, guildId) ? Math.min(own, CHAPTER_PATRON_PRICE) : own;",
+    "new": "const band = chapterPatronMember(chapter, guildId) ? Math.min(own, CHAPTER_PATRON_PRICE) : 1;",
     "tests": [
       "test/chap6d_halls.test.js"
     ]

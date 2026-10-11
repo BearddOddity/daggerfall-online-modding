@@ -435,7 +435,7 @@
   {
     "name": "AUDIT-CHAP4-T1-SEASON-N",
     "file": "server-account/src/npcChapters.js",
-    "old": "const season = counted ?? 0;",
+    "old": "const season = seasonOf(week, zero)?.n ?? 0;",
     "new": "const season = 0;",
     "tests": [
       "test/audit_chap4.test.js"

@@ -58,9 +58,36 @@ import { guildHallEntryOk } from './hallLaw.js';   // GUILD1d: who may walk into
 import { heraldryOf } from './heraldryLaw.js';   // GUILD1d: a heraldry chosen, in the law's shape
 import { mintMarksRid } from './marksBook.js';   // GUILD1d: a heraldry changed burns Drakes - one request id a choice
 import { walletReserve } from './realmGoldLaw.js';   // MARKET-AUDIT: a refusal gives back exactly what the payment took
+import { lastOnlineText } from './social.js';   // GUILD-SEEN: a member's "last online" in the friends list's own words
+import { PLAY_GRACE_S } from './playClock.js';   // GUILD-SEEN: and "Online" by the play beat's own sitting
 
 /** A look older than this is taken again when the tab opens. */
 export const GUILD_FRESH_MS = 30_000;
+
+/** GUILD-SEEN (2026-10-11, the owner: "the guild member list needs a 'last online' info, just like the friend list
+ *  does"): IS A ROSTER MEMBER AT PLAY? The service says each member's `seenAt` - its account's last play beat
+ *  (server-account/src/guilds.js viewOf), knocked every PLAY_BEAT_S while a tab is in the world - and a member is online
+ *  while that sitting is open by the service's own law: no wider gap since the beat than PLAY_GRACE_S, the gap
+ *  accounts.js creditPlay counts as one sitting. The reader's own row is online - they are playing it. Null where the
+ *  service said no stamp (a Worker before acct113): the row then says nothing of presence. */
+export function guildMemberOnline(m, nowMs) {
+  if (!Number.isSafeInteger(m?.seenAt)) return null;
+  return m.you === true || nowMs - m.seenAt * 1000 <= PLAY_GRACE_S * 1000;
+}
+
+/** GUILD-SEEN: a roster row's presence in the friends list's words (net/social.js lastOnlineText) - "Online", "Last
+ *  online 3 h ago" - the service's seconds read against this machine's clock, as the letterbox reads its stamps
+ *  (net/mail.js letterAgeText); '' where the service said no stamp. */
+export function guildSeenText(m, nowMs) {
+  const online = guildMemberOnline(m, nowMs);
+  return online === null ? '' : lastOnlineText(online, m.seenAt * 1000, nowMs);
+}
+
+/** GUILD-SEEN: what a look compares to know whether the tab is painted again - the whole picture LESS each member's
+ *  `seenAt`, which moves with every member's play beat and is read on the panel's live pass instead. A stamp moved
+ *  alone repaints nothing, so a form being typed into on the Members page keeps its words and its focus. */
+const pictureOf = (state, guild, invites) => JSON.stringify([state,
+  Array.isArray(guild?.members) ? { ...guild, members: guild.members.map((m) => ({ ...m, seenAt: undefined })) } : guild, invites]);
 
 /** The answers that mean the request never landed as a change - the service's own refusal words, and a session there
  *  was none of. Anything else (`offline`, `server`, a word this build does not know) may have landed.
@@ -180,12 +207,12 @@ export class GuildBook {
       this.state = 'error'; this.error = (!mine?.ok ? mine?.error : inv?.error) ?? 'server'; this._changed();
       return { ok: false, error: this.error };
     }
-    const was = JSON.stringify([this.state, this.guild, this.invites]);
+    const was = pictureOf(this.state, this.guild, this.invites);
     this.guild = mine.data?.guild ?? null;
     this.invites = Array.isArray(inv.data?.invites) ? inv.data.invites : [];
     this.state = 'ready';
     this.error = null;
-    if (JSON.stringify([this.state, this.guild, this.invites]) !== was) this._changed();
+    if (pictureOf(this.state, this.guild, this.invites) !== was) this._changed();
     // GUILD1c: the membership as the service reads it now, to the rooms - when it moved since the last one handed on
     const key = guildBadgeKey(this.guild);
     if (key !== this._carried && typeof mine.data?.order === 'string') { this._carried = key; this._hand({ order: mine.data.order }); }
@@ -216,7 +243,9 @@ export class GuildBook {
       if (r?.ok && typeof r.data?.outOrder === 'string') this._hand({ outOrder: r.data.outOrder });
       // AUDIT2 GUILD2 S2/S7: a refusal's own reason kept - the word the name filter caught (`why`), and when a refused act may
       // come again (`at`, a rename's fortnight) - so the page can say them
-      return r?.ok ? { ok: true, data: r.data } : { ok: false, error: r?.error ?? 'server', ...(typeof r?.why === 'string' ? { why: r.why } : {}), ...(Number.isSafeInteger(r?.at) ? { at: r.at } : {}) };
+      // GUILD3c (bible/11-Multiplayer/Guilds-Made-Plain.md): and a leave's or a disbanding's whole list of what holds it
+      return r?.ok ? { ok: true, data: r.data } : { ok: false, error: r?.error ?? 'server', ...(typeof r?.why === 'string' ? { why: r.why } : {}), ...(Number.isSafeInteger(r?.at) ? { at: r.at } : {}),
+        ...(Array.isArray(r?.keeps) ? { keeps: [...r.keeps] } : {}) };
     } finally {
       this.busy = false;
       // AUDIT MERGE-PLUS A5: a look already out read the guild BEFORE this act - `refresh` would have handed back that
