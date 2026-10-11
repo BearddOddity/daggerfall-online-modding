@@ -120,7 +120,7 @@ import { createWeapon, bowDamageArrow } from '../combat/enemyEquipment.js';   //
 import { setDefaultEnchantCtx } from '../systems/enchantments.js';   // FS1 (wave D): this host mounts the enchant ctx too
 import { createEnchantCtx, standLooseFoe } from './hostEnchant.js';   // FS1 (wave D): the ONE ctx body + SD1's loose-foe placement
 import { playerArrowHitFoe } from '../combat/arrowFlight.js';   // AUDIT 39 (#64) wave D: the FOURTH host calls the shared player-arrow law rather than carrying a fourth body of it
-import { techniquePierces, shaftSequence } from '../combat/arrowFlight.js';   // TECH1: a piercing technique shaft flies on (bible/05-Combat/Weapon-Techniques.md)
+import { techniquePierces, shaftSequence, stickable, stickArrow, syncStuckArrowDraws, ARROW_MODEL_ID } from '../combat/arrowFlight.js';   // STUCK-ARROWS: a player's shaft that meets the walls stays there, a pile of this host's, drawn in dynamicDraws   // TECH1: a piercing technique shaft flies on (bible/05-Combat/Weapon-Techniques.md)
 import {
   hasBowAttack, isBowWeapon, backstabChanceOf,
   tallySwingSkills, zeroDamageHitSound, SWING_FATIGUE_COST,
@@ -475,6 +475,13 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
 
   const drawList = [];
   const dynamicDraws = [];
+  // STUCK-ARROWS (combat/arrowFlight.js): the stuck shafts' entries in dynamicDraws, by pile, and the 99800 mesh they wear
+  const _stuckDraws = new Map();
+  let _stuckGpu = null;
+  const stuckArrowMesh = () => {
+    if (_stuckGpu === null) { _stuckGpu = false; Promise.resolve(getGpuMesh(ARROW_MODEL_ID)).then((g) => { if (g) _stuckGpu = g; }, () => {}); }
+    return _stuckGpu || null;
+  };
   // PERF5: THE LEVEL'S STATIC MODELS AS ONE MESH. drawList draws every
   // placed model with its own call (the automap still walks it, one
   // entry per revealed model); the main view draws the merge instead -
@@ -4114,7 +4121,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
     technique: {
       motor: () => opts.technique?.motor?.() ?? null,
       face: (p, from) => opts.technique?.face?.(p, from),   // AUDIT TECH1: from where the body lands
-      fireArrow: (from, dir, o) => fireArrow(from, dir, o?.weapon ?? playerWeapon.weapon, true, null, null, o?.sky ? { world: [...from] } : weaponRig.thunderlockMuzzle(fieldOfView()), { technique: o?.technique ?? null, ...(o?.speedScale ? { speedScale: o.speedScale } : {}) }),
+      fireArrow: (from, dir, o) => fireArrow(from, dir, o?.weapon ?? playerWeapon.weapon, true, null, null, o?.sky ? { world: [...from] } : weaponRig.thunderlockMuzzle(fieldOfView()), { technique: o?.technique ?? null, ...(o?.speedScale ? { speedScale: o.speedScale } : {}), ...(o?.summoned ? { summoned: true } : {}) }),   // STUCK-ARROWS: a conjured round's shaft is never given back
       drainFatigue: (n) => drainFatigue(n),
       fx: (recipe, at, o) => magic.techniqueFx?.(recipe, at, o),   // TECH-FX: a technique's burst, in this dungeon's cast engine's impact pass
       shake: (k) => opts.shakeCamera?.(k),   // TECH-FX: the outer host's shaker, as a stagger's and an execution's kick
@@ -4635,6 +4642,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
   }
   function updateMissiles(dt, playerFeet, playerHeight = CAPSULE_HEIGHT) {
     while (_pendingCasts.length) { const c = _pendingCasts.shift(); fireCast(c.index, c.origin); }
+    syncStuckArrowDraws(droppedLoot, dynamicDraws, _stuckDraws, stuckArrowMesh);   // STUCK-ARROWS: before the no-missile return - a stuck shaft outlives every flight
     if (!missiles.length || !playerFeet) return;
     const target = [playerFeet[0], playerFeet[1] + playerHeight / 2, playerFeet[2]];   // AUDIT 62 F21 (review): the PLAYER arm of the aim is the foe arm's law - LastKnownTargetPos is target.transform.position (DaggerfallMissile.cs:571-581 -> EnemySenses.cs:453), and the player's is feet + the LIVE height/2 (no controller centre offset; PlayerHeightChanger.cs:477-478 plants the capsule bottom and moves the transform by heightChange/2). The hardcoded 0.9 made a crouched player a standing target.
     for (const m of missiles) {
@@ -4685,6 +4693,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
         // DFU flashes on ANY wall hit, so `impact` is hoisted out of
         // the AoE branch above rather than computed inside it.
         showImpactFlash(m, impact);
+        if (m.arrow && stickable(m)) stickArrow(droppedLoot, impact, _unit);   // STUCK-ARROWS: DFU's shaft is LOST here; the player's stays where it struck
         retireMissile(m);
         continue;
       }
@@ -6238,7 +6247,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
       // lost without it.
       droppedTorches: droppedTorches.snapshot(),   // HT1: HandheldTorchesSaveData
       camps: camps.snapshot(),   // SURV3: my fires, the same law
-      droppedLoot: droppedLoot._piles.map((p) => ({
+      droppedLoot: droppedLoot._piles.filter((p) => !p.unsaved).map((p) => ({   // STUCK-ARROWS: WOD5's LoadID-0 container rides no save (a stuck shaft)
         pos: [...p.pos], archive: p.archive, record: p.record, items: p.items.map((it) => ({ ...it })), ...(p.owner === 'wild' ? { wild: true } : {}),
         ...(p.physical ? { physical: true } : {}),   // AUDIT PI1 H6: a shift-drop stays one - restorePiles lays it back lying
       })).filter((p) => !p.wild),   // WILD1: a body's remains are the ROOM's (net/wildRemains.js) - never a save's, never the room's memory
@@ -7451,8 +7460,9 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
           // one round per loose, verbatim (the ammo guard normally
           // pre-sheathes at zero). WHICH round is the weapon's answer:
           // a bow spends an Arrow, the Thunderlock a Dwemer Pellet.
-          if (!spendAmmoFor(playerEntity.items, playerWeapon.weapon)) continue;
-          fireArrow(eye, lookDir, playerWeapon.weapon, true, null, null, weaponRig.thunderlockMuzzle(fieldOfView())); weaponRig.noteShot?.(playerWeapon.weapon);   // SPELLFX1: the peers draw it   // FIELD-GUN17: the barrel's own offset when the hand holds the gun, null for every bow - the rig answers, the lane forks   // ROAD-H H1c: fireArrow applies GetAimPosition's player arm (the bow hand), as DFU's missile does its own
+          const shot = { summoned: false };   // STUCK-ARROWS: DFU's isArrowSummoned, carried by the shaft
+          if (!spendAmmoFor(playerEntity.items, playerWeapon.weapon, shot)) continue;
+          fireArrow(eye, lookDir, playerWeapon.weapon, true, null, null, weaponRig.thunderlockMuzzle(fieldOfView()), shot.summoned ? { summoned: true } : null); weaponRig.noteShot?.(playerWeapon.weapon);   // SPELLFX1: the peers draw it   // FIELD-GUN17: the barrel's own offset when the hand holds the gun, null for every bow - the rig answers, the lane forks   // ROAD-H H1c: fireArrow applies GetAimPosition's player arm (the bow hand), as DFU's missile does its own
           // WeaponManager.cs:419-436, in DFU's order: the swing costs
           // fatigue whatever it hits, and a BOW always takes the tally
           // arm (`!hitEnemy && WeaponType != Bow` is false for a bow),

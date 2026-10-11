@@ -283,7 +283,7 @@ export function createDroppedLoot({ renderer, getTexture, uploadRecordFrame, pic
    *  container's identity travels beside them, DFU's loadID
    *  (DaggerfallInterior.cs:885-889). */
   function snapshotScene() {
-    return piles.filter((p) => (p.items.length || p.container) && p.owner !== 'wild').map((p) => ({   // WILD1: a body's remains are the room's (net/wildRemains.js), never a scene cache's - a copy at every re-entry
+    return piles.filter((p) => (p.items.length || p.container) && p.owner !== 'wild' && !p.unsaved).map((p) => ({   // STUCK-ARROWS: nor a LoadID-0 container (WOD5: "no save and no scene cache carries it") - a stuck shaft   // WILD1: a body's remains are the room's (net/wildRemains.js), never a scene cache's - a copy at every re-entry
       pos: [...p.pos], archive: p.archive, record: p.record,
       container: !!p.container, containerKey: p.containerKey ?? null,
       items: p.items.map((it) => ({ ...it })),
