@@ -1289,7 +1289,7 @@ test('MAP1 window: the selection - a click within 16 paper px of an inked mark s
   });
 });
 
-test('ORE-MAP window (FIELD BUGS 2026-10-11b #4, ui/oreMapTip.js): bare land answers with the host\'s ore card under the province\'s name - asked by its map pixel, with the window\'s own refresh to call when its witnessed state arrives; a place keeps its own answer, and with no card (offline, the sea) bare land answers as it always did (mutants: the card never asked; the card left off the answer; the refresh not handed)', () => {
+test('ORE-MAP window (FIELD BUGS 2026-10-11d #4, ui/oreMapTip.js): bare land answers with the host\'s ore card under the province\'s name - asked by its map pixel, with the window\'s own refresh to call when its witnessed state arrives; a place keeps its own answer, and with no card (offline, the sea) bare land answers as it always did (mutants: the card never asked; the card left off the answer; the refresh not handed)', () => {
   withDocument(() => {
     const mapDict = new Map();
     for (const s of [summaryOf(3, 3, LOCATION_TYPES.TownCity)]) mapDict.set(s.id, s);

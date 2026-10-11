@@ -403,7 +403,8 @@ wdun*); the hub reads, calls it and writes.
   `WDUN_STALE_MS` (three minutes) has left at its last word.
 - THE RESET: a hall that has stood empty `WDUN_RESET_MS` (twenty minutes) is wiped as the next account comes in - its
   world room's stored foes and loot forgotten (`_wdunWipe`, `server/src/index.js:"async _wdunWipe(h)"`; the room
-  refuses while anyone stands in it, `server/src/index.js:"async _wdunResetInternal"`) - and its EPOCH moves on: every
+  refuses while anyone stands in it, `server/src/index.js:"async _wdunResetInternal"`; AUDIT SCALE II R3-9: every layer of it
+  at once, SCALE5d - anyone standing in any layer holds the wipe) - and its EPOCH moves on: every
   client keys the hall's chests by it (`searchLocationKey`, `dungeonContext.js:"function searchLocationKey"`), so a
   reset fills them again for everyone. The halls keep WORLD8's hour for the rest (DUNGEON-RESPAWN, section 21).
 - THE CROWS: a death in a hall (`wdunDie`, `wildLaw.js:"export function wdunDie"`) sets crows over it until the last

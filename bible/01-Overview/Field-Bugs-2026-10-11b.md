@@ -1,109 +1,190 @@
-# FIELD BUGS 2026-10-11b - four Discord feedback threads
+# FIELD BUGS 2026-10-11b - ten Discord bug reports
 
-Four threads from the Discord's feature feedback, handed over as screenshots with the owner's word: "Make the best
-decisions". All four are done.
+(Named 2026-10-11 until main's #773 took that wave's name, `01-Overview/Field-Bugs-2026-10-11.md`; its pages, pins and
+records renamed with it, as FIELD BUGS 2026-10-09g was.)
+
+Ten threads from the Discord's #bug-reports, handed over as screenshots on the evening of 2026-10-10. Each was traced
+through the code first. Seven changes ship (CAMP-FIRE, CART-SLOT, OFFER-ID, JUMP-SLOW, LEGEND-HELD, HOME-LINE,
+FULL-GUARD). Four of them are the owner's calls, put to the owner as questions: three are departures from DFU and one
+changes the yard rule HOME-FOOT left. The owner chose each one, and on the Legendary's bill said: "I dont care about DFU
+parity wtf". Three reports have no code to change: one is Daggerfall's own talk law, one was fixed on main the day before
+it was posted, and one does not reproduce. The Morrowind foes that could not be hit could not be pinned from the code,
+and the questions the reporter is owed are written below.
 
 | | Report | What it was | Done |
 |---|---|---|---|
-| 1 | "Can't see any boss ground attack overlays with heavy snow" - "I have been hit 5 times and died twice with zero warning or feedback while fighting revenants outdoors in heavy snow, all due to invisible attack indications (ranged AoE circle)"; then "I would have just turned off the deep snow in the options but nobody in any chat has been able to tell me how to do this or if it is even possible" (beardtonguev1) | a foe's telegraph lay 0.06 m over the bare ground, and Snowfall's deep snow - 0.4 to 0.8 m of it in the wild, drawn first and depth-written - buried it | fixed (SNOW-TELL); the switch was there all along (below) |
-| 2 | "letter of credit during trade" - "Cant see how much a letter of credit is worth when trading directly with players", a screenshot of two letters in the pack's list, each "0.10kg" (Khaz) | TRADE-LOC (2026-10-10) said the worth in the detail a click opens and the row's hover - a phone has no hover, and two letters in a list could not be told apart | done (TRADE-LOC II) |
-| 3 | "Many ore veins look the same." - "Copper/lodestone/moonstone/ebony and others all have the same basic texture so its very hard to tell the difference when looking for them" (SaberGGaming) | DFU shares two pictures among eight metals and PROF2 lent the new ores Lodestone's, untinted - PROF0 4.8 said "tinted per ore" and it never was | done (VEIN-WASH) |
-| 4 | "Arbitrary mining conditions to 'unlock' higher nodes." - "Why is this a thing? Also how are we supposed to tell if higher tier veins have been unlocked in an area?" and "add something to the overworld map like 'this area is known for X ore'" (SaberGGaming) | the witnessed world's law, said on the Mining page alone; no surface said what a place's veins hold or whether its ground is witnessed | done (ORE-MAP); the law kept (below) |
+| 1 | "NPCs having massively negative opinion after 'Word travels' update" - not a criminal, Commoners +9, "even the members of my guilds wont answer questions" (BunnyHoppin') | DFU's talk law: whether a person answers is the player's Personality, the tone and its skill roll against the person's own seeded roll (TalkManager GetReactionToPlayer_0_1_2). No reputation is in it, in DFU or here, and LW16's repute never reaches the talk window | no change (below) |
+| 2 | "The caravan became a cart after the update" (Biorat) | the Enhanced inventory's Cart cell named the FIRST wagon owned - a Small Cart kept beside a Caravan bought after it - while the world drove the Caravan | fixed (CART-SLOT) |
+| 3 | "Unidenitified items" - "If you trade someone unidentified items and they identify them, They will not be identified when traded back" (Masta_Fu, again 10-10: "Has this been fixed?") | does not reproduce: TRADE-KNOWN's guard pin (FIELD BUGS 2026-10-01) holds both ways a trade settles. Found beside it: a realm trade of a piece looted since the last checkpoint was refused whole | OFFER-ID fixed; the report open (below) |
+| 4 | "Morrowind model enemies don't take damage" - 2 in 4 fast-travel encounters, can't hit them and they can't hit me, only with the Morrowind models on (Masta_Fu) | the Morrowind bodies are draw-only - no hit test reads them. Not pinned from the code | open: the reporter's facts asked for (below) |
+| 5 | "The Morrowind Model For a Caravan Campfire is a Dead Dude" (Rook) | a road camp's fire went to the sprite lane as a still flat nobody talks to - the shape MWNPC10c reads as the fallen | fixed (CAMP-FIRE) |
+| 6 | "One shot bug" - "I get one hit killed several times a day" (YeetMaster64) | BAL2's crit for every striker, BAL4's offline elites (x3) and the Enhanced AI's telegraphed slams (x1.75) stacked with nothing to cap them | done (FULL-GUARD), a departure |
+| 7 | "Equipping legendary shield Aegis of Dawn damage it by 1/3 of its durability" (Boar) | DFU's Cast-When-Held equip bill (CastWhenHeld.cs) - the Aegis's Spell Resistance costs a leather buckler a third of its condition | done (LEGEND-HELD), a departure |
+| 8 | "Some materials im holding are not being counted for in-house crafting" - no copper, silver lower (SaberGGaming) | the old station count (`book.held`: the Stores and the service's counted units). BAG-CRAFT (FIELD BUGS 2026-10-09d) made every station read `workable` the day before | fixed on main already (below) |
+| 9 | "Fix slowfalling" - "you cant jump with slowfalling", and the falls into corners (BigOOF) | DFU's own jump cancel (AcrobatMotor.cs:64-70), and its rise set to the spell's fall speed from the first airborne step | done (JUMP-SLOW), a departure |
+| 10 | "Property Problem" - "I can't place in front of my door but I can place in front of another's home" (ShikiX3); "my property line goes a little far into the property beside me" (afjiz) | the first half was HOME-FOOT's (FIELD BUGS 2026-10-09). The second was the lot's own rule: a house grown 6 m, never shared, so two lots overlapped | done (HOME-LINE) |
 
-## SNOW-TELL: a foe's telegraph lies over the deep snow (1)
+## CAMP-FIRE: a road camp's fire is its flame, never one of the fallen (5)
 
-The report's revenant is a rank-2 caster's signature, the pyre (`ai/blowShapes.js` BLOW.pyre, `systems/revenantFeud.js`
-drawSignature): a 2.2 m disc at the player's feet, telegraphed by the foes' ground pass (`render/foeTelegraph.js`,
-TACT4) - one flat quad 0.06 m (BLOW_LIFT) over the ground its blow was fitted to (`ai/foeBlows.js` fitBlowToGround,
-the collider's ray), depth-tested and never depth-written. The colliders know no snow. Snowfall
-(`03-World/Snowfall.md`) stands a real displaced surface 0.4 to 0.8 m over that same ground in the wild (0.2 to 0.4 m in
-a town), drawn BEFORE the ground and writing depth, so outdoors in winter every foe's telegraph - every shape, not the
-pyre alone - and the player's own technique marks (TECH1, the same pass) lay under opaque snow. No dial saved it: the
-mod's depths stop at 0.1 m, still over 0.06.
+`scenes/livingRoads.js`, `world/travellerSprites.js` drawBodies. The roads' layer (LW9) hands the traveller sprites a
+lit camp's fire as an entry like a person's: `{ res: { id: 'fire:<trip>', name: '' }, talk: false, flat: FIRE_FLAT }`.
+MWNPC10c's Morrowind lane stands a body for every entry on the ground and draws it dead where it is "a flat no one talks
+to" - the road's fallen are exactly that (`corpseLook`). So with the Morrowind bodies on, every camp's fire stood as a
+dead Breton (residentLook of an empty resident), and its flame's billboard was left `castOnly`: the shadow drew and the
+fire did not. The two slices were each right alone and met when #749 merged.
 
-The mark lies over the snow now. The renderer keeps the frame's snow height - `beginFrame` clears it, each tier
-`drawSnow` draws raises it to `render/snowfallGlsl.js` snowSurfaceRise of that tier's uniforms (snowResolve's highest
-answer: the deeper of the wild's and the settlement's depth, a road's berm over it, the 8 mm surface offset; the caps,
-the path, the slope's multiplier and the tracks only lessen it) - and `drawFoeTelegraphs` hands it to the pass, which
-lies its quads `telegraphLift(snowRise)` = BLOW_LIFT plus it over the fitted ground. Where the snow is shallower than
-its deepest - a trodden track, a road, a town's lesser depth - the mark stands that much over the snow, seen; it is
-never under it. A frame that draws no snow lifts nothing: the travel view, an interior, a dungeon, summer. THE FOUR
-HOSTS: `scenes/world.js` and `scenes/exterior.js` draw the snow (before their telegraphs, pinned) and are wired through
-the renderer; `scenes/worldModes.js` (interiors) and `scenes/dungeonContext.js` draw none, and their marks lie as they
-always lay. The world boss's court pass (`render/gateTelegraph.js`) is not touched: the court is the gate's own realm,
-where no snow falls.
+Now the fire says it is nobody (`body: false`), the sprite keeps the word (`b.body`), and drawBodies stands no body for
+it: the flame draws as it does with the Morrowind bodies off. The fallen beside it still lie dead. THE FOUR HOSTS: the
+roads' layer is world.js's alone (the streaming host); exterior.js, worldModes.js and dungeonContext.js stand no road.
+Pinned by `test/fb1011b_campfire.test.js` (2, on the real roads' layer's own fire through the real sprites over a
+recording lane); `tools/mutants/fb1011b.json`.
 
-THE SWITCH THE PLAYER LOOKED FOR is there, and was: Settings > Graphics > "Sky, water & weather" > "Snowfall by
-demifiend000" (FT9's row; `ui/settingsMap.js`), and the settings' search finds it under "deep snow" - the row's note
-begins "Deep snow on the winter ground". The patch notes say where it is. A second "Snowfall" on the Overhauls card is
-the winter ground's TEXTURE pack (SNOWFALL1's sibling, ENVIRONMENT_PACK_MODS) and changes no depth - the likelier source
-of "nobody could tell me". Renaming either is the owner's call (Mac named the mods' rows by their authors, FT9).
+## CART-SLOT: the Cart cell is the wagon driven (2)
 
-Pinned by `test/fb1011_snowtell.test.js` (4: the rise law over the runtime's own uniforms at the mod's defaults and its
-deepest dial; the pass's uLift with and without snow through a fake GL; the renderer's clear, record and hand-off; both
-snowy hosts' order and the other two hosts' absence of snow); `tools/mutants/fb1011_snowtell.json`.
-`test/audittact.test.js`'s AUDIT TACT D9 pin moved (PIN MOVED: the snow's height handed beside the fog).
+`systems/inventorySession.js` transportItem. Every wagon is the Small Cart's template (WAGONS1 marks the kind on the
+item), and the Enhanced inventory's Cart cell drew `transportItem(items, 'cart')`, the first item of that template. A
+player who kept their Small Cart and bought a Caravan after it (WAGONS1: "the cart left over is an empty cart to sell")
+saw "Small Cart" and the cart's picture in the cell, while the world drew, drove and parked the Caravan
+(`wagonKinds.js` activeWagonItem - the best owned). Nothing in the save changed. Now the cell asks the same law the world
+asks. The Mount cell is unmoved.
 
-## TRADE-LOC II: a letter of credit says its worth on its row (2)
+Two other readings were checked and are not this. The living world's merchant parties draw the Small Cart by design
+(`world/roadTeams.js` ROAD_WAGON_KIND, Living-World-II.md section 3.3). A peer's parked Caravan comes back as the Small
+Cart from a relay older than world187 (Wagons.md). The reporter can be asked which wagon it was, but the cell was wrong
+either way. Pinned by `test/fb1011b_cartslot.test.js` (3); `tools/mutants/fb1011b.json`.
 
-TRADE-LOC (`10-UI/Overhauls.md`, 2026-10-10) put a letter's worth in the trade window's detail strip and in its row's
-hover title. The report's screenshot is a build before it (its detail strip reads "0.10 kg" alone) - but its case
-stands on the build after: two letters in one list are told apart only by clicking each, and on a phone there is no
-hover. The row says it now: `ui/enhancedPlayerTrade.js` row's sub-line leads with `letterWorthLine` ("Worth 12,500
-gold"), on the pack's list, my offer and theirs - the one row builder all three draw through. And the pack's own card
-(`ui/enhancedInventory.js` infoCard - the pack's, every shop's and the trade's hover card) says it as its headline pair,
-Worth, under the damage and the armour a letter never has: `systems/walletItem.js` letterWorthGold, the figure
-letterWorthLine now says after its word (one law, one home). DFU's classic Info box already said it (TEXT.RSC 1007's
-`%wth`). The wire was never the fault: the letter's `value` survives the trade's clamp, pinned by TRADE-LOC.
+## OFFER-ID: an offered piece carries its id from the offer (3)
 
-Pinned by `test/fb1011_tradeloc.test.js` (2); `tools/mutants/fb1011_tradeloc.json`; `tools/mutants/trade_info.json`'s
-TRADE-LOC-read-off-template re-aimed by content (PIN MOVED: the figure is letterWorthGold's).
+`systems/tradePack.js` wire. INT4 gives every valuable piece its id at the realm's checkpoint (`world.js` realmCheckpoint
+-> `itemIds.js` stampItemIds). A trade's offer is written for the wire when it is made (`tradeSession.js` setOffer), and
+the trade's hold checkpoints after that. So a piece looted since the last checkpoint stood in the realm's record with an
+id its offer did not carry. `uid` is not one of the fields a trade lets differ (`realmTradeLaw.js` recordIsOffered over
+TRADE_VOLATILE_FIELDS), so the whole trade was refused: "The realm could not find the goods offered - nothing was
+traded." It was reproduced on the real account Worker. Now the offer stamps the pieces it holds out with the id the
+checkpoint would give them, and a piece that already has one keeps it. The stamp is handed to the pack by the host
+(world.js passes `stampItemIds`) rather than imported: itemIds.js reads the item law, and importing the law installs it
+into the wire's clamp for every reader of tradePack.js - CI's first run of this branch found it, when a Soulbound pin's
+own fixture stopped passing the clamp (`test/soulbound_break_once.test.js`).
 
-## VEIN-WASH: every ore on a shared picture wears its own wash (3)
+The report itself - a piece identified by its new holder coming back unknown - still does not reproduce. TRADE-KNOWN
+(`01-Overview/Field-Bugs-2026-10-01.md`) pinned the round trip hand to hand and through the realm, and both pins pass
+here with the mods on and with ids stamped. The one way left is the one TRADE-KNOWN named: identifying a piece is not a
+realm act. It rides the identifier's next checkpoint, so a tab that joins again before one lands plays the older record.
+The reporter is owed the same two questions: did the trade window show the known name, and is the piece known after a
+relog? Pinned by `test/fb1011b_offerid.test.js` (3, the realm round through the real Worker, and the host's hand-off by
+source); realm0's pin on the host's pack line moved (PIN MOVED) and its record re-aimed by content;
+`tools/mutants/fb1011b.json`.
 
-DFU's metals (TEXTURE.254) are five pictures of their own - Mercury 61, Gold 62, Iron 63, Tin 64, Sulphur 67 - and two
-shared: Lead, Silver and Platinum on 65; Copper, Lodestone (and Brass, never mined) on 66. PROF2 lent all six new ores
-Lodestone's 66 and drew a vein as its metal's picture alone, so eight ores stood as one lump - PROF0 4.8's own table
-says "DFU Lodestone, tinted per ore", and the world flats never were (the Stores' icons were, by DFU's dye).
+## JUMP-SLOW: the jump given back under Slowfall (9)
 
-`scenes/mineHost.js` ORE_WASH: each ore on a shared picture but its first wears a wash of its own, through ARENA5's
-batch wash (`render/renderer.js` uBatchTint, both lanes - a colour multiplied into the lit flat after both maps): Copper
-orange, Silver cold white, Platinum pale gold, Moonstone moonlit blue, Dwarven Scrap brass, Mithril sea-green,
-Adamantium violet, Ebony near-black, Orichalcum orc-green. Lead and Lodestone keep DFU's own colours, as do the five with
-pictures of their own; a boulder's loose stone is Lodestone's lump as it is. The colours are the port's own (the nodes
-are no DFU member). `mineWash` hands the flats their wash (a Motherlode its ore's); `scenes/gatherHost.js` stands each
-wash as its own batch (the group's key is record, scale and wash) on the open ground, and sets it on the dungeon's own
-batch underground. The glow and the compass keep mining's one colour - they say which profession, not which ore.
+`player/motor.js`. DFU refuses a jump while the player is slow falling. It is one clause of HandleJumpInput's four-clause
+cancel (AcrobatMotor.cs:64-70, `IsSlowFalling`), and the port carried it. Dropping the clause alone gave a rise of one
+tick (0.069 m), because DFU's ApplyGravity sets the fall speed rather than adding to it, from the first airborne step
+(F032). Now neither holds a jump: the clause is gone, and ApplyGravity leaves a jump's rise alone (`!(this.jumping &&
+this.velY > 0)`). The jump reaches the plain jump's 0.47 m, the spell takes the descent from the apex at its 2.1 m/s, and
+the landing bills no fall. It is still ground-gated (the 0.1 s bunny-hop clock), so Jump in the air does nothing and the
+spell is no stair. A ledge walked off is unchanged. The parkour leap and the techniques' leaps stay refused under the
+spell (`_pkMayLeap`).
 
-Pinned by `test/fb1011_veinwash.test.js` (3: no two mined ores look alike over every picture; a confirmed Daggerfall
-woodland's Moonstone and Lodestone, one picture, stood as two batches each in its own colours; an unwitnessed
-dungeon's Silver in Silver's wash); `tools/mutants/fb1011_veinwash.json`.
+"Always fall into these corners" is DFU's frozen air momentum (`airControl = false`): the speed the body left the ground
+with is replayed through the fall, and the spell makes every drop of more than a metre five times longer. Into a 3 m pit
+at a walk, the body glides to the far wall and SLOW-PRESS (FIELD BUGS 2026-10-01) holds it there. Giving the glide air
+control is a larger departure, and it rewrites four of fb1001_slowaudit's pins. It was offered to the owner, who chose
+the jump alone. THE FOUR HOSTS: the motor is every host's. A departure, Port-Ledger A. Pinned by
+`test/fb1011b_jumpslow.test.js` (3); `tools/mutants/fb1011b.json` (and AUDITCLIMB1-F7's record re-aimed by content: the
+gate's line lost its slowfall clause).
 
-## ORE-MAP: the held map says what a place's ore is, and whether its ground is witnessed (4)
+## LEGEND-HELD: a Legendary goes on at the condition it had (7)
 
-THE LAW IS KEPT, and the card says it. A pixel's rarer veins - Gold, Platinum, Mithril, Ebony and a kingdom's own ore
-(UNWITNESSED-ORE, `Field-Bugs-2026-10-09e.md`) - stand only on ground three accounts a week old have gathered on
-(`06-Systems/Professions-Arc.md` section 6, the witnessed world). It is not arbitrary: the servers carry no game data
-(Port-Doctrine), so a client says what climate and region a pixel is and nothing checks it but other players' word
-(`11-Multiplayer/Seats-Arc.md` 3.2) - the rule is what keeps a modified client from naming every pixel a mountain of
-Ebony. What was missing is the reading of it: nothing but the Mining page's one paragraph said it, and nothing said it
-for a place.
+`systems/enchantments.js` heldEquipBill. DFU bills a Cast-When-Held spell's whole casting cost in condition when the piece
+goes on (CastWhenHeld.cs InstantiateSpellBundle). HELD-REWEAR (FIELD BUGS 2026-10-09f) made a re-wear inside six hours
+free and stopped the bill at 1 condition, but the first wear still paid the whole cost. The Aegis of Dawn's held Spell
+Resistance is the dearest of the Legendaries' (LOOT3 kept it as LR2 shipped it, `06-Systems/Loot-Arc.md`), and on a
+leather Buckler (512 condition, 1.00 kg, the card's "+1") its bill was about a third: the card's "Slightly Used 66%". Now a
+Legendary's equip bills nothing. That holds for every piece already minted, because the law reads the piece's tier, not
+its record. Its wear while worn (DFU's MagicRound arm) is unmoved, and every other held piece keeps the bill. THE FOUR
+HOSTS: the equip table's door. A departure, Port-Ledger A (HELD-REWEAR's row narrowed beside it). Pinned by
+`test/fb1011b_legendheld.test.js` (2, the ladder's own Aegis on a Buckler); `tools/mutants/fb1011b.json`.
 
-`ui/oreMapTip.js` oreMapTip is the card: "Ore here", then the pixel's veins (`net/nodeLaw.js` VEIN_TABLES by its
-climate), its dungeons' deep veins (dungeonVeinTable), its kingdom's own ore (regionSignature - "Daggerfall's own ore:
-Moonstone"; a Free Land's by its region's name), and its ground: "Witnessed ground: all its veins can stand here";
-"Not yet witnessed: no Gold or Ebony here yet" with the rule under it; where the state is not yet heard, what waits on
-the witnesses and the rule; on ground whose table holds nothing over Silver and no kingdom's ore, "No vein here waits
-on witnesses". The held map's bare ground answers with it (`ui/heldMap.js` _hoverLabel, under the province's name; a
-place keeps its own answer), online, the professions open (`scenes/world.js` oreMapAt, the map's `oreAt` - offline
-the map is DFU's and says nothing of ore). The ground's state is the book's (`net/profBook.js` pixel); one not heard
-today is asked ONCE a page, after the pointer has rested 400 ms on it, through the gathering host's new askPixels -
-which stands again any pixel of its own the answer moved, as its own ask does (the book would otherwise hear a streamed
-pixel first for the map and the ground's ask never want it: it would stand on the morning's word all day) - and the
-card is asked again when the word comes. The Mining page's ground line ends by pointing at the map. The classic DFU
-travel window is untouched (THE NATIVE-WINDOW RULE: DFU has no such card).
+## HOME-LINE: the ground between two houses split down its middle (10)
 
-Pinned by `test/fb1011_oremap.test.js` (3: the report's case and its kin card for card; over every vein climate and
-every region the card is the law's own - its veins, its kingdom's ore, every card whole on the map, and an ore it holds
-back never standing on thirty unwitnessed days; the world host's wiring and the gathering host's ask standing a
-witnessed pixel's Moonstone at once); `test/heldmap.test.js`'s ORE-MAP window test (1); `tools/mutants/fb1011_oremap.json`.
+`scenes/homeYards.js` yardWhyNot, `yardGapTo`. Half of ShikiX3's report was HOME-FOOT's (FIELD BUGS 2026-10-09): the
+step before an L-shaped house's door read as inside the house. The other half was the lot's own rule. A lot is the house
+grown YARD_MARGIN (6 m) and is never shared with a neighbour, so two houses closer than 12 m overlapped, and the owner
+could decorate before a neighbour's door. HOME-FOOT wrote that down as the rule ("A stranger's door within the owner's lot
+may still be decorated before"), and afjiz's "my property line goes a little far into the property beside me" is the
+same overlap. Now no part of a piece - its middle or any corner of its ground - may stand nearer another building's
+ground than the house's own. A tie goes to the house. A piece that meets another building's ground is refused as it was,
+wherever its points stand. The marked edge is still the lot's rectangle: the bar's word ("That is another building's
+ground.") is where the line shows. THE FOUR HOSTS: the yards' law is world.js's (the streaming host, yardHost);
+exterior.js stands no yard (FB1001), and worldModes.js and dungeonContext.js have none outdoors. Not a departure from DFU
+(the yards are the port's, HOME-YARD). Pinned by `test/fb1011b_homeline.test.js` (3); three pins moved by intent
+(`fb1009_yardfoot` twice, `fb1001_yard` once, each a PIN MOVED note); `tools/mutants/fb1011b.json`, and the two neighbour
+records (YARD-CORNER's and HOME-YARD's) now name this file too.
+
+## FULL-GUARD: no foe's one blow from full health (6)
+
+`characters/playerEntity.js` hurtPlayer, `setFoeBlowProbe`; `systems/sigilSetPowers.js`. The Balance arc (BAL1-BAL4,
+2026-10-10) raised the threat on purpose. BAL2 gave every striker the player's crit (`crit / (4 - luck)`, up to x2.0),
+and BAL4 put the elites (x3) and the Enhanced AI's telegraphed blows (a lunge x1.5, a slam x1.75) in the offline game by
+default. Nothing capped the stack. Simulated through the real `calculateAttackDamage` under PCAAO, against a level-12
+player with 110 health: a level-12 elite Barbarian's claymore slam killed from full in 9.9% of landed slams (as much as
+173 damage), and its lunge in 7.2%. A level-20 elite's slam killed in 14.1%.
+
+Now a foe's one blow never takes a player at full health to dead. The damage door leaves them at 1 and tells the hurt as
+what it took. It runs before every death save, so Malacath's Unbroken and the Hour Turns are not spent on such a blow
+and are there for the next. A blow is what the set powers' law says one is: the attack formula's struck tail marks it,
+and the door takes the mark as it opens (`pendingPlayerBlow`, handed to the door as a probe so the leaf imports none of
+it). So a fall, a spell, a poison's round, a trap and a world boss's strike are not blows and kill from full as they did
+(the gate boss's blows are its own law, `gateBrain.js`), and the next blow at 1 kills as it always has. The door is not asked on
+a duel's blow (`spare`) or on a SetHealth(0) door, as for every set power. BAL2 and BAL4 are unmoved: the owner chose
+the guard over reverting BAL2's crit. THE FOUR HOSTS: the one damage door every host's foes reach (world.js's foes,
+guards and arrows; exterior.js's the same; worldModes.js's interior foes, guards and arrows; dungeonContext.js's melee
+and arrows) - no host seam. A departure, Port-Ledger A. Pinned by `test/fb1011b_fullguard.test.js` (3, on the real
+attack formula's tail, the real door and Malacath's real Unbroken); six pins moved by intent, each a PIN MOVED note: a
+killing blow that was dealt from full now starts a point short of it (`revenant`, `revenant_card`, `sd9d_numidium`
+four times); `tools/mutants/fb1011b.json`.
+
+## The three that are not the code's to change
+
+**Repute and the talk window (1).** LW16 (the word travels) moves only a stranger's regard in the Living World, read and
+never stored. That regard has one reader in the game, Project Legacy's courting topic, and it never reaches the court
+because the repute stops short of a friend's. The talk window's answer tier is DFU's, cited at TalkManager.cs:663-667:
+`Personality / 5`, the question's modifier and the tone's (Polite reads Etiquette, Blunt reads Streetwise, each with a
+skill roll that adds 5 or takes 10), against a 0-20 roll seeded by the person. It is cached per tone for the
+conversation. Faction and social-group reputation decides only the greeting and whether the person talks at all.
+Simulated over 4,000 seeds at Personality 35 and Etiquette 15, a Polite question to a Commoner is refused 98% of the time
+(Commoners take Etiquette's -10 and the failed roll's -10). The same player asking a Merchant Blunt is refused far less.
+The screenshot's answer is ANSWERS_TO_DIRECTIONS row 18, a Merchant's refusal: a shopkeeper or a guild's member. Nothing
+in the 10-10 deploy touched the tier, the reaction or Personality, and a walker's seed is drawn again each load, which
+is why the morning could read differently. The reply to the reporter: answers follow Personality and the tone's skill,
+not reputation - Blunt with commoners, Polite with nobles and scholars.
+
+**The crafting count (8).** The screenshot's numbers are the old station count's exactly. `book.held` read the Stores
+and only the units the account service counted out, so looted, bought or traded Copper read 0 and Silver read the
+service's 47. BAG-CRAFT (FIELD BUGS 2026-10-09d, merged 2026-10-09) made every station read `book.workable` - the Stores
+and everything the bag, the pack and the wagon hold - and `test/fb1009d_bagcraft.test.js` pins it. The likeliest reading
+is a client from before it, so the reporter can be asked for their update number. What main still does not count is a
+house chest: `materialsBag.js` heldOf reads the pack, the bag and the wagon. Counting the house's storage at a home
+station is a feature for the owner to ask for.
+
+**The Morrowind foes that could not be hit (4).** The Morrowind bodies are draw-only on the encounter path. The ambush
+spawns through `world.js` `_standEncounterFoe` into exteriorFoes, the player's swing and the foe's blow read the foe's
+own `ai.feet` (`exteriorFoes.js` resolvePlayerHit), and the body is drawn from that same array. No commit of the week's
+Morrowind work touches combat. So the three figures were likely not live foes of the local pool. The candidates, in
+order:
+- a beset road party's foes, drawn striking at it (`livingRoads.js`, a fight not stood);
+- a road fight's allies (`shipmate`, the PlayerAlly team), which look exactly like foes when armed;
+- the fast traveller's "unaware" gate (WILD-ALERT), which explains "they don't hit me" but not "I can't hit them".
+
+What pins it, captured when it happens: whether each figure is in `exteriorFoes.foes` and its `puppet`, `shipmate`,
+team and health before and after a swing; the roads' parties; online or not; and a try with the living world off.
+
+## Records
+
+Port-Ledger A: JUMP-SLOW, LEGEND-HELD, FULL-GUARD (and HELD-REWEAR's row narrowed). `03-World/Player-Arc.md` (the jump's
+cancel list), `04-Characters/Morrowind-NPCs.md` section 15c (the fallen and the fire), `05-Combat/Balance-Arc.md` (the
+guard beside BAL2), `06-Systems/Loot-Arc.md` (the Aegis's bill), `10-UI/UI-Arc.md` (PX21a's transportItem),
+`01-Overview/Field-Bugs-2026-10-09.md` (HOME-FOOT's lot sentence retired), `09-Testing/Testing.md` (seven rows and the
+Suite line). The tests: `fb1011b_campfire`, `fb1011b_cartslot`, `fb1011b_offerid`, `fb1011b_jumpslow`, `fb1011b_legendheld`,
+`fb1011b_homeline`, `fb1011b_fullguard` (19). The mutants: `tools/mutants/fb1011b.json`.

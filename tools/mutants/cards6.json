@@ -303,7 +303,7 @@
   {
     "name": "C6-void-twice",
     "file": "server/src/index.js",
-    "old": "    if (await this.state.storage.get(stakeKeyOf(c.cj))) { refuse('stake spent'); return; }\n    await this.state.storage.put(stakeKeyOf(c.cj), nowS);",
+    "old": "    if (await this.state.storage.get(stakeKeyOf(c.cj))) return 'stake spent';\n    await this.state.storage.put(stakeKeyOf(c.cj), nowS);",
     "new": "    await this.state.storage.put(stakeKeyOf(c.cj), nowS);",
     "tests": [
       "test/auditcards3_pins.test.js",

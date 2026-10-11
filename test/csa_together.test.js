@@ -9,6 +9,7 @@
 import { test } from 'node:test';
 import { HELM_RUDDER_ACTIONS } from '../src/systems/inputActions.js';
 import assert from 'node:assert/strict';
+import { quietFoesGate } from '../src/net/foesQuiet.js';   // SCALE2c
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createComeSailAwayPool } from '../src/scenes/comeSailAwayPool.js';
@@ -414,6 +415,7 @@ test('CSA-K: the host - my place aboard rides my foes frame as `ab` (a changed w
   const scope = {
     online: { status: 'open', room: 'world:3,12', isHost: () => false, sendFoes: (f) => { sent.push(f); return true; } },
     isCellRoom: (r) => /^world:/.test(r), isWorldRoom: () => false, FOES_MS: 200, FOES_FULL_MS: 2000, _foesSentAt: -Infinity, _foesFullAt: -Infinity, modes: { mode: 'exterior' },
+    _foesQuiet: quietFoesGate(),   // SCALE2c (PIN MOVED): the host's memory of what its cell last heard - a full frame that says nothing, said once
     exteriorFoes: { foesFrame: (full, force) => (full || force ? { n: 1, k: 'world:3,12', full: full ? 1 : 0, f: [] } : null) },
     _hccDirty: false, camps: { wireRecords: () => [] }, hcc: { wireRecord: () => null }, duelRingWord: () => {}, campToWire: (p) => p,
     portalWord: () => {},   // PORTAL1: no portal standing on this deck

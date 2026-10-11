@@ -210,10 +210,10 @@
   {
     "name": "JRN-relay-self-not-junk",
     "file": "server/src/index.js",
-    "old": "      if (to === a.id) { this._junk(ws); return; }\n      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;\n      if (!target) return;\n      const [tws] = target;\n      // the funnel onto the destination, per sender - the cast's and the card's ONE",
-    "new": "      if (to === a.id) return;\n      const target = [...this._all()].find(([other, b]) => other !== ws && b.id === to) ?? null;\n      if (!target) return;\n      const [tws] = target;\n      // the funnel onto the destination, per sender - the cast's and the card's ONE",
+    "old": "      if (to === a.id) { this._junk(ws); return; }\n      const target = this._idFirst(to, ws);\n      if (!target) return;\n      const [tws] = target;\n      // the funnel onto the destination, per sender - the cast's and the card's ONE",
+    "new": "      if (to === a.id) return;\n      const target = this._idFirst(to, ws);\n      if (!target) return;\n      const [tws] = target;\n      // the funnel onto the destination, per sender - the cast's and the card's ONE",
     "tests": ["test/journal1.test.js"],
-    "note": "A stream of pages at my own id is never struck out."
+    "note": "A stream of pages at my own id is never struck out. SCALE5b (re-aimed by content): the target by the id index."
   },
   {
     "name": "JRN-relay-funnel-skipped",

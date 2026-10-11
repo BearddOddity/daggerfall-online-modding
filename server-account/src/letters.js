@@ -89,7 +89,7 @@ const badgeOf = (row, env, nowS) => (row ? { title: titleWorn(row, env) ?? null,
  * @param {any} reader  the session's player row
  * @param {any} env  the service's config (the developer and moderator lists)
  */
-export async function inboxOf({ db, nowS }, reader, env) {
+export async function inboxOf({ db, nowS, primary = db }, reader, env) {   // SCALE4g: `primary` the binding - the honours below store a #1
   const { results = [] } = await db.prepare(`SELECT id, from_id, from_name, subject, sent_at, read_at FROM letters
     WHERE to_id = ? ORDER BY sent_at DESC, id DESC LIMIT ?`).bind(reader.id, LETTERS_INBOX_MAX).all();
   const senders = [...new Set(results.map((l) => l.from_id))];
@@ -97,7 +97,9 @@ export async function inboxOf({ db, nowS }, reader, env) {
   if (senders.length) {
     const { results: found = [] } = await db.prepare(`SELECT * FROM players WHERE id IN (${senders.map(() => '?').join(', ')})`)
       .bind(...senders).all();
-    for (const p of await withIliacHonoursAll({ db }, await withArenaHonoursAll({ db }, found, nowS), nowS)) rows.set(p.id, p);   // AUDIT PRE-MERGE 1003 S8: the Grand Champion's title, the #1's laurel
+    // SCALE4g: ON THE BINDING - a #1 found stale is counted again and STORED (arena.js championNow), never off a replica
+    // (AUDIT SCALE4d A1's law, where the heartbeat's session reads the rest)
+    for (const p of await withIliacHonoursAll({ db: primary }, await withArenaHonoursAll({ db: primary }, found, nowS), nowS)) rows.set(p.id, p);   // AUDIT PRE-MERGE 1003 S8: the Grand Champion's title, the #1's laurel
   }
   const letters = results.map((l) => ({
     id: l.id, from: l.from_name, ...badgeOf(rows.get(l.from_id), env, nowS),

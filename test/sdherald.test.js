@@ -264,6 +264,6 @@ test('SD-HERALD the door and the order, by source: the role a var beside the ser
   assert.match(toml, /^SD_DISCORD_ROLE = "\d*"$/m);
   assert.ok(toml.indexOf('SD_DISCORD_ROLE') > toml.indexOf('SERPENT_DISCORD_ROLE = '), 'beside the serpent\'s');
   const relay = rd('server/src/index.js');
-  assert.match(relay, /sdRole: serpentHeraldRole\(this\.env\?\.SD_DISCORD_ROLE, this\.env\?\.GATE_DISCORD_ROLE\)/);
+  assert.match(relay, /sdRole: serpentHeraldRole\(role\('sdRole'\), role\('gateRole'\)\)/);   // PIN MOVED (SCALE5b): SD_DISCORD_ROLE and GATE_DISCORD_ROLE through relayCfgValue - the hub's settings over the vars (net/relayCfg.js)
   assert.match(relay, /await this\._sdBeat\(Date\.now\(\)\); await this\._sdHeraldBeat\(Date\.now\(\)\); return; \}/, 'after the director\'s moves');
 });

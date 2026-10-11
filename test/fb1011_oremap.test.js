@@ -1,10 +1,10 @@
-// ORE-MAP (FIELD BUGS 2026-10-11b #4, the Discord's "Arbitrary mining conditions to 'unlock' higher nodes.": "how are we
+// ORE-MAP (FIELD BUGS 2026-10-11d #4, the Discord's "Arbitrary mining conditions to 'unlock' higher nodes.": "how are we
 // supposed to tell if higher tier veins have been unlocked in an area?" and "If at all possible can you please add
 // something to the overworld map like 'this area is known for X ore'"). The held map's bare ground answers with a card
 // (ui/oreMapTip.js): the ground's veins (its climate's table), its dungeons' deep veins, its kingdom's own ore, and
 // whether the witnesses have vouched for it - every word read off the law that stands the veins, so the card cannot
 // promise an ore the ground would not give. The world host hands the map the card and asks the ground's witnessed
-// state once a pixel, through the gathering host. bible/01-Overview/Field-Bugs-2026-10-11b.md.
+// state once a pixel, through the gathering host. bible/01-Overview/Field-Bugs-2026-10-11d.md.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

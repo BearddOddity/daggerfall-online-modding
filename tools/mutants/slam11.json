@@ -86,16 +86,18 @@
   {
     "name": "U7-foes-borrows",
     "file": "server/src/index.js",
-    "old": "byteGate(this._roomFoes, now, (message.length + a.id.length + 8) * listeners.length, FOES_ROOM_BYTES_PER_S);",
-    "new": "byteGate(this._roomFoes, now, (message.length + a.id.length + 8) * listeners.length, FOES_ROOM_BYTES_PER_S, true);",
+    "old": "    const budget = byteGate(bucket, now, per * listeners.length, FOES_ROOM_BYTES_PER_S);",
+    "new": "    const budget = byteGate(bucket, now, per * listeners.length, FOES_ROOM_BYTES_PER_S, true);",
     "tests": [
       "test/slam11.test.js",
       "test/auditworld3.test.js",
       "test/auditworld2.test.js",
       "test/auditworld34.test.js",
       "test/world3.test.js",
-      "test/slam1.test.js"
-    ]
+      "test/slam1.test.js",
+      "test/scale5b.test.js"
+    ],
+    "note": "SCALE5b (re-aimed by content): the foes budget in `_foesFan`, after the one asked ahead of the walk (which spends nothing, so borrowing THERE is no change)."
   },
   {
     "name": "U8-latched-though-refused",

@@ -342,7 +342,8 @@
     "old": "  if ((others ?? []).some(meets)) return YARD_ON_OTHER;",
     "new": "  if (false) return YARD_ON_OTHER;",
     "tests": [
-      "test/homeyard.test.js"
+      "test/homeyard.test.js",
+      "test/fb1011b_homeline.test.js"
     ]
   },
   {

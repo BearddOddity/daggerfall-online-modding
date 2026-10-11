@@ -249,6 +249,9 @@ export function yardLot(origin, box, margin = YARD_MARGIN, rects = null) {
   return { house, walls, lot: [house[0] - margin, house[1] - margin, house[2] + margin, house[3] + margin], y: box[1] - origin[1] };
 }
 const inRect = (x, z, r, pad = 0) => x >= r[0] - pad && x <= r[2] + pad && z >= r[1] - pad && z <= r[3] + pad;
+/** HOME-LINE (FIELD BUGS 2026-10-11b): how far (x, z) stands from the nearest of these footprints [x0, z0, x1, z1] - 0 on
+ *  one, Infinity for none. */
+export const yardGapTo = (rs, x, z) => (rs ?? []).reduce((m, r) => Math.min(m, Math.hypot(Math.max(r[0] - x, 0, x - r[2]), Math.max(r[1] - z, 0, z - r[3]))), Infinity);
 /**
  * FB1001 YARD-CORNER: WHETHER THE GROUND A PIECE COVERS MEETS A RECT. `poly` is that ground - its turned box's corners in
  * order (decorTool.js footprintOf), or its one point - and `r` a footprint [x0, z0, x1, z1] taken in by `pad` (touching
@@ -281,6 +284,11 @@ export function yardFootMeets(poly, r, pad = 0) {
  * wall). FB1001 YARD-CORNER: "none of it" is the ground it covers, not its corners (yardFootMeets). FB1001 ROAD-LOT:
  * nor on the town's road or a path (`roads`, the road's tiles in the same frame - yardRoadsOf). YARD-HEIGHT: nor
  * higher over the ground than DECOR_YARD_HIGH (the frame's origin stands on the town's ground - scenes/world.js).
+ * HOME-LINE (FIELD BUGS 2026-10-11b, ShikiX3: "I can't place in front of my door but I can place in front of another's
+ * home"; afjiz: "my property line goes a little far into the property beside me"; Mac: "Split at the midline"): nor any
+ * of it nearer another building's ground than the house's own - the lot is the house grown YARD_MARGIN, and two houses'
+ * lots overlap where they stand closer than twice that, so the ground between them is split down its middle (a tie the
+ * house's). The marked edge is still the lot's rectangle.
  */
 export function yardWhyNot(pos, lot, others = [], foot = [], roads = []) {
   if (!lot || !Array.isArray(pos)) return YARD_OFF_LOT;
@@ -292,6 +300,8 @@ export function yardWhyNot(pos, lot, others = [], foot = [], roads = []) {
   const meets = (r) => inRect(x, z, r) || yardFootMeets(ground, r, YARD_EDGE_PAD);   // FB1009 HOME-FOOT: its middle, or its ground
   if ((lot.walls ?? [lot.house]).some(meets)) return YARD_IN_HOUSE;
   if ((others ?? []).some(meets)) return YARD_ON_OTHER;
+  const own = lot.walls ?? [lot.house];
+  if (points.some(([px, pz]) => yardGapTo(others, px, pz) < yardGapTo(own, px, pz))) return YARD_ON_OTHER;   // HOME-LINE
   if ((roads ?? []).some((r) => yardFootMeets(ground, r, YARD_EDGE_PAD))) return YARD_ON_ROAD;
   if (!decorYardHighOk({ pos })) return YARD_TOO_HIGH;   // YARD-HEIGHT: never a tower - the service's own law
   return null;
