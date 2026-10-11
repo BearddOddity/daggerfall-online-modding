@@ -509,7 +509,7 @@
   {
     "name": "RAID3-client-word-unsaid",
     "file": "src/systems/raidingParties.js",
-    "old": "  if (relay) sayToRelay(raid);   // RAID3: my word to the town's ledger, whoever runs the raid\n",
+    "old": "  if (relay && said) sayToRelay(said);\n",
     "new": "",
     "tests": [
       "test/raid3_raidLedger.test.js"

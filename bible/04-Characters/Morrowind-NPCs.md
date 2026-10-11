@@ -2275,6 +2275,10 @@ PROVEN.
   band, 17d the beasts and the memo, 17f every producer's hint.
 - `test/mwnpc18_decorfigures.test.js` (5): 18c through a real room and its
   kept list, 18b the words read whole, 18d the race read, 18e the sweep.
+- Pins moved: OW-PEERS' cull (the unseen branch says why it casts), PR-BOW1's
+  and PR-BOW1b's drawThird (its `anchored`), MWNPC1h's and MWNPC12-1's
+  titles; every record those files kill judged again (43: 42 dead, one
+  equivalent as recorded).
 - Mutant records: `tools/mutants/mwnpc16.json` 41 and `mwnpc17.json` 26,
   all dead; `mwnpc18.json` 16, 15 dead and one equivalent as recorded (the
   figures' set let go at a take-down: memory, which no pin sees).

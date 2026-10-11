@@ -142,8 +142,8 @@
   {
     "name": "WORLD-HOVER-a-null-frame-is-merely-skipped",
     "file": "src/ui/worldPlaque.js",
-    "old": "    blank(n);\n    return;\n  }\n  paint(n, frame, quickLootRow(frame), stats);",
-    "new": "    return;\n  }\n  paint(n, frame, quickLootRow(frame), stats);",
+    "old": "    blank(n);\n    return;\n  }\n  paint(n, win.frame, lit >= 0 ? lit - win.from : -1, stats);",
+    "new": "    return;\n  }\n  paint(n, win.frame, lit >= 0 ? lit - win.from : -1, stats);",
     "tests": [
       "test/worldhover.test.js"
     ]
@@ -189,8 +189,8 @@
   {
     "name": "WORLD-HOVER-the-signature-guard-retires",
     "file": "src/ui/worldPlaque.js",
-    "old": "  const sig = `${frameSignature(frame)}|${quickLootRow(frame)}|${statsSide(lastX, globalThis.innerWidth ?? 0)}|${actionLayout}`;\n  if (sig === shownSig) return;",
-    "new": "  const sig = `${frameSignature(frame)}|${quickLootRow(frame)}|${statsSide(lastX, globalThis.innerWidth ?? 0)}|${actionLayout}`;\n  if (false) return;",
+    "old": "  const sig = `${frameSignature(frame)}|${lit}|${win.from}|${statsSide(lastX, globalThis.innerWidth ?? 0)}|${actionLayout}`;\n  if (sig === shownSig) return;",
+    "new": "  const sig = `${frameSignature(frame)}|${lit}|${win.from}|${statsSide(lastX, globalThis.innerWidth ?? 0)}|${actionLayout}`;\n  if (false) return;",
     "tests": [
       "test/worldhover.test.js"
     ]
@@ -739,8 +739,8 @@
   {
     "name": "WORLD-HOVER-the-itemised-default-comes-back",
     "file": "src/systems/worldHover.js",
-    "old": "    if (!named?.title) return null;\n    const { shown, rest, empty } = hoverLines(contents?.(key) ?? null);\n    return frame(key, 'items', named.title, named.subs ?? [], shown, rest, empty);",
-    "new": "    const { shown, rest, empty } = hoverLines(contents?.(key) ?? null);\n    return frame(key, 'items', named?.title ?? 'Loot', named?.subs ?? [], shown, rest, empty);",
+    "old": "    if (!named?.title) return null;\n    // LOOT-SCROLL: EVERY row - the selection and the take index the whole pile; the plaque draws HOVER_MAX of them at a\n    // time (plaqueWindow), so the wheel reaches what the \"and N more\" tail used to hide\n    const { shown, rest, empty } = hoverLines(contents?.(key) ?? null, Infinity);\n    return frame(key, 'items', named.title, named.subs ?? [], shown, rest, empty);",
+    "new": "    // LOOT-SCROLL: EVERY row - the selection and the take index the whole pile; the plaque draws HOVER_MAX of them at a\n    // time (plaqueWindow), so the wheel reaches what the \"and N more\" tail used to hide\n    const { shown, rest, empty } = hoverLines(contents?.(key) ?? null, Infinity);\n    return frame(key, 'items', named?.title ?? 'Loot', named?.subs ?? [], shown, rest, empty);",
     "tests": [
       "test/worldhover.test.js"
     ]
@@ -971,7 +971,9 @@
     "new": "  return `${f.key}|${f.kind}|${f.renown ?? ''}|${f.title}|${f.subs.join('\\u001f')}|${rows}|${f.empty ? 'e' : ''}${f.tone ? `|${f.tone}` : ''}`;",
     "tests": [
       "test/worldhover.test.js"
-    ]
+    ],
+    "equivalent": true,
+    "why": "FIELD BUGS 2026-10-11g LOOT-SCROLL: resolveHover mints every row of a pile, so no frame it signs carries a tail (`rest` is 0) - the tail's rows are in the signed rows, and a changed tail repaints through them (worldhover's 'a changed TAIL under the same visible rows repaints' holds it)"
   },
   {
     "name": "AUDIT-WH2-two-rows-run-together",
