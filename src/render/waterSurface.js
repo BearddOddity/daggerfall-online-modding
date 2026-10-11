@@ -38,7 +38,7 @@ import { WIND_ROW_CALM, WIND_ROW_SPAN } from '../systems/wind.js';
 import { getPref } from '../systems/uiPrefs.js';   // FT6: the switch, read here alone
 import { isEnhanced } from '../systems/uiSkin.js';
 import { FOG_GLSL } from './fogGlsl.js';   // AUDIT 68 S17-fog-glsl-dup: the fog every world pass takes, one home
-import { HORIZON_HAZE_GLSL, SEA_HAZE_BAND } from './horizonHaze.js';   // FAR-SEA1: the sea takes the far ring's haze, one text
+import { SEA_LOOK_GLSL, SEA_HAZE_BAND } from './horizonHaze.js';   // FAR-SEA1: the sea takes the far ring's haze; AUDIT FAR-SEA1 C12: and the open sea's light is one text with the ring's sea
 import { pageParam } from '../systems/pageQuery.js';
 import { RIPPLE_CELLS, RIPPLE_SCALE } from '../world/waterRipples.js';
 import { NO_BED_DEPTH } from '../world/waterCorners.js';   // AUDIT WATER-NEXT H2: its one home, the water's leaf (the kernel's worker writes it)   // WATER-NEXT 4: the ripple field the shader reads   // PERF-URL: the page's query, parsed once a search
@@ -401,12 +401,12 @@ uniform vec3 uFogColor;
 uniform int uFogMode;
 uniform float uFogDensity;
 uniform vec2 uFogRange;
-uniform vec4 uSeaHaze;         // FAR-SEA1: the far ring's haze hold (0: off - the world's fog alone), its rim's start and end, the sea's height
+uniform vec2 uSeaHaze;         // FAR-SEA1: the far ring's haze hold (0: off - the world's fog alone) and the sea's height (AUDIT FAR-SEA1 P3: the rim never reaches the streamed sea)
 uniform vec3 uCamPos;
 ${shadowGlsl}
 out vec4 outColor;
 ${FOG_GLSL}
-${HORIZON_HAZE_GLSL}
+${SEA_LOOK_GLSL}
 ${SWELL_GLSL}
 uint waterCorners(uint data) {
   // the component by comparison, not by a dynamic index: a dynamic
@@ -512,15 +512,15 @@ void main() {
   }
   vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
   float NdV = clamp(dot(n, V), 0.0, 1.0);   // WATER-AUDIT (M1): two near-unit vectors can dot past one; pow of a negative is NaN
-  float F = uF0 + (0.85 - uF0) * pow(1.0 - NdV, 5.0);
+  float F = seaFresnel(NdV, uF0);   // AUDIT FAR-SEA1 C12: the open sea's light, one text with the far ring's sea (render/horizonHaze.js)
   vec3 R = reflect(-V, n);
-  vec3 skyRefl = mix(uSkyHorizon, uSkyZenith, clamp(0.2 + R.y * 1.4, 0.0, 1.0));
+  vec3 skyRefl = seaSkyRefl(R.y, uSkyZenith, uSkyHorizon);
   // PERF-SUN2: the shadow read only while the sun is up - a uniform branch
   float shadow = uSunScale > 0.0 ? cloudShadowAt(vWorldPos)${shadowGlsl ? ' * sunShadowAt(vWorldPos, n)' : ''} : 0.0;   // EL7: a quay's shadow lies on the water under the lane
   // the body lit as water is lit: the sky's light into it, the sun's and the moon's through it, softly
   float diff = max(dot(n, uLightDir), 0.0) * shadow;
   float mdiff = max(dot(n, uMoonDir), 0.0);
-  vec3 lit = body * (uAmbient + uSunColor * ((uSunScale * diff) * 0.6) + uMoonColor * (uMoonScale * mdiff));
+  vec3 lit = body * seaLight(uAmbient, uSunColor, uSunScale * diff, uMoonColor, uMoonScale * mdiff);
   vec3 pointAcc = vec3(0.0), pointSpec = vec3(0.0);
   for (int i = 0; i < 16; i++) {
     if (i >= uPointCount) break;
@@ -585,10 +585,10 @@ void main() {
   own = mix(own, foamLit, k); trans *= 1.0 - k; cover = mix(cover, 1.0, k);
   edge = max(edge, foam * smoothstep(0.0, 0.2, edge));
   vec3 H = normalize(uLightDir + V);
-  float spec = pow(max(dot(n, H), 0.0), 180.0) * uSunScale * shadow * (1.0 - foam);
+  float spec = seaSunLobe(dot(n, H)) * uSunScale * shadow * (1.0 - foam);
   vec3 Hm = normalize(uMoonDir + V);
-  float mspec = pow(max(dot(n, Hm), 0.0), 220.0) * uMoonScale;
-  own += uSunColor * (1.6 * spec) + uMoonColor * (0.7 * mspec) + pointSpec * 1.2;   // WATER-LIT1: the lamps' and the torch's glints
+  float mspec = seaMoonLobe(dot(n, Hm)) * uMoonScale;
+  own += seaGlints(uSunColor, spec, uMoonColor, mspec) + pointSpec * 1.2;   // WATER-LIT1: the lamps' and the torch's glints
   // the fogs over the water's own light at its share - the air's, then DW-C's sea fog - as a premultiplied colour takes
   // them (an affine fog of x is x * m + c; at a share s, x * m + c * s): the copy's share is left as it was drawn
   vec3 ownShare = uSceneOn == 1 ? vec3(1.0) - trans : vec3(cover);
@@ -596,9 +596,13 @@ void main() {
   // FAR-SEA1: THE SEA REACHES THE HORIZON. On a frame the far ring is drawn (the host sets uSeaHaze), the water at the
   // sea's own level takes the ring's haze - the world's linear ramp capped at the hold - so it no longer closes into a
   // band of solid fog in front of the ring's sea: the two meet at one haze at the streamed grid's edge. Nearer than the
-  // hold the cap is the world's fog exactly; a lake or a river above the coast keeps the world's fog whole.
-  if (uSeaHaze.x > 0.0 && uFogMode == 1 && abs(vWorldPos.y - uSeaHaze.w) < ${SEA_HAZE_BAND.toFixed(2)}) {
-    fw = 1.0 - horizonHaze(length(vWorldPos - focusOrigin()), uFogRange.x, uFogRange.y, uSeaHaze.y, uSeaHaze.z, uSeaHaze.x);
+  // hold the cap is the world's fog exactly; a lake or a river above the coast keeps the world's fog whole. AUDIT
+  // FAR-SEA1 P3: the law's half that reaches the streamed sea is the world's own linear factor floored at 1 - hold
+  // (render/horizonHaze.js: the rim opens past the grid's farthest corner) - no second distance, no second ramp; L3:
+  // faded over the band's outer half, so water running down to the sea crosses into its haze without a line.
+  if (uSeaHaze.x > 0.0 && uFogMode == 1) {
+    float seaW = 1.0 - smoothstep(${(SEA_HAZE_BAND * 0.5).toFixed(2)}, ${SEA_HAZE_BAND.toFixed(2)}, abs(vWorldPos.y - uSeaHaze.y));
+    fw = mix(fw, max(fw, 1.0 - uSeaHaze.x), seaW);
   }
   vec3 fogged = own * fw + uFogColor * (1.0 - fw) * ownShare;
   fogged = dwWaterFogAdd(fogged, vWorldPos) + dwWaterFog(vec3(0.0), vWorldPos) * ownShare;

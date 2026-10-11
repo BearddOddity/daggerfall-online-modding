@@ -410,8 +410,10 @@ central-difference normals so the ring takes the live sun and
 ambient. Placement is pixel-corner units relative to a BASE pixel +
 one pixelTranslation(base) per draw - recenters cost nothing, the law
 every hand-offset consumer in world.js exists for having broken. The
-HOLE: the index buffer skips exactly the streamed rect's cells,
-re-punched per crossing (indices only; the vertex grid re-centres
+HOLE: the index buffer skips exactly the streamed rect's cells
+(FAR-SEA1, 2026-10-10: the ring's range does - the flat sea's cells
+there are a range of their own, drawn only past the world's far plane,
+`07-Rendering/Water-Arc.md`), re-punched per crossing (indices only; the vertex grid re-centres
 when the player drifts past RING_REBUILD_DRIFT=12 pixels - painter's
 order hides every overlap, the hole exists for the coarse-peak-above-
 the-silhouette case it cannot). The FADE is the pass's own: the world

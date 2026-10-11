@@ -88,7 +88,7 @@ import { lookAt, multiply, perspective, mirrorProjectionX, trs, identity, UP_Y, 
 import { aabbOutside, localAabb, transformedAabb, flatBatchAabb, cullDisabled } from '../render/frustum.js';   // GHOST1: the plane extraction comes through bounds.js's `spherePlanes` now - `_planes` serves the sphere test too
 import { spherePlanes, batchVisible, setFlatLean, batchSphere } from '../render/bounds.js';   // PERF-CROWD: the batch's own bounding sphere, the test the shadow replay already uses   // GHOST1: through its ONE home, on the NORMALISED planes it needs   // EV3: the frustum
 import { withMoonAmbient } from '../render/enhancedSky.js';   // EV5: secunda rides the ambient
-import { FarRingRenderer, ringDisabled, ringHeight, RING_HAZE_HOLD, RING_RIM_START, RING_RIM_END } from '../render/farRing.js';   // EV8: the province's mountains on the horizon; FAR-SEA1: its haze, the sea's too
+import { FarRingRenderer, ringDisabled, ringHeight, RING_HAZE_HOLD } from '../render/farRing.js';   // EV8: the province's mountains on the horizon; FAR-SEA1: its haze, the sea's too
 import { syncLightingLane, lanternColor } from '../render/enhancedLighting.js';   // EL1: the Enhanced Lighting lane, installed at mount
 import { collectBlockFlats, billboardSize, mobileBillboardSize, centredBase, classicBillboardSize, isNatureArchive, NATURE_FLATS_Y } from '../world/rmbFlats.js'; import { blockHillSeat, seatNatureFlat } from '../world/townStandIns.js';   // TREES-SEATED: a block's trees on the hills drawn under them
 import { blockSolids, flatFieldFor } from '../world/flatFields.js';   // FIELD BUGS 2026-10-04d CROPS: a crop field keeps a metre off the block's solids; AUDIT MERCHANT-YARDS G1: and a yard off the field
@@ -5108,6 +5108,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _dwBreathState = { tally: 0 };
   const _dwSurfaceList = [];
   let _waterU = null;   // WATER-NEXT 2: the frame's water uniforms, set where the terrain's water draws
+  /** The ground archive whose water texel colours the open sea - the camera's climate's, else any built pixel's. AUDIT
+   *  FAR-SEA1 L1: one home - Iliac Puddle No More's sea and the far ring's sea beside it take the same body. */
+  function seaGroundArchive() {
+    const here = playerTravelPixel();
+    let arch = here ? built.get(`${here.x},${here.y}`)?.groundArchive : null;   // the sea's water is the camera's climate's
+    if (arch == null) for (const p of built.values()) if (p.groundArchive != null) { arch = p.groundArchive; break; }
+    return arch;
+  }
   function drawDeepWatersSurfaces(nowMs, cells = null) {
     const f = _dwFrame;
     if (!f || !f.s.spawnSurfaces) return;
@@ -5120,10 +5128,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // WATER-NEXT 2: from above, the sea is the water's own - the swell, the depth to the floor the mod carved, the
     // look through it - drawn by the water program over the mod's own sheets; from under it, the mod's underside
     if (waterOn && !f.underwater && _waterU) {
-      const here = playerTravelPixel();
-      let arch = here ? built.get(`${here.x},${here.y}`)?.groundArchive : null;   // the sea's water is the camera's climate's
-      if (arch == null) for (const p of built.values()) if (p.groundArchive != null) { arch = p.groundArchive; break; }
-      renderer.drawSeaSurfaces(_dwSurfaceList, deepWaters.oceanLocalY + SURFACE_RENDER_Y_OFFSET, _waterU, f.look.topColor, renderer.tileArrays.get(arch));   // its rgb read in place
+      renderer.drawSeaSurfaces(_dwSurfaceList, deepWaters.oceanLocalY + SURFACE_RENDER_Y_OFFSET, _waterU, f.look.topColor, renderer.tileArrays.get(seaGroundArchive()));   // its rgb read in place
       return;
     }
     dwRender.drawSurfaces(_dwSurfaceList, { ...f.look, underwater: f.underwater, liftY: deepWaters.oceanLocalY + SURFACE_RENDER_Y_OFFSET, surfaceScroll: surfaceScrollAt(nowMs / 1000), surfaceTexture: _dwSurfaceTex });
@@ -33607,9 +33612,11 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // nothing nearer has claimed, and write no depth, so everything
     // blended after them (the water, the flats, the rain, the grass)
     // composes exactly as it did. The ring keeps its "the streamed
-    // world repaints everything nearer" law by gl_FragDepth = 1.0
-    // instead of by order. Same picture, a third to a half fewer sky
-    // fragments on an open road.
+    // world repaints everything nearer" law by depth instead of by order
+    // (AUDIT FAR-SEA1 P1: the pass's depthRange(1, 1), not a written
+    // gl_FragDepth, which ran its shader before the test for every pixel
+    // the streamed world covered). Same picture, a third to a half fewer
+    // sky fragments on an open road.
     sky.draw(tvf ? tvf.yaw : cam.yaw, tvf ? tvf.pitch : cam.pitch + climbFeel.pitch(), fieldOfView() + climbFeel.fovRad(), worldAspect, renderer.worldViewportPx ?? [0, 0, renderer.gl.drawingBufferWidth, renderer.gl.drawingBufferHeight]);   // VC3: the clouds' map restores this rect
     meterFor(renderer.gl)?.markCpu('ring');   // PERF-ZONE2: the far province ring (its rebuild and its hole) and the water, after the sky hands the frame back
     // EV8: the far province ring - the horizon's actual mountains,
@@ -33618,7 +33625,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // the air (rain, snow, heavy fog); its light state is the frame's
     // own, already installed by setLighting/beginFrame above. It
     // shares the EV6 seam mark below - one foreign span, two passes.
-    const waterSkyNow = (farRing || waterOn) ? sky.waterSky() : null;   // FAR-SEA1: the sky the water reflects, once a frame - the ring's sea and the water's
+    const waterSkyNow = waterOn ? sky.waterSky() : null;   // FAR-SEA1: the sky the water reflects, once a frame - the ring's sea and the water's (AUDIT FAR-SEA1 H2: none with the Enhanced water off - the sea is Daggerfall's tile, and the ring's sea keeps the ground's look beside it)
     const seaYNow = farRing ? tvSeaY() : 0;   // FAR-SEA1: the sea's surface in the scene this frame
     const frameRing = () => {   // PERF-V8
     if (farRing && fogNow.mode === 'linear') {
@@ -33646,13 +33653,15 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         // that pass's aspect - a horizon built on the full-canvas ratio
         // would step against the terrain in front of it under a docked bar.
         fovY: fieldOfView() + climbFeel.fovRad(), aspect: worldAspect,   // CLIMB4: the lens the world took
-        // FAR-SEA1: the ring's sea under the water's sky, and the sea inside the hole (past the world's far plane) only
-        // with the eye above the sea - a swimmer under it looks up at the surface
-        skyZenith: waterSkyNow?.zenith, skyHorizon: waterSkyNow?.horizon, seaFill: renderer._camPos[1] > seaYNow,
+        // FAR-SEA1: the ring's sea under the water's sky; AUDIT FAR-SEA1: the eye and the world's lens it counts the sea
+        // inside the hole from (P1: only the cells that can be past the far plane, none with the eye under the sea),
+        // and the water's own body - the camera climate's tiles and Iliac Puddle No More's tint over its open sea (L1)
+        skyZenith: waterSkyNow?.zenith, skyHorizon: waterSkyNow?.horizon, eye: renderer._camPos, worldProj: renderer._proj,
+        seaTiles: waterSkyNow ? renderer.tileArrays.get(seaGroundArchive()) : null, seaTint: _dwFrame && !_dwFrame.underwater ? _dwFrame.look.topColor : null,
       });
       // FAR-SEA1: and the streamed sea meets it at the ring's haze - with a sky to reflect: under the classic panorama
       // the water reflects WATER1's default day, which the fog had hidden past its end and the hold would show at night
-      if (waterSkyNow) renderer.setSeaHaze(RING_HAZE_HOLD, RING_RIM_START, RING_RIM_END, seaYNow);
+      if (waterSkyNow) renderer.setSeaHaze(RING_HAZE_HOLD, seaYNow);
     }
     };
     frameRing();

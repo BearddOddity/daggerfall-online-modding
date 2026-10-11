@@ -458,9 +458,12 @@ panels". Two causes, both the port's own, both closed:
 - **Past the streamed grid** the far ring (EV8) holds its haze at 85%
   through the middle distance - the ring's own design, not the mod's. Its
   sea no longer reads a shade darker than the fully fogged edge of the
-  streamed world: the streamed sea holds the same haze (FAR-SEA1,
+  streamed world wherever the Enhanced water draws the sea under a sky it
+  can reflect and linear fog: the streamed sea holds the same haze and the
+  ring's sea is the water's own (FAR-SEA1 and its audit,
   `07-Rendering/Water-Arc.md` - the mod's top drawn by the water's program
-  from above takes it too), and over land the step stands.
+  from above takes it too). Under the classic panorama, with the Enhanced
+  water off, `?ring=off` or weather's fog, and over land, the step stands.
 
 ## The close (DW-F)
 

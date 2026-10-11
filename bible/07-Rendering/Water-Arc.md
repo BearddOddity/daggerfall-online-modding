@@ -1157,8 +1157,10 @@ square seen corner-on; and past that edge a plane a shade DARKER, (109, 123, 173
 - The streamed world is drawn through a 6000-unit far plane, and a grid of radius 5 or 6 reaches past it toward its
   corners; there neither surface drew (the ring's hole is the grid's rect) and the sky showed through.
 
-**What changed.** No pass is added and no geometry grows; the costs are one uniform on the water and a few hundred
-indices on a buffer the ring already draws.
+**What changed.** No pass is added and no vertex is added. The costs: one uniform on the water; on the ring a byte a
+vertex (the sea's weight, 9,409 bytes), its uniforms, one texel fetch a vertex, and at most a few hundred indices
+on the buffer it already draws - of which a frame draws only the cells that can lie past the world's far plane
+(AUDIT FAR-SEA1 P1, below).
 
 - **One haze for the horizon** (`render/horizonHaze.js` `HORIZON_HAZE_GLSL`): the world fog's linear ramp CAPPED at
   the hold, min(ramp, hold), closed to 1 over the ring's rim (RING_RIM_START to RING_RIM_END, AUDIT EV F-R3's nearest
@@ -1168,41 +1170,86 @@ indices on a buffer the ring already draws.
   closed). The ring takes the law on all three of its fragment shaders (classic, the Enhanced Lighting lane, the
   classic-shadow lane). At the default distance its picture over land does not move.
 - **The streamed sea holds it too** (`render/waterSurface.js` `uSeaHaze`): on a frame the world host draws the ring
-  (the ring's own gate - linear fog, `?ring=off` not set), it hands the renderer the hold, the rim and the sea's height
-  (`Renderer.setSeaHaze`, a frame's, cleared by `beginFrame`), and the water within `SEA_HAZE_BAND` (1 unit) of the
-  sea's level fogs by the law instead of the world's ramp - the terrain's water and Iliac Puddle No More's open sea,
-  one frame block. Only with a sky to reflect: under the classic panorama (`?sky=classic`, Enhanced environments
+  (the ring's own gate - linear fog, `?ring=off` not set), it hands the renderer the hold and the sea's height
+  (`Renderer.setSeaHaze`, a frame's, cleared by `beginFrame` and kept across a panel bracket), and the water within
+  `SEA_HAZE_BAND` (1 unit, faded over its outer half) of the sea's level takes the law's half that reaches it - the
+  world's own linear factor floored at 1 - hold (the rim opens at 16.8 km, past the grid's farthest corner) - the
+  terrain's water and Iliac Puddle No More's open sea, one frame block. Only with a sky to reflect and the Enhanced
+  water on: under the classic panorama (`?sky=classic`, Enhanced environments
   off) `sky.waterSky()` is null and the water reflects WATER1's fixed default day, which the fog hid past its end and
   the hold would show at night - so there the host sets no haze and the ring's sea stays lit as ground (`uSeaLook`
   0): the picture before this slice. Nearer than the hold it is the world's fog exactly; past it the sea runs on at the ring's haze and
   meets the ring's sea at the grid's edge. A lake or a river above the coast keeps the world's fog whole, as the land
   round it does.
-- **The ring's sea is lit as water** (`seaSky`): a vertex over a water pixel standing at the clamp (`isWaterPixel` and
-  the sea's height - an Ocean-climate hill is not sea) carries a sea weight (attribute 3), and its colour is the water
-  surface's own deep-sea arm - the Fresnel over its lit body and the sky it reflects (`sky.waterSky()`, read once a
-  frame for both), the water's F0. Lit as flat ground it read darker than the water beside it at a grazing look, where
-  the water is mostly sky. The lane sums it in display space, where the water (a classic-space program on every lane)
-  does.
+- **The ring's sea is the water's own** (`SEA_LOOK_GLSL`, `ringSea`): a vertex over a water pixel standing at the
+  clamp (`isWaterPixel` and the sea's height - an Ocean-climate hill is not sea) carries a sea weight (attribute 3),
+  and its colour is the water surface's own open sea at a flat normal - the same body (the camera climate's water
+  texel, averaged by its mip chain, under the water's tint and Iliac Puddle No More's over its open sea), the same
+  light (the sun softly), the same Fresnel over it and sky reflected (`sky.waterSky()`, read once a frame for both),
+  the same glints - from one text the water's fragment shader now calls too. The lane computes it in the water's own
+  (classic) space from the frame's light as the host gave it, as the water does, never through the ground's tonemap.
+  The land pays nothing for it (a branch on the sea's weight).
 - **The sea inside the hole** (`buildSeaFillIndices`): the ring's cells inside the streamed rect whose four corners
-  are all sea are kept as the index buffer's tail. At the far plane (gl_FragDepth 1.0 under LEQUAL) they paint only
-  where nothing streamed was drawn - past the 6000-unit far plane, a pixel not yet built - and a flat sea cell cannot
-  stand above the streamed silhouette (the case the hole exists for). The host draws the tail only with the eye above
-  the sea: a swimmer under it looks up through the surface, not at the ring.
+  are all sea are kept as the index buffer's tail, farthest first. At the far plane (the pass's `depthRange(1, 1)`
+  under LEQUAL) they paint only where nothing streamed was drawn - past the world's far plane - and a flat sea cell
+  cannot stand above the streamed silhouette (the case the hole exists for). A frame draws only the cells that can
+  lie past that plane from where the eye stands (`seaFillCount`, the world's own lens) - none with the eye under the
+  sea: a swimmer looks up through the surface, not at the ring.
 
-**What it does not do.** The land keeps its seam: the streamed ground past the fog's end is still solid fog in front
-of the ring's 85% mountains (EV8's look, unchanged). With the Enhanced water off (WATER-OFF) the sea is Daggerfall's
-flat tile on the terrain program, which takes the world's fog alone, so the band stands there. The sea's look past
-the fog is the ring's hold, one constant (RING_HAZE_HOLD) for land and sea; a sea that reads further would want its
-own, which is Mac's call. **Not seen on a real GPU with ARENA2** - Mac's eye on the same peak is the gate.
+**THE FOUR HOSTS.** The streaming world (`scenes/world.js`) draws the ring and the enhanced water and sets the sea's
+haze; the fixed town (`scenes/exterior.js`) draws the enhanced water and no ring, so its water keeps the world's fog
+(its own `beginFrame` clears the haze); the interiors (`scenes/worldModes.js`) and the dungeons
+(`scenes/dungeonContext.js`) draw neither.
+
+**What it does not do.** The land keeps its seam past the fog's end: the streamed ground there is still solid fog in
+front of the ring's 85% mountains (EV8's look; inside the fog's ramp the capped law closed AUDIT 61 F9's seam). And
+past 0.85 of the fog's end the sea now holds at the hold while the streamed land, the islands and the boats beside it
+go on to solid fog, so far land reads as a pale flat shape against the sea (AUDIT FAR-SEA1 D3 - recorded for Mac).
+With the Enhanced water off (WATER-OFF) the sea is Daggerfall's flat tile on the terrain program, which takes the
+world's fog alone, so the band stands there, and the ring's sea keeps the ground's look beside it. The sea's look
+past the fog is the ring's hold, one constant (RING_HAZE_HOLD) for land and sea; the fix makes the sea continuous,
+not more visible - with the sky the water reflects close to the fog's colour, the far sea reads a little nearer the
+haze than the ring's flat ocean tint did - and a sea that reads further would want its own hold, which is Mac's call
+(D4). **Not seen on a real GPU with ARENA2** - Mac's eye on the same peak is the gate.
 
 **Pinned** in `test/farsea1.test.js` (10): the law run in the GLSL evaluator (the world's ramp exactly, the hold, the
-rim, a late start; capped, not scaled), the constants, `seaSky` against the water's own Fresnel, sky and deep-sea
-`own`, all three ring shaders, the sea vertices, the fill's cells, the pass through a recording GL, the water's arm,
-the renderer's frame block and the world host's wiring. PIN MOVED: `test/water.test.js` (the dome's sky read once),
+rim, a late start; capped, not scaled), the constants, the open sea's one text and the water calling it, all three
+ring shaders (their lines in order, the sea's inputs as the vertex shader mints them, `ringSea` run), the sea
+vertices, the fill's cells and their order, the pass through a recording GL, the water's arm against `FOG_GLSL`'s own
+factor, the renderer's frame block and the world host's wiring; and `test/audit_farsea1.test.js` (AUDIT FAR-SEA1,
+below). PIN MOVED: `test/water.test.js` (the dome's sky read once),
 `test/el2_shadows.test.js` (beginFrame's window), `test/glstate.test.js` (AUDIT 47's sweep reads the new leaf),
 `test/dynamicSkies.test.js` (AUDIT 61 F9's ramp from the fog's start, now the law's), `test/boot2.test.js` (the entry's
 static reach, 75 - the new leaf, which imports nothing), and the
 `tools/mutants/eldistance.json` record of the lane ring's fog (re-aimed by content). Mutants:
-`tools/mutants/farsea1.json` (14, all dead). Seen in Chromium by `tools/farSeaProbe.mjs`: the three ring programs and
-both water programs link and keep every FAR-SEA1 uniform, and over an open sea the fill paints the hole the ring
-alone leaves to the clear colour.
+`tools/mutants/farsea1.json` (14, all dead; seven re-aimed by content at the audit's code). Seen in Chromium by
+`tools/farSeaProbe.mjs`: the three ring programs and both water programs link and keep every FAR-SEA1 uniform; over
+an open sea the eye under it leaves the hole to the clear colour and the eye above paints only the counted cells; a
+frame claimed nearer takes nothing; and the sea takes the water's body when its tiles are handed.
+
+## AUDIT FAR-SEA1 (2026-10-11) - THE SEA'S COST MEASURED, ITS SEAM MADE THE WATER'S
+
+Mac: *"Audit this"*. Five lanes read the frozen branch - the shaders and GL, the hosts and the frame, the pins and the
+record, the numbers at the seams, and the cost - each verifying its findings before reporting; the findings, the
+fixes and what is recorded for Mac are `01-Overview/Audit-FAR-SEA1.md`. What moved in the laws above:
+
+- **The fill was not free** (P1, two lanes). The ring wrote `gl_FragDepth`, which runs a fragment shader before its
+  depth test, and the fill rasterized the whole streamed sea: from a raised eye it shaded 55-60% of the frame to show
+  in under a hundredth of it. Now the ring stands at the far plane by `depthRange(1, 1)` (the same picture, byte for
+  byte, the test before the shader - for the ring's own fragments behind the streamed world too), and a frame draws
+  only the fill's cells that can lie past the far plane from the eye: over 300 random views the performance lane
+  measured the shaded fill falling from 54.6% of the screen to 3.4% under that selection, with no shown pixel lost
+  (the pass keeps 1% of the far plane in hand for its float32 lens, a cell or two more).
+- **The seam was not the water's** (L1, L2). The ring's sea had been the overworld tint, lit with the full sun,
+  without a glint: a step of about 3 units at the grid's edge by day, a glitter path that stopped there, and worse
+  than before where the edge stood inside the fog's ramp (Land view 1-3 under Dynamic Skies' Sunny). Now the sea's
+  light is one text (`SEA_LOOK_GLSL`) the water calls too, and the ring's sea takes the water's body: run on the two
+  shaders themselves, the streamed sea and the ring's sea meet to under half a unit - by day, at a low sun ahead, by
+  moonlight, on both lanes, at an edge inside the ramp.
+- **The panel bracket dropped the haze** (H1): a decorator's preview drawn between the water and the open sea took it
+  for the rest of the frame - the bracket keeps it now, as it keeps the sea's fog.
+- **With the Enhanced water off the ring's sea is the ground's** (H2), and the sky is not read for it.
+- **The water's arm is the world's own factor floored** (P3) - no second distance or ramp in the water, and FOG_GLSL
+  stays the water's one fog law - and its band fades over its outer half (L3), so water running down to the sea
+  crosses into its haze without a line.
+- **A crossing builds one buffer** (P4), as the ring alone did.

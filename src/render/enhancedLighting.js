@@ -1129,20 +1129,25 @@ uniform float uFogEnd;
 uniform float uRimStart;
 uniform float uRimEnd;
 uniform float uHazeHold;
+uniform vec3 uSeaAmbient;     // AUDIT FAR-SEA1 L1: the frame's light as the host gave it - the water surface's own space
+uniform vec3 uSeaSunColor;
+uniform vec3 uSeaMoonColor;
 ${RING_SEA_GLSL}
 ${EL_GLSL}
 out vec4 outColor;
 void main() {
-  gl_FragDepth = 1.0;
+  // PERF2 / AUDIT FAR-SEA1 P1: at the far plane by the pass's depthRange(1, 1) - the depth test runs before the shader
   float ex = uELExposure * elAdapt();   // EL4
   vec3 n = normalize(vNormal);
   float diff = max(dot(n, uLightDir), 0.0);
   float mdiff = max(dot(n, uMoonDir), 0.0);
   vec3 lit = elDecode(vColor) * (uAmbient + uSunColor * (uSunScale * diff) + uMoonColor * (uMoonScale * mdiff));
   vec3 shown = elEncode(elTonemapRGB(lit * ex));   // HQ1
-  // FAR-SEA1: the sea under the sky it reflects - in display space, where the water surface (a classic-space program
-  // on every lane) sums it
-  shown = mix(shown, seaSky(shown, ringSeaFacing(), uSkyZenith, uSkyHorizon, uSeaF0), vSea * uSeaLook);
+  // FAR-SEA1: the sea is the water's own - and the water surface is a classic-space program on every lane, so the sea
+  // beside it is summed in the same space, from the same light (AUDIT FAR-SEA1 L1: its body and its glints, not the
+  // ground's through the tonemap and the eye); the land pays nothing for it
+  float sea = vSea * uSeaLook;
+  if (sea > 0.0) shown = mix(shown, ringSea(uSeaAmbient, uSeaSunColor, uSeaMoonColor), sea);
   // EL-DISTANCE: the ring fades into the fog in DISPLAY space, as elFinish and the classic ring do - mixed in linear
   // it reached the fog colour long before the streamed ground beside it (FAR-SEA1: the horizon's one law)
   vec3 col = mix(shown, uFogColor, horizonHaze(vDist, uFogStart, uFogEnd, uRimStart, uRimEnd, uHazeHold));

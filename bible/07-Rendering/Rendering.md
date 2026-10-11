@@ -5,7 +5,7 @@ this section owns renderer specifics.
 
 Current (`src/render/`) - one bullet per module, pinned against the real
 directory by `test/audit18_bible_docs.test.js`:
-- `horizonHaze.js` - FAR-SEA1 THE HORIZON'S HAZE (2026-10-10, Mac: "Anyway we can fix the draw distance for oceans without affecting performance?"): `HORIZON_HAZE_GLSL`, one law for every surface past the streamed grid's fog - the world fog's linear ramp CAPPED at the far ring's hold (min(ramp, hold); the ring had scaled it, hold * ramp) and closed over the ring's rim - and `seaSky`, the water surface's own deep-sea arm (its Fresnel over the lit body and the sky it reflects) for a sea with no waves to light; `RING_SEA_GLSL`, what both lanes' far-ring fragment shaders read for their sea; `SEA_HAZE_BAND`, the sea's band about its level. The far ring (both lanes) and the water (`uSeaHaze`, the sea's level only, on a frame the host draws the ring) interpolate it, so the streamed sea and the ring's sea meet at one haze. No GL, no imports. `07-Rendering/Water-Arc.md` FAR-SEA1.
+- `horizonHaze.js` - FAR-SEA1 THE HORIZON'S HAZE (2026-10-10, Mac: "Anyway we can fix the draw distance for oceans without affecting performance?"): `HORIZON_HAZE_GLSL`, one law for every surface past the streamed grid's fog - the world fog's linear ramp CAPPED at the far ring's hold (min(ramp, hold); the ring had scaled it, hold * ramp) and closed over the ring's rim; the water takes its half that reaches the streamed sea, the world's own factor floored at 1 - hold (`uSeaHaze`, the sea's band only, on a frame the host draws the ring). AUDIT FAR-SEA1: `SEA_LOOK_GLSL`, the open sea's own light - Fresnel, reflected sky, the light into its body, the glints' lobes, `seaSky` - one text the water surface's fragment shader calls and the ring's sea calls with the water's body; `RING_SEA_GLSL` (`ringSea`), what both lanes' far-ring fragment shaders read for their sea; `SEA_HAZE_BAND`, the sea's band about its level. So the streamed sea and the ring's sea meet at one haze and one look. No GL, no imports. `07-Rendering/Water-Arc.md` FAR-SEA1 and AUDIT FAR-SEA1.
 - `realWindows.js` - RW1 REAL WINDOWS (2026-10-09, Mac: "The implementation of the real window overhaul, allowing players to see inside/outside of house windows"): from the street a fake room behind every house window (interior mapping in both mesh shaders, a room a building, lit at night), from inside the real street through the glass (the view out: the exterior host's street drawn into a target of its own, cropped to the glass's rectangle, painted behind the interior's glass); the Real windows row. `07-Rendering/Real-Windows.md`.
 - `heatHaze.js` - HAZE1 HEAT HAZE's RING (2026-10-08, Mac: "These should be on by default and integrate into our enhanced environments seamlessly"): the mod's cylinder (128 segments, its fade by height) drawn round the player's feet after the opaque world, the screen grabbed (`copyTexSubImage2D`, the mod's GrabPass) and bent by two scrolling reads of its 64 x 64 value noise - the compiled shader's own constants, translated from its DXBC; the noise's phase kept on the land across the floating origin. A foreign pass on both exterior hosts. `07-Rendering/Heat-Haze.md`
 - `windfallSway.js` - WINDFALL1 WINDFALL's VERTEX WIND (2026-10-08): the mod's billboard-batch law as BB_VS's chunk (`windfallLean` - the heading's 15% and 85% along the quad's right, the sway and the shiver by the profile, a 12 m cell's phase with a fifth of the flat's own, 0.8-1.2 of it a flat), the eight numbers a frame hands it (`windfallUniforms`), a batch's share under either law (`swayShare`), the shadow's bound (`windfallLeanMax`) and the anchor that carries the floating origin (`windfallAnchorAfterShift`, periodic hashes so a wrap moves no flat). `07-Rendering/Windfall.md`
@@ -1342,11 +1342,13 @@ directory by `test/audit18_bible_docs.test.js`:
   buffer covers the one case painter's order cannot). Enhanced only;
   `?ring=off`. See `07-Rendering/Enhanced-Visuals-Arc.md`. FAR-SEA1
   (2026-10-10): its haze is `horizonHaze.js`'s law, the streamed sea's
-  too; its sea vertices (a water pixel at the clamp) are lit as the water
-  is, under the sky they reflect; and the all-sea cells inside the hole
-  are the index buffer's tail, drawn with the eye above the sea, so the
-  sea past the world's 6000-unit far plane is the ring's
-  (`07-Rendering/Water-Arc.md`).
+  too; its sea vertices (a water pixel at the clamp) are the water's own
+  open sea (AUDIT FAR-SEA1: its body texel on unit 12, its light and
+  glints from `SEA_LOOK_GLSL`); and the all-sea cells inside the hole are
+  the index buffer's tail, farthest first, drawn only as far as they can
+  lie past the world's far plane from the eye, so the sea there is the
+  ring's. At the far plane by `depthRange(1, 1)`, not a written depth
+  (AUDIT FAR-SEA1 P1) (`07-Rendering/Water-Arc.md`).
 - `frustum.js` - EV3 FRUSTUM CULLING, the pure half: Gribb/Hartmann
   planes off the combined proj*view (the handedness mirror rides inside),
   the conservative p-vertex outside test with an offset form for the

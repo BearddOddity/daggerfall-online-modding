@@ -1751,7 +1751,7 @@ export class Renderer {
     // (world/deepWaterLook.js distanceFogUniforms). A FRAME's, as the cloud
     // deck is: beginFrame clears it and the exterior host sets it after.
     this._dwFog = new Float32Array(20);
-    this._seaHaze = new Float32Array(4);   // FAR-SEA1: hold, rim start, rim end, the sea's height (setSeaHaze)
+    this._seaHaze = new Float32Array(2);   // FAR-SEA1: the hold and the sea's height (setSeaHaze)
     this._dwColumn = null;   // DW-F: the water column's frame for the flats (setWaterColumn), a frame's like the fog
     this._bbColumnOn = 0;   // LA-COST1 x DW-F: the billboard program's uColumnOn as last sent (the frame block resets it)
     this._bbTipOn = false;   // PROF4: the billboard program's uTip as last sent - a falling tree's (the frame block resets it)
@@ -5178,6 +5178,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
       fogRange: [this._fogRange[0], this._fogRange[1]],
       fogColor: this._fogColor,
       dwFog: Float32Array.from(this._dwFog),   // DW-C
+      seaHaze: Float32Array.from(this._seaHaze),   // AUDIT FAR-SEA1 H1: the panel's own beginFrame clears it, and the open sea draws after a decorator's preview
       ambient: this._ambient,
       // AUDIT-AMAP H5: setLighting's fourth argument defaults to null and
       // forwards to setAmbientTrilight, so a restore that forgot the
@@ -5269,6 +5270,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     this.setAutomapWater(s.automapWaterLevel, s.automapWaterColor);
     this.setFog(FOG_MODE_NAMES[s.fogMode] ?? 'off', s.fogDensity, s.fogRange[0], s.fogRange[1], s.fogColor);
     this._dwFog.set(s.dwFog);   // DW-C
+    this._seaHaze.set(s.seaHaze);   // AUDIT FAR-SEA1 H1
     this.setLighting(s.ambient, s.sunScale, s.sunColor);
     this.setAmbientTrilight(s.ambientTri);   // AUDIT-AMAP H5
     this._clockLit = s.clockLit;
@@ -5803,12 +5805,13 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     if (loc) { this._use(this.program); this.gl.uniform4fv(loc, this._dwFog); }
   }
 
-  /** FAR-SEA1: the far ring's haze on the sea, for this frame's water - `hold` (render/farRing.js RING_HAZE_HOLD), the
-   *  ring's rim (RING_RIM_START, RING_RIM_END) and the sea's height in the scene; null for none (the world's fog alone,
-   *  every water). After beginFrame, which clears it: the host sets it on a frame it draws the ring. */
-  setSeaHaze(hold, rimStart = 0, rimEnd = 0, seaY = 0) {
+  /** FAR-SEA1: the far ring's haze on the sea, for this frame's water - `hold` (render/farRing.js RING_HAZE_HOLD) and
+   *  the sea's height in the scene; null for none (the world's fog alone, every water). After beginFrame, which clears
+   *  it: the host sets it on a frame it draws the ring. AUDIT FAR-SEA1 P3: no rim - it never reaches the streamed sea
+   *  (render/horizonHaze.js). A panel bracket keeps it (H1). */
+  setSeaHaze(hold, seaY = 0) {
     if (hold == null) { this._seaHaze[0] = 0; return; }
-    this._seaHaze[0] = hold; this._seaHaze[1] = rimStart; this._seaHaze[2] = rimEnd; this._seaHaze[3] = seaY;
+    this._seaHaze[0] = hold; this._seaHaze[1] = seaY;
   }
 
   /** DW-F: the water column's share for this frame's flats - COLUMN_GLSL's
@@ -7121,7 +7124,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     // frame the land beside it is lit in
     this._uploadCloudShadow('water');
     this._uploadFog(this._waterSurfaceFog);
-    gl.uniform4fv(L.seaHaze, this._seaHaze);   // FAR-SEA1: off ([0] 0) unless the host drew the far ring this frame
+    gl.uniform2fv(L.seaHaze, this._seaHaze);   // FAR-SEA1: off ([0] 0) unless the host drew the far ring this frame
     if (L === this._wsLane && this._shadows) this._shadows.upload(L.shadow);   // EL7: the maps and the receiver's uniforms - the lane's program
     gl.uniform3fv(L.lightDir, this._lightDir);
     gl.uniform3fv(L.ambient, this._ambient);
