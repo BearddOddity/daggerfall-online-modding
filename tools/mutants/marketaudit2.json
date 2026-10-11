@@ -65,7 +65,7 @@
   {
     "name": "MARKET-AUDIT2-door-empty-success",
     "file": "src/net/accountClient.js",
-    "old": "  if (!read && res.status !== 204) return { ok: false, error: 'offline', unknown: true, status: res.status };\n",
+    "old": "  if (!parsed && res.status !== 204) { forgetD1Bookmark(); return { ok: false, error: 'offline', unknown: true, status: res.status }; }   // AUDIT SCALE II A-6: `offline`, as one never made\n",
     "new": "",
     "tests": [
       "test/marketaudit2.test.js"

@@ -218,11 +218,12 @@
   {
     "name": "SERPENT2-own-role-unread",
     "file": "server/src/index.js",
-    "old": "serpentRole: serpentHeraldRole(this.env?.SERPENT_DISCORD_ROLE, this.env?.GATE_DISCORD_ROLE)",
-    "new": "serpentRole: heraldRole(this.env?.GATE_DISCORD_ROLE)",
+    "old": "serpentRole: serpentHeraldRole(role('serpentRole'), role('gateRole'))",
+    "new": "serpentRole: heraldRole(role('gateRole'))",
     "tests": [
       "test/serpent2_herald.test.js"
-    ]
+    ],
+    "note": "SCALE5b (re-aimed by content): the roles through relayCfgValue."
   },
   {
     "name": "SERPENT2-bells-ping-gate-role",

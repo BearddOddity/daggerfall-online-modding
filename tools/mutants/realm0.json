@@ -465,7 +465,7 @@
   {
     "name": "REALM0-trade-pack-bare",
     "file": "src/scenes/world.js",
-    "old": "  const tradePack = checkpointedTradePack(createTradePack(playerEntity), () => onlineCheckpoint());",
+    "old": "  const tradePack = checkpointedTradePack(createTradePack(playerEntity, { stampIds: stampItemIds }), () => onlineCheckpoint());",
     "new": "  const tradePack = createTradePack(playerEntity);",
     "tests": [
       "test/realm0.test.js"

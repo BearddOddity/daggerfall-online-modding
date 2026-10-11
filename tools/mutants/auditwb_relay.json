@@ -11,11 +11,12 @@
   {
     "name": "AUDWB-A1-a-socket-unstamped",
     "file": "server/src/index.js",
-    "old": "    const att = { key, id: null, name: null, pose: null, at: Date.now() };   // AUDIT WB A1: when it opened",
-    "new": "    const att = { key, id: null, name: null, pose: null };   // AUDIT WB A1: when it opened",
+    "old": "    const att = { key, id: null, name: null, pose: null, at: Date.now(), ...(ly ? { ly } : {}) };   // AUDIT WB A1: when it opened",
+    "new": "    const att = { key, id: null, name: null, pose: null, ...(ly ? { ly } : {}) };   // AUDIT WB A1: when it opened",
     "tests": [
       "test/auditwb_relay.test.js"
-    ]
+    ],
+    "note": "SCALE5d (re-aimed by content): and the layer the Worker says"
   },
   {
     "name": "AUDWB-A1-the-talker-unseated",
@@ -74,11 +75,12 @@
   {
     "name": "AUDWB-A1-nobody-present",
     "file": "server/src/index.js",
-    "old": "      for (const [, b] of this._all()) if (b.id && b.sub) present.add(b.sub);",
+    "old": "      for (const [, b] of this._courtSockets()) if (b.id && b.sub) present.add(b.sub);",
     "new": "",
     "tests": [
       "test/auditwb_relay.test.js"
-    ]
+    ],
+    "note": "SCALE5d part two (re-aimed by content): the court's copies beside it."
   },
   {
     "name": "AUDWB-A1-a-present-seat-freed",
@@ -218,11 +220,12 @@
   {
     "name": "AUDWB-A4-the-hello-handed-nothing",
     "file": "server/src/index.js",
-    "old": "        if (isSocialRoom(a.key) && who.subject) { try { await this._gateReceiptTo(ws, who.subject, now); }",
-    "new": "        if (false) { try { await this._gateReceiptTo(ws, who.subject, now); }",
+    "old": "    if (sub) { try { await this._gateReceiptTo(ws, sub, now); }",
+    "new": "    if (false) { try { await this._gateReceiptTo(ws, sub, now); }",
     "tests": [
       "test/auditwb_relay.test.js"
-    ]
+    ],
+    "note": "SCALE5c (re-aimed by content): the hub hello words moved into _hubHelloWords"
   },
   {
     "name": "AUDWB-A4-a-spent-receipt-handed",

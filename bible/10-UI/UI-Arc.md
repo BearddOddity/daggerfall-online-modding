@@ -8586,7 +8586,10 @@ itself, which U58's "no second cart check" caught immediately and
 rightly. The fix was not to weaken the pin but to give the question a
 home: `hasHorse` and `transportItem` now sit beside `hasCart` in
 inventorySession, so the pack, the road and whatever comes next read
-one answer. No template index is read in the window at all.
+one answer. No template index is read in the window at all. (CART-SLOT,
+FIELD BUGS 2026-10-11b: the cart `transportItem` answers is the wagon
+driven - wagonKinds.js activeWagonItem - not the first of the Small
+Cart's template, which a Caravan shares.)
 
 PX21b (Mac: "give it a solid redesign with readability"): THE LOOT
 WINDOW READS. The loot list inherited the DOCK's 56px tile grid -

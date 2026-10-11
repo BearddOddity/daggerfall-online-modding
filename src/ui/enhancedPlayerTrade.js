@@ -111,7 +111,7 @@ export function mountEnhancedPlayerTrade(hostEl, { session, deps }) {
     const mid = el('span', 'itemname');
     const n = count ?? (line.stack || 0);
     mid.append(el('span', null, line.name + (n > 1 ? ` ×${n}` : '')));
-    const sub = [line.material, line.word].filter(Boolean).join(' · ');
+    const sub = [letterWorthLine(item), line.material, line.word].filter(Boolean).join(' · ');   // TRADE-LOC II: a letter's worth on its row - two letters told apart at a glance, on touch too (no hover there)
     if (sub) mid.append(el('small', null, sub));
     b.append(mid, el('span', 'itemwt', `${line.weight.toFixed(2)} kg`));
     // TRADE-INFO (Tabitha: "magic item stats on the trade hover"): the row's hover says what its magic is - mine and theirs

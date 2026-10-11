@@ -272,7 +272,7 @@ Duties now, `chap3a`, `chap3b`); the five events (`chap6a` - the weights and the
 Decline moving nothing, the Chronicle's reader over a Crackdown; `chap6c`; `chap6d`); the Ascendant band (`chap3b`,
 `chap3c`, `chap7b`) and its High Master by the band through the real Worker (`chap6e`); the refusals' whole list
 (`guild1`, `guild2_service`, `audit28_marks`, `auditrealm2_service`); the silver lines' site (`auditguild1d`); and the
-service's version, `acct112`, in eighteen files (`chap1_roll`, `chap2_halls`, `duel_record`, `fb1004d_knight_house`,
+service's version, `acct112` then `acct113` (renumbered past SCALE4f-h at main's merge), in eighteen files (`chap1_roll`, `chap2_halls`, `duel_record`, `fb1004d_knight_house`,
 `founder5`, `guild1c`, `legacy7_service`, `mail1`, `notice1`, `prof9_service`, `prof10_service`, `prof12_service`, `realm1`,
 `renown1`, `renown4`, `renown_char`, `serpentset_service`, `wb5b_gate_claim`).
 
@@ -286,6 +286,6 @@ with the law they tested - `CHAP6A-W-ASC-ASC`, `CHAP6A-W-FAILING`, the Decline's
 `tools/mutants/guild3.json`: fifty-three records over every slice, every one killed - fifty-two since AUDIT GUILD3 T13
 retired `GUILD3e-the-ascendant-succession-gone`, which was `CHAP6A-W-ASC-SUCC` twice. Their survivors on the way were each a pin the suite lacked or a line the code no longer needed: a refused press whose list the page never kept (pressed now), a battle's hold that no pin read (a Charter, a battle and a patron's bid through the real Worker now), and the buttons' own gold, hall and vault checks once the list held them (the buttons wait on the list alone; `GUILD1b-a-disband-with-gold-in-it` re-aimed at the list's gold line). Eight more older records moved with the code after the first pass - the version pins (`KNIGHT-HOUSE-version-unmoved`, `TECH1-AUDIT-the-service-behind-the-law`, `GATEKEYS-the-empty-var-back`), the two GUILD1b buttons, and the holds' one read (`AUDIT31-svc-escrow-word`, `AUDIT-CHAP5-E4-WORD`, `GUILD1-the-leaving-refusal-misnamed`) - each re-aimed by content and killed.
 
-The service is `acct112`: its law moved (the ledger's lines, the refusal's list, the Turning's Decline the Failing
+The service is `acct113` (`acct112` on its branch, renumbered past SCALE4f + SCALE4g + SCALE4h at the merge of main): its law moved (the ledger's lines, the refusal's list, the Turning's Decline the Failing
 band's, the High Master by the band). No migration, no relay change. AUDIT GUILD3's service changes (the holds' one
-list, the silver's room, the escrow's state) ride `acct112` too: none of it has shipped.
+list, the silver's room, the escrow's state) ride the same version: none of it has shipped.

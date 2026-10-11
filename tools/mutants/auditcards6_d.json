@@ -122,8 +122,8 @@
   {
     "name": "AC6-D7-door-card",
     "file": "src/net/accountClient.js",
-    "old": "...(typeof data?.card === 'string' ? { card: data.card } : {}), ...(Array.isArray(data?.keeps)",
-    "new": "...(Array.isArray(data?.keeps)",
+    "old": "...(typeof data?.card === 'string' ? { card: data.card } : {}),",
+    "new": "",
     "tests": [
       "test/auditcards6_d.test.js"
     ],

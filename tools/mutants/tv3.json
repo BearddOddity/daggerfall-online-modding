@@ -192,12 +192,12 @@
   {
     "name": "TV3-host-switch-ignored",
     "file": "src/scenes/world.js",
-    "old": "const shown = outdoors && isEnhanced() && getPref('showToTravellers') !== false && link.room",
-    "new": "const shown = outdoors && isEnhanced() && link.room",
+    "old": "const shown = outdoors && isEnhanced() && getPref('showToTravellers') !== false && channelOf(link.room)",
+    "new": "const shown = outdoors && isEnhanced() && channelOf(link.room)",
     "tests": [
       "test/tv3_travellers.test.js"
     ],
-    "note": "\"Show me to travellers\" off still tells the whole region where I am."
+    "note": "\"Show me to travellers\" off still tells the whole region where I am. SCALE5c (re-aimed by content): the region link on its shard (part two)"
   },
   {
     "name": "AUDIT-TV-C1-a-reconnect-is-held",
@@ -232,12 +232,12 @@
   {
     "name": "AUDIT-TV-C4-told-to-the-region-left",
     "file": "src/scenes/world.js",
-    "old": "&& link.room === chatRegionRoom(_questRegionIndex()) && !concealBits(playerEntity);",
+    "old": "&& channelOf(link.room) === chatRegionRoom(_questRegionIndex()) && !concealBits(playerEntity);",
     "new": "&& !concealBits(playerEntity);",
     "tests": [
       "test/tv3_travellers.test.js"
     ],
-    "note": "A fast travel's arrival point is told to the region just left."
+    "note": "A fast travel's arrival point is told to the region just left. SCALE5c (re-aimed by content): the region link on its shard (part two)"
   },
   {
     "name": "AUDIT-TV-C5-offline-still-sees",

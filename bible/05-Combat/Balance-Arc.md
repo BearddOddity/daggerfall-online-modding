@@ -105,6 +105,13 @@ the crit carries it (damage taken about 14% more); against a lower foe the to-hi
 Dodging 65: a rat's hit roll 43% -> 62%, an Orc's 69% -> 97% - the roll alone; a monster's reflex gate still lets
 half its attacks through to it, so a rat's blow lands 21% -> 31% of its tries).
 
+FULL-GUARD (FIELD BUGS 2026-10-11b, the Discord's "One shot bug"; Mac: "No kill from full health"). With BAL4's offline
+elites (x3) and the Enhanced AI's slams (x1.75) on top of BAL2's crit, nothing capped one blow: a level-12 elite's
+claymore slam killed a 110-health player from full in about one landed slam in ten. BAL2 stands; the damage door now
+leaves a player at full health at 1 when one foe's blow would kill them (`characters/playerEntity.js` hurtPlayer),
+before any death save, and the next blow kills as it always has. A fall, a spell or a world boss's strike is no blow.
+`01-Overview/Field-Bugs-2026-10-11b.md`.
+
 ## 5. BAL3 - the place sets the threat
 
 THE LAW. The loot ladder grades every place a foe stands in (`lootRarity.js` DUNGEON_RARITY_TIER - a Cemetery 3, a

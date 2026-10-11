@@ -1770,7 +1770,7 @@ and name until it is emptied, and wears *Opened* after.
   so every screen knows him by his kind), the window (`riteHolds` from the omen to the opening; `riteStands` to the
   collapse, an early kill's too; `riteHeard` 2 s past the opening), the word's reach (60 m) and beat (5 s), and at most
   64 helpers a circle.
-- The relay (world151): the cell keeps up to 4 circles a day and the hub 8, each on its own. One fall at a time: the
+- The relay (world151): the cell keeps up to 4 circles a day (AUDIT SCALE II R3-3 (c), SCALE5d: the cell's place alone - a layer keeps no circle and tells the hub no broken rite) and the hub 8, each on its own. One fall at a time: the
   breach's room asks the hub for the helpers every 15 s from the opening, waits 2 s at most at the kill, and keeps its
   last answer. One tell in flight, its retry armed before it goes. The rite's bucket at the relay is twice the client's
   burst. At the kill, fighters who helped carry `r`; helpers who did not fight are minted the rite's own receipt.
@@ -1824,7 +1824,7 @@ so a body lying by her cage is looted, not her.
 **The door opens when every one of the faithful has fallen** - the Summoner and each of Dagon's Faithful, as many of
 each career as the day stood (`riteRosterFell`) - before the breach opens. A player who saw them all fall says so in
 the rite's word (`c`, beside `s` and `f`); the Summoner's fall the hub said counts as seen, so a player who came after
-him and felled the rest says it too. The circle's cell keeps it beside the broken rite (every one fallen is the
+him and felled the rest says it too. The circle's cell (its place) keeps it beside the broken rite (every one fallen is the
 Summoner fallen) and tells the hub, which says **her cage open** (`rite` `cl`) once to everyone online and at every
 hello until midnight - a word the cell could not tell before an early kill's collapse is kept and said all the same.
 **At a relay that says it, the hub's word alone opens her** - every screen at once, the one who struck last a moment
