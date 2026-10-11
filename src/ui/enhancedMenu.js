@@ -1824,6 +1824,18 @@ function paintOptionsBody(body, { pause = false } = {}) {
   }
 }
 
+/** UNSAVED-MARK (FIELD BUGS 2026-10-11): the toolbar's height, kept on its list as `--opt-tools-h` - what a sticky card
+ *  under it (the bindings' head and its Confirm, enhancedStyle.js) stands below. The bar wraps by the width (the search,
+ *  the chips, the actions), so it is measured, not assumed: once now and on every resize, until the bar leaves the page
+ *  (a repaint builds a new one). No observer, no measure: the card sticks at the top, as before. */
+export function stickUnderToolbar(list, bar, RO = globalThis.ResizeObserver) {
+  const put = () => { const h = bar.offsetHeight; if (Number.isFinite(h) && h > 0) list.style?.setProperty?.('--opt-tools-h', `${h}px`); };
+  if (typeof RO !== 'function') return null;
+  const ro = new RO(() => { if (bar.isConnected === false) { ro.disconnect(); return; } put(); });
+  ro.observe(bar);
+  return ro;
+}
+
 /** ORG2: the toolbar over the rows - the search, the filters, and the actions that act on every tab. */
 function optionsToolbar(body, { pause = false } = {}) {
   const bar = el('div', 'opt-tools');
@@ -1931,7 +1943,9 @@ function paneSettings(pane, { pause = false } = {}) {
 
   const list = el('div', 'list');
   const body = el('div', 'opt-body');
-  list.append(optionsToolbar(body, { pause }), body);
+  const tools = optionsToolbar(body, { pause });
+  list.append(tools, body);
+  stickUnderToolbar(list, tools);   // UNSAVED-MARK: the bindings' sticky head stands under this sticky bar, never behind it
   paintOptionsBody(body, { pause });
   if (optScrollTo) {
     const id = optScrollTo;

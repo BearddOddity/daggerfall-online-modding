@@ -444,6 +444,12 @@ buttons on its fixed art, Slide's among them, unbound.
   post-processing) and the Transport window's letters - F, H, C, S behind the Transport key - read off the shortcut
   table, as words and keys with no buttons. A mod's own keys are named on its Features tile too, read-only, with one
   press through to this page.
+- **A key a Confirm still owes says so** (UNSAVED-MARK, FIELD BUGS 2026-10-11, `01-Overview/Field-Bugs-2026-10-11.md`:
+  "It shows that my selected key is set ... it just didn't save"): its row is edged in brass and says "Not saved yet -
+  press Confirm."; the head counts what Confirm owes and lights it (`controlsConfig.js` `unsavedEdits`). The how-to is
+  the page's first card, scrolled away; the sticky head is the law's line and its buttons, and on Settings it sticks
+  UNDER the sticky toolbar at the toolbar's measured height (`enhancedMenu.js` `stickUnderToolbar`) - it had stood
+  behind it, and on a phone over the row just bound. Leaving still drops what was staged.
 
 ## PAD-BINDS and PAD-ARRANGE (FIELD BUGS 2026-10-04e)
 

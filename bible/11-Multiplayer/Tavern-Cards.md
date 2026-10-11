@@ -999,8 +999,8 @@ him up** - folded out of turn, cashed out.
   back exactly as it was, "Deal me in" lit again. Driven on main's own card block: a stake answered sits (the service
   takes table 1, the relay's order names it); a refused one changed nothing on the panel. FIXED: the refusal is the
   panel's buy-in line too (`cardHudModel` `refused`, the buy-in beside it), until the next press - "The realm is holding
-  your stake..." while it is asked. WHY the realm refused her is not known here - the service's words are now on the
-  panel, and the next report names them. Pins: `test/cardssaid.test.js` 1 (busy, a purse the record cannot cover,
+  your stake..." while it is asked. WHY the realm refused her: the next report named the words (section 36, CARDS-KEPT) -
+  "You have too many stakes waiting to be settled", the device's own refusal: its stakes book could keep nothing. Pins: `test/cardssaid.test.js` 1 (busy, a purse the record cannot cover,
   stakes closed, any other word, a lost answer; the next press; a held stake sitting); `tools/mutants/cardssaid.json` 5
   (4 dead, 1 equivalent - the clearing at the press, which the asking line always covers). PIN MOVED:
   `auditcards4_pins` - the closed-game guard before the refusal, now the panel's; `tools/mutants/auditcards4.json`'s two
@@ -1204,3 +1204,31 @@ record is `01-Overview/Audit-Cards-6.md`. What it changed here (sections 32-34 s
   naming its decision (C3 - a shipped wire, its window under one round trip). Recorded: A10, A11, B14, D14-D16.
 - **Pins:** `test/auditcards6_a.test.js` 10, `_b` 11, `_c` 17, `_d` 11, `_e` 10, and the pins each fix moved (the
   record's list). `tools/mutants/auditcards6_a.json` to `_e.json`, every mutant dead.
+
+## 36. CARDS-KEPT and CARDS-PANEL (2026-10-11): a gold table's first stake kept; the panel enhanced
+
+FIELD BUGS 2026-10-11 (`01-Overview/Field-Bugs-2026-10-11.md`, thread 1, Shortstori): "You have too many stakes waiting
+to be settled - visit the tables they were staked at first", at the first gold table, on every character. And the owner:
+"the card tables UI needs to be enhanced".
+
+- **CARDS-KEPT.** `net/cardStakes.js` (section 23) keeps its stakes and receipts as JSON through `storage.get`/`set` -
+  the `{get, set}` store every one of its suites built it over - and `scenes/world.js` handed it `appStorage()`, the
+  device's Storage (`getItem`/`setItem`). Every write threw into the book's own catch, so AUDIT CARDS-4 C6's check that a
+  stake is KEPT before it is asked found nothing and refused every first buy-in as `cards-kept-full`, since CARDS6; the
+  realm was never asked and no gold moved. The book is handed AUDIT WB A6's one store now (`spoilsPool.js`
+  `spoilsStore`, reached at stake time as the Marks book reaches it). The pin runs the HOST'S OWN expression, lifted from
+  world.js, over the real book and a device Storage (section 31's CARDS-SAID left the words on the panel for this report
+  to name). THE FOUR HOSTS: the stakes book is `world.js`'s alone (the realm session is the streaming host's);
+  `worldModes.js` reads it through `host.cardStakes`; `exterior.js` hands its modes no stakes book (its taverns' tables
+  play offline, section 14) and `dungeonContext.js` has no tavern.
+- **CARDS-PANEL** (`ui/cardTableHud.js`). The model: the line's `tone` (`warn` - a refusal, a purse too thin to sit,
+  the relay's refusal; `wait` - a stake being asked; `turn` - your turn), the buy-in's `picks` (`buyInPicks`: Min and
+  Max) and the raise's (`raisePicks`: half the pot and the pot as a raise TO - the bet faced, then the pot once called or
+  its half - on the slider's step, strictly inside the law's range; the floor is the slider's start, the ceiling All in),
+  and the table's `unit`. The painter: a pick moves the slider and its words, never deals or raises; the slider's amount
+  says its unit; Deal me in, Check and Call drawn heavier and Stand up lighter (`data-kind`); a fold in the header puts
+  the seats, the board, the note and the log away so the cloth shows (the line and the buttons stay), kept across
+  repaints; the log a line a sentence, the newest last and scrolled into view. Not the native-window rule's: no DFU
+  window stands behind it (section 14).
+- **Pins:** `test/fb1011_cardskept.test.js` 5; PIN MOVED: `cards4_hud` - the buy-in's and the raise's models carry their
+  picks. `tools/mutants/fb1011_cardskept.json` 11, all dead.

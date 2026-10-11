@@ -116,7 +116,7 @@ export const SIGIL_SETS = Object.freeze({
         (v) => `+${v.armor} armour on every part, +${v.endurance} Endurance`,
         (v) => `+${v.armor} armour, +${v.endurance} Endurance`),
       tier(4, 'spite', 'Spite of the Spurned', { back: [10, 30] },
-        (v) => `A foe whose blow lands on you takes ${v.back}% of it back`,
+        (v) => `A foe whose blow lands on you takes ${v.back}% of it back - it wounds, but never kills`,
         (v) => `Return ${v.back}% of blows that land`),
       tier(6, 'unbroken', 'Unbroken', { halved: [4, 8], recover: [300, 150] },
         (v) => `Damage that would kill you leaves you at 1 health instead, and all damage you take is halved for ${v.halved} s. Recovers in ${v.recover} s`,

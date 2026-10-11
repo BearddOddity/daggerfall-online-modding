@@ -1871,8 +1871,11 @@ export async function bootWorld(canvas, renderer, params, status) {
     : null;
   // CARDS6 (bible/11-Multiplayer/Tavern-Cards.md section 23): a realm character's card stakes - the buy-in the service
   // holds for a relay's gold table, the relay's cash-out receipts kept and claimed back into the record (net/cardStakes.js)
+  // CARDS-KEPT (from play, 2026-10-11): the book reads and writes JSON by `get`/`set` - AUDIT WB A6's one store, reached at
+  // stake time (it is made below). A bare Storage has neither: every write threw, every stake read back unkept, and every
+  // gold table on every character refused its first buy-in as 'cards-kept-full'
   const cardStakes = params.has('online') && realmSession
-    ? createCardStakes({ door: accountCards({ fetch: (u, i) => globalThis.fetch(u, i), storage: appStorage() }), storage: appStorage(),
+    ? createCardStakes({ door: accountCards({ fetch: (u, i) => globalThis.fetch(u, i), storage: appStorage() }), storage: { get: (k) => _spoilsStore.get(k), set: (k, v) => _spoilsStore.set(k, v) },
       realm: { act: (o) => realmGoldAct({ ...o, session: realmSession, checkpoint: () => onlineCheckpoint() }) }, wallet: realmWallet,
       character: () => characterIdOf(playerEntity), region: () => _questRegionIndex(), now: () => Date.now() + _sharedOffsetMs })
     : null;
@@ -9321,6 +9324,9 @@ export async function bootWorld(canvas, renderer, params, status) {
   const csaBoatYaw = (boat) => { const fw = csaQuatRotate(boat.GameObject.rotation, [0, 0, 1]); return Math.atan2(fw[0], fw[2]); };
   /** CSA-F: StreamingWorld.OnTeleportToCoordinates (Start 1055) - the waves a tenth of a second later. */
   const csaOnTeleport = () => { if (csaRuntime) csaCall(() => csaRuntime.OnTeleportToCoordinates()); };
+  /** HELM-JUMP (FIELD BUGS 2026-10-11): a jump that is no load and no fast travel leaves the helm (comeSailAway.js
+   *  OnPreJump) - the teleport core raises it, so a Recall, a guild's teleport, an unstuck and every jump to come does. */
+  const csaPreJump = () => { if (csaRuntime) csaCall(() => csaRuntime.OnPreJump()); };
   /** FIELD-CSA1 (Julian: "also lost that boat forever after respawning"): A TELEPORT'S NEW FRAME CARRIES THE BOATS.
    *  `state.init` re-anchors the scene with no recentre offset to ride, and every placed boat kept the old frame's numbers
    *  - the one just placed at sea stood by the temple its owner woke at, under the ground, and nowhere it was left ever
@@ -13844,6 +13850,10 @@ export async function bootWorld(canvas, renderer, params, status) {
     climbFeel.reset();   // AUDIT CLIMB-ARC F6: no climb's turn or cue rides a teleport
     dwTeleported(performance.now() / 1000);   // DW-D: OnTeleportToCoordinates' grace
     if (modEvent !== 'load') navalStow();   // KEEP-PLUNDER: a jump's sea stowed first - never a load's
+    // HELM-JUMP (FIELD BUGS 2026-10-11): the helm let go before the jump, so the landing below is the last word on where
+    // the player stands. A load's start (OnStartLoad) and a fast travel (OnPreFastTravel) let it go themselves, and a
+    // party's journey only once its arrival is certain (`resolveArrival`, fastTravelTo) - every other jump here
+    if (modEvent == null && !resolveArrival) csaPreJump();
     csaOnTeleport();   // CSA-F: OnTeleportToCoordinates - the waves, a tenth of a second on
     navalTransition();   // NAV-H: the sea at the old place is gone with it (its ships were never a save's)
     // AUDIT OW5 J2 (the audit before the merge): A JUMP STOPS A ROUTE'S WALK - a fast travel taken from the map mid-journey,
@@ -33727,11 +33737,12 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       // uniform per pass), so a far flat that draws still turns.
       const ring = Math.max(Math.abs(p.px - state.current.x), Math.abs(p.py - state.current.y));
       // AUDIT REACH: a pixel neither seen nor reached has nothing to walk (the first cut asked the far-flat rule, an
-      // object a batch, of every batch of every streamed pixel); the rule runs after the cull again, for the batches it can keep
+      // object a batch, of every batch of every streamed pixel); the rule runs inside the pixel's gate, asked of every batch of
+      // a pixel seen or in a shadow's reach (PERF-ORDER: ahead of each batch's own box, the cheaper test first)
       if (pixelVisible || pixelCasts) for (const b of p.batches) {
+        if (!farFlatVisibleAt(ring, b.farH ?? b.size?.h ?? 0, b.frame != null)) continue;   // MAC1 (a far flat the rule drops casts nothing either); PERF-EXT12: positional, no object a batch a frame (flatDistance.js); PERF-ORDER (2026-10-11): asked FIRST - three compares, where the box and the reach were asked of every batch it then dropped (Knightstale by night: 655 of the 1,361 a frame); each test only skips, so the batches kept are the same
         const off = !pixelVisible || (cullOn && aabbOutside(_planes, b._box, t[0], t[1], t[2]));   // EV3
         if (off && !renderer.shadowReach(b._box, t[0], t[1], t[2])) continue;   // SHADOW-REACH: off screen and out of every shadow's reach
-        if (!farFlatVisibleAt(ring, b.farH ?? b.size?.h ?? 0, b.frame != null)) continue;   // MAC1 (a far flat the rule drops casts nothing either); PERF-EXT12: positional, no object a batch a frame (flatDistance.js)
         b.origin = t;
         (off ? castBatches : allBatches).push(b);   // SHADOW-REACH: the maps alone, or the frame
       }
