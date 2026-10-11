@@ -185,6 +185,25 @@ export const MASON_COLD_LINE = 'The mason\'s bench is idle. Masonry is done onli
 export const JEWEL_COLD_LINE = 'The jeweller\'s bench is bare. Jewelcrafting is done online, from your Stores page.';   // PROF10
 export const stationColdLine = (station) => (station === 'workbench' ? WORKBENCH_COLD_LINE : station === 'loom' ? LOOM_COLD_LINE
   : station === 'mason' ? MASON_COLD_LINE : station === 'jeweller' ? JEWEL_COLD_LINE : FORGE_COLD_LINE);
+/** STATION-DOOR (bible/01-Overview/Field-Bugs-2026-10-11f.md): the home stations whose press opens Daggerfall's maker AND
+ *  whose profession's act is this page's - each the act's word, as the press's chooser offers it beside the maker. A
+ *  200,000-gold enchanting station opened the item maker alone, and Disenchanting stood at the foot of this page with no
+ *  door from the station to it. */
+export const STORES_ACT_STATIONS = Object.freeze({ alchemy: 'Brew', enchant: 'Disenchant' });
+/** STATION-DOOR: the station whose section the next draw of this page scrolls to - set by a station's press, read once. */
+let _storesFocus = /** @type {string|null} */ (null);
+export function focusStoresStation(kind) { _storesFocus = typeof kind === 'string' ? kind : null; }
+/** STATION-DOOR: a station's head on this page, named so a press can land on it - the page scrolled to it once, after the
+ *  draw has put it in the window (the settings rail's own landing, enhancedMenu.js optScrollTo). */
+function stationHead(divider, words, kind) {
+  const head = divider(words);
+  head.id = `prof-station-${kind}`;
+  if (_storesFocus === kind) {
+    _storesFocus = null;
+    globalThis.requestAnimationFrame?.(() => globalThis.document?.getElementById(head.id)?.scrollIntoView?.({ block: 'start' }));
+  }
+  return head;
+}
 /** The rail's rows the pages add. */
 export const PROF_PAGE_SECTIONS = Object.freeze([Object.freeze(['professions', 'Professions']), Object.freeze(['stores', 'Stores'])]);
 
@@ -461,9 +480,9 @@ export const MINING_GROUND_LINE = 'Ground that fewer than three players have gat
 export const STORES_EMPTY_CARRY_LINE = 'Your Stores are empty. What you gather goes into your Materials Bag or pack - put it in here in any town.';
 export const STORES_EMPTY_LINE = 'Your Stores are empty. What you gather online goes here. Press the use key at an herb patch, tree, ore vein, boulder, a body you killed, or in water with a net - or use the matching tool from your hotbar or a quick slot. Tools used from your pack gather nothing.';   // TOUCH-HOLD: the knife's Use
 /** PROF12: how Alchemy is practised, as the Professions page says it. */
-export const ALCHEMY_HOW = 'Brew at an alchemy station (an Alchemist\'s or your own home) using your Stores. The recipes are Daggerfall\'s twenty potions. Herbs, metals and gems are gathered; the rest are bought from the Apothecaries\' counter. Daggerfall\'s own potion maker still works but gives no Provisioning XP.';
+export const ALCHEMY_HOW = 'Brew at an alchemy station (an Alchemist\'s or your own home) from the Stores page, with what your Stores hold. The recipes are Daggerfall\'s twenty potions. Herbs, metals and gems are gathered; the rest are bought from the Apothecaries\' counter. Daggerfall\'s own potion maker still works but gives no Provisioning XP.';
 /** PROF12: how Enchanting is practised, and what its rank takes off the item maker's gold. */
-export const ENCHANTING_HOW = (pct) => `Level Enchanting by disenchanting crafted pieces into Arcane Essence at an enchanting station (a Mages Guild hall or your own home). Daggerfall's item maker works as before${pct > 0 ? `, and your rank takes ${pct}% off its cost` : '. From Journeyman, your rank lowers its cost'}.`;
+export const ENCHANTING_HOW = (pct) => `Level Enchanting by disenchanting crafted pieces into Arcane Essence at an enchanting station (a Mages Guild hall or your own home) from the Stores page. Daggerfall's item maker works as before${pct > 0 ? `, and your rank takes ${pct}% off its cost` : '. From Journeyman, your rank lowers its cost'}.`;
 /** PROF12: ENCHANTING'S LAYER OVER DFU'S ITEM MAKER (9.3) - the share off its gold, percent: online, the professions this
  *  account's, by the Enchanting track's rank (and an Efficient's at 50); none else. The item maker reads it (worldModes). */
 export function enchantGoldPct() {
@@ -2390,7 +2409,7 @@ function drawAlchemyStation(detail, rerender, { el, divider }) {
   if (!p?.alchemy || !p.brew) return;
   const book = p.book;
   const station = p.alchemy();
-  detail.append(divider('The Alchemy Station'));
+  detail.append(stationHead(divider, 'The Alchemy Station', 'alchemy'));   // STATION-DOOR
   if (!station) {
     detail.append(el('p', 'px-note', ALCHEMY_AWAY_LINE));
     return;
@@ -2473,7 +2492,7 @@ function drawEnchantingStation(detail, rerender, { el, divider }) {
   if (!p?.enchanter || !p.disenchant || !p.disenchantable) return;
   const book = p.book;
   const station = p.enchanter();
-  detail.append(divider('The Enchanting Station'));
+  detail.append(stationHead(divider, 'The Enchanting Station', 'enchant'));   // STATION-DOOR
   if (!station) {
     detail.append(el('p', 'px-note', ENCHANT_AWAY_LINE));
     return;

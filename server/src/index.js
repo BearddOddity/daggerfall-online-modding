@@ -2610,7 +2610,7 @@ export class Room {
       if (reach(b.pose)) heard.push([other, b]);
     }
     for (const [other, b] of (still ? heard : poseFan(heard, m.p, (e) => e[1].pose, met.turn, (e) => e[1].id))) {   // SLAM10: the far tier bucketed by the listener's ID, so a moving crowd cannot shuffle who is served
-      if (b.w2) this._owe(other, entry ??= JSON.stringify([a.id, slimPose(m.p)]));   // SCALE5b: the second wire's - batched, slim
+      if (b.w2) this._owe(other, entry ??= JSON.stringify([a.id, slimPose(m.p, a.key)]));   // SCALE5b: the second wire's - batched, slim; SLIM-FRAME: rounded in the units of the room it was said in
       else this._send(other, out ??= JSON.stringify({ t: 'pose', id: a.id, p: m.p }));
     }
     // SEAT1b (Seats-Arc 4.2): THE WATCH - a verified account standing in a cell, having moved, is ticked every

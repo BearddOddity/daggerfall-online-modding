@@ -55,7 +55,7 @@ test('CHAP6c the candidates named by the event\'s roll: the same for every reade
   assert.equal(getSeed(), 12345, 'the global stream as it stood');
 });
 
-test('CHAP6c the Season\'s lines: a Schism\'s two and their doctrines, a Succession\'s three or its heir, a Crackdown, a Rivalry (a hidden rival unnamed, an unknown one a rival chapter), a Decline, an Ascendancy; the doctrine; shut halls; Calm none (mutants: each line)', () => {
+test('CHAP6c the Season\'s lines: a Schism\'s two and their doctrines, a Succession\'s three or its heir, a Crackdown, a Rivalry (a hidden rival unnamed, an unknown one a rival chapter); a retired Decline or Ascendancy none (GUILD3e); the doctrine; shut halls; Calm none (mutants: each line)', () => {
   const L = (c, f = FIGHTERS, g = ANTICLERE) => chapterSeasonLines(f, g, c);
   const n = (i, s = 1) => chapterCandidateName(s, FIGHTERS, ANTICLERE, i);
   assert.deepEqual(L({ event: 'schism', season: 1, sides: ['training', 'writs'] }), [`The chapter is split this Season: ${n(0)} stands for cheaper training, ${n(1)} for more writs.`]);
@@ -67,8 +67,9 @@ test('CHAP6c the Season\'s lines: a Schism\'s two and their doctrines, a Success
   assert.deepEqual(L({ event: 'rivalry', rival: JULIANOS }, MAGES), ['The chapter races the Temple of Julianos for Merit this Season.']);
   assert.deepEqual(L({ event: 'rivalry', rival: THIEVES }), ['The chapter races a rival in the shadows for Merit this Season.']);
   assert.deepEqual(L({ event: 'rivalry' }), ['The chapter races a rival chapter for Merit this Season.']);
-  assert.deepEqual(L({ event: 'decline' }), ['The chapter is in decline this Season: it loses Strength each week its Merit falls short of twice the target.']);
-  assert.deepEqual(L({ event: 'ascendancy' }), ['The chapter is ascendant this Season.']);
+  // PIN MOVED: GUILD3e (bible/11-Multiplayer/Guilds-Made-Plain.md) - the Decline and the Ascendancy are the Failing and
+  // Ascendant bands' now, said on the chapter's band line (chapterBandEffectsLine); a sheet still carrying one says nothing
+  assert.deepEqual([L({ event: 'decline' }), L({ event: 'ascendancy' })], [[], []]);
   assert.deepEqual(L({ event: 'calm', doctrine: 'writs', shut: true }), ['The chapter holds to more writs this Season.', 'The chapter\'s halls are shut this Season, by the watch\'s order.']);
   assert.deepEqual([L({ event: 'calm' }), L(null)], [[], []]);
 });
@@ -169,7 +170,7 @@ test('CHAP6c a Succession\'s names offered as "Name who follows"; a refusal said
 });
 
 test('CHAP6c the town talks of a chapter\'s Season before its band: shut halls first, then its event (Calm none), else its band; every Season\'s pool its own, worded with the chapter first (mutants: the order, the pools)', () => {
-  assert.deepEqual(Object.keys(CHAPTER_EVENT_NEWS), ['schism', 'succession', 'crackdown', 'rivalry', 'decline', 'ascendancy', 'shut']);
+  assert.deepEqual(Object.keys(CHAPTER_EVENT_NEWS), ['schism', 'succession', 'crackdown', 'rivalry', 'shut']);   // PIN MOVED: GUILD3e - the Decline's and the Ascendancy's talk the bands' now
   for (const pool of Object.values(CHAPTER_EVENT_NEWS)) for (const [a, b] of pool) { assert.ok(!a.startsWith('{guild}') && a.includes('{guild}')); assert.ok(typeof b === 'string' && b.length); }
   let chapter = null;
   // a town of one Fighters Guild hall, as LivingTown reads it (places.types and places.factions)
@@ -186,7 +187,8 @@ test('CHAP6c the town talks of a chapter\'s Season before its band: shut halls f
   assert.deepEqual(told({ band: 'thriving', name: 'the Fighters Guild', event: 'calm', shut: false }), Array(days).fill('thriving'));
   assert.deepEqual(told({ band: 'thriving', name: 'the Fighters Guild', event: 'war' }), Array(days).fill('thriving'), 'an event with no words is its band\'s');
   assert.deepEqual(told({ band: 'steady', name: 'the Fighters Guild', event: 'calm' }), [], 'Calm and Steady: no news');
-  assert.deepEqual(told({ band: 'steady', name: 'the Fighters Guild', event: 'decline' }), Array(days).fill('decline'), 'a Steady chapter\'s event is news');
+  assert.deepEqual(told({ band: 'steady', name: 'the Fighters Guild', event: 'rivalry' }), Array(days).fill('rivalry'), 'a Steady chapter\'s event is news');
+  assert.deepEqual(told({ band: 'steady', name: 'the Fighters Guild', event: 'decline' }), [], 'GUILD3e: a retired event is no news');
   assert.ok(CHAPTER_NEWS.thriving);
   // and told in the Season's own words
   let got = null;

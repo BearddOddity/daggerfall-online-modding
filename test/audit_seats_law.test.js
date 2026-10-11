@@ -137,7 +137,7 @@ test('AUDIT-SEATS L7 THE CHRONICLE\'S WORDS: "1 bout"; Drakes, the players\' wor
   const SH = { name: 'The Silver Hand', tag: 'SH' };
   assert.match(line('conscription', { guild: SH, marks: 1 }), /brought the Silver Hand <SH> 1 silver of its kingdom's Tithe\.$/);
   assert.match(line('conscripted', { guild: SH, crown: SH, marks: 1200 }), /paid 1,200 silver of its Tithe/);
-  assert.match(line('fealty-tribute', { vassal: SH, liege: SH, marks: 5 }), /paid 5 silver of tribute/);
+  assert.match(line('fealty-tribute', { vassal: SH, liege: SH, marks: 5 }), /paid 5 silver in fealty to/);   // PIN MOVED: AUDIT GUILD3 W5 - "Tribute" is the seat's
   assert.equal(line('edict', { guild: SH, edict: 'festival' }), 'In week 9, the Silver Hand <SH> proclaimed a Festival at Wayrest.');
   assert.equal(line('edict', { guild: SH, edict: 'market-day' }), 'In week 9, the Silver Hand <SH> proclaimed Market Day at Wayrest.');
   assert.equal(line('edict', { guild: SH, edict: 'nonsense' }), 'In week 9, the Silver Hand <SH> proclaimed an Edict at Wayrest.');

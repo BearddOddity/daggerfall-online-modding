@@ -129,7 +129,7 @@ test('AUDIT 28 M3: a guild whose Marks would pass its guildmaster\'s cap does no
   await svc.found(g, { name: 'Full Hands', tag: 'FHD' });
   await svc.call('/v1/marks/guild/deposit', { character: g.character, marks: 400, rid: rid() }, g.secret);
   svc.seedMarks(g, 10_000_000 - 100, 'fill');
-  assert.deepEqual(await svc.call('/v1/guilds/disband', { character: g.character }, g.secret), { status: 409, body: { error: 'marks-full' } });
+  assert.deepEqual(await svc.call('/v1/guilds/disband', { character: g.character }, g.secret), { status: 409, body: { error: 'marks-full', keeps: ['marks-full'] } });   // PIN MOVED: GUILD3c (bible/11-Multiplayer/Guilds-Made-Plain.md) - the refusal names everything that holds the guild, its first the error as ever
   assert.equal(svc.env.DB._raw.prepare('SELECT balance FROM guild_marks').get().balance, 400, 'the treasury holds them still');
 });
 
@@ -142,7 +142,7 @@ test('AUDIT 28 M3: a disband refused for the gold still in its treasury moves no
   assert.equal((await svc.call('/v1/guilds/deposit', { character: g.character, gold: 50, realm: g.at() }, g.secret)).status, 200, 'gold in the treasury');   // MERGE 2: paid on the realm character's record (REALM P2.2a)
   raw.prepare(`INSERT INTO marks_ledger (src_kind, src_id, dst_kind, dst_id, kind, amount, day, at, actor, who, rid)
     VALUES ('mint', NULL, 'guild', ?, 'test', 90, 1, 1, ?, NULL, 'seed-guild')`).run(guild.id, g.id);
-  assert.deepEqual(await svc.call('/v1/guilds/disband', { character: g.character }, g.secret), { status: 409, body: { error: 'guild-treasury' } });
+  assert.deepEqual(await svc.call('/v1/guilds/disband', { character: g.character }, g.secret), { status: 409, body: { error: 'guild-treasury', keeps: ['guild-treasury'] } });   // PIN MOVED: GUILD3c - and its whole list
   assert.equal(raw.prepare('SELECT balance FROM guild_marks WHERE guild_id = ?').get(guild.id).balance, 90, 'the Marks stay with the guild that stays');
   assert.equal(raw.prepare('SELECT COUNT(*) AS n FROM marks WHERE account = ?').get(g.id).n, 0, 'and none reached the guildmaster behind a shut switch');
 });
