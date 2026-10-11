@@ -106,6 +106,7 @@ export const SERVICE_KEY = 'dagger.account.service';
 export const REFUSALS = Object.freeze({
   'handle-shape': `A username is one word, 3 to ${HANDLE_MAX_LEN} characters, starting with a letter, and no spaces.`,
   'handle-refused': 'That username is not allowed. Pick another.',
+  'handle-email': 'A username is never an email address - everyone you meet reads it. Pick a name.',   // HANDLE-EMAIL
   'handle-taken': 'Somebody already has that username.',
   'password-shape': 'That password cannot be used.',
   'password-short': `A password is at least ${PASSWORD_MIN_LEN} characters.`,
@@ -304,6 +305,7 @@ export const REFUSALS = Object.freeze({
   // SEAT1a: the seats' registry (server-account/src/townSeats.js)
   'seats-need-account': 'The seats are witnessed by registered accounts. Add a username to witness one.',
   'seats-closed': 'The seats are not open yet.',
+  'seats-settling': 'The week is turning at the seats. Try again in a moment.',   // SEAT-LEASE: another request settles the Turning
   'bad-seat': 'That seat could not be read.',
   'seats-rate': 'You have reported a great many seats this hour. Try again later.',
   'seat-struck': 'That seat was struck from the registry.',

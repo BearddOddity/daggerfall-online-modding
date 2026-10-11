@@ -130,7 +130,8 @@ import { getPref, setPref, isOpen, setOpen, PREF_DEFAULTS } from '../systems/uiP
 import { TOUCH_BUTTON_SLOTS, touchButtonSlots, nextTouchButton, touchButtonChoices } from './touchButtons.js';   // TOUCH-BUTTONS: the corner's three slots
 import { DEFAULT_SERVER } from '../net/online.js';   // ONLINE1: the relay this port hosts, the field's placeholder   // R7: the port's own switches; SO1: the folded tiers' memory
 import { GATE_CROWD_TIERS } from '../net/gateCrowd.js';   // GATE-CROWD: how many other players a gate's court draws
-import { PEER_RANGE_TIERS, peerRangeOf } from '../net/peerRange.js';   // PEER-RANGE: how far out other players are drawn, and the distance a stored value stands for
+import { PEER_RANGE_TIERS, peerRangeOf } from '../net/peerRange.js';
+import { YARD_RANGE_TIERS, yardRangeOf } from '../net/yardRange.js';   // YARD-RANGE: how far other players' yards are drawn   // PEER-RANGE: how far out other players are drawn, and the distance a stored value stands for
 import { replacementCount } from '../systems/musicReplacement.js';   // M-EXT: the packs card reports what the pick covers
 import { brandMark } from './brandMark.js';   // INTRO2: Mac's supplied logo, shared with the final splash
 import { soundReplacementCount } from '../systems/soundReplacer.js';   // SNDREP1: the sound pack's count
@@ -160,6 +161,7 @@ import { STABLE_PAGE_SECTIONS, stablePageShown, drawStablePage, resetHoldingsPag
 import { FAMILY_PAGE_SECTIONS, drawTreePage, drawHousePage, drawHallPage, resetFamilyPages, disarmFamilyPages, sheetHouse } from './familyPages.js';   // LEGACY3: Project Legacy's Family tab; LEGACY-SHEET: the house on the Stats page
 import { legacyOn } from '../systems/legacy/settings.js';   // LEGACY3: ...drawn while the mod is on
 import { FLEET_PAGE_SECTIONS, fleetPageShown, drawFleetPage, resetFleetPage } from './fleetPage.js';   // HOLDINGS: the ships
+import { CAPTAIN_PAGE_SECTIONS, captainPageShown, drawCaptainPage } from './captainPage.js';   // CAPT-LOG: the captain's standing and log
 import { COLLECTION_PAGE_SECTIONS, collectionsPageShown, drawCollectionsPage, resetCollectionsPage, disarmCollectionsPage, setCollectionsPart } from './collectionsPage.js';   // COLLECTIONS: the codex and the cards
 import { swornBodyOf } from '../systems/revenantCompanions.js';   // COMPANION-ROSTER: a sworn one's live health
 import { enemyDisplayName } from '../characters/enemyBasics.js';   // REVENANT-PAGE: a revenant's kind   // REVENANT-PAGE: the foes that have earned your name
@@ -2829,6 +2831,11 @@ function peerSpritesCard() {
   c.append(choiceRow('peerRange', 'Draw distance',
     'How far away other players are drawn. Your party and your duel opponent always show. Nearer is faster; 150 m can hide an archer.',
     PEER_RANGE_TIERS.map((m) => [m, m ? `${m} m` : 'Everyone']), { home: true, read: () => peerRangeOf(getPref('peerRange')) }));
+  // YARD-RANGE (2026-10-11, a player: "20-40 fps in cities"): how far their yards' decorations are drawn - none, nearer, or
+  // as far as ever; one's own yard always (scenes/homeYards.js)
+  c.append(choiceRow('yardRange', 'Yard decorations',
+    'How far away other players\u2019 yard decorations are drawn. Your own yard always shows. Nearer is faster in busy towns.',
+    YARD_RANGE_TIERS.map((m) => [m, m ? `${m} m` : 'Off']), { home: true, read: () => yardRangeOf(getPref('yardRange')) }));
   // GATE-CROWD (2026-10-07, Mac: "some type of filter when there are too many people"): a crowded court, thinned
   c.append(choiceRow('gateCrowd', 'Crowd in the Burning Court',
     'How many players the Burning Court draws. Your party always shows.',
@@ -4089,6 +4096,7 @@ function pauseHoldings(body) {
     // a door the page opens over the world (the shipwright's window, the water's placing click): the pause goes down
     // first, as the sheet's doors do (PX25/ESC-BOOK), and comes back if the door opened nothing (AUDIT 27h A4)
     fleet: (d) => drawFleetPage(d, render, { ...kit, door: (fn) => { onAction('handoff'); if (fn() === false) onAction('resume'); } }),
+    captain: (d) => drawCaptainPage(d, render, kit),   // CAPT-LOG: the crowns' regard, the letter, the contracts, the log
     companions: (d) => drawCompanionsPage(d, render, { ...kit, kindName: enemyDisplayName, here: swornBodyOf }),   // COMPANION-ROSTER
     revenants: (d) => drawRevenantsPage(d, render, { ...kit, player: playerEntity, kindName: enemyDisplayName }),   // REVENANT-PAGE
     stores: (d) => drawStoresPage(d, render, kit),   // PROF1
@@ -4248,7 +4256,7 @@ const PROF_HOLD_SECTIONS = Object.freeze(PROF_PAGE_SECTIONS.filter(([id]) => id 
 const statsSections = () => [...STATS_SECTIONS, ...(profPagesShown() ? PROF_STATS_SECTIONS : []), ...(vendorPageShown() ? VENDOR_PAGE_SECTIONS : [])];   // HOME-VENDOR: the Vendor page, under the Professions
 /** HOLDINGS: the Holdings rail's pages - what the player owns (the Stable, the Fleet while ships sail, the Stores
  *  online) and who follows them (the Companions, the Revenants), each while it has a thing to show. */
-const holdingsSections = () => [...(stablePageShown() ? STABLE_PAGE_SECTIONS : []), ...(fleetPageShown() ? FLEET_PAGE_SECTIONS : []), ...(companionPageShown() ? COMPANION_PAGE_SECTIONS : []), ...(revenantPageShown(playerEntity) ? REVENANT_PAGE_SECTIONS : []), ...(profPagesShown() ? PROF_HOLD_SECTIONS : []), ...(collectionsPageShown(playerEntity) ? COLLECTION_PAGE_SECTIONS : [])];   // COLLECTIONS
+const holdingsSections = () => [...(stablePageShown() ? STABLE_PAGE_SECTIONS : []), ...(fleetPageShown() ? FLEET_PAGE_SECTIONS : []), ...(captainPageShown() ? CAPTAIN_PAGE_SECTIONS : []), ...(companionPageShown() ? COMPANION_PAGE_SECTIONS : []), ...(revenantPageShown(playerEntity) ? REVENANT_PAGE_SECTIONS : []), ...(profPagesShown() ? PROF_HOLD_SECTIONS : []), ...(collectionsPageShown(playerEntity) ? COLLECTION_PAGE_SECTIONS : [])];   // COLLECTIONS
 
 function pauseStats(body) {
   const m = sheetModel(playerEntity);
