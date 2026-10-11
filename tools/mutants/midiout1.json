@@ -1,15 +1,5 @@
 [
   {
-    "name": "MO1-the-restrike-cut-by-its-own-release",
-    "file": "src/systems/midiOut.js",
-    "old": "    this._release(when);   // a note struck again on its own release is struck after it, not cut by it\n",
-    "new": "",
-    "tests": [
-      "test/midiout1.test.js"
-    ],
-    "note": "The release due on the re-strike's own tick is then flushed after the window - after the new note-on at the same time - and the device ends the note it has just struck: every repeated note in the archive cut to nothing."
-  },
-  {
     "name": "MO1-the-stream-note-offs-sent-too",
     "file": "src/systems/midiOut.js",
     "old": "    if (e.type === 'noteOff') return;   // the player's own (_voice, _release)\n",
@@ -160,26 +150,6 @@
     "note": "A stall re-sends a channel-mode controller as if it were state: an all-notes-off or a reset-all-controllers lands after the state it was meant to precede."
   },
   {
-    "name": "MO1-the-slack-dropped",
-    "file": "src/systems/midiOut.js",
-    "old": "      if (n.off <= until + RELEASE_SLACK_S) this._send(",
-    "new": "      if (n.off <= until) this._send(",
-    "tests": [
-      "test/midiout1.test.js"
-    ],
-    "note": "A release that rounds a femtosecond past a re-strike is not due, waits for the window's flush and lands after the new note-on: the note is cut."
-  },
-  {
-    "name": "MO1-the-release-at-its-rounded-time",
-    "file": "src/systems/midiOut.js",
-    "old": "this._send([0x80 | n.channel, n.note, 0], Math.min(n.off, until));",
-    "new": "this._send([0x80 | n.channel, n.note, 0], n.off);",
-    "tests": [
-      "test/midiout1.test.js"
-    ],
-    "note": "Sent first, but timestamped a hair after the re-strike - and a device orders by timestamp."
-  },
-  {
     "name": "MO1-the-pick-not-heard",
     "file": "src/systems/music.js",
     "old": "    this._unsubscribeMidi = onMidiOutChange(() => this.adoptMidiOut());",
@@ -218,5 +188,95 @@
       "test/midiout1.test.js"
     ],
     "note": "The row is drawn by its builder and placed nowhere: no player can reach the device pick."
+  },
+  {
+    "name": "MO1A-1-cc7-linear",
+    "file": "src/systems/midiOut.js",
+    "old": "Math.round(clamp7(raw) * Math.sqrt(g))",
+    "new": "Math.round(clamp7(raw) * g)",
+    "tests": [
+      "test/midiout1.test.js"
+    ],
+    "note": "The audit's first finding: GM's CC7 is a square law, so a linear scale plays the default volume at -12 dB and every fade along the square."
+  },
+  {
+    "name": "MO1A-2-overlap-left-to-the-earlier-release",
+    "file": "src/systems/midiOut.js",
+    "old": "    if (this._notes.some((n) => n.channel === e.channel && n.note === key)) {",
+    "new": "    if (false) {",
+    "tests": [
+      "test/midiout1.test.js"
+    ],
+    "note": "A key struck again while it sounds is cut by the earlier note's release - the FM synth holds both."
+  },
+  {
+    "name": "MO1A-3-stall-order-first-seen",
+    "file": "src/systems/midiOut.js",
+    "old": "      if (k) { last.delete(k); last.set(k, e); }",
+    "new": "      if (k) last.set(k, e);",
+    "tests": [
+      "test/midiout1.test.js"
+    ],
+    "note": "A Map keeps the order a key was FIRST set: a bank select lands after the program it selects."
+  },
+  {
+    "name": "MO1A-4-quiet-on-every-stop",
+    "file": "src/systems/midiOut.js",
+    "old": "    if (quietAlready) return;\n",
+    "new": "",
+    "tests": [
+      "test/midiout1.test.js"
+    ],
+    "note": "Every play's own stop (and a switch's second stop) sends a 64-message quiet burst, and the next origin waits on it."
+  },
+  {
+    "name": "MO1A-5-pending-left-waiting",
+    "file": "src/systems/music.js",
+    "old": "    else if (output && this._pending && this.playSong(this._pending)) this._pending = null;\n",
+    "new": "",
+    "tests": [
+      "test/midiout1.test.js"
+    ],
+    "note": "A song asked for before the first gesture stays silent on a device until a click, though a device needs no AudioContext."
+  },
+  {
+    "name": "MO1A-6-restore-writes-the-shelf-alone",
+    "file": "src/ui/enhancedMenu.js",
+    "old": "    if (pref === MIDI_OUT_PREF) setMidiOut(PREF_DEFAULTS[pref]);",
+    "new": "    if (false) setMidiOut(PREF_DEFAULTS[pref]);",
+    "tests": [
+      "test/midiout1.test.js"
+    ],
+    "note": "The Audio tab's Restore shows Off and the music stays on the device until a reload."
+  },
+  {
+    "name": "MO1A-7-fade-set-only-after-the-play",
+    "file": "src/systems/music.js",
+    "old": "    if (fresh) player.fadeTo?.(0, 0);\n    const ok = player.play(song);",
+    "new": "    const ok = player.play(song);",
+    "tests": [
+      "test/midiout1.test.js"
+    ],
+    "note": "The MIDI player queues its first window inside play() at the fade it holds: a fresh player strikes the opening notes at full, then drops to nothing for the rise."
+  },
+  {
+    "name": "MO1A-8-walk-by-index",
+    "file": "src/systems/midiOut.js",
+    "old": "  const names = ['', ...new Set((outputs ?? []).map((o) => o.name))];",
+    "new": "  const names = ['', ...(outputs ?? []).map((o) => o.name)];",
+    "tests": [
+      "test/midiout1.test.js"
+    ],
+    "note": "Two devices sharing a name: the walk re-picks the same name forever and never reaches Off."
+  },
+  {
+    "name": "MO1A-9-pulled-pick-steps-to-off",
+    "file": "src/systems/midiOut.js",
+    "old": "  if (at < 0) return names[Math.min(1, names.length - 1)];",
+    "new": "  if (at < 0) return '';",
+    "tests": [
+      "test/midiout1.test.js"
+    ],
+    "note": "With the saved device pulled, the next click turns MIDI out off instead of moving to the device that is there."
   }
 ]

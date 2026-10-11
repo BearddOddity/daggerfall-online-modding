@@ -5,14 +5,15 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   midiMessage, scaledVolume, stateKey, channelResetMessages, channelQuietMessages, MidiOutSongPlayer,
-  setMidiOut, midiOutName, midiOutputs, findMidiOutput, _resetMidiOutForTests, MIDI_GAP_S,
+  setMidiOut, midiOutName, midiOutputs, findMidiOutput, _resetMidiOutForTests, MIDI_GAP_S, nextMidiOut, onMidiOutChange,
 } from '../src/systems/midiOut.js';
 import { setMusicMuted } from '../src/systems/songPlayer.js';
 import { setValue, _resetForTests as resetSettings } from '../src/systems/settings.js';
 import { _resetForTests as resetPrefs } from '../src/systems/uiPrefs.js';
 import { gateScoreSongs } from '../src/systems/gateScore.js';
 import { MusicService } from '../src/systems/music.js';
-import { whereIs } from '../src/ui/settingsMap.js';
+import { whereIs, CATEGORIES } from '../src/ui/settingsMap.js';
+import { restoreTabDefaults } from '../src/ui/enhancedMenu.js';
 
 /** A device: every message as [bytes..., ms] (the ms to the microsecond, so sums of ticks compare). */
 function fakeOutput(name = 'Synth A') {
@@ -61,7 +62,8 @@ test('MIDI-OUT1 the vocabulary: each channel event as the bytes a device takes, 
     { type: 'noteOn', channel: null, note: 1, velocity: 1 }, { type: 'noteOn', channel: 16, note: 1, velocity: 1 }]) {
     assert.equal(midiMessage(e), null, `${e.type} on ${e.channel} is not sent`);
   }
-  assert.equal(scaledVolume(100, 0.5), 50);
+  assert.equal(scaledVolume(100, 0.25), 50, 'a gain under the square root: GM\'s CC7 is (v/127)^2, so a quarter of the power is half the CC7');
+  assert.equal(scaledVolume(127, 0.5), 90, 'the default volume, -6 dB as the synth plays it - not 64, which a device plays at -12');
   assert.equal(scaledVolume(127, 4), 127, 'a song\'s own level never takes CC7 past 127');
   assert.equal(scaledVolume(100, NaN), 0);
   assert.equal(stateKey({ type: 'controller', channel: 2, controller: 7 }), 'c2:7');
@@ -82,11 +84,11 @@ test('MIDI-OUT1 a song as the device hears it: every channel reset just before t
   const song = out.log.filter((m) => m[3] >= ms(o) || (m.length === 3 && m[2] >= ms(o)));
   const reset = out.log.filter((m) => m.at(-1) === ms(o - MIDI_GAP_S));
   assert.equal(reset.length, 16 * 5, 'five messages a channel, every channel');
-  assert.deepEqual(reset.slice(0, 5), [[0xb0, 121, 0, ms(o - MIDI_GAP_S)], [0xc0, 0, ms(o - MIDI_GAP_S)], [0xb0, 10, 64, ms(o - MIDI_GAP_S)], [0xe0, 0, 64, ms(o - MIDI_GAP_S)], [0xb0, 7, 64, ms(o - MIDI_GAP_S)]],
-    'CC7 full (127) under the default MusicVolume 0.5 is 64');
+  assert.deepEqual(reset.slice(0, 5), [[0xb0, 121, 0, ms(o - MIDI_GAP_S)], [0xc0, 0, ms(o - MIDI_GAP_S)], [0xb0, 10, 64, ms(o - MIDI_GAP_S)], [0xe0, 0, 64, ms(o - MIDI_GAP_S)], [0xb0, 7, 90, ms(o - MIDI_GAP_S)]],
+    'CC7 full (127) under the default MusicVolume 0.5 is 90 (127 x sqrt 0.5)');
   assert.deepEqual(song, [
     [0xc0, 48, ms(o)],
-    [0xb0, 7, 50, ms(o)],                 // 100 x 0.5
+    [0xb0, 7, 71, ms(o)],                 // 100 x sqrt 0.5
     [0x90, 60, 90, ms(o)],
     [0x80, 60, 0, ms(o + 0.1)],           // its length, released before...
     [0x90, 60, 80, ms(o + 0.1)],          // ...the same note struck on that tick
@@ -119,8 +121,8 @@ test('MIDI-OUT1 the volume is CC7: the slider re-levels every channel at once, t
   mark = out.log.length;
   clock.currentTime = 10.5;
   p._pump();
-  assert.deepEqual(cc7(mark).find((m) => m[0] === 0xb1), [0xb1, 7, 64, ms(10.5)], 'half way down a second: a full channel at 127 x 0.5');
-  assert.deepEqual(cc7(mark).find((m) => m[0] === 0xb0), [0xb0, 7, 50, ms(10.5)], 'and the song\'s 100 at half');
+  assert.deepEqual(cc7(mark).find((m) => m[0] === 0xb1), [0xb1, 7, 90, ms(10.5)], 'half way down a second: a full channel at half its power, 127 x sqrt 0.5');
+  assert.deepEqual(cc7(mark).find((m) => m[0] === 0xb0), [0xb0, 7, 71, ms(10.5)], 'and the song\'s 100 the same');
   clock.currentTime = 11.2;
   p._pump();
   assert.ok(cc7(out.log.length - 16).every((m) => m[2] === 0), 'and at its end, nothing');
@@ -152,7 +154,7 @@ test('MIDI-OUT1 a stop leaves the device silent: every note struck is released -
   p.stop();
 });
 
-test('MIDI-OUT1 a release that rounds past a re-strike of its note is still sent before it: at 1/120 s a tick, a note at tick 2 held six ticks ends 1.8e-15 s after tick 8 (mutants: the slack dropped; the release sent at its own rounded time)', () => {
+test('MIDI-OUT1 a release that rounds past a re-strike of its note is still sent before it: at 1/120 s a tick, a note at tick 2 held six ticks ends 1.8e-15 s after tick 8 (mutant: MO1A-2, the overlap left to the earlier release)', () => {
   fresh();
   const sent = [];
   const out = { send(bytes, ts) { sent.push([bytes[0] & 0xf0, ts]); } };
@@ -219,7 +221,7 @@ test('MIDI-OUT1 a stalled tab: the gap is skipped as the synth skips it, and the
   p._pump();
   const told = out.log.slice(mark);
   assert.ok(told.some((m) => m[0] === 0xc0 && m[1] === 19 && m[2] === ms(16)), 'the program the gap held');
-  assert.ok(told.some((m) => m[0] === 0xb0 && m[1] === 7 && m[2] === 40), 'and its volume, scaled');
+  assert.ok(told.some((m) => m[0] === 0xb0 && m[1] === 7 && m[2] === 57), 'and its volume, scaled (80 x sqrt 0.5)');
   assert.ok(!told.some((m) => m[0] === 0x90), 'no note from the past');
   p.stop();
 });
@@ -246,6 +248,9 @@ test('MIDI-OUT1 the music service plays on the device picked: the pick moves a s
     const on = svc.player;
     assert.ok(on instanceof MidiOutSongPlayer && on.playing);
     assert.ok(b.log.some((m) => (m[0] & 0xf0) === 0x90), 'the song is on Synth B');
+    const first = b.log.findIndex((m) => (m[0] & 0xf0) === 0x90 && m[2] > 0);
+    assert.deepEqual([...new Set(b.log.slice(0, first).filter((m) => (m[0] & 0xf0) === 0xb0 && m[1] === 7).map((m) => m[2]))], [0],
+      'it rises in: every channel at nothing before its first note, not struck at full and then dropped');
     setMidiOut('Synth A');
     setMidiOut('Synth B');   // a pick overtaken by the next before either is answered
     await new Promise((r) => setTimeout(r, 0));
@@ -274,4 +279,96 @@ test('MIDI-OUT1 the row lives where a player looks for it - Settings > Audio > M
   const w = whereIs('port:midiOut');
   assert.deepEqual([w?.tab.id, w?.section.id], ['audio', 'music']);
   assert.deepEqual(w.section.items.slice(-2), ['Audio/SoundFont', 'port:midiOut']);
+});
+
+test('MIDI-OUT1 AUDIT: a key struck again while it still sounds is released just before the new strike, and the earlier note\'s own release is dropped - a note-off ends whichever note holds the key, so it would cut the later one (mutant: the overlap left to the earlier release)', () => {
+  fresh();
+  const out = fakeOutput();
+  const p = playerOn(out, clockAt(10));
+  p.play({ secondsPerTick: 0.01, durationTicks: 30, events: [
+    { tick: 0, type: 'noteOn', channel: 2, note: 64, velocity: 90, duration: 20 },
+    { tick: 5, type: 'noteOn', channel: 2, note: 64, velocity: 90, duration: 20 },
+  ] });
+  for (let t = 10; t < 10.6; t += 0.1) { p.ctx.currentTime = t; p._pump(); }
+  const keys = out.log.filter((m) => m[0] === 0x92 || m[0] === 0x82).map((m) => [m[0], m[3]]);
+  assert.deepEqual(keys, [[0x92, ms(10.06)], [0x82, ms(10.11)], [0x92, ms(10.11)], [0x82, ms(10.31)]],
+    'on, released at the re-strike, struck, released at ITS end - not at the first note\'s 10.26');
+  p.stop();
+});
+
+test('MIDI-OUT1 AUDIT: the row\'s next pick - each distinct device, then Off; two devices sharing a name do not trap the walk; a pick that is not connected steps to the first device that is (mutants: the walk by index; a pulled pick stepping to Off)', () => {
+  const outs = [{ name: 'USB MIDI Interface' }, { name: 'USB MIDI Interface' }, { name: 'Synth B' }];
+  assert.equal(nextMidiOut('', outs), 'USB MIDI Interface');
+  assert.equal(nextMidiOut('USB MIDI Interface', outs), 'Synth B', 'past the second of the same name');
+  assert.equal(nextMidiOut('Synth B', outs), '', 'then Off');
+  assert.equal(nextMidiOut('Synth A', outs), 'USB MIDI Interface', 'a pulled pick steps to a device, not to Off');
+  assert.equal(nextMidiOut('', []), '', 'nothing connected: Off stays Off');
+  assert.equal(nextMidiOut('Synth A', []), '');
+});
+
+test('MIDI-OUT1 AUDIT: a stall re-sends each control\'s last value in the order those last values came - a bank select before the program it selects (mutant: the order each key was first seen)', () => {
+  fresh();
+  const out = fakeOutput();
+  const clock = clockAt(10);
+  const p = playerOn(out, clock);
+  p.play({ secondsPerTick: 0.01, durationTicks: 1000, events: [
+    { tick: 0, type: 'programChange', channel: 0, program: 1 },
+    { tick: 300, type: 'controller', channel: 0, controller: 0, value: 8 },
+    { tick: 301, type: 'programChange', channel: 0, program: 2 },
+  ] });
+  const mark = out.log.length;
+  clock.currentTime = 16;
+  p._pump();
+  const told = out.log.slice(mark).filter((m) => m[0] === 0xc0 || (m[0] === 0xb0 && m[1] === 0)).map((m) => m.slice(0, -1));
+  assert.deepEqual(told, [[0xb0, 0, 8], [0xc0, 2]]);
+  p.stop();
+});
+
+test('MIDI-OUT1 AUDIT: a player with nothing sounding sends no quiet - its first song\'s own stop, or a second stop - and a stop after a song still does (mutant: the quiet burst on every stop)', () => {
+  fresh();
+  const out = fakeOutput();
+  const p = playerOn(out, clockAt(10));
+  p.play(SONG);
+  assert.ok(!out.log.some((m) => m[1] === 123), 'the first play\'s stop silences nothing');
+  p.stop();
+  const once = out.log.filter((m) => m[1] === 123).length;
+  assert.ok(once >= 16);
+  p.stop();
+  assert.equal(out.log.filter((m) => m[1] === 123).length, once, 'stopped twice is quieted once');
+});
+
+test('MIDI-OUT1 AUDIT: a song asked for before the first gesture plays as soon as a device is adopted - it waited for an AudioContext a device does not need - and a tab\'s Restore takes the pick back to Off through the door the music hears (mutants: the pending song left waiting; Restore writing the shelf alone)', async () => {
+  fresh();
+  _resetMidiOutForTests();
+  const a = fakeOutput('Synth A');
+  const access = { outputs: new Map([[a.id, a]]), onstatechange: null };
+  const was = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', { value: { requestMIDIAccess: async () => access }, configurable: true, writable: true });
+  const svc = new MusicService();
+  const heard = [];
+  const off = onMidiOutChange((name) => heard.push(name));
+  try {
+    svc.registerSong('WAR', Object.values(gateScoreSongs())[0]);
+    assert.equal(svc.playSong('WAR'), false, 'no context and no device: remembered');
+    assert.equal(svc._pending, 'WAR');
+    setMidiOut('Synth A');
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(svc._pending, null);
+    assert.ok(svc.player instanceof MidiOutSongPlayer && svc.player.playing && a.log.some((m) => (m[0] & 0xf0) === 0x90), 'it plays on the device');
+    heard.length = 0;
+    globalThis.document = { createElement: () => { const n = { children: [], dataset: {}, classList: { add() {} }, append(...c) { n.children.push(...c); }, setAttribute() {} }; return n; } };
+    try { restoreTabDefaults(CATEGORIES.find((c) => c.id === 'audio')); } finally { delete globalThis.document; }
+    assert.equal(midiOutName(), '');
+    assert.deepEqual(heard, [''], 'the music was told');
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(svc.midiOut, null, 'and left the device');
+  } finally {
+    off();
+    svc.stop();
+    svc._unsubscribeMidi();
+    svc._unsubscribe();
+    setMidiOut('');
+    if (was) Object.defineProperty(globalThis, 'navigator', was); else delete globalThis.navigator;
+    _resetMidiOutForTests();
+  }
 });

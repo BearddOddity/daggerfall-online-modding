@@ -40,9 +40,6 @@ export const MIDI_OUT_PREF = 'midiOut';
 /** A millisecond: the gap that keeps two messages the device must take in order from sharing a timestamp. */
 export const MIDI_GAP_S = 0.001;
 
-/** A microsecond: how far past a re-strike a rounded release may fall and still be the release before it. */
-export const RELEASE_SLACK_S = 1e-6;
-
 const clamp7 = (v) => Math.max(0, Math.min(127, Math.trunc(Number(v) || 0)));
 
 /**
@@ -69,10 +66,14 @@ export function midiMessage(e) {
   }
 }
 
-/** A song's CC7 under the player's volume, its own level and the fade. Pure; never past 127, never under 0. */
+/** A song's CC7 under the player's volume, its own level and the fade - a GAIN, so it is applied under the square
+ *  root. AUDIT MIDI-OUT1: General MIDI's CC7 law is 40 log10(v/127) dB - amplitude (v/127)^2, the square the synth's
+ *  own volumeGain is (gmSynth.js) - so CC7 x g sounds g^2, and a linear scale played the default volume at a quarter
+ *  (-12 dB, not -6) and ran every fade along the square. CC7 x sqrt(g) sounds g. Pure; never past 127, never under 0:
+ *  a device has no headroom over 127, so a song's level past 1 tops out once volume x level passes 1. */
 export function scaledVolume(raw, scale) {
-  const v = Math.round(clamp7(raw) * (Number.isFinite(scale) ? scale : 0));
-  return Math.max(0, Math.min(127, v));
+  const g = Number.isFinite(scale) && scale > 0 ? scale : 0;
+  return Math.max(0, Math.min(127, Math.round(clamp7(raw) * Math.sqrt(g))));
 }
 
 /** What a channel is told as a song begins - freshChannelState's own (program 0, pan centre, bend centre), after
@@ -151,14 +152,12 @@ export class MidiOutSongPlayer extends SongPlayer {
     }
   }
 
-  /** Release every note due by `until`, at its own time. A release within RELEASE_SLACK_S of `until` is due and sent
-   *  AT `until` at the latest: its time is the origin plus its note-on's tick plus its length, the note struck again on
-   *  that tick is the origin plus the sum, and a rounding past it would land the release after the new note-on. */
+  /** Release every note due by `until`, at its own time. */
   _release(until) {
     if (!this._notes.length) return;
     const keep = [];
     for (const n of this._notes) {
-      if (n.off <= until + RELEASE_SLACK_S) this._send([0x80 | n.channel, n.note, 0], Math.min(n.off, until));
+      if (n.off <= until) this._send([0x80 | n.channel, n.note, 0], n.off);
       else keep.push(n);
     }
     this._notes = keep;
@@ -189,14 +188,24 @@ export class MidiOutSongPlayer extends SongPlayer {
     const last = new Map();
     for (const e of eventsInWindow(this.song.events, 0, toTick)) {
       const k = stateKey(e);
-      if (k) last.set(k, e);
+      if (k) { last.delete(k); last.set(k, e); }   // AUDIT: in the order of each LAST value - a bank select before its program
     }
     const now = this.ctx.currentTime;
     for (const e of last.values()) this._control(e, now);
   }
 
   _voice(e, when, durationSeconds) {
-    this._release(when);   // a note struck again on its own release is struck after it, not cut by it
+    // A key struck again while it still sounds - or on its own release's tick, which origin + tick + length can round
+    // a hair past - is released first, at the strike: a note-off ends whichever note holds the key, so the earlier
+    // note's own release would cut this one (AUDIT). Its pending release goes with it.
+    const key = clamp7(e.note);
+    if (this._notes.some((n) => n.channel === e.channel && n.note === key)) {
+      this._notes = this._notes.filter((n) => {
+        if (n.channel !== e.channel || n.note !== key) return true;
+        this._send([0x80 | n.channel, n.note, 0], when);
+        return false;
+      });
+    }
     this._send(midiMessage(e), when);
     this._notes.push({ channel: e.channel, note: clamp7(e.note), on: when, off: when + noteSeconds(durationSeconds) });
   }
@@ -228,7 +237,10 @@ export class MidiOutSongPlayer extends SongPlayer {
   resyncGain() { this._relevel(this.ctx.currentTime); }
 
   stop() {
+    // AUDIT: a player already quiet - never played, or stopped and not played since - has nothing to silence
+    const quietAlready = !this.playing && !this._notes.length && this._quietAt >= this._sentUntil;
     super.stop();
+    if (quietAlready) return;
     const now = this.ctx.currentTime;
     const quiet = Math.max(now, this._sentUntil) + MIDI_GAP_S;
     try { this.output.clear?.(); } catch { /* not every engine has it */ }
@@ -270,6 +282,17 @@ function publish() {
   for (const fn of [..._listeners]) {
     try { fn(midiOutName()); } catch (e) { console.warn('[midi-out] a listener threw:', e?.message ?? e); }
   }
+}
+
+/** The row's next pick after `current` among the connected `outputs`: the next device, then Off ('').
+ *  AUDIT: by DISTINCT name - two devices sharing one (two "USB MIDI Interface"s) trapped a by-index walk on the second,
+ *  and a pick is kept by name, so only the first of them can be reached. A pick that is not connected (pulled out)
+ *  steps to the first device that is, not to Off. Pure. */
+export function nextMidiOut(current, outputs) {
+  const names = ['', ...new Set((outputs ?? []).map((o) => o.name))];
+  const at = names.indexOf(String(current ?? ''));
+  if (at < 0) return names[Math.min(1, names.length - 1)];
+  return names[(at + 1) % names.length];
 }
 
 /** Pick an output by name ('' for none): the shelf keeps it, and the music moves to it. */

@@ -79,6 +79,8 @@ export class MusicService {
     this.player?.stop();
     this.player = null;
     if (again) this._playBuiltIn(again);
+    // AUDIT: a song asked for before the first gesture waited for an AudioContext; a device needs none
+    else if (output && this._pending && this.playSong(this._pending)) this._pending = null;
   }
 
   /** MIDI-OUT1: is the music on a device? */
@@ -306,6 +308,9 @@ export class MusicService {
     }
     this._current = name;
     const fresh = !(player.playing && player.song === song);
+    // AUDIT MIDI-OUT1: down BEFORE the play as well - the MIDI player queues its first window inside play(), at the
+    // fade it holds then, so a fade still up struck the first notes at full before the rise began
+    if (fresh) player.fadeTo?.(0, 0);
     const ok = player.play(song);
     if (ok && fresh) { player.fadeTo?.(0, 0); player.fadeTo?.(1, MUSIC_FADE_IN_S); }   // DISC20-B: it rises in
     return ok;

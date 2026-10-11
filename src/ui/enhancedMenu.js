@@ -133,7 +133,7 @@ import { GATE_CROWD_TIERS } from '../net/gateCrowd.js';   // GATE-CROWD: how man
 import { PEER_RANGE_TIERS, peerRangeOf } from '../net/peerRange.js';
 import { YARD_RANGE_TIERS, yardRangeOf } from '../net/yardRange.js';   // YARD-RANGE: how far other players' yards are drawn   // PEER-RANGE: how far out other players are drawn, and the distance a stored value stands for
 import { replacementCount } from '../systems/musicReplacement.js';   // M-EXT: the packs card reports what the pick covers
-import { midiOutSupported, midiOutDenied, midiOutName, midiOutputs, setMidiOut } from '../systems/midiOut.js';   // MIDI-OUT1: the Audio tab's device row
+import { midiOutSupported, midiOutDenied, midiOutName, midiOutputs, setMidiOut, nextMidiOut, MIDI_OUT_PREF } from '../systems/midiOut.js';   // MIDI-OUT1: the Audio tab's device row
 import { brandMark } from './brandMark.js';   // INTRO2: Mac's supplied logo, shared with the final splash
 import { soundReplacementCount } from '../systems/soundReplacer.js';   // SNDREP1: the sound pack's count
 import { textureReplacementCount, bundleTextureCount } from '../systems/textureReplacement.js';   // M-TEX: and the texture half; DFMOD1: and the bundles'
@@ -1904,7 +1904,8 @@ export function restoreTabDefaults(tab) {
   const pool = portPool();
   for (const item of items) {
     const pref = item.startsWith('port:') ? pool.get(item.slice(5))?.dataset?.pref : null;
-    if (pref && Object.hasOwn(PREF_DEFAULTS, pref) && onlineForcedPref(pref) === undefined) setPref(pref, PREF_DEFAULTS[pref]);
+    if (pref === MIDI_OUT_PREF) setMidiOut(PREF_DEFAULTS[pref]);   // AUDIT MIDI-OUT1: through the door the music hears
+    else if (pref && Object.hasOwn(PREF_DEFAULTS, pref) && onlineForcedPref(pref) === undefined) setPref(pref, PREF_DEFAULTS[pref]);
   }
 }
 
@@ -2588,8 +2589,7 @@ function portRowsAudio() {
   const step = async () => {
     if (!can) return;
     midiOutList = await midiOutputs();
-    const names = ['', ...midiOutList.map((o) => o.name)];
-    setMidiOut(names[(names.indexOf(midiOutName()) + 1) % names.length]);
+    setMidiOut(nextMidiOut(midiOutName(), midiOutList));
     render();
   };
   main.onclick = step;
