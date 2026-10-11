@@ -42,3 +42,61 @@ test('PEER-HULL-RANGE another\'s ship within PEER_HULL_NEAR_M of the eye stands 
   assert.ok(h.host._sea.get('z:2'), 'her record stays');
   assert.deepEqual(h.pool.seaBoats, []);
 });
+
+// AUDIT PEER-HULL-RANGE (2026-10-11, Mac: "Audit it. Ensure it doesnt kill fidelity") - THE PICTURE UNMOVED. The first
+// cut's edges (3,000 / 3,500 m) stood INSIDE the fog: the enhanced lane's linear fog ends at 2400 x Land View / 3 - 4,000 m
+// at its default 5, 4,800 m at 6 (world/weather.js scaleFogForDistance) - so a ship came into being 75% fogged and went
+// out at 87%. And a hull built AGAIN wore her first hull's past rather than her record: her sails by height, colours and
+// wake were remembered on her record against the hull given back, so she came back under full canvas, a struck ship
+// flying her colours, a ship under way with no wake - at full strength in one frame, and her fires hung where she was.
+import { readFileSync } from 'node:fs';
+import { FOG_SETTINGS, scaleFogForDistance } from '../src/world/weather.js';
+import { LAND_VIEW_MAX } from '../src/world/landView.js';
+import { fogSettingsFromPresets } from '../src/systems/dynamicSkies.js';
+
+/** What a fog row lets through of a surface `d` away (1 clear, 0 the fog's colour) - the renderer's three modes. */
+const seenThrough = (f, d) => (f.mode === 'linear' ? Math.max(0, Math.min(1, (f.end - d) / Math.max(1e-6, f.end - f.start)))
+  : f.mode === 'exp' ? Math.exp(-f.density * d) : f.mode === 'exp2' ? Math.exp(-((f.density * d) ** 2)) : 1);
+
+test('AUDIT PEER-HULL-RANGE a hull is built and given back only where every lane\'s fog has closed: past the enhanced lane\'s linear fog at its widest Land View, past each of DFU\'s rows and past each of Dynamic Skies\' presets at their lightest density (mutant: the first cut\'s 3,000 m)', () => {
+  const dfu = Object.entries(FOG_SETTINGS).filter(([k]) => k !== 'interior' && k !== 'dungeon').map(([k, f]) => [`DFU ${k}`, scaleFogForDistance(f, LAND_VIEW_MAX)]);
+  const names = ['FogSunny', 'FogOvercast', 'FogRainy', 'FogSnowy', 'FogHeavyFog'];
+  const json = Object.fromEntries(names.map((n) => [n, readFileSync(new URL(`../vendor/dynamic-skies/FogSettings/${n}.json`, import.meta.url), 'utf8')]));
+  const ds = Object.entries(fogSettingsFromPresets(json, 1)).map(([k, f]) => [`Dynamic Skies ${k}`, f]);
+  assert.equal(scaleFogForDistance(FOG_SETTINGS.sunny, LAND_VIEW_MAX).end, 4800, 'the widest linear fog this port draws');
+  for (const [name, f] of [...dfu, ...ds]) assert.ok(seenThrough(f, PEER_HULL_NEAR_M) < 0.01, `${name}: ${seenThrough(f, PEER_HULL_NEAR_M).toFixed(3)} seen at the near edge`);
+});
+
+test('AUDIT PEER-HULL-RANGE a hull built again wears her record, not her last hull\'s: she fades in (SHIP-FADE), her canvas by her sail share, a struck ship\'s colours down, a ship under way her wake; her fires out of sight while she stands no hull and on her again when she does (mutants: each of the four kept)', async () => {
+  const h = await sea({ hull: null });
+  h.deps.flame = () => ({ shown: null, move() {}, retire() {}, show(v) { this.shown = v; } });
+  const ship = (o) => navalWireRecord({ ships: [{ classId: 'merchantGalleon', variant: 0, yaw: 0, speed: 0, sails: 1, hull: 1, sail: 1, crew: 1, state: 'afloat', heel: 0, fire: false, ...o }] }).s[0];
+  const w = word(ship({ n: 1, pos: [500, 0, 0], seed: 3, speed: 5, sail: 0.3, fire: true }), ship({ n: 2, pos: [-500, 0, 0], seed: 4, state: 'struck' }));
+  const step = (s) => { h.host.applyWord('z', w, (p) => p); h.run(s); };
+  const canvas = (b) => b.Sails.filter((n) => n.activeSelf).length;
+  standAt(h, 0, 0);
+  step(6);
+  const run = h.host._sea.get('z:1'), struck = h.host._sea.get('z:2');
+  const was = { canvas: canvas(run.boat) };
+  assert.ok(was.canvas < run.boat.Sails.length, 'her torn canvas shown short');
+  assert.equal(run.boat.WakeEmitter.isEmitting, true, 'under way, her wake');
+  assert.equal(struck.boat.FlagEmitter.isEmitting, false, 'struck, her colours down');
+  assert.ok(run.fires.every((f) => f.handle.shown === true), 'her fires on her');
+  // the eye goes away past the far edge: both hulls given back, her fires out of sight
+  standAt(h, PEER_HULL_FAR_M + 1000, 0);
+  step(1);
+  assert.equal(run.boat, null);
+  assert.equal(struck.boat, null);
+  assert.ok(run.fires.every((f) => f.handle.shown === false), 'no fire hung over the sea where she was');
+  // and comes back: built again, each as her record says
+  standAt(h, 0, 0);
+  step(0.2);   // one build a frame (buildOne)
+  assert.ok(run.boat && struck.boat, 'both built again');
+  assert.ok(run.boat.fade < 0.5, `she fades in (SHIP-FADE) rather than standing whole in a frame: ${run.boat.fade}`);
+  step(6);
+  assert.equal(canvas(run.boat), was.canvas, 'her canvas by her sail share on the hull she stands now');
+  assert.equal(run.boat.WakeEmitter.isEmitting, true, 'her wake on the hull she stands now');
+  assert.equal(struck.boat.FlagEmitter.isEmitting, false, 'a struck ship\'s colours down on the hull she stands now');
+  assert.ok(run.fires.every((f) => f.handle.shown === true), 'her fires on her again');
+  assert.equal(run.boat.fade, 1);
+});

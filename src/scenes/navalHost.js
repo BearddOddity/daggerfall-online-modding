@@ -227,9 +227,13 @@ export const FAR_LIFE_EVERY = 4;
  *  her sails' FixDeformations), a third of the main thread on a desktop (38-45 FPS against 103-150 with them gone).
  *  Her record sails on as ever (her stander's word, her fires, the claims); only her hull waits: built within
  *  PEER_HULL_NEAR_M of the eye, back to the pool past PEER_HULL_FAR_M (the gap keeps one on the edge from being built
- *  and torn down frame by frame). Both past where a peer's own sea reaches me (NAVAL_SHARE_RADIUS + LINER_DROP_M). */
-export const PEER_HULL_NEAR_M = 3000;
-export const PEER_HULL_FAR_M = 3500;
+ *  and torn down frame by frame). Both past where a peer's own sea reaches me (NAVAL_SHARE_RADIUS + LINER_DROP_M).
+ *  AUDIT PEER-HULL-RANGE: AND PAST THE FOG ON EVERY LANE - the first cut's 3,000 / 3,500 m stood inside it (the enhanced
+ *  lane's linear fog ends at 2400 x Land View / 3, world/weather.js scaleFogForDistance: 4,000 m at its default 5,
+ *  4,800 m at 6), so a ship came into being 63-75% fogged. At 5,000 m every row DFU, the port and Dynamic Skies draw
+ *  has closed (test/peerhullrange.test.js); the ships this is for were 80-700 km off, so the frame's saving is the same. */
+export const PEER_HULL_NEAR_M = 5000;
+export const PEER_HULL_FAR_M = 5500;
 /**
  * AUDIT NAV1 (the presentation, #14) - THE SEA AT A GLANCE (one card for the ship within 6 degrees of the look was all
  * the sea said, and a pirate turning on me said nothing). A TAG over each ship within NAVAL_TAG_RANGE of the eye and
@@ -1942,6 +1946,14 @@ export function createNavalHost(deps) {
       if (dist2d(e.ship.pos, eye) <= PEER_HULL_FAR_M) continue;
       deps.pool.remove(e.boat);
       e.boat = null;
+      // AUDIT PEER-HULL-RANGE: what her record remembered of that hull goes with it (poseShip's canvas by height, the
+      // colours and wake it last set), so the next one wears her record; her fires out of sight and their loops still
+      // until poseShip stands them on her again; and she fades in when she is built again (SHIP-FADE), as a new ship does
+      e.sailsByHeight = null; e.colours = null; e.wake = false;
+      for (const f of e.fires ?? []) f.handle?.show?.(false);
+      e.fireLoop?.stop?.(); e.fireLoop = null;
+      e.sinkLoop?.stop?.(); e.sinkLoop = null;
+      e.shed = true;
     }
   }
   /** One build a frame: the first sea ship with no hull yet (SpawnBoat is the frame's heaviest single act). */
@@ -1957,6 +1969,7 @@ export function createNavalHost(deps) {
           e.boat.IdleObject?.setActive?.(false);
           e.boat.ActiveObject?.setActive?.(true);
           e.boat.flagColor = NAVAL_FACTIONS[e.ship.cls?.faction]?.flag ?? null;   // her colours: the faction's own pennant
+          if (e.shed) { e.shed = false; e.fade = 0; }   // AUDIT PEER-HULL-RANGE: a hull given back and built again fades in
         }
       } catch (err) {
         console.warn('[naval] a ship would not build', err);

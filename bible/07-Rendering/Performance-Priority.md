@@ -20,8 +20,9 @@ contributing to poor performance") pulled the crowds' lever 5 below, and it DOES
 player chooses (300 m by default) another player is not drawn. Its section is after PERF-NAMES.
 
 PEER-HULL-RANGE (2026-10-11, a player's report from a profile of the live game) does the same for the sea: another
-player's ship far off stands no hull on my client. It does not move the picture - every ship it holds back is kilometres
-past the fog. Its section is after PERF-WAGON.
+player's ship far off stands no hull on my client. It does not move the picture - every ship it holds back is past the
+fog on every lane (AUDIT PEER-HULL-RANGE moved its edges there and gave a hull built again her record's dress). Its
+section is after PERF-WAGON.
 
 ## How the pass was run
 
@@ -467,6 +468,26 @@ her deck - and is built again as she comes within reach. Both edges stand past w
 
 Pins: `test/peerhullrange.test.js` (1), over the real pool through a peer's word. Mutants:
 `tools/mutants/peerhullrange.json`, 3, all dead.
+
+**AUDIT PEER-HULL-RANGE (2026-10-11, Mac: "Audit it. Ensure it doesnt kill fidelity").** Two ways the first cut moved
+the picture, both fixed:
+
+- *Its edges stood inside the fog.* "Past the fog" held for DFU's own 0..2400 row, but the enhanced lane scales the
+  linear fog's end by Land View (`world/weather.js` scaleFogForDistance: 2400 x LV / 3) - 4,000 m at its default 5,
+  4,800 m at 6 - so a ship came into being at 3,000 m 63-75% fogged and went out at 3,500 m. The edges are 5,000 /
+  5,500 m now: past the widest linear fog the port draws and past every DFU and Dynamic Skies row (Sunny's 2000..3600;
+  the exp2 rows at their lightest density show under 1% at 5 km). The far ships this is for were 80-700 km off, so the
+  frame's saving is the same; nothing in play reaches past 1.2 km (engage 750, tags 700, compass 900, news 1,200).
+- *A hull built again wore her last hull's past.* poseShip remembers on her RECORD what it set on her hull - her canvas
+  by height (`sailsByHeight`, the hull's own sail nodes), her colours and her wake - none of which had ever outlived a
+  hull before. Built again, she came back under full canvas whatever her sail share (the old hull's sails were the ones
+  furled), a struck ship flying her colours, a ship under way with no wake; whole in one frame where every ship fades
+  in (SHIP-FADE); and her fire flats hung over the sea where her hull was given back. `shedFarHulls` forgets the three,
+  hides her fires and stills their loops; `buildOne` fades a hull built again in from nothing.
+
+Pins: `test/peerhullrange.test.js` (+2): every lane's fog closed at the near edge; a struck ship and a torn, burning
+ship under way given back and built again, each in her record's dress. Mutants (+6): the first cut's edge, each of the
+three remembered things kept, her fires left hung, whole in a frame.
 
 ## What is left, ranked
 
