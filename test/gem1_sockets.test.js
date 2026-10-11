@@ -276,12 +276,12 @@ test('GEM2 the graded gems: thirty-two rows of the port\'s own at 1900-1931, eac
   off();
 });
 
-test('GEM2 the world\'s gem find: 30 in a thousand and 5 a tier to 150, a pile 1.3 times and a boss 2.5, luck the ladder\'s own; the grade the source\'s band, a boss four tiers deeper; at every door, its very last draw; off nothing', () => {
+test('GEM2 the world\'s gem find: 10 in a thousand and 2 a tier to 50 (GEM-RARE, a third of GEM2\'s), a pile 1.3 times and a boss 2.5, luck the ladder\'s own; the grade the source\'s band, a boss four tiers deeper; at every door, its very last draw; off nothing', () => {
   on();
   try {
-    assert.deepEqual(G.GEM_FIND, { base: 30, perTier: 5, cap: 150 });
-    assert.deepEqual([0, 10, 19, 30].map((tier) => G.gemFindChance({ tier })), [30, 80, 125, 150]);
-    assert.deepEqual([G.gemFindChance({ tier: 10, kind: 'pile' }), G.gemFindChance({ tier: 4, boss: true }), G.gemFindChance({ tier: 10, luck: 100 }), G.gemFindChance({ tier: 10, luck: 0 })], [104, 125, 120, 40]);
+    assert.deepEqual(G.GEM_FIND, { base: 10, perTier: 2, cap: 50 });   // PIN MOVED (GEM-RARE, bible/06-Systems/Gem-Sockets.md): GEM2's 30 + 5 a tier to 150, a third
+    assert.deepEqual([0, 10, 19, 20, 30].map((tier) => G.gemFindChance({ tier })), [10, 30, 48, 50, 50]);
+    assert.deepEqual([G.gemFindChance({ tier: 10, kind: 'pile' }), G.gemFindChance({ tier: 4, boss: true }), G.gemFindChance({ tier: 10, luck: 100 }), G.gemFindChance({ tier: 10, luck: 0 })], [39, 45, 45, 15]);
     assert.deepEqual(JSON.parse(JSON.stringify(G.GEM_GRADE_BANDS)), [
       { tier: 0, weights: [70, 30, 0, 0, 0] }, { tier: 5, weights: [30, 50, 20, 0, 0] }, { tier: 10, weights: [0, 30, 45, 25, 0] },
       { tier: 15, weights: [0, 0, 35, 50, 15] }, { tier: 20, weights: [0, 0, 0, 60, 40] },

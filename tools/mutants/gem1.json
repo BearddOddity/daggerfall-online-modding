@@ -353,10 +353,28 @@
     ]
   },
   {
-    "name": "GEM2-the-find-forty",
+    "name": "GEM2-the-find-twenty",
     "file": "src/systems/gems.js",
-    "old": "export const GEM_FIND = Object.freeze({ base: 30, perTier: 5, cap: 150 });",
-    "new": "export const GEM_FIND = Object.freeze({ base: 40, perTier: 5, cap: 150 });",
+    "old": "export const GEM_FIND = Object.freeze({ base: 10, perTier: 2, cap: 50 });",
+    "new": "export const GEM_FIND = Object.freeze({ base: 20, perTier: 2, cap: 50 });",
+    "tests": [
+      "test/gem1_sockets.test.js"
+    ]
+  },
+  {
+    "name": "GEM-RARE-five-a-tier-again",
+    "file": "src/systems/gems.js",
+    "old": "export const GEM_FIND = Object.freeze({ base: 10, perTier: 2, cap: 50 });",
+    "new": "export const GEM_FIND = Object.freeze({ base: 10, perTier: 5, cap: 50 });",
+    "tests": [
+      "test/gem1_sockets.test.js"
+    ]
+  },
+  {
+    "name": "GEM-RARE-the-old-cap",
+    "file": "src/systems/gems.js",
+    "old": "export const GEM_FIND = Object.freeze({ base: 10, perTier: 2, cap: 50 });",
+    "new": "export const GEM_FIND = Object.freeze({ base: 10, perTier: 2, cap: 150 });",
     "tests": [
       "test/gem1_sockets.test.js"
     ]
