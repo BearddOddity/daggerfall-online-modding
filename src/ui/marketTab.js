@@ -238,7 +238,12 @@ export function createMarketTab(m, ui) {
   let seq = 0;
   async function load(force = false) {
     const mine = ++seq;
-    st.loading = true; ui.rerender();
+    // MARKET-SPEED (2026-10-11): a read the minute's cache answers is drawn once, with its answer - it drew "Reading the
+    // market..." first, a whole window rebuilt for a frame; and a read an act asks draws its waiting with the act's own
+    // end (the window's `run` draws it), never a rebuild of its own under the act's
+    const quick = !force && m.book.fresh?.(st.view, q()) === true;
+    st.loading = !quick;
+    if (!quick && !ui.busy()) ui.rerender();
     const r = await m.book.read(st.view, q(), { force });
     if (!ui.alive() || mine !== seq) return;
     st.loading = false;

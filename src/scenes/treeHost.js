@@ -27,7 +27,7 @@
 // ═══════════════════════════════════════════════════════════════════
 import { trees, nodeKey, WOOD_TABLES } from '../net/nodeLaw.js';
 import { FELLED } from '../ai/cover.js';   // AUDIT TACT B1: a felled tree is no cover
-import { tierOpen, TIER_RANKS, woodAxeBand, chopsFor, storesFullIn, fullWordsIn, GROUND_WHERE, GROUND_WHERE_WORDS } from '../net/professionLaw.js';
+import { tierOpen, TIER_RANKS, woodAxeBand, chopsFor, storesFullIn, goneIn, fullWordsIn, GROUND_WHERE, GROUND_WHERE_WORDS } from '../net/professionLaw.js';
 import { createChopAct } from '../systems/chopAct.js';
 import { FT } from '../systems/foragingLaw.js';
 import { foragingActRefusal, foragingToolIn, actChecksRefusal } from '../systems/foragingInstall.js';
@@ -178,11 +178,11 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
     stood(entry, nodes) {
       const f = entry?.forest;
       if (!f?.groups || !renderer) return;
-      const sunk = new Set(nodes.filter((n) => book.taken(n.key, 'logs')).map((n) => `${n.flat.group}#${n.flat.i}`));
+      const sunk = new Set(nodes.filter((n) => goneIn(book, n.key, 'logs')).map((n) => `${n.flat.group}#${n.flat.i}`));   // GATHER-SPEED: or being counted
       sinkFelled(f, sunk, renderer);
     },
-    gone: (n) => book.taken(n.key, 'logs'),
-    mark: (n) => (book.taken(n.key, 'logs') ? null : TREE_MARK),   // NODE-MARKS: a standing tree; a felled one's stump none
+    gone: (n) => goneIn(book, n.key, 'logs'),
+    mark: (n) => (goneIn(book, n.key, 'logs') ? null : TREE_MARK),   // NODE-MARKS: a standing tree; a felled one's stump none
     tools: Object.freeze([FT.WoodAxe]),   // TOOL-USE: the Wood-Axe's Use at a tree is E there
     where: () => actChecksRefusal(GROUND_WHERE, GROUND_WHERE_WORDS),   // SETTLE-SAID
     /** PROF-MENU: the menu's title - the tree its wood is. */
@@ -209,8 +209,9 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
         hand: (a) => (a.tool ? { ...AXE_HAND, ...axeHandFrame(a.act.swing) } : null),
       };
     },
-    /** THE FALL, on the service's answer: the tree's own picture tips away from the player (`from`, world; `tr` the
-     *  pixel's translation) and is gone once flat; the logs lie at its foot. */
+    /** THE FALL, as the act ends (GATHER-SPEED - it waited on the service's answer; scenes/gatherHost.js fallNow): the
+     *  tree's own picture tips away from the player (`from`, world; `tr` the pixel's translation) and is gone once flat;
+     *  the logs lie at its foot. */
     async felled(n, { entry, from, tr }) {
       const f = entry?.forest;
       const g = f?.groups?.get(n.flat.group);

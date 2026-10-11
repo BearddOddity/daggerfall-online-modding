@@ -268,7 +268,7 @@ test('SEAT1d THE HOSTS BY SOURCE: the service\'s routes and the Turning\'s write
   assert.match(mk, /const ct = road\.courier > 0 \? await titheAt\(db, nowS, region, boardOf\(board\)\) : null;/);
   assert.match(mk, /const tt = high == null \? null : await titheAt\(db, nowS, Number\(a\.region\), rowBoard\(a\)\);/);
   const pr = rd('server-account/src/professions.js');
-  assert.match(pr, /const levyKey = !deep && !isBody && seatsOpenFor\(player, env\) \? await levyAt\(db, nowS, region, \[n\.x, n\.y\]\) : null;/);
+  assert.match(pr, /!deep && !isBody && seatsOpenFor\(player, env\) \? levyAt\(db, nowS, region, \[n\.x, n\.y\]\) : null,/);   // PIN MOVED (GATHER-SPEED): asked beside the ground and the track, at once
   assert.match(pr, /\.bind\(player\.id, rid, nonce, character, key2, day, node, kind, profession, kept, ROOM,/);   // PIN MOVED (BAG1): the bound is the Stores' or the bag's carried count's (ROOM)
   const w = rd('src/scenes/world.js');
   assert.match(w, /else if \(hub\) townTalk\.say\(hubArrivalLine\(hub\), 5\);\n\s*if \(seat\) seatEdicts\.arrived\(seat\);/);

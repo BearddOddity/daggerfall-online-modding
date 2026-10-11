@@ -1224,6 +1224,68 @@ over the code the slice touched judged whole - 291 dead, one equivalent as recor
 the same (`shadowreach.json` world-peer-gate-still-skips and `perfon2.json` PERF-ON2-the-peers-are-submitted-uncut-again:
 the billboard cull's shadow arm, no board's), left to their own arcs. Probe: `node tools/noticeBoardProbe.mjs`.
 
+### 10.12 GATHER-SPEED and MARKET-SPEED - the database's round trips (2026-10-11)
+
+Mac: **"Can you look at gathering minigame performance and how the server affects it/slows down, same with the
+market"**, then **"Do everything. A comprehensive improvement"**.
+
+FACT, read off the code before anything moved: neither waits on the relay. The gathering act is the client's alone
+(the act machines and `ui/profReticle.js` ask nothing of the wire); its end asks `/v1/prof/harvest`, and every market
+look and act is a `/v1/market/*` POST - both the account service's, on D1. Every `first()` and `all()` there is a round
+trip from the Worker to the database's one primary, and each was asked one after another:
+
+| Ask | Before | Now |
+|---|---|---|
+| A harvest (its session and character checks aside, two) | 13-20 in a row: the request asked before, the hour's acts, the ground, the track, the Levy's seat, the decision, its row read back, then `harvestAnswer`'s 4-9 reads and the find's 1-3 | 4: the request asked before; the hour's acts, the ground with the track (one batch) and the Levy's seat, asked together; the decision with its row and every read of its answer in one batch |
+| A harvest asked again | 7-15 | 2 |
+| The professions' state | 8 | 1 |
+| The pixels' and dungeons' witnesses | 2 | 1 |
+| A market read | 18-22 | 3: the settle's reads with the auctions past their end; the view's rows with the account's own (counts, gold, balance, the road); their couriers' hubs with their medians and a moderator's reports |
+| A buy | 10-15 in a row | the hour's acts with the listing, the hubs with both seats' Tithes, the answer's balance with its Stores, each asked together; the sale read back in the decision's batch |
+
+And three reads read every seat's witness rows whole (about 9,900 rows; STORM-SHED's "costliest read"), uncached: a
+harvest under a Levy (`server-account/src/seatHolding.js` levyAt), every market read at a board (`seatForts.js`
+listingsCapAt, the board's Market Hall) and a buy, twice (titheAt). They read the isolate's kept minute now
+(`townSeats.js` confirmedSeats `{ kept: true }`, STORM-SHED's): only which seat a place belongs to comes from it - the
+holder, its Tithe and the Levy's law are read as they stand. A report or a strike written in the isolate lets the rows
+go at once, as before.
+
+- **One batch** (`server-account/src/service.js` readAll): D1's `batch` is one trip, its statements run in order in one
+  transaction, so a statement reads what the ones before it wrote. A harvest's answer reads (`professions.js`
+  answerReads, by name; answerOf the shape the answer always had) ride the decision's own batch, behind its writes; a
+  find's line, the day's finds and the balance with them (`marks.js` findLineStatements / findLineFrom). A read sends
+  nothing when it asks nothing.
+- **The market's settle** (`market.js` settle): its six reads are the read's first batch (settleReads) beside the
+  auctions due (auctionsDueRead); an expiry reads its rows again in its own batch; every row's work is one batch -
+  each row's statements keyed on its own id and nonce, as they were. A read still closes the auctions past their end
+  (PROF5b's "settled by whoever reads the market next"), but only where its first batch found one: the clock closes
+  them each minute (cron.js), so a read nearly always finds none.
+- **The client - the node goes with its act.** The harvest's answer was the node's going: a patch kept growing and a
+  tree kept standing a whole round trip (or a kept harvest's minutes) after the act that took it. The book says a node
+  `gone` while its harvest is taken or being counted (`net/profBook.js`; `net/professionLaw.js` goneIn for the kinds),
+  so `scenes/gatherHost.js` fallNow fells and stands it again as the act ends; the answer stands it again only where it
+  was refused, or let go unanswered (a lapse). The goods, the XP and a rank's rise are said when the answer comes, as
+  ever - the yield is the service's dice. The plans keep the two words apart: a kept harvest's node still says "being
+  counted" where it is asked.
+- **The client - the frame's reads.** The kept table was parsed out of storage every frame, by the pump and by every
+  plan's `counting`; the last parse answers until the storage's text changes (a writer still reads its own copy), and
+  an idle pump asks nothing until its next harvest is due, a write, or PUMP_IDLE_MAX_MS. The Market tab draws a view the
+  book's minute answers once, with its answer (`net/marketBook.js` fresh), and a read an act asks draws its wait with
+  the act's own end - a Buy rebuilt the window four or five times.
+
+THE FOUR HOSTS: the gathering host is one (`scenes/gatherHost.js`, built online and handed to every host that ladders a
+press): `world.js` and `worldModes.js` WIRED through it; `exterior.js` and `dungeonContext.js` hold no gathering of their
+own (a dungeon's veins are the same host's). Port-Ledger: nothing of DFU's - Daggerfall has no service.
+
+Version: `acct118` (no migration). Code: the files above. Pins: `test/gatherspeed.test.js` (10) - the round trips
+counted, a statement's own call one and a batch one; the answers held to their shape (a harvest's answer and its repeat
+say the same); the seats' rows read once for six asks; the node down as its act ends, up again on a refusal and a
+lapse; the parse and the pump's idle; the cache's minute and the tab's one draw. PIN MOVED: `seat1d_client` (the Levy
+asked beside the ground), `craft3_five` (the track's read a statement), `audit29_host` C4 and `audit30_host` A5 (the
+node and its fall the act's end's). Mutants: `tools/mutants/gatherspeed.json`, 24, all dead; MUTANTS_MOVED records
+re-aimed by content and judged again - MUTANTS_MOVED_RESULT; and the MUTANTS_NEAR records within thirty lines of a
+changed line judged whole - MUTANTS_NEAR_RESULT.
+
 ## 11. Writs - the Work tab
 
 - **Court writs** (the faucet): every region with a seat or hub posts **6 x max(1, ceil(active / 100)) a UTC day** (a
@@ -2365,7 +2427,8 @@ hours, a 5% minimum raise, and a bid in the last 2 minutes adds 2"), DECIDED her
   auction (`auction:<id>:sale`, `:tax`, `:courier`), so its close happens once.
 - **Settled on read** (26's law): an auction past its end is closed by the **next read of the market by anyone** -
   its seller, its winner and its outbid bidders each need it, so the sweep is every reader's, at most twenty a read,
-  one batch each, keyed on a nonce. Sold, its owner moves to the winner and the winner's delivery is written; the
+  one batch each, keyed on a nonce (MARKET-SPEED, 10.12: its candidates asked in the read's first batch, beside the
+  settle's reads, and closed only where it found one - the clock closes them each minute, SCALE4b). Sold, its owner moves to the winner and the winner's delivery is written; the
   seller's room under the Marks cap is asked first (else the close waits, re-asked each read - the winner's escrow
   held; AUDIT 31 S3, DECIDED: **seven days at most** past its end, `AUCTION_GRACE_S` - then the winning bid is void,
   its escrow back on its bidder's read, and the piece back to its seller unsold: a winner's Marks are never held
