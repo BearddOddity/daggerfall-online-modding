@@ -195,7 +195,7 @@ export function bodyState(s = {}) {
 export async function decodeSprite(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url}: ${res.status}`);
-  return worldOrderColors(await decodePng(new Uint8Array(await res.arrayBuffer())));
+  return worldOrderColors(await decodePng(new Uint8Array(await res.arrayBuffer())), { owned: true });   // PERF-PEERS5: the decode is this door's alone - turned in its own bytes
 }
 
 const norm2 = (v) => { const l = Math.hypot(v[0], v[2]); return l > 0 ? [v[0] / l, 0, v[2] / l] : [0, 0, 0]; };
@@ -970,7 +970,16 @@ export function createEotbBody({ count = spriteCount, urlFor = eotbSpriteUrl, de
       // traveller's own heading it went edge-on as the view orbited, a sliver at 90 degrees, mirrored at 180
       const by = face ? face.yaw : cam.yaw;
       const camRight = [Math.cos(by), 0, -Math.sin(by)];
-      renderer.drawBillboards([batch], camRight, face?.up ?? [0, 1, 0]);
+      // FP-SHADOW1 (2026-10-10, Mac: "when i look up i see my eye of the beholder skin"): THE FIRST-PERSON BILLBOARD'S
+      // VISIBILITY, which was read and never applied. The mod's FirstPersonBillboard is its renderer's
+      // shadowCastingMode: 2 the body drawn (a quarter metre behind the eye, so looking down shows it), 1 - the default,
+      // "Shadows Only" - a body that casts and is never seen, 0 none at all. The port drew all three: the quad stood
+      // behind the head, taller than the eye, and every look upward showed its top. Shadows Only now goes to the shadow
+      // maps alone (renderer.recordShadowBillboards - the same record the drawn body makes; no maps, no shadow, as a
+      // ShadowsOnly renderer under no light), and None to nothing. Third person is untouched.
+      const bbUp = face?.up ?? [0, 1, 0];
+      if (!FP || cfg.visibility === 2) renderer.drawBillboards([batch], camRight, bbUp);
+      else if (cfg.visibility === 1) renderer.recordShadowBillboards?.([batch], camRight, bbUp);
       if (grow === 1) drawLantern();   // HT-WAIST: the lantern at the waist, its own billboard, after the body - OW-BIG: a grown body's waist is not where the lantern hangs
       return true;
     },
