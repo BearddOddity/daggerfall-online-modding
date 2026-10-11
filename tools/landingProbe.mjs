@@ -102,7 +102,7 @@ async function landing(label, ctxOpts) {
     && plaques[1][0] === 'Install' && plaques[1][1] === '#desktop' && plaques[2][0] === 'Discord', JSON.stringify(plaques));
   const downloads = await page.locator('#desktop + dd .dl a').evaluateAll((els) => els.map((e) => [e.textContent, e.getAttribute('href')]));
   check(`${label}: Install lands on three direct downloads`,
-    downloads.length === 3 && downloads.every(([, h]) => /\/releases\/latest\/download\/DaggerfallOnline-[\w-]+\.(exe|dmg|AppImage)$/.test(h)), JSON.stringify(downloads));
+    downloads.length === 3 && downloads.every(([, h]) => /\/releases\/latest\/download\/DFO-Online-[\w-]+\.(exe|dmg|AppImage)$/.test(h)), JSON.stringify(downloads));
   // SUPPORT1: the asks - the addresses, the order, the marks the game draws, a thumb's target, gold under the pointer
   const asks = await page.locator('.asks a.ask').evaluateAll((els) => els.map((e) => {
     const mark = e.querySelector('.supmark'), b = e.getBoundingClientRect(), m = mark?.getBoundingClientRect();

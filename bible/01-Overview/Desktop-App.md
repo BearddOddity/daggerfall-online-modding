@@ -160,7 +160,7 @@ Pinned in `test/rel4_release.test.js`; `tools/mutants/rel4.json`, 14,
 all dead.
 
 **REL5 (2026-09-29): THE DOWNLOADS HAVE NAMES THAT DO NOT MOVE.** The
-build number is out of every file name - `DaggerfallOnline-win-x64-setup.exe`,
+build number is out of every file name - `DFO-Online-win-x64-setup.exe` (BR5; `DaggerfallOnline-...` from REL5 to BR5),
 `-win-x64-portable.exe`, `-mac-arm64.dmg`, `-linux-x86_64.AppImage` - so
 `releases/latest/download/<name>` serves the newest copy for ever and the
 landing page (which runs no script, U60) links each platform's installer
@@ -263,7 +263,7 @@ full-depth (`deploy.yml`), and the release derives it once, in the
 publish job. Where it shows: `scripts/buildTag.mjs` stamps it beside the
 commit (`src/buildTag.js` UPDATE, committed null); the pause window's
 version line leads with it and keeps the commit for a report
-(`Daggerfall Online 0.0.1 (<sha>)`, the commit alone where a build cannot
+(`DFO Online 0.0.1 (<sha>)` since BR5, the commit alone where a build cannot
 know it - Port-Ledger A's version-line row); the About pane has its row;
 the release is named `Update 0.0.1` (its tag the installer's, which the
 updater compares); the launcher's news reads the name back
@@ -314,8 +314,9 @@ updating the site's download - no site change needed per release.
 `workflow_dispatch` builds the same installers as run artifacts
 without cutting a release. Artifact names are
 ~~`DaggerfallJS-...`~~ ~~`DaggerfallEnhanced-...`~~ ~~`DaggerfallOnline-<version>-<os>-<arch>.<ext>`~~
-`DaggerfallOnline-<os>-<arch>.<ext>` and the two Windows names
-(BR1, 2026-09-13; BR4, 2026-09-27; REL5, 2026-09-29: no version in any);
+~~`DaggerfallOnline-<os>-<arch>.<ext>`~~ `DFO-Online-<os>-<arch>.<ext>` and the two Windows names
+(BR1, 2026-09-13; BR4, 2026-09-27; REL5, 2026-09-29: no version in any; BR5, 2026-10-11 - the release that
+first carries the new names publishes about half an hour after the site that links them);
 ~~bump `app/package.json`'s version with the tag~~ (REL3 derives it).
 ~~The update check reads the release TAG and its html_url, never an asset
 name~~ - the check reads the TAG; since REL5 the notice's Download is

@@ -460,5 +460,5 @@ test('AUDIT SCALE II N-1 N-2 N-3 the record\'s own words: SCALE4d\'s docblock on
   const told = readdirSync(new URL('.', import.meta.url)).filter((f) => f.endsWith('.test.js')).map((f) => [f, src(`test/${f}`)]).filter(([, s]) => s.includes('HOME-VOTE'));
   assert.ok(told.length >= 4);
   for (const [f, s] of told) assert.doesNotMatch(s, /acct112,? HOME-VOTE/, `${f}: HOME-VOTE was acct111`);
-  assert.match(src('test/renown_char.test.js'), /'PIN MOVED: acct112, SCALE4f \+ SCALE4g \+ SCALE4h \(acct111 on its branch, renumbered past HOME-VOTE at the merge\); PIN MOVED: acct111, HOME-VOTE/);
+  assert.match(src('test/renown_char.test.js'), /title\); PIN MOVED: acct112, SCALE4f \+ SCALE4g \+ SCALE4h \(acct111 on its branch, renumbered past HOME-VOTE at the merge\); PIN MOVED: acct111, HOME-VOTE/);   // PIN MOVED: BR5's acct113 note ahead of it
 });

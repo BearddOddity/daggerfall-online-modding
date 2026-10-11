@@ -92,7 +92,7 @@ export const MOD_SETTINGS = Object.freeze({
     keys: Object.freeze({
       Enabled: Object.freeze({
         default: true,
-        description: 'The wilderness’s trees, bushes and stumps in 3D, made from Daggerfall’s own tree pictures, '
+        description: 'The wilderness’s trees, bushes and stumps in 3D, made from the original game’s own tree pictures, '
           + 'out to the whole view distance. They change with Seasons of the Iliac Bay and with winter.',
       }),
     }),
@@ -156,7 +156,7 @@ export const MOD_SETTINGS = Object.freeze({
     keys: Object.freeze({
       Enabled: Object.freeze({
         default: true,
-        description: 'Seaweed, coral and shells placed in three flooded dungeon blocks. Daggerfall ships these sprites but '
+        description: 'Seaweed, coral and shells placed in three flooded dungeon blocks. The original game ships these sprites but '
           + 'never uses them; they come from your own game files.',
       }),
     }),
@@ -591,7 +591,7 @@ export const MOD_SETTINGS = Object.freeze({
     keys: Object.freeze({
       Enabled: Object.freeze({
         default: true,
-        description: 'See your shield in first person, which classic Daggerfall never shows. It is drawn in its own metal, '
+        description: 'See your shield in first person, which the original game never shows. It is drawn in its own metal, '
           + 'gets battered as it wears, and moves out of the way when you sheathe, swing or cast.',
       }),
       'Shield.Scale': Object.freeze({ default: 1.0, min: 0.8, max: 1.2, float: true, step: 0.1, description: 'Size of the sprite' }),
@@ -1096,7 +1096,7 @@ export const MOD_SETTINGS = Object.freeze({
       allowLuckIncrease: Object.freeze({ default: true, description: 'Allow Luck to be increased by more than one point' }),
       luckIncreaseCost: Object.freeze({ default: 4, min: 1, max: 20, description: 'Cost to upgrade Luck by one point' }),
       // The port's own, for Daggerfall's third tier of chosen skills.
-      primarySkillsImpact: Object.freeze({ default: 8, min: 0, max: 100, description: 'Points given by a Primary Skill level up (100 points required to level up). Daggerfall has a tier of skills Morrowind does not, so this knob is the port’s own; it ships equal to the major skills’, which is where the mod’s own top tier sits.' }),
+      primarySkillsImpact: Object.freeze({ default: 8, min: 0, max: 100, description: 'Points given by a Primary Skill level up (100 points required to level up). The original game has a tier of skills Morrowind does not, so this knob is the port’s own; it ships equal to the major skills’, which is where the mod’s own top tier sits.' }),
       majorSkillsImpact: Object.freeze({ default: 8, min: 0, max: 100, description: 'Points given by a Major Skill level up (100 points required to level up)' }),
       minorSkillsImpact: Object.freeze({ default: 6, min: 0, max: 100, description: 'Points given by a Minor Skill level up (100 points required to level up)' }),
       miscSkillsImpact: Object.freeze({ default: 2, min: 0, max: 100, description: 'Points given by a Misc Skill level up (100 points required to level up)' }),
@@ -1122,7 +1122,7 @@ export const MOD_SETTINGS = Object.freeze({
     keys: Object.freeze({
       Enabled: Object.freeze({
         default: true,
-        description: 'Choose between Daggerfall’s fast travel and a journey you actually travel, sped up to sixty times, '
+        description: 'Choose between the original game’s fast travel and a journey you actually travel, sped up to sixty times, '
           + 'with a panel to steer it. Encounters and places along the way stop you, and you can follow the '
           + 'roads. Off brings back the classic travel map and fast travel only.',
       }),

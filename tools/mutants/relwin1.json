@@ -2,20 +2,22 @@
   {
     "name": "REL2-portable-shares-the-installer-name",
     "file": "app/package.json",
-    "old": "      \"artifactName\": \"DaggerfallOnline-win-${arch}-portable.${ext}\"",
-    "new": "      \"artifactName\": \"DaggerfallOnline-win-${arch}-setup.${ext}\"",
+    "old": "      \"artifactName\": \"DFO-Online-win-${arch}-portable.${ext}\"",
+    "new": "      \"artifactName\": \"DFO-Online-win-${arch}-setup.${ext}\"",
     "tests": [
       "test/relwin1.test.js"
-    ]
+    ],
+    "note": "BR5 (re-aimed by content): the name, its file form and the legal date moved."
   },
   {
     "name": "REL2-portable-falls-back-to-the-one-name",
     "file": "app/package.json",
-    "old": "    \"portable\": {\n      \"artifactName\": \"DaggerfallOnline-win-${arch}-portable.${ext}\"\n    },",
+    "old": "    \"portable\": {\n      \"artifactName\": \"DFO-Online-win-${arch}-portable.${ext}\"\n    },",
     "new": "    \"portable\": {},",
     "tests": [
       "test/relwin1.test.js"
-    ]
+    ],
+    "note": "BR5 (re-aimed by content): the name, its file form and the legal date moved."
   },
   {
     "name": "REL2-one-click-installer",

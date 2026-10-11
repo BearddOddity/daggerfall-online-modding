@@ -717,7 +717,7 @@ async function checkForUpdatesViaUpdater() {
   tellBox({
     type: 'info',
     message: `You're up to date`,
-    detail: `Daggerfall Online v${app.getVersion()} is the latest release.`,
+    detail: `DFO Online v${app.getVersion()} is the latest release.`,
   });
 }
 
@@ -783,7 +783,7 @@ async function checkForUpdates() {
     tellBox({
       type: 'info',
       message: `You're up to date`,
-      detail: `Daggerfall Online v${app.getVersion()} is the latest release.`,
+      detail: `DFO Online v${app.getVersion()} is the latest release.`,
     });
     return;
   }
@@ -1021,7 +1021,7 @@ async function createWindow({ onShown = null } = {}) {
     width: 1280,
     height: 800,
     backgroundColor: '#111111',
-    title: 'Daggerfall Online',
+    title: 'DFO Online',
     show: !onShown,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -1140,7 +1140,7 @@ function openLauncherWindow() {
     fullscreenable: false,
     show: false,
     backgroundColor: '#0a0c11',
-    title: 'Daggerfall Online',
+    title: 'DFO Online',
     webPreferences: {
       preload: path.join(__dirname, 'launcherPreload.cjs'),
       contextIsolation: true,

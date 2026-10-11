@@ -55,7 +55,7 @@ test('FT6: the registry row - Enhanced, over the pref, on by default, sound; the
   assert.deepEqual(f.kinds, ['enhanced']);
   assert.deepEqual(f.control, { store: 'prefs', key: 'enhancedWater', initial: true, online: 'player' });   // RF4; WATER-OFF: the player's online too
   assert.equal(PREF_DEFAULTS.enhancedWater, true, 'on by default like the other enhanced visuals');
-  assert.match(f.note, /Off brings back Daggerfall’s flat water/);
+  assert.match(f.note, /Off brings back the classic flat water/);   // PIN MOVED: BR5
   assert.equal(f.effect, 'Takes effect when the world next loads.');
   assert.deepEqual(checkFeature(f), []);
   assert.equal(featureForControl('prefs', 'enhancedWater'), f);

@@ -2,7 +2,7 @@
 // experience?"): THE DOWNLOADS HAVE NAMES THAT DO NOT MOVE.
 //
 // Every release used to carry its build number in each file's name
-// (DaggerfallOnline-0.1.4684-win-x64-setup.exe), so no link could point
+// (DFO-Online-0.1.4684-win-x64-setup.exe), so no link could point
 // at "the Windows installer" - only at a release PAGE, where a player
 // met eleven files: four installers, three updater manifests, two
 // blockmaps and GitHub's two source archives. The landing page runs no
@@ -32,10 +32,10 @@ const RELEASES_URL = 'https://github.com/Lattymoy/daggerfall-js-source/releases'
 
 /** The four files a player downloads, one per way to run the app. */
 const DOWNLOAD_FILES = Object.freeze({
-  winSetup: 'DaggerfallOnline-win-x64-setup.exe',
-  winPortable: 'DaggerfallOnline-win-x64-portable.exe',
-  mac: 'DaggerfallOnline-mac-arm64.dmg',
-  linux: 'DaggerfallOnline-linux-x86_64.AppImage',
+  winSetup: 'DFO-Online-win-x64-setup.exe',
+  winPortable: 'DFO-Online-win-x64-portable.exe',
+  mac: 'DFO-Online-mac-arm64.dmg',
+  linux: 'DFO-Online-linux-x86_64.AppImage',
 });
 
 /** The URL that always serves the newest release's copy of `file`. */

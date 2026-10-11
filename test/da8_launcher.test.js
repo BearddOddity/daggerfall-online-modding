@@ -80,7 +80,7 @@ test('DA8: silence is not a reason to wait - an error, a timeout, or no check at
 
 test('DA8: the notice transport offers its own file beside Play - Download it, or play this version', () => {
   let s = fresh({ transport: 'notice' });
-  s = run(s, { type: 'check-available', version: '0.1.4684', download: 'https://github.com/Lattymoy/daggerfall-js-source/releases/latest/download/DaggerfallOnline-mac-arm64.dmg' });
+  s = run(s, { type: 'check-available', version: '0.1.4684', download: 'https://github.com/Lattymoy/daggerfall-js-source/releases/latest/download/DFO-Online-mac-arm64.dmg' });
   assert.equal(s.update.status, 'notice');
   assert.equal(L.nextStep(s), 'wait', 'the player decides');
   const v = L.viewOf(s);
@@ -88,7 +88,7 @@ test('DA8: the notice transport offers its own file beside Play - Download it, o
   assert.match(v.detail, /^You have v0\.1\.4613\./);
   assert.deepEqual(v.statusActions.map((a) => [a.id, !!a.primary]), [['download', true]]);
   assert.equal(v.play.enabled, true, 'DA10: this version plays - Play is the other answer');
-  assert.equal(s.update.download.endsWith('/DaggerfallOnline-mac-arm64.dmg'), true, 'REL5: the file, not a page of eleven');
+  assert.equal(s.update.download.endsWith('/DFO-Online-mac-arm64.dmg'), true, 'REL5: the file, not a page of eleven');
 });
 
 test('DA8/DA9: the first run - detection runs at once, and a folder is OFFERED, never taken silently', () => {
@@ -250,10 +250,10 @@ test('DA8: the shell - a sandboxed window on its own origin, two words of bridge
 
 test('DA8: in the game - the update is a HUD line saying what the player can do; a browser tab hears nothing', () => {
   assert.equal(updateReadyText({ version: '0.1.4684', manual: false }),
-    'Daggerfall Online 0.1.4684 is ready. It installs when you quit, or now from File > Restart to Update - save first.');
+    'DFO Online 0.1.4684 is ready. It installs when you quit, or now from File > Restart to Update - save first.');
   assert.equal(updateReadyText({ version: '0.1.4684', manual: true }),
-    'Daggerfall Online 0.1.4684 is out. Download it from the File menu when you are ready - your saves stay where they are.');
-  assert.match(updateReadyText({ version: '<img src=x>' }), /^A new version of Daggerfall Online is ready\./, 'only a version\'s own shape is spoken');
+    'DFO Online 0.1.4684 is out. Download it from the File menu when you are ready - your saves stay where they are.');
+  assert.match(updateReadyText({ version: '<img src=x>' }), /^A new version of DFO Online is ready\./, 'only a version\'s own shape is spoken');
   assert.equal(listenForShellUpdates(undefined, () => {}), false, 'a browser tab has no shell');
   assert.equal(listenForShellUpdates({}, () => {}), false, 'a shell too old to have the word');
   const said = [];

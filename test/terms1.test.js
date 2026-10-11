@@ -3,7 +3,7 @@
 //
 // "Here is our terms of service and privacy policy. I wanna make sure
 // these need to be reviewed and checked off by players before creating
-// an account". Answered: the name the documents use is Daggerfall Online,
+// an account". Answered: the name the documents use is DFO Online,
 // their contact is the Discord server, each box sits beside a link to its
 // document, and new accounts only are asked.
 //
@@ -72,8 +72,9 @@ test('TERMS1: the words are held to a hash - editing a document means deciding w
   // this reddens: if the change is material, move the Last Updated date
   // and its version in src/net/legalLaw.js; either way, re-hash.
   const HASH = {
-    terms: '35891b92a16330f33a5afb5244edde14e486efe3c46ab125aa92cc28b9048333',
-    privacy: '0da7783fdaadbf718b0163c35de4542e51546f3e270f0770c7253d7782965c0e',
+    // BR5 (2026-10-11): the operator renamed DFO Online in both - a new version of each, 2026-10-11
+    terms: 'b42e28f663f71eea1c28b41edecb80c04c9d9c9168792a1303647739efdac381',
+    privacy: '5cb5b57831612fed453f471022daf4cd0669ddadf7afd3838745be9e60c5f113',
   };
   for (const [name, d] of Object.entries(DOCS)) {
     const words = wordsOf(read(d.file));
@@ -98,7 +99,7 @@ test('TERMS1: nothing of the draft is left unfilled - no placeholder, no old nam
     // every tracked file for it); its CAPITALS are this pin's, because the
     // sweep is case-sensitive and the draft's titles were all capitals.
     assert.doesNotMatch(html, /DAGGERFALLJS/, `${name}: the old name survives in a title`);
-    assert.equal((words.match(/Daggerfall Online/g) ?? []).length > 10, true, `${name}: the documents speak of the project by its name`);
+    assert.equal((words.match(/DFO Online/g) ?? []).length > 10, true, `${name}: the documents speak of the project by its name`);
     const contacts = [...html.matchAll(/<a href="(https:\/\/discord\.gg\/[\w-]+)" rel="noopener">discord\.gg\/([\w-]+)<\/a>/g)];
     assert.equal(contacts.length, counts[name], `${name}: every contact is the Discord`);
     for (const [, href, text] of contacts) {
@@ -112,8 +113,8 @@ test('TERMS1: each is a document in order - one heading, every section numbered 
   for (const [name, d] of Object.entries(DOCS)) {
     const html = read(d.file);
     assert.equal((html.match(/<h1>/g) ?? []).length, 1, `${name}: one title`);
-    assert.match(html, new RegExp(`<h1>DAGGERFALL ONLINE MULTIPLAYER — ${d.title.toUpperCase()}</h1>`), `${name}: its own title`);
-    assert.match(html, new RegExp(`<title>${d.title} - Daggerfall Online</title>`), `${name}: the tab says which document`);
+    assert.match(html, new RegExp(`<h1>DFO ONLINE MULTIPLAYER — ${d.title.toUpperCase()}</h1>`), `${name}: its own title`);
+    assert.match(html, new RegExp(`<title>${d.title} - DFO Online</title>`), `${name}: the tab says which document`);
     const sections = [...html.matchAll(/<h2 id="section-(\d+)">(\d+)\. [A-Z]/g)].map((m) => [Number(m[1]), Number(m[2])]);
     assert.deepEqual(sections.map(([id]) => id), Array.from({ length: d.sections }, (_, i) => i + 1), `${name}: the sections, in order`);
     for (const [id, n] of sections) assert.equal(id, n, `${name}: section ${n}'s anchor says ${id}`);
@@ -127,7 +128,7 @@ test('TERMS1: the documents are DOCUMENTS - no script, no file and no style of t
     assert.doesNotMatch(html, /<img|<link\b|<style/i, `${name}: references no file and brings no style - the skin is put in at build`);
     assert.match(html, /<a class="skip" href="#main">Skip to content<\/a>/, `${name}: a keyboard reader can skip the bar`);
     assert.match(html, /<main id="main" class="doc">/);
-    assert.match(html, /<a class="home" href="\.\.\/">Daggerfall Online<\/a>/, `${name}: the way home is relative, as the site's links are`);
+    assert.match(html, /<a class="home" href="\.\.\/">DFO Online<\/a>/, `${name}: the way home is relative, as the site's links are`);
     for (const [other, o] of Object.entries(DOCS)) {
       const current = other === name ? ' aria-current="page"' : '';
       assert.ok(html.includes(`<a href="../${other}/"${current}>${o.title}</a>`), `${name}: its bar names ${other}${current ? ' as the page it is' : ''}`);

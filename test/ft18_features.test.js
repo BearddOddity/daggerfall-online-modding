@@ -148,7 +148,7 @@ test('FT18: the search finds by any word - title, note, part, group or a mod\'s 
   assert.ok(ids('wall dungeon').includes('dungeon-wall-style'), 'every word, any order');
   assert.deepEqual(ids('kamer windmills'), ['mod-windmills-kamer'], 'EVERY word - World of Daggerfall is Kamer\'s too, and has no windmills');
   assert.deepEqual(ids('zzqq'), []);
-  assert.ok(ids("daggerfall's").includes('dungeon-wall-style'), 'a straight quote finds a curly one');
+  assert.ok(ids("region's climate").includes('dungeon-wall-style'), 'a straight quote finds a curly one');   // PIN MOVED: BR5 - the note's curly quote is the region's now
   assert.match(featureSearchText(row('mod-pcaao')), /kirk\.o/);
 });
 

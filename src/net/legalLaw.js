@@ -35,11 +35,14 @@
 // relative link "would open nothing there".)
 // ═══════════════════════════════════════════════════════════════════
 
-/** The Terms of Service a new account agrees to - its Last Updated date. */
-export const TERMS_VERSION = '2026-09-28';
+/** The Terms of Service a new account agrees to - its Last Updated date.
+ *  BR5 (2026-10-11): the operator's name is DFO Online now, a change to who
+ *  the agreement is with - so a new version, not a re-hash of the old one. */
+export const TERMS_VERSION = '2026-10-11';
 
-/** The Privacy Policy a new account agrees to - its Last Updated date. */
-export const PRIVACY_VERSION = '2026-09-28';
+/** The Privacy Policy a new account agrees to - its Last Updated date (BR5,
+ *  as the Terms). */
+export const PRIVACY_VERSION = '2026-10-11';
 
 /** What a version looks like. A dated answer that is not the current one
  *  is a player who ticked text the service no longer holds (an old tab, a

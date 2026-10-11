@@ -417,7 +417,7 @@ test('AUDIT KB1 (hosts 3): the screenshot\'s blob URL outlives the download\'s s
   try {
     const doc = { createElement: () => ({ click() {}, remove() {} }), body: { appendChild() {} } };
     const name = await takeScreenshot({ toBlob: (cb) => cb({}) }, { afterDraw: null, doc, later: (fn, ms) => delays.push(ms) });
-    assert.match(name, /^daggerfall-\d{8}-\d{6}\.png$/);
+    assert.match(name, /^dfo-\d{8}-\d{6}\.png$/);   // PIN MOVED: BR5, the product's name
     assert.deepEqual(delays, [REVOKE_AFTER_MS]);
     assert.ok(REVOKE_AFTER_MS >= 30_000);
   } finally { globalThis.URL = prevURL; }

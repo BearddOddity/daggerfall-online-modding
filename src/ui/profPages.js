@@ -165,7 +165,7 @@ export function setProfessionsPages(p) { _provider = p ?? null; }
 const LATER_WORDS = Object.freeze({
   SEAT2: 'Comes with the sieges', SEAT2b: 'Comes with the fortifications',   // PROF11: the Builder's and the Fortifier's
   // PROF7 (Professions-Arc.md 29): what DFU gives these nothing to stand as - for Mac
-  trophy: 'Waits on a trophy to stand as', 'two-colour': 'Waits on a second dye Daggerfall\'s cloth can take', wagon: 'Waits on a wagon upgrade to hold',   // AUDIT 32 R11: Daggerfall, never "DFU", where a player reads it
+  trophy: 'Waits on a trophy to stand as', 'two-colour': 'Waits on a second dye the classic cloth can take', wagon: 'Waits on a wagon upgrade to hold',   // AUDIT 32 R11: never "DFU" where a player reads it; BR5: nor the game's name - the original game, the classic
 });
 /** Whether the pages stand: a book, and the professions this account's. */
 export const profPagesShown = () => !!_provider && _provider.book?.state?.open === true;
@@ -460,9 +460,9 @@ export const MINING_GROUND_LINE = 'Ground that fewer than three players have gat
 export const STORES_EMPTY_CARRY_LINE = 'Your Stores are empty. What you gather goes into your Materials Bag or pack - put it in here in any town.';
 export const STORES_EMPTY_LINE = 'Your Stores are empty. What you gather online goes here. Press the use key at an herb patch, tree, ore vein, boulder, a body you killed, or in water with a net - or use the matching tool from your hotbar or a quick slot. Tools used from your pack gather nothing.';   // TOUCH-HOLD: the knife's Use
 /** PROF12: how Alchemy is practised, as the Professions page says it. */
-export const ALCHEMY_HOW = 'Brew at an alchemy station (an Alchemist\'s or your own home) using your Stores. The recipes are Daggerfall\'s twenty potions. Herbs, metals and gems are gathered; the rest are bought from the Apothecaries\' counter. Daggerfall\'s own potion maker still works but gives no Provisioning XP.';
+export const ALCHEMY_HOW = 'Brew at an alchemy station (an Alchemist\'s or your own home) using your Stores. The recipes are the original game\'s twenty potions. Herbs, metals and gems are gathered; the rest are bought from the Apothecaries\' counter. Daggerfall\'s own potion maker still works but gives no Provisioning XP.';
 /** PROF12: how Enchanting is practised, and what its rank takes off the item maker's gold. */
-export const ENCHANTING_HOW = (pct) => `Level Enchanting by disenchanting crafted pieces into Arcane Essence at an enchanting station (a Mages Guild hall or your own home). Daggerfall's item maker works as before${pct > 0 ? `, and your rank takes ${pct}% off its cost` : '. From Journeyman, your rank lowers its cost'}.`;
+export const ENCHANTING_HOW = (pct) => `Level Enchanting by disenchanting crafted pieces into Arcane Essence at an enchanting station (a Mages Guild hall or your own home). The original game's item maker works as before${pct > 0 ? `, and your rank takes ${pct}% off its cost` : '. From Journeyman, your rank lowers its cost'}.`;
 /** PROF12: ENCHANTING'S LAYER OVER DFU'S ITEM MAKER (9.3) - the share off its gold, percent: online, the professions this
  *  account's, by the Enchanting track's rank (and an Efficient's at 50); none else. The item maker reads it (worldModes). */
 export function enchantGoldPct() {

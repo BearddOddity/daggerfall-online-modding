@@ -71,7 +71,7 @@ test('REL5: the build config produces EXACTLY the names the downloads promise - 
 test('REL5: a download link names the file under releases/latest/download, which GitHub answers with the newest copy', () => {
   assert.equal(RELEASES_URL, 'https://github.com/Lattymoy/daggerfall-js-source/releases');
   assert.equal(latestDownloadUrl(DOWNLOAD_FILES.winSetup),
-    'https://github.com/Lattymoy/daggerfall-js-source/releases/latest/download/DaggerfallOnline-win-x64-setup.exe');
+    'https://github.com/Lattymoy/daggerfall-js-source/releases/latest/download/DFO-Online-win-x64-setup.exe');
   // the copy that updates BY HAND is sent its own file, never a page of eleven
   assert.equal(manualDownloadFile({ platform: 'darwin', portable: false, packaged: true }), DOWNLOAD_FILES.mac);
   assert.equal(manualDownloadFile({ platform: 'win32', portable: true, packaged: true }), DOWNLOAD_FILES.winPortable);
@@ -83,10 +83,10 @@ test('REL5: a download link names the file under releases/latest/download, which
 
 test('REL4: a release is the four downloads, the three manifests and two blockmaps - one short publishes nothing', () => {
   assert.deepEqual([...EXPECTED_RELEASE_FILES].sort(), [
-    'DaggerfallOnline-linux-x86_64.AppImage',
-    'DaggerfallOnline-mac-arm64.dmg', 'DaggerfallOnline-mac-arm64.dmg.blockmap',
-    'DaggerfallOnline-win-x64-portable.exe',
-    'DaggerfallOnline-win-x64-setup.exe', 'DaggerfallOnline-win-x64-setup.exe.blockmap',
+    'DFO-Online-linux-x86_64.AppImage',
+    'DFO-Online-mac-arm64.dmg', 'DFO-Online-mac-arm64.dmg.blockmap',
+    'DFO-Online-win-x64-portable.exe',
+    'DFO-Online-win-x64-setup.exe', 'DFO-Online-win-x64-setup.exe.blockmap',
     'latest-linux.yml', 'latest-mac.yml', 'latest.yml',
   ]);
   assert.deepEqual(missingReleaseFiles([...EXPECTED_RELEASE_FILES, 'extra.txt']), [], 'a whole set passes');
@@ -94,7 +94,7 @@ test('REL4: a release is the four downloads, the three manifests and two blockma
   const early = EXPECTED_RELEASE_FILES.filter((f) => !/win-x64|^latest\.yml$/.test(f));
   assert.deepEqual(missingReleaseFiles(early), [DOWNLOAD_FILES.winSetup, `${DOWNLOAD_FILES.winSetup}.blockmap`, DOWNLOAD_FILES.winPortable, 'latest.yml']);
   // the OLD names do not count - a build that still stamps its version into a name fails the release
-  assert.ok(missingReleaseFiles(['DaggerfallOnline-0.1.4684-win-x64-setup.exe']).includes(DOWNLOAD_FILES.winSetup));
+  assert.ok(missingReleaseFiles(['DFO-Online-0.1.4684-win-x64-setup.exe']).includes(DOWNLOAD_FILES.winSetup));
 });
 
 test('REL4: the notes are the patch notes the release brings, once, and say so plainly when there are none', () => {
