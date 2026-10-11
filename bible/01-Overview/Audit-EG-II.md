@@ -25,7 +25,7 @@ VERIFIER IS READING*). Then every finding was verified by hand:
 | 5. prose, structure and the bible's rules | clarity, the words, the slices, Home.md's rules, the doc tests | 90 |
 | 6. presentation, feel and accessibility | readability, feedback, the HUD, the camera, the sound, the controls, the options | 40 |
 
-There were **282 findings**. Verdicts:
+There were **282 findings**, and a re-verification found 61 more (below). Verdicts:
 
 - for a claim (lanes 1, 2, 4 and 5): **CONFIRMED** (true as stated), **PARTIAL** (true in substance, wrong in a detail,
   which is named), **REFUTED** (false);
@@ -353,6 +353,77 @@ with Vestiges; and a season's ceiling, starting each breach at the last one's de
 | L6-38 | LOW | the voice drifts | ADOPTED | 5, 6.2, 6.4, 14, 4 |
 | L6-39 | LOW | the true Seyth hard to tell | ADOPTED | 13.4 |
 | L6-40 | LOW | small feel items | ADOPTED | 25.8 |
+
+## The re-verification
+
+Two more cold lanes then read the revision itself (bcf61019b, frozen), against the tree and against every row above:
+R1, code truth (about 230 claims, about 150 rows sampled, all 57 HIGH rows among them), and R2, numbers and
+consistency (every floor, the clock, the pace, all 248 section pointers, the slices). They found **61** more: R1 25
+(2 HIGH), R2 36 (5 HIGH). Every one was CONFIRMED, and each was fixed in place:
+
+| id | sev | finding | resolution |
+|---|---|---|---|
+| R1-1 | HIGH | a culled draw leaves the shadow record today; no shadow-only draw exists | 11.9: EG6b adds the shadow-only draw |
+| R1-2 | HIGH | `iliacTableHud.js` is a DOM panel, not a DFU window | 20: the classic skin from DFU windows |
+| R1-3 | MED | the online death screen counts 60 s (`deathScreen.js`) | 16.5 |
+| R1-4 | MED | the Steps' rim line is mesh art (`SD_STEP_LINE`) | 25.3 |
+| R1-5 | MED | no reduced-motion setting exists | 7, 25.7: `port:reducedMotion`, new |
+| R1-6 | MED | a double keyline and a hatch need a shader bit | 25.7 |
+| R1-7 | MED | the beacon stands 800 m; its colour is a per-frame uniform | 6.3 |
+| R1-8 | MED | lords share add sprites | 12 ROLE READS: among the legion's kinds |
+| R1-9 | MED | touch and the living ping had no slice | 31 |
+| R1-10 | LOW | 2.3 needs Improved Athleticism | 10.2 |
+| R1-11 | LOW | `bakeCloak.mjs`, the helpers, the wagons | 11.6 |
+| R1-12 | LOW | 38001-38221 are mostly not made levels | 11.6 |
+| R1-13 | LOW | the lift is over the court frame's origin | 11.7 |
+| R1-14 | LOW | `realmClamp` is the Hour's | 11.8 |
+| R1-15 | LOW | Better Ambience re-asserts on a change, not every frame | 11.9 |
+| R1-16 | LOW | `spanFair` is new | 21 |
+| R1-17 | LOW | the versions moved (`world194`, `acct114`) | 23 |
+| R1-18 | LOW | some lord outlines already draw the crimson | 25.2 |
+| R1-19 | LOW | `ASPECT_COLORS.rime` is six colours | 25.2 |
+| R1-20 | LOW | the tab has a health-and-fatigue colour swap | 25.7 |
+| R1-21 | LOW | Legion-Lord carries `legion` | 14 |
+| R1-22 | LOW | the Wellhead unlocked no variant | 8.1, 8.3: the Wellmouth, the Forge Bridge |
+| R1-23 | LOW | Shed Skin and the Reprieve are timers too | 15 |
+| R1-24 | LOW | a code line past 128 columns | 11.5 |
+| R1-25 | LOW | EG0b's record named no widened blow | 31 EG0b |
+| R2-1 | HIGH | the variant draw ran out in circle 2 | 9: `min(2, unlocked - 1)`; the Wellhead's variants; the summary |
+| R2-2 | HIGH | four Reliquary sources escaped the weekly law | 16.3: every Reliquary gated, and its depth stated |
+| R2-3 | HIGH | Reliquaries at THE SEAL, the last word and a void | 16.3, 23: they open |
+| R2-4 | HIGH | the Wager and the Proclamation broke the decree cap and had no data path | 14 standing decrees, nine in the frames; 5; 23 `wg` |
+| R2-5 | HIGH | a chained fill counted down faster than the blow | 13.2, 14: `max(the blow's own wind-up, floor + 0.3 s, 1.0 s)` |
+| R2-6 | MED | the fork's two closings unknown to the door, the count and the pull | 11.4; 23 `ul` |
+| R2-7 | MED | Watchfire III with Far Watch passed the committed lead | 15: +0.05 s, never past 0.4 s |
+| R2-8 | MED | Paired Hearts with an odd count | 13.3: `4 + 2·floor(n/3)`, pairs within 6 m |
+| R2-9 | MED | the Old Masters' arena collided | 18 |
+| R2-10 | MED | `PHASE3_WINDUP` still applied | 13.2: not applied in the Spire |
+| R2-11 | MED | the relay could not know a Rehearsal | 23 `rh`, `'rehearsal'`; 27.7 |
+| R2-12 | MED | the Proclamation could lay a Cairn piece | 20: Crumbling Halls in Gale-Swept's place |
+| R2-13 | MED | which niches heal | 11.4, 8: only the Low Road's |
+| R2-14 | MED | the Soul Tithe's 12 m bound was impossible | 13.3: the crypt's width, 7.02 s |
+| R2-15 | MED | vents on a narrow walkway under 4 m | 8.3 |
+| R2-16 | MED | three hazards without their numbers | 11.2 |
+| R2-17 | MED | lord blows without numbers | 13.3, 13.4 |
+| R2-18 | MED | systems with no slice | 31 |
+| R2-19 | MED | the shelf and the Brinks before their art | 31 |
+| R2-20 | MED | honours and the board needed receipt facts | 23 `fl`, `lb`, `ft`, `td` |
+| R2-21 | MED | the Sutler and Spirebridge had no frame | 23 `buy`, `mast` |
+| R2-22 | LOW | the living ping was undesigned | 16.4; 23 `lping` |
+| R2-23 | LOW | the Cracked Gem broke four tithes | 13.3 |
+| R2-24 | LOW | words against the table | 27.7, 15, 27.3, 4 |
+| R2-25 | LOW | the shouted rules list incomplete | 4 |
+| R2-26 | LOW | the Markynaz champion's body | 8.5: 2.5 scale and the ring |
+| R2-27 | LOW | the ridden drift figure | 10.8: 0.5-1.7 m |
+| R2-28 | LOW | two examples outran the model | 20, 7 |
+| R2-29 | LOW | the Spire Tonic's magicka | 17.1 |
+| R2-30 | LOW | the arch's sealed hour | 6.3 |
+| R2-31 | LOW | the numeral split | 13.2: at `ceil(n/2)` |
+| R2-32 | LOW | the gather could outlast the stair's hold | 6.2: 40 s |
+| R2-33 | LOW | three fourth cards | 15: they stack, six at most |
+| R2-34 | LOW | the Weight had no pin | 13.2: the one exception |
+| R2-35 | LOW | small inconsistencies | 1, 14, 25.4 |
+| R2-36 | LOW | one rounding | 18: 33 s |
 
 ## What changed, in short
 
