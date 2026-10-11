@@ -56,6 +56,29 @@ test('PERF-ALLOC1: the lanterns\' face matrices are the base\'s to the bit - ove
   }
 });
 
+test('PERF-ALLOC1 (AUDIT PERF-ARENA L2/L3): the twin to the bit where the random views never go - a translation that CANCELS (an eye nearly perpendicular to the view\'s axis, at 1e3 to 1e7: a reordered or re-rooted sum differs there in more than float32 can hide) and an eye at the origin (a signed zero), and each face\'s view before the product hides its -0; against the base\'s lookAt itself (mutants: PERFALLOC1-order, LA-hypot-z, LA-hypot-x, LA-reciprocal, LA-negzero, LA-y-form)', () => {
+  let sd = 7;
+  const r01 = () => { sd = (Math.imul(sd, 1664525) + 1013904223) >>> 0; return sd / 4294967296; };
+  const cases = [];
+  for (let i = 0; i < 3000; i++) {
+    const dir = [r01() - 0.5, r01() - 0.5, r01() - 0.5], up = [r01() - 0.5, r01() - 0.5, r01() - 0.5];
+    const m = baseLookAt([0, 0, 0], dir, up), x = [m[0], m[4], m[8]], y = [m[1], m[5], m[9]];
+    const r = [r01() - 0.5, r01() - 0.5, r01() - 0.5];
+    const p = i % 2 ? [x[1] * r[2] - x[2] * r[1], x[2] * r[0] - x[0] * r[2], x[0] * r[1] - x[1] * r[0]] : [y[1] * r[2] - y[2] * r[1], y[2] * r[0] - y[0] * r[2], y[0] * r[1] - y[1] * r[0]];   // perpendicular to the view's x (or y): its translation term cancels
+    const sc = 10 ** (3 + (i % 5));
+    const eye = [p[0] * sc + r01(), p[1] * sc + r01(), p[2] * sc + r01()];
+    cases.push([eye, [eye[0] + dir[0], eye[1] + dir[1], eye[2] + dir[2]], up]);
+  }
+  cases.push([[0, 0, 0], [1, 0, 0], [0, -1, 0]], [[0, 0, 0], [0.3, 0.4, 0.5], [0, 1, 0]], [[0, 5, 0], [1, 5, 0], [0, -1, 0]]);   // an eye at the origin: the translation's signed zero
+  for (let i = 0; i < 200; i++) {
+    const pos = [(r01() - 0.5) * 900, r01() * 50, (r01() - 0.5) * 900];
+    for (const [d, up] of FACES) cases.push([pos, [pos[0] + d[0], pos[1] + d[1], pos[2] + d[2]], up]);   // the faces' own views, before multiply's sum = 0 wipes a -0
+  }
+  let bad = 0;
+  for (const [eye, c, up] of cases) if (!same(lookAtInto(new Float32Array(16).fill(7), eye, c[0], c[1], c[2], up), baseLookAt(eye, c, up))) bad++;
+  assert.equal(bad, 0, `${bad} of ${cases.length} views differ from the base's lookAt`);
+});
+
 test('PERF-ALLOC1: a lantern\'s six faces make no typed array (the base: seven a lantern a frame, a projection and six views - and their twenty-four arrays) (mutant: PERFALLOC1-minted)', () => {
   const out = Array.from({ length: 6 }, () => new Float32Array(16));
   pointFaceMatrices([1, 2, 3], 18, out);   // warm
@@ -68,7 +91,7 @@ test('PERF-ALLOC1: a lantern\'s six faces make no typed array (the base: seven a
   assert.equal(made, 0, `twelve lanterns' faces made ${made} typed arrays`);
 });
 
-test('PERF-ALLOC2: the lantern walk hands its cube through a typed array - placementsInCubeOf answers what placementsInCube answers over random woods (scaled, lifted, moved origins) and random cubes, in and out of reach; and _candidateQuads asks placementsInCubeOf with its own Float64Array, five doubles a call no longer handed as heap numbers (mutants: PERFALLOC2-boxed-again, PERFALLOC2-cube-short)', async () => {
+test('PERF-ALLOC2: the lantern walk hands its cube through a typed array - placementsInCubeOf answers what placementsInCube answers over random woods (scaled, lifted, moved origins) and random cubes, in and out of reach; and _candidateQuads asks placementsInCubeOf with its own Float64Array, five doubles a call no longer handed as heap numbers (mutants: PERFALLOC2-boxed-again, PERFALLOC2-cube-short, WALK-scratch-module)', async () => {
   const { readFileSync } = await import('node:fs');
   const bounds = await import('../src/render/bounds.js');
   const { placementGrid } = bounds;
@@ -92,4 +115,5 @@ test('PERF-ALLOC2: the lantern walk hands its cube through a typed array - place
   const body = src.slice(src.indexOf('  _candidateQuads(rank) {'), src.indexOf('\n  }\n', src.indexOf('  _candidateQuads(rank) {')));
   assert.match(body, /cube\[4\] = lim\[o \+ 3\] \+ cubeReach\(rad\) - rad \+ lim\[o \+ 4\];\n\s*if \(!placementsInCubeOf\(b, cube\)\) continue;/, 'the walk asks through its typed array, with the cube\'s own reach');
   assert.doesNotMatch(body, /placementsInCube\(/, 'and hands no double to the old door');
+  assert.match(body, /const lim = this\._candLim, o = rank \* 5, sp = this\._bSphere, cube = this\._cubeArgs;/, 'its own scratch, made once with the pass - not an array a call (AUDIT PERF-ARENA L4)');
 });
