@@ -10437,7 +10437,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (!navalOn()) return;
     const model = _mode() === 'exterior' ? naval.hudModel() : null;
     const covered = townTalk.overlayActive || gamePaused() || !!townTalk.hudHidden;
-    // SEA-TOWN (FIELD BUGS 2026-10-11b): nothing to show (no ship near, the HUD covered) reads its clock and takes the
+    // SEA-TOWN (FIELD BUGS 2026-10-11c): nothing to show (no ship near, the HUD covered) reads its clock and takes the
     // plate down (ui/navalHud.js drawNavalHud returns there) - the keys' names, the HUD's rects and the compass box
     // were made for it every frame ashore, three walks of the bindings among them
     if (!model || covered) { drawNavalHud(model, { dt: gamePaused() ? 0 : dt, covered }); return; }
@@ -10756,7 +10756,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (helm) helm = { ...helm, orders: navalOn() };   // SHIP-CREW: the Orders button while the naval arc is on
     if (!helm) csaHelmInput.held.clear();
     const ab = helm ? null : csaAboard.aboard;
-    if (!helm && !ab) { drawEnhancedHelm({ helm: null, aboard: null }, csaHelmHooks); return; }   // SEA-TOWN (FIELD BUGS 2026-10-11b): no helm, aboard nothing - the panel goes (ui/enhancedHelm.js), and the key's name and the cover's reads it never shows are not made every frame ashore
+    if (!helm && !ab) { drawEnhancedHelm({ helm: null, aboard: null }, csaHelmHooks); return; }   // SEA-TOWN (FIELD BUGS 2026-10-11c): no helm, aboard nothing - the panel goes (ui/enhancedHelm.js), and the key's name and the cover's reads it never shows are not made every frame ashore
     drawEnhancedHelm({
       helm, aboard: ab ? { hull: ab.boat.hull, owner: peerName(ab.owner) } : null,
       covered: townTalk.hudCovered || (modes?.hudCovered ?? false) || gamePaused() || !hudRenderEnabled() || !!travelView?.active || !!_travelUIHolder.ui?.isShowing,   // A first-person journey also owns the helm. AUDIT NAV2 F17: under the travel view a journey holds the helm - its hand sets her sails, the arrows turn the view

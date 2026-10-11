@@ -475,7 +475,7 @@ export function setLights(boat, value) {
 
 /** `GetComponent<Animator>()` on a node: its runtime (world/unityAnimator.js), or null. */
 export const animatorOf = (node) => node?.getComponent('Animator')?.animator ?? null;
-/** SEA-TOWN (FIELD BUGS 2026-10-11b): each boat tree's Animators, kept while every tree's shape stands (prefabNode.js
+/** SEA-TOWN (FIELD BUGS 2026-10-11c): each boat tree's Animators, kept while every tree's shape stands (prefabNode.js
  *  prefabShapeStamp - prefabColliders.js keeps a tree's colliders by the same stamp). Read-only: the list is shared. */
 const _animators = new WeakMap();   // root -> { stamp, list }
 /** Every Animator a boat carries, for the frame's step (Unity updates each after the scripts' Update). SEA-TOWN: found

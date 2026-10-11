@@ -2902,7 +2902,7 @@ every boat the player had placed wherever it lay, and the peers' pose did the sa
 Animators, in the same order. The step itself is unchanged - a boat standing nowhere is still asked, because that ask is
 how an Animator starts over from its default state when she stands again ((18)). The naval HUD and the helm panel stopped
 making their keys' names for windows they were not showing. Measured, before and after, in
-`01-Overview/Field-Bugs-2026-10-11b.md`; `test/fb1011b_seatown.test.js`.
+`01-Overview/Field-Bugs-2026-10-11c.md`; `test/fb1011c_seatown.test.js`.
 
 ## What was already waiting in the port
 

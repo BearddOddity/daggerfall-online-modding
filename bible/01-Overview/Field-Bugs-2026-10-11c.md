@@ -1,4 +1,4 @@
-# FIELD BUGS 2026-10-11b - "Somehow FPS is returned": the sea's mods in a crowded inland town
+# FIELD BUGS 2026-10-11c - "Somehow FPS is returned": the sea's mods in a crowded inland town
 
 A Discord thread from bug-reports, handed over as a screenshot: "I've found the issue what cause significant fps drop at
 town. So, i am in Chesterwark and it's seems very crowded ... I have them enabled and all other my graphics settings at
@@ -79,4 +79,4 @@ measured share is in the last row above. Not touched here: it is a change to the
 town, which stands no boat. Online, the forced three (Iliac Puddle No More, the Ocean Holes, Detailed Ships) cost what the
 "Come Sail Away off" row and the "five off" row differ by - within this probe's noise in an inland town.
 
-Pinned by `test/fb1011b_seatown.test.js` (4); `tools/mutants/fb1011b_seatown.json` (8, all dead).
+Pinned by `test/fb1011c_seatown.test.js` (4); `tools/mutants/fb1011c_seatown.json` (8, all dead).
