@@ -24,6 +24,7 @@ import { lastPlaceMentionedInMessage, locationInRegionText } from './questLens.j
 import { REGION_NAMES, patchRegionIndex } from '../formats/mapsFile.js';
 import { audio } from '../systems/audio.js';
 import { SOUND } from '../systems/soundClips.js';
+import { typedChar } from './input.js';   // NOTE-KEYS: the one reader of a native window's raw codes and the action map's chars
 import { ToolTip } from './toolTip.js';   // U37's shared component - this window points two panels at it
 
 let _art = null;
@@ -285,12 +286,20 @@ export class QuestJournalWindow {
       if (action === 'confirm' || code === 'Enter') return this._submitNote();
       if (action === 'back' || code === 'Escape') { this.noteBox = null; this.selectedEntry = null; return true; }
       if (action === 'backspace' || code === 'Backspace') { this.noteBox.value = this.noteBox.value.slice(0, -1); return true; }
-      if (typeof action === 'string' && action.startsWith('char:') && this.noteBox.value.length < MAX_LINE_LENGTH) { this.noteBox.value += action.slice(5); return true; }
+      // NOTE-KEYS (FIELD BUGS 2026-10-06, Skibbster: "when getting to this page on the classic/grimoire UI, player key
+      // presses are ignored"): this window is a NATIVE one (isChoiceWindow), so the hosts' routeKey hands it the raw
+      // CODE and the event (ui/input.js "a NATIVE window keys off raw codes") - `KeyA`, never `char:a` - and the field
+      // only ever read the action map's spelling: Enter, Backspace and Escape worked, and not one letter landed.
+      // typedChar is the one reader of both routes (U26), as every other field in the port reads its letters.
+      const ch = typedChar(code, e);
+      if (ch && ch.length === 1 && this.noteBox.value.length < MAX_LINE_LENGTH) { this.noteBox.value += ch; return true; }
       return true;
     }
     if (this.moveRemoveBox) {
-      if (action === 'confirm' || code === 'Enter' || action === 'char:y' || action === 'char:Y') return this.answerMoveRemove(MB_BUTTONS.Yes);
-      if (action === 'back' || code === 'Escape' || action === 'char:n' || action === 'char:N') return this.answerMoveRemove(MB_BUTTONS.No);
+      // NOTE-KEYS: Y and N by the raw route too (a native window's key is `KeyY`, as the note field's letters are)
+      const yn = typedChar(code, e)?.toLowerCase();
+      if (action === 'confirm' || code === 'Enter' || yn === 'y') return this.answerMoveRemove(MB_BUTTONS.Yes);
+      if (action === 'back' || code === 'Escape' || yn === 'n') return this.answerMoveRemove(MB_BUTTONS.No);
       return true;
     }
     if (this.findBox) {

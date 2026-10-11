@@ -447,3 +447,37 @@ Four gates the drop-in's own tree did not pass were met here:
   at rest - its added weight never beats the hover that won by order - and the wood's underline gives way to a
   disabled press, as it did.
 - **The suite's count** (`test/manifest.test.js`): the drop-in's `grim1_dress.test.js` row said 16 of its 20 tests.
+
+### GRIM-FIELD - the bug thread's round (2026-10-11)
+
+Two drop-ins on the DFO Grimoire bug thread - the readability-and-bars patch, then a cumulative round that carries it
+whole - merged onto main's head (#779): every hunk applied as it stood but `Testing.md`'s Suite line, recounted on the
+merged tree. Each fix's record is the comment over it in the dress; the pins are `test/grim1_dress.test.js` (23 now)
+and the files named below.
+
+- **THE INK** (`ui/grimoireDress.js`). INK-VARS: a `var(--x, fallback)` is read as --x's colour - re-saying the fallback
+  alone left the Social panel, the letters and the guild page in bone and grey on the parchment - and a var a sheet
+  defines for itself is learned off the sheets (`learnSheetVars`); one defined as two colours (a rarity's `--rar`, a
+  slot's `--hb-acc`) is the element's own and never pinned. INK-FIELDS: a field typed on a page in the page's ink.
+  INK-DISABLED: a press that cannot be pressed in the softer ink, solid.
+- **NO-LINES** (a player: "those weird lines everywhere, those are not needed"): a page of the pack is not ruled - the
+  talk window's two pages part by the scroll's own shading, a profession is a line on its page and not a box, a career
+  group of Master Skills its name in red over the pack's dotted rule.
+- **THE BARS** (`ui/grimoireArt.js`, `ui/hudLayout.js`). FOE-PLATE / VIAL-LONG: no drain on any bar, the foe's and the
+  boss's glass drawn out at any length with nothing behind it, the upright vials lengthened as height. BAR-SCREEN: the
+  two bars are the screen's size, not a pixel count (the foe's glass 1.75% of the view's height, never under 13; the
+  boss's 1.4 times it). HUD-LEN: the HUD editor's (Alt+U) length handle follows the pointer by a measured step, never
+  an assumed one - a stood bar's handle on its top edge (`--hm-len-axis`) - the boss bar takes a length, and a size or
+  a length never carries a piece off the screen.
+- **THE BOOK**. SETTINGS-SCROLL: the Controls head sticks as one line over the book's short scroll, and a key's row is a
+  line where there is no thumb. SETTING-SCROLL: a setting's words are the item scroll held out BESIDE the book (out of
+  the page column's clip, slid in only as far as the screen asks), and on the front door the same scroll in the detail
+  column. CHOSEN-CHIP: a chosen chip's mark - the bright word underlined, a gold outline - stands over its shelf-box
+  picture, which painted over the kit's inset line.
+- **THE HELD MAP** (`ui/heldMap.js` FINDME-SHEET): its root says which sheet is up (`data-hm-sheet`), so the dress takes
+  Find me off the dungeon's sheet alone and the world's and the town's keep it beside Close.
+- **NOT THE DRESS'S, ON THE SAME THREAD**: HOTBAR-LAG (`ui/enhancedHotbar.js`, `test/ui1_slots.test.js`) - a press plays
+  the caption's fade through the browser's animation instead of a class off, a forced layout and the class back (two
+  restyles a press, ~10 ms under the dress's wood); NOTE-KEYS (`ui/questJournal.js`, `test/audit26_uiwindows2.test.js`)
+  - the journal's note field takes its letters by the native route (`typedChar`), as a native window is handed raw
+  codes, and the move/remove box its Y and N.

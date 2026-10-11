@@ -77,7 +77,7 @@ test('CHAT-FIT / TITLE-R: the roster column\'s DOM - head, list and more sit in 
   log.setOpen(true); panel.render?.(); panel.paint?.();
   const who = one(root, 'dfchat-who');
   assert.equal(shape(who), 'dfchat-who-inner', 'the column holds the inner and nothing else');
-  assert.equal(shape(who.children[0]), 'dfchat-whohead dfchat-wholist dfchat-who-more');
+  assert.equal(shape(who.children[0]), 'dfchat-find dfchat-whohead dfchat-wholist dfchat-who-more', 'CHAT-FIND: the search strip above the heading');
   const rows = find(root, 'dfchat-who-row');
   assert.ok(rows.length >= 3, `three rows (${rows.length})`);
   const long = rows.find((r) => one(r, 'dfchat-who-name')?.textContent === 'Palidriel Oakthorn');

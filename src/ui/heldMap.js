@@ -1416,6 +1416,7 @@ export class HeldMapWindow {
     if (!this._slot.select(id, this._view)) return false;
     leaving?.unmount?.();
     this._sheets.get(id)?.mount?.();
+    if (this._chrome?.root?.dataset) this._chrome.root.dataset.hmSheet = this._slot.live ?? id;   // FINDME-SHEET
     this._writeHint();           // DISC25-A: the foot says the new sheet's keys
     this._layoutKey = '';        // the new sheet's own coordinate space
     this._staticKey = '';
@@ -3167,6 +3168,10 @@ export class HeldMapWindow {
     injectEnhancedFonts();
     const root = el('div', 'hmroot');
     root.id = 'enhanced-travelmap';
+    // FINDME-SHEET (2026-10-11, Mac: "the worldmap is also missing the find me button next to close"): the root says
+    // which sheet is up, so a dress can drop a press on one sheet and keep it on another (ui/grimoireDress.js: Find me
+    // goes on the dungeon's sheet alone, as it was asked to)
+    root.dataset.hmSheet = this._slot?.live ?? '';
     // MAP-FIELD7: the sheet starts DOWN (on the stage, below) and the
     // chrome starts clear - each child is given its 0 as it is appended,
     // by the _setRaise(0) at the end of the mount. The root itself never

@@ -4106,7 +4106,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
     camera: () => (_fpEye ? { pos: _fpEye, yaw: _fpYaw, pitch: _fpPitch, feet: _fpFeet, climbing: !!_fpMove?.climbing, sneaking: _fpSneaking, move: _fpMove, bob: [0, _fpBobY], climb: _fpClimb } : null),   // HT1: feet and the climb   // MW-D26; IG1: the bob rides too   // CLIMB6: the climb's snapshot, the host's
     bindWorn: opts.playerWeapon !== 'bow',   // AUDIT 17e F17: the ?weapon=bow debug flag keeps its scripted weapon
     say: (l) => hudText.add(l),
-    spellArmed: () => magic.spellArmed(), abortSpell: () => magic.abortReadySpell(),   // MAC-O1: WeaponManager.Update:251 - the ReadyWeapon key puts a readied spell away and draws
+    spellArmed: () => magic.spellArmed(), readiedSpell: () => magic.readied?.() ?? null,   /* RSH1: the readied hands */ abortSpell: () => magic.abortReadySpell(),   // MAC-O1: WeaponManager.Update:251 - the ReadyWeapon key puts a readied spell away and draws
     actTool: () => opts.actTool?.() ?? null,   // PROF2: the Pick-Axe in the hand at a dungeon vein (the outer host's act)
     // TECH1 (bible/05-Combat/Weapon-Techniques.md): the weapon technique's door underground - the OUTER host's motor and view
     // (opts.technique: dungeon.js's own, or the street's through worldModes.js), this context's own missile lane for the

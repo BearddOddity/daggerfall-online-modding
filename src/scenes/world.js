@@ -11682,7 +11682,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       bob: [0, player.bobOffset ? player.bobOffset[1] : 0],
       move: motionBagOf(player),   // MW-D26: the movement-settings vector, the reference's own selection source; MW-D39 added the jump-state inputs; WW2: the one bag (a partial copy left the bob's idle gate unsent)
       climb: climbRigInput(player, cam.yaw) }),   // CLIMB6: the climb's snapshot - the body's limbs on the stone (player/climbPose.js)
-    spellArmed: () => magic.spellArmed(), abortSpell: () => magic.abortReadySpell(),   // M2; MAC-O1: WeaponManager.Update:251 - the ReadyWeapon key puts a readied spell away and draws
+    spellArmed: () => magic.spellArmed(), readiedSpell: () => magic.readied?.() ?? null,   /* RSH1: the readied hands */ abortSpell: () => magic.abortReadySpell(),   // M2; MAC-O1: WeaponManager.Update:251 - the ReadyWeapon key puts a readied spell away and draws
     // MAP-WEAPON: the enhanced map is a SPRITE with alpha around it,
     // not a full-screen window, so the weapon the classic body keeps
     // drawing shows through it. Asked per frame off the live overlay
