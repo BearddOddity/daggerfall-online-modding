@@ -14546,15 +14546,16 @@ export async function bootWorld(canvas, renderer, params, status) {
     // position rather than being left to the caller.
     if (resolved?.yaw != null) cam.yaw = resolved.yaw;
     else if (landing) cam.yaw = landing.yaw;
-    // AUDIT CAPTAIN'S SEA G2/P7: a landing made for a pixel this game does not stream, said where the player now stands
-    if (_unstreamedLanding) {
-      townTalk.say(_unstreamedLanding === 'ether' ? 'The Etheric Sea is closed in this game - you wake in the Bay\'s waters.' : 'That ground does not stand in this game - you wake at the edge of the Iliac Bay.', 7);
-      _unstreamedLanding = null;
-    }
     // Q4-v: StreamingWorld.OnInitWorld - the world re-initialised at a
     // new origin (fast travel, quickload); CreateFoe's pending waves
     // invalidate across live AND scheduled quests.
     questBridge?.onInitWorld();
+    // AUDIT CAPTAIN'S SEA G2/P7: a landing made for a pixel this game does not stream, said where the player now stands
+    // (below the arrival's statements, which the party's boat pins run over stand-ins: partyBoatTeleportFix)
+    if (_unstreamedLanding) {
+      townTalk.say(_unstreamedLanding === 'ether' ? 'The Etheric Sea is closed in this game - you wake in the Bay\'s waters.' : 'That ground does not stand in this game - you wake at the edge of the Iliac Bay.', 7);
+      _unstreamedLanding = null;
+    }
 
     // TK-v: TalkManager's OnMapPixelChanged / OnLoadEvent (:3593-3597,
     // :3616-3620) - a new world origin means a new building list and a

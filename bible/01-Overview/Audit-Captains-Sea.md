@@ -263,25 +263,33 @@ The fixes moved pins in 47 suites, each with its note (PIN MOVED, AUDIT CAPTAIN'
 `seat2b_peace_client`, `auditholdings`, `sealanes`), P9's one reading of the deed (`houses`, `home1`, `decor1`,
 `fb1001_rent`, `fb1007_hallfolk`, `housecontainers`, `lwfix6_rooms`, `restlodging`, `uxb1n_containerplaque`, `world6`,
 `auditworld6a`), the crossing's (`ethercross`, `harbourbook`), the ledger's and the board's (`captlog`, `captboard`,
-`capttrade`, `int1_itemlaw`, `honestItems.mjs`), and `ethership` (H7). Three declarations the audit added named what
-other modules already declared and were renamed (`audit24_onehome`): the chart's CHART_WHEEL_STEP, CHART_TAP_PX and
-CHART_PINCH_STEP, the board's BOARD_PAY_MAX and BOARD_STANDING_MAX. G2's landing moved into its own helper
+`capttrade`, `int1_itemlaw`, `honestItems.mjs`), and `ethership` (H7). Three declarations the audit added - WHEEL_STEP,
+TAP_PX and CONTRACT_PAY_MAX - named what other modules already declared (`mwCamera.js`, `touchGestures.js`,
+`writLaw.js`; `audit24_onehome`), so they and their siblings were renamed: the chart's CHART_WHEEL_STEP, CHART_TAP_PX
+and CHART_PINCH_STEP, the board's BOARD_PAY_MAX and BOARD_STANDING_MAX. G2's landing moved into its own helper
 (`_streamedLanding`), so the teleport's resets keep their place first (AUDIT 39 #62, CLIMB-ARC F6, F212's window).
+Its word, said once the player stands, first stood inside the arrival's statements, which `partyBoatTeleportFix` runs
+over stand-ins of its own: nine of its tests threw, and the whole suite over the merged tree found it. The word now
+stands below them (after `questBridge?.onInitWorld()`), and the arrival's statements are main's again, line for line.
+Main merged in moved one more: `fb1011c_seatown` runs world.js's `navalHud` over stand-ins, and the plate is handed the
+glass's state (SPYGLASS's `glassUp`), so the glass stands among them - and the pin now asks it, down and up.
 
 ## Mutants
 
-- `tools/mutants/auditcaptsea.json` - 327 records, one or more a finding: all dead but four equivalent as recorded, each
-  with its why - X2-yes-sailing (a helm let go is a helm `CurrentBoat` no longer names), X4-mouth-host (the law asks
-  the mouth again), D17-fight (a ship in a fight is never let fade), B4-mine-not (a quarry of mine is done before she
-  is dropped). Every survivor of the first runs was a pin that could not fail, made one that can: the compass's
-  disguise (S4: a provoked trader), the player's own unbinding with K still shared (S14), the havens' bounds (P1:
-  literal, the game's own sizes), the ports' lettering (X14: against a chart of its ports alone), the host's ashore set
-  (C1), a new day's dealing (B1), the mid-rank meter (L5), the exotic's refusal and the world's switch (B16), the void's
-  word (B4), the room handed from the yard to the exchange (B11), a strand bare from its first cask (D1); and S18's
-  floor of five, and the swimmer's give line's `swim ? null :`, were arms no input reaches - dropped. ACS-P1-types
-  is killed against the player's own data (ARENA2_PATH), the havens' filter run over MAPS.BSA's rows.
+- `tools/mutants/auditcaptsea.json` - 328 records, one or more a finding and one the pin main's merge moved
+  (ACS-MERGE-plate-glass-unhanded): all dead but four equivalent as recorded, each with its why - X2-yes-sailing (a helm
+  let go is a helm `CurrentBoat` no longer names), X4-mouth-host (the law asks the mouth again), D17-fight (a ship in a
+  fight is never let fade), B4-mine-not (a quarry of mine is done before she is dropped). Every survivor of the first
+  runs was a pin that could not fail, made one that can: the compass's disguise (S4: a provoked trader), the player's
+  own unbinding with K still shared (S14), the havens' bounds (P1: literal, the game's own sizes), the ports' lettering
+  (X14: against a chart of its ports alone), the host's ashore set (C1), a new day's dealing (B1), the mid-rank meter
+  (L5), the exotic's refusal and the world's switch (B16), the void's word (B4), the room handed from the yard to the
+  exchange (B11), a strand bare from its first cask (D1); and S18's floor of five, and the swimmer's give line's
+  `swim ? null :`, were arms no input reaches - dropped. ACS-P1-types is killed against the player's own data
+  (ARENA2_PATH), the havens' filter run over MAPS.BSA's rows.
 - 93 records in 35 lists named source the fixes rewrote (`test/mutantdrift.test.js` holds every record to its text):
-  each re-aimed BY CONTENT to the code as it stands, the same law mutated - all dead.
+  each re-aimed BY CONTENT to the code as it stands, the same law mutated - all dead but one, which survives on the base
+  as well (What stands).
 - The lists touching every file the fixes changed were run over the fixed tree: see What stands.
 
 ## What stands

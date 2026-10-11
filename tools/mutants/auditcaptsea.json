@@ -2963,5 +2963,14 @@
     "tests": [
       "test/auditcaptsea.test.js"
     ]
+  },
+  {
+    "name": "ACS-MERGE-plate-glass-unhanded",
+    "file": "src/scenes/world.js",
+    "old": "glassUp: spyglass.up,   // SPYGLASS: the plate's Glass brass while the glass is up",
+    "new": "glassUp: false,   // SPYGLASS: the plate's Glass brass while the glass is up",
+    "tests": [
+      "test/fb1011c_seatown.test.js"
+    ]
   }
 ]

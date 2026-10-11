@@ -326,10 +326,10 @@ out of a wreck the same). The Captain page lists the charts marked.
 `test/captcrew.test.js` (`tools/mutants/captcrew.json`), `test/captlog.test.js` (`tools/mutants/captlog.json`),
 `test/captwaters.test.js` (`tools/mutants/captwaters.json`), `test/spyglass.test.js` (`tools/mutants/spyglass.json`),
 `test/captboard.test.js` (`tools/mutants/captboard.json`), `test/capttrade.test.js` (`tools/mutants/capttrade.json`) -
-every mutant dead; AUDIT CAPTAIN'S SEA's own in `test/auditcaptsea.test.js` (68 tests, `tools/mutants/auditcaptsea.json`
-- 327 records - `01-Overview/Audit-Captains-Sea.md`, which names the 47 suites its fixes moved). The suites whose pins
-moved with the slices say so where they moved (PIN MOVED): the crew card's line, the Holdings tabs, the tags and the
-hails now knowing a ship first (`test/navalSea.mjs knowAll`), the action tables, the lens, the sky's and the far ring's
-lens narrowed with the world's (`test/climb4.test.js`, `test/hudlarge.test.js` E5), the wheel's rung for the glass
-(`test/audit24_wave37.test.js`). The harbour office's day is a reader of the event clock, named in
-`test/fixtures/time1_census.json`.
+every mutant dead; AUDIT CAPTAIN'S SEA's own in `test/auditcaptsea.test.js` (68 tests;
+`tools/mutants/auditcaptsea.json`, 328 records; `01-Overview/Audit-Captains-Sea.md`, which names the 47 suites its fixes
+moved and the one main's merge moved). The suites whose pins moved with the slices say so where they moved (PIN MOVED):
+the crew card's line, the Holdings tabs, the tags and the hails now knowing a ship first (`test/navalSea.mjs knowAll`),
+the action tables, the lens, the sky's and the far ring's lens narrowed with the world's (`test/climb4.test.js`,
+`test/hudlarge.test.js` E5), the wheel's rung for the glass (`test/audit24_wave37.test.js`). The harbour office's day is
+a reader of the event clock, named in `test/fixtures/time1_census.json`.
