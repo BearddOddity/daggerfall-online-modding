@@ -131,7 +131,9 @@ test('M4: the table as a whole, machine-diffed against the twenty-four effect cl
     sum += perEffect[type];
   }
   assert.equal(cells, 209, 'settings the catalogue can mint');
-  assert.equal(sum, 99680, 'every cost, added up');
+  // PIN MOVED (DRAGON-SOUL, FIELD BUGS 2026-10-11): the general spawn's Dragonling soul binds at -5000, the one cell
+  // moved off DFU's table on purpose - 99680 -> 94680, and SoulBound's own -23440 -> -28440
+  assert.equal(sum, 94680, 'every cost, added up');
 
   // and per effect, so a drift names itself instead of leaving one
   // total to hunt through
@@ -139,7 +141,7 @@ test('M4: the table as a whole, machine-diffed against the twenty-four effect cl
     BadReactionsFrom: -320, BadRepWith: -10000, ExtraSpellPts: 6000, GoodRepWith: 10000,
     HealthLeech: -4700, ImprovesTalents: 1700, IncreasedWeightAllowance: 1000,
     ItemDeteriorates: -5000, LowDamageVs: -3900, PotentVs: 3900, RegensHealth: 10000,
-    SoulBound: -23440, UserTakesDamage: -7000, VampiricEffect: 3000, AbsorbsSpells: 1500,
+    SoulBound: -28440, UserTakesDamage: -7000, VampiricEffect: 3000, AbsorbsSpells: 1500,
     ExtraWeight: -100, FeatherWeight: 100, RepairsObjects: 900, StrengthensArmor: 700,
     WeakensArmor: -700, EnhancesSkill: 31500, CastWhenUsed: 42040, CastWhenHeld: 26300,
     CastWhenStrikes: 16200,
@@ -148,7 +150,7 @@ test('M4: the table as a whole, machine-diffed against the twenty-four effect cl
   // economy: the powers on offer outweigh the drawbacks many times
   const owed = (list) => list.reduce((a, t) => a + perEffect[t], 0);
   assert.equal(owed(powerTypes()), 154840);
-  assert.equal(owed(sideEffectTypes()), -55160);
+  assert.equal(owed(sideEffectTypes()), -60160);   // PIN MOVED (DRAGON-SOUL): -55160 -> -60160, a soul bound is a side effect's points
   assert.equal(owed(powerTypes()) + owed(sideEffectTypes()), sum);
 });
 
@@ -198,13 +200,16 @@ test('M4: SoulBound is forty-three rows keyed by monster ID (:160-206)', () => {
   assert.equal(soul.costs.filter((c) => c === dearest).length, 1, 'and it is alone at the bottom');
 
   // the ZEROS are the soulless - DFU's comments beside the costs say
-  // so - and the two Dragonlings are the tell. 34 is the general
-  // spawn, which classic gives no soul and prices at nothing; 40 is
-  // the quest spawn, which has one and costs 5000. THE PICKER CANNOT
-  // TELL THEM APART: both rows print the same enemy name, because
-  // that is the name the enemy has.
-  assert.equal(enchantmentCost('SoulBound', 34), 0);
+  // so - and the two Dragonlings were the tell: 34 the general spawn,
+  // which classic gives no soul and prices at nothing; 40 the quest
+  // spawn, which has one and costs 5000. Both rows print the same
+  // enemy name, because that is the name the enemy has.
+  // PIN MOVED (DRAGON-SOUL, FIELD BUGS 2026-10-11, the owner: "Fuck
+  // matching DFU."): a player traps the general spawn and reads
+  // "Dragonling" - so it binds as the quest's does, the same -5000.
+  assert.equal(enchantmentCost('SoulBound', 34), -5000);
   assert.equal(enchantmentCost('SoulBound', 40), -5000);
+  assert.equal(enchantmentCost('SoulBound', 34), enchantmentCost('SoulBound', 40), 'one name, one worth');
   assert.equal(names[34], 'Dragonling');
   assert.equal(names[40], 'Dragonling');
   assert.equal(names.filter((n) => n === 'Dragonling').length, 2, 'two rows, one name');

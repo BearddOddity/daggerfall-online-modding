@@ -2096,6 +2096,23 @@ ${badgeCss()}
    in view while the list scrolls, and a second Continue closes the list.
    (The button reads Confirm since UXB1-B.) */
 .ctl-head { position: sticky; top: 0; z-index: 2; }
+/* UNSAVED-MARK (FIELD BUGS 2026-10-11, "It shows that my selected key is set ... it just didn't save"): on Settings the
+   toolbar is sticky at the top of the same scroll (ORG2), and stood over the head and its Confirm - the head sticks
+   under it now, at the toolbar's own measured height (enhancedMenu.js optionsToolbar, --opt-tools-h). A key a Confirm
+   still owes is marked on its row, and the Confirm that owes it is lit. */
+.opt-tools + .opt-body .ctl-head { top: var(--opt-tools-h, 0px); }
+.opt-tools + .opt-body .ctl-row { scroll-margin-top: calc(var(--opt-tools-h, 0px) + 160px); }   /* a row scrolled to (a pad's focus, a find) lands under both */
+.ctl-row.ctl-unsaved { box-shadow: inset 3px 0 0 var(--brass); }
+.ctl-row.ctl-unsaved .ctl-unsaved-note, .ctl-pending { color: var(--brass); }
+.ctl-head.ctl-owed .ctl-continue { box-shadow: 0 0 0 2px var(--brass), 0 0 12px rgba(192,138,62,0.55); }
+/* ...and on a phone the scroll between the toolbar and the rail is a few rows tall: the head is its buttons on one line
+   and the line a Confirm owes - the law's sentence is the intro's to say there, and each owed row says it again */
+@media (max-width: 480px) {
+  .ctl-head:not(.ctl-asking) > p.meta { display: none; }
+  .ctl-head:not(.ctl-asking) .acts { flex-wrap: nowrap; gap: 6px; }
+  .ctl-head:not(.ctl-asking) .acts .act { flex: 1 1 0; min-width: 0; padding-left: 6px; padding-right: 6px; }
+  .ctl-head .ctl-notice { margin-top: 6px; }
+}
 .ctl-foot { display: flex; justify-content: flex-end; }
 .ctl-row:last-child { border-bottom: 0; }
 /* UXB1-D (2026-09-25, the UX backlog): a question about a key stands in the
