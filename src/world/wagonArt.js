@@ -241,7 +241,7 @@ function tiltArt(inside = false, dye = null) {
 function caravanSideArt(paint = PAINTS.green, name = 'green') {
   const img = picture(S, S), n = noise(0xa91, S, S, 8, 8);
   const [body, bodyLit, bodyDark] = paint, [trim, trimLit] = trimFor(name);
-  const skirt = sideRow(1.32), cornice = sideRow(2.86);
+  const skirt = sideRow(CARAVAN_SKIRT_Y), cornice = sideRow(CARAVAN_CORNICE_Y);
   planks(img, { y0: 0, y1: S, ph: 6, lenMin: 64, lenMax: 64, seed: 0xa92, base: (x, y) => mix(body, bodyLit, 0.35 * n(x, y)), seamCol: bodyDark, tone: 0.06, grain: 0.06 });
   band(img, skirt + 1, S, trim, 0xa93, 0.06);
   line(img, skirt, C.gilt); line(img, skirt + 1, C.giltDark);
@@ -262,8 +262,17 @@ function caravanSideArt(paint = PAINTS.green, name = 'green') {
   return img;
 }
 
-/** The caravan's side window, in its side's picture (and its room's - the two meet): rows top to bottom, columns. */
-export const CARAVAN_SIDE_WINDOW = Object.freeze({ y0: sideRow(2.62), y1: sideRow(1.78), x0: 22, x1: 42 });
+/** The caravan side's two gilt lines (m over the ground): its skirt's head and its cornice's foot. */
+export const CARAVAN_SKIRT_Y = 1.32, CARAVAN_CORNICE_Y = 2.86;
+/** The caravan's side window, in its side's picture (and its room's - the two meet): rows top to bottom, columns.
+ *  WAGON-UV (2026-10-10, from play: "the windows on the wagon arent centered properly"): its 0.84 m centred between
+ *  the skirt and the cornice - it stood at 1.78-2.62 m, six rows under the cornice and thirteen over the skirt. */
+export const CARAVAN_SIDE_WINDOW = Object.freeze({
+  y0: sideRow((CARAVAN_SKIRT_Y + CARAVAN_CORNICE_Y + 0.84) / 2), y1: sideRow((CARAVAN_SKIRT_Y + CARAVAN_CORNICE_Y - 0.84) / 2), x0: 22, x1: 42,
+});
+/** The side window's middle across its picture (u: texel x spans x/64 to (x+1)/64) - where world/wagonModels.js
+ *  caravanSideU stands each window's middle on the side. */
+export const CARAVAN_SIDE_WINDOW_U = (CARAVAN_SIDE_WINDOW.x0 + CARAVAN_SIDE_WINDOW.x1 + 1) / 2 / S;
 /** An end's row for a height (the end runs 0.94 - row 63 - to 3.52 - row 0; world/wagonModels.js endUv lays it so). */
 export const endRow = (y) => Math.max(0, Math.min(S - 1, Math.round(((3.52 - y) / (3.52 - 0.94)) * (S - 1))));
 /** The front's round window, in the front end's picture (and its room's): its centre and radius (texels). */
