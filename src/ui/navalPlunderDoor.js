@@ -13,7 +13,8 @@
 // through `onClose(reason)` before its slot drops the overlay. One stands at a time.
 //
 // AUDIT NAV1 (the helm): THE SHIPWRIGHT'S WINDOW (ui/navalYardWindow.js) opens through the same door - one shape for the
-// sea fight's two windows (`openNavalWindow`), each its own host, chunk and slot.
+// sea fight's two windows (`openNavalWindow`), each its own host, chunk and slot. SHIPYARDS (2026-10-11): and a port's
+// shipmaster's (ui/shipyardWindow.js) - a third slot, the same shape.
 import { mountEnhancedChunk } from './enhancedChunk.js';
 import { registerOverlay } from './enhancedOverlays.js';
 
@@ -33,6 +34,13 @@ const YARD = {
   id: 'naval-yard-host', label: 'naval-yard', open: null,
   load: () => import('./navalYardWindow.js'),
   mount: ({ mountNavalYardWindow }, host, deps) => mountNavalYardWindow(host, deps),
+};
+/** SHIPYARDS (2026-10-11): the shipmaster's window (ui/shipyardWindow.js) - a port's shipyard's, through the same door. */
+/** @type {NavalWindowSlot} */
+const SHIPYARD = {
+  id: 'shipyard-host', label: 'shipyard', open: null,
+  load: () => import('./shipyardWindow.js'),
+  mount: ({ mountShipyardWindow }, host, deps) => mountShipyardWindow(host, deps),
 };
 /** @param {NavalWindowSlot} slot */
 const isOpen = (slot) => !!slot.open && !slot.open.done;
@@ -113,3 +121,11 @@ export const closeNavalYard = () => shut(YARD);
 /** The shipwright's window (ui/navalYardWindow.js), as an overlay for the host's slot; `deps` as that window's, plus
  *  `onClose(reason)`. */
 export const createNavalYardOverlay = (deps) => openNavalWindow(YARD, deps);
+
+/** SHIPYARDS: is the shipmaster's window up. */
+export const shipyardOpen = () => isOpen(SHIPYARD);
+/** Shut the shipmaster's window, if it is up - and say whether it was. */
+export const closeShipyard = () => shut(SHIPYARD);
+/** The shipmaster's window (ui/shipyardWindow.js), as an overlay for the host's slot; `deps` as that window's, plus
+ *  `onClose(reason)`. */
+export const createShipyardOverlay = (deps) => openNavalWindow(SHIPYARD, deps);

@@ -15,6 +15,9 @@
 // of planks, a barrel; and on the apron a SIGNPOST, its arm over the street, the signboard hung from it. A Small Cart,
 // an Open Wagon and a Caravan stand drawn up in the gravel and the wagonwright at the gate (the host's - `points`).
 //
+// SHIPYARDS (2026-10-11): the face kit below is the port's too - world/shipyardModel.js and world/lighthouseModel.js
+// build with it, under the port's own pictures (world/portArt.js).
+//
 // Pure: no renderer, no GL, no clock. Not a DFU member. Ledger A (MERCHANT-YARDS).
 import { YARD_ARCHIVE, YARD_REC } from './merchantYardArt.js';
 import { YARD_FOOT } from './merchantYardSites.js';
@@ -62,7 +65,7 @@ const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 /** A flat-shaded face builder, by picture (world/lefayMonument.js faces' law: a triangle's normal is cross(b - a,
  *  c - a), and that is its outside). `quad` takes the face's outward normal and winds it so. */
-function faces() {
+export function faces() {
   /** @type {Map<number, {p: number[], n: number[], uv: number[]}>} */
   const byRec = new Map();
   const tri = (rec, a, b, c, ua, ub, uc) => {
@@ -81,7 +84,7 @@ function faces() {
 
 /** The picture's place for a point on a face looking along `n`: the two axes across the face, a tile every YARD_TILE_M.
  *  A side face runs its u along the face and its v down (row 0 is up). */
-function uvOf(p, n) {
+export function uvOf(p, n) {
   const T = YARD_TILE_M;
   if (Math.abs(n[1]) > 0.7) return [p[0] / T, p[2] / T];
   if (Math.abs(n[0]) > Math.abs(n[2])) return [p[2] / T, -p[1] / T];
@@ -93,7 +96,7 @@ function uvOf(p, n) {
  * worn in `rec` (or `top` for the top face), its uvs off the world's axes (uvOf). A box is its axis-aligned case.
  * `under` adds its foot (a piece seen from below).
  */
-function hexa(f, rec, c, { top = rec, under = false, uv = uvOf } = {}) {
+export function hexa(f, rec, c, { top = rec, under = false, uv = uvOf } = {}) {
   const [a0, b0, c0, d0, a1, b1, c1, d1] = c;
   const mid = c.reduce((m, p) => [m[0] + p[0] / 8, m[1] + p[1] / 8, m[2] + p[2] / 8], [0, 0, 0]);
   const face = (r, p, q, s, t) => {
@@ -111,15 +114,15 @@ function hexa(f, rec, c, { top = rec, under = false, uv = uvOf } = {}) {
   if (under) face(rec, a0, b0, c0, d0);
 }
 /** An axis-aligned box. */
-const box = (f, rec, x0, y0, z0, x1, y1, z1, o = {}) => hexa(f, rec, [
+export const box = (f, rec, x0, y0, z0, x1, y1, z1, o = {}) => hexa(f, rec, [
   [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1],
 ], o);
 /** A post: a square of side `s` about (x, z), from the sunk foot to `h`. */
-const post = (f, x, z, h, s = 0.16, rec = YARD_REC.wood) => box(f, rec, x - s / 2, -YARD_SINK, z - s / 2, x + s / 2, h, z + s / 2);
+export const post = (f, x, z, h, s = 0.16, rec = YARD_REC.wood) => box(f, rec, x - s / 2, -YARD_SINK, z - s / 2, x + s / 2, h, z + s / 2);
 
 /** A FENCE RUN from (x0, z0) to (x1, z1) along one axis: a post at each end and every `step` or less between, and a rail
  *  at each height of `rails` from post to post. */
-function fenceRun(f, x0, z0, x1, z1, { h, rails, step = 2.2, s = 0.16, rail = [0.08, 0.14], ends = true }) {
+export function fenceRun(f, x0, z0, x1, z1, { h, rails, step = 2.2, s = 0.16, rail = [0.08, 0.14], ends = true }) {
   const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.ceil(len / step));
   const at = (k) => [x0 + ((x1 - x0) * k) / n, z0 + ((z1 - z0) * k) / n];
   for (let k = ends ? 0 : 1; k <= (ends ? n : n - 1); k++) { const [x, z] = at(k); post(f, x, z, h, s); }
@@ -132,7 +135,7 @@ function fenceRun(f, x0, z0, x1, z1, { h, rails, step = 2.2, s = 0.16, rail = [0
 }
 
 /** The ground's own floor over x0..x1, z0..z1 at YARD_FLOOR_Y, in `rec`. */
-function floor(f, rec, x0, z0, x1, z1) {
+export function floor(f, rec, x0, z0, x1, z1) {
   const y = YARD_FLOOR_Y, up = [0, 1, 0];
   const P = (x, z) => [x, y, z], U = (x, z) => [x / YARD_TILE_M, z / YARD_TILE_M];
   f.quad(rec, P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1), U(x0, z0), U(x1, z0), U(x1, z1), U(x0, z1), up);
@@ -141,7 +144,7 @@ function floor(f, rec, x0, z0, x1, z1) {
 /** A LEAN-TO across the yard's back: its back wall of boards, its two side walls up to the roof's slope, its front
  *  posts (at `posts` x), its roof of shingles from over the back to over the front, and its stall walls (at `stalls`
  *  x, `stallH` high). */
-function leanTo(f, { x0, x1, z0, z1, backH, frontH, posts, stalls = [], stallH = 1.4, stallTo = z1 - 0.6 }) {
+export function leanTo(f, { x0, x1, z0, z1, backH, frontH, posts, stalls = [], stallH = 1.4, stallTo = z1 - 0.6 }) {
   const W = 0.15, slope = (z) => backH + ((frontH - backH) * (z - z0)) / (z1 - z0);
   box(f, YARD_REC.plank, x0, -YARD_SINK, z0, x1, backH, z0 + W);   // the back wall
   for (const [a, b] of [[x0, x0 + W], [x1 - W, x1]]) {   // the side walls, their tops along the roof
@@ -162,7 +165,7 @@ function leanTo(f, { x0, x1, z0, z1, backH, frontH, posts, stalls = [], stallH =
 
 /** A SIGNBOARD hung square to the yard's front at (x, yMid, z): its two faces the yard's picture (`rec`) - the back's
  *  turned so it reads from behind as well - its edges plain wood, and two iron rods from its top to `hangTo`. */
-function signboard(f, rec, x, yMid, z, hangTo) {
+export function signboard(f, rec, x, yMid, z, hangTo) {
   const { w, h, t } = SIGN_BOARD, x0 = x - w / 2, x1 = x + w / 2, y0 = yMid - h / 2, y1 = yMid + h / 2, z0 = z - t / 2, z1 = z + t / 2;
   // the front (+z): its top-left, seen from the street, at the picture's top-left. The world is left-handed - an eye
   // looking along +z has +x on its RIGHT (world/mat4.js THE HANDEDNESS LAW) - so from the street, looking along -z,
@@ -181,7 +184,7 @@ function signboard(f, rec, x, yMid, z, hangTo) {
 /** A WHEEL of `spokes` spokes, radius `r`, its middle at `c`, standing in the x-y plane (its axle along z) and leant
  *  `lean` radians back from upright, its top toward -z (a wall behind it): an iron tyre, a wooden felloe, the spokes and
  *  a hub - each a prism, all `half` thick each side of its plane. */
-function wheel(f, c, r, lean, { spokes = 10, half = 0.05 } = {}) {
+export function wheel(f, c, r, lean, { spokes = 10, half = 0.05 } = {}) {
   const cl = Math.cos(lean), sl = Math.sin(lean);
   // the wheel's plane: across it u (along x), up it v (along y); w along its axle (z) - turned about x by the lean
   const P = (u, v, w) => [c[0] + u, c[1] + v * cl + w * sl, c[2] - v * sl + w * cl];
@@ -205,7 +208,7 @@ function wheel(f, c, r, lean, { spokes = 10, half = 0.05 } = {}) {
 }
 
 /** A prism about y at (x, z): `sides` faces from radius r0 at y0 to r1 at y1, its top capped in `top`. */
-function drum(f, rec, x, z, sides, r0, r1, y0, y1, top = rec) {
+export function drum(f, rec, x, z, sides, r0, r1, y0, y1, top = rec) {
   for (let k = 0; k < sides; k++) {
     const a = (k / sides) * Math.PI * 2, b = ((k + 1) / sides) * Math.PI * 2;
     const p = (r, ang, y) => [x + Math.cos(ang) * r, y, z + Math.sin(ang) * r];
@@ -216,8 +219,9 @@ function drum(f, rec, x, z, sides, r0, r1, y0, y1, top = rec) {
   }
 }
 
-/** The faces gathered by picture into renderer.createMesh's model shape (world/lefayMonument.js assemble's). */
-function assemble(f) {
+/** The faces gathered by picture into renderer.createMesh's model shape (world/lefayMonument.js assemble's) - SHIPYARDS:
+ *  under `archive` (the port's models wear world/portArt.js PORT_ARCHIVE, the yards' materials at the yards' records). */
+export function assemble(f, archive = YARD_ARCHIVE) {
   const recs = [...f.byRec.keys()].sort((a, b) => a - b);
   const count = recs.reduce((n, r) => n + f.byRec.get(r).p.length / 3, 0);
   const positions = new Float32Array(count * 3), normals = new Float32Array(count * 3), uvs = new Float32Array(count * 2);
@@ -228,7 +232,7 @@ function assemble(f) {
     const g = f.byRec.get(rec), n = g.p.length / 3;
     positions.set(g.p, v * 3); normals.set(g.n, v * 3); uvs.set(g.uv, v * 2);
     for (let i = 0; i < n; i++) indices[v + i] = v + i;
-    subMeshes.push({ textureArchive: YARD_ARCHIVE, textureRecord: rec, startIndex: v, primitiveCount: n / 3 });
+    subMeshes.push({ textureArchive: archive, textureRecord: rec, startIndex: v, primitiveCount: n / 3 });
     v += n;
   }
   return { positions, normals, uvs, indices, subMeshes };

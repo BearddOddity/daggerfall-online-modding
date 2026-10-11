@@ -2422,6 +2422,13 @@ export function createComeSailAwayRuntime(deps) {
     if (!state.PackedCargoes.has(key)) state.PackedCargoes.set(key, []);
     return state.PackedCargoes.get(key);
   };
+  /** SHIPYARDS (systems/shipyards.js): a sold ship's hold let go - her entry under her number, only while it holds
+   *  nothing (a shipyard buys no ship with cargo aboard). Answers whether it went. */
+  const forgetHold = (uid) => {
+    const key = cargoKey(uid), held = state.PackedCargoes.get(key);
+    if (held?.length) return false;
+    return state.PackedCargoes.delete(key);
+  };
   /** PlaceBoat(Boat, Vector3, Vector3, Terrain) (6171-6178). */
   function PlaceBoatOnTerrain(newBoat, position, direction, terrain = null) {
     SpawnBoat(newBoat);
@@ -3205,7 +3212,7 @@ export function createComeSailAwayRuntime(deps) {
     LaunchFromParts, nodeReadingAt,   // OWS2: the Overworld's crossing - a launch aimed by the journey, and the node's law it probes with
     sailWayOf, oarWayOf,   // AUDIT SHIPS A4: her way under sail as she lies, and under oars - the journey's hand weighs one against the other
     LaunchFromDeed,   // SHIP-CLAIM: a claimed prize's deed, her boat stood where she lies
-    SummonBoat, LayUpBoat, laidUpHold,   // HOLDINGS: the Fleet page's summon and send away, and a laid-up hold
+    SummonBoat, LayUpBoat, laidUpHold, forgetHold,   // HOLDINGS: the Fleet page's summon and send away, and a laid-up hold; SHIPYARDS: a sold ship's let go
     activate, OnStartLoad, OnPreFastTravel, OnPreJump, OnPostFastTravel, OnPlayerDeath, OnNewMagicRound,   // HELM-JUMP: OnPreJump
     UpdateWind, OnNewHour, OnWeatherChange,
     GetSailPower, ToggleSails, RaiseSails, LowerSails, ToggleSquareSails, HasLargeSquareSailWithGaff,

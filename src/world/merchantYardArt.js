@@ -33,8 +33,9 @@ export const YARD_ART_SIZE = 64;
 export const SIGN_ART_W = 224;
 export const SIGN_ART_H = 96;
 
-/** mulberry32 - the port's seeded rng (world/lefayArt.js's), kept here so the art is the yards' alone. */
-function rng(seed) {
+/** mulberry32 - the port's seeded rng (world/lefayArt.js's), kept here so the art is the yards' alone. SHIPYARDS: and
+ *  the port's (world/portArt.js paints with the yards' own tools). */
+export function rng(seed) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -45,7 +46,7 @@ function rng(seed) {
   };
 }
 /** Tileable value noise over an n x m lattice, sampled at (x, y) in texels of a W x H tile. */
-function noiseField(seed, n, W = YARD_ART_SIZE, H = W, m = n) {
+export function noiseField(seed, n, W = YARD_ART_SIZE, H = W, m = n) {
   const r = rng(seed);
   const lat = Float32Array.from({ length: n * m }, () => r());
   const at = (i, j) => lat[((j % m + m) % m) * n + ((i % n + n) % n)];
@@ -58,17 +59,17 @@ function noiseField(seed, n, W = YARD_ART_SIZE, H = W, m = n) {
     return a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty;
   };
 }
-const image = (w, h = w) => ({ width: w, height: h, colors: new Uint8Array(w * h * 4) });
+export const image = (w, h = w) => ({ width: w, height: h, colors: new Uint8Array(w * h * 4) });
 /** @param {{width:number, height:number, colors:Uint8Array}} img @param {number} x @param {number} y @param {ArrayLike<number>} rgb */
-const put = (img, x, y, rgb) => {
+export const put = (img, x, y, rgb) => {
   if (x < 0 || y < 0 || x >= img.width || y >= img.height) return;
   const i = (y * img.width + x) * 4;
   img.colors[i] = rgb[0]; img.colors[i + 1] = rgb[1]; img.colors[i + 2] = rgb[2]; img.colors[i + 3] = 255;
 };
 /** @param {{width:number, height:number, colors:Uint8Array}} img @param {number} x @param {number} y */
-const get = (img, x, y) => { const i = (y * img.width + x) * 4; return [img.colors[i], img.colors[i + 1], img.colors[i + 2]]; };
+export const get = (img, x, y) => { const i = (y * img.width + x) * 4; return [img.colors[i], img.colors[i + 1], img.colors[i + 2]]; };
 /** @param {ArrayLike<number>} a @param {ArrayLike<number>} b @param {number} t @returns {number[]} */
-const mix = (a, b, t) => { const k = Math.min(1, Math.max(0, t)); return [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * k)); };
+export const mix = (a, b, t) => { const k = Math.min(1, Math.max(0, t)); return [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * k)); };
 
 /** Fence timber: weathered grey-brown, its grain running along u (the rail's length), a darker check now and then. */
 export function yardWoodArt(seed = 0x7d01) {
@@ -178,8 +179,8 @@ export function yardWaterArt(seed = 0x3a7e) {
 }
 
 /** Dark iron, a little rust in it. */
-const IRON_DARK = [40, 38, 38];
-const IRON_LIGHT = [92, 88, 86];
+export const IRON_DARK = [40, 38, 38];
+export const IRON_LIGHT = [92, 88, 86];
 export function yardIronArt(seed = 0x1207) {
   const S = 32, img = image(S);
   const n = noiseField(seed, 4, S), r = rng(seed + 1);
@@ -193,15 +194,22 @@ export function yardIronArt(seed = 0x1207) {
 
 // ── THE SIGNBOARDS ───────────────────────────────────────────────────────────────────────────────────────────────
 /** THE SIGN-PAINTER'S LETTERS: rounded capitals five texels wide and seven high, one row a string, `#` painted. Only the
- *  letters a yard's word needs are drawn; signGlyph answers null for any other (the test holds both words to them). */
+ *  letters a yard's word needs are drawn - SHIPYARDS: and the port's boards' (SHIPS, CREW, world/portArt.js); signGlyph
+ *  answers null for any other (the tests hold every word to them). */
 export const SIGN_GLYPHS = Object.freeze({
   A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
   B: ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
+  C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],   // SHIPYARDS: the port's boards' letters (world/portArt.js)
+  D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
   E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
   G: ['.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.###.'],
+  H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  I: ['.###.', '..#..', '..#..', '..#..', '..#..', '..#..', '.###.'],
   L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
   N: ['#...#', '##..#', '#.#.#', '#..##', '#...#', '#...#', '#...#'],
   O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
+  P: ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
+  R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
   S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
   T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
   W: ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '##.##', '#...#'],
@@ -221,7 +229,7 @@ const PAINT = [232, 214, 166];
 const PAINT_SHADOW = [26, 16, 10];
 
 /** The board itself: dark-stained horizontal planks, a seam between each, and the cream border painted round it. */
-function board(seed) {
+export function board(seed) {
   const W = SIGN_ART_W, H = SIGN_ART_H, img = image(W, H);
   const grain = noiseField(seed, 4, W, H, 24);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -239,7 +247,7 @@ function board(seed) {
 }
 /** The yard's word, painted in SIGN_GLYPHS at SIGN_LETTER_SCALE, centred in the board's right part, its shadow a texel
  *  down and right. */
-function paintWord(img, word) {
+export function paintWord(img, word) {
   const s = SIGN_LETTER_SCALE, W = img.width, H = img.height;
   const width = (word.length * (SIGN_GLYPH_W + 1) - 1) * s;
   const left = SIGN_EMBLEM + Math.round((W - SIGN_EMBLEM - 8 - width) / 2), top = Math.round((H - SIGN_GLYPH_H * s) / 2);

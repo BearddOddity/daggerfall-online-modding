@@ -201,6 +201,34 @@ export function createShipCrew({ seed, regionIndex = 17, record = null }) {
       h.role = role;
       return { ok: true, text: `${h.name} is her ${role} now.` };
     },
+    /**
+     * SHIPYARDS (systems/crewHall.js): A RECRUIT SIGNED ON BY NAME - he joins her roster's end (the last to join, the
+     * first the guns take, as every hire), at his trade's post (a First Mate: the one she had stands down to Deckhand,
+     * assign's law), his record with him; `lift` her crew's spirits (a seasoned man steadies them). A name already
+     * aboard her is refused. The host raises her crew to stand him on her deck (crewHall.js enlistPlan), so the next
+     * sync finds her roster whole. Answers the hand, or null.
+     * @param {{ name: string, role: string, mobile: number, gender: string, fights?: number, boardings?: number }} r
+     * @param {number} [lift]
+     */
+    enlist(r, lift = 0) {
+      if (!r || typeof r.name !== 'string' || !r.name || hands.some((h) => h.name === r.name)) return null;
+      const bard = r.role === 'Bard' && r.mobile === MOBILE.Bard;
+      const role = /** @type {readonly string[]} */ (CREW_ROLES).includes(r.role) || bard ? r.role : 'Deckhand';
+      if (role === FIRST_MATE) for (const o of hands) if (o.role === FIRST_MATE) o.role = 'Deckhand';
+      /** @type {'male'|'female'} */
+      const gender = r.gender === 'female' ? 'female' : 'male';
+      const h = { name: r.name, role, mobile: Number.isInteger(r.mobile) ? r.mobile : MOBILE.Warrior, gender, fights: Math.max(0, r.fights | 0), boardings: Math.max(0, r.boardings | 0) };
+      hands.push(h);
+      hires = Math.max(hires + 1, hands.length);
+      if (Number.isFinite(lift) && lift > 0) bump(lift);
+      return h;
+    },
+    /** SHIPYARDS: a named hand paid off - out of her roster wherever he stood in it (the host lowers her crew by his share
+     *  - crewHall.js releasePlan). Answers the hand, or null. @param {string} name */
+    release(name) {
+      const i = hands.findIndex((h) => h.name === name);
+      return i < 0 ? null : hands.splice(i, 1)[0];
+    },
     /** A hand's name and role, as he is called: "Aldric Wayrest, Bosun". @param {number} i */
     calledOf: (i) => (hands[i] ? `${hands[i].name}, ${hands[i].role}` : null),
     /**

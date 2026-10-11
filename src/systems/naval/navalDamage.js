@@ -255,6 +255,9 @@ export function createShipDamage({ hullHp, sailHp, crew, player = false }) {
       if (s.state === SHIP_STATES.wrecked && s.hull > s.maxHull * refloat && s.hull > 0) s.state = SHIP_STATES.afloat;
       if (s.state === SHIP_STATES.struck && s.hull > s.maxHull * STRUCK_AT && !unmanned()) s.state = SHIP_STATES.afloat;
     },
+    /** SHIPYARDS (systems/crewHall.js releasePlan): a hand paid off - her crew down to `crew` (never up, never under
+     *  none), and nothing else: no blow, so no fire, no mending's quiet broken, no state. */
+    discharge(crew) { if (Number.isFinite(crew)) s.crew = Math.max(0, Math.min(s.crew, crew)); },
     /** What the save or the wire keeps. */
     snapshot: () => ({ hull: Math.round(s.hull), sail: Math.round(s.sail), crew: s.crew, fire: +d.fire.toFixed(1), state: s.state }),
 

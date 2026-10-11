@@ -21,6 +21,7 @@
 import { planQuay, lanternLights, QUAY_DECK_UP } from '../systems/naval/quays.js';
 import { buildQuayModel, buildGangwayModel } from '../world/quayModel.js';
 import { trs } from '../world/mat4.js';
+import { portPlaceName } from '../systems/portPlaces.js';   // SHIPYARDS-FOUND: the docks' name on the Overworld
 
 /** A harbour's quays stand while its mouth is within this of the player (m), and come down past QUAY_LEAVE_M. */
 export const QUAY_STAND_M = 1600;
@@ -33,6 +34,8 @@ export const QUAY_LIGHT_REACH = 120;
 export const QUAY_LIGHT_RANGE = 14;
 /** The collider's bucket prefix - one bucket a berth. */
 export const QUAY_BUCKET = 'quay:';
+/** SHIPYARDS-FOUND: how far over the first laid quay's deck the docks' Overworld mark stands (m). */
+export const DOCKS_MARK_LIFT = 4;
 
 const DEG = 180 / Math.PI;
 
@@ -177,7 +180,21 @@ export function createQuayPool(deps) {
 
   /** AUDIT HOLDINGS Q9: whether berth `index` of harbour `key` has its quay laid - mesh and collider - for the gangway. */
   const laid = (key, index) => !!quays.get(key)?.berths[index]?.stood;
-  return { frame, draw, lights, destroyAll, offsetAll, standing, laid, deckUp: QUAY_DECK_UP };
+  /** SHIPYARDS-FOUND (2026-10-11, Mac: "Everything should show on the map/overworld"): each harbour whose quays stand, as
+   *  an Overworld mark over its first laid quay - "<Town> Docks" (systems/portPlaces.js portPlaceName), its kind the look's
+   *  (`yard docks` - ui/travelViewHud.js portGlyph: a bollard) and the Towns switch's. */
+  function overworldMarks() {
+    const out = [];
+    if (!quays.size) return out;
+    const seaY = deps.seaY();
+    for (const q of quays.values()) {
+      const b = q.berths.find((x) => x.gpu);
+      if (!b) continue;
+      out.push({ key: `docks:${q.key}`, at: [b.berth.pos[0], seaY + QUAY_DECK_UP + DOCKS_MARK_LIFT, b.berth.pos[1]], label: portPlaceName('docks', { townName: q.name }), kind: 'yard docks' });
+    }
+    return out;
+  }
+  return { frame, draw, lights, destroyAll, offsetAll, standing, laid, overworldMarks, deckUp: QUAY_DECK_UP };
 }
 
 /**
