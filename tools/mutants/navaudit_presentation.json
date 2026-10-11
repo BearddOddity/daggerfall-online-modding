@@ -1136,7 +1136,7 @@
   {
     "name": "NAVP-hail-range-unread",
     "file": "src/scenes/navalHost.js",
-    "old": "if (e.hailed || d > nightSight(SAIL_HO_RANGE, { night, lit: showsLight(e) })) continue;",
+    "old": "if (e.hailed || d > nightSight(SAIL_HO_RANGE * sight, { night, lit: showsLight(e) })) continue;",
     "new": "if (e.hailed) continue;",
     "tests": [
       "test/navaudit_presentation.test.js"

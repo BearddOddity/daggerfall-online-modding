@@ -66,8 +66,8 @@
   {
     "name": "SC-sea-clock-unkept",
     "file": "src/systems/naval/shipCrew.js",
-    "old": "        seaT += dt; const k = Math.floor(seaT / SEA_DECAY_S); if (k > 0) { seaT -= k * SEA_DECAY_S; bump(-k); }",
-    "new": "        seaT += dt; const k = Math.floor(seaT / SEA_DECAY_S); if (k > 0) { seaT = 0; bump(-k); }",
+    "old": "        seaT += dt / Math.max(1, wear); const k = Math.floor(seaT / SEA_DECAY_S); if (k > 0) { seaT -= k * SEA_DECAY_S; bump(-k); }",
+    "new": "        seaT += dt / Math.max(1, wear); const k = Math.floor(seaT / SEA_DECAY_S); if (k > 0) { seaT = 0; bump(-k); }",
     "tests": [
       "test/shipcrew.test.js"
     ],
@@ -287,8 +287,8 @@
   {
     "name": "SCH-mend-unscaled",
     "file": "src/scenes/navalHost.js",
-    "old": "scale: b.crewed ? mendScaleOf(s.crew.morale) : 1 });\n        if (m.hull > 0",
-    "new": "scale: 1 });\n        if (m.hull > 0",
+    "old": "scale: b.crewed ? mendScaleOf(s.crew.morale) * (s.worth?.mend ?? 1) : 1 });",
+    "new": "scale: b.crewed ? 1 * (s.worth?.mend ?? 1) : 1 });",
     "tests": [
       "test/shipcrew.test.js",
       "test/navaudit_helm.test.js"

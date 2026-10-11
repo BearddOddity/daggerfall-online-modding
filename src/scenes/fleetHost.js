@@ -155,7 +155,7 @@ export function createFleetHost(deps) {
         docked: at.where === 'here' || at.where === 'sailing' ? n0()?.dockedAt?.(at.boat) ?? null : at.where === 'away' ? rec.port?.name ?? null : null,
         status: why.st, upgrades: { ...rec.upgrades }, loan: why.loan,
         // HOLDINGS: her named hands and their posts (a laid-up ship's signed on here), a Bard's calling his to keep
-        hands: CREWED_HULLS.includes(rec.hull) && at.boat ? (n0()?.crewHands?.(at.boat) ?? []).map((h) => ({ name: h.name, role: h.role, bard: h.mobile === MOBILE.Bard, fights: h.fights | 0 })) : [],
+        hands: CREWED_HULLS.includes(rec.hull) && at.boat ? (n0()?.crewHands?.(at.boat) ?? []).map((h) => ({ name: h.name, role: h.role, bard: h.mobile === MOBILE.Bard, fights: h.fights | 0, boardings: h.boardings | 0 })) : [],   // CAPT-CREW: his boardings, his rank's other half
         can: { summon: why.summon, away: why.away, repair: why.repair, yard: why.yard, refit: why.refit },
       });
     }

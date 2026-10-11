@@ -21,6 +21,16 @@
 // THE CREW_ORDERS. CREW_ORDERS - her guns manned (a quicker reload, GUNS_RELOAD; the crew at the guns), all hands to the rail (one
 // more hand to a boarding; the crew at the rail), repairs (the carpenter's stores spent - navalYard.js seaRepair), and
 // stand down (their own work again). An order stands until another is given, or the work it was is done.
+//
+// CAPT-CREW (2026-10-11, the owner: "make the decisions and completely make this as detailed as possible, providing depth
+// without overcomplicating systems" - bible/03-World/Captains-Sea.md) - A HAND'S SERVICE, AND WHAT HIS POST IS WORTH. Every
+// hand already counted the fights won and the boardings stood with her; now they count. His SERVICE (`serviceOf`) is his
+// fights and twice his boardings, and it ranks him (VETERANCY): Green, Seasoned, Veteran, Old Salt. A POST is worth
+// something now, and more in a seasoned hand (POST_WORTH, `crewWorth`): her Gunner quickens the guns' reload, her
+// Carpenter the mending, her Lookout's eye reaches further (the glass, the hail - navalHost.js), her Cook keeps the sea's
+// wear off their spirits, her Bosun gets a little more way out of her canvas, and a First Mate who has stood boardings
+// brings a hand or two more over the rail. Only a post's best holder aboard counts - a hand ashore with the captain
+// (CREW-COMPANIONS) works no post at sea - so a veteran lost is a loss, and the plain law holds: no post, no worth.
 import { srand, getSeed, setSeed } from '../../formats/dfRandom.js';
 import { fullName, getNameBankOfRegion, GENDERS } from '../../characters/nameHelper.js';
 import { REGION_NAMES } from '../../formats/mapsFile.js';
@@ -111,6 +121,94 @@ export const MORALE_LINES = Object.freeze({
   rail: Object.freeze(['All hands to the rail!', 'Blades out, lads!', 'Nobody sets foot on our deck!']),
 });
 
+// ── CAPT-CREW: service, veterancy and the posts' worth ────────────────────────────────────────────────────────────────
+/** A hand's service: his fights won and twice his boardings stood (a boarding is the harder school). */
+export const serviceOf = (h) => Math.max(0, (h?.fights ?? 0) | 0) + 2 * Math.max(0, (h?.boardings ?? 0) | 0);
+/** The ranks of service, by the least service each begins at - lowest first. */
+export const VETERANCY = Object.freeze([
+  Object.freeze({ tier: 0, at: 0, key: 'green', label: 'Green' }),
+  Object.freeze({ tier: 1, at: 4, key: 'seasoned', label: 'Seasoned' }),
+  Object.freeze({ tier: 2, at: 12, key: 'veteran', label: 'Veteran' }),
+  Object.freeze({ tier: 3, at: 30, key: 'oldsalt', label: 'Old Salt' }),
+]);
+/** A hand's rank of service (VETERANCY's row). */
+export function veteranOf(h) {
+  const s = serviceOf(h);
+  let v = VETERANCY[0];
+  for (const r of VETERANCY) if (s >= r.at) v = r;
+  return v;
+}
+/** The service a hand hired as Seasoned starts with (the Admiralty's hires - navalHost.js, a Commodore's harbour). */
+export const SEASONED_HIRE = VETERANCY[1].at;
+/**
+ * What each post is worth, by its best holder's rank of service: `base` a Green hand's, `per` each rank more. The kinds:
+ *   reload - her guns' reload times (1 - worth)            Gunner: 4% quicker Green, 13% an Old Salt
+ *   mend   - her hands' mending and repairs times (1 + worth)  Carpenter: 15% to 45%
+ *   sight  - her lookout's reach times (1 + worth)          Lookout: 10% to 40% (the glass, the hail, a colour called)
+ *   wear   - the sea's wear on spirits over (1 + worth)     Cook: spirits last 25% to 100% longer at sea
+ *   way    - her way under sail times (1 + worth)           Bosun: 1% to 4%
+ *   hands  - a boarding's hands more, by rank (`hands`)     First Mate: one more a Veteran, two an Old Salt
+ */
+export const POST_WORTH = Object.freeze({
+  Gunner: Object.freeze({ kind: 'reload', base: 0.04, per: 0.03 }),
+  Carpenter: Object.freeze({ kind: 'mend', base: 0.15, per: 0.1 }),
+  Lookout: Object.freeze({ kind: 'sight', base: 0.1, per: 0.1 }),
+  Cook: Object.freeze({ kind: 'wear', base: 0.25, per: 0.25 }),
+  Bosun: Object.freeze({ kind: 'way', base: 0.01, per: 0.01 }),
+  'First Mate': Object.freeze({ kind: 'hands', hands: Object.freeze([0, 0, 1, 2]) }),
+});
+/** A post's worth at a rank of service (0..3): a share, or a First Mate's hands. */
+export const postWorth = (role, tier) => {
+  const p = /** @type {Record<string, any>} */ (POST_WORTH)[role];
+  if (!p) return 0;
+  const t = Math.max(0, Math.min(VETERANCY.length - 1, tier | 0));
+  return p.kind === 'hands' ? p.hands[t] : Math.round((p.base + p.per * t) * 10000) / 10000;
+};
+/**
+ * Her posts as they stand aboard: each post of POST_WORTH's held by a hand aboard (none of `away`'s names) - its best
+ * holder, by his rank of service (the first in her roster where two stand level) - `{ [role]: { name, tier, label } }`.
+ * @param {{ name: string, role: string, fights?: number, boardings?: number }[]} hands @param {Set<string>|null} [away]
+ */
+export function postsOf(hands, away = null) {
+  /** @type {Record<string, { name: string, tier: number, label: string }>} */
+  const out = {};
+  for (const h of hands ?? []) {
+    if (!h || !POST_WORTH[h.role] || away?.has(h.name)) continue;
+    const v = veteranOf(h);
+    if (!out[h.role] || v.tier > out[h.role].tier) out[h.role] = { name: h.name, tier: v.tier, label: v.label };
+  }
+  return out;
+}
+/**
+ * WHAT HER POSTS ARE WORTH, as the sea reads them: `reload` (the guns' reload times this), `mend` (the mending's),
+ * `sight` (her lookout's reach), `wear` (the sea's wear on spirits is divided by this), `way` (her way under sail),
+ * `hands` (a boarding's hands more) - and `posts`, postsOf's. A crew with no posts aboard: every one 1, and no hands.
+ * @param {{ name: string, role: string, fights?: number, boardings?: number }[]} hands @param {Set<string>|null} [away]
+ */
+export function crewWorth(hands, away = null) {
+  const posts = postsOf(hands, away);
+  const w = (role) => (posts[role] ? postWorth(role, posts[role].tier) : 0);
+  return {
+    reload: 1 - w('Gunner'), mend: 1 + w('Carpenter'), sight: 1 + w('Lookout'), wear: 1 + w('Cook'), way: 1 + w('Bosun'),
+    hands: w('First Mate'), posts,
+  };
+}
+/** A crew with no posts' worth - what a boat with no crew, or none aboard, reads. */
+export const NO_WORTH = Object.freeze({ reload: 1, mend: 1, sight: 1, wear: 1, way: 1, hands: 0, posts: Object.freeze({}) });
+/** What a post at a rank of service does, in a captain's words (the Fleet page's crew panel) - '' for a post worth
+ *  nothing at that rank (a Green or Seasoned First Mate) or no post of POST_WORTH's. */
+export function postWords(role, tier) {
+  const w = postWorth(role, tier), pc = (x) => `${Math.round(x * 100)}%`;
+  if (!w) return '';
+  if (role === 'Gunner') return `the guns reload ${pc(w)} quicker`;
+  if (role === 'Carpenter') return `her hands mend ${pc(w)} faster`;
+  if (role === 'Lookout') return `her lookout sees ${pc(w)} further`;
+  if (role === 'Cook') return `spirits last ${pc(w)} longer at sea`;
+  if (role === 'Bosun') return `${pc(w)} more way under sail`;
+  if (role === 'First Mate') return `${w} more ${w === 1 ? 'hand' : 'hands'} over the rail`;
+  return '';
+}
+
 /** A hand's role by where he stands in her roster (`i`) and his class. @param {number} i @param {number} mobile @param {number} dealt */
 const roleOf = (i, mobile, dealt) => (i === 0 ? FIRST_MATE : mobile === MOBILE.Bard ? 'Bard' : ROLES[dealt % ROLES.length]);
 
@@ -167,17 +265,19 @@ export function createShipCrew({ seed, regionIndex = 17, record = null }) {
     /**
      * Her roster as it stands on her deck now (crewLife.js crewRoster: each a class and a sex): the named hands made to
      * match it - more joining with new names, fewer falling (the last to join first). Answers who fell and who joined.
-     * @param {{ mobile: number, gender: string }[]} roster
+     * CAPT-CREW: `service` the fights a hand joining now has behind him (SEASONED_HIRE - the Admiralty's hires), none else.
+     * @param {{ mobile: number, gender: string }[]} roster @param {{ service?: number }} [o]
      */
-    sync(roster) {
+    sync(roster, { service = 0 } = {}) {
       const fell = [], joined = [];
+      const start = Math.max(0, Math.min(VETERANCY[VETERANCY.length - 1].at, service | 0));
       while (hands.length > roster.length) fell.push(hands.pop());
       for (let i = hands.length; i < roster.length; i++) {
         const r = roster[i];
         /** @type {'male'|'female'} */
         const gender = r.gender === 'female' ? 'female' : 'male';
         const dealt = hands.filter((h) => h.role !== 'First Mate' && h.role !== 'Bard').length;
-        const h = { name: handName(seed, hires++, gender, regionIndex), role: roleOf(i, r.mobile, dealt), mobile: r.mobile, gender, fights: 0, boardings: 0 };
+        const h = { name: handName(seed, hires++, gender, regionIndex), role: roleOf(i, r.mobile, dealt), mobile: r.mobile, gender, fights: start, boardings: 0 };
         hands.push(h);
         joined.push(h);
       }
@@ -228,10 +328,11 @@ export function createShipCrew({ seed, regionIndex = 17, record = null }) {
     fightOver() { losses = 0; },
     /**
      * The spirits' clock: `atSea` away from port wears them down a point every SEA_DECAY_S; `inPort` lifts them a point
-     * every PORT_RISE_S as far as PORT_CAP.
-     * @param {number} dt @param {{ atSea?: boolean, inPort?: boolean }} where
+     * every PORT_RISE_S as far as PORT_CAP. CAPT-CREW: `wear` her Cook's worth (crewWorth) - the sea's clock runs that
+     * many times slower on them.
+     * @param {number} dt @param {{ atSea?: boolean, inPort?: boolean, wear?: number }} where
      */
-    tick(dt, { atSea = false, inPort = false } = {}) {
+    tick(dt, { atSea = false, inPort = false, wear = 1 } = {}) {
       if (!(dt > 0)) return;
       lossT += dt;
       if (inPort) {
@@ -240,7 +341,7 @@ export function createShipCrew({ seed, regionIndex = 17, record = null }) {
         if (morale < PORT_CAP) { portT += dt; const k = Math.floor(portT / PORT_RISE_S); if (k > 0) { portT -= k * PORT_RISE_S; morale = Math.min(PORT_CAP, morale + k); } } else portT = 0;
       } else if (atSea) {
         portT = 0;
-        seaT += dt; const k = Math.floor(seaT / SEA_DECAY_S); if (k > 0) { seaT -= k * SEA_DECAY_S; bump(-k); }
+        seaT += dt / Math.max(1, wear); const k = Math.floor(seaT / SEA_DECAY_S); if (k > 0) { seaT -= k * SEA_DECAY_S; bump(-k); }
       }
     },
     /** The order given - CREW_ORDERS' own words; answers whether it was one. @param {string} o */
@@ -284,7 +385,8 @@ export function crewCard(crew, { ship = 'Your ship', order = CREW_ORDERS.stand, 
   if (!crew.hands.length) lines.push('No hands aboard.');
   for (const h of crew.hands) {
     const deeds = [h.fights ? `${h.fights} ${h.fights === 1 ? 'fight' : 'fights'}` : '', h.boardings ? `${h.boardings} ${h.boardings === 1 ? 'boarding' : 'boardings'}` : ''].filter(Boolean).join(', ');
-    lines.push(`${h.name}, ${h.role}${deeds ? ` - ${deeds}` : ''}${ashore?.has(h.name) ? ' - ashore with you' : ''}`);   // AUDIT CC-D8: a hand ashore said so
+    const v = veteranOf(h);   // CAPT-CREW: a hand's rank of service, from Seasoned up
+    lines.push(`${h.name}, ${h.role}${deeds ? ` - ${deeds}` : ''}${v.tier > 0 ? ` - ${v.label}` : ''}${ashore?.has(h.name) ? ' - ashore with you' : ''}`);   // AUDIT CC-D8: a hand ashore said so
   }
   return lines;
 }

@@ -9099,7 +9099,9 @@ export async function bootWorld(canvas, renderer, params, status) {
       // HOLDINGS (bible/03-World/Holdings.md): a ship's title is the Fleet's book's, where the mod's laws find it as they
       // found the pack's deed; a crewed ship's parts placed spend her parts, her title kept there (made if it is not)
       titles: () => fleetBook(), retitle: (boat, parts) => { knowShip(boat.uid, boat.hull, boat.variant, parts?.value); setShipPort(boat.uid, null); return !!retitle(boat.uid); } },   // AUDIT HOLDINGS Q8: placed anew, no port of before - made fast, the docking says hers
-    refit: (boat) => fleetHost?.refit(boat) ?? null,   // HOLDINGS: her Hold and Rigging refits, where the helm reads its rates
+    // HOLDINGS: her Hold and Rigging refits, where the helm reads its rates - CAPT-CREW: her Bosun's worth on her canvas with
+    // the Rigging's (navalHost.js postsWay), so her way under sail takes it as it takes the refit
+    refit: (boat) => { const r = fleetHost?.refit(boat) ?? null, k = naval?.postsWay?.(boat) ?? 1; return k === 1 ? r : { ...(r ?? {}), speed: (Number(r?.speed) || 1) * k }; },
     closeInventory: () => { _csaInventoryClosed = true; },   // the class's CloseWindow, carried out on the use's result (below)
     openCargo: (cargo) => csaOpenCargo(cargo),
     openListPicker: (rows, onPick) => csaOpenListPicker(rows, onPick),

@@ -77,7 +77,7 @@ import { mintStores } from '../systems/naval/navalStores.js';   // SALVAGE: a wr
 import { mintDeed } from '../systems/comeSailAwayItems.js';   // SHIP-CLAIM: a claimed prize's deed, the shelf's own mint
 import { yardOffer, yardAll, fieldMend, FIELD_QUIET_S, FIELD_REFLOAT, YARD_PRICE, provisionOffer, seaRepair, wantsRepair, paidDamage, STORE_POINTS, STORES_STOCK, storesToWhole, SEA_REPAIR_UNDER_FIRE, FIELD_MEND_CAP } from '../systems/naval/navalYard.js';
 import { createCompanions, companionRows } from '../systems/naval/crewCompanions.js';   // CREW-COMPANIONS
-import { createShipCrew, reloadScaleOf, mendScaleOf, handsBonusOf, crewCard, CREW_ORDERS, ORDER_TEXT, spiritsOf, LOOKOUT_ROLE, FIRST_MATE } from '../systems/naval/shipCrew.js';   // SHIP-CREW
+import { createShipCrew, reloadScaleOf, mendScaleOf, handsBonusOf, crewCard, CREW_ORDERS, ORDER_TEXT, spiritsOf, LOOKOUT_ROLE, FIRST_MATE, crewWorth, NO_WORTH } from '../systems/naval/shipCrew.js';   // SHIP-CREW; CAPT-CREW: what her posts are worth
 import { crewRoster, playerCrewCount } from '../systems/naval/crewLife.js';   // AUDIT NAV1: the shipwright, the mending at sea
 import { createBoarding, berthPose, musterOf, crewTeamOf, handsOf, repelPartyOf, raidQuestOf, raidQuestWon, raidQuestRetreated, boardingWon, BOARD_RANGE, BOARD_SPEED, ABANDON_RANGE, HAND, SURRENDER_SHARE, CREW_PER_HAND } from '../systems/naval/navalBoarding.js';
 import { navalWireRecord, validNavalRecord, navalHitData, validNavalHit, NAVAL_SHARE_RADIUS, NAVAL_VOLLEY_KEEP_MS, NAVAL_GEN_MAX, NAVAL_WIRE_VOLLEYS, NAVAL_WIRE_SPENT, TRAFFIC_DEFAULT } from '../systems/naval/navalWire.js';
@@ -644,8 +644,9 @@ export function createNavalHost(deps) {
       damage: createShipDamage({ hullHp: b.hullHp, sailHp: b.sailHp, crew: b.crew, player: true }),
       guns: null,
     };
-    // SHIP-CREW: her guns' reload by her crew's spirits and her standing order
-    st.guns = createGunDeck(boat.hull, { crewed: !!boat.crewed, crewShare: () => st.damage.crewShare(), barrels: BARREL.stock, reloadScale: () => (boat.crewed && st.crew ? reloadScaleOf(st.crew.morale, st.crew.order) : 1) });
+    // SHIP-CREW: her guns' reload by her crew's spirits and her standing order - CAPT-CREW: and her Gunner's worth
+    st.worth = NO_WORTH;
+    st.guns = createGunDeck(boat.hull, { crewed: !!boat.crewed, crewShare: () => st.damage.crewShare(), barrels: BARREL.stock, reloadScale: () => (boat.crewed && st.crew ? reloadScaleOf(st.crew.morale, st.crew.order) * st.worth.reload : 1) });
     const saved = boat.uid ? pendingBoats.get(boat.uid) : null;
     const rec = saved ? savedHurts(saved, boat.hull, st.damage) : null;   // TOUGHER-SHIPS: her hurts and credit on her whole now
     if (saved) { st.damage.restore(rec); if (Number.isFinite(saved.barrels)) st.guns.barrels = saved.barrels; pendingBoats.delete(boat.uid); }
@@ -2184,9 +2185,10 @@ export function createNavalHost(deps) {
       }
       s.mustered = true;
     }
+    s.worth = b.crewed ? crewWorth(c.hands, b.uid ? companions.awayOf(b.uid) : null) : NO_WORTH;   // CAPT-CREW: her posts aboard, by their holders' service
     if (b === boatInPlay()) {
       const v = boatPose(b).velocity;
-      c.tick(d, { inPort: !!where().nearPort && Math.hypot(v[0], v[2]) <= YARD_SPEED && !hostile, atSea: !where().nearPort });
+      c.tick(d, { inPort: !!where().nearPort && Math.hypot(v[0], v[2]) <= YARD_SPEED && !hostile, atSea: !where().nearPort, wear: s.worth.wear });
     }
   }
   /** SEA-REPAIR: her hands at the repairs she was ordered to make - her carpenter's stores spent as the work is done
@@ -2206,7 +2208,7 @@ export function createNavalHost(deps) {
     if (auto && !wantsRepair(s.damage)) return;
     const stores = deps.stores?.count?.(b) ?? 0;
     if (auto && s.credit <= 1e-9 && stores <= 0) return;   // nothing to work with: the free mending stands, unsaid
-    const scale = (b.crewed ? mendScaleOf(s.crew.morale) : 1) * (underFire ? SEA_REPAIR_UNDER_FIRE : 1);
+    const scale = (b.crewed ? mendScaleOf(s.crew.morale) * (s.worth?.mend ?? 1) : 1) * (underFire ? SEA_REPAIR_UNDER_FIRE : 1);   // CAPT-CREW: her Carpenter's worth
     const crewShare = s.damage.crewShare();
     const owed = auto ? paidDamage(s.damage, { free: !b.crewed || crewShare > 0 }) : s.damage;
     const r = seaRepair(owed, d, { crewed: !!b.crewed, crewShare, scale, budget: s.credit + stores * STORE_POINTS });
@@ -2530,6 +2532,14 @@ export function createNavalHost(deps) {
     const d = myBoatState(boat).damage;
     if (underSail) return d.state === SHIP_STATES.wrecked ? 0 : d.wayShare();
     return d.state === SHIP_STATES.wrecked ? WRECKED_OARS : 1;
+  }
+  /** CAPT-CREW: her Bosun's worth on her canvas (shipCrew.js crewWorth `way`) - a boat of mine with a crew's, else 1. Read
+   *  where Come Sail Away reads her Rigging refit (scenes/world.js, the runtime's `refit` seam: its `speed` times this), so
+   *  her way under sail and its coming on take it as they take the refit, and `wayScale` stays her hurts alone. */
+  function postsWay(boat) {
+    if (!enabled || !boat?.crewed) return 1;
+    const st = boat.uid ? boatState.get(boat.uid) : boatStateByObj.get(boat);
+    return st?.worth?.way ?? 1;
   }
   /** Why no sail will set on my boat - a wreck, a rig shot away - or null: Come Sail Away's `sailRefused` seam, said
    *  once where the raise is asked. */
@@ -2989,11 +2999,13 @@ export function createNavalHost(deps) {
     return { items, prizes, casks, lost };
   }
   /** SHIP-CREW: the hands a boat of mine sends to a boarding - handsOf's, one more in high spirits or all hands to the
-   *  rail, one fewer in low (never none while any stand, never past one more than her crew makes). */
+   *  rail, one fewer in low (never none while any stand, never past one more than her crew makes). CAPT-CREW: and her
+   *  First Mate's hands besides, past that cap as well - a Veteran's one, an Old Salt's two. */
   function myHands(boat, st) {
     const base = handsOf(st?.damage.crew ?? 0, !!boat?.crewed);
     if (!base || !boat?.crewed || !st?.crew) return base;
-    return Math.max(1, Math.min(base + 1, base + handsBonusOf(st.crew.morale, st.crew.order)));
+    const mate = st.worth?.hands ?? 0;
+    return Math.max(1, Math.min(base + 1 + mate, base + handsBonusOf(st.crew.morale, st.crew.order) + mate));
   }
   /** SHIP-CREW: what happened, told to a boat of mine's crew (none for no boat, or one without a crew). */
   function crewEvent(boat, kind) {
@@ -3722,7 +3734,7 @@ export function createNavalHost(deps) {
       s.repairing = false;
       const quiet = clock - s.damage.lastHitAt >= FIELD_QUIET_S && !hostile;
       if (quiet) {
-        const m = fieldMend(s.damage, d, { crewed: !!b.crewed, crewShare: s.damage.crewShare(), scale: b.crewed ? mendScaleOf(s.crew.morale) : 1 });
+        const m = fieldMend(s.damage, d, { crewed: !!b.crewed, crewShare: s.damage.crewShare(), scale: b.crewed ? mendScaleOf(s.crew.morale) * (s.worth?.mend ?? 1) : 1 });   // CAPT-CREW: her Carpenter's worth
         if (m.hull > 0 || m.sail > 0) {
           s.damage.repair({ hull: m.hull, sail: m.sail, crew: 0 }, { refloat: FIELD_REFLOAT });
           if (b === boat) mending = true;
@@ -4236,12 +4248,14 @@ export function createNavalHost(deps) {
     const from = boat ? boatPose(boat).position : deps.feet();
     const me = meContact(), law = { notoriety: (c) => notoriety.get(c), now: clock };
     const night = !!where().night;   // AUDIT WK-N5
+    const deckSt = boatInPlay() ? myBoatState(boatInPlay()) : null;
+    const sight = deckSt?.worth?.sight ?? 1;   // CAPT-CREW: her Lookout's eye
     let best = null, bestD = Infinity;
     for (const e of sea.values()) {
       const s = e.ship;
       if (s.damage.state !== SHIP_STATES.afloat || s.boarded || !hostile(s, me, law)) { e.hailed = false; continue; }
       const d = dist2d(s.pos, from);
-      if (e.hailed || d > nightSight(SAIL_HO_RANGE, { night, lit: showsLight(e) })) continue;   // AUDIT WK-N6: her flashes too
+      if (e.hailed || d > nightSight(SAIL_HO_RANGE * sight, { night, lit: showsLight(e) })) continue;   // AUDIT WK-N6: her flashes too
       if (d < bestD) { bestD = d; best = e; }
     }
     if (!best || clock - lastHail < SAIL_HO_GAP_S) return;
@@ -4545,7 +4559,7 @@ export function createNavalHost(deps) {
   }
 
   return {
-    frame, attackInput, cancelAim, holdFire, activate, hudModel, drawFrame, lights, offsetAll, clear, stowPlunder, aimEye, wayScale, sailRefused, brake,
+    frame, attackInput, cancelAim, holdFire, activate, hudModel, drawFrame, lights, offsetAll, clear, stowPlunder, aimEye, wayScale, sailRefused, brake, postsWay,
     /** GALLEON: a galleon's gun deck as this frame stood it (her sides laid, her guns' places, her shutters) - a probe's reading. */
     gunDeckOf: (boat) => galleonGuns.read(boat, clock),
     fleetStatus, repairAway, refitBoat, openYard, freeBerth, crewHands, assignRole,   // HOLDINGS: the Fleet page's (scenes/fleetHost.js) - with giveOrder and hostileNear, below

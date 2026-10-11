@@ -630,7 +630,7 @@ test('AUDIT CC-F6: the crew\'s small print - their lines by spirits and a third 
   const mid = createShipCrew({ seed: 9, record: { morale: 50, hands: [] } });
   for (let i = 0; i < 50; i++) assert.equal(mid.line(), null, 'steady spirits keep their own words');
   const card = crewCard({ morale: 60, hands: [{ name: 'A', role: 'Bosun', fights: 1, boardings: 2 }] });
-  assert.ok(card.some((l) => l === 'A, Bosun - 1 fight, 2 boardings'));
+  assert.ok(card.some((l) => l === 'A, Bosun - 1 fight, 2 boardings - Seasoned'));   // PIN MOVED (CAPT-CREW): a hand's rank of service ends his line from Seasoned up (1 + 2 x 2 = 5 service)
   assert.ok(crewCard({ morale: 60, hands: [] }).includes('No hands aboard.'));
   // a port stay resets the sea's clock and the sea the port's
   const t = createShipCrew({ seed: 9 });
