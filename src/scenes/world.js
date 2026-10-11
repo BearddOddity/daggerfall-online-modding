@@ -689,7 +689,7 @@ import { getLocationTerrainTileOrigin, setLocationTiles } from '../world/terrain
 import { locationArrivalLanding, locationStartMarkers } from '../world/locationEntrance.js';
 import { preloadPrisonScreenArt, preloadCourtScreenArt } from '../ui/prisonScreen.js';   // PRIS00I0 - the serving-time screen   // ROAD-B B5: CORT01I0 - the courtroom the trial is pushed over
 import { TerrainGenClient } from '../world/terrainGenClient.js';   // EV7: the pixel kernel, off the main thread (samples/blend/tiles/grid/nature moved whole to terrainGen.js)
-import { getPref } from '../systems/uiPrefs.js';
+import { getPref, setPref } from '../systems/uiPrefs.js';
 import { createCoverIndex, isCoverFlat, coverProxy, coverProxies, FELLED } from '../ai/cover.js';   // TACT1: billboards are cover; LPT1: a felled tree stands no 3D tree
 import { techniqueMarksNow, techniqueHudChips, offsetTechniques, TECHNIQUE_ACTION } from '../combat/techniques.js';   // TECH1 (bible/05-Combat/Weapon-Techniques.md): the player's marks on the ground, the HUD's chip, the recentre's shift
 import { setHudTechniqueChips } from '../ui/enhancedHud.js';   // TECH1: the technique's chip, beside the set powers'
@@ -804,6 +804,9 @@ import { enhancedHudScale, setHudSetChips, enhancedHudBottom, enhancedHudQuick }
 import { makeHitPend } from '../net/hitPend.js';   // AUDIT FOES FOE2: a blow the wire refused waits and goes
 import { PeerBodies, peerIsWolf, BODY_BUILD_GATE } from '../net/peerBodies.js';   // MWBODY1: the others in the Morrowind body; WEREWOLF1: and in Bloodmoon's wolf
 import { ChatLog, CHAT_REJOIN_MS } from '../net/chat.js';   // CHAT1: the tabs and their lines
+import { LANG_OLD_RELAY_TEXT, NO_LANG_TEXT, langJoinedText } from '../net/chat.js';   // CHAT-LANG: the Language tab's words
+import { CHAT_LANGS, chatLangRoom } from '../net/wire.js';   // CHAT-LANG: the language channels
+import { LANG_LINES, unknownLangText } from '../net/chatCommands.js';   // CHAT-LANG: /lang's list and refusal
 import { oocText, localLineHeard, nextRegionRoom, regionJoinedText, CHAN_OLD_RELAY_TEXT, ROLL_OLD_RELAY_TEXT, EMOTE_OLD_RELAY_TEXT, GUILD_OLD_RELAY_TEXT, NO_GUILD_TEXT, SOLO_LOCAL_TEXT, partyNoteTab } from '../net/chat.js';   // CHAT-CHAN: the channels' own laws (a second chat import: CHAT1's pin holds the first as it stands)
 import { parseChatLine, HELP_LINES, CHAT_GREETING_TEXT, unknownCommandText, emptyCommandText, hostMisuseText, badRollText, expandShortcodes, EMOTE_LINES, foundText, FIND_OFFLINE_TEXT, FIND_RELAY_TEXT } from '../net/chatCommands.js';   // CHAT-CHAN: what a typed line IS; DICE1: and a roll; EMOTE1: an action, a gesture, a shortcode
 import { partyRosterSource, localRosterSource, guildRosterSource } from '../net/roster.js';   // CHAT-CHAN: the Party and Local tabs' composed lists
@@ -22501,6 +22504,18 @@ export async function bootWorld(canvas, renderer, params, status) {
         const note = (line) => chatLog.push(tabId, { text: line, system: true });
         if (cmd.kind === 'help') { for (const line of HELP_LINES) note(line); return 'read'; }
         if (cmd.kind === 'emotes') { for (const line of EMOTE_LINES) note(line); return 'read'; }
+        // CHAT-LANG: /lang alone lists the channels, /lang off leaves the one held, /lang <code> joins one - the choice is
+        // kept (`chatLang`) and the frame moves the tab; the Language tab comes to the front with it
+        if (cmd.kind === 'lang') {
+          if (!cmd.code) { for (const line of LANG_LINES) note(line); return 'read'; }
+          if (cmd.code === 'off') { setPref('chatLang', ''); note('Language channel left.'); return 'read'; }
+          if (!chatLangRoom(cmd.code)) { note(unknownLangText(cmd.code)); return false; }
+          setPref('chatLang', cmd.code);
+          chatLangFrame();
+          chatLog.select('lang');
+          if (!chatLog.tab('lang').room) chatLog.push('lang', { text: langOld() ? LANG_OLD_RELAY_TEXT : langJoinedText(CHAT_LANGS[cmd.code]), system: true });
+          return 'read';
+        }
         if (cmd.kind === 'find') { findTab = tabId; const hub = chatLinks?.get('world'); if (!hub?.sendFind(cmd.q)) note(hub?.welcomed && !hub.findOk ? FIND_RELAY_TEXT : FIND_OFFLINE_TEXT); return 'read'; }   // SCALE5c: everyone online, by name - the hub's answer comes back to this tab. AUDIT SCALE II C-1: a hub online on a relay before the shards answers no search, and is never asked one (it closes the link on it) - said as that, not as offline
         if (cmd.kind === 'me') return chatSend(tabId, cmd.text, tabId, { me: true });   // EMOTE1: an action, on this tab
         if (cmd.kind === 'emote') return chatSend('local', cmd.text, tabId, { me: true });   // EMOTE1: a gesture - the body's, so those near see it
@@ -28278,6 +28293,10 @@ export async function bootWorld(canvas, renderer, params, status) {
   };
   /** CHAT-CHAN: the Party and Region tabs on a relay from before the channels - the World link's welcome said so. */
   const chanOld = () => { const world = chatLinks?.get('world'); return world?.status === 'open' && !world.chanOk; };
+  /** CHAT-LANG: the language channel the player chose (`chatLang`), or null for none. */
+  const chatLangCode = () => (chatLangRoom(getPref('chatLang')) ? getPref('chatLang') : null);
+  /** CHAT-LANG: the Language tab on a relay from before the language channels - the World link's welcome said so. */
+  const langOld = () => { const world = chatLinks?.get('world'); return world?.status === 'open' && !world.langOk; };
   /** CHAT-CHAN: the strip under the chat - why the ACTIVE tab cannot talk, when it cannot: the tab's own reason (a relay
    *  from before the channels, no party), else the socket it rides (connecting, reconnecting, refused: the session's
    *  own line, labelled with the tab - AUDIT CHAT B5). The Region tab before its first region reads the World link's,
@@ -28291,6 +28310,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (tabId === 'party' && !social?.party) return NO_PARTY_TEXT;
     if (tabId === 'guild' && guildOld()) return GUILD_OLD_RELAY_TEXT;   // GUILD1c
     if (tabId === 'guild' && !myGuildTag()) return NO_GUILD_TEXT;
+    if (tabId === 'lang' && !tab?.room) return langOld() ? LANG_OLD_RELAY_TEXT : chatLangCode() ? null : NO_LANG_TEXT;   // CHAT-LANG: before its channel
     const s = tabId === 'region' && !tab?.room ? chatLinks?.get('world') : chatSessionOf(tabId);
     return s?.statusLine(tab?.label ?? 'chat') ?? null;
   };
@@ -28306,6 +28326,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     const why = (line) => { chatLog.push(from, { text: line, system: true }); return false; };
     if ((tabId === 'party' || tabId === 'region') && chanOld()) return why(CHAN_OLD_RELAY_TEXT);
     if (tabId === 'guild' && guildOld()) return why(GUILD_OLD_RELAY_TEXT);   // GUILD1c
+    if (tabId === 'lang' && !chatLog.tab('lang')?.room) return why(langOld() ? LANG_OLD_RELAY_TEXT : NO_LANG_TEXT);   // CHAT-LANG: no channel yet
     // EMOTE1: an action only down a session whose relay carries one - an older one would say the words bare
     const s = tabId === 'local' ? online : tabId === 'party' || tabId === 'guild' ? socialLink() : chatLinks.get(tabId);
     if (tabId === 'local' && soloHere()) return why(SOLO_LOCAL_TEXT);   // AUDIT FB1007b H5: said, never kept in the field in silence
@@ -28330,6 +28351,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if ((tabId === 'party' || tabId === 'region') && chanOld()) return why(CHAN_OLD_RELAY_TEXT);
     if (tabId === 'guild' && guildOld()) return why(GUILD_OLD_RELAY_TEXT);   // GUILD1c
     if (tabId === 'local' && soloHere()) return why(SOLO_LOCAL_TEXT);   // AUDIT FB1007b H5
+    if (tabId === 'lang' && !chatLog.tab('lang')?.room) return why(langOld() ? LANG_OLD_RELAY_TEXT : NO_LANG_TEXT);   // CHAT-LANG
     const s = tabId === 'local' ? online : tabId === 'party' || tabId === 'guild' ? socialLink() : chatLinks.get(tabId);
     if (s?.status === 'open' && !s.rollOk) return why(ROLL_OLD_RELAY_TEXT);
     if (tabId === 'party' && !social?.party) return why(NO_PARTY_TEXT);
@@ -28353,6 +28375,36 @@ export async function bootWorld(canvas, renderer, params, status) {
     chatLog.setRoom('region', room, place);
     link.join(channelLinkRoom(room));   // SCALE5c part two: the region's shard of this account's
     chatLog.push('region', { text: regionJoinedText(place), system: true });
+  };
+  /** CHAT-LANG (2026-10-11, the players: "More chat channels per-language"): THE LANGUAGE TAB FOLLOWS THE PLAYER'S
+   *  CHOICE - on the bar while one is chosen (`chatLang`), its link in that language's channel once the World link's
+   *  welcome says the relay opens them (an older one refuses the key), out of it when the choice is taken back. The
+   *  language's name rides the tab (setRoom's `place`), and a line says which channel it is now. */
+  const chatLangFrame = () => {
+    if (seatOut()) return;   // ONE-SEAT: a tab out of the seat joins no channel
+    const link = chatLinks?.get('lang');
+    if (!link) return;
+    const code = chatLangCode();
+    chatLog.setShown('lang', !!code);
+    const room = code ? chatLangRoom(code) : null;
+    const tab = chatLog.tab('lang');
+    if (room === tab.room) return;
+    if (!room) { chatLog.setRoom('lang', null, null); link.leave(); return; }
+    if (!chatLinks.get('world')?.langOk) return;
+    chatLog.setRoom('lang', room, CHAT_LANGS[code]);
+    link.join(room);
+    chatLog.push('lang', { text: langJoinedText(CHAT_LANGS[code]), system: true });
+  };
+  /** PING1 (2026-10-11, the players: "A unique color or alert for @name pings"): the log marks a line that names me
+   *  (net/chat.js mentions - my name the presence session's); the alert is the enchanter's chime, once for a burst. */
+  let _pingHeard = 0, _pingRangAt = -Infinity;
+  const chatPingFrame = (now) => {
+    chatLog.self = online?.name ?? '';
+    if (chatLog.pingSeq <= _pingHeard) return;
+    _pingHeard = chatLog.pingSeq;
+    if (getPref('chatPingSound') === false || now - _pingRangAt < 2500) return;
+    _pingRangAt = now;
+    audio.playOneShot(SOUND.MakeItem, 0.6);
   };
   /** TV3: my mark, when it is due - on the Region tab's own link, through a relay that knows the frame. */
   const travellerFrame = (now) => {
@@ -28385,6 +28437,8 @@ export async function bootWorld(canvas, renderer, params, status) {
     chatLog.setShown('guild', !!myGuildTag());   // GUILD1c: and the Guild tab while the character is in a guild
     chatRegionFrame(performance.now());   // CHAT-CHAN: before the rejoin - a region crossed moves the link, a rejoin takes it back to where it is
     travellerFrame(performance.now());   // TV3: and my mark in it, when due
+    chatLangFrame();   // CHAT-LANG: and the language channel chosen, or left - before the rejoin too
+    chatPingFrame(performance.now());   // PING1: a line naming me, chimed
     for (const [tabId, link] of chatLinks) {
       const room = chatLog.tab(tabId).room;   // CHAT-CHAN: a tab whose channel is not known yet (the Region tab, before its first region) has nothing to rejoin
       if (room) link.rejoin(room, CHAT_REJOIN_MS);   // AUDIT CHAT A6/B4/B6: the page's goodbye and a terminal close both get a way back
