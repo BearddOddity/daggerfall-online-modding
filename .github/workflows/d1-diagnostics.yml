@@ -1,0 +1,141 @@
+name: D1 diagnostics (one-off, read-only)
+
+# PATRON-LOAD II (2026-10-11, the owner: "I think the database is overloaded"): the account database read where it
+# stands - D1's own per-query insights and hourly totals, the service's Analytics Engine points by route, the cron's
+# runs, and two minutes of `wrangler tail` - so the next cut is aimed by measurement (STORM-SHED's way: "a one-off
+# read-only diagnostics workflow, removed once read"). NOTHING here runs a statement on the database: insights and the
+# hourly totals are Cloudflare's GraphQL analytics, the routes the Analytics Engine SQL API, the tail the Worker's log
+# stream. Every line printed is an aggregate: a path's ids are folded to `:x`, an error keeps its first line, no
+# header, address, body or handle is read out. This file is removed before the branch's pull request.
+
+on:
+  push:
+    branches: [ccr-dee27c02-memkav]
+    paths: [".github/workflows/d1-diagnostics.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-diagnostics
+  cancel-in-progress: false
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: a27adccb38c8e8b82fa32e5736274a94
+      DB_NAME: daggerfall-accounts
+      WORKER: daggerfall-accounts
+      WRANGLER: npx --yes wrangler@4
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Refuse to start without a token
+        run: |
+          if [ -z "${CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::error::secrets.CLOUDFLARE_API_TOKEN is not set"; exit 1
+          fi
+
+      - name: The database's id and size
+        run: |
+          set -uo pipefail
+          id=$($WRANGLER d1 list --json | jq -r --arg n "$DB_NAME" 'map(select(.name == $n)) | .[0].uuid // .[0].id // empty')
+          echo "::add-mask::$id"
+          echo "DB_ID=$id" >> "$GITHUB_ENV"
+          $WRANGLER d1 info "$DB_NAME" --json | jq 'del(.uuid, .id, .database_id)' || echo "d1 info failed"
+
+      - name: D1 hourly totals, the last three days
+        run: |
+          set -uo pipefail
+          since=$(date -u -d '-3 days' +%Y-%m-%dT%H:00:00Z); until=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          q='query($a:String!,$d:String!,$s:Time!,$u:Time!){viewer{accounts(filter:{accountTag:$a}){d1AnalyticsAdaptiveGroups(limit:100,filter:{databaseId:$d,datetimeHour_geq:$s,datetimeHour_leq:$u},orderBy:[datetimeHour_ASC]){dimensions{datetimeHour} sum{readQueries writeQueries rowsRead rowsWritten} quantiles{queryBatchTimeMsP50 queryBatchTimeMsP90}}}}}'
+          body=$(jq -n --arg q "$q" --arg a "$CLOUDFLARE_ACCOUNT_ID" --arg d "$DB_ID" --arg s "$since" --arg u "$until" '{query:$q,variables:{a:$a,d:$d,s:$s,u:$u}}')
+          out=$(curl -sS https://api.cloudflare.com/client/v4/graphql -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' -d "$body")
+          echo "$out" | jq -r '.errors // empty'
+          echo -e "hour\treads\twrites\trowsRead\trowsWritten\tbatchP50ms\tbatchP90ms"
+          echo "$out" | jq -r '.data.viewer.accounts[0].d1AnalyticsAdaptiveGroups[]? | [.dimensions.datetimeHour, .sum.readQueries, .sum.writeQueries, .sum.rowsRead, .sum.rowsWritten, (.quantiles.queryBatchTimeMsP50|floor), (.quantiles.queryBatchTimeMsP90|floor)] | @tsv'
+
+      - name: D1 insights - the day's queries by total time, rows read, rows written and count
+        run: |
+          set -uo pipefail
+          for by in time reads writes count; do
+            echo "=== sorted by $by (sum, 1d)"
+            $WRANGLER d1 insights "$DB_NAME" --timePeriod 1d --sort-type sum --sort-by "$by" --limit 25 --json > "$RUNNER_TEMP/ins.json" 2>"$RUNNER_TEMP/ins.err" || { echo "insights failed:"; head -c 600 "$RUNNER_TEMP/ins.err"; continue; }
+            jq -r '.[] | [ (.numberOfTimesRun // 0), ((.totalDurationMs // 0)|floor), ((.avgDurationMs // 0)*100|floor/100), (.totalRowsRead // 0), (.avgRowsRead // 0), (.totalRowsWritten // 0), ((.query // "") | gsub("\\s+";" ") | .[0:260]) ] | @tsv' "$RUNNER_TEMP/ins.json" \
+              | awk 'BEGIN{print "runs\ttotalMs\tavgMs\trowsRead\tavgRows\trowsWritten\tsql"}{print}'
+          done
+
+      - name: The service's own points by route (Analytics Engine)
+        run: |
+          set -uo pipefail
+          ae() {
+            curl -sS "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/analytics_engine/sql" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --data-binary "$1 FORMAT TabSeparatedWithNames" || echo "query failed"
+            echo
+          }
+          echo "=== by hour, two days: requests, 5xx, D1 statements, p95 wall ms"
+          ae "SELECT toStartOfInterval(timestamp, INTERVAL '1' HOUR) AS h, SUM(_sample_interval) AS n, SUM(if(double2 >= 500, _sample_interval, 0)) AS e5, SUM(_sample_interval * double3) AS stmts, quantileWeighted(0.95)(double1, _sample_interval) AS p95 FROM daggerfall_accounts WHERE timestamp > NOW() - INTERVAL '2' DAY GROUP BY h ORDER BY h"
+          echo "=== by five minutes, the last three hours"
+          ae "SELECT toStartOfInterval(timestamp, INTERVAL '5' MINUTE) AS t, SUM(_sample_interval) AS n, SUM(if(double2 >= 500, _sample_interval, 0)) AS e5, SUM(_sample_interval * double3) AS stmts, quantileWeighted(0.95)(double1, _sample_interval) AS p95 FROM daggerfall_accounts WHERE timestamp > NOW() - INTERVAL '3' HOUR GROUP BY t ORDER BY t"
+          echo "=== by route, the last six hours, by D1 statements"
+          ae "SELECT index1 AS route, SUM(_sample_interval) AS n, SUM(if(double2 >= 500, _sample_interval, 0)) AS e5, SUM(if(double2 = 429, _sample_interval, 0)) AS r429, SUM(_sample_interval * double3) AS stmts, SUM(_sample_interval * double3) / SUM(_sample_interval) AS per, quantileWeighted(0.5)(double1, _sample_interval) AS p50, quantileWeighted(0.95)(double1, _sample_interval) AS p95 FROM daggerfall_accounts WHERE timestamp > NOW() - INTERVAL '6' HOUR GROUP BY route ORDER BY stmts DESC LIMIT 45"
+          echo "=== by route, the last 24 hours, by D1 statements"
+          ae "SELECT index1 AS route, SUM(_sample_interval) AS n, SUM(if(double2 >= 500, _sample_interval, 0)) AS e5, SUM(_sample_interval * double3) AS stmts, SUM(_sample_interval * double3) / SUM(_sample_interval) AS per, quantileWeighted(0.95)(double1, _sample_interval) AS p95 FROM daggerfall_accounts WHERE timestamp > NOW() - INTERVAL '1' DAY GROUP BY route ORDER BY stmts DESC LIMIT 45"
+          echo "=== by route, the last six hours, by wall time spent (n x mean ms)"
+          ae "SELECT index1 AS route, SUM(_sample_interval) AS n, SUM(_sample_interval * double1) AS wallMs, SUM(_sample_interval * double1) / SUM(_sample_interval) AS meanMs FROM daggerfall_accounts WHERE timestamp > NOW() - INTERVAL '6' HOUR GROUP BY route ORDER BY wallMs DESC LIMIT 25"
+          echo "=== refusals and errors by word, the last six hours"
+          ae "SELECT blob3 AS status, blob4 AS word, index1 AS route, SUM(_sample_interval) AS n FROM daggerfall_accounts WHERE timestamp > NOW() - INTERVAL '6' HOUR AND double2 >= 400 GROUP BY status, word, route ORDER BY n DESC LIMIT 40"
+
+      - name: The Worker's invocations and the cron's runs (GraphQL)
+        run: |
+          set -uo pipefail
+          since=$(date -u -d '-1 day' +%Y-%m-%dT%H:%M:%SZ); until=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          gql() {
+            body=$(jq -n --arg q "$1" --arg a "$CLOUDFLARE_ACCOUNT_ID" --arg w "$WORKER" --arg s "$since" --arg u "$until" '{query:$q,variables:{a:$a,w:$w,s:$s,u:$u}}')
+            curl -sS https://api.cloudflare.com/client/v4/graphql -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'content-type: application/json' -d "$body"
+          }
+          echo "=== invocations by hour and status (a day)"
+          out=$(gql 'query($a:String!,$w:String!,$s:Time!,$u:Time!){viewer{accounts(filter:{accountTag:$a}){workersInvocationsAdaptive(limit:500,filter:{scriptName:$w,datetime_geq:$s,datetime_leq:$u},orderBy:[datetimeHour_ASC]){dimensions{datetimeHour status} sum{requests errors subrequests} quantiles{cpuTimeP50 cpuTimeP99 wallTimeP50 wallTimeP99}}}}}')
+          echo "$out" | jq -r '.errors // empty'
+          echo "$out" | jq -r '.data.viewer.accounts[0].workersInvocationsAdaptive[]? | [.dimensions.datetimeHour, .dimensions.status, .sum.requests, .sum.errors, .sum.subrequests, .quantiles.cpuTimeP50, .quantiles.cpuTimeP99, .quantiles.wallTimeP50, .quantiles.wallTimeP99] | @tsv'
+          echo "=== the cron's runs (a day): by schedule and status, with CPU"
+          out=$(gql 'query($a:String!,$w:String!,$s:Time!,$u:Time!){viewer{accounts(filter:{accountTag:$a}){workersInvocationsScheduled(limit:3000,filter:{scriptName:$w,datetime_geq:$s,datetime_leq:$u},orderBy:[datetime_ASC]){cron status cpuTimeUs datetime}}}}')
+          echo "$out" | jq -r '.errors // empty'
+          echo "$out" | jq -r '[.data.viewer.accounts[0].workersInvocationsScheduled[]?] | group_by(.cron + " " + .status) | map({k:(.[0].cron + "\t" + .[0].status), n:length, cpuP50:(map(.cpuTimeUs)|sort|.[length/2|floor]), cpuMax:(map(.cpuTimeUs)|max)}) | .[] | [.k, .n, .cpuP50, .cpuMax] | @tsv'
+          echo "=== the cron's non-success runs, by hour"
+          echo "$out" | jq -r '[.data.viewer.accounts[0].workersInvocationsScheduled[]? | select(.status != "success")] | group_by(.datetime[0:13]) | map([.[0].datetime[0:13], length, (map(.status)|unique|join(","))] | @tsv) | .[]'
+
+      - name: Two minutes of the Worker's own stream (aggregated)
+        run: |
+          set -uo pipefail
+          timeout 130 $WRANGLER tail "$WORKER" --format json > "$RUNNER_TEMP/tail.json" 2>"$RUNNER_TEMP/tail.err" || true
+          echo "events read: $(jq -s 'length' "$RUNNER_TEMP/tail.json" 2>/dev/null || echo unreadable)"
+          head -c 400 "$RUNNER_TEMP/tail.err"; echo
+          # A path's ids folded: a save's or a realm character's path is its template whole (a save's name is the
+          # player's own words), anything off /v1/ is `other`, and elsewhere a segment that is not a plain lower-case
+          # word is `:x`.
+          jq -s -r '
+            def norm: sub("^https?://[^/]+"; "") | sub("\\?.*$"; "")
+              | if startswith("/v1/saves/") then "/v1/saves/:x"
+                elif startswith("/v1/realm/") then "/v1/realm/:x"
+                elif (startswith("/v1/") | not) then "other"
+                else split("/") | map(if test("^[a-z][a-z0-9-]*$") or . == "" then . else ":x" end) | join("/") end;
+            "=== requests by route: n, non-ok, 5xx",
+            ([ .[] | select(.event.request != null) | {p: (.event.request.url | norm), s: (.event.response.status // 0), o: .outcome} ]
+              | group_by(.p) | map({p: .[0].p, n: length, bad: (map(select(.o != "ok")) | length), e5: (map(select(.s >= 500)) | length)})
+              | sort_by(-.n) | .[] | "\(.n)\t\(.bad)\t\(.e5)\t\(.p)"),
+            "=== scheduled runs: cron, outcome, wall ms, cpu ms, warnings",
+            (.[] | select(.event.cron != null) | "\(.event.cron)\t\(.outcome)\t\(.wallTime // "?")\t\(.cpuTime // "?")\t\([.logs[]? | .message | map(tostring) | join(" ") | split("\n")[0] | .[0:200]] | join(" | "))"),
+            "=== error lines by message (first line, ids folded)",
+            ([ .[] | (.exceptions[]? | .message), (.logs[]? | select(.level == "error" or .level == "warn") | .message | map(tostring) | join(" ")) ]
+              | map(split("\n")[0] | gsub("/v1/[^ ]*"; "/v1/…") | gsub("[0-9a-f]{12,}"; "<id>") | .[0:200])
+              | group_by(.) | map({m: .[0], n: length}) | sort_by(-.n) | .[0:25][] | "\(.n)\t\(.m)")
+          ' "$RUNNER_TEMP/tail.json" || echo "tail aggregation failed"
