@@ -1899,11 +1899,14 @@ export class AirPass {
       } else if (r.kind === 2) {
         for (const b of r.batches) {
           if (!b?.vao || b._dead || b.conceal || b.castOnly || b.emissionOff) continue;   // MWNPC5b: a cast-only flat (a foe in its body) blooms nothing either   // CSA-B: a flat whose emission is black has nothing to bloom
-          if (!batchVisible(planes, b)) continue;   // EL5
+          // PERF-ORDER (2026-10-11): the emission map asked FIRST - Knightstale by night handed this loop 636 flats a frame
+          // and 3 had one; each of the three tests only skips, so the flats drawn are the same, and the sphere is asked of three
           const key = billboardKey(b);
           const emis = f.emissionTextures.get(key);
+          if (!emis) continue;
+          if (!batchVisible(planes, b)) continue;   // EL5
           const tex = f.textures.get(key);
-          if (!emis || !tex) continue;
+          if (!tex) continue;
           if (bound !== P.emitBb) {
             bound = P.emitBb; gl.useProgram(bound.p);
             gl.uniformMatrix4fv(bound.uProj, false, vp); gl.uniformMatrix4fv(bound.uView, false, this._identityView);

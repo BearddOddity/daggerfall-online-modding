@@ -2135,3 +2135,64 @@ could not make.
 audit_reach, shadowreach and disc24c_self_shadow count the copy program's draws where they counted `blitFramebuffer`;
 el1_enhancedlighting's lane install compiles 24 (farclip1's 24 + 2) and its row has no Shadow cache part; perfurl_doors and sc1 read the door
 on again; antiflicker keeps EMPTY-HOLD's constant alone, and its four CACHE-OFF mutants went with the code they mutated.
+
+## INTERIOR-DIM - A BUILDING'S LAMPS BURN LOWER, AND THE EYE HOLDS INDOORS (2026-10-11, Mac, of a player's screenshot of a guild hall - two hanging lanterns, warm pools on the floor, dark green walls between them: "I want to improve interior lighting to be more like this and less bright")
+
+**What was bright.** Not the ambient. DaggerfallInterior's own 0.18 (PlayerAmbientLight's InteriorAmbientLight) decodes
+to 0.027 in linear, and the dark between the lamps already sat about where the screenshot's does. Two things lifted the
+room:
+- **The lamps.** AddLight's second switch gives a building's lamp an intensity that the hosts multiply into its colour
+  (`world/interiorLights.js` interiorLightProperties), and the lane decodes that product as a colour. A lantern's 1.4
+  (records 24-27, `[1, 0.98, 0.64]`) decodes to 2.16 in linear, about 3.5 times the street's lantern (lanternColor at the
+  city's 1, the ~1900 K flame). Every lamp's range (15 for most) covers a tavern, so a room of four lanterns was lit
+  flat from wall to wall, with no pools.
+- **The eye.** EL4's adaptation aims a frame's mean at AIR_ADAPT_KEY (0.18) and stops at AIR_ADAPT_MAX (1.8). A room is
+  always darker than that key, so the eye always opened to its ceiling indoors and lifted the dark toward grey.
+
+**What changed, the lane only** (`render/enhancedLighting.js`):
+- `EL_INTERIOR_LIGHT_SCALE` 0.5: on the lane, a building's own lamps burn at half the intensity the switch gives them.
+  That is half in display terms and about a fifth in linear, so a lantern now sits below the street's flame. The
+  falloff is unchanged, and it shows as pools now that the lamps no longer saturate the room.
+- `interiorLightColor(on, color, intensity)`: the hosts' colour x intensity, with the scale on the lane. A WHITE lamp (the
+  prefab's white, which the candles and the switch's "todo" records keep) takes `EL_FLAME_COLOR` on the lane, as the
+  city's and the dungeon's white lanterns already did. The turquoise lamp (record 8) keeps its colour. Off the lane it
+  returns DFU's numbers to the bit.
+- `EL_INTERIOR_GRADE` `{ adaptKey: 0.12, adaptMax: 1.2 }` and `interiorGrade(on)`: the room's grade, through
+  SD-LOOK's seam (`Renderer.setSceneGrade`, `AirPass.setGrade`). The eye aims at a darker mean and opens to 1.2 at most.
+  Bloom, vignette and contrast keep the lane's defaults. The classic set gets null (it has no resolve to grade).
+
+Unchanged: the ambient (EL4's "an interior keeps its daylight ambient" stands), the night ambient, every lamp's range
+and place, and the shadows. The player's own lights (the torch, the magic candle, the spells, a dropped torch), the
+others' torches, a ship's lanterns (CSA) and Improved Interior Lighting's lights (IIL1, its own colours and intensities,
+the `?iil=shadows` door) keep their numbers. A home's decor lamps join the room's own list (`scenes/decorRoom.js`), so
+they burn lower with it.
+
+**The four hosts.** `scenes/worldModes.js`'s interior arm: the lamps through `interiorLightColor`, and the grade after
+the view out (`viewOutFrame` shows any world image still owed, and a resolve takes the grade). The grade sits above the
+clear colour and the viewport rect, which E5 and seams 2 keep directly on the beginFrame. `scenes/world.js` and `scenes/exterior.js` reach their buildings through that arm and need nothing of their own.
+`scenes/dungeonContext.js` is a dungeon: EL4's own dark (`EL_DUNGEON_AMBIENT_SCALE`) is untouched, and its arm asks no
+room grade (SD-LOOK's Hour stays the only grade there). The dev route `scenes/interior.js` takes both, as the arm does.
+
+**Measured, not seen on a GPU.** The screenshot's frame (the game's rect cut out of the phone capture), decoded, has
+display-luminance percentiles p5 0.041, p25 0.063, p50 0.084, p75 0.111, p95 0.223. `tools/interiorDimProbe.mjs` draws
+two rooms on SwiftShader through the real renderer and the lane. They are synthetic boxes (dark green walls, brown
+floor, wood) at the interior's ambient under the switch's own lamps, with no game data. Each is drawn before and after,
+with eight seconds of the eye's clock:
+
+| room | p5 | p25 | p50 | p75 | p95 |
+|---|---|---|---|---|---|
+| hall (two hung lanterns), before | 0.128 | 0.181 | 0.236 | 0.296 | 0.435 |
+| hall, after | 0.031 | 0.054 | 0.075 | 0.102 | 0.170 |
+| tavern (four lanterns, two candles, a torch, a prefab white), before | 0.232 | 0.298 | 0.358 | 0.431 | 0.509 |
+| tavern, after | 0.069 | 0.098 | 0.127 | 0.169 | 0.211 |
+
+The hall's after-frame lands within a hundredth or two of the screenshot's quartiles. A share of 0.6 put its median at
+0.097 (the screenshot's 0.084 lies between the two), and the real rooms' AO, furniture shadows and darker art only take
+light away. The pictures are written where the probe is told (they are synthetic, so they may be looked at anywhere).
+What the probe cannot say is how a real room reads to the eye. Every number above is a named constant, and that call
+is Mac's.
+
+`test/interiordim.test.js` (4); `tools/mutants/interiordim.json` (15, all dead). PINS MOVED: sd25_look counted ONE
+`setSceneGrade` in worldModes.js ("the Hour alone asks a grade"); it counts two now and holds the Hour as the dungeon
+arm's only grade. perlightcolors (LT1) and audit18_hosts_outer read both hosts' colour x intensity as the literal
+product; they read the `interiorLightColor` call now, and LT1 holds its off-the-lane answer to the product.
