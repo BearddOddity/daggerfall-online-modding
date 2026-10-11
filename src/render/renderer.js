@@ -1153,8 +1153,14 @@ export const bbCornerX = (x, scale = 1) => x * scale;
 // the very six createBillboardBatch writes for its own (b, b+2, b+1, b, b+3, b+2 from the quad's first corner), and
 // a batch's corners are the very floats it wrote: the same triangles, in the same order, from the same vertices. A
 // batch built DYNAMIC (a gib, a blood drop: its centres move every frame) keeps buffers of its own, as before.
-/** Quads in an arena when none bigger is asked for (1.3 MB of corners, 393 KB of indices). */
+/** Quads in the first arena (1.3 MB of corners, 393 KB of indices); each arena after it holds twice the last, to
+ *  BB_ARENA_MAX_QUADS. */
 export const BB_ARENA_QUADS = 16384;
+/** PERF-ARENA2 (2026-10-11): the most quads a grown arena holds (21 MB of corners, 6 MB of indices). Knightstale's stream
+ *  stood 620,000 quads in 38 arenas of BB_ARENA_QUADS each - the real game read back through `window.__renderer` - and
+ *  the main pass, its batches sorted by texture, hopped between them on nearly every draw; doubling to this, a town that
+ *  size stands in six. An interior's few hundred flats stay in the first. */
+export const BB_ARENA_MAX_QUADS = 262144;
 /** The bytes a quad's four corners take (five floats a corner) and its six indices take. */
 const BB_QUAD_VERT_BYTES = 4 * 5 * 4, BB_QUAD_INDEX_BYTES = 6 * 4;
 /**
@@ -1935,6 +1941,8 @@ export class Renderer {
     this._lastVao = null;
     /** PERF-ARENA: the still flats' shared buffers, each { vao, vb, ib, cap, free, taken } (_bbArenaFor) */
     this._bbArenas = [];
+    /** PERF-ARENA2: a record's arena - `${archive}_${record}` -> the arena its last still batch went to */
+    this._bbArenaOfKey = new Map();
     // PERF-VAO1 (PERF-NEXT item 6): ONE bindVao FOR THE LIFE OF THE RENDERER. _renderPasses minted this closure every
     // frame and handed it to the shadow and air passes - a new call target at their `f.bindVao(vao)` every frame (in node,
     // once, V8 deoptimized the shadow replay on it: "wrong call target" - PERF-NEXT 6; no gain measured). The same call,
@@ -6180,12 +6188,22 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
   /** PERF-ARENA: an arena with room for `quads` - the first whose free ranges hold them (first fit), else a new one of
    *  BB_ARENA_QUADS, or of `quads` where one batch is bigger - with the range taken (its first quad `taken`). The new
    *  arena's VAO is a batch's own, attribute for attribute; its indices are every quad's six, written once. */
-  _bbArenaFor(quads) {
-    for (const a of this._bbArenas) {
-      const at = arenaTake(a.free, quads);
-      if (at >= 0) { a.taken = at; return a; }
+  _bbArenaFor(quads, key = null) {
+    // PERF-ARENA2: A RECORD'S BATCHES TOGETHER. The main pass draws its flats sorted by texture key (billboardKey.js
+    // sortByKey) - one key's batches in a run - so a batch goes first to the arena its key's last batch went to: a run
+    // stays in one arena, and the pass binds where the key changes anyway. Then the first fit anywhere, then a new arena.
+    const home = key != null ? this._bbArenaOfKey.get(key) : undefined;
+    if (home) {
+      const at = arenaTake(home.free, quads);
+      if (at >= 0) { home.taken = at; return home; }
     }
-    const gl = this.gl, cap = Math.max(BB_ARENA_QUADS, quads);
+    for (const a of this._bbArenas) {
+      if (a === home) continue;
+      const at = arenaTake(a.free, quads);
+      if (at >= 0) { a.taken = at; if (key != null) this._bbArenaOfKey.set(key, a); return a; }
+    }
+    const last = this._bbArenas.length ? this._bbArenas[this._bbArenas.length - 1].cap : 0;
+    const gl = this.gl, cap = Math.max(last ? Math.min(BB_ARENA_MAX_QUADS, last * 2) : BB_ARENA_QUADS, quads);   // PERF-ARENA2: each arena twice the last
     const indices = new Uint32Array(cap * 6);
     for (let q = 0; q < cap; q++) {
       const b = q * 4, io = q * 6;
@@ -6208,6 +6226,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     const a = { vao, vb, ib, cap, free: [0, cap], taken: 0 };
     this._bbArenas.push(a);
     a.taken = arenaTake(a.free, quads);
+    if (key != null) this._bbArenaOfKey.set(key, a);
     return a;
   }
 
@@ -6253,7 +6272,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     // indices the arena's own (the same six a quad, written at the arena's birth) - and owns no buffer of its own
     let vao, buffers, arena = null, q0 = 0;
     if (!dynamic && count > 0 && this._bbArenas) {
-      arena = this._bbArenaFor(count);
+      arena = this._bbArenaFor(count, `${archive}_${record}`);   // PERF-ARENA2: by its record, as the main pass sorts
       q0 = arena.taken;
       vao = arena.vao;
       buffers = [];
@@ -6443,6 +6462,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     if (a.free.length === 2 && a.free[1] === a.cap && a !== this._bbArenas[0]) {
       const gl = this.gl;
       this._bbArenas.splice(this._bbArenas.indexOf(a), 1);
+      for (const [k, home] of this._bbArenaOfKey) if (home === a) this._bbArenaOfKey.delete(k);   // PERF-ARENA2: no record homes in a deleted arena
       if (this._lastVao === a.vao) this._bindVao(null);
       gl.deleteVertexArray(a.vao); gl.deleteBuffer(a.vb); gl.deleteBuffer(a.ib);
     }
