@@ -149,7 +149,7 @@ test('ORL1: every setting default and minimum is READ OUT OF settings.lua, and e
   // of chosen skills Morrowind does not.
   const extra = Object.keys(ours).filter((k) => !shipped.has(k));
   assert.deepEqual(extra.sort(), ['Enabled', 'primarySkillsImpact']);
-  assert.match(ours.primarySkillsImpact.description, /Daggerfall has a tier of skills Morrowind does not/,
+  assert.match(ours.primarySkillsImpact.description, /The original game has a tier of skills Morrowind does not/,   // PIN MOVED: BR5, the original game, not its name
     'the port\'s own knob says in the pane that it is the port\'s');
   // ...and it ships equal to the major skills', which is the mapping
   // the page argues for: Daggerfall's primary+major (6 skills) stands
