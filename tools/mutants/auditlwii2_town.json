@@ -142,7 +142,7 @@
   {
     "name": "AUDITLWII2-W3-failed",
     "file": "src/scenes/world.js",
-    "old": "if (!r?.ok) { mark.failed = true; return; }",
+    "old": "if (!r?.ok) { mark.failed = true; mark.fails++; return; }",
     "new": "if (!r?.ok) return;",
     "tests": [
       "test/auditlwii2_town.test.js",

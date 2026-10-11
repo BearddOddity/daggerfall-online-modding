@@ -202,6 +202,25 @@ test('AUDIT LW-II-2 W3/H8: each region\'s read its own clock - a step in region 
   h.livingPatronsStep(1602 + 60, () => 9);
   assert.deepEqual(h.asked, [17, 5, 17, 9, 9], 'a failed read asked again PATRON_RETRY_S on');
   assert.match(W, /const PATRON_RETRY_S = 60;/);
+  // PATRON-LOAD: failing again, each retry twice the last - 120 s, then 240 - to PATRON_READ_S; a read that answers starts over
+  await h.settle({ ok: false, error: 'busy' });
+  h.livingPatronsStep(1662 + 119, () => 9);
+  assert.deepEqual(h.asked, [17, 5, 17, 9, 9], 'the second failure: not a minute on');
+  h.livingPatronsStep(1662 + 120, () => 9);
+  assert.deepEqual(h.asked, [17, 5, 17, 9, 9, 9], 'two minutes on');
+  await h.settle({ ok: false, error: 'busy' });
+  h.livingPatronsStep(1782 + 239, () => 9);
+  assert.equal(h.asked.length, 6, 'the third: not two minutes on');
+  h.livingPatronsStep(1782 + 240, () => 9);
+  assert.equal(h.asked.length, 7, 'four');
+  await h.settle(h.answer(9));
+  h.livingPatronsStep(2022 + 599, () => 9);
+  assert.equal(h.asked.length, 7, 'answered: PATRON_READ_S again');
+  h.livingPatronsStep(2022 + 600, () => 9);
+  assert.equal(h.asked.length, 8);
+  await h.settle({ ok: false, error: 'busy' });
+  h.livingPatronsStep(2622 + 60, () => 9);
+  assert.equal(h.asked.length, 9, 'and its next failure a minute again');
   // offline: never
   const off = liftPatrons({ online: false });
   off.livingPatronsStep(1000, () => 17);

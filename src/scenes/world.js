@@ -3174,6 +3174,12 @@ export async function bootWorld(canvas, renderer, params, status) {
   // each where her clock has her (the shared one the naval host stands and steers her by, raidNowMs): aboard under way,
   // ashore at home, or ashore at the far port as her visitors - while the Bay's ships sail (the naval host on); off, a
   // port's sailors keep their own days ashore
+  // BOOT-TDZ II (2026-10-10, the owner's players: "boot failed: cannot access 'WW' before initialization"): THE BAY'S
+  // LANES ARE ASKED ONLY ONCE THEY STAND. Their bindings (laneNet's `_laneNet`, `_laneWays`, laneOpen, laneOpenNative,
+  // raidNowMs) are declared thirty thousand lines below, past the boot's own first build - and that build deals a port
+  // town's trips and crews, which asked them in their temporal dead zone and threw. Until they stand the lanes answer
+  // as the map unread does (lanesFrom: undefined, asked again; no crew ashore, no sailor's berth).
+  let _lanesReady = false;
   const _livingLaneCounts = new Map();
   const livingLaneWay = (lane) => { let way = _laneWays.get(lane.key); if (way === undefined) { way = laneWay(lane, laneOpen, laneOpenNative); _laneWays.set(lane.key, way); } return way; };
   const livingLaneCount = (lane) => {
@@ -3197,7 +3203,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _livingLanesFrom = new Map();
   livingTripWorld.lanesFrom = (town) => {
     if (!town?.port) return [];
-    if (!mapDict) return undefined;
+    if (!mapDict || (typeof _lanesReady !== 'undefined' && !_lanesReady)) return undefined;   // BOOT-TDZ II: the lanes not yet standing are the map unread (typeof: a lifted slice without the flag)
     let got = _livingLanesFrom.get(town.mapId);
     if (!got) {
       const id = maskMapId(town.mapId);
@@ -3212,7 +3218,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _livingBerths = new Map();
   /** Where one of a port's sailors is now ('home', 'sea', 'abroad'), null for anyone else or the ships not sailing. */
   const livingAshore = (town, res) => {
-    if (res.job !== 'sailor' || res.town !== town?.mapId || !town?.port || !livingSailing()) return null;   // its own sailors: a visiting crew is the crews' own
+    if ((typeof _lanesReady !== 'undefined' && !_lanesReady) || res.job !== 'sailor' || res.town !== town?.mapId || !town?.port || !livingSailing()) return null;   // its own sailors: a visiting crew is the crews' own
     const portId = maskMapId(town.mapId);
     let book = _livingBerths.get(portId);
     if (!book) { book = { packets: portPackets(laneNet(), portId, livingLaneCount), sailors: livingSailorsOf(portId) }; _livingBerths.set(portId, book); }
@@ -3221,7 +3227,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** The hands of the packets lying at a port from elsewhere, each ashore from her making fast to her sailing (the
    *  clock's minutes, at its rate now). */
   const livingCrews = (town) => {
-    if (!town?.port || !livingSailing()) return [];
+    if ((typeof _lanesReady !== 'undefined' && !_lanesReady) || !town?.port || !livingSailing()) return [];   // BOOT-TDZ II
     const nowS = raidNowMs() / 1000, t = skyMinutes(), rate = livingBaseRate();
     const day = Math.floor((t - 240) / 1440);
     return crewsAshore(maskMapId(town.mapId), laneNet(), livingLaneCount, livingPacketAt, livingSailorsOf).flatMap((c) => {
@@ -3551,20 +3557,24 @@ export async function bootWorld(canvas, renderer, params, status) {
   // while a living town stands online; each town's LivingTown asks its own (`patronsOf`): the sales told as sky minutes
   // (an online sky day is a real hour), the traders' doors
   const PATRON_READ_S = 600;
-  /** AUDIT LW-II-2 W3: a region's read that failed is asked again this soon (real seconds), never a whole PATRON_READ_S on. */
+  /** AUDIT LW-II-2 W3: a region's read that failed is asked again this soon (real seconds), never a whole PATRON_READ_S on.
+   *  PATRON-LOAD: the first retry - each failure in a row doubles it, to PATRON_READ_S: every client's minute was the
+   *  service's load at the moment it could least bear it. */
   const PATRON_RETRY_S = 60;
   /** @type {Map<number, { v: number, told: { door: number, t: number, seed: number }[], traders: number[] }>} */
   const _livingPatrons = new Map();
   /** AUDIT LW-II-2 W3/H8: EACH REGION'S LAST READ - its real second, and whether it failed. One clock for every region left
    *  a region crossed into unread up to PATRON_READ_S (four living hours online: no browser, no patron walking in, where a
    *  reader who stood there longer had them), and a region asked while a read was out was dropped (ASYNC NEVER DROPS: it
-   *  is remembered, `_livingPatronsWant`, and read once the one out settles). @type {Map<number, { at: number, failed: boolean }>} */
+   *  is remembered, `_livingPatronsWant`, and read once the one out settles). PATRON-LOAD: `fails` the failures in a row.
+   *  @type {Map<number, { at: number, failed: boolean, fails: number }>} */
   const _livingPatronsRead = new Map();
   let _livingPatronsV = 0, _livingPatronsBusy = false, _livingPatronsNow = 0;
   /** AUDIT LW-II-2 W3: the region asked while a read was out - read once it settles. @type {number|null} */
   let _livingPatronsWant = null;
-  /** AUDIT LW-II-2 W3: a region never read, or read PATRON_READ_S ago (a failed read PATRON_RETRY_S), is read now. */
-  const livingPatronsDue = (region, nowS) => { const r = _livingPatronsRead.get(region); return !r || nowS - r.at >= (r.failed ? PATRON_RETRY_S : PATRON_READ_S); };
+  /** AUDIT LW-II-2 W3: a region never read, or read PATRON_READ_S ago (a failed read PATRON_RETRY_S - PATRON-LOAD: doubled
+   *  for each failure in a row before it, to PATRON_READ_S), is read now. */
+  const livingPatronsDue = (region, nowS) => { const r = _livingPatronsRead.get(region); return !r || nowS - r.at >= (r.failed ? Math.min(PATRON_READ_S, PATRON_RETRY_S * 2 ** (r.fails - 1)) : PATRON_READ_S); };
   /** AUDIT LW-II-2 W11: the region whose traders are read - the one the player stands in, while a living town stands (a
    *  built LivingTown) alone: in the wilderness none (a read there was /vendors and up to PATRON_READ_STATEMENTS of the
    *  service's reckoning each PATRON_READ_S, for towns nobody walks). */
@@ -3583,10 +3593,11 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** LW15: a region's traders read - AUDIT LW-II-2 W3: marked read now, and failed where the service answered none. */
   const livingPatronsRead = (region, nowS) => {
     _livingPatronsBusy = true;
-    const mark = { at: nowS, failed: false };
+    const was = _livingPatronsRead.get(region);
+    const mark = { at: nowS, failed: false, fails: was?.failed ? was.fails : 0 };   // PATRON-LOAD: the failures in a row carried
     _livingPatronsRead.set(region, mark);
     Promise.resolve(marketBook.vendors(region)).then((r) => {
-      if (!r?.ok) { mark.failed = true; return; }
+      if (!r?.ok) { mark.failed = true; mark.fails++; return; }
       const rows = r.data?.rows ?? [];
       const byMap = new Map();
       for (const row of rows) {
@@ -3614,7 +3625,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         _livingPatrons.set(map, { v: ++_livingPatronsV, told, traders, region, sig });
       }
       for (const [map, e] of _livingPatrons) if (e.region === region && !byMap.has(map)) _livingPatrons.delete(map);
-    }).catch(() => { mark.failed = true; }).finally(() => {
+    }).catch(() => { mark.failed = true; mark.fails++; }).finally(() => {
       _livingPatronsBusy = false;
       const want = _livingPatronsWant;   // AUDIT LW-II-2 W3: the region asked while it was out, read now (still due)
       _livingPatronsWant = null;
@@ -3755,6 +3766,10 @@ export async function bootWorld(canvas, renderer, params, status) {
   // a player with the mod switched off needs in any case.
   let travelOptions = null;
   let tvFar = { at: null, near: -1, list: [] };   // TV5: the far places about the traveller (above its readers: BOOT-TDZ - a load empties it)
+  // BOOT-TDZ II (2026-10-10, "boot failed: cannot access 'PW' before initialization"): THE TRAVEL VIEW'S DUNGEON LISTS
+  // ANSWER NONE UNTIL THEIR BINDINGS STAND - `_tvDungeonRows`, tvPlaceSummary, the spawns' tests, all declared twenty-six
+  // thousand lines below, past the boot's first build that reached them. Set where the last of them is declared.
+  let _tvListsReady = false;
   let tvDng = { at: null, dg: -1, list: [] };   // TV6: the dungeons about the traveller (above its readers: BOOT-TDZ - a load empties it)
   let tvFind = { at: null, dg: -1, n: -1, list: [] };   // AUDIT OW5 D1: the find's own, uncapped (above its readers: BOOT-TDZ - a load empties it)
   let tvDngModels = { at: null, dg: -1, n: -1, list: [] };   // OW-DUNGEONS: the dungeons standing as models under the Overworld (above its readers: BOOT-TDZ - a load empties it)
@@ -29506,6 +29521,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   // for the tap ray before the draw), once a frame: the same `spherePlanes` over the same product. AUDIT PERF-YARD 3:
   // keyed on the view matrix itself, which every frame mints anew (lookAt, the shake's) - not on the frame's timestamp,
   // which two frames share under a coarsened clock (a turn on the second frame culled by the first frame's planes).
+  // PERF-WAGON (2026-10-10, Mac: "For carts, wagons, etc, we need culling"): the same pass's carts and wagons - mine,
+  // the other players', the road's teams, the cart - and the camps' and the hideouts' tents are asked this same test.
   const _yardPlanes = new Float32Array(24), _yardPv = new Float32Array(16);
   let _yardPlanesOf = null;
   function yardCull(box) {
@@ -30405,6 +30422,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   const tvFiledSpawns = (at) => (params.has('online') ? filedSpawns({ at, rolls: (x, y) => spawnsDungeon(_spawnSalt, x, y),
     filed: (x, y) => hasDiscoveredLocationId(spawnedMapId(_spawnSalt, x, y)), indexed: (x, y) => locationIndex.has(`${x},${y}`), stand: tvSpawnAt }) : []);
   function travelViewDungeons() {
+    if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
     const at = playerTravelPixel();
     const dg = discoveryGeneration();
     // AUDIT OW3 D1/D3: and the grid's reach (what TV2 plates), and the index's churn - a spawn comes as its pixel streams
@@ -30431,6 +30449,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
    *  and a standing Abyss Dungeon among the spawns (its own host stands and takes it - it is known from its rise), the
    *  nearest TV_DUNGEON_MODELS_MAX; read again as TV6's is, when the pixel, the finds or the index move. */
   function tvDungeonModelList() {
+    if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
     const at = playerTravelPixel(), dg = discoveryGeneration(), n = _locIndexGen;
     if (tvDngModels.list.some((g) => g.spawn && !g.loc?.superTier && tvSpawnGone(g.px, g.py))) tvDngModels.at = null;   // AUDIT OW4 D2's law: a spawn whose time ran out goes
     if (tvDngModels.at && tvDngModels.at.x === at.x && tvDngModels.at.y === at.y && tvDngModels.dg === dg && tvDngModels.n === n) return tvDngModels.list;
@@ -30515,6 +30534,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
    *  AUDIT OW5b D1 found the same, and its own list gave way to this one at the merge (the "?" its second half keeps on
    *  the Overworld for such a keep is travelDungeons.js nearDungeons' own). */
   function travelViewFindList() {
+    if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
     const at = playerTravelPixel(), dg = discoveryGeneration(), n = _locIndexGen;
     if (tvFind.at && tvFind.at.x === at.x && tvFind.at.y === at.y && tvFind.dg === dg && tvFind.n === n) return tvFind.list;
     const list = nearDungeons({ at, range: TV_FIND_REACH, max: Infinity, dungeons: (_tvDungeonRows ??= dungeonRows(mapDict)),
@@ -30525,6 +30545,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     tvFind = { at, dg, n, list };
     return list;
   }
+  _tvListsReady = true;   // BOOT-TDZ II: the travel view's dungeon lists' bindings all stand from here
   /** AUDIT OW3 D1: A SPAWN'S PLATE IS A WALK TO IT - TV2's spot journey (it stands in no MAPS table, so no place journey
    *  names it), ending at its exterior's edge on the traveller's side (dungeonApproach). Asked of the live list: a spawn
    *  whose time ran out since the plate was drawn is gone from it, and nothing is walked to.
@@ -31283,6 +31304,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   /** A map pixel of the open sea - the ocean's water, never a lake's - the lanes' and the roadsteads' water. */
   const laneOpen = (px, py) => px >= 0 && py >= 0 && px < 1000 && py < 500 && tvWater(px, py) && maps.getClimateIndex(px, py) === CLIMATES.Ocean;
   const laneOpenNative = (x, z) => { if (!(x >= 0 && z >= 0 && x < 1000 * RAID_NATIVE_PIXEL && z < 500 * RAID_NATIVE_PIXEL)) return false; const p = pixelOfNative(x, z); return laneOpen(p.x, p.y); };
+  _lanesReady = true;   // BOOT-TDZ II: every binding the lanes read stands from here (raidNowMs above it)
   /** The lanes of the whole map - every client's the same - made once. */
   function laneNet() {
     if (!_laneNet) {
@@ -33346,16 +33368,16 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       mwViewDrawBody(canvas, { proj, view, eye: mwv.eye, feet: player.bodyFeetAt(), yaw: player.bodyYawFor(cam.yaw), viewYaw: cam.yaw, face: tvFace });   // DISC18: the body at the capsule's own feet, not the camera's smoothed ones
       drawPeerBodies(proj, view, mwv.eye, tvf ? tvFace : null);   // MWBODY1: the others' bodies, the same pass; OW-PEERS: grown under the Overworld
     } finally { renderer.flushCharacterSpriteBatch?.(); }   // MWNPC2: every body's picture in one bind of the sprite target
-    mwViewDrawWagon(renderer);   // EOTB-IL: the cart, when the transport is the cart
+    mwViewDrawWagon(renderer, null, yardCull);   // EOTB-IL: the cart, when the transport is the cart; PERF-WAGON: by the street's view test
     riteHost?.draw(renderer, null, mwv.eye);   // WB12d: the faithful's circle and their tents - AUDIT WB12d (G6): its sigil from near the eye alone
     sigilBroker?.draw(renderer);   // BROKER-CAGE: the Sigil Broker's cage beside it, and its door
     gatePool?.draw(renderer);   // WB2: the Oblivion Gate's stone
-    camps.draw(renderer);   // SURV3: the tents, the cart's own pass
-    hcc.draw(renderer, null, tvf ? { selfGrow: tvf.grow, grow: peerGrow } : undefined);   // HCC: the trailing / parked / following wagon and its cargo, mine and the peers' (the horses ride the flats' pass); WAGON-HITCH x OW-BIG: a cart's wagon grown with its rider under the Overworld
+    camps.draw(renderer, null, yardCull);   // SURV3: the tents, the cart's own pass; PERF-WAGON: by the street's view test
+    hcc.draw(renderer, null, tvf ? { selfGrow: tvf.grow, grow: peerGrow } : undefined, yardCull);   // PERF-TEAMS: each wagon culled as the town's own models are; HCC: the trailing / parked / following wagon and its cargo, mine and the peers' (the horses ride the flats' pass); WAGON-HITCH x OW-BIG: a cart's wagon grown with its rider under the Overworld
     if (tvf) drawTvDungeonModels(travelView?.eye ?? null, tvf.fullyUp);   // OW-DUNGEONS: each dungeon's own model, grown under the Overworld; TV-BURST: loaded once the view is up, one a frame
     else if (_tvDngModel.size) dropTvDungeonModels();   // TV-BURST: the view down, its models let go (kept warm on their shelf)
-    if (livingRoads && livingWorldOn() && _mode() === 'exterior') livingRoads.drawTeams(renderer);   // LW10: the living world's wagons, in the cart's own pass
-    _livingHideoutsHost?.draw(renderer);   // LW12: a band's tents
+    if (livingRoads && livingWorldOn() && _mode() === 'exterior') livingRoads.drawTeams(renderer, yardCull);   // LW10: the living world's wagons, in the cart's own pass; PERF-WAGON: by the street's view test
+    _livingHideoutsHost?.draw(renderer, null, yardCull);   // LW12: a band's tents; PERF-WAGON: by the street's view test
     bountyFarms?.draw(renderer);   // BOUNTY-FARM: a held farm bounty's farmstead
     quays?.draw(renderer);   // QUAYS: the harbours' quays and the gangways to my ships made fast
     yards?.draw(renderer);   // HOME-YARD: the pieces outside the town's homes, and the one being placed
