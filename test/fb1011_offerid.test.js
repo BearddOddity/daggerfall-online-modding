@@ -4,7 +4,9 @@
 // checkpoints AFTER the offer was written for the wire (tradeSession.js setOffer -> tradePack.js wire) - so a piece looted
 // since the last checkpoint stood in the realm's record with an id its offer did not carry, `uid` is no field a trade
 // lets differ (realmTradeLaw.js recordIsOffered), and the trade was refused whole: "The realm could not find the goods
-// offered - nothing was traded." Now the offer stamps the pieces it holds out, the id the checkpoint would give them.
+// offered - nothing was traded." Now the offer stamps the pieces it holds out, the id the checkpoint would give them -
+// the stamp handed to the pack by the host (world.js), never imported by it: itemIds.js reads the item law, and the law
+// imported installs itself into the wire's clamp for every reader of tradePack.js (a Soulbound pin's own fixture found it).
 // Fixtures are the producers' (the loot ladder's Rare, lootRarity.js applyRarity - minted with no id); the trade is the
 // real createTradeManager over the host's checkpointed pack, settled by the real account Worker over node:sqlite with the
 // real createRealmSession and realmTradeEscrow (test/fb1001_identify.test.js's realm rig), each checkpoint composed as the
@@ -19,6 +21,7 @@ import { ACCEPTED } from '../src/net/legalLaw.js';
 import { createTradeManager } from '../src/net/tradeSession.js';
 import { validTradeData } from '../src/net/wire.js';
 import { recordIsOffered } from '../src/net/realmTradeLaw.js';
+import { readFileSync } from 'node:fs';
 import { createTradePack } from '../src/systems/tradePack.js';
 import { checkpointedTradePack } from '../src/systems/onlineCheckpoint.js';
 import { realmIo, realmFetch, createRealmSession, realmTradeEscrow } from '../src/systems/realmSaves.js';
@@ -50,7 +53,7 @@ test('OFFER-ID: the pack\'s offer gives each valuable piece held out its id, in 
   stampItemIds({ items: [kept] });
   const had = kept.uid;
   assert.equal(fresh.uid, undefined, 'a Rare drops with no id');
-  const recs = createTradePack({ items: [fresh, kept, plain] }).wire([{ item: fresh, count: 1 }, { item: kept, count: 1 }, { item: plain, count: 1 }]);
+  const recs = createTradePack({ items: [fresh, kept, plain] }, { stampIds: stampItemIds }).wire([{ item: fresh, count: 1 }, { item: kept, count: 1 }, { item: plain, count: 1 }]);
   assert.ok(ITEM_UID_RE.test(fresh.uid), 'the fresh piece has its id from the offer');
   assert.deepEqual(recs.map((r) => r.uid), [fresh.uid, had, undefined], 'each record the piece\'s own: minted, kept, none');
   assert.equal(stampItemIds({ items: [fresh, kept, plain] }), 0, 'the checkpoint after it stamps nothing new');
@@ -86,7 +89,7 @@ test('OFFER-ID through the realm: a Rare looted since the last checkpoint is off
   const mgrs = {};
   for (const [me, other] of [['A', 'B'], ['B', 'A']]) {
     mgrs[me] = createTradeManager({
-      pack: checkpointedTradePack(createTradePack(ents[me]), tabs[me].checkpoint), now: () => clock, say: (t) => said[me].push(t), peerName: () => other, selfId: () => id(me),
+      pack: checkpointedTradePack(createTradePack(ents[me], { stampIds: stampItemIds }), tabs[me].checkpoint),   // the host's pack, as world.js builds it now: () => clock, say: (t) => said[me].push(t), peerName: () => other, selfId: () => id(me),
       send: (d) => { const v = validTradeData(d); if (!v) return false; q.push({ from: id(me), to: v.to === id('A') ? 'A' : 'B', d: v }); return true; },
       near: () => true, open: () => {},
       escrow: realmTradeEscrow({ session: tabs[me].session, checkpoint: tabs[me].checkpoint, wait: async () => { clock += 100; await new Promise((res) => { setImmediate(res); }); }, now: () => clock }),
@@ -110,4 +113,13 @@ test('OFFER-ID through the realm: a Rare looted since the last checkpoint is off
   await until(async () => JSON.parse((await realmFetch(tabs.B.io, tabs.B.id)).text).items.length === 1, 'B\'s record');
   assert.equal(JSON.parse((await realmFetch(tabs.B.io, tabs.B.id)).text).items[0].uid, uid, 'and so does the realm\'s record of B');
   assert.deepEqual(lost, [], 'neither tab lost its session');
+});
+
+test('OFFER-ID by source: the host hands its realm pack the id stamp; a pack handed none stamps nothing (the other readers of the pack)', () => {
+  const w = readFileSync(new URL('../src/scenes/world.js', import.meta.url), 'utf8');
+  assert.match(w, /const tradePack = checkpointedTradePack\(createTradePack\(playerEntity, \{ stampIds: stampItemIds \}\), \(\) => onlineCheckpoint\(\)\);/);
+  assert.doesNotMatch(readFileSync(new URL('../src/systems/tradePack.js', import.meta.url), 'utf8'), /from '\.\/itemIds\.js'/, 'never imported: the item law would install itself');
+  const fresh = rareSword(5);
+  createTradePack({ items: [fresh] }).wire([{ item: fresh, count: 1 }]);
+  assert.equal(fresh.uid, undefined);
 });

@@ -47,8 +47,17 @@
   {
     "name": "OFFERID-the-offer-unstamped",
     "file": "src/systems/tradePack.js",
-    "old": "      stampItemIds({ items: entries.map((e) => e.item) });",
+    "old": "      stampIds?.({ items: entries.map((e) => e.item) });",
     "new": "",
+    "tests": [
+      "test/fb1011_offerid.test.js"
+    ]
+  },
+  {
+    "name": "OFFERID-the-host-hands-none",
+    "file": "src/scenes/world.js",
+    "old": "  const tradePack = checkpointedTradePack(createTradePack(playerEntity, { stampIds: stampItemIds }), () => onlineCheckpoint());",
+    "new": "  const tradePack = checkpointedTradePack(createTradePack(playerEntity), () => onlineCheckpoint());",
     "tests": [
       "test/fb1011_offerid.test.js"
     ]

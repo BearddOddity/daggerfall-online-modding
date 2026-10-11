@@ -22,7 +22,6 @@ import { isEquipped } from './equip.js';
 import { clearLightSourceOnLeave } from './itemTransfer.js';
 import { entityMaxEncumbrance } from '../combat/formulas.js';
 import { isBound, BOUND_TRADE_TEXT } from './itemBound.js';   // SS1: a bound piece never leaves for another player
-import { stampItemIds } from './itemIds.js';   // OFFER-ID: an offered piece carries the id its checkpoint will
 import { BOAT_TEMPLATES } from '../net/realmTradeLaw.js';   // AUDIT REALM2 T1: nor a boat's deed or parts - what they stand for stays in the giver's save
 
 /** BAG1: the Materials Bag stays with its owner - a list of its own rides with it (systems/materialsBag.js), which no
@@ -68,8 +67,12 @@ function offerWeight(entries, gold) {
 /**
  * The adapter over one entity's pack. `entity` is the live player entity (`items`, `goldPieces`).
  * Returns the `pack` object net/tradeSession.js takes.
+ * OFFER-ID (FIELD BUGS 2026-10-11): `stampIds` - the realm's id stamp (itemIds.js stampItemIds), handed in by the host
+ * that checkpoints the realm's save (world.js) rather than imported: itemIds.js reads the item law, and importing the law
+ * installs it into the wire's clamp (itemLaw.js setItemLaw) for every reader of this file.
+ * @param {any} entity @param {{ stampIds?: ((owner: { items: any[] }) => number) | null }} [o]
  */
-export function createTradePack(entity) {
+export function createTradePack(entity, { stampIds = null } = {}) {
   const list = () => (entity.items ??= []);
   return {
     offerable: (item) => packTradeRefusal(item, entity),   // WAGONS2 (AUDIT): the loaded wagon stays
@@ -79,7 +82,7 @@ export function createTradePack(entity) {
       // OFFER-ID (FIELD BUGS 2026-10-11): each valuable piece offered is given its id NOW (INT4 itemIds.js
       // stampItemIds), the one the trade's hold checkpoint would stamp after the offer was made - so the record the
       // realm finds is the one offered, and a piece looted since the last checkpoint trades instead of being refused
-      stampItemIds({ items: entries.map((e) => e.item) });
+      stampIds?.({ items: entries.map((e) => e.item) });
       const recs = entries.map(({ item, count }) => {
         const copy = JSON.parse(JSON.stringify(item));   // a plain-data copy: nothing from the pack rides the frame by reference
         const have = Math.max(1, item.stackCount ?? 1);

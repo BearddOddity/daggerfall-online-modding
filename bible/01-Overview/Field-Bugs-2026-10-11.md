@@ -58,14 +58,19 @@ the trade's hold checkpoints after that. So a piece looted since the last checkp
 id its offer did not carry. `uid` is not one of the fields a trade lets differ (`realmTradeLaw.js` recordIsOffered over
 TRADE_VOLATILE_FIELDS), so the whole trade was refused: "The realm could not find the goods offered - nothing was
 traded." It was reproduced on the real account Worker. Now the offer stamps the pieces it holds out with the id the
-checkpoint would give them, and a piece that already has one keeps it.
+checkpoint would give them, and a piece that already has one keeps it. The stamp is handed to the pack by the host
+(world.js passes `stampItemIds`) rather than imported: itemIds.js reads the item law, and importing the law installs it
+into the wire's clamp for every reader of tradePack.js - CI's first run of this branch found it, when a Soulbound pin's
+own fixture stopped passing the clamp (`test/soulbound_break_once.test.js`).
 
 The report itself - a piece identified by its new holder coming back unknown - still does not reproduce. TRADE-KNOWN
 (`01-Overview/Field-Bugs-2026-10-01.md`) pinned the round trip hand to hand and through the realm, and both pins pass
 here with the mods on and with ids stamped. The one way left is the one TRADE-KNOWN named: identifying a piece is not a
 realm act. It rides the identifier's next checkpoint, so a tab that joins again before one lands plays the older record.
 The reporter is owed the same two questions: did the trade window show the known name, and is the piece known after a
-relog? Pinned by `test/fb1011_offerid.test.js` (2, the realm round through the real Worker); `tools/mutants/fb1011.json`.
+relog? Pinned by `test/fb1011_offerid.test.js` (3, the realm round through the real Worker, and the host's hand-off by
+source); realm0's pin on the host's pack line moved (PIN MOVED) and its record re-aimed by content;
+`tools/mutants/fb1011.json`.
 
 ## JUMP-SLOW: the jump given back under Slowfall (9)
 
@@ -179,4 +184,4 @@ cancel list), `04-Characters/Morrowind-NPCs.md` section 15c (the fallen and the 
 guard beside BAL2), `06-Systems/Loot-Arc.md` (the Aegis's bill), `10-UI/UI-Arc.md` (PX21a's transportItem),
 `01-Overview/Field-Bugs-2026-10-09.md` (HOME-FOOT's lot sentence retired), `09-Testing/Testing.md` (seven rows and the
 Suite line). The tests: `fb1011_campfire`, `fb1011_cartslot`, `fb1011_offerid`, `fb1011_jumpslow`, `fb1011_legendheld`,
-`fb1011_homeline`, `fb1011_fullguard` (18). The mutants: `tools/mutants/fb1011.json`.
+`fb1011_homeline`, `fb1011_fullguard` (19). The mutants: `tools/mutants/fb1011.json`.

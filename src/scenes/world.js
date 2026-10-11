@@ -21900,7 +21900,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     const p = peersNear()?.find((x) => x.id === peerId);
     return !!p && inTradeRange(player.feetAt(), p.feet, TRADE_RANGE_M);   // feetAt(): the same interpolated feet PARTY_REST_RADIUS's distanceToPartyAccount measures from - the port's one "where am I, in metres"
   };
-  const tradePack = checkpointedTradePack(createTradePack(playerEntity), () => onlineCheckpoint());   // REALM P0.5: the giver's loss on disk before the goods leave
+  const tradePack = checkpointedTradePack(createTradePack(playerEntity, { stampIds: stampItemIds }), () => onlineCheckpoint());   // REALM P0.5: the giver's loss on disk before the goods leave
   let tradeWin = null;
   const tradeMgr = createTradeManager({
     pack: tradePack,
