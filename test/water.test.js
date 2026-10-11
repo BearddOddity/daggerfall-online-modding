@@ -164,8 +164,11 @@ test('WATER1: the shader - the terrain\'s own grid lifted, the corner lookup by 
   // PIN MOVED (WATER-NEXT 2): the body is the water's colour, lit by TERRAIN_FS's terms (the sun's softened - light
   // goes into water, it does not bounce off it like dirt); Schlick capped higher; the alpha is the shore's and, without
   // the frame's copy, how much of the bed the water hides
-  assert.match(fs, /vec3 lit = body \* \(uAmbient \+ uSunColor \* \(\(uSunScale \* diff\) \* 0\.6\) \+ uMoonColor \* \(uMoonScale \* mdiff\)\);/, 'TERRAIN_FS\'s light law');
-  assert.match(fs, /float F = uF0 \+ \(0\.85 - uF0\) \* pow\(1\.0 - NdV, 5\.0\);/, 'Schlick, capped');
+  // PIN MOVED (AUDIT FAR-SEA1 C12): the open sea's light is one text with the far ring's sea (render/horizonHaze.js SEA_LOOK_GLSL)
+  assert.match(fs, /vec3 lit = body \* seaLight\(uAmbient, uSunColor, uSunScale \* diff, uMoonColor, uMoonScale \* mdiff\);/, 'TERRAIN_FS\'s light law');
+  assert.ok(fs.includes('return ambient + sunColor * (sunDiff * 0.6) + moonColor * moonDiff;'), '...the sky\'s light, the sun\'s softly and the moon\'s');
+  assert.match(fs, /float F = seaFresnel\(NdV, uF0\);/, 'Schlick, capped');   // PIN MOVED (AUDIT FAR-SEA1 C12)
+  assert.ok(fs.includes('float seaFresnel(float ndv, float f0) { return f0 + (0.85 - f0) * pow(1.0 - clamp(ndv, 0.0, 1.0), 5.0); }'), '...in the open sea\'s one text');
   // PIN MOVED (AUDIT WATER-NEXT G1): the fogs over the water's own light at its share - the copy under it was fogged when drawn
   assert.match(fs, /vec3 fogged = own \* fw \+ uFogColor \* \(1\.0 - fw\) \* ownShare;\s*\n\s*fogged = dwWaterFogAdd\(fogged, vWorldPos\) \+ dwWaterFog\(vec3\(0\.0\), vWorldPos\) \* ownShare;/, 'the fog every world pass takes (DW-C: and the carved sea\'s distance fog over it)');
   // GRAIN1 (2026-09-19): the same texel, the same layer, the same scroll -
@@ -242,8 +245,9 @@ test('WATER1: both exterior hosts - the gate, the has-water skip, and the slot a
   assert.ok(slot > w.indexOf('renderer.drawTerrain(p.terrain, pixelMatrix,'), 'after the ground');
   assert.ok(slot > w.lastIndexOf('renderer.drawMesh(millParts.rotor, mountRotor(multiply(pixelMatrix, w.local)'), 'after the last opaque model of the pixel loop');
   assert.ok(slot < w.indexOf('renderer.drawBillboards(allBatches, camRight, bbUp);'), 'before the first flat');   // TV1: the flats lean to the travel view's eye (bbUp)
-  assert.match(w, /const wu = _waterU = waterUniforms\(\{ seconds: now \/ 1000, wind: windNow, rain: precipMode === 'rain' \|\| precipMode === 'storm' \? fx\.intensity : 0, sky: sky\.waterSky\(\) \}\);/,
-    'the clock, the eased wind the mills take, the front\'s rain, the dome\'s colours');
+  assert.match(w, /const wu = _waterU = waterUniforms\(\{ seconds: now \/ 1000, wind: windNow, rain: precipMode === 'rain' \|\| precipMode === 'storm' \? fx\.intensity : 0, sky: waterSkyNow \}\);/,
+    'the clock, the eased wind the mills take, the front\'s rain, the dome\'s colours');   // PIN MOVED (FAR-SEA1): the dome's colours read once a frame, the far ring's sea takes them too
+  assert.match(w, /const waterSkyNow = waterOn \? sky\.waterSky\(\) : null;/, 'FAR-SEA1: ...read from the dome, once (AUDIT FAR-SEA1 H2: and only with the Enhanced water on)');
   // PERF-EXT13: the visible water pixels are collected - each pixel's water, its matrix, its ground array and its
   // tilemap - and drawn in ONE call after the walk
   assert.match(w, /if \(!p\._visible \|\| !p\.water \|\| p\.deepWaters\?\.hide\) continue;[^\n]*\n\s*const row = _waterRows\[n\+\+\] \?\?= \[null, null, null, null\];\s*\n\s*row\[0\] = p\.water; row\[1\] = p\._pixelMatrix; row\[2\] = renderer\.tileArrays\.get\(p\.groundArchive\); row\[3\] = p\.tilemapTex;\s*\n\s*\}\s*\n\s*renderer\.drawWaterSurfaces\(_waterRows, n, 6\.4, wu\);/);

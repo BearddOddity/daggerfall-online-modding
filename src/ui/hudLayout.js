@@ -31,7 +31,10 @@ export const SNAP_PX = 8;
 /** The pieces, in the order the banner would name them. `sel` must match only while the piece stands in its place. */
 export const HUD_PIECES = Object.freeze([
   // the gameplay HUD
-  { id: 'compass', sel: '.hud .hud-compass', name: 'Compass', len: true },
+  // TURN1 (Dudey: "let the players rotate the compass with alt + u"): `turn` - the piece can be turned over in the editor
+  // (its own press, beside the X); a dress that draws a compass with a top and a bottom (DFO Grimoire's, hung from the
+  // screen's top) stands it up again when it is turned. The flag rides the piece's layout and Reset clears it
+  { id: 'compass', sel: '.hud .hud-compass', name: 'Compass', len: true, turn: true },
   // `dummy`: hidden until there is something to show (no foe targeted) - while unlocked it stands as a preview to move
   { id: 'foe', sel: '.hud .hud-foe', name: 'Target bar', dummy: true, len: true },
   { id: 'hotbar', sel: '.hud .hb', name: 'Hotbar' },
@@ -92,7 +95,7 @@ const layoutOf = (id) => {
   if (liveOuter && liveOuter.id === id) return liveOuter.o;
   const o = readLayout()[id] ?? {};
   const num = (v, d) => (Number.isFinite(v) ? v : d);
-  return { x: num(o.x, 0), y: num(o.y, 0), s: num(o.s, 1), l: num(o.l, 1), off: o.off === true };
+  return { x: num(o.x, 0), y: num(o.y, 0), s: num(o.s, 1), l: num(o.l, 1), off: o.off === true, t: o.t === true };
 };
 const pieceOf = (id) => HUD_PIECES.find((q) => q.id === id);
 const lenVarOf = (p) => (typeof p?.len === 'string' ? p.len : '--hml');
@@ -138,6 +141,9 @@ ${MOVED} { translate: var(--hmx, 0px) var(--hmy, 0px); scale: var(--hms, 1); }
 #${HANDLES_ID} i[data-hm-handle="off"] { width: 16px; height: 16px; cursor: pointer; background: #b8402e; color: #fff;
   font: 700 12px/16px sans-serif; text-align: center; font-style: normal; }
 #${HANDLES_ID} i[data-hm-handle="off"][data-on="0"] { background: #4f7a3a; }
+/* TURN1: the turn-over press shows only where a dress draws a compass with a top and a bottom (the Grimoire's) */
+#${HANDLES_ID} i[data-hm-handle="turn"] { display: none; width: 16px; height: 16px; cursor: pointer; background: #e0b070; color: #3a2a14;
+  font: 700 12px/16px sans-serif; text-align: center; font-style: normal; }
 [data-hm-edit] { pointer-events: auto !important; cursor: move !important; touch-action: none !important;
   outline: 2px dashed rgba(224,176,112,0.95) !important; outline-offset: 3px;
   user-select: none; -webkit-user-select: none; }
@@ -235,6 +241,8 @@ function paint(node, o) {
   if (t && t.s && t.s !== 1) set('--hms', String(t.s)); else del('--hms');
   if (o?.off) { if (!node.hasAttribute('data-hm-off')) node.setAttribute('data-hm-off', ''); }
   else if (node.hasAttribute?.('data-hm-off')) node.removeAttribute('data-hm-off');
+  if (p?.turn && o?.t) { if (!node.hasAttribute('data-hm-turn')) node.setAttribute('data-hm-turn', ''); }   // TURN1
+  else if (node.hasAttribute?.('data-hm-turn')) node.removeAttribute('data-hm-turn');
   if (p?.len) {
     const v = lenVarOf(p);
     if (o && o.l && o.l !== 1) { set(v, String(o.l)); if (!node.hasAttribute('data-hm-len')) node.setAttribute('data-hm-len', ''); }
@@ -370,7 +378,7 @@ function syncHandles(doc, edit) {
     layer = doc.createElement('div'); layer.id = HANDLES_ID; doc.body.append(layer);
   }
   const live = new Set(doc.querySelectorAll('[data-hm-edit]'));
-  for (const [n, h] of handleMap) if (!live.has(n)) { h.sq.remove(); h.ln?.remove(); h.tag?.remove(); h.x?.remove(); handleMap.delete(n); }
+  for (const [n, h] of handleMap) if (!live.has(n)) { h.sq.remove(); h.ln?.remove(); h.tag?.remove(); h.x?.remove(); h.turn?.remove(); handleMap.delete(n); }
   for (const n of live) {
     if (handleMap.has(n)) continue;
     const p = pieceOf(n.dataset.hm);
@@ -380,8 +388,10 @@ function syncHandles(doc, edit) {
     if (p?.len) { ln = doc.createElement('i'); ln.setAttribute('data-hm-handle', 'len'); ln.title = `Length: ${p.name}`; }
     const x = doc.createElement('i'); x.setAttribute('data-hm-handle', 'off'); x._hmNode = n;   // the X: off and on again
     sq._hmNode = n; if (ln) ln._hmNode = n;
-    layer.append(tag, sq, x); if (ln) layer.append(ln);
-    handleMap.set(n, { sq, ln, tag, x });
+    let turn = null;   // TURN1: the turn-over press, beside the X
+    if (p?.turn) { turn = doc.createElement('i'); turn.setAttribute('data-hm-handle', 'turn'); turn.textContent = '\u21bb'; turn.title = `Turn over: ${p.name}`; turn._hmNode = n; }
+    layer.append(tag, sq, x); if (ln) layer.append(ln); if (turn) layer.append(turn);
+    handleMap.set(n, { sq, ln, tag, x, turn });
   }
   const win = doc.defaultView ?? globalThis;
   if (!handleRaf && win.requestAnimationFrame) {
@@ -392,11 +402,12 @@ function syncHandles(doc, edit) {
         const r = n.getBoundingClientRect?.();
         const show = r && r.width > 2 && r.height > 2;
         h.sq.style.display = show ? '' : 'none'; if (h.ln) h.ln.style.display = show ? '' : 'none'; h.tag.style.display = show ? '' : 'none';
-        h.x.style.display = show ? '' : 'none';
+        h.x.style.display = show ? '' : 'none'; if (h.turn) h.turn.style.display = show ? '' : 'none';
         if (!show) continue;
         const off = n.hasAttribute('data-hm-off');
         if (h.x.dataset.on !== (off ? '0' : '1')) { h.x.dataset.on = off ? '0' : '1'; h.x.textContent = off ? '+' : '✕'; h.x.title = off ? 'Turn this back on' : 'Turn this off (hidden in play)'; }
         h.x.style.left = `${r.right - 14}px`; h.x.style.top = `${Math.max(2, r.top - 18)}px`;
+        if (h.turn) { h.turn.style.left = `${r.right - 34}px`; h.turn.style.top = `${Math.max(2, r.top - 18)}px`; }
         h.tag.style.left = `${Math.max(2, r.left)}px`; h.tag.style.top = `${Math.max(2, r.top - 19)}px`;
         h.sq.style.left = `${r.right - 2}px`; h.sq.style.top = `${r.bottom - 2}px`;
         if (h.ln) { h.ln.style.left = `${r.right + 2}px`; h.ln.style.top = `${r.top + r.height / 2 - 10}px`; }
@@ -477,6 +488,7 @@ function saveLayout(id, o) {
   if (o?.s && Math.abs(o.s - 1) > 0.005) v.s = Math.round(o.s * 100) / 100;
   if (o?.l && Math.abs(o.l - 1) > 0.005) v.l = Math.round(o.l * 100) / 100;
   if (o?.off) v.off = true;
+  if (o?.t) v.t = true;   // TURN1: turned over
   if (Object.keys(v).length) next[id] = v; else delete next[id];
   setPref(HUD_LAYOUT_PREF, Object.keys(next).length ? next : null);
 }
@@ -493,8 +505,9 @@ function onDown(e) {
   if (e.type !== 'pointerdown' || (e.button != null && e.button !== 0)) return;
   const id = node.dataset.hm;
   const o = layoutOf(id);
-  const mode = handleAt(e.target)?.getAttribute('data-hm-handle') ?? 'move';   // move | scale | len | off
+  const mode = handleAt(e.target)?.getAttribute('data-hm-handle') ?? 'move';   // move | scale | len | off | turn
   if (mode === 'off') { const nx = { ...o, off: !o.off }; paint(node, nx); saveLayout(id, nx); return; }   // the X: a click, no drag
+  if (mode === 'turn') { const nx = { ...o, t: !o.t }; paint(node, nx); saveLayout(id, nx); return; }   // TURN1: turned over, and back
   const r0 = node.getBoundingClientRect();
   // how far one local pixel of translate moves the piece on screen (the HUD scale rides its ancestors)
   let k = 1;

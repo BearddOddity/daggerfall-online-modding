@@ -254,8 +254,8 @@
   {
     "name": "LW5b-host-harbour",
     "file": "src/scenes/world.js",
-    "old": "    if (!town?.port) return [];\n    if (!mapDict) return undefined;",
-    "new": "    if (true) return [];\n    if (!mapDict) return undefined;",
+    "old": "    if (!town?.port) return [];\n    if (!mapDict || (typeof _lanesReady",
+    "new": "    if (true) return [];\n    if (!mapDict || (typeof _lanesReady",
     "tests": [
       "test/lw5b_sea.test.js"
     ]
@@ -263,8 +263,8 @@
   {
     "name": "LW5b-host-unread",
     "file": "src/scenes/world.js",
-    "old": "    if (!town?.port) return [];\n    if (!mapDict) return undefined;",
-    "new": "    if (!town?.port) return [];",
+    "old": "if (!mapDict || (typeof _lanesReady !== 'undefined' && !_lanesReady)) return undefined;",
+    "new": "if (typeof _lanesReady !== 'undefined' && !_lanesReady) return undefined;",
     "tests": [
       "test/lw5b_sea.test.js"
     ]

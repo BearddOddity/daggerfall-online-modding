@@ -62,8 +62,10 @@ until the sky's texture next changes), (12) the swim's odometer riding the
 recentre; and (3) now reaching DFU's billboards (the deep's foes, their
 corpses, a pile dropped in the sea). Seen, not the mod's: past the
 streamed grid the far ring (EV8) holds its haze at 85% through the middle
-distance, so its sea reads a shade darker than the fully fogged edge of
-the streamed world - EV8's own, over land and sea alike.
+distance - EV8's own, not the mod's. Its sea read a shade darker than the
+fully fogged edge of the streamed world until FAR-SEA1 (2026-10-10,
+`07-Rendering/Water-Arc.md`): the streamed sea holds the same haze now, and
+the ring's sea is the water's own, so they meet; over land the step stands.
 
 ### 3. There's a Hole in the Bottom of the Ocean 1.1.0 (jet082) - OH-A to OH-F LANDED
 

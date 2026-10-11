@@ -278,7 +278,7 @@ test('PERF-ZONE2 the world frame\'s CPU zones tile in order, and each new mark s
   const w = rd('src/scenes/world.js');
   const frame = w.slice(w.indexOf('  function frame(now) {'));
   const names = [...frame.matchAll(/meterFor\(renderer\.gl\)\?\.markCpu\('(\w+)'\)/g)].map((m) => m[1]);
-  assert.deepEqual(names, ['online', 'sim', 'bodies', 'batches', 'ring', 'flats', 'people', 'arrows', 'rig', 'hud', 'ui']);   // PERF-READ1: `ui` after the HUD's draw
+  assert.deepEqual(names, ['online', 'sim', 'motor', 'stream', 'hosts', 'view', 'weather', 'snow', 'storms', 'scene', 'gates', 'skyset', 'pools', 'lamps', 'lightset', 'sails', 'boats', 'begin', 'bodies', 'batches', 'ring', 'flats', 'people', 'arrows', 'rig', 'hud', 'ui']);   // PERF-READ1: `ui` after the HUD's draw
   const after = (mark, subject) => { const i = frame.indexOf(`markCpu('${mark}')`); const j = frame.indexOf(subject, i); assert.ok(i > 0 && j > i && j - i < 600, `${mark} sits directly on ${subject}`); };
   const before = (subject, mark) => { const j = frame.indexOf(subject); const i = frame.indexOf(`markCpu('${mark}')`, j); assert.ok(j > 0 && i > j && i - j < 400, `${mark} follows ${subject}`); };
   // the bodies mark is the NEXT statement after beginFrame: nothing the

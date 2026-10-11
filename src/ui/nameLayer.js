@@ -156,7 +156,15 @@ export const NAME_CSS = `${PIXELIFY_FIVE_FACE}
    on the anchor and the host has already lifted the anchor NAME_GAP_PX clear of the skull. Nothing here can ever
    sit over the head, at any distance - which is the whole of Mac's first sentence. */
 .dfname { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center;
-  transform: translate(-50%, -100%); }
+  transform: translate(-50%, -100%); contain: layout style; }
+/* PERF-NAMES1 (2026-10-10, Dudey: "big problems are caused by many players causing severe stutter"): A NAME IS MOVED
+   BY ITS TRANSFORM, NOT BY ITS BOX. The anchor was \`left\`/\`top\`, so every frame a crowd moved through the view laid
+   the layer out again - every label's flex column and its text, the browser's style and layout pass a frame
+   (tools/nameLayerBench.mjs: 60 names, 3.0 ms of style and 4.8 of layout a frame on the measuring machine). The
+   element stands at the origin and the render writes \`translate(x, y) translate(-50%, -100%)\` - the same point and
+   the same lift - so a frame that only moves names lays out nothing; and \`contain\` keeps a label whose size or
+   words changed from dirtying the rest. No \`will-change\`: a label on a layer of its own rasters its text and its
+   shadow apart from the page, and the pixels differ (measured: 324 of 400,000, by up to 26) - the picture is kept. */
 /* AUDIT NAME1 F12: the fallback is --bone's OWN value (ui/enhancedStyle.js :root, #e9e4d9), the one the friends
    and party panels fall back to. It read #d8cfae, which is a real colour but a different one - .hud's text - so a
    page that reached this layer before the enhanced sheet loaded drew the names in the HUD's ivory and the panels
@@ -276,7 +284,9 @@ export function createNameLayer({ doc = document, now = () => Date.now(), armsOf
 
   const setText = (n, t) => { if (n.textContent !== t) n.textContent = t; };
   const setCls = (n, c) => { if (n.className !== c) n.className = c; };
-  const setStyle = (n, k, v) => { if (n.style[k] !== v) n.style[k] = v; };
+  /** PERF-NAMES1: one tag's value, written when it differs from what THIS LAYER last wrote there (`tag[slot]`). */
+  const put = (tag, slot, v, write) => { if (tag[slot] !== v) { tag[slot] = v; write(v); } };
+  const live = new Set();   // PERF-NAMES1: the frame's ids, one set refilled
 
   const makeTag = () => {
     const node = doc.createElement('div');
@@ -310,7 +320,10 @@ export function createNameLayer({ doc = document, now = () => Date.now(), armsOf
     house.className = 'dfname-house';
     node.append(bubble, title, tag, house, ribbon);
     root.append(node);
-    return { node, bubble, title, tag, lv, name, guild, glyphs, house, ribbon, worn: null, titled: null, inked: undefined, banded: '', armed: '' };   // HERALDRY-SHOWN: `armed`, the frame as written   // SEASON1 part two: `banded`, the ribbon as written   // SHADOW-FANG: `titled`, the title whose paint is on; AUDIT A10: `inked`, the name's colour as written
+    return { node, bubble, title, tag, lv, name, guild, glyphs, house, ribbon, worn: null, titled: null, inked: undefined, banded: '', armed: '',
+      // PERF-NAMES1: what this tag's DOM was last told, kept here and compared here - a read of `style.x` or
+      // `textContent` asks the browser to serialise the value back, a cost a frame for every label
+      at: null, size: null, lvOf: undefined, gtOf: undefined, houseOf: undefined, said: null, nameText: null, titleText: null, bubbleOn: null, bubbleText: null, bubbleAlpha: null };   // HERALDRY-SHOWN: `armed`, the frame as written   // SEASON1 part two: `banded`, the ribbon as written   // SHADOW-FANG: `titled`, the title whose paint is on; AUDIT A10: `inked`, the name's colour as written
   };
 
   /** ACC3: the glyph run, REBUILT ONLY WHEN IT CHANGES. A glyph set is
@@ -394,8 +407,13 @@ export function createNameLayer({ doc = document, now = () => Date.now(), armsOf
       for (const [id, b] of [...bubbles]) if (t - b.at >= BUBBLE_MS) bubbles.delete(id);
       const want = !covered && points.length > 0;
       if (want !== shownRoot) { shownRoot = want; root.style.display = want ? '' : 'none'; }
-      if (!want) { visible = 0; return 0; }
-      const live = new Set();
+      // PERF-LEAK1 (2026-10-10): NOBODY TO LABEL, NO LABELS KEPT. The sweep below ran only on a frame that drew names, so
+      // the crowd's last frame left every one of its tags in the page, hidden - ten elements a name until the next
+      // person came into view (PERF-ON4's "240 DOM nodes more after sixty peers left", the peer lab's churn: 8 to 15
+      // names a wave). A frame with no point lets them go; a frame merely COVERED (a window over the HUD) keeps them,
+      // so the names under a window are moved again, never rebuilt, when it closes.
+      if (!want) { visible = 0; if (!covered && tags.size) { for (const tag of tags.values()) tag.node.remove?.(); tags.clear(); } return 0; }
+      live.clear();
       visible = 0;
       const vp = nameViewportScale(viewport);   // AUDIT NAME1 F3: the frame's own height, against the reference
       for (const p of points) {
@@ -412,18 +430,15 @@ export function createNameLayer({ doc = document, now = () => Date.now(), armsOf
         setCls(tag.node, p.kind === 'board' ? 'dfname dfname-board' : 'dfname');   // NOTICE1: a Notice Board's count, not a person
         // NAME_GAP_PX is taken HERE and not inside namePoints because it is a screen-pixel clearance and the point
         // is a projected head: the anchor stays the head for anything else that wants it, and the label's bottom
-        // edge lands the gap above it.
-        // PERF-NAMES (2026-10-10, the owner: "prob caused by ... crowded places"): the place is a TRANSFORM, the sheet's
-        // translate(-50%, -100%) after it - the same pixels as `left`/`top` (a browser's screenshots compared, byte for
-        // byte), in one write and with no layout: a tag's `left` and `top` laid it out again at every move, and a turn
-        // of the camera moves every name on the screen (60 names turning: 1.75 -> 1.48 ms of the page's main thread a
-        // frame in headless Chromium, its layout 0.11 -> 0).
-        setStyle(tag.node, 'transform', `translate(${Math.round(p.x)}px, ${Math.round(p.y - NAME_GAP_PX)}px) translate(-50%, -100%)`);
-        setStyle(tag.node, 'fontSize', `${namePixelSize(p.scale ?? 1, vp, hudScale).toFixed(1)}px`);
-        setText(tag.lv, renownText(p.lv) ?? '');   // RENOWN1: "12" in its box, or nothing
-        setText(tag.name, p.name ?? '');
-        setText(tag.guild, guildTagText(p.gt) ?? '');   // GUILD1c: "<HND>", or nothing
-        setText(tag.house, houseLine(p.house) ?? '');   // LEGACY7: "☠ Ysolde II of House Hlaalu", or nothing
+        // edge lands the gap above it. PERF-NAMES1: the anchor rides the TRANSFORM (the sheet's own lift after it) -
+        // the same whole pixels `left`/`top` held, and no layout for a label that only moved.
+        put(tag, 'at', `translate(${Math.round(p.x)}px, ${Math.round(p.y - NAME_GAP_PX)}px) translate(-50%, -100%)`, (v) => { tag.node.style.transform = v; });
+        put(tag, 'size', `${namePixelSize(p.scale ?? 1, vp, hudScale).toFixed(1)}px`, (v) => { tag.node.style.fontSize = v; });
+        // PERF-NAMES1: the words are worked out when the stamp they come from changes, not every frame
+        if (tag.lvOf !== p.lv) { tag.lvOf = p.lv; setText(tag.lv, renownText(p.lv) ?? ''); }   // RENOWN1: "12" in its box, or nothing
+        put(tag, 'nameText', p.name ?? '', (v) => setText(tag.name, v));
+        if (tag.gtOf !== p.gt) { tag.gtOf = p.gt; setText(tag.guild, guildTagText(p.gt) ?? ''); }   // GUILD1c: "<HND>", or nothing
+        if (tag.houseOf !== p.house) { tag.houseOf = p.house; setText(tag.house, houseLine(p.house) ?? ''); }   // LEGACY7: "☠ Ysolde II of House Hlaalu", or nothing
         // HERALDRY-SHOWN (Seats-Arc 8.1): the tag framed in its guild's heraldry where the client knows it - written when
         // it CHANGES, as the ribbon is
         const arms = guildTagText(p.gt) && armsOf ? heraldryOf(armsOf(p.gt)) : null;
@@ -454,7 +469,7 @@ export function createNameLayer({ doc = document, now = () => Date.now(), armsOf
         // "this is a Founder" - one erasing the other would take away
         // the distinction Mac asked for.
         const badge = titleBadge(p);
-        setText(tag.title, badge?.text ?? '');
+        put(tag, 'titleText', badge?.text ?? '', (v) => setText(tag.title, v));
         // SHADOW-FANG: the title's whole paint - its colour, or a gradient clipped to its letters - written when
         // the TITLE changes and not every frame: a browser reads a colour back normalised (#d3193c comes back
         // rgb(211, 25, 60)), so the diffing door would rewrite a gradient's keys on every frame for ever. Every
@@ -465,18 +480,18 @@ export function createNameLayer({ doc = document, now = () => Date.now(), armsOf
           const paint = titlePaint(badge);
           for (const k of TITLE_PAINT_KEYS) tag.title.style[k] = paint[k];
         }
-        setGlyphs(tag, p);
+        if (p.glyphs?.length || tag.worn !== '') setGlyphs(tag, p);   // PERF-NAMES1: a peer with no glyph and none worn has nothing to compare
         const b = bubbles.get(p.id);
         // AUDIT NAME1 F9: a bubble is SHOWN when it can be seen. A negative age - a clock stepped backwards, a
         // relay stamp from the future taken as `at` - is alpha 0, and an invisible box was still being counted by
         // bubbleCount() and still had its text written into the DOM. Alpha decides both.
         const alpha = b ? bubbleAlpha(t - b.at) : 0;
         if (alpha > 0) {
-          setText(tag.bubble, b.text);
-          setStyle(tag.bubble, 'opacity', alpha.toFixed(2));
-          setCls(tag.bubble, 'dfname-bubble');
+          put(tag, 'bubbleText', b.text, (v) => setText(tag.bubble, v));
+          put(tag, 'bubbleAlpha', alpha.toFixed(2), (v) => { tag.bubble.style.opacity = v; });
+          put(tag, 'bubbleOn', true, () => setCls(tag.bubble, 'dfname-bubble'));
           visible++;
-        } else setCls(tag.bubble, 'dfname-bubble off');
+        } else put(tag, 'bubbleOn', false, () => setCls(tag.bubble, 'dfname-bubble off'));
       }
       for (const [id, tag] of tags) { if (live.has(id)) continue; tag.node.remove?.(); tags.delete(id); }
       return visible;

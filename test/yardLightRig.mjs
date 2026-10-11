@@ -63,6 +63,7 @@ export function exteriorFrame({ lane, night, town, lamps, eye, ranges, tick = ()
     yards: { lamps: () => lamps }, yardLampRows,
     CITY_LIGHT_COLOR_F32: lanternColor(lane, new Float32Array(CITY_LIGHT_COLOR)),
     fillLanternPool, nearestLights, rangesFor, capFadeColors, capFadePairs, withPlayerLights, wodLightColors,
+    meterFor: () => null,   // PIN MOVED (PERF-SIM3): the frame's CPU meter marks its spans inside this source - no meter in this rig
   };
   exteriorLightsSource()(scope);
   const L = renderer._pointLights, n = Math.min(L.length / 4, renderer.maxPointLights);

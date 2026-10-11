@@ -357,15 +357,19 @@ import { midiNote } from '../src/systems/gateScore.js';
 
 /** A page the veil builds in: a GL that records its calls (a uniform's location its name), a frame clock, the sounds. */
 function veilPage({ reduce = false, noHour = false } = {}) {
-  const calls = [], sources = new Map();
+  const calls = [], sources = new Map(), attached = new Map();
+  const failed = (sh) => noHour && sources.get(sh)?.includes('uShatter');
   const gl = new Proxy({ ARRAY_BUFFER: 1, STATIC_DRAW: 2, FLOAT: 3, TRIANGLES: 4, COLOR_BUFFER_BIT: 5, VERTEX_SHADER: 6, FRAGMENT_SHADER: 7 }, {
     get(t, k) {
       if (k in t) return t[k];
       return (...a) => {
         calls.push([k, ...a]);
         if (k === 'shaderSource') sources.set(a[0], a[1]);
-        if (k === 'getShaderParameter') return !(noHour && sources.get(a[0])?.includes('uShatter'));
-        if (k === 'getProgramParameter') return true;
+        if (k === 'attachShader') { if (!attached.has(a[0])) attached.set(a[0], []); attached.get(a[0]).push(a[1]); }
+        if (k === 'getShaderParameter') return !failed(a[0]);
+        // PIN MOVED (PERF-COMPILE1): as WebGL does it - a shader that would not compile fails its program's link, and the
+        // build reads the link (glProgram.js's one sync point) before it asks a stage why
+        if (k === 'getProgramParameter') return !(attached.get(a[0]) ?? []).some(failed);
         if (k === 'getUniformLocation') return a[1];
         return {};
       };

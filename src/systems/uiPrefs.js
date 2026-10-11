@@ -71,6 +71,11 @@ export const PREF_DEFAULTS = Object.freeze({
   // PLUS2: Enhanced Plus's colours - a ui/enhancedFrame.js PLUS_THEMES id; 'slate' is the kit as it ships.
   plusTheme: 'slate',  plusCursor: true,   // PLUS6: the gauntlet cursor - off gives the system pointer back
   plusItemHover: true,   // PLUS7: the inventory's hover card - off keeps the right-click menu, drops the card
+  // GRIM1 (2026-10-09): THE DFO GRIMOIRE DRESS over the enhanced skin ('none' or 'grimoire' - ui/grimoireDress.js), and
+  // its card's two choices: the page the windows are written on ('cream' | 'scroll') and what the front door and the
+  // full screens stand on ('desk' | 'map'), and the vitals' vials upright in the corner or lying in a row ('upright' |
+  // 'row'). While the dress is worn `plusTheme` stays the player's, unworn.
+  plusDress: 'none', grimoirePages: 'cream', grimoireBackdrop: 'desk', grimoireVitals: 'upright', grimoireSpellbook: 'book',
   packPhoneDoll: false,   // PACK-PHONE (FIELD BUGS 2026-09-30): the pack's body on a phone - hidden until the header's Body shows it
   // PADPLUS1: the Plus controller - the crossbar ('auto' while a pad is connected, 'on', 'off'), run as a toggle on
   // the Run button, and the version of the one-time layout move already made (ui/plusPad.js)
@@ -145,6 +150,11 @@ export const PREF_DEFAULTS = Object.freeze({
   // test/gatecrowd.test.js and not imported: the shelf is on the boot path, and the import made net/gateCrowd.js the
   // entry's 69th file, past BOOT2's ceiling (test/boot2.test.js)
   gateCrowd: 0,
+  // PEER-RANGE (2026-10-10, the owner: "the rendering of players far out is contributing to poor performance"): how far
+  // out, in metres on the ground, other players are drawn - my party and the one I duel always (net/peerRange.js
+  // PEER_RANGE_TIERS; 0 everyone the relay sends). The default 300, past a player's shot (200 m); its PEER_RANGE_DEFAULT, pinned
+  // equal by test/peerrange.test.js and not imported, for GATE-CROWD's reason above
+  peerRange: 300,
   nightCrickets: true,   // SNDREP1: the night crickets loop (SoundClips.AmbientCrickets) - on by default; off silences it
   distantHowl: true,     // SNDREP1: the distant howl (SoundClips.AmbientDistantHowl) - on by default; off silences it
   // WS1: `mwSheathing` (Weapon Sheathing on the third-person body) is

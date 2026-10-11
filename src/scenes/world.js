@@ -88,7 +88,7 @@ import { lookAt, multiply, perspective, mirrorProjectionX, trs, identity, UP_Y, 
 import { aabbOutside, localAabb, transformedAabb, flatBatchAabb, cullDisabled } from '../render/frustum.js';   // GHOST1: the plane extraction comes through bounds.js's `spherePlanes` now - `_planes` serves the sphere test too
 import { spherePlanes, batchVisible, setFlatLean, batchSphere } from '../render/bounds.js';   // PERF-CROWD: the batch's own bounding sphere, the test the shadow replay already uses   // GHOST1: through its ONE home, on the NORMALISED planes it needs   // EV3: the frustum
 import { withMoonAmbient } from '../render/enhancedSky.js';   // EV5: secunda rides the ambient
-import { FarRingRenderer, ringDisabled, ringHeight } from '../render/farRing.js';   // EV8: the province's mountains on the horizon
+import { FarRingRenderer, ringDisabled, ringHeight, RING_HAZE_HOLD } from '../render/farRing.js';   // EV8: the province's mountains on the horizon; FAR-SEA1: its haze, the sea's too
 import { syncLightingLane, lanternColor } from '../render/enhancedLighting.js';   // EL1: the Enhanced Lighting lane, installed at mount
 import { collectBlockFlats, billboardSize, mobileBillboardSize, centredBase, classicBillboardSize, isNatureArchive, NATURE_FLATS_Y } from '../world/rmbFlats.js'; import { blockHillSeat, seatNatureFlat } from '../world/townStandIns.js';   // TREES-SEATED: a block's trees on the hills drawn under them
 import { blockSolids, flatFieldFor } from '../world/flatFields.js';   // FIELD BUGS 2026-10-04d CROPS: a crop field keeps a metre off the block's solids; AUDIT MERCHANT-YARDS G1: and a yard off the field
@@ -409,6 +409,7 @@ import { itemIconColor32 } from '../ui/itemIconColor32.js';   // WBX3: a spoil's
 import { setCourtRules } from '../systems/courtRules.js';   // WBX6: the court's laws, switched by the frame
 import { gateRoomKey, isGateRoom, gateBossOf, gateTimes, gateAdmits, gateAt, GATE_COLLAPSE_MS } from '../net/gateLaw.js';   // WB3b: the court's room, and its day's end
 import { createGateCrowd, gateCrowdMax } from '../net/gateCrowd.js';   // GATE-CROWD: a gate's court draws the nearest of a crowd
+import { createPeerRange, peerRangeOf } from '../net/peerRange.js';   // PEER-RANGE: the others drawn out to the distance on the Other players card
 import { gateLandingFor, courtRing, courtArena, courtToDungeon, courtBraziers, COURT_TEXT, COURT_FOG, LAVA_Y } from '../world/gateArena.js';   // WB3b: the Burning Court's way home, its ring and its words   // WB2: the gate's countdown over the screen, near it
 import { isMainStoryDungeon } from '../world/dungeonTextures.js';   // SPAWNED-DUNGEONS1: the main story's own dungeons are never cloned
 import { nearestSafeLocation, nearestSafeLocationAnywhere, respawnFlavorText, reviveForPlay, undergroundWakeSpot, undergroundWakeText } from '../systems/deathRespawn.js';   // D-ONLINE1: online, a death respawns instead of ending the run   // X-slice; the rest refusal raises the alert and asks the RESTING variant, the townsfolk idle the STRICT one; the catch-up loop's watch arm
@@ -2472,6 +2473,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   // an early renderer draws nothing until the weather says so.
   void warmPrograms([
     ...renderer.warmSteps(),
+    ...(renderer.lazyWarmSteps?.() ?? []),   // PERF-COMPILE1: the telegraph pass and the windows' background, at idle
     () => { if (!precip) precip = new PrecipitationRenderer(renderer.gl, precipOpts); },
   ]);
   const wisps = sky.enhanced ? new WindWispsRenderer(renderer.gl) : null;   // WIND3: built on the enhanced lane, so a shader fault is a boot fault; its row is read per frame
@@ -3177,6 +3179,12 @@ export async function bootWorld(canvas, renderer, params, status) {
   // each where her clock has her (the shared one the naval host stands and steers her by, raidNowMs): aboard under way,
   // ashore at home, or ashore at the far port as her visitors - while the Bay's ships sail (the naval host on); off, a
   // port's sailors keep their own days ashore
+  // BOOT-TDZ II (2026-10-10, the owner's players: "boot failed: cannot access 'WW' before initialization"): THE BAY'S
+  // LANES ARE ASKED ONLY ONCE THEY STAND. Their bindings (laneNet's `_laneNet`, `_laneWays`, laneOpen, laneOpenNative,
+  // raidNowMs) are declared thirty thousand lines below, past the boot's own first build - and that build deals a port
+  // town's trips and crews, which asked them in their temporal dead zone and threw. Until they stand the lanes answer
+  // as the map unread does (lanesFrom: undefined, asked again; no crew ashore, no sailor's berth).
+  let _lanesReady = false;
   const _livingLaneCounts = new Map();
   const livingLaneWay = (lane) => { let way = _laneWays.get(lane.key); if (way === undefined) { way = laneWay(lane, laneOpen, laneOpenNative); _laneWays.set(lane.key, way); } return way; };
   const livingLaneCount = (lane) => {
@@ -3200,7 +3208,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _livingLanesFrom = new Map();
   livingTripWorld.lanesFrom = (town) => {
     if (!town?.port) return [];
-    if (!mapDict) return undefined;
+    if (!mapDict || (typeof _lanesReady !== 'undefined' && !_lanesReady)) return undefined;   // BOOT-TDZ II: the lanes not yet standing are the map unread (typeof: a lifted slice without the flag)
     let got = _livingLanesFrom.get(town.mapId);
     if (!got) {
       const id = maskMapId(town.mapId);
@@ -3215,7 +3223,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _livingBerths = new Map();
   /** Where one of a port's sailors is now ('home', 'sea', 'abroad'), null for anyone else or the ships not sailing. */
   const livingAshore = (town, res) => {
-    if (res.job !== 'sailor' || res.town !== town?.mapId || !town?.port || !livingSailing()) return null;   // its own sailors: a visiting crew is the crews' own
+    if ((typeof _lanesReady !== 'undefined' && !_lanesReady) || res.job !== 'sailor' || res.town !== town?.mapId || !town?.port || !livingSailing()) return null;   // its own sailors: a visiting crew is the crews' own
     const portId = maskMapId(town.mapId);
     let book = _livingBerths.get(portId);
     if (!book) { book = { packets: portPackets(laneNet(), portId, livingLaneCount), sailors: livingSailorsOf(portId) }; _livingBerths.set(portId, book); }
@@ -3224,7 +3232,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** The hands of the packets lying at a port from elsewhere, each ashore from her making fast to her sailing (the
    *  clock's minutes, at its rate now). */
   const livingCrews = (town) => {
-    if (!town?.port || !livingSailing()) return [];
+    if ((typeof _lanesReady !== 'undefined' && !_lanesReady) || !town?.port || !livingSailing()) return [];   // BOOT-TDZ II
     const nowS = raidNowMs() / 1000, t = skyMinutes(), rate = livingBaseRate();
     const day = Math.floor((t - 240) / 1440);
     return crewsAshore(maskMapId(town.mapId), laneNet(), livingLaneCount, livingPacketAt, livingSailorsOf).flatMap((c) => {
@@ -3763,6 +3771,10 @@ export async function bootWorld(canvas, renderer, params, status) {
   // a player with the mod switched off needs in any case.
   let travelOptions = null;
   let tvFar = { at: null, near: -1, list: [] };   // TV5: the far places about the traveller (above its readers: BOOT-TDZ - a load empties it)
+  // BOOT-TDZ II (2026-10-10, "boot failed: cannot access 'PW' before initialization"): THE TRAVEL VIEW'S DUNGEON LISTS
+  // ANSWER NONE UNTIL THEIR BINDINGS STAND - `_tvDungeonRows`, tvPlaceSummary, the spawns' tests, all declared twenty-six
+  // thousand lines below, past the boot's first build that reached them. Set where the last of them is declared.
+  let _tvListsReady = false;
   let tvDng = { at: null, dg: -1, list: [] };   // TV6: the dungeons about the traveller (above its readers: BOOT-TDZ - a load empties it)
   let tvFind = { at: null, dg: -1, n: -1, list: [] };   // AUDIT OW5 D1: the find's own, uncapped (above its readers: BOOT-TDZ - a load empties it)
   let tvDngModels = { at: null, dg: -1, n: -1, list: [] };   // OW-DUNGEONS: the dungeons standing as models under the Overworld (above its readers: BOOT-TDZ - a load empties it)
@@ -4250,6 +4262,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const dwRender = deepWatersOn() ? new DeepWatersRenderer(renderer) : null;
   latchModLoaded(DEEP_WATERS_VENDOR, !!dwRender);   // AUDIT PRE-MERGE 0928 S4: the sea is built now or not at all - its fish's shelf rows answer the same (systems/deepWatersFishItems.js)
   if (dwRender) renderer.prepareTerrainClip();   // FAR-CLIP1: the cap's clip program, built with the mod's own at mount - not inside the first frame that draws a coast
+  if (dwRender) void warmPrograms([() => dwRender._ensure()]);   // PERF-COMPILE1 (stutter): the mod's seven programs at idle - they were built inside the first frame that drew a coast, seven compiles in one frame
   // DW-E2: GameManager.IsPlayingGame for the Deep Waters runtime's gates - no window up. The overlay slot (townTalk) is
   // made further down; the first pixels promote before it exists, so the question is late-bound (nothing is up yet).
   let _dwOverlayUp = () => false;
@@ -4297,6 +4310,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   // OH-B / OH-C: THE PITS - Iliac Puddle No More's dependant, cut into its floors (scenes/oceanHolesHost.js says how). Its
   // switch is read once, at the world's mount, with its dependency's: no carved sea, no pits.
   const ohRender = deepWaters && oceanHolesOn(true) ? new OceanHolesRenderer(dwRender) : null;
+  if (ohRender) void warmPrograms([() => ohRender._ensure()]);   // PERF-COMPILE1 (stutter): the holes' two programs at idle, not at the first hole drawn
   let _ohTime = 0;   // OceanHoles' Time.time - the game's, held by a pause (the entrance's once-a-second)
   const _ohOrigin = [0, 0, 0];
   oceanHoles = ohRender ? createOceanHoles({
@@ -5112,6 +5126,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _dwBreathState = { tally: 0 };
   const _dwSurfaceList = [];
   let _waterU = null;   // WATER-NEXT 2: the frame's water uniforms, set where the terrain's water draws
+  /** The ground archive whose water texel colours the open sea - the camera's climate's, else any built pixel's. AUDIT
+   *  FAR-SEA1 L1: one home - Iliac Puddle No More's sea and the far ring's sea beside it take the same body. */
+  function seaGroundArchive() {
+    const here = playerTravelPixel();
+    let arch = here ? built.get(`${here.x},${here.y}`)?.groundArchive : null;   // the sea's water is the camera's climate's
+    if (arch == null) for (const p of built.values()) if (p.groundArchive != null) { arch = p.groundArchive; break; }
+    return arch;
+  }
   function drawDeepWatersSurfaces(nowMs, cells = null) {
     const f = _dwFrame;
     if (!f || !f.s.spawnSurfaces) return;
@@ -5124,10 +5146,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // WATER-NEXT 2: from above, the sea is the water's own - the swell, the depth to the floor the mod carved, the
     // look through it - drawn by the water program over the mod's own sheets; from under it, the mod's underside
     if (waterOn && !f.underwater && _waterU) {
-      const here = playerTravelPixel();
-      let arch = here ? built.get(`${here.x},${here.y}`)?.groundArchive : null;   // the sea's water is the camera's climate's
-      if (arch == null) for (const p of built.values()) if (p.groundArchive != null) { arch = p.groundArchive; break; }
-      renderer.drawSeaSurfaces(_dwSurfaceList, deepWaters.oceanLocalY + SURFACE_RENDER_Y_OFFSET, _waterU, f.look.topColor, renderer.tileArrays.get(arch));   // its rgb read in place
+      renderer.drawSeaSurfaces(_dwSurfaceList, deepWaters.oceanLocalY + SURFACE_RENDER_Y_OFFSET, _waterU, f.look.topColor, renderer.tileArrays.get(seaGroundArchive()));   // its rgb read in place
       return;
     }
     dwRender.drawSurfaces(_dwSurfaceList, { ...f.look, underwater: f.underwater, liftY: deepWaters.oceanLocalY + SURFACE_RENDER_Y_OFFSET, surfaceScroll: surfaceScrollAt(nowMs / 1000), surfaceTexture: _dwSurfaceTex });
@@ -9304,6 +9323,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** CSA-F: the waves' pass, and their pictures (InitializeWaveTextures, 1811-1819): the author's two paints and the
    *  snow they key, TEXTURE.303 record 1 of the player's ARENA2 - loaded at boot, as Start has them (CSA-J). */
   const csaRender = csaRuntime ? new ComeSailAwayRenderer(renderer) : null;
+  if (csaRender) void warmPrograms([() => csaRender._ensurePart(), () => csaRender._ensureWave()]);   // PERF-COMPILE1 (stutter): the sea's four programs at idle, not on the first frame at sea
   let _csaWaveLoad = null;
   function csaWaveFrames() {
     _csaWaveLoad ??= (async () => {
@@ -12049,7 +12069,8 @@ export async function bootWorld(canvas, renderer, params, status) {
   const _hiddenPeers = new Set();   // AUDIT (pre-merge) I-B: the peers the classic lane stands nowhere this frame - their teams with them
   const veilOf = (id) => _veils.get(id) ?? null;
   const gateCrowd = createGateCrowd();   // GATE-CROWD: a gate's court draws the nearest of a crowd (net/gateCrowd.js) - the places held frame to frame
-  const crowdDrawnHere = (p) => gateCrowd.shows(p.id);   // GATE-CROWD: a player the court's crowd leaves undrawn is not there to press or aim a gift at
+  const peerRange = createPeerRange();   // PEER-RANGE: past the Other players card's distance the others stand nowhere on this screen (net/peerRange.js) - held a little past it frame to frame
+  const crowdDrawnHere = (p) => gateCrowd.shows(p.id) && peerRange.shows(p.id);   // GATE-CROWD: a player the court's crowd leaves undrawn is not there to press or aim a gift at; PEER-RANGE: nor one past the distance
   const magic = createPlayerMagic({
     renderer, audio, getTexture, uploadRecord, uploadRecordFrame,
     lairHere: () => {   // RVN7 (bible/12-Enhanced-AI/Feud-Arc.md 18.1): a deed in the open world - my map pixel, and the named dungeons in the boards' ring about it
@@ -24080,6 +24101,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** The frame the renderer draws this render frame (the body's pass reads it, the sea's pass after it). */
   let _serpentDraw = null;
   let _serpentBarUp = false;
+  let _serpentFight = false;   // HALO-THIN: this frame's serpent fight - its trail reads my pose in the room it is fought in, a halo's too
   /** The serpent's frame (the online frame's, after the gate's): its omen's line, its receipts offered, and - on the
    *  street, alive - the fight on this screen and its bar. */
   const serpentFrame = () => {
@@ -24090,10 +24112,12 @@ export async function bootWorld(canvas, renderer, params, status) {
     serpentClaims?.tick();
     sdClaims?.tick();   // SD9b: what the account service has not counted yet, offered again on its own clock
     iliacClaims?.tick();   // CARDS10: and the ranked Iliac games', on theirs
+    _serpentFight = false;
     if (!serpentHost) return;
     const street = (modes?.mode ?? 'exterior') === 'exterior' && playerSpawned && playerEntity.health > 0 && !modes?.deathUp?.();
     let fight = false;
     try { fight = street && serpentHost.frame(); } catch (e) { console.warn('[serpent] frame', e?.message ?? e); }
+    _serpentFight = !!fight;
     const bar = fight ? serpentHost.bar() : null;
     if (bar || _serpentBarUp) {
       drawGateBossBar(bar ? serpentBarModel(bar) : null, { hidden: gamePaused() || !!townTalk.hudHidden });
@@ -27760,7 +27784,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     _peerFxHp = playerEntity?.health ?? null;
     if (!online) return;
     for (const p of online.peers.values()) {
-      if (!p?.shown || !online.visible(p) || !gateCrowd.shows(p.id)) { peerFxPlayer.forget(p?.id); continue; }   // GATE-CROWD: no spark nor cry from a player the court's crowd leaves undrawn
+      if (!p?.shown || !online.visible(p) || !gateCrowd.shows(p.id) || !peerRange.shows(p.id)) { peerFxPlayer.forget(p?.id); continue; }   // GATE-CROWD: no spark nor cry from a player the court's crowd leaves undrawn; PEER-RANGE: nor from one past the distance
       peerFxPlayer.update(p.id, p.shown, onlineToScene(p.shown), peerBodies?.heightOf?.(p.id) || 0);
     }
     peerFxPlayer.frame();
@@ -28050,6 +28074,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       ...climbPoseOf(player),   // CLIMB5: my climb and the way my body faces on it, so the others turn me to the wall, pose me off the ground and hear me climb - absent off the wall
     };   // the wire's move bit: 1 walking, 2 running (the peers' bodies pick the clip off it)
     if (seated) arm.st = seated.st;   // CARDS2b: seated, and the table's top above the feet - absent standing, the wire's omission law
+    online.haloWhole = !!duelMgr.duel || _serpentFight;   // HALO-THIN (net/online.js haloPoseDue): a halo hears my pose when it is due - every pose while a referee may stand in one (a duel's bout is refereed in the room my opponent is heard through, a serpent's trail in the fight's); never the open zone's - its referee holds me by the zone word, which my own cell's socket alone says (AUDIT B F4)
     if (!modes?.caravanVisit) caravanVisitLink.close();   // WAGONS2-VISIT: no visit, no listener - closed before my primary joins the cell it heard (never replaced by my own id)
     if (!key) { if (online.room) online.leave(); }   // AUDIT ONLINE D4: a place the host cannot name is no room, not the old one in the wrong frame
     // AUDIT WORLD2 C8: a world room's edge is never a churn - the hold delayed every handover and let one dungeon's stream land in another
@@ -28129,7 +28154,8 @@ export async function bootWorld(canvas, renderer, params, status) {
     _peerMapPoses.clear();
     for (const d of drawable) if (d?.shown) _peerMapPoses.set(d.id, d.shown);
     if (hccOn()) hcc.driverGlue(drawable, { toWire: campToWire });   // WAGONS3: a driver on their bench, drawn seated there - after the map's poses, where `peerAnchor` reads the puller their wagon hangs from
-    const visiblePeers = gateCrowd.cut(cabin ? drawable : drawable.filter((d) => !csaPeers.isBelowDeck(d.id)), { on: modes?.gateArenaDay?.() != null, me: player.pos, at: (d) => onlineToScene(d.shown), max: gateCrowdMax(getPref('gateCrowd')), mate: (id) => !!social?.isPartyPeer(id) });   // GATE-CROWD (2026-10-07, Mac: "some type of filter when there are too many people"): in a gate's court, past the count on the Other players card only the nearest are drawn, my party always (net/gateCrowd.js) - the rest stand nowhere on this screen this frame: no body, sprite, name, light, cast or step (their map marks, above, are kept)
+    const ranged = peerRange.cut(cabin ? drawable : drawable.filter((d) => !csaPeers.isBelowDeck(d.id)), { on: !travelView?.active, me: player.pos, at: (d) => onlineToScene(d.shown), range: peerRangeOf(getPref('peerRange')), mate: (id) => !!social?.isPartyPeer(id) || id === duelMgr.opponent });   // PEER-RANGE (2026-10-10, the owner: "the rendering of players far out is contributing to poor performance"): past the distance on the Other players card a player stands nowhere on this screen - GATE-CROWD's cut by distance (net/peerRange.js): my party and the one I duel always, nobody cut under the travel view (OW-PEERS grows them to be seen from overhead); their map marks, above, are kept
+    const visiblePeers = gateCrowd.cut(ranged, { on: modes?.gateArenaDay?.() != null, me: player.pos, at: (d) => onlineToScene(d.shown), max: gateCrowdMax(getPref('gateCrowd')), mate: (id) => !!social?.isPartyPeer(id) });   // GATE-CROWD (2026-10-07, Mac: "some type of filter when there are too many people"): in a gate's court, past the count on the Other players card only the nearest are drawn, my party always (net/gateCrowd.js) - the rest stand nowhere on this screen this frame: no body, sprite, name, light, cast or step (their map marks, above, are kept)
     peerCastVisuals(visiblePeers);   // SPELLFX1: a peer's new cast, drawn once
     if (modes?.gateArenaDay?.() != null) gateCourt?.stepsIn(drawable, (d) => (d?.shown ? onlineToScene(d.shown) : null));   // AUDIT GATE-FBX C3: a player stepping out of the court's way in opens it - every one in the room, the crowd's cut or not (the fire is the court's, not a body this screen draws)
     _veilT += dt > 0 ? dt : 0;
@@ -28179,7 +28205,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       for (const acct of [..._partyBodies]) if (!others.some((m) => m.acct === acct)) { _partyBodies.delete(acct); remotePlayers.partyForget(acct); }
     }
     if (online.room) remotePlayers.keepCorpses((r) => r === online.room || ((isWorldRoom(r) || isCellRoom(r)) && (isWorldRoom(online.room) || isCellRoom(online.room))));   // PCORPSE2: never judged while between rooms (a cell crossing's gap) - no room is not another space
-    remotePlayers.sync(visiblePeers, onlineToScene, { bodyHeight: (id) => peerRiders.heightOf(id) || peerBodies.heightOf(id) || peerWalkers.heightOf(id), dt, eye: travelView?.eye ?? player.pos, poseAgeMs: (p) => online.poseAgeMs(p), conceal: veilOf, hidden: (id) => _hiddenPeers.has(id), grow: tvGrow });   // AUDIT (pre-merge) I-G: every peer HEARD (a concealed one's steps, swings and hooves - sound is no renderer), the classic lane's concealed drawn nowhere   // 2026-09-17: dt drives the class-enemy billboard path's own animation clock; eye is the local player's own position, needed for mobileOrientation's facing calculation (see remotePlayers.js _syncMobilePeer)   // AUDIT DEEP R-11: under the travel view, the view's own eye - the picture each peer shows is the one the camera sees
+    remotePlayers.sync(visiblePeers, onlineToScene, { bodyHeight: (id) => peerRiders.heightOf(id) || peerBodies.heightOf(id) || peerWalkers.heightOf(id), dt, eye: travelView?.eye ?? player.pos, poseAgeMs: (p) => online.poseAgeMs(p), conceal: veilOf, hidden: (id) => _hiddenPeers.has(id), grow: tvGrow, room: drawable });   // AUDIT PEER-RANGE A L1/L6: the room's whole list - a rise past the draw distance is seen, and a cut peer keeps its sprite's bundle   // AUDIT (pre-merge) I-G: every peer HEARD (a concealed one's steps, swings and hooves - sound is no renderer), the classic lane's concealed drawn nowhere   // 2026-09-17: dt drives the class-enemy billboard path's own animation clock; eye is the local player's own position, needed for mobileOrientation's facing calculation (see remotePlayers.js _syncMobilePeer)   // AUDIT DEEP R-11: under the travel view, the view's own eye - the picture each peer shows is the one the camera sees
     peerFlashFrame();   // PEERFX3: after every layer has (re)made its sprites this frame
   };
   /** SPELLFX1 (the Unity co-op's RpcPlayPlayerSpellCastVisual): EVERY PEER'S CAST, DRAWN. The pose already carries the
@@ -30450,6 +30476,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   const tvFiledSpawns = (at) => (params.has('online') ? filedSpawns({ at, rolls: (x, y) => spawnsDungeon(_spawnSalt, x, y),
     filed: (x, y) => hasDiscoveredLocationId(spawnedMapId(_spawnSalt, x, y)), indexed: (x, y) => locationIndex.has(`${x},${y}`), stand: tvSpawnAt }) : []);
   function travelViewDungeons() {
+    if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
     const at = playerTravelPixel();
     const dg = discoveryGeneration();
     // AUDIT OW3 D1/D3: and the grid's reach (what TV2 plates), and the index's churn - a spawn comes as its pixel streams
@@ -30476,6 +30503,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
    *  and a standing Abyss Dungeon among the spawns (its own host stands and takes it - it is known from its rise), the
    *  nearest TV_DUNGEON_MODELS_MAX; read again as TV6's is, when the pixel, the finds or the index move. */
   function tvDungeonModelList() {
+    if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
     const at = playerTravelPixel(), dg = discoveryGeneration(), n = _locIndexGen;
     if (tvDngModels.list.some((g) => g.spawn && !g.loc?.superTier && tvSpawnGone(g.px, g.py))) tvDngModels.at = null;   // AUDIT OW4 D2's law: a spawn whose time ran out goes
     if (tvDngModels.at && tvDngModels.at.x === at.x && tvDngModels.at.y === at.y && tvDngModels.dg === dg && tvDngModels.n === n) return tvDngModels.list;
@@ -30560,6 +30588,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
    *  AUDIT OW5b D1 found the same, and its own list gave way to this one at the merge (the "?" its second half keeps on
    *  the Overworld for such a keep is travelDungeons.js nearDungeons' own). */
   function travelViewFindList() {
+    if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
     const at = playerTravelPixel(), dg = discoveryGeneration(), n = _locIndexGen;
     if (tvFind.at && tvFind.at.x === at.x && tvFind.at.y === at.y && tvFind.dg === dg && tvFind.n === n) return tvFind.list;
     const list = nearDungeons({ at, range: TV_FIND_REACH, max: Infinity, dungeons: (_tvDungeonRows ??= dungeonRows(mapDict)),
@@ -30570,6 +30599,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     tvFind = { at, dg, n, list };
     return list;
   }
+  _tvListsReady = true;   // BOOT-TDZ II: the travel view's dungeon lists' bindings all stand from here
   /** AUDIT OW3 D1: A SPAWN'S PLATE IS A WALK TO IT - TV2's spot journey (it stands in no MAPS table, so no place journey
    *  names it), ending at its exterior's edge on the traveller's side (dungeonApproach). Asked of the live list: a spawn
    *  whose time ran out since the plate was drawn is gone from it, and nothing is walked to.
@@ -31328,6 +31358,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   /** A map pixel of the open sea - the ocean's water, never a lake's - the lanes' and the roadsteads' water. */
   const laneOpen = (px, py) => px >= 0 && py >= 0 && px < 1000 && py < 500 && tvWater(px, py) && maps.getClimateIndex(px, py) === CLIMATES.Ocean;
   const laneOpenNative = (x, z) => { if (!(x >= 0 && z >= 0 && x < 1000 * RAID_NATIVE_PIXEL && z < 500 * RAID_NATIVE_PIXEL)) return false; const p = pixelOfNative(x, z); return laneOpen(p.x, p.y); };
+  _lanesReady = true;   // BOOT-TDZ II: every binding the lanes read stands from here (raidNowMs above it)
   /** The lanes of the whole map - every client's the same - made once. */
   function laneNet() {
     if (!_laneNet) {
@@ -31995,6 +32026,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // IsParalyzed itself (:90-93) - the zeroed input bag below is
     // the movement half of the same law, not this one.
     player.paralyzed = paralyzed;
+    meterFor(renderer.gl)?.markCpu('motor');   // PERF-SIM1: the old 'sim' in parts (Dudey's readout in a live town: sim 9-16 ms of a 19-28 ms frame) - the player's motor, the activation, the walk's own hosts
 
     const frameMotor = () => {   // PERF-V8: each `// PERF-V8` statement runs as a closure of its own, so the frame stays under V8's optimizing ceiling (bible/07-Rendering/Performance-Priority.md)
     if (walkMode) {
@@ -32773,6 +32805,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     frameMotor();
 
     // Streaming step: recentre, enqueue new pixels, drop far ones.
+    meterFor(renderer.gl)?.markCpu('stream');   // PERF-SIM1: the streaming step - the recentre, the pixels in and out
     spendRestrides();   // STREAM1: a promoted pixel's grid, one a frame, off the crossing's own frame
     const frameDwTerrainPass = () => {   // PERF-V8
     if (deepWaters) {
@@ -32977,6 +33010,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     }
     };
     framePixelChanged();
+    meterFor(renderer.gl)?.markCpu('hosts');   // PERF-SIM1: the bounties, the legacy, the patches, the notice book, the farms, the pump
     try { bountyHost?.tick(dt); } catch (e) { console.warn('[bounty] tick', e); }   // BOUNTY1: the hunts - packs stood and counted, a purse paid, a notice raised
     try { legacyStep(dt); } catch (e) { console.warn('[legacy] tick', e); }   // LEGACY1: the seat, the elder, the estate, a dead load
     try { gatherHost?.tick(dt); } catch (e) { console.warn('[prof] tick', e); }   // PROF1: the patches, the prompt, the act, the answers
@@ -32990,6 +33024,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     if (_farmSyncT <= 0) { _farmSyncT = 0.5; try { bountyFarms?.sync(bountyHost?.farmsWanted() ?? []); } catch (e) { console.warn('[bounty] farms', e); } }   // BOUNTY-FARM: the farms brought in line with the bounties held
     pump();
 
+    meterFor(renderer.gl)?.markCpu('view');   // PERF-SIM1: the projection, the cameras (the Morrowind camera machine, the travel view, the helm)
     // ROAD-E E5: the DOCKED large HUD shrinks the world pass rather
     // than covering it (ViewportChanger.cs:56-62), and Unity derives a
     // camera's aspect from its viewport - so the lens takes the bar's
@@ -33071,6 +33106,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       touch.setLockDot(_dp && _dp.front ? _dp.x : null, _dp?.y);
     }
     holdNpcBodies(!!tvf);   // AUDIT MW-NPC II H2: UNDER THE OVERWORLD NO NPC BODY STANDS (C3's law, every lane's) - a figure a few pixels tall, drawn upright under the flats' lean
+    meterFor(renderer.gl)?.markCpu('weather');   // PERF-SIM1: the clock, the season, the sweeps, the weather front, the wind, the ambience
     // World clock (R5): sun, ambient, window style, sky frame by time.
     const minute = minuteNow();
     // A1: DaggerfallLocation.Update's season poll (:118-130), on the
@@ -33138,8 +33174,10 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     const _wfPx = playerTravelPixel();
     const windfallLaw = windfall.frame({ dt: gamePaused() ? 0 : dt * worldTimeScale(), outside: true, weather, minutes: skyMinutes(), climate: maps.getClimateIndex(_wfPx.x, _wfPx.y), mapPixel: _wfPx,
       heading: wd.on ? wd.dir : null, feet: walkMode && playerSpawned ? player.pos : cam.pos, height: player.height });   // WINDFALL1: the mod's frame - its sounds and leaves, and the law the flora lean by (one wind: WIND1's heading); AUDIT ENVIRONS W1: WindMod.Update's Time.deltaTime, held by a pause and scaled with the world
+    meterFor(renderer.gl)?.markCpu('snow');   // PERF-SIM1: the snow layer's frame
     _snowPixels.clear();
     snowfall.frame({ now: now / 1000, inside: false, player: snowPlayer(), weather, seconds: worldMinutes() * 60, winter: season === SEASON.Winter, climate: maps.getClimateIndex(_wfPx.x, _wfPx.y), overworld: !!tvf, npcs: snowNpcs, corpses: snowBodies });   // SNOWFALL1: DynamicSnowController.Update - its tiers round the player, the tracks, the snowpack by the event clock; TV-SNOW: under the Overworld, which draws no snow, the clocks alone (snowfallHost.js)
+    meterFor(renderer.gl)?.markCpu('storms');   // PERF-SIM1: the animals, the lightning, the dread and the sun baby, the sky and the light settings
     animalAmbience.update(dt, cam.pos);   // A4: town animal barks (PlayRandomlyIfPlayerNear)
     // Storm lightning strobe. AUDIT 39 (#14): ENHANCED-SKIN ONLY -
     // shipped DFU renders no flash (PlayLightningEffect is 0 on both
@@ -33263,9 +33301,12 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // and the clock's answer.
     renderer.setWindowEmission(windowEmissionRGB(
       params.has('window') ? params.get('window') : windowStyleForTime(minute)));
+    meterFor(renderer.gl)?.markCpu('scene');   // PERF-SIM1: the spawners, the city gates, the sky and fog, the pools, the lights chosen, the boats
     tickWodSpawners();   // WOD3: LocationEnemySpawner.Update, every exterior frame
+    meterFor(renderer.gl)?.markCpu('gates');   // PERF-SIM2: the old 'scene' in parts (Dudey's second readout: scene 6-10 ms in the town at night) - the city gates, the interior lane's sync
     tickCityGates(minute);   // AUDIT 64 F14: DaggerfallCityGate.Update, every frame as DFU's is - and on the first frame after a pixel builds, which is what closes a gate streamed in at 20:00
     iilSyncLane(renderer, false);   // IIL2: outdoors the mod's shadow lane comes off - the streets are the classic set's, day or night
+    meterFor(renderer.gl)?.markCpu('skyset');   // PERF-SIM2: the sky handed its frame, the fog
     const currentEntry = built.get(`${state.current.x},${state.current.y}`);
     // DaggerfallSky.cs:363-367 - a non-Normal WeatherStyle (every rain,
     // thunder and snow) disables the clear night sky, so the DAY sky at
@@ -33293,6 +33334,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     sky.renderer.fogColor = fogColor;
     sky.renderer.fogMix = fogNow.excludeSky ? 0 : 1 - fogFactor(fogNow, 800);
 
+    meterFor(renderer.gl)?.markCpu('pools');   // PERF-SIM2: the gates, the Broker, the rite, the harbours, the camps, the quays, the monument
     // WB2: the gate stood for this frame - before the lights (its fire lights the ground) and the world pass (its stone)
     try { if (gatePool?.frame(dt)) warmGateVeil(); } catch (e) { console.warn('[gate] pool', e?.message ?? e); }   // AUDIT WB D5: a gate stands - the step's veil is built ahead
     if (gatePool || sdHost) presenceFrame();   // SD19: the banner and the card - the gate's, else a Hollow's door's
@@ -33310,6 +33352,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // channel: the lanterns and the player's own lights keep the shared
     // colour they always had, the mod's take theirs. With none built
     // both branches below make the calls they always made.
+    meterFor(renderer.gl)?.markCpu('lamps');   // PERF-SIM2: the lanterns pooled and the nearest picked
     const wodLit = wod ? _wodLitCount() : 0;   // AUDIT BRANCH (WoD) n: with the mod off, no walk of the built pixels at all
     const csaLit = csaOn() ? csa.lights(cam.pos) : [];   // AUDIT PRE-MERGE 0928 R2: the boats' lit lanterns are scene lights - in the selection below with the street's, never the player's extras
     // QUAYS: the quays' lanterns, in the lanterns' hours, scene lights beside the boats' in the town lanterns' colour -
@@ -33343,6 +33386,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       // LA-LIGHTS2: on the lane, one lantern past the cap - the first one it leaves out is where the others' fade ends
       const _lanterns = wodSel ? null : nearestLights(_sceneLights, cam.pos, renderer.maxPointLights + (renderer.lightingLane ? 1 : 0), _litRanges, null, 0, n);
       // DW-D: UnderwaterPresentationEffects.SuppressPlayerTorch - EnablePlayerTorch's light dark under the fog (the fuel burns on, the light is the only thing it takes)
+      meterFor(renderer.gl)?.markCpu('lightset');   // PERF-SIM3: the hand lights, the peers' torches, the camps' fires added, the set handed to the renderer
       const lit = withPlayerLights(wodSel ? wodSel.data : _lanterns,   // EL1: the installed set's cap (16 classic, 48 on the lane); PERF-LIGHTS: `n` is how much of the pool is live
         magic?.candleLight(), _dwFogP?.under ? null : playerTorchLight(playerEntity, player.feetAt(), cam.yaw), thunderlockMuzzleLight(playerEntity, player.feetAt(), cam.yaw), ...(naval?.enabled ? naval.lights() : []), ...peerTorchLights(), ...(gatePool?.lights() ?? []), ...(riteHost?.lights() ?? []), ...camps.lights(), ...droppedTorches.lights());   // PEERLIGHT1: the others' torches, right after my own hand lights   // X11 candle; T1 torch; HT1 the dropped lights; FIELD-GUN13 the muzzle flash; DISC13-A the hand lights ride the render feet (feetAt), as the camera does; NAV-B the broadsides' flashes and the burning decks beside the Thunderlock's own flash - the brightest things for a frame, cut last by the cap
       if (wodSel) _wodSetLights(lit, wodSel);
@@ -33361,13 +33405,16 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     }
     };
     frameLanterns();
+    meterFor(renderer.gl)?.markCpu('sails');   // PERF-SIM3: Come Sail Away's boats - the sails, the lanterns, the peers' boats
     csaPoolFrame(dt);   // CSA-B/C: the sails' FixDeformations (LateUpdate) and the lanterns' two behaviours, on Time.deltaTime; the lights they decide reach the next frame's list (the mod's own Update and LateUpdate ran after the motor: csaUpdate)
+    meterFor(renderer.gl)?.markCpu('boats');   // PERF-SIM2: the ashes, the crews, the wagon, the viewport
     warmAshesFrame(gamePaused() ? 0 : dt * worldTimeScale());   // WA1: TransportToShipWithDelay's WaitForSeconds, held by a pause, scaled with the world
     crewAshoreTick();   // CREW-COMPANIONS: the party stood on the street
     revenantAshoreTick();   // REVENANT-COMPANION: and the sworn
     renderer.setClearColor(SKY_CLEAR);   // INCIDENT 2026-09-04 / REVIEW 2026-09-05: this frame is the EXTERIOR's (the mode frames returned above and clear black in worldModes) - CameraClearManager.cs:51-57
     renderer.setFlashLight(sky.lightningLight() ?? boltFrame.flash);   // DS1: Dynamic Skies' LightningFlash, composed first on the point-light channel just stored; BOLT: else a near ground strike's own light, from where it struck
     renderer.setWorldViewport(worldViewportRect(canvas.clientWidth, canvas.clientHeight));   // E5: ViewportChanger.Update, every frame
+    meterFor(renderer.gl)?.markCpu('begin');   // PERF-SIM1: the renderer's frame open
     renderer.beginFrame(proj, view, sunDirection(minute), WORLD_FRAME);   // AUDIT-EL F5: a WORLD frame - the lane replays its records for this one
     meterFor(renderer.gl)?.markCpu('bodies');   // PERF-ZONE2: the Morrowind bodies - the player's, every peer's - the wagon and the camps, which the renderer's own 'world' mark used to swallow
     if (deepWaters) { _dwNowMs = now; beginDeepWatersFrame(minute); }   // DW-C: the look and the distance fog - a frame's, so after the clear of both
@@ -33653,9 +33700,11 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // nothing nearer has claimed, and write no depth, so everything
     // blended after them (the water, the flats, the rain, the grass)
     // composes exactly as it did. The ring keeps its "the streamed
-    // world repaints everything nearer" law by gl_FragDepth = 1.0
-    // instead of by order. Same picture, a third to a half fewer sky
-    // fragments on an open road.
+    // world repaints everything nearer" law by depth instead of by order
+    // (AUDIT FAR-SEA1 P1: the pass's depthRange(1, 1), not a written
+    // gl_FragDepth, which ran its shader before the test for every pixel
+    // the streamed world covered). Same picture, a third to a half fewer
+    // sky fragments on an open road.
     sky.draw(tvf ? tvf.yaw : cam.yaw, tvf ? tvf.pitch : cam.pitch + climbFeel.pitch(), fieldOfView() + climbFeel.fovRad(), worldAspect, renderer.worldViewportPx ?? [0, 0, renderer.gl.drawingBufferWidth, renderer.gl.drawingBufferHeight]);   // VC3: the clouds' map restores this rect
     meterFor(renderer.gl)?.markCpu('ring');   // PERF-ZONE2: the far province ring (its rebuild and its hole) and the water, after the sky hands the frame back
     // EV8: the far province ring - the horizon's actual mountains,
@@ -33664,6 +33713,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // the air (rain, snow, heavy fog); its light state is the frame's
     // own, already installed by setLighting/beginFrame above. It
     // shares the EV6 seam mark below - one foreign span, two passes.
+    const waterSkyNow = waterOn ? sky.waterSky() : null;   // FAR-SEA1: the sky the water reflects, once a frame - the ring's sea and the water's (AUDIT FAR-SEA1 H2: none with the Enhanced water off - the sea is Daggerfall's tile, and the ring's sea keeps the ground's look beside it)
+    const seaYNow = farRing ? tvSeaY() : 0;   // FAR-SEA1: the sea's surface in the scene this frame
     const frameRing = () => {   // PERF-V8
     if (farRing && fogNow.mode === 'linear') {
       if (farRing.needsRebuild(state.current.x, state.current.y)) {
@@ -33690,7 +33741,15 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         // that pass's aspect - a horizon built on the full-canvas ratio
         // would step against the terrain in front of it under a docked bar.
         fovY: fieldOfView() + climbFeel.fovRad(), aspect: worldAspect,   // CLIMB4: the lens the world took
+        // FAR-SEA1: the ring's sea under the water's sky; AUDIT FAR-SEA1: the eye and the world's lens it counts the sea
+        // inside the hole from (P1: only the cells that can be past the far plane, none with the eye under the sea),
+        // and the water's own body - the camera climate's tiles and Iliac Puddle No More's tint over its open sea (L1)
+        skyZenith: waterSkyNow?.zenith, skyHorizon: waterSkyNow?.horizon, eye: renderer._camPos, worldProj: renderer._proj,
+        seaTiles: waterSkyNow ? renderer.tileArrays.get(seaGroundArchive()) : null, seaTint: _dwFrame && !_dwFrame.underwater ? _dwFrame.look.topColor : null,
       });
+      // FAR-SEA1: and the streamed sea meets it at the ring's haze - with a sky to reflect: under the classic panorama
+      // the water reflects WATER1's default day, which the fog had hidden past its end and the hold would show at night
+      if (waterSkyNow) renderer.setSeaHaze(RING_HAZE_HOLD, seaYNow);
     }
     };
     frameRing();
@@ -33705,7 +33764,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     const frameWater = () => {   // PERF-V8
     if (waterOn) {
       stirRipples(dt, now);   // WATER-NEXT 4
-      const wu = _waterU = waterUniforms({ seconds: now / 1000, wind: windNow, rain: precipMode === 'rain' || precipMode === 'storm' ? fx.intensity : 0, sky: sky.waterSky() });   // WATER-NEXT 2: the sea's draw takes the frame's too
+      const wu = _waterU = waterUniforms({ seconds: now / 1000, wind: windNow, rain: precipMode === 'rain' || precipMode === 'storm' ? fx.intensity : 0, sky: waterSkyNow });   // WATER-NEXT 2: the sea's draw takes the frame's too; FAR-SEA1: the sky read once
       let n = 0;   // PERF-EXT13: collected, then ONE call - the frame's block once, not once a pixel (renderer.js)
       for (const p of built.values()) {
         if (!p._visible || !p.water || p.deepWaters?.hide) continue;   // DW-C: a hidden cap takes its water with it

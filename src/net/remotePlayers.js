@@ -26,7 +26,7 @@ import { createEquipTable } from '../characters/equipTable.js';
 import { CAPSULE_HEIGHT } from '../player/motor.js';
 import { drawText, measureText } from '../ui/text.js';
 import { titleBadge, glyphMarks, gradientAt } from '../ui/playerBadge.js';   // ACC3: what a title and a glyph LOOK like - one home, both faces (the DOM layer reads the same module)
-import { projectToScreen } from '../player/tapRay.js';   // one home (audit24 onehome): the touch layer's own projection
+import { projectToScreen } from '../player/tapRay.js'; import { multiply } from '../world/mat4.js';   // one home (audit24 onehome): the touch layer's own projection
 import { LOOK_ITEM_FIELDS, LOOK_GROUPS } from './wire.js';   // the look's vocabulary: the wire's own
 import { renownText } from './renown.js';   // RENOWN1: Renown's words, left of the name in the bitmap face too
 import { guildTagText } from './guildLaw.js';   // GUILD1c: the guild's tag, right of the name in the bitmap face too
@@ -359,6 +359,8 @@ export const DOLL_RETRY_MS = 5000;
  *  failing outright (missing deps, no texture row for that mobileType) - a real cost, but a bounded and small one:
  *  only peers CURRENTLY on the paperdoll retry at all, never the whole roster. */
 export const MOBILE_RETRY_MS = 1000;
+/** PERF-PEERS4: the frames a class sprite stands as its peer before its whole archive is warmed at idle. */
+export const WARM_AFTER_FRAMES = 30;
 
 /** DISC23-B: the Eye Of The Beholder on-foot set this player CHOSE, or null - what the look's `eo` says (wire.js
  *  validLook). Null while their mod is off, and null while they have never chosen one: the mod ships on, so a set read
@@ -516,6 +518,9 @@ export class RemotePlayers {
     this.renderer = renderer;
     this.deps = deps;
     this._compose = compose;
+    /** PERF-PEERS1: the class archives whose pictures are going up at idle, and the stop for a warm still queued. */
+    this._warmedArchives = new Set();
+    this._destroyed = false;
     this._now = now;
     this._dolls = new Map();     // lookKey -> { rec, w, h } ready | Promise composing | { failedUntil } (insertion-ordered: the oldest first)
     this._footsteps = new Map(); // PEER-FS1: peer id -> FootstepMachine (the stride timing off their own pose)
@@ -698,10 +703,41 @@ export class RemotePlayers {
     this._mobiles.set(peerId, p);
     p.then((bundle) => {
       if (this._mobiles.get(peerId) !== p) return;   // SLAM12's own race: a peer released or rebuilt while this was in flight
-      if (bundle) this._mobiles.set(peerId, bundle);
+      if (bundle) this._mobiles.set(peerId, bundle);   // PERF-PEERS4: its archive warmed once it has STOOD as the peer (_syncMobilePeer), not on landing
       else this._mobiles.set(peerId, { failedUntil: this._now() + MOBILE_RETRY_MS });
     });
     return p;
+  }
+
+  /**
+   * PERF-PEERS1 (2026-10-10, Mac: "its still stuttering very slightly when looking to west where a lot of players are
+   * but far away"): A CLASS SPRITE'S PICTURES, UPLOADED AT IDLE. A peer drawn as its class's sprite (no Morrowind
+   * assets) shows one of eight directional records and its frame, and each (record, frame) was uploaded the first time
+   * a frame needed it (_syncMobilePeer) - a decode and a texture upload inside the frame. Turning toward a crowd turns
+   * every one of them onto a direction not yet seen, so the uploads landed together, on the frames of the turn. Once a
+   * class's archive is in hand, every one of its pictures goes up in idle time instead, a few at a time and once an
+   * archive (the draw path still uploads whatever the warm has not reached). A browser's idle queue only.
+   */
+  _warmArchive(bundle) {
+    const idle = globalThis.requestIdleCallback;
+    const { archive, tex } = bundle ?? {};
+    if (typeof idle !== 'function' || !tex || typeof this.deps?.uploadRecordFrame !== 'function') return;
+    const warmed = this._warmedArchives;
+    if (warmed.has(archive)) return;
+    warmed.add(archive);
+    const todo = [];
+    const records = Number(tex.recordCount) || 0;
+    for (let r = 0; r < records; r++) { const n = tex.getFrameCount(r); for (let f = 0; f < n; f++) todo.push([r, f]); }
+    const step = (deadline) => {
+      if (this._destroyed) return;
+      while (todo.length && (deadline?.timeRemaining?.() ?? 0) > 2) {
+        const [r, f] = todo.shift();
+        if (this.renderer.textures?.has?.(`${archive}_${r}#${f}`)) continue;
+        try { this.deps.uploadRecordFrame(archive, r, f); } catch { /* the draw path uploads it, and reports, as before */ }
+      }
+      if (todo.length) idle(step, { timeout: 2000 });
+    };
+    idle(step, { timeout: 2000 });
   }
 
   async _buildMobile(mobileType, gender) {
@@ -802,9 +838,9 @@ export class RemotePlayers {
    * answers 0 for every peer.
    * @param {Iterable<any>} peers
    * @param {(p: any) => number[]} [toScene]
-   * @param {{bodyHeight?: (id: any) => number, dt?: number, eye?: number[]|null, poseAgeMs?: ((peer: any) => number)|null, conceal?: (id: any) => object|null, hidden?: (id: any) => boolean, grow?: ((feet: number[]) => number)|null}} [opts]  PEER-FS1: `eye` is the listener, for the falloff; INVIS-LOOK: `conceal` a concealed peer's draw (ECV1's visual) or null
+   * @param {{bodyHeight?: (id: any) => number, dt?: number, eye?: number[]|null, poseAgeMs?: ((peer: any) => number)|null, conceal?: (id: any) => object|null, hidden?: (id: any) => boolean, grow?: ((feet: number[]) => number)|null, room?: Iterable<any>|null}} [opts]  PEER-FS1: `eye` is the listener, for the falloff; INVIS-LOOK: `conceal` a concealed peer's draw (ECV1's visual) or null; AUDIT PEER-RANGE A L1/L6: `room` every peer the room draws before a screen's cut (the draw distance's, the court's) - a resurrection is seen in it, and a peer in it keeps its class sprite's bundle while it is cut (`peers` when absent)
    */
-  sync(peers, toScene = (p) => [p.x, p.y, p.z], { bodyHeight = () => 0, dt = 0, eye = null, poseAgeMs = null, conceal = () => null, hidden = () => false, grow = null } = {}) {
+  sync(peers, toScene = (p) => [p.x, p.y, p.z], { bodyHeight = () => 0, dt = 0, eye = null, poseAgeMs = null, conceal = () => null, hidden = () => false, grow = null, room = null } = {}) {
     const live = new Set();
     this._grow = grow;   // OW-PEERS (FIELD BUGS 2026-10-01 #11): under the Overworld, feet -> how many times its size a sprite is drawn
     // PCORPSE1: the fallen lie on whatever the living do - placed, aged out, drawn
@@ -820,6 +856,7 @@ export class RemotePlayers {
     for (const peer of peers) {
       if (!peer?.shown) continue;
       seen.add(peer.id);
+      this._fFor = null;   // PERF-PEERS2: this peer's feet, asked of toScene once (_feet) however many of the layers below read them
       this._syncFootsteps(peer, toScene, eye);
       this._syncClimbSound(peer, toScene, eye);   // CLIMB5
       this._syncAttackSound(peer, toScene, eye);
@@ -864,6 +901,7 @@ export class RemotePlayers {
       if (beast) { this._dropDoll(peer.id); continue; }
       this._syncDollPeer(peer, toScene, veil);
     }
+    this._fFor = null;   // PERF-PEERS2: no feet outlive the sync that asked for them
     for (const [id, entry] of this._batches) {
       if (live.has(id)) continue;
       this.renderer.destroyBillboardBatch?.(entry.batch);
@@ -874,10 +912,11 @@ export class RemotePlayers {
     // AUDIT DROPS E4: a peer drawn as a Morrowind BODY holds no batch, so the sweep above never reached their
     // stride machine or their swing edge - the entries stayed for the life of the session (SLAM4's class), and a
     // stale `an` played a phantom swing when that peer came back
-    // RESURRECT1: a fallen player standing again where they fell (a resurrection) takes their body with them
+    // RESURRECT1: a fallen player standing again where they fell (a resurrection) takes their body with them - seen in the
+    // whole room (AUDIT PEER-RANGE A L1: one raised past the draw distance left the body lying its full minute)
     if (this._corpses.length) {
       const up = new Map();
-      for (const peer of peers) if (peer?.shown && peer.id) up.set(peer.id, peer.shown);
+      for (const peer of room ?? peers) if (peer?.shown && peer.id) up.set(peer.id, peer.shown);
       for (const c of [...this._corpses]) {
         const s = up.get(c.id);
         if (!s) continue;
@@ -894,7 +933,11 @@ export class RemotePlayers {
     // 2026-09-17: a departed peer's mobile bundle (or its in-flight build) goes with it. AUDIT 68
     // S14-remoteplayers-mobiles-unswept: swept against `live`, not inside the batch sweep - a peer gone before its build
     // landed held no batch, and the build then stored a whole bundle for nobody (`_mobileFor`'s own race check drops it now)
-    for (const id of this._mobiles.keys()) if (!live.has(id)) this._mobiles.delete(id);
+    // AUDIT PEER-RANGE A L6: but a peer the screen's cut leaves undrawn who is still in the room keeps its bundle - one walking
+    // back inside the draw distance stood on the doll path a frame, and composed a paperdoll for it, at every crossing
+    let inRoom = null;
+    if (room) { inRoom = new Set(); for (const peer of room) if (peer?.id) inRoom.add(peer.id); }
+    for (const id of this._mobiles.keys()) if (!live.has(id) && !inRoom?.has(id)) this._mobiles.delete(id);
   }
 
   /** PEER-FS1 (Mac, 2026-09-18: "footstep sounds depending where they walk
@@ -906,12 +949,23 @@ export class RemotePlayers {
    *  step plays AT them (`peerSound`, the panner's linear falloff of
    *  PEER_SOUND_PROFILE - full inside 6 m, silent past 30), where PEER-FS1
    *  once faked that falloff on a flat one-shot. */
+  /** PERF-PEERS2 (2026-10-10, Dudey: "big problems are caused by many players causing severe stutter"): A PEER'S FEET,
+   *  ONCE A SYNC. Six layers of this pass (the steps, the climb, the swing, the hooves, the doll, the class sprite) each
+   *  asked `toScene(peer.shown)` for the same pose - a new triple each, and the host's own frame conversion each - for
+   *  every peer every frame. The first to ask works them out and the rest read that answer, until the sync turns to
+   *  the next peer (`sync` clears the memo at each peer and at its end). The same numbers: toScene is a pure reading
+   *  of the pose, and no reader writes into the triple (the hooves keep it as their place, as they kept their own). */
+  _feet(peer, toScene) {
+    if (this._fFor !== peer || this._fTo !== toScene) { this._fFor = peer; this._fTo = toScene; this._fAt = toScene(peer.shown); }
+    return this._fAt;
+  }
+
   _syncFootsteps(peer, toScene, eye) {
     if (!this.deps?.audio?.playOneShot || getPref('peerFootsteps') === false) return;
     let fm = this._footsteps.get(peer.id);
     if (!fm) { fm = new FootstepMachine(); this._footsteps.set(peer.id, fm); }
     const shown = peer.shown;
-    const f = toScene(shown);
+    const f = this._feet(peer, toScene);
     const set = FOOTSTEP_CLIP_SETS[shown.fk ?? 0] ?? FOOTSTEP_CLIP_SETS[0];
     // PEER-BUZZ (2026-09-22, Discord: "footstep sounds are broken" - a recording of a continuous buzz while a peer
     // walked): AUDIT DROPS E5 measured the stride in the WIRE's frame to dodge the floating-origin shift, and in
@@ -931,7 +985,7 @@ export class RemotePlayers {
    *  peers' own sounds' switch as their stride is. */
   _syncClimbSound(peer, toScene, eye) {
     if (!this.deps?.audio?.play3d) return;
-    const f = toScene(peer.shown);
+    const f = this._feet(peer, toScene);
     // AUDIT CLIMB-ARC N5: the switch silences, it does not blind - the law is told every change with the sound off, so
     // switching it back on plays no catch nor let-go that happened while it was off
     this._climbSounds.update(peer.id, peer.shown, f, getPref('peerFootsteps') !== false && peerInEarshot(f, eye));
@@ -959,7 +1013,7 @@ export class RemotePlayers {
     const last = this._attackAn.get(peer.id);
     this._attackAn.set(peer.id, an);
     if (last == null || an === last) return;   // first sighting of this peer, or no new swing since
-    const f = toScene(peer.shown);
+    const f = this._feet(peer, toScene);
     if (!peerInEarshot(f, eye)) return;
     // AUDIT DROPS E6: the weapon IN HAND (the look's right-hand slot), and none at all while the pose says sheathed
     // (`wd` 0 - a fist swings as a fist), not the first weapon anywhere in the look
@@ -1002,7 +1056,7 @@ export class RemotePlayers {
     // DISC7: the rider's own half-speed flag off the pose (`hs`) - standing reads true, as the motor's own does
     const moving = !!peer.shown.mv && !stale;
     const out = r.anim.update(Math.max(0, dt), { mode, standingStill: !moving, movingLessThanHalfSpeed: !moving || !!peer.shown.hs });
-    const at = toScene(peer.shown);
+    const at = this._feet(peer, toScene);
     r.at = at;
     // AUDIT DISC7 B4: past earshot nothing is made - no panner and no source for a rider nobody can hear (the
     // animator keeps its clock, so the loop comes back in step when they ride into range)
@@ -1049,7 +1103,7 @@ export class RemotePlayers {
       entry = { kind: 'doll', batch, key, doll, peer };
       this._batches.set(peer.id, entry);
     }
-    const f = toScene(peer.shown);
+    const f = this._feet(peer, toScene);
     const sink = seatedSink(peer.shown);   // CARDS2c: seated, sunk by the seat's drop
     entry.batch.origin[0] = f[0]; entry.batch.origin[1] = f[1] - sink; entry.batch.origin[2] = f[2];
     entry.batch.conceal = veil;   // INVIS-LOOK: the renderer's blended phase, or plain
@@ -1070,7 +1124,7 @@ export class RemotePlayers {
     let entry = this._batches.get(peer.id);
     if (entry && (entry.kind !== 'mobile' || entry.mobileUnit !== bundle.mobileUnit)) { this.renderer.destroyBillboardBatch?.(entry.batch); this._batches.delete(peer.id); entry = null; }
     const shown = peer.shown;
-    const f = toScene(shown);
+    const f = this._feet(peer, toScene);
     const moving = peerMoving(shown);   // CLIMB5: a shimmy along a lip is no walk
     const an = shown.an | 0;
     const striking = entry != null && entry.lastAn != null && an !== entry.lastAn;
@@ -1097,7 +1151,7 @@ export class RemotePlayers {
     if (!entry) {
       const batch = this.renderer.createBillboardBatch(bundle.archive, rkey, size, [[0, 0, 0]]);
       batch.origin = [0, 0, 0];
-      entry = { kind: 'mobile', batch, mobileUnit: bundle.mobileUnit, archive: bundle.archive, tex: bundle.tex, height: sz.h * g, lastAn: an, peer, g: 1 };
+      entry = { kind: 'mobile', batch, mobileUnit: bundle.mobileUnit, archive: bundle.archive, tex: bundle.tex, height: sz.h * g, lastAn: an, peer, g: 1, drawnFrames: 0 };
       this._batches.set(peer.id, entry);
     } else {
       entry.batch.record = rkey;
@@ -1106,6 +1160,15 @@ export class RemotePlayers {
       entry.lastAn = an;
       entry.peer = peer;
     }
+    // PERF-PEERS4 (2026-10-10, Dudey: "Eye of the Beholder / class skin sprites" - "a lot if not most of the players play
+    // with morrowind assets"): A CLASS SPRITE'S ARCHIVE IS WARMED ONCE IT STANDS AS THE PEER. PERF-PEERS1 put every
+    // picture of a class's archive up at idle the moment its bundle landed - and a bundle lands for every peer, the
+    // ones the viewer draws in an Eye Of The Beholder set or a Morrowind body included, for whom the class sprite is at
+    // most a stand-in for the frames their own art takes to arrive. The peer lab's forty arrivals in sets: 1,191 uploads,
+    // most of them whole class archives decoded and sent up for figures drawn in the sets, and the garbage of every
+    // decode in the collector's pauses. A sprite that has stood WARM_AFTER_FRAMES frames is the peer's picture, and its
+    // archive goes up at idle as before; until then the draw path uploads the frame it shows, as it always could.
+    if (++entry.drawnFrames === WARM_AFTER_FRAMES) this._warmArchive(bundle);
     if (entry.g !== g) { entry.g = g; this._sizeBatch(entry.batch, size, g); }
     const sink = seatedSink(shown);   // CARDS2c: seated, sunk by the seat's drop
     entry.batch.origin[0] = f[0]; entry.batch.origin[1] = f[1] - sink; entry.batch.origin[2] = f[2];
@@ -1165,11 +1228,12 @@ export class RemotePlayers {
     // AUDIT NAME1 F3: the frame's lens, once - it is the same for every point and it is read off the matrix the
     // sprites were projected by (nameLensScale), so a wide FOV shrinks the name exactly as it shrank the body.
     const lens = nameLensScale(proj);
+    let pv = null;   // PERF-PEERS2: the frame's proj x view, made once for every head (projectToScreen made it a head)
     for (const e of this._shown ?? []) {
       const f = toScene(e.peer.shown);
       if (eye) { const dx = f[0] - eye[0], dz = f[2] - eye[2]; if (dx * dx + dz * dz > NAME_RANGE * NAME_RANGE) continue; }
       const head = [f[0], f[1] + e.height, f[2]];
-      const s = projectToScreen(head, w, h, proj, view, rect);
+      const s = projectToScreen(head, w, h, proj, view, rect, false, pv ??= multiply(proj, view));
       if (!s.front || s.x < -200 || s.x > w + 200 || s.y < -50 || s.y > h + 50) continue;
       // AUDIT NAME1 F2/F5: the peer's ID rides the sight test, because the answer is CACHED per peer and
       // hysteresised (createSightCache) - a head point alone has no identity to remember an answer under. Purely
@@ -1344,6 +1408,7 @@ export class RemotePlayers {
 
   /** Every batch and every doll texture released - the host's teardown. */
   destroy() {
+    this._destroyed = true;   // PERF-PEERS1: a warm still queued stops
     for (const id of [...this._riding.keys()]) this._stopRidingSound(id);   // RIDE-SOUND
     for (const e of this._batches.values()) this.renderer.destroyBillboardBatch?.(e.batch);
     this._batches.clear();

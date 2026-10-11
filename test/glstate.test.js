@@ -323,6 +323,11 @@ test('AUDIT 47: no shader in the tree uses a uniform it did not declare in its o
   const aoGlsl = (readFileSync('src/render/airPass.js', 'utf8').match(/export const AIR_AO_GLSL = `([\s\S]*?)`;/) || [, ''])[1];   // EL3: and the AO's
   const adaptGlsl = (readFileSync('src/render/airPass.js', 'utf8').match(/export const AIR_ADAPT_GLSL = `([\s\S]*?)`;/) || [, ''])[1];   // EL4: and the eye's
   const fogGlsl = (readFileSync('src/render/fogGlsl.js', 'utf8').match(/export const FOG_GLSL = `([\s\S]*?)`;/) || [, ''])[1];   // AUDIT 68 S17-fog-glsl-dup: and the fog's, which nine programs share
+  // FAR-SEA1: and the horizon's haze and the ring's sea, a leaf the far ring (both lanes) and the water interpolate
+  const hazeSrc = readFileSync('src/render/horizonHaze.js', 'utf8');
+  const horizonHazeGlsl = (hazeSrc.match(/export const HORIZON_HAZE_GLSL = `([\s\S]*?)`;/) || [, ''])[1];
+  const ringSeaGlsl = (hazeSrc.match(/export const RING_SEA_GLSL = `([\s\S]*?)`;/) || [, ''])[1].replace(/\$\{HORIZON_HAZE_GLSL\}/g, horizonHazeGlsl);
+  assert.match(ringSeaGlsl, /uniform vec3 uSkyZenith;[\s\S]*float horizonHaze\(/, 'the ring\'s sea block is where the sweep reads it, the haze inside it');
   assert.match(fogGlsl, /uFogMode/, 'the fog block is where the sweep reads it');
   // AUDIT 49: labGrass.js composes its stages as HEAD + FIELD + body, so
   // the reader composes them the same way before it looks
@@ -363,6 +368,7 @@ test('AUDIT 47: no shader in the tree uses a uniform it did not declare in its o
       // EL1: a file's OTHER interpolated blocks (`const NAME = \`...\`` with no #version) expand the same way - the
       // lighting lane composes EL_GLSL + EL_FOG_GLSL + EL_POINT_LIT_GLSL into each of its shaders
       const body = m[2].replace(/\$\{CLOUD_SHADOW_GLSL\}/g, shared).replace(/\$\{CLOUD_FIELD_GLSL\}/g, field).replace(/\$\{SHADOW_GLSL\}/g, shadowGlsl).replace(/\$\{AIR_AO_GLSL\}/g, aoGlsl).replace(/\$\{AIR_ADAPT_GLSL\}/g, adaptGlsl).replace(/\$\{(?:EL_)?FOG_GLSL\}/g, fogGlsl)
+        .replace(/\$\{RING_SEA_GLSL\}/g, ringSeaGlsl).replace(/\$\{HORIZON_HAZE_GLSL\}/g, horizonHazeGlsl)   // FAR-SEA1
         .replace(/\$\{([A-Z_]+)\}/g, (all, name) => { const b = s.match(new RegExp(`const ${name} = \`([^\`]*)\``)); return b ? b[1] : all; });
       const declared = new Set([...body.matchAll(/uniform\s+(?:(?:lowp|mediump|highp)\s+)?\w+\s+([^;]+);/g)]
         .flatMap((x) => x[1].split(',').map((v) => v.trim().replace(/\[.*?\]/, '').split('//')[0].trim())));
