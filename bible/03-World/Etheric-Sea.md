@@ -312,9 +312,13 @@ legends' host (rise, night, purse, the chart's sale, the papers' chance), the ch
 PIN MOVED: `test/nav_c_ships.test.js` (fifteen classes, nine drawn), `test/tougherships.test.js` (the legends'
 salvage), `test/terrainworker.test.js` (the worker's imports), `test/tamriel2.test.js` (the ring's bytes past the map),
 `test/auditlandforms.test.js` and `test/tv8_party_walk.test.js` (the far read's guard), `test/csa_close.test.js` (the
-crossing's pause), `test/seasonsIliacBay.test.js` (the crossing a travel), `test/sd19_presence.test.js` and
-`test/event1_live_event.test.js` (the lights leaned once more), `test/fb0929h_deedport.test.js` (the port test past
-the Veil - an isle's port is a port for the deed), `test/fb0929h_spawnplate.test.js` (the build past the Veil). Mutants `tools/mutants/ethersea.json`,
+crossing's pause), `test/seasonsIliacBay.test.js` (the crossing a travel), `test/sd19_presence.test.js`, `test/event1_live_event.test.js`,
+`test/sunbaby1_event.test.js`, `test/sunbaby2_phases.test.js` and `test/wbx8_gate_sky.test.js` (the lights leaned once
+more), `test/fb0929h_deedport.test.js` (the port test past the Veil - an isle's port is a port for the deed),
+`test/fb0929h_spawnplate.test.js` and `test/spawneddungeons.test.js` (the build past the Veil),
+`test/sd2d_castout.test.js` (an isle's ruin wakes at its own door). `test/fixtures/time1_census.json` names the new
+clock readers: the Etheric host's day on the event clock, the crossing's arrival on the sky
+(`bible/06-Systems/Online-Time-Arc.md` 5.2). Mutants `tools/mutants/ethersea.json`,
 `tools/mutants/etherplaces.json`, `tools/mutants/ethership.json`, `tools/mutants/ethercross.json`.
 
 **Not verified here:** the look and feel in a real browser (the isles on the horizon, the chart, the light), a crossing

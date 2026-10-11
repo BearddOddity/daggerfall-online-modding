@@ -246,5 +246,6 @@ Captain page lists the charts marked.
 `test/captboard.test.js` (`tools/mutants/captboard.json`), `test/capttrade.test.js` (`tools/mutants/capttrade.json`) -
 every mutant dead. The suites whose pins moved with them say so where they moved (PIN MOVED): the crew card's line,
 the Holdings tabs, the tags and the hails now knowing a ship first (`test/navalSea.mjs knowAll`), the action tables,
-the lens, the sky's and the far ring's lens narrowed with the world's (`test/climb4.test.js`), the wheel's rung for the
-glass (`test/audit24_wave37.test.js`).
+the lens, the sky's and the far ring's lens narrowed with the world's (`test/climb4.test.js`, `test/hudlarge.test.js`
+E5), the wheel's rung for the glass (`test/audit24_wave37.test.js`). The harbour office's day is a reader of the event
+clock, named in `test/fixtures/time1_census.json`.
