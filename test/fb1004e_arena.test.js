@@ -79,9 +79,10 @@ test('ARENA-ARROWS tally: a real round spent from the watched pack is a shot, a 
   const bow = { weapon: { templateIndex: 130, name: 'Long Bow' }, pos: [0, 0, 0] };
   const foe = (extra = {}) => ({ dead: false, entity: { items: [], basics: {}, level: 1, stats: {}, skills: {}, ...extra }, ai: { feet: [0, 0, 0], yaw: 0, height: 1.8 } });
   const player = { level: 1, items: pack, stats: {}, skills: {} };
-  playerArrowHitFoe(bow, foe(), { playerEntity: player });   // a wild foe: lootable
-  playerArrowHitFoe(bow, foe({ bout: { id: 'b' } }), { playerEntity: player });   // a bout fighter: lost
-  playerArrowHitFoe(bow, { ...foe(), rival: 'p1' }, { playerEntity: player });   // a relay opponent's stand-in: lost
+  const lodges = () => 0;   // PIN MOVED (ARROW-LODGE): each shaft survives its strike (under ARROW_LODGE_CHANCE) - the pin is where it lodges
+  playerArrowHitFoe(bow, foe(), { playerEntity: player, rolls: lodges });   // a wild foe: lootable
+  playerArrowHitFoe(bow, foe({ bout: { id: 'b' } }), { playerEntity: player, rolls: lodges });   // a bout fighter: lost
+  playerArrowHitFoe(bow, { ...foe(), rival: 'p1' }, { playerEntity: player, rolls: lodges });   // a relay opponent's stand-in: lost
   assert.deepEqual([...stopShotTally()], [[ARROW_TEMPLATE, 3]], 'four real shots, one lodged where it can be looted');
   noteShot(pack, ARROW_TEMPLATE); noteShotRecoverable(ARROW_TEMPLATE);
   assert.equal(stopShotTally(), null, 'stopped: nothing counted after');

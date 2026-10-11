@@ -76,7 +76,7 @@ test('FT4: the registry row - both labels, a condensed choice with its own defau
   assert.equal(c.read, outdoorsRead); assert.equal(c.write, outdoorsWrite);
   assert.equal(c.initial, true); assert.equal(c.online, true, 'the lane forces the outdoors on');
   assert.deepEqual(f.control.also, [{ store: 'mods', vendor: 'dynamic-skies', key: 'Enabled' }]);
-  assert.match(f.note, /Off brings back Daggerfall’s painted sky/); assert.match(f.note, /BadLuckBurt and carademono/);
+  assert.match(f.note, /Off brings back the classic painted sky/);   // PIN MOVED: BR5 assert.match(f.note, /BadLuckBurt and carademono/);
   // FT15 (2026-09-15): the note used to send a player to the Mods page for the mod's fog and
   // pixel-snow knobs. FT14 deleted that page - those knobs open in this row's own tile drawer
   // (MOD_CURATED['dynamic-skies']) - so the sentence was a pointer at nothing until the trim.

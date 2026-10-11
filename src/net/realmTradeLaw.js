@@ -231,8 +231,29 @@ export function settleRealmTrade(saveA, saveB, halfA, halfB) {
   return { ok: true, a, b, toA: { items: fromB, gold: halfB.give.gold }, toB: { items: fromA, gold: halfA.give.gold } };
 }
 
-/** A refusal's words, for the side whose trade did not happen. Nothing moved, on the service or here. */
-export function realmTradeRefusalText(/** @type {string} */ why) {
+/** INT3: the hold, as its player hears it (server-account/src/verdict.js holdOf's reasons) - systems/itemIds.js
+ *  tradeHeldNotice says it when a checkpoint moves it, and a trade it refused says it again (FIELD BUGS 2026-10-11g
+ *  HELD-SIDE). Here, a leaf both read: systems/itemIds.js re-exports it. */
+export const TRADE_HELD_NOTICES = Object.freeze({
+  law: 'The realm is reviewing this character: something it carries is not as the game makes it. Trading is frozen until it is gone.',
+  dupe: 'The realm is reviewing this character: copies of an item were found. Trading is frozen until staff have looked.',
+  budget: 'The realm is reviewing this character: its wealth rose faster than play could earn it. Trading is frozen until play catches up.',
+  staff: 'The realm\'s staff have frozen this character\'s trading.',
+});
+
+/** A refusal's words, for the side whose trade did not happen. Nothing moved, on the service or here. FIELD BUGS
+ *  2026-10-11g HELD-SIDE ("Cant trade after yesterdays character lockout" - "It will just say something along the lines
+ *  of: 'character under review'"): a hold's refusal says WHOSE it was - `held`, the service's word ('mine' or 'theirs';
+ *  null from a service before it) - and, when it is mine, why (`reason`, the hold my last checkpoint was answered:
+ *  TRADE_HELD_NOTICES' key; null when that checkpoint held nothing). */
+export function realmTradeRefusalText(/** @type {string} */ why, /** @type {string | null} */ held = null, /** @type {string | null | undefined} */ reason = undefined) {
+  if (why === 'trade-held' && held === 'mine') {
+    const notice = typeof reason === 'string' ? /** @type {Record<string, string>} */ (TRADE_HELD_NOTICES)[reason] : undefined;
+    return `${notice ?? 'The realm is reviewing your character, and its trading is frozen.'} Nothing was traded.`;
+  }
+  if (why === 'trade-held' && held === 'theirs') return `The realm is reviewing the other character in this trade, and its trading is frozen - nothing was traded.${reason === null ? ' Your own trading is open.' : ''}`;
+  if (why === 'record-unjudged' && held === 'mine') return 'The realm has not read your latest save yet - nothing was traded. Try again in a moment.';
+  if (why === 'record-unjudged' && held === 'theirs') return 'The realm has not read the other character\'s latest save yet - nothing was traded. Try again in a moment.';
   switch (why) {
     case 'expired': return 'The other side never reached the realm - nothing was traded.';
     case 'mismatch': return 'The two offers did not agree - nothing was traded.';

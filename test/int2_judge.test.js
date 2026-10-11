@@ -120,7 +120,7 @@ test('INT2/INT3: a lawless checkpoint is STORED and its character held - said in
   const { who: bea, R: B } = await s.seat('bea');
   const half = (P, at, sid, give, get) => s.call('/v1/realm/trade', { ...at, sid, give, get, pick: [] }, P.secret);
   assert.deepEqual((await half(bea, B.at(), 'heldtrade1', { items: [], gold: 0 }, { items: [], gold: 50 })).body, { state: 'waiting' });
-  assert.deepEqual((await half(who, R.at(), 'heldtrade1', { items: [], gold: 50 }, { items: [], gold: 0 })).body, { state: 'refused', why: 'trade-held' });
+  assert.deepEqual((await half(who, R.at(), 'heldtrade1', { items: [], gold: 50 }, { items: [], gold: 0 })).body, { state: 'refused', why: 'trade-held', held: 'mine' });   // PIN MOVED (FIELD BUGS 2026-10-11g HELD-SIDE): and whose
   // the forged piece gone: the next checkpoint lifts the hold
   assert.deepEqual((await s.put(who, R, freshSave({ name: 'ann' }), { summary: { level: 1 } })).body.tradeHeld, null);
   assert.deepEqual([s.row(R.id).held, s.row(R.id).strikes], [null, 1]);
@@ -195,7 +195,8 @@ test('INT3: EVERY ROUTE THAT HANDS A REALM CHARACTER\'S VALUE ON SAYS SO - no pr
   assert.deepEqual(found, { 'alchemy.js': 1, 'cards.js': 1, 'guildVault.js': 1, 'guilds.js': 1, 'market.js': 2, 'rent.js': 1 });
   const trade = readFileSync(new URL('realmTrade.js', dir), 'utf8');
   // PIN MOVED (its audit): the hold's own word - 'record-unjudged' was told 'trade-held'
-  assert.match(trade, /const heldBy = \(gives\(firstHalf\) \? holdRefusal\(other\) : null\) \?\? \(gives\(half\) \? holdRefusal\(row\) : null\);\n\s+if \(heldBy\) return refuse\(db, sid, heldBy\.error, playerId, asker, true\);/);
+  // PIN MOVED (FIELD BUGS 2026-10-11g HELD-SIDE): and the side it held kept with the word
+  assert.match(trade, /const heldA = gives\(firstHalf\) \? holdRefusal\(other\) : null;\n\s+const heldBy = heldA \?\? \(gives\(half\) \? holdRefusal\(row\) : null\);\n(?:\s*\/\/[^\n]*\n)*\s+if \(heldBy\) return refuse\(db, sid, `\$\{heldBy\.error\}:\$\{heldA \? 'a' : 'b'\}`, playerId, asker, true\);/);
 });
 
 test('INT5/INT6: the service\'s own writes are WITNESSED, the next judgement charging none of them; the last clean checkpoint is KEPT past the rotation, and a staff rollback restores it', async () => {

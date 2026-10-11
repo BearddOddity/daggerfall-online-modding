@@ -40,7 +40,7 @@ const player = (strength = 50) => ({ items: [], goldPieces: 0, stats: { strength
  *  about. TEST THE SHAPE THE PRODUCER MINTS: the rows are `hoverLines`'
  *  own, so a fixture cannot drift from what the plaque draws. */
 const frameOf = (key, items) => {
-  const { shown, rest, empty } = hoverLines(items);
+  const { shown, rest, empty } = hoverLines(items, Infinity);   // FIELD BUGS 2026-10-11g LOOT-SCROLL: resolveHover mints every row
   return { key, kind: 'items', title: 'Loot Pile', subs: [], rows: shown, rest, empty };
 };
 

@@ -29,7 +29,7 @@ const reset = () => { resetToDefaults(); setPref('landViewDistance', PREF_DEFAUL
 
 test('FT2: the tiers span both lanes - DFU\'s whole 1..4 and the enhanced 5..6, the default among them', () => {
   assert.deepEqual(LAND_VIEW_TIERS.map(([v]) => v), [1, 2, 3, 4, 5, 6]);
-  assert.equal(LAND_VIEW_TIERS[2][1], 'Daggerfall’s (3)', 'DFU\'s own default is named');
+  assert.equal(LAND_VIEW_TIERS[2][1], 'Classic (3)', 'DFU\'s own default is named');   // PIN MOVED: BR5, the classic, not the game's name
   assert.equal(LAND_VIEW_TIERS[5][1], 'Furthest (6)');
   assert.ok(LAND_VIEW_TIERS.some(([v]) => v === LAND_VIEW_DEFAULT));
   assert.ok(LAND_VIEW_TIERS.some(([v]) => v === LAND_VIEW_DFU_MAX) && LAND_VIEW_TIERS.some(([v]) => v === LAND_VIEW_MAX));
