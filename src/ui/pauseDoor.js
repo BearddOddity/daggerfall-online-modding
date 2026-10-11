@@ -59,7 +59,7 @@ import { profPagesShown, PROF_PAGE_SECTIONS } from './profPages.js';   // CLASSI
 import { FAMILY_PAGE_SECTIONS } from './familyPages.js';   // LEGACY3: Project Legacy's Family tab, on either skin
 import { hudText } from '../systems/notify.js';
 import {
-  openClassicPauseFlow,
+  openClassicPauseFlow as openClassicPauseWindow,
   pauseArtLoaded,
   preloadPauseFlowArt,
 } from './pauseWindow.js';
@@ -196,7 +196,22 @@ export const familyPageAt = (at) => at === 'family' || FAMILY_PAGE_SECTIONS.some
  * either skin, as DISC22-B's Controls button opens its Settings. With
  * no pages to show it says why and opens nothing.
  */
+/** TUT1: the pause window this door last opened, while it stands - a tutorial page waits for it to go down
+ *  (ui/tutorialPopup.js), rather than being pushed over the menu the player is reading. */
+let _pauseShown = null;
+export const pauseFlowShowing = () => !!_pauseShown && !_pauseShown.done;
+/** AUDIT TUT1: every pause window this door raises is the one shown - the classic window's Controls detour to the
+ *  enhanced Settings and its Resume back to a fresh classic window open theirs without passing openPauseFlow. */
+const shown = (win) => { if (win) _pauseShown = win; return win; };
+/** AUDIT TUT1: the classic window, kept wherever it is opened from - the door, and the fresh one the Settings detour's
+ *  Resume opens again (classicPauseWithSettings's `again`). */
+const openClassicPauseFlow = (show, hooks) => shown(openClassicPauseWindow(show, hooks));
+
 export function openPauseFlow(show, hooks = {}) {
+  return shown(openPauseFlowNow(show, hooks));
+}
+
+function openPauseFlowNow(show, hooks) {
   if (profPageAt(hooks.at)) {
     if (!profPagesShown()) { hudText(PROF_PAGES_CLOSED_LINE); return null; }
     if (typeof document !== 'undefined') return enhancedPauseOverlay(show, hooks);
@@ -226,7 +241,7 @@ export function openPauseFlow(show, hooks = {}) {
 function classicPauseWithSettings(show, hooks) {
   const again = () => classicPauseWithSettings(show, hooks);
   const openSettings = typeof document !== 'undefined'
-    ? () => enhancedPauseOverlay(show, { ...hooks, at: 'settings', onResume: again })
+    ? () => shown(enhancedPauseOverlay(show, { ...hooks, at: 'settings', onResume: again }))   // AUDIT TUT1: the detour is a pause window too
     : null;
   return openClassicPauseFlow(show, { ...hooks, openSettings });
 }

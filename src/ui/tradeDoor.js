@@ -14,6 +14,7 @@ import { registerOverlay } from './enhancedOverlays.js';
 import { NativeTradeWindow, preloadTradeArt, tradeArtLoaded } from './nativeTrade.js';
 import { racialSuppressInventory } from '../systems/lycanthropy.js';   // DISC10-E L3: the trade window's inherited refusal
 import { messageBox } from '../systems/notify.js';   // DISC10-E L3: DaggerfallUI.MessageBox
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { preloadTradeArt };
 
@@ -39,6 +40,7 @@ export function createTradeWindow(hooks = {}) {
   // nothing (ui/inventoryDoor.js has the full note).
   const sup = racialSuppressInventory(hooks.entity);
   if (sup) { messageBox(sup.text); return null; }
+  noteFirstUse('shops');   // TUT1: a counter that opens (AUDIT TUT1: not the beast's refusal)
   if (isEnhanced() && typeof document !== 'undefined') {
     return enhancedTradeOverlay(hooks);
   }

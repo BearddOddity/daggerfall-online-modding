@@ -104,6 +104,7 @@ export function playerMeleeCanHit(dist, inView, losClear) {
 
 /** WeaponManager.cs:45 - the switch-delay divisor, a float. */
 import { BOW_SWITCH_DIVISOR } from '../characters/weaponStates.js';   // ONE home (WeaponManager.cs:45); a12's switch law reads it here
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 export { BOW_SWITCH_DIVISOR };
 
 /** Internal_Strings.csv: usingRightHand / usingLeftHand - the two
@@ -252,6 +253,7 @@ export class PlayerWeapon {
   toggleSheath() {
     this.sheathed = !this.sheathed;
     if (this.sheathed) return false;
+    noteFirstUse('combat');   // TUT1: the first weapon drawn
     const t = weaponTypeForItem(this.weapon);
     return t !== WEAPON_TYPES.Melee && t !== WEAPON_TYPES.None;
   }

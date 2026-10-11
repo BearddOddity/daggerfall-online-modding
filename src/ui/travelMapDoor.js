@@ -28,6 +28,7 @@ import {
   TravelMapWindow, preloadTravelMapArt, travelMapArtLoaded, travelMapPickerData, canFindPlace, placePixelMemo,
 } from './travelMapWindow.js';
 import { HeldMapWindow } from './heldMap.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
 
 export { preloadTravelMapArt, travelMapArtLoaded, travelMapPickerData, canFindPlace, placePixelMemo };   // RAID1: the picker's bytes, for the raids' region list; AUDIT GUIDE O3: the place memo
 
@@ -58,6 +59,7 @@ export function travelMapDoorReady() {
  * heard of the hub) passes none and both maps draw none.
  */
 export function createTravelMapWindow(deps = {}) {
+  noteFirstUse('travel-map');   // TUT1
   // `document` for the reason every fork before this one gives: node
   // drives these hosts headless and keeps the canvas window rather
   // than getting a special case written for it.
