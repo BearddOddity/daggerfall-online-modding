@@ -42,7 +42,9 @@ export const GUILD_RANK_ACTS = Object.freeze([
   Object.freeze({ table: 'writ', power: 'storesWithdraw', words: 'take any materials out of the guild Stores' }),
   Object.freeze({ table: 'seat', power: 'pledge', words: 'pledge the guild to a seat in the Muster' }),
   Object.freeze({ table: 'levers', power: 'levers', words: 'run a held seat - its Tithe, its Edict, its battle window, its works, its fealty and pacts' }),
-  Object.freeze({ table: 'guild', power: 'withdraw', words: 'take gold and silver out of the treasuries, and bid silver for a chapter\'s patronage' }),
+  // (a chapter's patronage is bid by this power too - npcChapters.js bidPatron - but said on the chapter's own card, the
+  // Work tab's, which only a reader the Chapters switch lets in sees: this page is every guild's)
+  Object.freeze({ table: 'guild', power: 'withdraw', words: 'take gold and silver out of the treasuries' }),
   Object.freeze({ table: 'writ', power: 'writBudget', words: 'set how much silver may be spent on guild writs each week' }),
   Object.freeze({ table: 'seat', power: 'tribute', words: 'pay Tribute at the seat the guild pledged' }),
   Object.freeze({ master: true, words: 'give a held Charter up' }),
