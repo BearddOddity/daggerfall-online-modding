@@ -148,8 +148,8 @@
   {
     "name": "PERF-SUN3-the-walk-shipped-off",
     "file": "src/render/shadowPass.js",
-    "old": "facePrepass: true, sunPrepass: true };",
-    "new": "facePrepass: true, sunPrepass: false };",
+    "old": "facePrepass: true, sunPrepass: true, volumeMemo: true };",
+    "new": "facePrepass: true, sunPrepass: false, volumeMemo: true };",
     "tests": [
       "test/perfsun3.test.js"
     ]

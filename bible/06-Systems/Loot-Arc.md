@@ -101,7 +101,7 @@ opened (SET2), in one module (`systems/lootPowers.js`):
 |---|---|---|---|---|---|---|
 | `elemental` (fire, frost, shock) | weapons | prefix | 1-3 | 3-6 | 6-10 | that much of its element on every weapon blow at a foe - none on a foe immune to it, half on one that resists |
 | `leech` | weapons | suffix | 2-4 | 4-7 | 7-10 | that share (%) of every weapon blow that lands heals you |
-| `thorns` | armour | prefix | 1-3 | 3-6 | 6-10 | a foe whose blow lands on you takes that much back (all you wear, at most 25 a blow) |
+| `thorns` | armour | prefix | 1-3 | 3-6 | 6-10 | a foe whose blow lands on you takes that much back (all you wear, at most 10 a blow - BAL5, it was 25 - and never its last point) |
 | `focus` | jewellery | prefix | 2-4 | 4-7 | 7-10 | that share (%) off your spells' magicka (all you wear, at most 30%) |
 | `slayer` (undead, daedra, humanoid, animal) | weapons | suffix | 5-10 | 10-20 | 20-30 | that much more (%) weapon damage to that kind of foe - DFU's own grouping (`enemyEntityGroup`: a vampire undead, a dragonling an animal, an orc humanoid) |
 
@@ -375,8 +375,9 @@ imported by the game beside the sets' own (`scenes/world.js`, folded onto the se
   (`elementShare`, the career's own `careerTolerance`); the weapon IN HAND's lines alone.
 - a STRIKE listener (the blow that landed, its final damage): the leech's share heals me, the fraction carried
   (`healMine`), never past my maximum and never a body.
-- a LANDED-BLOW listener: the thorns I wear back to the foe whose blow took my health, summed under `THORNS_CAP` (25),
-  through the foe's own pool's door. **One law of a blow**: `sigilSetPowers.js` now tells named listeners
+- a LANDED-BLOW listener: the thorns I wear back to the foe whose blow took my health, summed under `THORNS_CAP` (25;
+  10 since BAL5, `05-Combat/Balance-Arc.md` section 11, and never the foe's last point), through the foe's own pool's
+  door. **One law of a blow**: `sigilSetPowers.js` now tells named listeners
   (`registerPlayerBlowLanded`) from inside its own hurt, at the moment Spite answers - the struck tail's mark, taken by
   the door as it opens (AUDIT FINAL F10), so a fall, a poison's round or a blow the door swallowed answers no thorn -
   and exports `pendingPlayerBlow`, the blow a hurt carries, for LOOT5's damage modifiers.

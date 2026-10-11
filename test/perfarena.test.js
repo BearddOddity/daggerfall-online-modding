@@ -6,7 +6,7 @@
 // rasterises, and the arena's draws resolve to the very triangles the per-batch buffers did, draw for draw.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Renderer, WORLD_FRAME, BB_ARENA_QUADS, BB_ARENA_MAX_QUADS, arenaTake, arenaGive } from '../src/render/renderer.js';
+import { Renderer, WORLD_FRAME, BB_ARENA_QUADS, BB_ARENA_MAX_QUADS, BB_ARENA_HOMES_MAX, arenaTake, arenaGive } from '../src/render/renderer.js';
 import { EL_LANE } from '../src/render/enhancedLighting.js';
 import { perspective, lookAt, mirrorProjectionX } from '../src/world/mat4.js';
 
@@ -70,7 +70,7 @@ function modelGl() {
       return () => { calls.push(k); };
     },
   });
-  return { gl, draws, calls, canvas: { getContext: () => gl, clientWidth: 320, clientHeight: 200, width: 320, height: 200 } };
+  return { gl, draws, calls, vaos, bufs, canvas: { getContext: () => gl, clientWidth: 320, clientHeight: 200, width: 320, height: 200 } };
 }
 
 /** A renderer on the model GL - `arenas` false is the base (every batch its own buffers, as before PERF-ARENA). */
@@ -163,7 +163,7 @@ test('PERF-ARENA the picture: a town of still batches (woods and single flats, t
   assert.equal(arena.vaoBinds, 1, 'the arena binds one for every draw of the pass');
 });
 
-test('PERF-ARENA a batch\'s life: freed, its range goes back (its VAO with it, so no replay reaches it) and a second free gives nothing back twice; the next batch takes the range and draws its own corners there; a still batch moved (a felled tree) rewrites its range and draws where it moved, as the base does; a dynamic batch (a gib) keeps buffers of its own; a batch bigger than an arena gets one its size (mutants: PERFARENA-double-free, PERFARENA-move-at-zero, PERFARENA-dynamic-shared)', () => {
+test('PERF-ARENA a batch\'s life: freed, its range goes back (its VAO with it, so no replay reaches it) and a second free gives nothing back twice; the next batch takes the range and draws its own corners there; a still batch moved (a felled tree) rewrites its range and draws where it moved, as the base does; a dynamic batch (a gib) keeps buffers of its own; a batch bigger than an arena gets one its size (mutants: PERFARENA-double-free, PERFARENA-move-at-zero, PERFARENA-dynamic-shared, AUDIT-ARENA-cap-ignores-batch)', () => {
   const runs = [false, true].map((arenas) => {
     const s = stand(arenas);
     const a = s.r.createBillboardBatch(504, 1, { w: 1, h: 2 }, [[1, 0, 1], [2, 0, 2], [3, 0, 3]]);
@@ -188,15 +188,18 @@ test('PERF-ARENA a batch\'s life: freed, its range goes back (its VAO with it, s
     s.r.beginFrame(I, I, new Float32Array([0.3, 0.8, 0.2]), WORLD_FRAME);
     s.draws.length = 0;
     s.r.drawBillboards([b, c, gib], RIGHT, UP);
-    const big = s.r.createBillboardBatch(504, 1, { w: 1, h: 1 }, Array.from({ length: BB_ARENA_QUADS + 3 }, (_, i) => [i, 0, 0]));
-    if (arenas) { assert.ok(big._arena.cap >= BB_ARENA_QUADS + 3, 'a batch bigger than an arena: an arena with room for it'); assert.equal(big._q0, 0); }
+    // AUDIT PERF-ARENA A2: bigger than the arena the doubling would open next (twice the first), so only the batch's own
+    // size can make room for it
+    const bigN = 2 * BB_ARENA_QUADS + 10;
+    const big = s.r.createBillboardBatch(504, 1, { w: 1, h: 1 }, Array.from({ length: bigN }, (_, i) => [i, 0, 0]));
+    if (arenas) { assert.ok(big._arena.cap >= bigN, `a batch bigger than an arena: an arena with room for it (${big._arena.cap})`); assert.equal(big._q0, 0); assert.equal(big._ibOff, 0); }
     return drawn(s);
   });
   assert.equal(runs[0].length, 3);
   assert.deepEqual(runs[1], runs[0], 'the moved, the reused and the dynamic batch draw what the base draws');
 });
 
-test('PERF-ARENA the arenas fill and spill: still batches past an arena\'s room open a second twice its size (PERF-ARENA2), a record\'s batch goes to its record\'s arena first and a new record\'s takes a freed range first-fit before a new arena is made, and every batch draws its own corners wherever it landed; an arena emptied whole is let go, the first kept (mutants: PERFARENA-no-spill, PERFARENA-never-let-go, PERFARENA-first-let-go, PERFARENA2-no-growth, PERFARENA2-no-home)', () => {
+test('PERF-ARENA the arenas fill and spill: still batches past an arena\'s room open a second twice its size (PERF-ARENA2), a record\'s batch goes to its record\'s arena first and a new record\'s takes a freed range first-fit before a new arena is made, and every batch draws its own corners wherever it landed; an arena emptied whole is let go, the first kept (mutants: PERFARENA-no-spill, PERFARENA-never-let-go, PERFARENA-first-let-go, PERFARENA2-no-growth, PERFARENA2-no-home, AUDIT-ARENA-stale-home, AUDIT-ARENA-no-home-on-first-fit)', () => {
   const s = stand(true);
   const rows = [];
   const quads = Math.floor(BB_ARENA_QUADS / 4) + 1;   // four do not fit in one arena
@@ -211,6 +214,7 @@ test('PERF-ARENA the arenas fill and spill: still batches past an arena\'s room 
   assert.ok(kin._arena === s.r._bbArenas[1], 'a record\'s batches together: its home arena first');
   const back = s.r.createBillboardBatch(504, 2, { w: 1, h: 1 }, [[42, 42, 42]]);
   assert.ok(back._arena === s.r._bbArenas[0] && back._q0 === rows[1]._q0, 'first fit: the freed range in the first arena');
+  assert.equal(s.r._bbArenaOfKey.get('504_2'), back._arena, 'and that arena is its record\'s home from now on (AUDIT PERF-ARENA A3)');
   s.r.destroyBatch(kin);
   s.r.beginFrame(I, I, new Float32Array([0.3, 0.8, 0.2]), WORLD_FRAME);
   s.draws.length = 0;
@@ -225,7 +229,15 @@ test('PERF-ARENA the arenas fill and spill: still batches past an arena\'s room 
   assert.equal(s.r._bbArenas.length, 1, 'the emptied arena is gone');
   assert.ok(s.r._bbArenas[0] !== second);
   assert.equal(s.calls.filter((c) => c === 'deleteVertexArray').length, 1, 'its VAO deleted');
-  assert.equal(s.calls.filter((c) => c === 'deleteBuffer').length, 2, 'and its two buffers');
+  assert.equal(s.calls.filter((c) => c === 'deleteBuffer').length, 1, 'and its vertex buffer - the index buffer is every arena\'s (AUDIT PERF-ARENA A4)');
+  // AUDIT PERF-ARENA A1: the let-go takes its records' homes with it - the record whose home it was goes to a standing
+  // arena, and draws its own corner there
+  const after = s.r.createBillboardBatch(504, 1, { w: 1, h: 1 }, [[77, 7, 7], [78, 7, 7], [79, 7, 7]]);
+  assert.ok(s.r._bbArenas.includes(after._arena), 'a record homed in the let-go arena lands in a standing one');
+  s.draws.length = 0;
+  s.r.drawBillboards([after], RIGHT, UP);
+  assert.deepEqual(firstCorner(s.draws[0]), [77, 7, 7], 'and draws its own corner');
+  s.r.destroyBatch(after);
   for (const b of [rows[0], rows[2], back]) s.r.destroyBatch(b);
   assert.equal(s.r._bbArenas.length, 1, 'the first arena is kept, empty');
   assert.deepEqual(s.r._bbArenas[0].free, [0, BB_ARENA_QUADS]);
@@ -261,9 +273,63 @@ test('PERF-ARENA2 the growth: each arena holds twice the one before it, and neve
   const s = stand(true);
   s.r.createBillboardBatch(504, 1, { w: 1, h: 1 }, [[0, 0, 0]]);
   assert.equal(s.r._bbArenas[0].cap, BB_ARENA_QUADS, 'the first: BB_ARENA_QUADS');
-  s.r._bbArenas.push({ vao: { id: 'full' }, vb: null, ib: null, cap: BB_ARENA_MAX_QUADS, free: [], taken: 0 });   // a full arena of the most
+  s.r._bbArenas.push({ vao: s.gl.createVertexArray(), vb: null, cap: BB_ARENA_MAX_QUADS, free: [], taken: 0 });   // a full arena of the most
   s.r._bbArenas[0].free.length = 0;   // and the first full too
   const b = s.r.createBillboardBatch(504, 3, { w: 1, h: 1 }, [[1, 1, 1]]);
   assert.equal(b._arena, s.r._bbArenas[2], 'a third opened');
   assert.equal(b._arena.cap, BB_ARENA_MAX_QUADS, 'holding the most, not twice it');
+});
+
+test('AUDIT PERF-ARENA A4: ONE INDEX BUFFER FOR EVERY ARENA - every standing arena\'s array holds the same element buffer, as large as the largest arena; an arena larger than it grows it, the new one bound into every standing arena and the old let go, and the flats of the arenas made before the growth draw the very triangles they drew before it; a deleted arena deletes no index buffer (mutants: AUDIT-ARENA-not-rebound, AUDIT-ARENA-old-kept, AUDIT-ARENA-delete-shared)', () => {
+  const s = stand(true);
+  const ebos = () => s.r._bbArenas.map((a) => s.vaos.get(a.vao).ebo);
+  const early = [s.r.createBillboardBatch(504, 1, { w: 1, h: 2 }, [[1, 0, 1], [2, 0, 2]]), s.r.createBillboardBatch(504, 2, { w: 2, h: 1 }, Array.from({ length: 40 }, (_, i) => [i, 1, -i]))];
+  s.r.beginFrame(I, I, new Float32Array([0.3, 0.8, 0.2]), WORLD_FRAME);
+  s.draws.length = 0;
+  s.r.drawBillboards(early, RIGHT, UP);
+  const before = s.draws.map((d) => d.tris);
+  const ib0 = s.r._bbIndex.ib;
+  assert.equal(s.bufs.get(ib0).length, BB_ARENA_QUADS * 24, 'the first arena\'s: its own size');
+  // past the first arena: a second, twice its size, and a third bigger than both
+  const fill = s.r.createBillboardBatch(504, 3, { w: 1, h: 1 }, Array.from({ length: BB_ARENA_QUADS }, (_, i) => [i, 2, 0]));
+  const huge = s.r.createBillboardBatch(504, 3, { w: 1, h: 1 }, Array.from({ length: 3 * BB_ARENA_QUADS }, (_, i) => [i, 3, 0]));
+  assert.equal(s.r._bbArenas.length, 3, 'three arenas');
+  const one = new Set(ebos());
+  assert.equal(one.size, 1, 'every standing arena holds one element buffer');
+  const ib = [...one][0];
+  assert.equal(ib, s.r._bbIndex.ib);
+  assert.ok(s.bufs.get(ib).length >= Math.max(...s.r._bbArenas.map((a) => a.cap)) * 24, 'as large as the largest arena');
+  assert.notEqual(ib, ib0, 'grown');
+  assert.ok(s.calls.includes('deleteBuffer'), 'the old one let go');
+  s.draws.length = 0;
+  s.r.drawBillboards(early, RIGHT, UP);
+  assert.deepEqual(s.draws.map((d) => d.tris), before, 'the flats made before the growth draw the very triangles they drew');
+  s.draws.length = 0;
+  s.r.drawBillboards([fill, huge], RIGHT, UP);
+  assert.deepEqual(s.draws.map((d) => d.tris[0].slice(0, 3)), [[0, 2, 0], [0, 3, 0]], 'and the new arenas\' flats their own');
+  s.calls.length = 0;
+  s.r.destroyBatch(huge);
+  assert.equal(s.calls.filter((c) => c === 'deleteBuffer').length, 1, 'a deleted arena lets its vertex buffer go and no index buffer');
+  assert.equal(new Set(ebos()).size, 1);
+});
+
+test('AUDIT PERF-ARENA A5-A7: the record homes start over past BB_ARENA_HOMES_MAX (a doll mints a key for good); an arena not standing is never spliced from the list (the free of a batch whose arena is gone takes no standing arena with it); and a dynamic batch freed by destroyBatch lets its array go as destroyBillboardBatch does (mutants: AUDIT-ARENA-homes-unbounded, AUDIT-ARENA-splice-unguarded, AUDIT-ARENA-dynamic-keeps-vao)', () => {
+  const s = stand(true);
+  assert.equal(BB_ARENA_HOMES_MAX, 4096);
+  for (let k = 0; k < BB_ARENA_HOMES_MAX + 40; k++) {
+    s.r.destroyBatch(s.r.createBillboardBatch(9000 + k, 0, { w: 1, h: 1 }, [[k, 0, 0]]));
+    assert.ok(s.r._bbArenaOfKey.size <= BB_ARENA_HOMES_MAX + 1, `the homes stay bounded (${s.r._bbArenaOfKey.size})`);
+  }
+  const keep = s.r.createBillboardBatch(504, 1, { w: 1, h: 1 }, Array.from({ length: BB_ARENA_QUADS }, (_, i) => [i, 0, 0]));
+  const second = s.r.createBillboardBatch(504, 2, { w: 1, h: 1 }, [[1, 1, 1]]);
+  assert.equal(s.r._bbArenas.length, 2);
+  const ghost = { _arena: { free: [], cap: 4, vao: s.gl.createVertexArray(), vb: null }, _q0: 0, _quads: 4, vao: null, buffers: [] };
+  s.r.destroyBatch(ghost);
+  assert.equal(s.r._bbArenas.length, 2, 'a batch whose arena is not standing takes no standing arena with it');
+  assert.ok(s.r._bbArenas[1] === second._arena);
+  const gib = s.r.createBillboardBatch(210, 0, { w: 0.3, h: 0.3 }, [[0, 1, 0]], { dynamic: true });
+  s.r.destroyBatch(gib);
+  assert.equal(gib.vao, null, 'a freed dynamic batch has no array');
+  assert.deepEqual(gib.buffers, []);
+  s.r.destroyBatch(keep); s.r.destroyBatch(second);
 });

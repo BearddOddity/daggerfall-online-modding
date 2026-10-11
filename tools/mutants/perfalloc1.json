@@ -6,9 +6,7 @@
     "new": "  out[12] = -(x2 * eye[2] + x1 * eye[1] + x0 * eye[0]);",
     "tests": [
       "test/perfalloc1.test.js"
-    ],
-    "equivalent": true,
-    "why": "A three-term sum reordered differs from the base's in the double's last bit at most, and the matrix is float32: the two round to the same float unless the sum lands within ~1e-16 (relative) of a float32 rounding boundary - none in the pin's 4,000 random views and 24,000 lantern faces (whose views are axis-aligned: every term but one exact). Recorded so the next reader knows the order is the base's on purpose (the same floats by construction), not by the pin."
+    ]
   },
   {
     "name": "PERFALLOC1-near",
@@ -69,6 +67,60 @@
     "file": "src/render/bounds.js",
     "old": "  const rad = c[0], px = c[1], py = c[2], pz = c[3], far = c[4];",
     "new": "  const rad = c[0], px = c[1], py = c[2], pz = c[3], far = c[4] - c[0];",
+    "tests": [
+      "test/perfalloc1.test.js"
+    ]
+  },
+  {
+    "name": "LA-hypot-z",
+    "file": "src/render/shadowPass.js",
+    "old": "  const zl = Math.hypot(zx, zy, zz);",
+    "new": "  const zl = Math.sqrt(zx * zx + zy * zy + zz * zz);",
+    "tests": [
+      "test/perfalloc1.test.js"
+    ]
+  },
+  {
+    "name": "LA-hypot-x",
+    "file": "src/render/shadowPass.js",
+    "old": "  const xl = Math.hypot(x0, x1, x2);",
+    "new": "  const xl = Math.sqrt(x0 * x0 + x1 * x1 + x2 * x2);",
+    "tests": [
+      "test/perfalloc1.test.js"
+    ]
+  },
+  {
+    "name": "LA-reciprocal",
+    "file": "src/render/shadowPass.js",
+    "old": "  x0 /= xl; x1 /= xl; x2 /= xl;\n  const y0",
+    "new": "  const ixl = 1 / xl; x0 *= ixl; x1 *= ixl; x2 *= ixl;\n  const y0",
+    "tests": [
+      "test/perfalloc1.test.js"
+    ]
+  },
+  {
+    "name": "LA-negzero",
+    "file": "src/render/shadowPass.js",
+    "old": "  out[12] = -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);",
+    "new": "  out[12] = 0 - (x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);",
+    "tests": [
+      "test/perfalloc1.test.js"
+    ]
+  },
+  {
+    "name": "LA-y-form",
+    "file": "src/render/shadowPass.js",
+    "old": "  x0 /= xl; x1 /= xl; x2 /= xl;\n  const y0 = z1 * x2 - z2 * x1,",
+    "new": "  x0 /= xl; x1 /= xl; x2 /= xl;\n  const y0 = -(z2 * x1 - z1 * x2),",
+    "tests": [
+      "test/perfalloc1.test.js"
+    ]
+  },
+  {
+    "name": "WALK-scratch-module",
+    "file": "src/render/shadowPass.js",
+    "old": "const lim = this._candLim, o = rank * 5, sp = this._bSphere, cube = this._cubeArgs;",
+    "new": "const lim = this._candLim, o = rank * 5, sp = this._bSphere, cube = new Float64Array(5);",
     "tests": [
       "test/perfalloc1.test.js"
     ]

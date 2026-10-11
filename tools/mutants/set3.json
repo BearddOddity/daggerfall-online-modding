@@ -282,8 +282,8 @@
   {
     "name": "SET3-the-whole-blow-sent-back",
     "file": "src/systems/sigilSetPowers.js",
-    "old": "door.hurtFoe(f, Math.max(1, Math.round((took * v.back) / 100)));",
-    "new": "door.hurtFoe(f, Math.max(1, Math.round(took)));",
+    "old": "paidBack(f, Math.max(1, Math.round((took * v.back) / 100)))",
+    "new": "paidBack(f, Math.max(1, Math.round(took)))",
     "tests": [
       "test/set3_powers.test.js"
     ]
