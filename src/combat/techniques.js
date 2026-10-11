@@ -567,7 +567,7 @@ function stepAct(dt, ctx) {
     if (a.lands && a.li === a.lands.length && !a.closed) { a.closed = true; cue(a.hand, 'close', ctx, { at: a.point, r: a.hand.tech.radius }); }
     while (a.queue.length && a.queue[0].at <= a.t) {
       const q = a.queue.shift();
-      ctx.door?.fireArrow?.(q.from, q.dir, { sky: true, weapon: a.weapon, technique: { id: a.hand.id, mult: a.mult, pierce: 1 } });   // AUDIT TECH1: the bow that loosed it, whatever is in hand now
+      ctx.door?.fireArrow?.(q.from, q.dir, { sky: true, weapon: a.weapon, technique: { id: a.hand.id, mult: a.mult, pierce: 1 }, summoned: q.summoned });   // AUDIT TECH1: the bow that loosed it, whatever is in hand now
     }
     if (!a.queue.length && a.t >= a.until) _s.act = null;
     return;
@@ -630,10 +630,11 @@ function loose(a, ctx) {
   const { hand } = a, t = hand.tech, weapon = a.weapon ?? ctx.pw?.weapon ?? null, items = ctx.entity?.items;
   const mult = techniqueMult(t.base, hand.value);
   if (t.mech === 'pierce') {
-    if (!spendAmmoFor(items, weapon)) { _s.act = null; return; }
+    const shot = { summoned: false };   // STUCK-ARROWS: whether the round was conjured, for the shaft to carry
+    if (!spendAmmoFor(items, weapon, shot)) { _s.act = null; return; }
     tallySwingSkills(ctx.entity, weapon);
     const look = lookOf(ctx.cam);
-    ctx.door?.fireArrow?.(ctx.cam.pos, look, { sky: false, weapon, technique: { id: hand.id, mult, pierce: t.through }, speedScale: t.speed });
+    ctx.door?.fireArrow?.(ctx.cam.pos, look, { sky: false, weapon, technique: { id: hand.id, mult, pierce: t.through }, speedScale: t.speed, summoned: shot.summoned });
     ctx.noteShot?.(weapon);
     // TECH-FX: the shot's kick, its flare and its tracer - laid down the look the shaft flies, to the first thing it meets
     // there (AUDIT TECH-FX: the aim's lane was the release's, flat, and the player may turn before the string goes)
@@ -644,7 +645,8 @@ function loose(a, ctx) {
   }
   // the Volley: as many shafts as the quiver gives, each spent, each a shot's tally, falling on the disc from above
   let n = 0;
-  for (; n < t.arrows; n++) { if (!spendAmmoFor(items, weapon)) break; tallySwingSkills(ctx.entity, weapon); }
+  const conjured = [];   // STUCK-ARROWS: each shaft's round, conjured or not, in the order they were spent
+  for (; n < t.arrows; n++) { const shot = { summoned: false }; if (!spendAmmoFor(items, weapon, shot)) break; conjured.push(shot.summoned); tallySwingSkills(ctx.entity, weapon); }
   if (!n || !a.target?.point) { _s.act = null; return; }
   ctx.noteShot?.(weapon);
   cue(hand, 'loose', ctx);   // TECH-FX: the bow's flare
@@ -661,7 +663,7 @@ function loose(a, ctx) {
     const blocked = rayHit(base, [back[0] / bl, back[1] / bl, back[2] / bl], bl, ctx.collider);
     if (Number.isFinite(blocked)) from = at(base, [back[0] / bl, back[1] / bl, back[2] / bl], Math.max(0.6, blocked - 0.4));
     const d = [p[0] - from[0], p[1] - from[1], p[2] - from[2]], l = Math.hypot(d[0], d[1], d[2]) || 1;
-    return { at: t.delay + (n > 1 ? (t.spread * i) / (n - 1) : 0), from, dir: [d[0] / l, d[1] / l, d[2] / l], to: p };
+    return { at: t.delay + (n > 1 ? (t.spread * i) / (n - 1) : 0), from, dir: [d[0] / l, d[1] / l, d[2] / l], to: p, summoned: !!conjured[i] };
   });
   _s.act = { kind: 'rain', hand, point: c, t: 0, queue, mult, until: t.delay + t.spread + h / MISSILE_SPEED + 0.2, weapon };
   // TECH-FX: where and when each shaft meets what is under it - its own line cast as the lane will fly it (AUDIT

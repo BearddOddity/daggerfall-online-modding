@@ -449,7 +449,9 @@ the swept geometry raycast (the sweep covers the whole step - raw
 dt cannot tunnel), plus a terrain landing check the dungeon never
 needed: the mesh raycast cannot see the collider's heightAt fallback
 floor, so an arrow at or under it has landed. A lost arrow is LOST
-(DFU's law for a miss - no recovery without a struck target).
+(DFU's law for a miss - no recovery without a struck target; since
+STUCK-ARROWS, `05-Combat/Arrow-Supply.md`, the player's real shaft
+stays where it struck and is taken back).
 
 Mounted (the host rule): worldModes INTERIOR mode (fires from
 player.eye along eyeDir; per-building collider late-resolved; a new

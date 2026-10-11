@@ -223,16 +223,16 @@ test('FIELD-GUN14: a gun leaves no shaft to pull out', async () => {
   const arrows = (items) => items.filter((it) => it.templateIndex === 131).length;
 
   const bowFoe = mkFoe();
-  playerArrowHitFoe({ weapon: { templateIndex: 130, name: 'Long Bow' }, pos: [0, 0, 0] }, bowFoe, { playerEntity: player });
+  playerArrowHitFoe({ weapon: { templateIndex: 130, name: 'Long Bow' }, pos: [0, 0, 0] }, bowFoe, { playerEntity: player, rolls: () => 0 });   // PIN MOVED (ARROW-LODGE): a struck shaft lodges ARROW_LODGE_CHANCE of the time - this one under it (test/arrowsupply.test.js holds the chance)
   assert.equal(arrows(bowFoe.entity.items), 1, 'the bow’s shaft is recoverable, exactly as BowDamage has it');
 
   const gunFoe = mkFoe();
-  playerArrowHitFoe({ weapon: createThunderlock(), pos: [0, 0, 0] }, gunFoe, { playerEntity: player });
+  playerArrowHitFoe({ weapon: createThunderlock(), pos: [0, 0, 0] }, gunFoe, { playerEntity: player, rolls: () => 0 });   // PIN MOVED (ARROW-LODGE): a roll a shaft would lodge on - the pellet still leaves none
   assert.equal(gunFoe.entity.items.length, 0, 'a Dwemer Pellet is SPENT - nothing to pull out of the body');
 
   // the two answers come off the same leaf, so they cannot drift
   const src = readFileSync('src/combat/arrowFlight.js', 'utf8');
-  assert.match(src, /if \(foe\.entity\?\.items && !orbArchiveFor\(m\.weapon\)\) \{/);
+  assert.match(src, /if \(foe\.entity\?\.items && !orbArchiveFor\(m\.weapon\) && !m\.summoned && rolls\(\) < ARROW_LODGE_CHANCE\) \{/);   // PIN MOVED (ARROW-LODGE): the leaf's answer first, then the conjured round and the lodge
 });
 
 test('FIELD-GUN14: all four hosts paint the orb - the flight’s fork and the dungeon’s own', () => {
@@ -240,9 +240,10 @@ test('FIELD-GUN14: all four hosts paint the orb - the flight’s fork and the du
   // (dungeonContext) has its own S5 missile system, which is the shape
   // that has bitten this weapon at every round since FIELD-GUN3.
   for (const [file, ctor] of [
-    ['src/scenes/world.js', /new ArrowFlight\(\{ getGpuMesh, collider: \(\) => collider, effects: hitEffects \}\)/],
-    ['src/scenes/exterior.js', /new ArrowFlight\(\{ getGpuMesh, collider: \(\) => collider, effects: hitEffects \}\)/],
-    ['src/scenes/worldModes.js', /new ArrowFlight\(\{ getGpuMesh: pipeline\.getGpuMesh, collider: \(\) => interiorCtx\?\.collider, effects: interiorHitEffects \}\)/],
+    // PIN MOVED (STUCK-ARROWS): each flight is handed its loot pool after its effects (test/arrowsupply.test.js names it)
+    ['src/scenes/world.js', /new ArrowFlight\(\{ getGpuMesh, collider: \(\) => collider, effects: hitEffects, loot: droppedLoot, /],
+    ['src/scenes/exterior.js', /new ArrowFlight\(\{ getGpuMesh, collider: \(\) => collider, effects: hitEffects, loot: droppedLoot \}\)/],
+    ['src/scenes/worldModes.js', /new ArrowFlight\(\{ getGpuMesh: pipeline\.getGpuMesh, collider: \(\) => interiorCtx\?\.collider, effects: interiorHitEffects, loot: interiorDropped \}\)/],
   ]) {
     const s = readFileSync(file, 'utf8');
     assert.match(s, ctor, `${file}: the flight is handed the pool this host already draws every frame`);

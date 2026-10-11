@@ -8,7 +8,7 @@
 import './modsOff.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { stockShopShelf, shopPelletStack, SHOP_PELLETS_MAX, SHOP_ITEM_GROUPS, shopBuysItem } from '../src/systems/shopStock.js';
+import { stockShopShelf, shopPelletStack, shopArrowStack, SHOP_PELLETS_MAX, SHOP_ITEM_GROUPS, shopBuysItem } from '../src/systems/shopStock.js';   // SHOP-ARROWS: the counter's quiver beside the shot
 import { BUILDING_TYPES } from '../src/world/buildingNames.js';
 import { PELLET_TEMPLATE } from '../src/characters/thunderlockIds.js';
 import { createPellets, isPellet, isThunderlock, pelletCount } from '../src/systems/thunderlock.js';
@@ -50,8 +50,12 @@ test('SHOP-PELLETS ON THE COUNTER, FROM NO ROLL: the counter\'s shelf carries th
     assert.equal(next.items.filter(isPellet).length, 0, `building ${b}: none on another shelf`);
     if (b === B.WeaponSmith || b === B.Armorer) {
       // a shop with no counter-only supply of its own: the counter IS the next shelf plus the shot
+      // PIN MOVED (SHOP-ARROWS, 2026-10-11): ...and plus its quiver - merged into the shelf's own arrows when DFU's draw put
+      // some there, so the arrows are compared by count and the rest row for row (test/arrowsupply.test.js holds the quiver)
+      const isArrow = (i) => i.templateIndex === 131, count = (l) => l.filter(isArrow).reduce((t, i) => t + i.stackCount, 0);
       assert.equal(counter.n, next.n, `building ${b}: the same draws`);
-      assert.deepEqual(JSON.parse(JSON.stringify(counter.items.filter((i) => !isPellet(i)))), JSON.parse(JSON.stringify(next.items)), `building ${b}: the same stock`);
+      assert.deepEqual(JSON.parse(JSON.stringify(counter.items.filter((i) => !isPellet(i) && !isArrow(i)))), JSON.parse(JSON.stringify(next.items.filter((i) => !isArrow(i)))), `building ${b}: the same stock`);
+      assert.equal(count(counter.items), count(next.items) + shopArrowStack(b, q), `building ${b}: DFU's arrows and the quiver`);
       assert.ok(isPellet(counter.items.at(-1)), 'after every draw of DFU\'s');
     }
   }
