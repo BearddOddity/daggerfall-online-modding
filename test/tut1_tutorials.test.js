@@ -361,7 +361,7 @@ test('TUT1: while the menu stands a page waits - never pushed over the pause win
   const pd = read('src/ui/pauseDoor.js');
   assert.match(pd, /export function openPauseFlow\(show, hooks = \{\}\) \{\n  return shown\(openPauseFlowNow\(show, hooks\)\);/, 'the door keeps the window it opened');
   assert.match(pd, /\? \(\) => shown\(enhancedPauseOverlay\(show, \{ \.\.\.hooks, at: 'settings', onResume: again \}\)\)/, 'AUDIT TUT1: the classic window\'s Settings detour is kept too');
-  assert.match(pd, /const again = \(\) => shown\(classicPauseWithSettings\(show, hooks\)\);/, '...and the classic window its Resume opens again');
+  assert.match(pd, /const openClassicPauseFlow = \(show, hooks\) => shown\(openClassicPauseWindow\(show, hooks\)\);/, '...and every classic window, the one its Resume opens again among them');
   clearTutorialLine();
 });
 

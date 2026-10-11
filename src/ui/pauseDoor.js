@@ -59,7 +59,7 @@ import { profPagesShown, PROF_PAGE_SECTIONS } from './profPages.js';   // CLASSI
 import { FAMILY_PAGE_SECTIONS } from './familyPages.js';   // LEGACY3: Project Legacy's Family tab, on either skin
 import { hudText } from '../systems/notify.js';
 import {
-  openClassicPauseFlow,
+  openClassicPauseFlow as openClassicPauseWindow,
   pauseArtLoaded,
   preloadPauseFlowArt,
 } from './pauseWindow.js';
@@ -203,6 +203,9 @@ export const pauseFlowShowing = () => !!_pauseShown && !_pauseShown.done;
 /** AUDIT TUT1: every pause window this door raises is the one shown - the classic window's Controls detour to the
  *  enhanced Settings and its Resume back to a fresh classic window open theirs without passing openPauseFlow. */
 const shown = (win) => { if (win) _pauseShown = win; return win; };
+/** AUDIT TUT1: the classic window, kept wherever it is opened from - the door, and the fresh one the Settings detour's
+ *  Resume opens again (classicPauseWithSettings's `again`). */
+const openClassicPauseFlow = (show, hooks) => shown(openClassicPauseWindow(show, hooks));
 
 export function openPauseFlow(show, hooks = {}) {
   return shown(openPauseFlowNow(show, hooks));
@@ -236,7 +239,7 @@ function openPauseFlowNow(show, hooks) {
  *  to the pause window it was opened from (previousWindow), and a player who opened settings from a menu expects that
  *  menu under it. Without a document (a node host) the classic grid stands. */
 function classicPauseWithSettings(show, hooks) {
-  const again = () => shown(classicPauseWithSettings(show, hooks));   // AUDIT TUT1: the window its Resume opens again is a pause window too
+  const again = () => classicPauseWithSettings(show, hooks);
   const openSettings = typeof document !== 'undefined'
     ? () => shown(enhancedPauseOverlay(show, { ...hooks, at: 'settings', onResume: again }))   // AUDIT TUT1: the detour is a pause window too
     : null;
