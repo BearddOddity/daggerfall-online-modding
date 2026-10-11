@@ -43,7 +43,8 @@ test('CAPT-LOG what a rank brings in its crown\'s harbours: the table - the ship
   assert.equal(perksOf(4, 24), RANK_PERKS[4]);
   assert.equal(perksOf(4, 25), RANK_PERKS[0], 'hunted: no favours');
   assert.equal(perksOf(9), RANK_PERKS[4], 'past the top, the top');
-  assert.equal(perkWords(RANK_PERKS[3]), 'the shipwright 15% off - the harbour board pays 30% more, 2 more offers a day - a letter of marque - the Admiralty\'s Carrack - seasoned hands hired');
+  // PIN MOVED (AUDIT CAPTAIN'S SEA B15): the discount the shipwright's repairs and powder - his stores and grog are what they cost
+  assert.equal(perkWords(RANK_PERKS[3]), 'the shipwright\'s repairs and powder 15% off - the harbour board pays 30% more, 2 more offers a day - a letter of marque - the Admiralty\'s Carrack - seasoned hands hired');
   assert.equal(perkWords(RANK_PERKS[0]), '');
 });
 
@@ -124,7 +125,7 @@ test('CAPT-LOG the save: its own slot (Captain, v1) - the log, the crowns\' rega
   const b = createCaptainLedger();
   b.restoreSaveData(JSON.parse(JSON.stringify(a.getSaveData())));
   assert.deepEqual(b.getSaveData(), a.getSaveData());
-  assert.deepEqual(b.newSaveData(), { v: 1, log: newLog(), standing: { Daggerfall: 0, Wayrest: 0, Sentinel: 0 }, marque: null, contracts: [], taken: [], dealt: null, charts: [], ether: { charted: [], legends: {}, harvested: {}, from: null, crossings: 0, heard: [] } });   // CAPT-BOARD: and the contracts held, the board's taken; CAPT-TRADE: the day's dealing; ETHER-SEA: the captain's Etheric Sea
+  assert.deepEqual(b.newSaveData(), { v: 1, log: newLog(), standing: { Daggerfall: 0, Wayrest: 0, Sentinel: 0 }, marque: null, contracts: [], taken: [], dealt: null, charts: [], raised: [], ether: { charted: [], legends: {}, harvested: {}, from: null, crossings: 0, heard: [] } });   // CAPT-BOARD: and the contracts held, the board's taken; CAPT-TRADE: the day's dealing; ETHER-SEA: the captain's Etheric Sea - PIN MOVED (AUDIT CAPTAIN'S SEA B8): and the caches raised
   const c = createCaptainLedger();
   c.restoreSaveData({ log: { sunk: { pirate: -4, merchant: 'x' }, plunder: 1e20, legends: [5, 'Ok'], best: { name: 3 } }, standing: { Wayrest: 5000, Daggerfall: 'q', Morrowind: 9 }, marque: { crown: 'Morrowind', until: 10 } });
   assert.deepEqual([c.log.sunk.pirate, c.log.sunk.merchant, c.log.legends, c.log.best], [0, 0, ['Ok'], null]);
@@ -140,12 +141,15 @@ test('CAPT-LOG the log in words, and the page\'s meter: the counts that stand (t
   assert.deepEqual(logLines(l.log), [['Ships sunk', 'none'], ['Ships taken', 'none'], ['Leagues sailed', '0.0 leagues']]);
   l.deed('sink', brig, { crown: 'Wayrest' }); l.deed('sink', coaster, { crown: 'Wayrest' }); l.deed('board', cutter, { crown: 'Wayrest' }); l.note('earned', 1200); l.note('hunt');
   const lines = Object.fromEntries(logLines(l.log));
-  assert.equal(lines['Ships sunk'], '2 - 1 pirates, 1 merchantmen');
-  assert.equal(lines['Ships taken'], '1 - 1 crown\'s ships');
+  assert.equal(lines['Ships sunk'], '2 - 1 pirate, 1 merchantman');   // PIN MOVED (AUDIT CAPTAIN'S SEA L11): one is one
+  assert.equal(lines['Ships taken'], '1 - 1 crown\'s ship');   // PIN MOVED (AUDIT CAPTAIN'S SEA L11)
   assert.equal(lines['Contracts done'], '1 - 1 hunt');
   assert.equal(lines['Contract purses'], '1,200 gold');
   assert.deepEqual(standingMeter(30, crownRankOf(30)), { now: 15, max: 35, label: '20 to Privateer' });
-  assert.deepEqual(standingMeter(-10, crownRankOf(-10)), { now: 0, max: 15, label: '15 to Sworn Captain' });
+  // PIN MOVED (AUDIT CAPTAIN'S SEA L5): below nothing, the meter's floor the standing itself and its label what the next
+  // rank still wants (it read "15 to Sworn Captain" at -10)
+  assert.deepEqual(standingMeter(-10, crownRankOf(-10)), { now: 0, max: 25, label: '25 to Sworn Captain' });
+  assert.deepEqual(standingMeter(5, crownRankOf(5)), { now: 5, max: 15, label: '10 to Sworn Captain' });
   assert.deepEqual(standingMeter(400, crownRankOf(400)), { now: 1, max: 1, label: 'The highest rank' });
 });
 
@@ -231,14 +235,17 @@ test('CAPT-MARQUE at sea: under a letter a RIVAL\'s lawful ship struck is the ri
 test('CAPT-LOG the world\'s wiring: one ledger a world host, in its own save slot whether the sea runs or not; the deeds\' rank changes said on the screen\'s middle; the letter read on the captain\'s own clock; plunder\'s worth handed in; the leagues at the helm; the Captain page on the Holdings rail after the Fleet (mutants: the slot, the clock, the say)', () => {
   const w = rd('src/scenes/world.js');
   assert.match(w, /const captainLedger = createCaptainLedger\(\);/);
-  assert.match(w, /registerModSaveData\(CAPTAIN_SAVE_VENDOR, captainLedger\);/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA L9): the ledger's own slot, a load dropping the rank lines still waiting to be said
+  assert.match(w, /registerModSaveData\(CAPTAIN_SAVE_VENDOR, \{ \.\.\.captainLedger, restoreSaveData: \(r\) => \{ _rankLines\.length = 0; captainLedger\.restoreSaveData\(r\); \} \}\);/);
   assert.match(w, /marque: \(\) => captainLedger\.marque\(Math\.floor\(playerTicker\.ownMinutes\)\),/);
   assert.match(w, /deed: \(act, cls, o\) => \{ const r = captainLedger\.deed\(act, cls, o\); captainSay\(\); return r; \},/);
   assert.match(w, /worth: \(items\) => navalLootWorth\(items\),/);
-  assert.match(w, /captain: \{ model: \(\) => captainModel\(\) \},/);
+  assert.match(w, /captain: fleetHost \? \{ model: \(\) => captainModel\(\) \} : null,/);   // PIN MOVED (AUDIT CAPTAIN'S SEA L15): beside the Fleet's
   const host = rd('src/scenes/navalHost.js');
   assert.match(host, /if \(boat\) \{ const v = boatPose\(boat\)\.velocity; deps\.captain\?\.sailed\?\.\(Math\.hypot\(v\[0\], v\[2\]\) \* total\); \}/);
-  assert.match(host, /notePlunder\(all\.filter\(\(it\) => !left\.includes\(it\)\)\);/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA L12): the hold's own items counted, each once (the captain's own things put in and taken
+  // out again were counted every pass)
+  assert.match(host, /tallyPlunder\(all\.filter\(\(it\) => !left\.includes\(it\)\)\);/);
   assert.match(host, /deps\.captain\?\.note\?\.\('claimed'\);/);
   assert.match(rd('src/ui/enhancedMenu.js'), /captain: \(d\) => drawCaptainPage\(d, render, kit\),/);
 });

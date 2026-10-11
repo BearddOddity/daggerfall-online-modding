@@ -149,7 +149,7 @@ export function exchangeOf(port, day, dealt = {}) {
     const stock = DAY_STOCK[stand];
     const exotic = !!g.ether !== !!port?.ether;
     rows.push({
-      id: g.id, name: g.name, unit: g.unit, units: g.units, kg: g.kg, stand, sell: p.sell, buy: p.buy,
+      id: g.id, name: g.name, unit: g.unit, units: g.units, kg: g.kg, stand, sell: p.sell, buy: p.buy, exotic,   // AUDIT CAPTAIN'S SEA B16: the other sea's - never sold here
       sells: exotic ? 0 : Math.max(0, stock.sell - (dealt.bought?.[g.id] | 0)), buys: Math.max(0, stock.buy - (dealt.sold?.[g.id] | 0)),
     });
   }

@@ -165,8 +165,8 @@
   {
     "name": "SHIP-rumour-night",
     "file": "src/systems/naval/etherShips.js",
-    "old": "${legend.trait === 'night' ? ' By night.' : ''}",
-    "new": "",
+    "old": "  const night = legend.trait === 'night' ? ' By night.' : '';",
+    "new": "  const night = '';",
     "tests": [
       "test/ethership.test.js"
     ]
@@ -228,8 +228,8 @@
   {
     "name": "SHIP-dir-legend-twice",
     "file": "src/systems/naval/navalDirector.js",
-    "old": "    if (!want?.classId || (ctx.ships ?? []).some((s) => s.classId === want.classId)) return null;",
-    "new": "    if (!want?.classId) return null;",
+    "old": "    if (!want?.classId || ctx.nearPort || (ctx.legends ?? []).length || (ctx.ships ?? []).some((s) => s.classId === want.classId)) return null;",
+    "new": "    if (!want?.classId || ctx.nearPort || (ctx.legends ?? []).length) return null;",
     "tests": [
       "test/ethership.test.js"
     ]
@@ -264,7 +264,7 @@
   {
     "name": "SHIP-host-unannounced",
     "file": "src/scenes/navalHost.js",
-    "old": "    if (legend && !owner) deps.mid?.(",
+    "old": "    if (legend && !heard) deps.mid?.(",
     "new": "    if (false) deps.mid?.(",
     "tests": [
       "test/ethership.test.js"
@@ -363,7 +363,7 @@
   {
     "name": "SHIP-host-strand-ungiven",
     "file": "src/scenes/navalHost.js",
-    "old": "    if (r.items.length) { deps.board?.giveItems?.(r.items, swim ? null : boat ?? null); crewEvent(boat, 'plunder'); }",
+    "old": "    if (r.items.length) { deps.board?.giveItems?.(r.items, boat ?? null); crewEvent(boat, 'plunder'); }",
     "new": "    if (r.items.length) { crewEvent(boat, 'plunder'); }",
     "tests": [
       "test/ethership.test.js"

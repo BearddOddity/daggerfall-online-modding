@@ -13,9 +13,10 @@
 // spawn's -1 is shared), never a row of MAPS.BSA.
 //
 // THE TEMPLATES are the game's own rows (the host hands them as MAPS.BSA holds them - HUB1's law, so a client's mods
-// never move what an isle stands): a TOWN a hamlet or a village of a few blocks (Veilhaven a town of more), never a
-// main-story place nor one with a dungeon under it; a RUIN a dungeon whose exterior is one block where any is. Picked
-// off the isle's own hash, in the rows' map-id order: the same place on every client.
+// never move what an isle stands): a TOWN a hamlet or a village of a few blocks (Veilhaven a hamlet of more - AUDIT
+// CAPTAIN'S SEA P1: MAPS.BSA's villages are 2 or 4 blocks and its cities 30 and more, so the towns of six to twelve are
+// its hamlets alone), never a main-story place nor one with a dungeon under it; a RUIN a dungeon whose exterior is one
+// block where any is. Picked off the isle's own hash, in the rows' map-id order: the same place on every client.
 import { mapPixelToLongitudeLatitude, LOCATION_TYPES } from '../formats/mapsFile.js';
 import { CELLS_W, etherHash, etherBandOf, etherDepthAt } from './ethericSea.js';
 
@@ -26,10 +27,13 @@ export const ETHER_PLACE_BASE = 500000;
  *  law, the far places its quests send a captain to): Betony, the Bay's westernmost isle and the nearest of its regions
  *  with places of its own to the Veil's way (the Bay's 'Islands in the Western Iliac Bay' hold none). */
 export const ETHER_REGION = 19;
-/** What the isles' places are called as a region, where a place's words name one. */
+/** What the isles' places are called as a region, where a place's words name one. A place's own `regionName` is its
+ *  region's (AUDIT CAPTAIN'S SEA P8: the quests resolve and gate a site by it - "the Etheric Isles" named no region, and
+ *  a guild's local job threw on its first tick). */
 export const ETHER_REGION_NAME = 'the Etheric Isles';
-/** A town's blocks (its exterior's width x height): a port isle's few, Veilhaven's more. */
-export const TOWN_BLOCKS = Object.freeze({ port: Object.freeze([2, 6]), haven: Object.freeze([6, 16]) });
+/** A town's blocks (its exterior's width x height): a port isle's few, Veilhaven's more - each a town that stands whole on
+ *  its small isle (world/ethericSea.js: up to twelve blocks, 410 m by 307, measured dry). */
+export const TOWN_BLOCKS = Object.freeze({ port: Object.freeze([2, 6]), haven: Object.freeze([6, 12]) });
 /** A ruin is ELITE (dungeonContext.js: three foes a marker, each twice as hard) from this band on. */
 export const ELITE_BANDS = Object.freeze(['deep', 'abyss']);
 
@@ -44,17 +48,18 @@ const blocksOf = (l) => (l?.exterior?.exteriorData?.width | 0) * (l?.exterior?.e
 const idOf = (l) => (l?.mapTableData?.mapId ?? 0) >>> 0;
 /**
  * THE TEMPLATES from the game's rows: `{ towns, havens, ruins }`, each in map-id order - `towns` hamlets and villages of
- * TOWN_BLOCKS.port blocks, `havens` towns of TOWN_BLOCKS.haven (Veilhaven's), neither a main-story place (`isMain`, by
- * map id) nor one with a dungeon; `ruins` dungeons with blocks and an exterior, never main-story, one block where any is.
+ * TOWN_BLOCKS.port blocks, `havens` hamlets and villages of TOWN_BLOCKS.haven (Veilhaven's: the game's are hamlets), neither
+ * a main-story place (`isMain`, by map id) nor one with a dungeon; `ruins` dungeons with blocks and an exterior, never
+ * main-story, one block where any is. Never an isle's own place (`ether` - AUDIT CAPTAIN'S SEA P3's law: the game's rows).
  * @param {Iterable<any>} rows @param {(mapId: number) => boolean} [isMain]
  */
 export function etherTemplates(rows, isMain = () => false) {
-  const list = [...(rows ?? [])].filter((l) => l?.exterior?.exteriorData && !l.spawned && !isMain(idOf(l)));
+  const list = [...(rows ?? [])].filter((l) => l?.exterior?.exteriorData && !l.spawned && !l.ether && !isMain(idOf(l)));
   const type = (l) => l.mapTableData?.locationType;
   const within = (l, range) => blocksOf(l) >= range[0] && blocksOf(l) <= range[1];
   const byId = (a, b) => idOf(a) - idOf(b);
   const towns = list.filter((l) => !l.hasDungeon && (type(l) === LOCATION_TYPES.TownHamlet || type(l) === LOCATION_TYPES.TownVillage) && within(l, TOWN_BLOCKS.port)).sort(byId);
-  const havens = list.filter((l) => !l.hasDungeon && (type(l) === LOCATION_TYPES.TownCity || type(l) === LOCATION_TYPES.TownVillage) && within(l, TOWN_BLOCKS.haven)).sort(byId);
+  const havens = list.filter((l) => !l.hasDungeon && (type(l) === LOCATION_TYPES.TownHamlet || type(l) === LOCATION_TYPES.TownVillage) && within(l, TOWN_BLOCKS.haven)).sort(byId);   // AUDIT CAPTAIN'S SEA P1: a city has 30 blocks and more - the list was always empty
   const dungeons = list.filter((l) => l.hasDungeon && l.dungeon?.blocks?.length);
   const small = dungeons.filter((l) => blocksOf(l) === 1);
   const ruins = (small.length ? small : dungeons).sort(byId);
@@ -69,10 +74,12 @@ export function etherTemplateOf(templates, isle) {
 }
 
 /**
- * AN ISLE'S PLACE: the template cloned onto the isle's centre pixel - its id (the map row's, the exterior's and the
- * dungeon's), the pixel's longitude and latitude, the isle's name, the region it answers for (`where`: the host's -
- * ETHER_REGION's index and politic, the isle's climate's settings), its own location index, and `ether` (the isle's key)
- * and `etherKind`; a ruin past ELITE_BANDS' first is `elite`. Its exterior answers a port's harbour (`portTownAndUnknown`).
+ * AN ISLE'S PLACE: the template cloned onto the isle's centre pixel - its id (the map row's, the exterior's - its
+ * exteriorData's location and map ids, its record's header - and the dungeon's header's), the pixel's longitude and
+ * latitude, the isle's name, the region it answers for (`where`: the host's - ETHER_REGION's index, name and politic, the
+ * isle's climate's settings), its own location index, and `ether` (the isle's key) and `etherKind`; a ruin past
+ * ELITE_BANDS' first is `elite`. Its exterior answers a harbour by its kind (`portTownAndUnknown`: a port's 1, any
+ * other's 0 - AUDIT CAPTAIN'S SEA P10: a ruin kept its template's port byte, and read as a port town).
  * @param {any} template @param {any} isle
  * @param {{ regionIndex?: number, regionName?: string, politic?: number, climate?: any }} [where]
  */
@@ -89,7 +96,11 @@ export function synthesizeEtherLocation(template, isle, where = {}) {
     climate: where.climate ?? template.climate,
     locationIndex: etherLocationIndex(isle),
     mapTableData: { ...template.mapTableData, mapId, longitude: ll.x, latitude: ll.y },
-    exterior: { ...template.exterior, exteriorData: { ...template.exterior?.exteriorData, locationId: mapId, ...(port ? { portTownAndUnknown: 1 } : {}) } },
+    exterior: {
+      ...template.exterior,
+      exteriorData: { ...template.exterior?.exteriorData, locationId: mapId, mapId, portTownAndUnknown: port ? 1 : 0 },
+      ...(template.exterior?.recordElement ? { recordElement: { ...template.exterior.recordElement, header: { ...template.exterior.recordElement.header, locationId: mapId } } } : {}),   // AUDIT CAPTAIN'S SEA P12
+    },
     ether: isle.key,
     etherKind: isle.kind,
   };

@@ -25,7 +25,7 @@
 // and what to say; the glass's window is ui/spyglassView.js.
 
 import { mulberry32 } from '../../combat/bloodArt.js';
-import { CROWNS, HULL, batteriesOf, GUNS } from './navalShips.js';
+import { CROWNS, HULL, batteriesOf, GUNS, SHIP_CLASSES } from './navalShips.js';
 import { nightSight } from './shipWatch.js';
 
 export const KNOW = Object.freeze({ hull: 0, colours: 1, studied: 2 });
@@ -42,7 +42,8 @@ export const GLASS_NEAR_M = 900;
 /** The glass held on her this long (s, the glass's own clock) for her colours, and this long for the rest. */
 export const GLASS_STUDY_S = 0.6;
 export const GLASS_STUDY_NEAR_S = 1.4;
-/** The glass's magnification: what it opens at, and the least and most the wheel turns it to. */
+/** The glass's magnification: what it first opens at (AUDIT CAPTAIN'S SEA S23: after, the one it was last turned to - the
+ *  captain's own, kept between raises), and the least and most the wheel turns it to. */
 export const GLASS_ZOOM = 4;
 export const GLASS_ZOOM_MIN = 2;
 export const GLASS_ZOOM_MAX = 8;
@@ -55,20 +56,25 @@ export const DECEIT_SALT = 0xfa15e;
 export const KNOTS = 1.944;
 
 /** The words a hull is called by before her colours are read. */
-export const HULL_WORDS = Object.freeze({ [HULL.Rowboat]: 'rowboat', [HULL.LargeBoat]: 'sloop', [HULL.SmallShip]: 'galleon', [HULL.LargeGalley]: 'galley', [HULL.Carrack]: 'carrack' });
+// AUDIT CAPTAIN'S SEA S22: the small ship's hull is a brigantine, a galleon and a cutter by her class - her kind from afar
+// is what all three are, a two-master ("Unknown galleon" made out a Pirate Brigantine)
+export const HULL_WORDS = Object.freeze({ [HULL.Rowboat]: 'rowboat', [HULL.LargeBoat]: 'sloop', [HULL.SmallShip]: 'two-master', [HULL.LargeGalley]: 'galley', [HULL.Carrack]: 'carrack' });
 export const hullWord = (hull) => HULL_WORDS[hull] ?? 'ship';
 /** "a galleon" / "an unknown galleon". */
 export const aHull = (hull) => `${/^[aeiou]/.test(hullWord(hull)) ? 'an' : 'a'} ${hullWord(hull)}`;
 export const unknownName = (hull) => `Unknown ${hullWord(hull)}`;
 
+/** AUDIT CAPTAIN'S SEA S5: the trader a disguised pirate passes for - the merchant class of her own hull (a sloop a
+ *  Coasting Trader, a brigantine a Merchant Galleon) - or null: a galley has no merchant sister, and never disguises. */
+export const merchantOfHull = (hull) => SHIP_CLASSES.find((c) => c.faction === 'merchant' && c.hull === hull) ?? null;
 /**
  * A pirate's false colours: the crown whose merchant flag she flies - DECEIT_SHARE of wary pirates, by their seed on
  * DECEIT_SALT's stream (the same on every client) - or null. Never a flagship, a bold pirate (she has no need to hide),
- * nor a ship the host marks plain (`plain`: a raider, a hand-launched foe).
- * @param {{ faction: string, flagship?: boolean }} cls @param {number} seed @param {string} temper @param {{ plain?: boolean }} [o]
+ * nor a ship the host marks plain (`plain`: a raider, a hand-launched foe), nor a hull no trader sails (a galley).
+ * @param {{ faction: string, flagship?: boolean, hull?: number }} cls @param {number} seed @param {string} temper @param {{ plain?: boolean }} [o]
  */
 export function falseFlagOf(cls, seed, temper, { plain = false } = {}) {
-  if (!cls || cls.faction !== 'pirate' || cls.flagship || temper !== 'wary' || plain) return null;
+  if (!cls || cls.faction !== 'pirate' || cls.flagship || temper !== 'wary' || plain || !merchantOfHull(cls.hull)) return null;
   const r = mulberry32(((seed >>> 0) ^ DECEIT_SALT) >>> 0);
   if (!(r() < DECEIT_SHARE)) return null;
   return CROWNS[Math.floor(r() * CROWNS.length) % CROWNS.length].name;
@@ -103,11 +109,12 @@ export function knowledgeOf(known, { dist, reach, held = 0, revealed = false, st
 }
 
 /**
- * Whether the glass holds her: the look's angle off her (radians) within her hull's own half-width at her range, or within
- * the reticle's at the glass's magnification - whichever is wider.
- * @param {number} angle @param {number} dist @param {number} halfLength (m) @param {number} zoom
+ * Whether the glass holds her: the look's angle off her (radians) within her extent at her range (`half`, m: her hull as
+ * she lies to the look - the host's), or within the reticle's at the glass's magnification - whichever is wider - and
+ * AUDIT CAPTAIN'S SEA S19 never past the glass's own circle (`field`, radians: the tube's radius at the lens drawn).
+ * @param {number} angle @param {number} dist @param {number} half (m) @param {number} zoom @param {number} [field]
  */
-export const glassHolds = (angle, dist, halfLength, zoom) => angle <= Math.max(Math.atan2(Math.max(1, halfLength), Math.max(1, dist)), (RETICLE_DEG * Math.PI / 180) / Math.max(1, zoom));
+export const glassHolds = (angle, dist, half, zoom, field = Math.PI) => angle <= Math.min(field, Math.max(Math.atan2(Math.max(1, half), Math.max(1, dist)), (RETICLE_DEG * Math.PI / 180) / Math.max(1, zoom)));
 
 /** Her colours in words, as the card says them - the flag seen, false or true. */
 export function coloursWords(faction, flag) {
@@ -117,8 +124,10 @@ export function coloursWords(faction, flag) {
 }
 /** A name's possessive: "Wayrest's", "the Isles'". */
 const own = (name) => (/s$/.test(name) ? `${name}'` : `${name}'s`);
-/** How she rides, by her hold's worth (her class's cargo, 1-4). */
+/** How she rides, by her hold's worth (1-4: her class's cargo and the tiers her waters add, clamped) - AUDIT CAPTAIN'S
+ *  SEA S20: 0 (or less) a hold emptied. */
 export function cargoWords(cargo) {
+  if (!(cargo > 0)) return 'riding high - her hold emptied';
   const c = Math.max(1, Math.min(4, cargo | 0));
   return ['riding high - a light hold', 'riding easy - some cargo', 'riding low - a full hold', 'riding deep - a rich hold'][c - 1];
 }
@@ -139,7 +148,7 @@ export function gunsWords(hull) {
 }
 const GUN_WORDS = Object.freeze({ long: ['long gun', 'long guns'], swivel: ['swivel', 'swivels'], heavy: ['great gun', 'great guns'], chain: ['chain gun', 'chain guns'] });
 /** About how many hands she carries (to the nearest five, the least one). */
-export const handsWords = (crew) => (crew <= 0 ? 'no hands' : `about ${Math.max(1, Math.round(crew / 5) * 5)} hands`);
+export const handsWords = (crew) => (crew <= 0 ? 'no hands' : crew < 1.5 ? 'a hand' : crew < 2.5 ? 'a hand or two' : `about ${Math.round(crew / 5) * 5} hands`);   // AUDIT CAPTAIN'S SEA S18: never "about 1 hands"
 /** What she is about, in words: her stance to me and her temper. */
 export function mindWords({ hostile = false, faction = null, temper = null, mode = null, bound = '' } = {}) {
   if (hostile) return mode === 'board' ? 'She is closing to board you!' : 'She bears down on you!';
@@ -164,7 +173,7 @@ export function glassCard(f, known, { study = 0, within = null } = {}) {
   const way = f.speed > 0.4 ? `making ${Math.round(f.speed * KNOTS)} knots` : 'lying still';
   if (known <= KNOW.hull) {
     rows.push(['Range', `${Math.round(f.distance)} m`], ['Way', way]);
-    return { title: unknownName(f.hull), sub: 'Her colours are not yet made out', rows, tone: f.hostile ? 'hostile' : 'unknown', study, hint };
+    return { title: unknownName(f.hull), sub: 'Her colours are not yet made out', rows, tone: 'unknown', study, hint };   // AUDIT CAPTAIN'S SEA S11: nothing of her stance - not even a red title
   }
   const disguised = !!f.falseFlag && known < KNOW.studied && !f.hostile;
   const faction = disguised ? 'merchant' : f.faction;
@@ -176,6 +185,6 @@ export function glassCard(f, known, { study = 0, within = null } = {}) {
     if (f.bounty) rows.push(['Wanted', f.bounty]);
     if (f.lore) rows.push(['Lore', f.lore]);
   }
-  const name = disguised ? `A merchantman of ${f.falseFlag}` : f.name;
-  return { title: name, sub: disguised ? 'Merchantman' : f.classLine, rows, tone: f.hostile ? 'hostile' : faction === 'pirate' ? 'pirate' : f.friendly || disguised ? 'friendly' : 'neutral', study: known >= KNOW.studied ? 1 : study, hint };
+  const name = disguised ? f.falseName ?? `A merchantman of ${f.falseFlag}` : f.name;   // AUDIT CAPTAIN'S SEA S5: the trader she passes for
+  return { title: name, sub: disguised ? f.falseLine ?? 'Merchantman' : f.classLine, rows, tone: f.hostile ? 'hostile' : faction === 'pirate' ? 'pirate' : f.friendly || disguised ? 'friendly' : 'neutral', study: known >= KNOW.studied ? 1 : study, hint };
 }

@@ -394,7 +394,8 @@ export const DEFAULT_BINDINGS = Object.freeze([
  * KB1 law 3 keeps every OWNER once). `[code, action, partner]`: `action` answers `code` beside `partner`, the key's
  * owner in DEFAULT_BINDINGS. resetDefaults seats it only while the key's owner IS the partner - a player's own rebind
  * of the key is never shared onto - and an autofill only while the action is keyless and not force-removed, so a
- * player's own unbinding stands. The pairs: MORE SAIL on the up arrow beside PROF1's ActChoice - the helm's and an
+ * player's own unbinding stands; an autofill finding the key free (its partner moved off it) seats the action on it
+ * outright (AUDIT CAPTAIN'S SEA S14). The pairs: MORE SAIL on the up arrow beside PROF1's ActChoice - the helm's and an
  * herb patch's: a helm's hands are on the wheel, and the professions read no choice there (scenes/world.js); and
  * CLASSIC-PAGES' Professions key on the down arrow beside LESS SAIL - it opens nothing while sailing (ui/input.js).
  */
@@ -1084,9 +1085,12 @@ export function resetDefaults(store, autofill = false) {
   for (const [code, action] of DEFAULT_BINDINGS) set(code, action);
   // HELM-KEYS: the default shares, onto their partner's key alone (DEFAULT_SHARES)
   for (const [code, action, partner] of DEFAULT_SHARES) {
-    if (store.primary.get(code) !== partner) continue;
     if (autofill && (getBinding(store, action, true) != null || getBinding(store, action, false) != null || store.removedPrimary.has(action))) continue;
-    shareBinding(store, code, action, true);
+    const owner = store.primary.get(code);
+    if (owner === partner) shareBinding(store, code, action, true);
+    // AUDIT CAPTAIN'S SEA S14: an autofill finding the share's key FREE - its partner moved off it in an older file (Travel
+    // Options' road follow on O) - seats the keyless action on it outright, as any missing default lands
+    else if (autofill && owner == null) testSetBinding(store, code, action, true);
   }
   // PAD1: THE PAD LAYOUT, in the SECONDARY dict and always by testSetBinding
   // - a full reset restores the keyboard primaries as DFU's does (:956-960)

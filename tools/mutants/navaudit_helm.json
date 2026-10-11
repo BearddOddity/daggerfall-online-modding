@@ -752,7 +752,7 @@
   {
     "name": "NAV1H-the-yard-unopened",
     "file": "src/scenes/navalHost.js",
-    "old": "      return yardHere(boat) && openYard(boat);   // AUDIT NAV1: the shipwright, lying to his quay",
+    "old": "      return yardHere(boat) && openYard(boat, { quay: true });   // AUDIT NAV1: the shipwright, lying to his quay",
     "new": "      return false;",
     "tests": [
       "test/navaudit_helm.test.js"
@@ -1064,7 +1064,7 @@
   {
     "name": "NAV1H-the-hostile-unmarked",
     "file": "src/scenes/navalHost.js",
-    "old": "          : hostile(e.ship, me, { notoriety: (c) => notoriety.get(c), now: clock }) ? 'hostile' : 'ship';\n        out.push",
+    "old": "          : knownOf(e) >= KNOW.colours && !disguisedOf(e) && hostile(e.ship, me, { notoriety: (c) => notoriety.get(c), now: clock }) ? 'hostile' : 'ship';\n        out.push",
     "new": "          : 'ship';\n        out.push",
     "tests": [
       "test/navaudit_helm.test.js"

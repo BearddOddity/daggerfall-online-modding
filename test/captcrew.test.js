@@ -84,18 +84,24 @@ test('CAPT-CREW the Cook\'s worth on the sea\'s clock: spirits wear a point ever
   assert.equal(below.morale, MORALE_START - 1, 'a wear under one is no faster clock');
 });
 
-test('CAPT-CREW a seasoned hire: hands joining with `service` come with that many fights behind them (never past an Old Salt\'s), the rest of her roster untouched (mutants: the service unread, the cap)', () => {
+test('CAPT-CREW a seasoned hire: hands joining with `service` bring that much service aboard (`prior`, never past an Old Salt\'s) - his rank Seasoned, his deeds with her none, the card and the Fleet page telling no fights he never won (AUDIT CAPTAIN\'S SEA C8); the rest of her roster untouched; the save keeps it (mutants: the service unread, the cap, prior told as fights, prior unsaved)', () => {
   const crew = createShipCrew({ seed: 11 });
   const roster = (n) => Array.from({ length: n }, () => ({ mobile: 144, gender: 'male' }));
   crew.sync(roster(3));
-  assert.ok(crew.hands.every((h) => h.fights === 0));
+  assert.ok(crew.hands.every((h) => h.fights === 0 && h.prior === 0));
   const { joined } = crew.sync(roster(5), { service: SEASONED_HIRE });
   assert.equal(joined.length, 2);
-  assert.ok(joined.every((h) => h.fights === SEASONED_HIRE && veteranOf(h).label === 'Seasoned'));
-  assert.ok(crew.hands.slice(0, 3).every((h) => h.fights === 0), 'the old hands as they were');
+  assert.ok(joined.every((h) => h.prior === SEASONED_HIRE && h.fights === 0 && veteranOf(h).label === 'Seasoned'));
+  assert.ok(crew.hands.slice(0, 3).every((h) => h.prior === 0), 'the old hands as they were');
+  const card = crewCard({ morale: 60, hands: joined });
+  assert.ok(card.slice(1).every((l) => / - Seasoned$/.test(l) && !/fight/.test(l)), `no fights told: ${card.join(' | ')}`);
+  assert.equal(handService({ ...joined[0], role: 'Gunner' }, true), 'Seasoned - the guns reload 7% quicker', 'the Fleet page the same');
+  const kept = createShipCrew({ seed: 11, record: JSON.parse(JSON.stringify(crew.snapshot())) });
+  assert.deepEqual(kept.hands.map((h) => h.prior), [0, 0, 0, SEASONED_HIRE, SEASONED_HIRE], 'the save keeps it');
+  assert.deepEqual(createShipCrew({ seed: 1, record: { hands: [{ name: 'X', prior: 9999 }, { name: 'Y', prior: -3 }, { name: 'Z', prior: 'a' }] } }).hands.map((h) => h.prior), [VETERANCY[VETERANCY.length - 1].at, 0, 0], 'a junk one clamped');
   const capped = createShipCrew({ seed: 12 });
   capped.sync(roster(1), { service: 999 });
-  assert.equal(capped.hands[0].fights, VETERANCY[VETERANCY.length - 1].at);
+  assert.equal(capped.hands[0].prior, VETERANCY[VETERANCY.length - 1].at);
 });
 
 test('CAPT-CREW in a captain\'s words: the crew card ends a hand\'s line with his rank from Seasoned up, and the Fleet page says his rank, his deeds and his post\'s worth while he holds it (mutants: the rank on the card, the worth\'s words)', () => {
@@ -120,12 +126,12 @@ test('CAPT-CREW at sea: the host reads her posts aboard each frame - her Bosun\'
   assert.equal(s.host.postsWay(s.boat), 1, 'a boat with no crew has no Bosun');
   const host = rd('src/scenes/navalHost.js');
   assert.match(host, /reloadScale: \(\) => \(boat\.crewed && st\.crew \? reloadScaleOf\(st\.crew\.morale, st\.crew\.order\) \* st\.worth\.reload : 1\)/, 'the Gunner on the reload');
-  assert.match(host, /s\.worth = b\.crewed \? crewWorth\(c\.hands, b\.uid \? companions\.awayOf\(b\.uid\) : null\) : NO_WORTH;/, 'her posts aboard, a hand ashore working none');
+  assert.match(host, /s\.worth = b\.crewed \? crewWorth\(c\.hands, ashoreNames\(b\)\) : NO_WORTH;/, 'her posts aboard, a hand ashore working none (AUDIT CAPTAIN\'S SEA C1: none ashore while I sail)');
   assert.match(host, /c\.tick\(d, \{ inPort: [^\n]*wear: s\.worth\.wear \}\);/, 'the Cook on the sea\'s clock');
   assert.match(host, /const scale = \(b\.crewed \? mendScaleOf\(s\.crew\.morale\) \* \(s\.worth\?\.mend \?\? 1\) : 1\) \* \(underFire/, 'the Carpenter on the repairs');
   assert.match(host, /scale: b\.crewed \? mendScaleOf\(s\.crew\.morale\) \* \(s\.worth\?\.mend \?\? 1\) : 1 \}\);/, 'and on the free mending');
-  assert.match(host, /return Math\.max\(1, Math\.min\(base \+ 1 \+ mate, base \+ handsBonusOf\(st\.crew\.morale, st\.crew\.order\) \+ mate\)\);/, 'the First Mate\'s hands');
+  assert.match(host, /return Math\.max\(1, Math\.min\(base \+ 1 \+ mate, base \+ handsBonusOf\(st\.crew\.morale, st\.crew\.order\) \+ mate, Math\.max\(base \+ 1, men\)\)\);/, 'the First Mate\'s hands - as many as her crew has men for (AUDIT CAPTAIN\'S SEA C5)');
   assert.match(host, /nightSight\(SAIL_HO_RANGE \* sight, \{ night, lit: showsLight\(e\) \}\)/, 'the Lookout on the hail');
   assert.match(rd('src/scenes/world.js'), /refit: \(boat\) => \{ const r = fleetHost\?\.refit\(boat\) \?\? null, k = naval\?\.postsWay\?\.\(boat\) \?\? 1; return k === 1 \? r : \{ \.\.\.\(r \?\? \{\}\), speed: \(Number\(r\?\.speed\) \|\| 1\) \* k \}; \},/, 'the Bosun beside the Rigging, where the runtime reads its rates');
-  assert.match(rd('src/scenes/fleetHost.js'), /fights: h\.fights \| 0, boardings: h\.boardings \| 0 \}\)\) : \[\],/, 'the Fleet page is handed his boardings');
+  assert.match(rd('src/scenes/fleetHost.js'), /fights: h\.fights \| 0, boardings: h\.boardings \| 0, prior: h\.prior \| 0, ashore: !!away\?\.has\(i\) \}\)\);/, 'the Fleet page is handed his boardings, his prior service and whether he is ashore');
 });

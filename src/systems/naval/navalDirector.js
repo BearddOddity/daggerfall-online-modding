@@ -51,9 +51,12 @@
 // ETHER-SEA (2026-10-11, the owner: "deadly legendary ships"; bible/03-World/Etheric-Sea.md ETHER-SHIPS) - PAST THE VEIL
 // (`ctx.ether`: the waters' band, and the legend whose haunt they are when she sails): no crown's navy - corsairs and
 // the isles' traders by the band's weights (systems/naval/etherShips.js etherFactionWeights), every class drawn the band's
-// `level` levels up, a pair at it only a corsair on a trader, and no relief to call. A LEGEND in her haunt, while none of
-// hers is at sea, comes on LEGEND_CHANCE of a roll (her own LEGEND_SALT stream - the roll's other draws unmoved), on the
-// ring and her bow on the captain. Every spec there carries `ether` (the band's id), a legend's `legend` too.
+// `level` levels up, a pair at it only a corsair on a trader, and no relief to call. A LEGEND in her haunt, while no
+// legend is at sea (`ctx.legends`: every one the host knows of, at any range and any stander's - AUDIT CAPTAIN'S SEA
+// D7/D14: two captains apart in her haunt each launched her, and two haunts overlap) and never by a freeport's quay
+// (SEA-EASE's `nearPort`), comes on LEGEND_CHANCE of a roll (her own LEGEND_SALT stream - the roll's other draws
+// unmoved), on the ring and her bow on the captain. Every spec there carries `ether` (the band's id), a legend's `legend`
+// too.
 
 import { hash32 } from '../../world/spawnedDungeons.js';
 import { mulberry32 } from '../../combat/bloodArt.js';
@@ -151,7 +154,8 @@ export function factionWeights({ nearPort = false, notoriety = 0, deep = false }
  * The director. `step(dt, ctx)` answers `{ spawn: spec | null, despawn: id[] }`:
  *   ctx = { density, player: [x, y, z], players: [x, y, z][] (every player the host places - itself included),
  *           level, ships: [{ id, pos, classId, engaged, afloat, theirs, berthed }], isOpenWater(x, z, hull), nearPort, notoriety,
- *           seedBase, seaY, distress: [x, y, z] | null, relieving, ether: { band, legend: { id, classId } | null } | null }
+ *           seedBase, seaY, distress: [x, y, z] | null, relieving, ether: { band, legend: { id, classId } | null } | null,
+ *           legends: string[] (the legends at sea, any range, any stander's) }
  * SEA-EASE: `distress` where a lawful player is under a pirate's guns with no crown's ship by them, `relieving` a relief
  * already at sea - a relief's spec carries `relief: true`.
  * AUDIT NAV1 (online): a ship `theirs` - another player's, near me - counts against the density and is never mine to
@@ -170,7 +174,8 @@ export function createNavalDirector({ random = Math.random } = {}) {
     if (!(r() < ENCOUNTER_CHANCE)) return null;
     const drawn = /** @type {'plunder'|'patrol'} */ (weightedPick(ENCOUNTERS, r()));
     const kind = ctx.ether ? 'plunder' : drawn;   // ETHER-SEA: no crown's ship past the Veil - a corsair on a trader
-    const pair = encounterClasses(kind, (ctx.level ?? 1) + (ctx.ether?.band?.level ?? 0), r);
+    const deep = !ctx.ether && !ctx.nearPort && !!ctx.deep;   // AUDIT CAPTAIN'S SEA D9: a pair of the deep waters is the deep's, as a single is
+    const pair = encounterClasses(kind, (ctx.level ?? 1) + (deep ? DEEP_LEVEL : 0) + (ctx.ether?.band?.level ?? 0), r);
     if (!pair) return null;
     for (let i = 0; i < SPAWN_TRIES; i++) {
       const a = r() * Math.PI * 2;
@@ -184,7 +189,7 @@ export function createNavalDirector({ random = Math.random } = {}) {
       if (nearest(hunterPos) < SPAWN_CLEAR || nearest(quarryPos) < SPAWN_CLEAR) continue;
       if (!ctx.isOpenWater(hunterPos[0], hunterPos[2], pair.hunter.hull) || !ctx.isOpenWater(quarryPos[0], quarryPos[2], pair.quarry.hull)) continue;
       const variantOf = (cls) => { const n = HULL_VARIANT_COUNTS[cls.hull] ?? 0; return cls.hull === HULL.LargeBoat && n > 0 ? Math.floor(r() * n) : 0; };
-      const etherOf = ctx.ether ? { ether: ctx.ether.band.id } : {};   // ETHER-SEA: launched of the Etheric Sea
+      const etherOf = ctx.ether ? { ether: ctx.ether.band.id } : deep ? { deep: true } : {};   // ETHER-SEA: launched of the Etheric Sea; CAPT-WATERS: of the deep
       const company = { seed: hash32(ctx.seedBase >>> 0, count++), classId: pair.quarry.id, variant: variantOf(pair.quarry), pos: quarryPos, yaw, hunter: false, ...etherOf };
       return { seed, classId: pair.hunter.id, variant: variantOf(pair.hunter), pos: hunterPos, yaw, hunter: false, encounter: kind, company, ...etherOf };
     }
@@ -210,10 +215,11 @@ export function createNavalDirector({ random = Math.random } = {}) {
     return null;
   }
   /** ETHER-LEGENDS: the legend whose haunt the captain sails (`ctx.ether.legend`: her class), on LEGEND_CHANCE of her
-   *  own LEGEND_SALT stream - on the ring about the captain, her bow on them - or null. */
+   *  own LEGEND_SALT stream - on the ring about the captain, her bow on them - or null: never while a legend is at sea
+   *  (AUDIT CAPTAIN'S SEA D7/D14), never by a port (SEA-EASE: a captain at a freeport's quay sees none come). */
   function legendSpawn(seed, ctx, nearest) {
     const want = ctx.ether?.legend;
-    if (!want?.classId || (ctx.ships ?? []).some((s) => s.classId === want.classId)) return null;
+    if (!want?.classId || ctx.nearPort || (ctx.legends ?? []).length || (ctx.ships ?? []).some((s) => s.classId === want.classId)) return null;
     const r = mulberry32(((seed >>> 0) ^ LEGEND_SALT) >>> 0);
     if (!(r() < LEGEND_CHANCE)) return null;
     const cls = SHIP_CLASSES.find((c) => c.id === want.classId);

@@ -56,8 +56,8 @@
   {
     "name": "PLACE-haven-blocks",
     "file": "src/world/etherPlaces.js",
-    "old": "haven: Object.freeze([6, 16])",
-    "new": "haven: Object.freeze([10, 16])",
+    "old": "haven: Object.freeze([6, 12])",
+    "new": "haven: Object.freeze([10, 12])",
     "tests": [
       "test/etherplaces.test.js"
     ]
@@ -74,8 +74,8 @@
   {
     "name": "PLACE-haven-hamlet",
     "file": "src/world/etherPlaces.js",
-    "old": "(type(l) === LOCATION_TYPES.TownCity || type(l) === LOCATION_TYPES.TownVillage)",
-    "new": "(type(l) === LOCATION_TYPES.TownCity || type(l) === LOCATION_TYPES.TownVillage || type(l) === LOCATION_TYPES.TownHamlet)",
+    "old": "(type(l) === LOCATION_TYPES.TownHamlet || type(l) === LOCATION_TYPES.TownVillage) && within(l, TOWN_BLOCKS.haven)",
+    "new": "(type(l) === LOCATION_TYPES.TownVillage) && within(l, TOWN_BLOCKS.haven)",
     "tests": [
       "test/etherplaces.test.js"
     ]
@@ -83,8 +83,8 @@
   {
     "name": "PLACE-spawn-template",
     "file": "src/world/etherPlaces.js",
-    "old": "l?.exterior?.exteriorData && !l.spawned && !isMain(idOf(l)));",
-    "new": "l?.exterior?.exteriorData && !isMain(idOf(l)));",
+    "old": "l?.exterior?.exteriorData && !l.spawned && !l.ether && !isMain(idOf(l)));",
+    "new": "l?.exterior?.exteriorData && !l.ether && !isMain(idOf(l)));",
     "tests": [
       "test/etherplaces.test.js"
     ]
@@ -92,8 +92,8 @@
   {
     "name": "PLACE-main-template",
     "file": "src/world/etherPlaces.js",
-    "old": "l?.exterior?.exteriorData && !l.spawned && !isMain(idOf(l)));",
-    "new": "l?.exterior?.exteriorData && !l.spawned);",
+    "old": "l?.exterior?.exteriorData && !l.spawned && !l.ether && !isMain(idOf(l)));",
+    "new": "l?.exterior?.exteriorData && !l.spawned && !l.ether);",
     "tests": [
       "test/etherplaces.test.js"
     ]
@@ -191,8 +191,8 @@
   {
     "name": "PLACE-exterior-id",
     "file": "src/world/etherPlaces.js",
-    "old": "exteriorData: { ...template.exterior?.exteriorData, locationId: mapId, ...(port",
-    "new": "exteriorData: { ...template.exterior?.exteriorData, ...(port",
+    "old": "exteriorData: { ...template.exterior?.exteriorData, locationId: mapId, mapId, portTownAndUnknown: port ? 1 : 0 },",
+    "new": "exteriorData: { ...template.exterior?.exteriorData, mapId, portTownAndUnknown: port ? 1 : 0 },",
     "tests": [
       "test/etherplaces.test.js"
     ]
@@ -200,8 +200,8 @@
   {
     "name": "PLACE-no-harbour",
     "file": "src/world/etherPlaces.js",
-    "old": "...(port ? { portTownAndUnknown: 1 } : {})",
-    "new": "...{}",
+    "old": "portTownAndUnknown: port ? 1 : 0 },",
+    "new": "portTownAndUnknown: 0 },",
     "tests": [
       "test/etherplaces.test.js"
     ]
@@ -317,7 +317,7 @@
   {
     "name": "PORT-harbour",
     "file": "src/scenes/world.js",
-    "old": "      if (loc?.exterior?.exteriorData) town = { id: `ether:${isle.key}`, loc, x: isle.px, y: isle.py, name: isle.name };",
+    "old": "      if (loc?.exterior?.exteriorData) town = { id: `ether:${isle.key}`, loc, x: isle.px, y: isle.py, name: isle.name, reach: ETHER_HARBOUR_REACH };",
     "new": "",
     "tests": [
       "test/etherplaces.test.js"

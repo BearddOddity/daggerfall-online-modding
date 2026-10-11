@@ -101,14 +101,14 @@ export function handService(h, holds = false) {
 function crewPanel(el, s, act) {
   const box = el('div', 'hld-text');
   if (!s.hands?.length) { box.append(el('span', 'hld-sub', 'She has no hands aboard - hire them at a shipwright.')); return box; }
-  box.append(el('span', 'hld-sub', 'Each keeps his post on her deck: her First Mate by the helm, her Bosun at the mainmast, her Carpenter by the hatch, her Cook at the galley, her Gunners at the guns, her Lookout at the bow. With no Lookout named, a hand with no post keeps the bow, else a Gunner. A post is worth more in a seasoned hand - fights and boardings make him Seasoned, a Veteran, an Old Salt.'));
-  const posts = postsOf(s.hands);   // CAPT-CREW: each post's best holder - the hand whose worth she sails on
+  box.append(el('span', 'hld-sub', 'Each keeps his post on her deck: her First Mate by the helm, her Bosun at the mainmast, her Carpenter by the hatch, her Cook at the galley, her Gunners at the guns, her Lookout at the bow. With no Lookout named, a hand with no post keeps the bow, else a Gunner. A post is worth more in a seasoned hand - fights and boardings make him Seasoned, a Veteran, an Old Salt. A small crew is dealt the first posts - a Bosun, a Gunner, a Carpenter - so name her Lookout and her Cook here.'));   // AUDIT CAPTAIN'S SEA C7
+  const posts = postsOf(s.hands, new Set(s.hands.filter((h) => h.ashore).map((h) => h.name)));   // CAPT-CREW: each post's best holder aboard - the hand whose worth she sails on (AUDIT CAPTAIN'S SEA C2: none ashore with me)
   for (const h of s.hands) {
     const row = el('div', 'hld-refit hld-hand');
     const head = el('div', 'hld-head');
     head.append(el('span', 'hld-name', h.name), el('span', 'hld-state', h.role));
     row.append(head);
-    row.append(el('span', 'hld-sub', handService(h, posts[h.role]?.name === h.name)));
+    row.append(el('span', 'hld-sub', `${handService(h, posts[h.role]?.name === h.name)}${h.ashore ? ' - ashore with you' : ''}`));
     const pick = /** @type {HTMLSelectElement} */ (el('select', 'hld-field hld-select'));
     pick.setAttribute('aria-label', `${h.name}'s post`);
     for (const role of [...CREW_ROLES.filter((r) => !(h.bard && r === 'Lookout')), ...(h.bard ? ['Bard'] : [])]) {   // AUDIT HOLDINGS C3: a Bard keeps no lookout

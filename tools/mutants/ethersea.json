@@ -11,8 +11,8 @@
   {
     "name": "SEA-margin",
     "file": "src/world/ethericSea.js",
-    "old": "export const ETHER_MARGIN = 4;",
-    "new": "export const ETHER_MARGIN = 1;",
+    "old": "export const ETHER_MARGIN = 64;",
+    "new": "export const ETHER_MARGIN = 4;",
     "tests": [
       "test/ethersea.test.js"
     ]
@@ -146,8 +146,8 @@
   {
     "name": "SEA-radius-range",
     "file": "src/world/ethericSea.js",
-    "old": "  const radius = haven ? 2.4 : lerp(k.r[0], k.r[1], r());",
-    "new": "  const radius = haven ? 2.4 : lerp(k.r[0], k.r[1] + 1, r());",
+    "old": "  const radius = haven ? 1 : lerp(k.r[0], k.r[1], r());",
+    "new": "  const radius = haven ? 1 : lerp(k.r[0], k.r[1] + 1, r());",
     "tests": [
       "test/ethersea.test.js"
     ]
@@ -281,8 +281,8 @@
   {
     "name": "SEA-climate-reach",
     "file": "src/world/ethericSea.js",
-    "old": "Math.hypot(x - isle.px, y - isle.py) <= isle.r + CLIMATE_REACH_PX ? isle.climate",
-    "new": "Math.hypot(x - isle.px, y - isle.py) <= isle.r ? isle.climate",
+    "old": "Math.hypot(x - isle.lx, y - isle.ly) <= isle.r + CLIMATE_REACH_PX ? isle.climate",
+    "new": "Math.hypot(x - isle.lx, y - isle.ly) <= isle.r ? isle.climate",
     "tests": [
       "test/ethersea.test.js"
     ]

@@ -2,8 +2,8 @@
   {
     "name": "CC-boardings-weight",
     "file": "src/systems/naval/shipCrew.js",
-    "old": "+ 2 * Math.max(0, (h?.boardings ?? 0) | 0);",
-    "new": "+ 1 * Math.max(0, (h?.boardings ?? 0) | 0);",
+    "old": "+ 2 * Math.max(0, (h?.boardings ?? 0) | 0) + Math.max(0, (h?.prior ?? 0) | 0);",
+    "new": "+ 1 * Math.max(0, (h?.boardings ?? 0) | 0) + Math.max(0, (h?.prior ?? 0) | 0);",
     "tests": [
       "test/captcrew.test.js"
     ],
@@ -166,7 +166,7 @@
   {
     "name": "CC-wear-unread",
     "file": "src/systems/naval/shipCrew.js",
-    "old": "seaT += dt / Math.max(1, wear);",
+    "old": "seaT += dt / (Number(wear) > 1 ? Number(wear) : 1);",
     "new": "seaT += dt;",
     "tests": [
       "test/captcrew.test.js"
@@ -175,8 +175,8 @@
   {
     "name": "CC-wear-floor",
     "file": "src/systems/naval/shipCrew.js",
-    "old": "seaT += dt / Math.max(1, wear);",
-    "new": "seaT += dt / wear;",
+    "old": "seaT += dt / (Number(wear) > 1 ? Number(wear) : 1);",
+    "new": "seaT += dt / (Number(wear) > 0 ? Number(wear) : 1);",
     "tests": [
       "test/captcrew.test.js"
     ]
@@ -184,8 +184,8 @@
   {
     "name": "CC-hire-service",
     "file": "src/systems/naval/shipCrew.js",
-    "old": "fights: start, boardings: 0 };",
-    "new": "fights: 0, boardings: 0 };",
+    "old": "fights: 0, boardings: 0, prior: start };",
+    "new": "fights: 0, boardings: 0, prior: 0 };",
     "tests": [
       "test/captcrew.test.js"
     ]
@@ -238,7 +238,7 @@
   {
     "name": "CC-host-posts-unread",
     "file": "src/scenes/navalHost.js",
-    "old": "s.worth = b.crewed ? crewWorth(c.hands, b.uid ? companions.awayOf(b.uid) : null) : NO_WORTH;",
+    "old": "s.worth = b.crewed ? crewWorth(c.hands, ashoreNames(b)) : NO_WORTH;",
     "new": "s.worth = NO_WORTH;",
     "tests": [
       "test/captcrew.test.js"
@@ -274,8 +274,8 @@
   {
     "name": "CC-host-mate",
     "file": "src/scenes/navalHost.js",
-    "old": "return Math.max(1, Math.min(base + 1 + mate, base + handsBonusOf(st.crew.morale, st.crew.order) + mate));",
-    "new": "return Math.max(1, Math.min(base + 1, base + handsBonusOf(st.crew.morale, st.crew.order)));",
+    "old": "return Math.max(1, Math.min(base + 1 + mate, base + handsBonusOf(st.crew.morale, st.crew.order) + mate, Math.max(base + 1, men)));",
+    "new": "return Math.max(1, Math.min(base + 1, base + handsBonusOf(st.crew.morale, st.crew.order), Math.max(base + 1, men)));",
     "tests": [
       "test/captcrew.test.js"
     ]

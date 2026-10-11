@@ -330,7 +330,9 @@ test('U41: the world host mounts the art window and keeps performFastTravel\'s o
   // throw in flight) stands it at 11920, inside the same window
   // PIN MOVED (HELM-JUMP, FIELD BUGS 2026-10-11), 12000 -> 12600: a jump lets go of Come Sail Away's helm first, with its
   // note, above the needles (the last stands at 12333)
-  const core = src.slice(k, k + 12600);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA G2/P7), 12600 -> 13000: a pixel this game does not stream landed where the world stands,
+  // with its note, above the needles (the last stands at 12608)
+  const core = src.slice(k, k + 13000);
   for (const needle of ['destroyPixel(bx, by)', 'state.init(px, py)', 'awaitedBuild(first.px']) {
     assert.ok(core.includes(needle), `the core carries ${needle}`);
   }

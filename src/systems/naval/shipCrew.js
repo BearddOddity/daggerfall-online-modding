@@ -122,8 +122,9 @@ export const MORALE_LINES = Object.freeze({
 });
 
 // ── CAPT-CREW: service, veterancy and the posts' worth ────────────────────────────────────────────────────────────────
-/** A hand's service: his fights won and twice his boardings stood (a boarding is the harder school). */
-export const serviceOf = (h) => Math.max(0, (h?.fights ?? 0) | 0) + 2 * Math.max(0, (h?.boardings ?? 0) | 0);
+/** A hand's service: his fights won and twice his boardings stood (a boarding is the harder school) - and the service he
+ *  brought aboard (`prior`: a Seasoned hire's, AUDIT CAPTAIN'S SEA C8 - kept apart, never told as fights he won with her). */
+export const serviceOf = (h) => Math.max(0, (h?.fights ?? 0) | 0) + 2 * Math.max(0, (h?.boardings ?? 0) | 0) + Math.max(0, (h?.prior ?? 0) | 0);
 /** The ranks of service, by the least service each begins at - lowest first. */
 export const VETERANCY = Object.freeze([
   Object.freeze({ tier: 0, at: 0, key: 'green', label: 'Green' }),
@@ -209,8 +210,12 @@ export function postWords(role, tier) {
   return '';
 }
 
-/** A hand's role by where he stands in her roster (`i`) and his class. @param {number} i @param {number} mobile @param {number} dealt */
-const roleOf = (i, mobile, dealt) => (i === 0 ? FIRST_MATE : mobile === MOBILE.Bard ? 'Bard' : ROLES[dealt % ROLES.length]);
+/** A hand's role by where he stands in her roster (`i`), his class and how many of her hands hold each post already
+ *  (`held`): her First Mate first, a Bard her Bard, the rest the first of ROLES held by the fewest - every post once, then
+ *  each a second time, as the roster has always been dealt; AUDIT CAPTAIN'S SEA C7: a hand who joins fills the post a
+ *  fallen or reassigned hand left (it was dealt by count - a third Bosun while her Cook's post stood empty).
+ *  @param {number} i @param {number} mobile @param {Map<string, number>} held */
+const roleOf = (i, mobile, held) => (i === 0 ? FIRST_MATE : mobile === MOBILE.Bard ? 'Bard' : ROLES.reduce((best, r) => ((held.get(r) ?? 0) < (held.get(best) ?? 0) ? r : best), ROLES[0]));
 
 /**
  * A hand's name: NameHelper.FullName over the waters' bank, on the boat's seed and the hire's number (DFU's own global
@@ -232,7 +237,7 @@ export function handName(seed, hire, gender, regionIndex = 17) {
  * @param {{ seed: number, regionIndex?: number, record?: any }} o - `record` a save's (`snapshot()`), or none: a new crew
  */
 export function createShipCrew({ seed, regionIndex = 17, record = null }) {
-  /** @type {{ name: string, role: string, mobile: number, gender: 'male'|'female', fights: number, boardings: number }[]} */
+  /** @type {{ name: string, role: string, mobile: number, gender: 'male'|'female', fights: number, boardings: number, prior: number }[]} */
   let hands = [];
   let morale = MORALE_START, hires = 0, seaT = 0, portT = 0, losses = 0, lossT = 0;
   /** AUDIT CC-D5: the world's day her crew last drank the yard's round (one a port day). */
@@ -248,6 +253,7 @@ export function createShipCrew({ seed, regionIndex = 17, record = null }) {
       hands = record.hands.filter((h) => h && typeof h.name === 'string').slice(0, 64).map((h) => ({
         name: h.name, role: typeof h.role === 'string' ? h.role : 'Deckhand', mobile: Number.isInteger(h.mobile) ? h.mobile : MOBILE.Warrior,
         gender: h.gender === 'female' ? 'female' : 'male', fights: Math.max(0, h.fights | 0), boardings: Math.max(0, h.boardings | 0),
+        prior: clamp(h.prior | 0, 0, VETERANCY[VETERANCY.length - 1].at),   // AUDIT CAPTAIN'S SEA C8: a hire's service, kept apart
       }));
     }
     hires = Math.max(hires, hands.length);
@@ -265,7 +271,8 @@ export function createShipCrew({ seed, regionIndex = 17, record = null }) {
     /**
      * Her roster as it stands on her deck now (crewLife.js crewRoster: each a class and a sex): the named hands made to
      * match it - more joining with new names, fewer falling (the last to join first). Answers who fell and who joined.
-     * CAPT-CREW: `service` the fights a hand joining now has behind him (SEASONED_HIRE - the Admiralty's hires), none else.
+     * CAPT-CREW: `service` the service a hand joining now brings aboard (SEASONED_HIRE - a Commodore's harbour's hires), none
+     * else - his `prior`, never told as fights he won with her (AUDIT CAPTAIN'S SEA C8).
      * @param {{ mobile: number, gender: string }[]} roster @param {{ service?: number }} [o]
      */
     sync(roster, { service = 0 } = {}) {
@@ -276,8 +283,9 @@ export function createShipCrew({ seed, regionIndex = 17, record = null }) {
         const r = roster[i];
         /** @type {'male'|'female'} */
         const gender = r.gender === 'female' ? 'female' : 'male';
-        const dealt = hands.filter((h) => h.role !== 'First Mate' && h.role !== 'Bard').length;
-        const h = { name: handName(seed, hires++, gender, regionIndex), role: roleOf(i, r.mobile, dealt), mobile: r.mobile, gender, fights: start, boardings: 0 };
+        const held = new Map();
+        for (const x of hands) held.set(x.role, (held.get(x.role) ?? 0) + 1);
+        const h = { name: handName(seed, hires++, gender, regionIndex), role: roleOf(i, r.mobile, held), mobile: r.mobile, gender, fights: 0, boardings: 0, prior: start };
         hands.push(h);
         joined.push(h);
       }
@@ -341,7 +349,7 @@ export function createShipCrew({ seed, regionIndex = 17, record = null }) {
         if (morale < PORT_CAP) { portT += dt; const k = Math.floor(portT / PORT_RISE_S); if (k > 0) { portT -= k * PORT_RISE_S; morale = Math.min(PORT_CAP, morale + k); } } else portT = 0;
       } else if (atSea) {
         portT = 0;
-        seaT += dt / Math.max(1, wear); const k = Math.floor(seaT / SEA_DECAY_S); if (k > 0) { seaT -= k * SEA_DECAY_S; bump(-k); }
+        seaT += dt / (Number(wear) > 1 ? Number(wear) : 1); const k = Math.floor(seaT / SEA_DECAY_S); if (k > 0) { seaT -= k * SEA_DECAY_S; bump(-k); }   // AUDIT CAPTAIN'S SEA C10: a NaN wear reads none
       }
     },
     /** The order given - CREW_ORDERS' own words; answers whether it was one. @param {string} o */

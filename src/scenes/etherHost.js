@@ -26,7 +26,8 @@
 //   gold() / pay(n)        the purse, for a chart of the waters
 // }
 
-import { islesNear, isleByKey, etherDepthAt, etherBandOf, BANDS, LEAGUE_PX, KIND_WORDS, inEther, ETHER_SEA_NAME } from '../world/ethericSea.js';
+import { islesNear, isleByKey, etherDepthAt, etherBandOf, BANDS, LEAGUE_PX, KIND_WORDS, inEther, inVeil, ETHER_SEA_NAME } from '../world/ethericSea.js';
+import { ETHER_CHARTED_MAX } from '../systems/naval/captainLedger.js';   // AUDIT CAPTAIN'S SEA X5: the charts' room
 import { LEGENDS, legendAt, legendSails, legendAbroad, legendById, rumourOf } from '../systems/naval/etherShips.js';
 import { mintGood, goodById } from '../systems/naval/tradeGoods.js';
 import { mulberry32 } from '../combat/bloodArt.js';
@@ -58,12 +59,14 @@ export function createEtherHost(deps) {
   const L = deps.ledger;
   const day = () => Math.floor(Number(deps.day?.()) || 0);
 
-  /** THE WATERS at a map pixel: `{ band, bandName, depth (leagues), legend (her id or null) }`, or null off the sea. */
+  /** THE WATERS at a map pixel: `{ band, bandName, depth (leagues), veil }` - `veil` the Veil itself (no league past it
+   *  yet) - or null off the sea. AUDIT CAPTAIN'S SEA D18: the haunt's legend was reckoned every frame and read nowhere -
+   *  the naval host asks `legendHere`. */
   function waters(px, py) {
     if (!inEther(px, py)) return null;
     const depth = etherDepthAt(px);
     const band = etherBandOf(depth);
-    return { band: band.id, bandName: band.name, depth, legend: legendAt(px, py)?.id ?? null };
+    return { band: band.id, bandName: band.name, depth, veil: inVeil(px, py) };
   }
 
   /** CHARTING: every isle within SIGHT_PX of the ship charted - the first time said (a port and a ruin by name and
@@ -72,7 +75,7 @@ export function createEtherHost(deps) {
     if (!inEther(px, py)) return [];
     L.deepest?.(etherDepthAt(px));
     const fresh = islesNear(px, py, SIGHT_PX).filter((i) => L.chartIsle(i.key));
-    for (const i of fresh) deps.say?.(`Land ho! ${i.name}${i.kind === 'port' || i.kind === 'ruin' ? ` - ${KIND_WORDS[i.kind]}` : ''}. It is on your charts.`, 4);
+    for (const i of fresh) deps.say?.(`Land ho! ${i.name.replace(/^./, (c) => c.toUpperCase())}${i.kind === 'port' || i.kind === 'ruin' ? ` - ${KIND_WORDS[i.kind]}` : ''}. It is on your charts.`, 4);   // AUDIT CAPTAIN'S SEA X17: "the Sepulchre" opening a sentence
     return fresh;
   }
 
@@ -91,7 +94,7 @@ export function createEtherHost(deps) {
     const key = String(siteId ?? '').startsWith(STRAND_SITE) ? String(siteId).slice(STRAND_SITE.length) : null;
     const isle = key ? isleByKey(key) : null;
     if (!isle?.good) return { items: [], text: '' };
-    L.gathered(isle.key, day());
+    if (!bare(isle.key)) L.gathered(isle.key, day());   // AUDIT CAPTAIN'S SEA D1: bare from its FIRST cask hauled - a later one never pushes it on
     const n = STRAND_YIELD[bandIndex(isle.band)] ?? STRAND_YIELD[0];
     const g = goodById(isle.good);
     return { items: [mintGood(isle.good, n)], text: `${n} ${n === 1 ? g?.unit : g?.units} of ${g?.name.toLowerCase()} from the strand of ${isle.name}.` };
@@ -105,10 +108,11 @@ export function createEtherHost(deps) {
     return l;
   }
   /** A legend ended (`act` 'sink' or 'board'): her purse paid, her end remembered (the aether raises her LEGEND_RISE_DAYS
-   *  on), said. Answers the purse. */
+   *  on), said. Answers the purse - none for a legend this captain's own ledger has ended and the aether not yet raised
+   *  (AUDIT CAPTAIN'S SEA D6: another's copy of her paid her purse again, and pushed her rise back). */
   function legendEnded(id, act) {
     const l = legendById(id);
-    if (!l) return 0;
+    if (!l || !legendSails(L.legendDay(l.id), day())) return 0;
     L.endLegend(l.id, day());
     deps.credit?.(l.purse);
     deps.mid?.(`${l.name} is ${act === 'board' ? 'taken' : 'sunk'}! The Etheric Sea will speak of this. ${gold(l.purse)} - her captain's hoard.`, 6);
@@ -117,12 +121,15 @@ export function createEtherHost(deps) {
   /** A harbourmaster's rumours of the legends from a port's pixel: each one's line. */
   const rumours = (port) => LEGENDS.map((l) => rumourOf(l, port, { endedDay: L.legendDay(l.id), day: day() }));
 
-  /** A chart of a port's waters: its price (the band's), and the isles it would add. */
+  /** A chart of a port's waters: its price (the band's), and the isles it would add - AUDIT CAPTAIN'S SEA X5: as many as
+   *  the captain's charts have room for (ETHER_CHARTED_MAX); full, none is sold (the gold was taken for nothing). */
   function chartOffer(port) {
     const price = CHART_BUY_PRICE.base + CHART_BUY_PRICE.band * bandIndex(etherBandOf(etherDepthAt(port.px)).id);
     const isles = islesNear(port.px, port.py, CHART_BUY_PX).filter((i) => !L.isCharted(i.key));
+    const room = Math.max(0, ETHER_CHARTED_MAX - L.charted().length);
+    const fresh = Math.min(isles.length, room);
     const purse = Number(deps.gold?.()) || 0;
-    return { price, fresh: isles.length, can: isles.length > 0 && purse >= price, why: !isles.length ? 'Every isle in these waters is already on your charts.' : purse < price ? `You need ${gold(price)}.` : '' };
+    return { price, fresh, can: fresh > 0 && purse >= price, why: !isles.length ? 'Every isle in these waters is already on your charts.' : !room ? 'Your charts can hold no more isles.' : purse < price ? `You need ${gold(price)}.` : '' };
   }
   /** A chart of a port's waters bought: every isle within CHART_BUY_PX charted. */
   function buyChart(port) {
@@ -143,14 +150,16 @@ export function createEtherHost(deps) {
     return n;
   }
 
-  /** THE ETHERIC HARBOURMASTER'S TAB (ui/navalYardWindow.js): the port, its waters, the legends' rumours, the chart. */
+  /** THE ETHERIC HARBOURMASTER'S TAB (ui/navalYardWindow.js): the port, its waters, the legends' rumours, the chart -
+   *  and `hear`, the quay's talk heard (every legend's haunt on the captain's charts) when the tab is shown: AUDIT CAPTAIN'S
+   *  SEA X11 - the window reads this model on every render, and the shipwright's tab heard every legend. */
   function office(port) {
     if (!port?.ether) return null;
     const depth = etherDepthAt(port.px);
-    for (const l of LEGENDS) L.hearLegend?.(l.id);   // the quay's talk heard: every legend's haunt on the captain's charts
     return {
       ether: true, port: port.name, waters: `${etherBandOf(depth).name}, ${Math.round(depth)} leagues past the Veil`,
       rumours: rumours(port), charted: L.charted().length, chart: chartOffer(port),
+      hear: () => { for (const l of LEGENDS) L.hearLegend?.(l.id); },
     };
   }
 

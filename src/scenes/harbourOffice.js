@@ -19,6 +19,7 @@
 //   waters() -> crown | null   the crown of the waters the captain sails
 //   carrack(price, port) -> bool  the Admiralty's carrack's title to the Fleet's book (systems/fleet.js titleDeed)
 //   stow(hold, item)           an item into a ship's hold (CAPT-TRADE)
+//   etherGoods() -> bool       whether the captain may sail for the Etheric Sea's goods (AUDIT CAPTAIN'S SEA B16)
 // }
 //
 // CAPT-TRADE: THE EXCHANGE (systems/naval/tradeGoods.js) - the port's goods at the day's prices, bought into the hold of
@@ -54,6 +55,7 @@ export function createHarbourOffice(deps) {
     for (const c of r.done) { deps.credit?.(c.pay); deps.mid?.(`Contract done - ${c.title}. ${gold(c.pay)} paid by ${c.port?.name ?? c.crown}'s harbourmaster.`, 5); }
     for (const c of r.failed) deps.mid?.(`Contract failed - ${c.title}.${c.kind === 'delivery' ? ' The cargo went down with her.' : ''}`, 5);
     for (const c of r.moved) deps.say?.(`${c.title}: ${movedWords(c)}.`, 3);
+    for (const c of r.voided ?? []) deps.mid?.(`Bounty void - ${c.title}. She went down by another hand.`, 5);   // AUDIT CAPTAIN'S SEA B4
     return r;
   }
   /** The clock's step: every contract whose term is out failed, and said. */
@@ -90,7 +92,7 @@ export function createHarbourOffice(deps) {
     if (!o.can) return { ok: false, text: o.why };
     deps.pay?.(o.price);
     L.setMarque(port.crown, now() + o.days * MINUTES_PER_DAY);
-    return { ok: true, text: `${port.crown}'s letter of marque is yours for ${days(o.days)}: its rivals' merchantmen are your lawful prey.` };
+    return { ok: true, text: `${port.crown}'s letter of marque is yours for ${days(o.days)}: its rivals' ships are your prizes in ${port.crown}'s eyes - their own crowns still call it piracy.` };   // AUDIT CAPTAIN'S SEA L14
   }
   /** The Admiralty's carrack bought of this port's crown - her title to the Fleet's book. */
   function buyCarrack() {
@@ -134,12 +136,17 @@ export function createHarbourOffice(deps) {
   const units = (r, n) => `${n} ${n === 1 ? r.unit : r.units} of ${r.name}`;
   /** A press's count: `n` whole (Infinity: all there is), at least one. */
   const asked = (n) => Math.max(1, Number.isFinite(n) ? Math.floor(n) : Number.MAX_SAFE_INTEGER);
-  /** `n` of a good bought into `hold` - as many as the exchange sells today and the purse pays for. */
-  function buyGood(port, day, hold, id, n) {
+  /** AUDIT CAPTAIN'S SEA B11: how many of a good (`kg` each) her room takes before she would lie dead in the water (Come
+   *  Sail Away's cargo rule - `room` her `{ load, stops }`), or Infinity where her room is not known. */
+  const roomFor = (room, kg) => (room && Number.isFinite(room.stops) && Number.isFinite(room.load) ? Math.max(0, Math.floor((room.stops - room.load - 1e-6) / Math.max(1e-6, kg))) : Infinity);
+  /** `n` of a good bought into `hold` - as many as the exchange sells today, the purse pays for and her room takes. */
+  function buyGood(port, day, hold, id, n, room = null) {
     if (!hold) return { ok: false, text: 'Goods go in a ship\'s hold - deal at the exchange from her helm.' };
     const r = exchangeOf(port, day, L.dealtAt(port.key, day)).find((x) => x.id === id);
-    if (!r || r.sells <= 0) return { ok: false, text: `The exchange sells no more ${goodById(id)?.name ?? 'of that'} today.` };
-    const k = Math.min(asked(n), r.sells, Math.floor((deps.gold?.() ?? 0) / r.sell));
+    if (!r || r.sells <= 0) return { ok: false, text: r?.exotic ? `${r.name} is not sold here.` : `The exchange sells no more ${goodById(id)?.name ?? 'of that'} today.` };
+    const fit = roomFor(room?.(), r.kg);
+    if (fit <= 0) return { ok: false, text: 'She can carry no more - laden deeper, she would lie dead in the water.' };
+    const k = Math.min(asked(n), r.sells, Math.floor((deps.gold?.() ?? 0) / r.sell), fit);
     if (k <= 0) return { ok: false, text: `Not enough gold - ${gold(r.sell)} a ${r.unit}.` };
     deps.pay?.(k * r.sell);
     deps.stow?.(hold, mintGood(id, k));
@@ -161,17 +168,22 @@ export function createHarbourOffice(deps) {
   }
   /**
    * THE EXCHANGE'S TAB (ui/navalYardWindow.js): the port's goods at today's prices, what the boat at the quay carries
-   * of each, her goods' weight - and the presses.
-   * @param {{ uid?: any, cargo?: any[] | null } | null} boat
+   * of each, her goods' weight and her room (AUDIT CAPTAIN'S SEA B11: the kg more she carries before she lies dead in the
+   * water - she was sold to a standstill unsaid) - and the presses. The other sea's goods only where the captain may
+   * sail for them (`deps.etherGoods`) or carries some (AUDIT CAPTAIN'S SEA B16).
+   * @param {{ uid?: any, cargo?: any[] | null, room?: () => ({ load: number, slows: number, stops: number } | null) } | null} boat
    */
   function exchange(boat = null) {
     const port = portHere();
     if (!port) return null;
-    const day = deps.day?.() ?? 0, hold = boat?.cargo ?? null;
-    const rows = exchangeOf(port, day, L.dealtAt(port.key, day)).map((r) => ({ ...r, have: goodIn(hold, r.id) }));
+    const day = deps.day?.() ?? 0, hold = boat?.cargo ?? null, room = typeof boat?.room === 'function' ? boat.room : null;
+    const others = deps.etherGoods?.() !== false;
+    const rows = exchangeOf(port, day, L.dealtAt(port.key, day)).map((r) => ({ ...r, have: goodIn(hold, r.id) })).filter((r) => others || !r.exotic || r.have > 0);
+    const rm = room?.();
     return {
       port: port.name, ether: !!port.ether, gold: deps.gold?.() ?? 0, weight: hold ? goodsWeight(hold) : null, rows,
-      buy: (id, n) => buyGood(port, day, hold, id, n), sell: (id, n) => sellGood(port, day, hold, id, n),
+      room: rm && Number.isFinite(rm.stops) && Number.isFinite(rm.load) ? Math.max(0, Math.floor(rm.stops - rm.load)) : null,
+      buy: (id, n) => buyGood(port, day, hold, id, n, room), sell: (id, n) => sellGood(port, day, hold, id, n),
     };
   }
 
@@ -186,6 +198,7 @@ export function createHarbourOffice(deps) {
     const site = chartSite(item?.message ?? 0, deps.ports?.() ?? [], deps.seaAt ?? (() => false));
     if (!site) return { ok: false, text: 'The chart\'s ink has run - no coast on it you know.' };
     if (L.charts().some((c) => c.id === site.id)) return { ok: true, text: `You have marked this cache already: ${site.words}.` };
+    if (L.wasRaised?.(site.id)) return { ok: true, text: `This cache was raised long since - the chart is worth no more than its parchment.` };   // AUDIT CAPTAIN'S SEA B8: the same chart, read again, paid again
     if (!L.markChart(site)) return { ok: false, text: 'Your charts are crowded with marks - raise a cache first.' };
     return { ok: true, text: `You mark the chart's cache on your own charts: ${site.words}. Sail there and your lookout will find it.` };
   }

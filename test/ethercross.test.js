@@ -66,15 +66,21 @@ test('ETHER-CROSSING by source: asked at a helm in the exterior with no window u
   const src = read('src/scenes/world.js');
   const step = src.slice(src.indexOf('function etherCrossStep(dt) {'), src.indexOf('async function etherCross(way) {'));
   assert.match(step, /if \(!etherSea \|\| _etherCrossing \|\| !csaRuntime\?\.isSailing\?\.\(\)\) return;/);
-  assert.match(step, /if \(gamePaused\(\) \|\| _loading \|\| townTalk\.overlayActive \|\| modes\?\.transitioning \|\| _mode\(\) !== 'exterior'\) return;/);
-  assert.match(step, /const way = crossingWayAt\(p\.x, p\.y, p\.x < CROSS_X && !inEther\(p\.x, p\.y\) \? crossLandPx\(p\.x, p\.y\) : 0\);/);
-  assert.match(step, /if \(!crossGate\.offer\(way\)\) return;\n    crossGate\.asked\(way\);/);
-  assert.match(step, /if \(navalHostileNear\(\)\) \{ townTalk\.say\(CROSS_REFUSED\.hostile, 4\); return; \}/);
-  assert.match(step, /if \(csaPassengersOn\(csaRuntime\.state\.CurrentBoat\) > 0\) \{ townTalk\.say\(CROSS_REFUSED\.passengers, 4\); return; \}/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA X3): never while the world is being moved
+  assert.match(step, /if \(gamePaused\(\) \|\| _loading \|\| townTalk\.overlayActive \|\| modes\?\.transitioning \|\| worldMoveBusy\(\) \|\| _partyArrivalPending \|\| _mode\(\) !== 'exterior'\) return;/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA G2): the way out only where the crossing out is this game's - the Veil's home under any skin
+  assert.match(step, /const way = crossWayHere\(\);/);
+  assert.match(src, /return crossingWayAt\(p\.x, p\.y, etherOut && p\.x < CROSS_X && !inEther\(p\.x, p\.y\) \? crossLandPx\(p\.x, p\.y\) : 0\);/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA X1): a refusal said once in those waters and the way not marked asked - asked as soon as the deck is clear
+  assert.match(step, /if \(!crossGate\.offer\(way\)\) return;\n    const why = crossRefusal\(\);\n    if \(why\) \{ if \(_crossSaid !== way\) \{ _crossSaid = way; townTalk\.say\(CROSS_REFUSED\[why\], 4\); \} return; \}\n    crossGate\.asked\(way\);/);
+  assert.match(src, /const crossRefusal = \(\) => \(navalHostileNear\(\) \? 'hostile' : csaPassengersOn\(csaRuntime\?\.state\?\.CurrentBoat\) > 0 \? 'passengers' : null\);/);
   const cross = src.slice(src.indexOf('async function etherCross(way) {'), src.indexOf('  let _navalWasOn = null;'));
-  const order = ['captainLedger.setCrossedFrom', 'hudFade.smashHUDToBlack()', 'csaRuntime.StopSailing()', 'await _teleportToPixel(to.px, to.py', 'csaRuntime.RepositionBoat(boat, [x, tvSeaY(), z], dir', 'playerTicker.advance(minutes)', 'csaRuntime.StartSailing(boat)', 'captainLedger.crossed()'];
+  // PIN MOVED (AUDIT CAPTAIN'S SEA X9): the success's path read past the failure's (a voyage that could not be made brings her back)
+  const order = ['captainLedger.setCrossedFrom', 'hudFade.smashHUDToBlack()', 'csaRuntime.StopSailing()', 'await _teleportToPixel(to.px, to.py', 'csaRuntime.RepositionBoat(boat, [x, tvSeaY(), z], dir', 'setSyntheticTimeIncrease(true); playerTicker.advance(minutes)', 'captainLedger.crossed()'];
   let at = -1;
   for (const k of order) { const i = cross.indexOf(k); assert.ok(i > at, `${k} in its turn`); at = i; }
+  const tail = cross.slice(cross.indexOf('setSyntheticTimeIncrease(true); playerTicker.advance(minutes)'));
+  assert.ok(tail.indexOf('csaRuntime.StartSailing(boat)') >= 0 && tail.indexOf('csaRuntime.StartSailing(boat)') < tail.indexOf('captainLedger.crossed()'), 'her helm taken, then the crossing counted');
   assert.match(cross, /const minutes = CROSS_DAYS \* 1440;/);
   assert.match(cross, /modEvent: 'travel',/);
   assert.match(cross, /const \[x, z\] = state\.localFromWorld\(\(to\.px \+ 0\.5\) \* RAID_NATIVE_PIXEL, \(499 - to\.py \+ 0\.5\) \* RAID_NATIVE_PIXEL\);/);
@@ -126,9 +132,12 @@ test('ETHER-SEA the host\'s waters and charting: the band, the depth and the leg
   const h = veilhaven();
   assert.deepEqual(host.waters(500, 250), null);
   const w = host.waters(h.px, h.py);
-  assert.deepEqual([w.band, w.bandName, w.legend], ['shallows', 'the Shallows', null]);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA D18/D19): the haunt's legend was reckoned every frame and read nowhere - the waters say
+  // whether she is in the Veil itself instead (the plate's "The Veil")
+  assert.deepEqual([w.band, w.bandName, w.veil], ['shallows', 'the Shallows', false]);
+  assert.equal(host.waters(VEIL_X + 4, h.py).veil, true, 'in the Veil');
   const q = hauntOf(legendById('queen'));
-  assert.equal(host.waters(q.px, q.py).legend, 'queen');
+  assert.equal(host.waters(q.px, q.py).band, 'reaches');
   assert.equal(SIGHT_PX, 3);
   const fresh = host.sight(h.px + 3, h.py);
   assert.ok(fresh.some((i) => i.key === h.key), 'Veilhaven in sight');
@@ -192,6 +201,9 @@ test('ETHER-SEA the legends\' host: the haunt\'s legend while she sails and is a
   assert.equal(purse(), 4000 - 150);
   assert.equal(host.buyChart(port).ok, false, 'nothing new to mark');
   const office = host.office(port);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA X11): heard where the harbourmaster's tab is shown - the model's read hears nothing
+  assert.deepEqual(L.heard(), [], 'the model read: nothing heard yet');
+  office.hear();
   assert.deepEqual(L.heard(), LEGENDS.map((l) => l.id), 'the quay\'s talk: every legend heard of');
   assert.equal(office.port, 'Veilhaven'); assert.match(office.waters, /^the Shallows, \d+ leagues past the Veil$/);
   assert.equal(host.office({ ...port, ether: false }), null);
@@ -244,8 +256,9 @@ test('ETHER-CHART the model: the charted isles in view (a port named at any zoom
   assert.ok(m.veil != null && m.veil > 500, 'the Veil to the east');
   assert.deepEqual([m.ship.x, m.ship.y, m.ship.yaw], [...toScreen({ cx: h.px, cy: h.py, zoom: 2 }, h.px + 4.5, h.py + 0.5, 1000, 700), 1]);
   assert.match(m.sub, /^4 isles charted - deepest 12 leagues past the Veil - 1 crossing$/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA X12): the Shallows named by the Veil (no line of its own), each name on its deeper side
   const wide = chartModel(word, { cx: VEIL_X - 60 * LEAGUE_PX, cy: h.py, zoom: 0 }, 1000, 700);
-  assert.deepEqual(wide.bands.map((b) => b.name), ['the Reaches', 'the Deep Aether', 'the Abyss'], 'the bounds in view');
+  assert.deepEqual(wide.bands.map((b) => [b.name, b.line]), [['the Shallows', false], ['the Reaches', true], ['the Deep Aether', true], ['the Abyss', true]], 'the bounds in view');
   const shallow = chartModel(word, { cx: h.px, cy: h.py, zoom: 4 }, 400, 300);
   assert.deepEqual(shallow.bands, [], 'none in view about Veilhaven at x16');
   const q = hauntOf(legendById('queen'));
@@ -261,7 +274,8 @@ test('ETHER-CHART the model: the charted isles in view (a port named at any zoom
 test('ETHER-CHART the doors: the travel map\'s door opens the chart past the Veil; the freeport\'s harbourmaster\'s tab its rumours and its chart (mutants: the door, the tab\'s words)', () => {
   const src = read('src/scenes/world.js');
   assert.match(src, /\{ const p = playerTravelPixel\(\); if \(etherSea && inEther\(p\.x, p\.y\)\) return openEtherChart\(\); \}/);
-  assert.match(src, /const word = \(\) => \{ const p = playerTravelPixel\(\); return etherHost\.chart\(p\.x, p\.y, cam\.yaw\); \};/);
+  assert.match(src, /const word = \(\) => \{ const p = playerTravelPixel\(\); return etherHost\.chart\(p\.x, p\.y, heading\(\)\); \};/);   // PIN MOVED (AUDIT CAPTAIN'S SEA X16): the ship's heading at her helm
+  assert.match(src, /const heading = \(\) => \{ const boat = csaRuntime\?\.isSailing\?\.\(\) \? csaRuntime\.state\.CurrentBoat : null; if \(!boat\) return cam\.yaw; const f = boatForward\(boat\); return Math\.atan2\(f\[0\], f\[2\]\); \};/);
   const door = read('src/ui/navalPlunderDoor.js');
   assert.match(door, /load: \(\) => import\('\.\/etherChartWindow\.js'\),/);
   const o = { ether: true, port: 'Veilhaven', waters: 'the Shallows, 7 leagues past the Veil', rumours: ['A tale.', 'Another.'], charted: 1, chart: { price: 150, fresh: 12, can: true, why: '' } };

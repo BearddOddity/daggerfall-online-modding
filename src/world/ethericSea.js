@@ -9,7 +9,7 @@
 // WHERE IT LIES. A box of the Bay's own pixel grid (ETHER_BOX - 819.2 m a pixel, as every pixel) far north of anything
 // else the world holds: Tamriel's frame at any fit the probe allows ends more than a thousand pixels south of it, so
 // nothing of the Bay or the continent is ever in sight of it, and it is reached only by THE CROSSING (crossing waters
-// out on the open Abecean - `crossingWaters` - and the port's crossing, scenes/etherCrossing.js). Its east side is THE
+// out on the open Abecean - `crossingWaters` - and the port's crossing, systems/naval/etherCrossing.js). Its east side is THE
 // VEIL (VEIL_PX wide), the way home; from the Veil the sea runs west for more than a thousand leagues and north and
 // south for eight hundred, isle after isle, and no captain has found its end. DEPTH is leagues west of the Veil, and its
 // BANDS - the Shallows, the Reaches, the Deep Aether, the Abyss - are the sea's law: each deadlier and richer than the
@@ -28,8 +28,11 @@
 // none at sea (an open sea's bytes past 3 lift out of the water: the kernel's own); CLIMATE.PAK's climate
 // (`etherClimateAt`) - the isle's out to CLIMATE_REACH_PX past its rim (the kernel's window carries an isle's land a
 // pixel east and south of its bytes), the Ocean's else. The law answers its sea ETHER_MARGIN pixels round the box too,
-// so the kernel's windows at its edge never reach the rest of the world's ground. Pure and deterministic, and
-// worker-safe (TAMRIEL2-WORKER: it imports formats/ alone): every client and the terrain worker grow the same isles.
+// so nothing that reads the ground from inside the box - the kernel's windows, the cliffs' fade, the far ring's whole
+// reach - ever reaches the rest of the world's ground (AUDIT CAPTAIN'S SEA G1: the far ring drew the Bay's clamped row 0
+// past a margin of four). Past the margin the law answers nothing: the sea is the box's, and past it nothing streams.
+// Pure and deterministic, and worker-safe (TAMRIEL2-WORKER: it imports formats/ alone): every client and the terrain
+// worker grow the same isles.
 // ═══════════════════════════════════════════════════════════════════
 import { CLIMATES } from '../formats/mapsTables.js';
 
@@ -39,8 +42,10 @@ import { CLIMATES } from '../formats/mapsTables.js';
 export const ETHER_BOX = Object.freeze({ x0: 64, x1: 8128, y0: -7680, y1: -2688 });
 /** What the world calls it - the loading screen, the Overworld's line, the chart. */
 export const ETHER_SEA_NAME = 'the Etheric Sea';
-/** The law answers its open sea this many pixels round the box (the kernel's windows reach two past a pixel). */
-export const ETHER_MARGIN = 4;
+/** The law answers its open sea this many pixels round the box: the far ring's reach from a ship in the box
+ *  (render/farRing.js RING_RADIUS and its rebuild's drift - 60 pixels) and every kernel window (two past a pixel, the
+ *  cliffs' fade six) inside it. AUDIT CAPTAIN'S SEA G1: four drew the Bay's clamped row 0 on the Veil's horizon. */
+export const ETHER_MARGIN = 64;
 /** A map pixel's side (metres) - MapsFile's 32768 world units at 40 a metre (world/tamrielFrame.js KM_PER_PIXEL): net/gateLaw.js
  *  PIXEL_M's, held here rather than imported so the terrain worker reads no net law (test/ethersea.test.js pins them equal). */
 const PIXEL_M = 819.2;
@@ -114,9 +119,12 @@ export function etherRng(seed) {
 /** The isles' lattice: a cell's side (pixels). */
 export const ISLE_CELL_PX = 10;
 /** The kinds: each one's radius (pixels) and peak (WOODS bytes, 8 m each) ranges, how its land falls from the peak to
- *  the shore (`fall`, the exponent - a port's broad and low, its town a short climb from the water), and its climates. */
+ *  the shore (`fall`, the exponent), and its climates. AUDIT CAPTAIN'S SEA H1/P2: A PORT IS A TOWN ON A SMALL ISLE - its
+ *  land the four bytes round its town's pixel's middle (`landCentre`), so the town stands whole on dry ground and its
+ *  shore lies ETHER_PORT_SHORE_M about it, where its harbour is sounded (ETHER_HARBOUR_REACH); an isle of two
+ *  kilometres put the water past any harbour's reach, and no quay stood at any port of the sea. */
 export const ISLE_KINDS = Object.freeze({
-  port: Object.freeze({ r: Object.freeze([1.8, 2.6]), peak: Object.freeze([10, 15]), fall: 0.8, climates: Object.freeze([CLIMATES.Subtropical, CLIMATES.Woodlands, CLIMATES.Rainforest]) }),
+  port: Object.freeze({ r: Object.freeze([0.9, 1.1]), peak: Object.freeze([10, 15]), fall: 1, climates: Object.freeze([CLIMATES.Subtropical, CLIMATES.Woodlands, CLIMATES.Rainforest]) }),
   ruin: Object.freeze({ r: Object.freeze([1.4, 2.4]), peak: Object.freeze([15, 34]), fall: 1.5, climates: Object.freeze([CLIMATES.Mountain, CLIMATES.HauntedWoodlands, CLIMATES.Swamp, CLIMATES.Desert]) }),
   wild: Object.freeze({ r: Object.freeze([1.0, 2.8]), peak: Object.freeze([10, 40]), fall: 1.5, climates: Object.freeze([CLIMATES.Rainforest, CLIMATES.Subtropical, CLIMATES.Swamp, CLIMATES.Desert2, CLIMATES.MountainWoods]) }),
   rock: Object.freeze({ r: Object.freeze([0.6, 1.1]), peak: Object.freeze([8, 18]), fall: 1.5, climates: Object.freeze([CLIMATES.Mountain, CLIMATES.Desert]) }),
@@ -130,6 +138,15 @@ export const HEIGHT_NOISE = 2;
 export const CLIMATE_REACH_PX = 1.5;
 /** The cells nearest the box's edges stand no isle (the kernel's windows, and the sea's edge kept open). */
 export const EDGE_CELLS = 1;
+/** AUDIT CAPTAIN'S SEA H1/P2: a port isle's shore stands about this far from its town's middle (m: its pixel's half and
+ *  the kernel's fall past it), and its harbour is sounded this far past the town's footprint (shipLife.js findHarbour's
+ *  `reach` - the Bay's ports' HARBOUR_REACH is 420 m from a coastal town). Measured through the kernel over every kind of
+ *  town a port stands (test/auditcaptsea.test.js). */
+export const ETHER_PORT_SHORE_M = 900;
+export const ETHER_HARBOUR_REACH = 900;
+/** Where an isle's land is centred, in its own pixels' bytes: a port's on its town's pixel's middle (the kernel lays a
+ *  pixel's byte at its south-east corner - the four bytes north-west of it frame the pixel), any other's on its centre. */
+export const landCentre = (kind, px, py) => (kind === 'port' ? [px - 0.5, py - 0.5] : [px, py]);
 
 /** A cell's column and row (the lattice's, from the box's corner). */
 export const etherCellOf = (x, y) => [Math.floor((x - ETHER_BOX.x0) / ISLE_CELL_PX), Math.floor((y - ETHER_BOX.y0) / ISLE_CELL_PX)];
@@ -138,6 +155,9 @@ export const CELLS_H = Math.floor((ETHER_BOX.y1 - ETHER_BOX.y0) / ISLE_CELL_PX);
 /** VEILHAVEN, the landfall: its cell (a few cells west of the Veil, on the box's middle row) and its own isle. */
 export const VEILHAVEN_CELL = Object.freeze([Math.floor((VEIL_X - ETHER_BOX.x0) / ISLE_CELL_PX) - 4, Math.floor(CELLS_H / 2)]);
 export const VEILHAVEN_NAME = 'Veilhaven';
+/** Where Veilhaven's centre pixel stands in its cell (from its corner): (8068, -5185), where the crossing has always made
+ *  its landfall beside it - never moved by the size its isle is. */
+export const VEILHAVEN_AT = Object.freeze([4, 5]);
 
 const lerp = (a, b, t) => a + (b - a) * t;
 /** A cell's key: `"cx,cy"` - the isle's own key (the save's, the chart's). */
@@ -146,7 +166,7 @@ const cellKey = (cx, cy) => `${cx},${cy}`;
  *  landfall's way clear. */
 const openCell = (cx, cy) => cx < EDGE_CELLS || cy < EDGE_CELLS || cy >= CELLS_H - EDGE_CELLS || cx > VEILHAVEN_CELL[0];
 
-/** @typedef {{ key: string, cx: number, cy: number, px: number, py: number, kind: string, r: number, peak: number, fall: number, climate: number, seed: number, band: string, good: string|null, name: string, haven: boolean }} Isle */
+/** @typedef {{ key: string, cx: number, cy: number, px: number, py: number, lx: number, ly: number, kind: string, r: number, peak: number, fall: number, climate: number, seed: number, band: string, good: string|null, name: string, haven: boolean }} Isle */
 
 /** @type {Map<string, Isle|null>} */
 const _isles = new Map();
@@ -166,10 +186,11 @@ function pick(weights, u) {
 }
 
 /**
- * THE ISLE OF A CELL, or null: `{ key, cx, cy, px, py (its centre pixel), kind, r, peak, climate, seed, band, good, name,
- * haven }` - on the band's `chance` of the cell's hash, of a kind drawn by the band's weights, its radius and peak in
- * the kind's ranges (its peak lifted by the band's `lift`), its centre where its land (and the kernel's pixel past it)
- * stays inside the cell. Veilhaven's cell is always Veilhaven. Cached a cell.
+ * THE ISLE OF A CELL, or null: `{ key, cx, cy, px, py (its centre pixel - its place's), lx, ly (its land's centre,
+ * landCentre's), kind, r, peak, climate, seed, band, good, name, haven }` - on the band's `chance` of the cell's hash, of
+ * a kind drawn by the band's weights, its radius and peak in the kind's ranges (its peak lifted by the band's `lift`),
+ * its centre where its land (and the kernel's pixel past it) stays inside the cell. Veilhaven's cell is always
+ * Veilhaven. Cached a cell.
  */
 export function isleOfCell(cx, cy) {
   const key = cellKey(cx, cy);
@@ -192,14 +213,15 @@ function makeIsle(cx, cy, key) {
   if (!haven && !(r() < band.chance)) return null;
   const kind = haven ? 'port' : pick(band.kinds, r());
   const k = ISLE_KINDS[kind];
-  const radius = haven ? 2.4 : lerp(k.r[0], k.r[1], r());
+  const radius = haven ? 1 : lerp(k.r[0], k.r[1], r());   // AUDIT CAPTAIN'S SEA H1: Veilhaven a port's, the haven's town on its four bytes
   const peak = haven ? 12 : Math.round(lerp(k.peak[0], k.peak[1], r()) * (kind === 'port' ? 1 : 1 + band.lift));   // a port's town stays a short climb from the water
   const margin = Math.ceil(radius) + 1;   // its land, and the kernel's pixel past it, inside the cell
   const span = Math.max(1, ISLE_CELL_PX - 2 * margin);
-  const px = x0 + margin + Math.floor(r() * span), py = y0 + margin + Math.floor(r() * span);
+  const [px, py] = haven ? [x0 + VEILHAVEN_AT[0], y0 + VEILHAVEN_AT[1]] : [x0 + margin + Math.floor(r() * span), y0 + margin + Math.floor(r() * span)];
   const climate = haven ? CLIMATES.Subtropical : k.climates[Math.floor(r() * k.climates.length) % k.climates.length];
   const good = kind === 'wild' ? ETHER_GOODS[Math.floor(r() * ETHER_GOODS.length) % ETHER_GOODS.length] : null;
-  const isle = { key, cx, cy, px, py, kind, r: radius, peak, fall: k.fall, climate, seed, band: band.id, good, name: '', haven };
+  const [lx, ly] = landCentre(kind, px, py);
+  const isle = { key, cx, cy, px, py, lx, ly, kind, r: radius, peak, fall: k.fall, climate, seed, band: band.id, good, name: '', haven };
   isle.name = haven ? VEILHAVEN_NAME : isleName(isle);
   return Object.freeze(isle);
 }
@@ -233,8 +255,8 @@ export const veilhaven = () => /** @type {Isle} */ (isleOfCell(VEILHAVEN_CELL[0]
 
 // ── the names ────────────────────────────────────────────────────────────────────────────────────────────────────────
 /** The isles' names: a head, a middle on half of them, a tail - some sixteen thousand roots, and the forms each kind is
- *  called by (a captain who has charted fifty places has met two of one name about once in fifty voyages). Ours - no
- *  table of the game's. */
+ *  called by (AUDIT CAPTAIN'S SEA G11: of fifty places charted, two share a name about one time in twenty - measured over
+ *  every place of the sea). Ours - no table of the game's. */
 export const NAME_HEADS = Object.freeze(['Ael', 'Vael', 'Syr', 'Oru', 'Mir', 'Thal', 'Ves', 'Ish', 'Cael', 'Nym', 'Ery', 'Lun', 'Zeph', 'Ora', 'Sar', 'Ith', 'Quel', 'Xan', 'Eth', 'Ul', 'Kor', 'Bel', 'Dra', 'Hal', 'Ost', 'Rhy', 'Tor', 'Vey', 'Wen', 'Aur', 'Cyr', 'Fen', 'Gal', 'Ione', 'Jor', 'Mael', 'Nor', 'Pell', 'Sel', 'Tey']);
 export const NAME_MIDS = Object.freeze(['a', 'e', 'i', 'o', 'u', 'ae', 'ar', 'el', 'in', 'or', 'ul', 'ys']);
 export const NAME_TAILS = Object.freeze(['dra', 'mere', 'sol', 'veth', 'oria', 'anth', 'is', 'el', 'yne', 'ara', 'ond', 'ith', 'ael', 'orn', 'esse', 'ivar', 'oth', 'una', 'ys', 'ent', 'alis', 'ume', 'ior', 'ast', 'en', 'wyn', 'mor', 'thas', 'rel', 'gard']);
@@ -262,8 +284,10 @@ export const KIND_WORDS = Object.freeze({ port: 'a port', ruin: 'a ruin', wild: 
 /** The sixteen points, north first. */
 const POINTS = Object.freeze(['north', 'north-north-east', 'north-east', 'east-north-east', 'east', 'east-south-east', 'south-east', 'south-south-east', 'south', 'south-south-west', 'south-west', 'west-south-west', 'west', 'west-north-west', 'north-west', 'north-north-west']);
 /** The point of the compass a map-pixel offset lies toward, in words - "west-north-west" (map y runs south): the chart's
- *  ways and the harbourmasters' rumours alike. */
+ *  ways and the harbourmasters' rumours alike. AUDIT CAPTAIN'S SEA G12: none for no offset (null) - atan2 made (0, 0)
+ *  "south" and (0, -0) "north". */
 export function compassPoint(dx, dy) {
+  if (!dx && !dy) return null;
   const a = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
   return POINTS[Math.round(a / 22.5) % 16];
 }
@@ -272,10 +296,10 @@ export function compassPoint(dx, dy) {
 /** A small stable lattice hash, 0..1. */
 const lattice = (x, y, salt) => etherHash(x, y, salt) / 4294967296;
 
-/** An isle's byte at a pixel: its peak falling to its shore by the radius ((1 - t^2) to its kind's `fall`), the
- *  lattice's noise on its land, 0 past its rim. */
+/** An isle's byte at a pixel: its peak falling to its shore by the radius from its land's centre ((1 - t^2) to its
+ *  kind's `fall`), the lattice's noise on its land, 0 past its rim. */
 export function isleByte(isle, x, y) {
-  const t = Math.hypot(x - isle.px, y - isle.py) / isle.r;
+  const t = Math.hypot(x - isle.lx, y - isle.ly) / isle.r;
   if (t >= 1) return 0;
   const h = isle.peak * Math.pow(1 - t * t, isle.fall) + (lattice(x, y, 0x51) - 0.5) * 2 * HEIGHT_NOISE;
   return Math.max(0, Math.min(255, Math.round(h)));
@@ -305,7 +329,7 @@ export function etherLargeMap(x, y) {
 export function etherClimateAt(x, y) {
   const isle = isleAt(x, y);
   if (!isle) return CLIMATES.Ocean;
-  return Math.hypot(x - isle.px, y - isle.py) <= isle.r + CLIMATE_REACH_PX ? isle.climate : CLIMATES.Ocean;
+  return Math.hypot(x - isle.lx, y - isle.ly) <= isle.r + CLIMATE_REACH_PX ? isle.climate : CLIMATES.Ocean;
 }
 
 /**
@@ -320,6 +344,7 @@ export function etherWoods(woods) {
   ground.getHeightMapValue = function (x, y) { return inEtherLaw(x, y) ? etherHeightByte(x, y) : woods.getHeightMapValue(x, y); };
   ground.getLargeMapData = function (x, y) { return inEtherLaw(x, y) ? etherLargeMap(x, y) : woods.getLargeMapData(x, y); };
   ground.isEtherGround = true;
+  ground.etherLaw = inEtherLaw;   // AUDIT CAPTAIN'S SEA G5: where the composition answers the ground itself (the Overworld's water law asks)
   ground.under = woods;
   return ground;
 }
@@ -349,8 +374,10 @@ export function etherLight(rgb, w, tint = ETHER_LIGHT_TINT) {
 }
 
 // ── the crossing's waters ────────────────────────────────────────────────────────────────────────────────────────────
-/** THE CROSSING OUT is offered on the open Abecean: west of CROSS_X, CROSS_LAND_PX pixels and more from any land. */
-export const CROSS_X = 300;
+/** THE CROSSING OUT is offered on the open Abecean: west of CROSS_X, CROSS_LAND_PX pixels and more from any land.
+ *  AUDIT CAPTAIN'S SEA X4: west of the Bay's mouth - the line from Daggerfall's coast to Myrkwasa's crosses its waters'
+ *  row at about 243, and at 300 the Daggerfall-Sentinel lane was asked out thirty kilometres from Daggerfall. */
+export const CROSS_X = 230;
 export const CROSS_LAND_PX = 20;
 /** Is a pixel of the Bay's world crossing waters (`landPx` its distance to the nearest land, pixels - the host's)? */
 export const crossingWaters = (x, y, landPx) => !inEtherLaw(x, y) && x < CROSS_X && typeof landPx === 'number' && landPx >= CROSS_LAND_PX;   // Infinity: no land in reach at all

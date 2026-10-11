@@ -65,8 +65,8 @@
   {
     "name": "TAGS-line-no-crown",
     "file": "src/scenes/navalHost.js",
-    "old": "    if (disguisedOf(e)) return 'Merchantman';\n    return classLine(e.ship.cls, e.ship.names?.crown);",
-    "new": "    if (disguisedOf(e)) return 'Merchantman';\n    return e.ship.cls.title;",
+    "old": "    if (disguisedOf(e)) return disguiseOf(e).line;\n    return classLine(e.ship.cls, e.ship.names?.crown);",
+    "new": "    if (disguisedOf(e)) return disguiseOf(e).line;\n    return e.ship.cls.title;",
     "tests": [
       "test/shipstance.test.js"
     ]

@@ -137,8 +137,8 @@
   {
     "name": "SPY-deceit-any-temper",
     "file": "src/systems/naval/shipKnowledge.js",
-    "old": "  if (!cls || cls.faction !== 'pirate' || cls.flagship || temper !== 'wary' || plain) return null;",
-    "new": "  if (!cls || cls.faction !== 'pirate' || cls.flagship || plain) return null;",
+    "old": "  if (!cls || cls.faction !== 'pirate' || cls.flagship || temper !== 'wary' || plain || !merchantOfHull(cls.hull)) return null;",
+    "new": "  if (!cls || cls.faction !== 'pirate' || cls.flagship || plain || !merchantOfHull(cls.hull)) return null;",
     "tests": [
       "test/spyglass.test.js"
     ]
@@ -146,8 +146,8 @@
   {
     "name": "SPY-deceit-flagship",
     "file": "src/systems/naval/shipKnowledge.js",
-    "old": "  if (!cls || cls.faction !== 'pirate' || cls.flagship || temper !== 'wary' || plain) return null;",
-    "new": "  if (!cls || cls.faction !== 'pirate' || temper !== 'wary' || plain) return null;",
+    "old": "  if (!cls || cls.faction !== 'pirate' || cls.flagship || temper !== 'wary' || plain || !merchantOfHull(cls.hull)) return null;",
+    "new": "  if (!cls || cls.faction !== 'pirate' || temper !== 'wary' || plain || !merchantOfHull(cls.hull)) return null;",
     "tests": [
       "test/spyglass.test.js"
     ]
@@ -155,8 +155,8 @@
   {
     "name": "SPY-deceit-plain-unread",
     "file": "src/systems/naval/shipKnowledge.js",
-    "old": "  if (!cls || cls.faction !== 'pirate' || cls.flagship || temper !== 'wary' || plain) return null;",
-    "new": "  if (!cls || cls.faction !== 'pirate' || cls.flagship || temper !== 'wary') return null;",
+    "old": "  if (!cls || cls.faction !== 'pirate' || cls.flagship || temper !== 'wary' || plain || !merchantOfHull(cls.hull)) return null;",
+    "new": "  if (!cls || cls.faction !== 'pirate' || cls.flagship || temper !== 'wary' || !merchantOfHull(cls.hull)) return null;",
     "tests": [
       "test/spyglass.test.js"
     ]
@@ -182,8 +182,8 @@
   {
     "name": "SPY-holds-no-zoom",
     "file": "src/systems/naval/shipKnowledge.js",
-    "old": "(RETICLE_DEG * Math.PI / 180) / Math.max(1, zoom));",
-    "new": "(RETICLE_DEG * Math.PI / 180));",
+    "old": "(RETICLE_DEG * Math.PI / 180) / Math.max(1, zoom)));",
+    "new": "(RETICLE_DEG * Math.PI / 180)));",
     "tests": [
       "test/spyglass.test.js"
     ]
@@ -191,8 +191,8 @@
   {
     "name": "SPY-holds-no-hull",
     "file": "src/systems/naval/shipKnowledge.js",
-    "old": "angle <= Math.max(Math.atan2(Math.max(1, halfLength), Math.max(1, dist)), (RETICLE_DEG",
-    "new": "angle <= Math.max(0, (RETICLE_DEG",
+    "old": "angle <= Math.min(field, Math.max(Math.atan2(Math.max(1, half), Math.max(1, dist)), (RETICLE_DEG",
+    "new": "angle <= Math.min(field, Math.max(0, (RETICLE_DEG",
     "tests": [
       "test/spyglass.test.js"
     ]
@@ -218,7 +218,7 @@
   {
     "name": "SPY-hands-exact",
     "file": "src/systems/naval/shipKnowledge.js",
-    "old": "`about ${Math.max(1, Math.round(crew / 5) * 5)} hands`",
+    "old": "`about ${Math.round(crew / 5) * 5} hands`",
     "new": "`about ${crew} hands`",
     "tests": [
       "test/spyglass.test.js"
@@ -335,7 +335,7 @@
   {
     "name": "SPY-H-card-stance-shown",
     "file": "src/scenes/navalHost.js",
-    "old": "    const stance = known < KNOW.colours ? { hostile: false, friendly: false } : hid ?",
+    "old": "    const stance = !made ? { hostile: false, friendly: false } : hid ?",
     "new": "    const stance = hid ?",
     "tests": [
       "test/spyglass.test.js"
@@ -344,7 +344,7 @@
   {
     "name": "SPY-H-card-faction-shown",
     "file": "src/scenes/navalHost.js",
-    "old": "faction: known < KNOW.colours ? 'unknown' : hid ? 'merchant' : s.cls.faction,",
+    "old": "faction: !made ? 'unknown' : hid ? 'merchant' : s.cls.faction,",
     "new": "faction: hid ? 'merchant' : s.cls.faction,",
     "tests": [
       "test/spyglass.test.js"
@@ -353,8 +353,8 @@
   {
     "name": "SPY-H-name-unknown",
     "file": "src/scenes/navalHost.js",
-    "old": "    if (knownOf(e) < KNOW.colours) return unknownName(e.ship.hull);\n    if (disguisedOf(e)) return `A merchantman of ${falseFlagFor(e)}`;",
-    "new": "    if (disguisedOf(e)) return `A merchantman of ${falseFlagFor(e)}`;",
+    "old": "    if (knownOf(e) < KNOW.colours) return unknownName(e.ship.hull);\n    if (disguisedOf(e)) return disguiseOf(e).name;",
+    "new": "    if (disguisedOf(e)) return disguiseOf(e).name;",
     "tests": [
       "test/spyglass.test.js"
     ]
@@ -434,8 +434,8 @@
   {
     "name": "SPY-H-seen-through-unsaid",
     "file": "src/scenes/navalHost.js",
-    "old": "        deps.mid?.(`False colours! ${s.names?.name ?? 'She'} is a pirate.`, 4);\n",
-    "new": "",
+    "old": "deps.mid?.(`False colours! ${s.names?.name ?? 'She'} is a pirate.`, 4);",
+    "new": "void 0;",
     "tests": [
       "test/spyglass.test.js"
     ]
@@ -479,7 +479,7 @@
   {
     "name": "SPY-H-revealed-any-mode",
     "file": "src/scenes/navalHost.js",
-    "old": "      const revealed = (engaged && gunsOut && hostile(s, me, law)) || !!e.relief;",
+    "old": "      const revealed = (engaged && onMe && gunsOut && hostile(s, me, law)) || !!e.relief;",
     "new": "      const revealed = hostile(s, me, law) || !!e.relief;",
     "tests": [
       "test/spyglass.test.js"
@@ -497,8 +497,8 @@
   {
     "name": "SPY-W-under-a-broadside",
     "file": "src/scenes/world.js",
-    "old": "&& !travelView?.active && !naval?.aiming && !(townTalk.overlay instanceof DeathScreen);",
-    "new": "&& !travelView?.active && !(townTalk.overlay instanceof DeathScreen);",
+    "old": "&& !travelView?.active && !naval?.aiming && !(townTalk.overlay instanceof DeathScreen)\n",
+    "new": "&& !travelView?.active && !(townTalk.overlay instanceof DeathScreen)\n",
     "tests": [
       "test/spyglass.test.js"
     ]
@@ -560,8 +560,8 @@
   {
     "name": "SPY-W-touch-unread",
     "file": "src/scenes/world.js",
-    "old": "    const pressedNow = hccActionPressed('Spyglass') || navalTouchGlass();",
-    "new": "    const pressedNow = hccActionPressed('Spyglass');",
+    "old": "    const pressedNow = hccActionPressed('Spyglass') || navalTouchGlass() || glassDoorPress || (taps.lower && spyglass.up);",
+    "new": "    const pressedNow = hccActionPressed('Spyglass') || glassDoorPress || (taps.lower && spyglass.up);",
     "tests": [
       "test/spyglass.test.js"
     ]
@@ -641,8 +641,8 @@
   {
     "name": "SPY-V-foot-wheel-always",
     "file": "src/ui/spyglassView.js",
-    "old": "touch || pad ? null : 'Wheel: magnify'",
-    "new": "'Wheel: magnify'",
+    "old": "  const magnify = pad ? (keys.zoom ? `${keys.zoom}: magnify` : null) : 'Wheel: magnify';",
+    "new": "  const magnify = 'Wheel: magnify';",
     "tests": [
       "test/spyglass.test.js"
     ]

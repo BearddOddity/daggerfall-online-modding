@@ -72,7 +72,7 @@
 
 import { SCALED_OCEAN_ELEVATION, STREAMING_TERRAIN_SCALE, TERRAIN_SIZE } from '../world/terrainSampler.js';
 import { overworldTint, isWaterPixel, BASE_HEIGHT_SCALE } from '../ui/overworldModel.js';   // FAR-SEA1: and the overworld's own water rule, for the ring's sea
-import { reliefByteHeight, cliffFadeAt } from '../world/landforms.js';   // LANDFORM1: the landforms' lift on a pixel's byte; AUDIT LANDFORMS II I1: faded beside the sea
+import { reliefByteHeight, cliffFadeAt, CLIFF_REACH } from '../world/landforms.js';   // LANDFORM1: the landforms' lift on a pixel's byte; AUDIT LANDFORMS II I1: faded beside the sea
 import { perspective, mirrorProjectionX } from '../world/mat4.js';
 import { buildProgram } from './glProgram.js';   // AUDIT 68 S17-gl-program-dup: the one compile and link
 import { RING_SEA_GLSL } from './horizonHaze.js';   // FAR-SEA1: the horizon's haze and the sea's own look, one text for the ring (both lanes) and the sea
@@ -119,8 +119,11 @@ const RING_SEA_Y = ringHeight(0);
  * @param {boolean} [o.relief] - LANDFORM1: the Landforms row's lift on every height (ringHeight)
  * @param {?((x: number, y: number) => number)} [o.byteAt] - TAMRIEL2: the height byte past the map's edge, or null for the clamp
  * @param {?((x: number, y: number) => number)} [o.climatePast] - ETHER-SEA: the climate past the map's edge, or null for the clamp
+ * @param {?((x: number, y: number) => boolean)} [o.pastOwn] - AUDIT CAPTAIN'S SEA G6: whether `byteAt` answers a pixel past
+ *   the map with its own ground (the continent's, the Etheric Sea's) rather than the clamp - its cliffs then faded at its
+ *   own pixel; null: every pixel past the map it is handed
  */
-export function buildFarRingGrid({ heightBytes, mapWidth, mapHeight, climateAt, baseX, baseY, radius = RING_RADIUS, relief = false, byteAt: byteAtPast = null, climatePast = null }) {
+export function buildFarRingGrid({ heightBytes, mapWidth, mapHeight, climateAt, baseX, baseY, radius = RING_RADIUS, relief = false, byteAt: byteAtPast = null, climatePast = null, pastOwn = null }) {
   const side = radius * 2 + 1;
   const positions = new Float32Array(side * side * 3);
   const normals = new Float32Array(side * side * 3);
@@ -138,8 +141,19 @@ export function buildFarRingGrid({ heightBytes, mapWidth, mapHeight, climateAt, 
   const climateOf = climatePast
     ? (x, y) => (x >= 0 && y >= 0 && x < mapWidth && y < mapHeight ? climateAt(x, y) : climatePast(x, y))
     : (x, y) => climateAt(clampX(x), clampY(y));
-  // AUDIT LANDFORMS II I1: each node's lift faded beside the sea as the kernel fades it - from the same clamped bytes
-  const heightOf = relief ? (x, y) => ringHeight(byteAt(x, y), true, cliffFadeAt(byteAt, clampX(x), clampY(y))) : (x, y) => ringHeight(byteAt(x, y));
+  // AUDIT LANDFORMS II I1: each node's lift faded beside the sea as the kernel fades it - from the same clamped bytes.
+  // AUDIT CAPTAIN'S SEA G6: where the host hands the ground past the map, a node there faded at its OWN pixel (the clamped
+  // corner's fade, 1, stood every isle on the horizon with its whole lift) - off the bytes read once into a grid padded
+  // by the fade's reach (the composed read is a law's, not an array's: 49 reads a node, five nodes a vertex)
+  let heightOf = relief ? (x, y) => ringHeight(byteAt(x, y), true, cliffFadeAt(byteAt, clampX(x), clampY(y))) : (x, y) => ringHeight(byteAt(x, y));
+  if (relief && byteAtPast) {
+    const pad = radius + 1 + CLIFF_REACH, gside = 2 * pad + 1, gx0 = baseX - pad, gy0 = baseY - pad;
+    const grid = new Uint8Array(gside * gside);
+    for (let j = 0; j < gside; j++) for (let i = 0; i < gside; i++) grid[j * gside + i] = byteAt(gx0 + i, gy0 + j);
+    const gridByte = (x, y) => grid[(y - gy0) * gside + (x - gx0)];
+    const own = (x, y) => (x >= 0 && y >= 0 && x < mapWidth && y < mapHeight) || !pastOwn || pastOwn(x, y);
+    heightOf = (x, y) => ringHeight(gridByte(x, y), true, own(x, y) ? cliffFadeAt(gridByte, x, y) : cliffFadeAt(byteAt, clampX(x), clampY(y)));
+  }
   let o = 0;
   for (let j = 0; j < side; j++) {
     const py = baseY - radius + j;

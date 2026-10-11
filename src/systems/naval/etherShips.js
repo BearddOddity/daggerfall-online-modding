@@ -22,15 +22,16 @@ import { BANDS, LEAGUE_PX, VEIL_X, veilhaven, etherHash, etherRng, inEther, comp
 
 /** A trader of the isles flies their colours (the spyglass reads "the Isles' merchant colours"). */
 export const ISLES_FLAG = 'the Isles';
-/** The Etheric Sea's ship names - its corsairs' and its traders'. Ours. */
-export const ETHER_PIRATE_NAMES = Object.freeze([
-  'Gloam Reaver', 'Voidcutter', 'Starving Tide', 'Pale Lantern', 'Ashen Gull', 'Hollow Wind', 'Shard of Night', 'Last Mercy',
-  'Amber Fang', 'Weeping Blade', 'Black Aurora', 'Saltwraith', 'Drowned Psalm', 'Sable Comet', 'Crooked Star', 'Mourning Tern',
-]);
-export const ETHER_MERCHANT_NAMES = Object.freeze([
-  'Amber Wind', 'Lantern of the Veil', 'Starglass Maiden', 'Patient Tide', 'Isle Wanderer', 'Silver Swan', 'Quiet Fortune',
-  'Dawn Trader', 'Voidsilk Rose', 'Faithful Shoal', 'Morning Glass', 'Gentle Aether', 'Far Harbour', 'Willow of the Isles',
-]);
+/** The Etheric Sea's ship names - its corsairs' and its traders', ours: two words a name, a first and a last of each
+ *  trade's own (AUDIT CAPTAIN'S SEA D20 - sixteen names a trade moored two ships of one harbour under the same name;
+ *  these are 256 a trade, drawn as the sixteen were). */
+const PIRATE_FIRSTS = ['Gloam', 'Void', 'Starving', 'Pale', 'Ashen', 'Hollow', 'Black', 'Sable', 'Crooked', 'Mourning', 'Weeping', 'Amber', 'Drowned', 'Grim', 'Red', 'Last'];
+const PIRATE_LASTS = ['Reaver', 'Cutter', 'Tide', 'Lantern', 'Gull', 'Wind', 'Fang', 'Blade', 'Aurora', 'Wraith', 'Psalm', 'Comet', 'Star', 'Tern', 'Mercy', 'Shard'];
+const MERCHANT_FIRSTS = ['Amber', 'Starglass', 'Patient', 'Silver', 'Quiet', 'Dawn', 'Voidsilk', 'Faithful', 'Morning', 'Gentle', 'Far', 'Willow', 'Golden', 'Lucky', 'Bright', 'Steady'];
+const MERCHANT_LASTS = ['Wind', 'Maiden', 'Tide', 'Wanderer', 'Swan', 'Fortune', 'Trader', 'Rose', 'Shoal', 'Glass', 'Aether', 'Harbour', 'Lantern', 'Heron', 'Promise', 'Gull'];
+const twoWords = (firsts, lasts) => Object.freeze(firsts.flatMap((a) => lasts.map((b) => `${a} ${b}`)));
+export const ETHER_PIRATE_NAMES = twoWords(PIRATE_FIRSTS, PIRATE_LASTS);
+export const ETHER_MERCHANT_NAMES = twoWords(MERCHANT_FIRSTS, MERCHANT_LASTS);
 /** The names' own stream's salt (her captain's and every other draw stay the ones they were). */
 export const ETHER_NAME_SALT = 0xe7a3e;
 /**
@@ -142,7 +143,11 @@ export function rumourOf(legend, from, { endedDay = null, day = 0 } = {}) {
   }
   const h = hauntOf(legend);
   const dx = h.px - from.px, dy = h.py - from.py;
-  const leagues = Math.max(1, Math.round(Math.hypot(dx, dy) / LEAGUE_PX));
-  const where = compassPoint(dx, dy);
-  return `${legend.name} has been seen some ${leagues} leagues ${where} of here.${legend.trait === 'night' ? ' By night.' : ''}`;
+  const far = Math.hypot(dx, dy) / LEAGUE_PX;
+  const night = legend.trait === 'night' ? ' By night.' : '';
+  // AUDIT CAPTAIN'S SEA G12/D21: a haunt under half a league off is "hereabouts" (a freeport on her haunt was told "some
+  // 1 leagues south" of it), and one league is a league
+  if (far < 0.5) return `${legend.name} has been seen hereabouts.${night}`;
+  const leagues = Math.max(1, Math.round(far));
+  return `${legend.name} has been seen some ${leagues} ${leagues === 1 ? 'league' : 'leagues'} ${compassPoint(dx, dy)} of here.${night}`;
 }

@@ -439,7 +439,7 @@ body:has(.hud-foe.on.blade) .dfnaval-hud { --nc-top: ${NAVAL_CARD_TOP_BLADE}; }
 .dfnaval-tally { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #efe8d6; text-shadow: ${OUTLINED}; text-wrap: balance; }
 .dfnaval-tally .dfnaval-tally-hits { color: ${T.brassHi}; }
 .dfnaval-hud.short .dfnaval-tally-rest { display: none; }
-.dfnaval-tags { position: fixed; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; ${PIXEL_FONT_CSS} }
+.dfnaval-tags { position: fixed; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; ${PIXEL_FONT_CSS} }   /* AUDIT CAPTAIN'S SEA S17: under the glass (4), with the world's other labels */
 .dfnaval-tag { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; white-space: nowrap;
   transform-origin: 0 0; will-change: transform, opacity; }
 .dfnaval-tag-name { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #efe8d6; text-shadow: ${OUTLINED}; }
@@ -486,8 +486,9 @@ body:has(.hud-foe.on.blade) .dfnaval-hud { --nc-top: ${NAVAL_CARD_TOP_BLADE}; }
 
 /** A share as a whole percent, bounded. */
 const pct = (v) => Math.max(0, Math.min(100, Math.round((Number(v) || 0) * 100)));
-/** ETHER-SEA: the Etheric Sea's waters on the plate - "The Reaches, 23 leagues past the Veil". */
-export const etherWatersWords = (e) => `${String(e.bandName ?? '').replace(/^./, (c) => c.toUpperCase())}, ${Math.max(0, Math.round(Number(e.depth) || 0))} ${Math.round(Number(e.depth) || 0) === 1 ? 'league' : 'leagues'} past the Veil`;
+/** ETHER-SEA: the Etheric Sea's waters on the plate - "The Reaches, 23 leagues past the Veil"; in the Veil itself "The
+ *  Veil" (AUDIT CAPTAIN'S SEA D19: "The Shallows, 0 leagues past the Veil" while she sailed in it). */
+export const etherWatersWords = (e) => (e.veil ? 'The Veil' : `${String(e.bandName ?? '').replace(/^./, (c) => c.toUpperCase())}, ${Math.max(0, Math.round(Number(e.depth) || 0))} ${Math.round(Number(e.depth) || 0) === 1 ? 'league' : 'leagues'} past the Veil`);
 const SIDE_WORDS = Object.freeze({ bow: 'Bow', port: 'Port', starboard: 'Starboard', stern: 'Stern' });
 const GUN_WORDS = Object.freeze({ long: 'long guns', swivel: 'swivels', heavy: 'great guns', chain: 'chain shot', barrel: 'fire barrels' });
 
@@ -584,7 +585,7 @@ export function navalHudText(model, keys = {}, { touch = false } = {}) {
   const card = t ? {
     id: t.id ?? t.name, name: t.name, faction: t.faction, hostile: !!t.hostile, friendly: !!t.friendly && !t.hostile,
     sub: [t.classLine, t.captain ? `Captain ${t.captain}` : null, `${t.distance} m`].filter(Boolean).join(' - '),
-    hull: pct(t.hull), sail: t.sail == null ? null : pct(t.sail),
+    hull: t.hull == null ? null : pct(t.hull), sail: t.sail == null ? null : pct(t.sail),   // AUDIT CAPTAIN'S SEA S24: an unknown hull's none
     state: st.text, stateKind: st.kind,
   } : null;
   const ship = model.ship;
@@ -923,13 +924,14 @@ export function drawNavalHud(model, { covered = false, doc = globalThis.document
     const top = !aside && foot > 0 ? `${colTop}px` : '';
     if (shown.cardTop !== top) { shown.cardTop = top; parts.card.style.top = top; }
     setVar('--nc-card-scale', aside ? '' : String(Math.round(kc * 1000) / 1000));
-    const hit = t.card ? cardLoss(t.card, dt) : '';
-    if (!t.card) { for (const x of parts.cardChunks) stowChunk(x); loss = null; }
+    const bars = t.card?.hull != null;   // AUDIT CAPTAIN'S SEA S24: an unknown hull's card has no bars
+    const hit = bars ? cardLoss(t.card, dt) : '';
+    if (!bars) { for (const x of parts.cardChunks) stowChunk(x); loss = null; }
     cls('cardc', parts.card, t.card ? `dfnaval-card ${t.card.faction}${t.card.hostile ? ' hostile' : ''}${t.card.friendly ? ' friendly' : ''}${hit}` : 'dfnaval-card fight');
     put('cardn', parts.cardName, c.name);
     put('cards', parts.cardSub, c.sub);
-    show('cardhull', parts.cardHull, !!t.card);
-    if (t.card) width('cardh', parts.cardHullFill, t.card.hull);
+    show('cardhull', parts.cardHull, bars);
+    if (bars) width('cardh', parts.cardHullFill, t.card.hull);
     show('cardsail', parts.cardSail, t.card?.sail != null);
     if (t.card?.sail != null) width('cardsl', parts.cardSailFill, t.card.sail);
     put('cardst', parts.cardState, t.card ? t.card.state : c.state);

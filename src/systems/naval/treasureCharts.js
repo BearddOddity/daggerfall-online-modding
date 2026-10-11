@@ -35,6 +35,9 @@ export const CHART_PX = Object.freeze({ near: 6, far: 14 });
 export const CACHE_GOLD = Object.freeze({ base: 250, level: 60 });
 /** A cache's site's id: `chart:<seed>`. */
 export const CHART_SITE = 'chart:';
+/** AUDIT CAPTAIN'S SEA B6: a chart draws its port again on its own stream this many times while the port drawn has no
+ *  open water for a cache (one chart in five was a dud for good - a port inland, or its water past the drawn reach). */
+export const CHART_PORT_TRIES = 32;
 
 /** A chart of `seed` (its `message`). */
 export const mintChart = (seed) => mintCondition(setItemFields({ group: CHART_GROUP, templateIndex: CHART_TEMPLATE, material: 0, flags: 0, variant: 0, message: seed >>> 0, stackCount: 1 }));
@@ -55,18 +58,23 @@ export function chartAboard(cls, seed, { deep = false } = {}) {
 
 /**
  * A CHART READ: its cache's site - a port of the Bay off its seed, and open water CHART_PX off it - `{ id, seed, px, py,
- * near, words }`, or null where the chart's port has no open water about it (the chart's ink run).
+ * near, words }`: the port drawn again on the chart's own stream while the one drawn has no open water about it
+ * (CHART_PORT_TRIES - AUDIT CAPTAIN'S SEA B6), null only where none of them has (the chart's ink run). The same site on
+ * every client.
  * @param {number} seed @param {{ key: string, name: string, px: number, py: number }[]} ports @param {(px: number, py: number) => boolean} seaAt
  */
 export function chartSite(seed, ports, seaAt) {
   const list = (ports ?? []).filter(Boolean);
   if (!list.length) return null;
   const r = mulberry32(((seed >>> 0) ^ (CHART_SALT << 1)) >>> 0);
-  const port = list[Math.floor(r() * list.length) % list.length];
-  const site = siteFor(port, r, seaAt, CHART_PX);
-  if (!site) return null;
-  const words = `${leaguesWords(site.d)} ${compassWords(site.px - port.px, site.py - port.py)} of ${port.name}`;
-  return { id: `${CHART_SITE}${seed >>> 0}`, seed: seed >>> 0, px: site.px, py: site.py, near: port.name, words };
+  for (let i = 0; i < CHART_PORT_TRIES; i++) {
+    const port = list[Math.floor(r() * list.length) % list.length];
+    const site = siteFor(port, r, seaAt, CHART_PX);
+    if (!site) continue;
+    const words = `${leaguesWords(site.d)} ${compassWords(site.px - port.px, site.py - port.py)} of ${port.name}`;
+    return { id: `${CHART_SITE}${seed >>> 0}`, seed: seed >>> 0, px: site.px, py: site.py, near: port.name, words };
+  }
+  return null;
 }
 
 /** A cache's gold for a captain of `level`, off its seed (within a fifth either way). */

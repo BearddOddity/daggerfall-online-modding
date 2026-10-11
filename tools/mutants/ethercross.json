@@ -38,8 +38,8 @@
   {
     "name": "CROSS-from-unchecked",
     "file": "src/systems/naval/etherCrossing.js",
-    "old": "  return from && Number.isFinite(from.px) && Number.isFinite(from.py) ?",
-    "new": "  return from ?",
+    "old": "  return from && Number.isFinite(from.px) && Number.isFinite(from.py) && !inEtherLaw(from.px, from.py) ?",
+    "new": "  return from && !inEtherLaw(from.px, from.py) ?",
     "tests": [
       "test/ethercross.test.js"
     ]
@@ -65,8 +65,8 @@
   {
     "name": "CROSS-host-asked",
     "file": "src/scenes/world.js",
-    "old": "    if (!crossGate.offer(way)) return;\n    crossGate.asked(way);",
-    "new": "    if (!crossGate.offer(way)) return;",
+    "old": "    crossGate.asked(way);\n    const boat = csaRuntime.state.CurrentBoat;",
+    "new": "    const boat = csaRuntime.state.CurrentBoat;",
     "tests": [
       "test/ethercross.test.js"
     ]
@@ -74,8 +74,8 @@
   {
     "name": "CROSS-host-hostile",
     "file": "src/scenes/world.js",
-    "old": "    if (navalHostileNear()) { townTalk.say(CROSS_REFUSED.hostile, 4); return; }\n",
-    "new": "",
+    "old": "const crossRefusal = () => (navalHostileNear() ? 'hostile' : csaPassengersOn(",
+    "new": "const crossRefusal = () => (false ? 'hostile' : csaPassengersOn(",
     "tests": [
       "test/ethercross.test.js"
     ]
@@ -83,8 +83,8 @@
   {
     "name": "CROSS-host-passengers",
     "file": "src/scenes/world.js",
-    "old": "    if (csaPassengersOn(csaRuntime.state.CurrentBoat) > 0) { townTalk.say(CROSS_REFUSED.passengers, 4); return; }\n",
-    "new": "",
+    "old": "csaPassengersOn(csaRuntime?.state?.CurrentBoat) > 0 ? 'passengers' : null);",
+    "new": "false ? 'passengers' : null);",
     "tests": [
       "test/ethercross.test.js"
     ]
@@ -92,7 +92,7 @@
   {
     "name": "CROSS-host-window",
     "file": "src/scenes/world.js",
-    "old": "    if (gamePaused() || _loading || townTalk.overlayActive || modes?.transitioning || _mode() !== 'exterior') return;",
+    "old": "    if (gamePaused() || _loading || townTalk.overlayActive || modes?.transitioning || worldMoveBusy() || _partyArrivalPending || _mode() !== 'exterior') return;",
     "new": "    if (gamePaused() || _loading) return;",
     "tests": [
       "test/ethercross.test.js"
@@ -182,8 +182,8 @@
   {
     "name": "LEDGER-from-unfloored",
     "file": "src/systems/naval/captainLedger.js",
-    "old": "{ px: Math.floor(at.px), py: Math.floor(at.py) } : null; },",
-    "new": "{ px: at.px, py: at.py } : null; },",
+    "old": "  ? { px: Math.floor(at.px), py: Math.floor(at.py) } : null);",
+    "new": "  ? { px: at.px, py: at.py } : null);",
     "tests": [
       "test/ethercross.test.js"
     ]
@@ -290,8 +290,8 @@
   {
     "name": "HOST-strand-unmarked",
     "file": "src/scenes/etherHost.js",
-    "old": "    L.gathered(isle.key, day());\n",
-    "new": "",
+    "old": "if (!bare(isle.key)) L.gathered(isle.key, day());",
+    "new": "if (!bare(isle.key)) void 0;",
     "tests": [
       "test/ethercross.test.js"
     ]
@@ -353,7 +353,7 @@
   {
     "name": "HOST-chart-stale",
     "file": "src/scenes/etherHost.js",
-    "old": "can: isles.length > 0 && purse >= price,",
+    "old": "can: fresh > 0 && purse >= price,",
     "new": "can: purse >= price,",
     "tests": [
       "test/ethercross.test.js"
@@ -380,8 +380,8 @@
   {
     "name": "HOST-unheard",
     "file": "src/scenes/etherHost.js",
-    "old": "    for (const l of LEGENDS) L.hearLegend?.(l.id);",
-    "new": "    for (const l of []) L.hearLegend?.(l.id);",
+    "old": "      hear: () => { for (const l of LEGENDS) L.hearLegend?.(l.id); },",
+    "new": "      hear: () => { for (const l of []) L.hearLegend?.(l.id); },",
     "tests": [
       "test/ethercross.test.js"
     ]
@@ -407,8 +407,8 @@
   {
     "name": "CHART-shallows-bound",
     "file": "src/ui/etherChartWindow.js",
-    "old": "    if (b.from <= 0) continue;\n",
-    "new": "",
+    "old": "name: b.name, line: b.from > 0 });",
+    "new": "name: b.name, line: true });",
     "tests": [
       "test/ethercross.test.js"
     ]

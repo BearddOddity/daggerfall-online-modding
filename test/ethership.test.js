@@ -94,9 +94,21 @@ test('ETHER-LEGENDS the haunts: each legend\'s off her own hash - in her band\'s
     assert.ok(d >= band.from + margin - 0.2 && d <= (next ? next.from : band.from + ABYSS_HAUNT_LEAGUES) - margin + 0.2, `${l.name} haunts ${band.id} (${d.toFixed(1)})`);
     assert.equal(etherBandOf(d).id, l.band);
     assert.ok(Math.abs(h.py - row) <= HAUNT_SPREAD[l.band], `${l.name} near Veilhaven's row`);
-    assert.equal(legendAt(h.px, h.py)?.id, l.id === legendAt(h.px, h.py)?.id ? l.id : legendAt(h.px, h.py)?.id);
+    // PIN MOVED (AUDIT CAPTAIN'S SEA H7): `x === (l.id === x ? l.id : x)` held for any answer - a haunt's centre is hers
+    assert.equal(legendAt(h.px, h.py)?.id, l.id, 'her haunt\'s centre hers');
     assert.ok(legendAt(h.px + HAUNT_PX, h.py), 'the haunt\'s edge');
   }
+  // AUDIT CAPTAIN'S SEA H7: where two haunts reach a pixel, the nearer's (the Wake's and the Queen's overlap)
+  const wk = hauntOf(legendById('wake')), qn = hauntOf(legendById('queen'));
+  const cheb = (a, x, y) => Math.max(Math.abs(a.px - x), Math.abs(a.py - y));
+  let both = 0;
+  for (let y = Math.min(wk.py, qn.py); y <= Math.max(wk.py, qn.py); y++) {
+    const x = Math.round((wk.px + qn.px) / 2), dw = cheb(wk, x, y), dq = cheb(qn, x, y);
+    if (dw > HAUNT_PX || dq > HAUNT_PX || dw === dq) continue;
+    both++;
+    assert.equal(legendAt(x, y)?.id, dq < dw ? 'queen' : 'wake', `(${x}, ${y}): the nearer haunt's`);
+  }
+  assert.ok(both >= 2, `pixels both haunts reach (${both})`);
   const q = hauntOf(legendById('queen'));
   assert.equal(legendAt(q.px, q.py)?.id, 'queen');
   assert.equal(legendAt(VEIL_X + 5, row), null, 'none in the Veil');

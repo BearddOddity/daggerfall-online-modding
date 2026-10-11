@@ -132,7 +132,10 @@ test('AUDIT CC-A5 (major): a hand home again stands on her deck - the last of th
   assert.equal(crew.ships()[0].life.standing(), 6);
   const w = rd('src/scenes/world.js');
   assert.match(w, /away: naval\?\.awayOf\?\.\(boat\) \?\? NO_HANDS_AWAY/, 'my boats always say who is away');
-  assert.match(rd('src/scenes/navalHost.js'), /if \(!boat\?\.uid \|\| !companions\.party\.length \|\| sailing\(\)\) return NO_HANDS_AWAY;/, 'none away: an empty set - and none while I sail (Mac: back on deck)');
+  // PIN MOVED (AUDIT CAPTAIN'S SEA C1): the rule moved into the host's one ashore set (`ashoreNames`), which the deck, her
+  // posts' worth, her answering hand and her card all read - the deck still answers the empty set, never null
+  assert.match(rd('src/scenes/navalHost.js'), /const ashoreNames = \(boat\) => \(boat\?\.uid && companions\.party\.length && !sailing\(\) \? companions\.awayOf\(boat\.uid\) : NO_HANDS_AWAY\);/, 'none away: an empty set - and none while I sail (Mac: back on deck)');
+  assert.match(rd('src/scenes/navalHost.js'), /const names = ashoreNames\(boat\);[^\n]*\n\s*if \(!names\.size\) return NO_HANDS_AWAY;/, 'the deck reads the one set');
 });
 
 test('AUDIT CC-A6 (major): the bars come down under a dungeon window - the overlay\'s early return draws them covered too', () => {

@@ -36,7 +36,7 @@ import { SKY_CLEAR } from '../render/renderer.js'; import { centreFromFeet } fro
 import { Arch3dFile } from '../formats/arch3dFile.js';
 import { requestLook, releaseLook, makeLookGate, bindCursorToggle, setCursorActive, cursorActive, holdCursor } from '../player/pointerLock.js';   // U45: bindCursorToggle is PlayerMouseLook.cursorActive; releaseLook: the chat's open (AUDIT CHAT C2); HERB-CURSOR: an act's free cursor
 import { attachTouch } from '../ui/touch.js';
-import { attachGamepad } from '../ui/gamepadInput.js';   // GP1: the pad speaks the same hooks
+import { attachGamepad, GLASS_PAD_ZOOM } from '../ui/gamepadInput.js';   // GP1: the pad speaks the same hooks - AUDIT CAPTAIN'S SEA S3: the glass's magnifying click
 import { BlocksFile } from '../formats/blocksFile.js';
 import { bindWorldDataBlocks } from '../formats/worldDataReplacement.js';   // RR3b
 import { isClimateFreeModel, NO_CLIMATE_REMAP, customModelFor, hasCustomModel, customModelNeeds, classicModelIdOf } from '../world/customModels.js';   // ARENA1: RuntimeMaterials' ApplyClimate 0 - the colosseum wears its own pictures; AUDIT MERCHANT-YARDS G1: the yards measure the registered models
@@ -279,11 +279,11 @@ import { treeKind, isTreeRecord, FOREST_STAMP } from './treeHost.js';   // PROF4
 import { createLowPolyTrees } from '../systems/lowPolyTreesAssets.js';   // LPT1: Low Poly Trees - the host's one door
 import { LPT_SCALE_MAX, lptVariety, buildTreeSet } from '../world/lowPolyTrees.js'; import { naturePicture } from '../world/naturePicture.js';   // LPT1: each tree's own draw, and a near pixel's set; AUDIT 05b A12: which picture a nature flat stands as, every host's one choice
 import { realForestsOn, FOREST_HIDDEN_LOCATION_TYPES, roadVergesOn, climateBlendOn } from './shared.js';   // FOREST1: the Real forests switch, and the places the woods hide; VERGE1: the clear roadsides' switch; ECOTONE1: the blended climates'
-import { landformsOn, tamrielLandOn, tamrielTraceOn, etherSeaOn } from './shared.js';   // LANDFORM1-3: the Landforms switch; TAMRIEL2: the land beyond the Bay's; TAMRIEL3: the trace's door; ETHER-SEA: the Etheric Sea's
+import { landformsOn, tamrielLandOn, tamrielTraceOn, etherSeaOn, etherCrossOutOn } from './shared.js';   // LANDFORM1-3: the Landforms switch; TAMRIEL2: the land beyond the Bay's; TAMRIEL3: the trace's door; ETHER-SEA: the Etheric Sea's
 import { preloadTamrielTrace } from '../ui/tamrielTrace.js';   // TAMRIEL3: Daggerfall's own map of Tamriel, off the player's two files
 import { fitBayToPicture } from '../world/tamrielLand.js';   // TAMRIEL3: where the Bay stands on it
 import { groundWoods, groundClimateIndex } from '../world/tamrielGround.js';   // TAMRIEL2: the continent's ground round the Bay, for the kernels and the far ring
-import { etherWoods, etherClimateIndex, etherPoliticIndex, etherFrame, inEther, inEtherLaw, isleAt, veilhaven, ETHER_SEA_NAME, CROSS_X, CROSS_LAND_PX, etherLight, ETHER_KEY_TINT } from '../world/ethericSea.js';   // ETHER-SEA: the Etheric Sea's ground and its box
+import { etherWoods, etherClimateIndex, etherPoliticIndex, etherFrame, inEther, inEtherLaw, isleAt, islesNear, veilhaven, ETHER_HARBOUR_REACH, ETHER_SEA_NAME, CROSS_X, CROSS_LAND_PX, etherLight, ETHER_KEY_TINT } from '../world/ethericSea.js';   // ETHER-SEA: the Etheric Sea's ground and its box
 import { etherTemplates, etherTemplateOf, synthesizeEtherLocation, ETHER_REGION, ETHER_REGION_NAME } from '../world/etherPlaces.js';   // ETHER-PLACES: the isles' towns and ruins
 import { tamrielFrameInBay, inBay as onTheBay } from '../world/tamrielFrame.js';   // TAMRIEL2: the frame the world streams over, and the Bay's own ground
 import { createLandforms, landformLiftField, landformSites, landformClimates, cliffFadeAt } from '../world/landforms.js';   // LANDFORM1-3: the shaped ground, and what it lifts a point by; AUDIT LANDFORMS II I1: the lift's fade beside the sea
@@ -598,7 +598,7 @@ import { createNavalHost, hullBoxOf as navalHullBoxOf, NAVAL_SAVE_VENDOR, NAVAL_
 import { createCaptainLedger, CAPTAIN_SAVE_VENDOR, perksOf, PERKS_REFUSED_AT, logLines } from '../systems/naval/captainLedger.js';
 import { createHarbourOffice } from './harbourOffice.js';
 import { createEtherHost } from './etherHost.js';   // ETHER-SEA: the Etheric Sea's waters, charts, strands and legends
-import { createCrossingGate, crossingWayAt, crossingTarget, crossingRows, crossingWords, CROSS_DAYS, CROSS_CHECK_S, CROSS_REFUSED } from '../systems/naval/etherCrossing.js';   // ETHER-CROSSING: the voyage across
+import { createCrossingGate, crossingWayAt, crossingTarget, crossingRows, crossingWords, CROSS_DAYS, CROSS_CHECK_S, CROSS_REFUSED, CROSS_STALE, CROSS_FAILED } from '../systems/naval/etherCrossing.js';   // ETHER-CROSSING: the voyage across
 import { mulberry32 } from '../combat/bloodArt.js';   // CAPT-BOARD: a site's point off its seed
 import { CHART_TEMPLATE } from '../systems/naval/treasureCharts.js';   // CAPT-CHARTS: a treasure chart read   // CAPT-BOARD: the harbourmaster's board, the contracts, the letters
 import { mintDeed } from '../systems/comeSailAwayItems.js';   // CAPT-BOARD: the Admiralty's carrack's deed, the shelf's own mint   // CAPT-LOG: the captain's ledger - the log, the crowns' regard, the ranks, the letter of marque
@@ -607,7 +607,8 @@ import { watersOf } from '../systems/naval/navalDirector.js';   // CAPT-WATERS: 
 import { draftOf as navalDraftOf } from '../systems/naval/shipLife.js';   // AUDIT GN2-PF6: a hull's draft, hull 2's off her keel as she stands
 import { createNavalFlames } from './navalFlames.js';   // NAV-B: a burning ship's deck fires
 import { NavalRenderer } from '../render/navalRender.js';   // NAV-B: the smoke, the spray, the balls in flight and the aim
-import { drawSpyglass, easeLens, glassFov, glassLookScale } from '../ui/spyglassView.js';   // SPYGLASS: the glass's window, its lens
+import { drawSpyglass, easeLens, glassFov, glassLookScale, spyglassTaps, nextGlassZoom, GLASS_FIELD } from '../ui/spyglassView.js';   // SPYGLASS: the glass's window, its lens - AUDIT CAPTAIN'S SEA S3/S16: a finger's two presses, the presses' round of magnifications, its field
+import { plusDpadMap, DPAD_CODES } from '../ui/plusPad.js';   // AUDIT CAPTAIN'S SEA S3: a d-pad press the player gave the glass
 import { GLASS_ZOOM, GLASS_ZOOM_MIN, GLASS_ZOOM_MAX } from '../systems/naval/shipKnowledge.js';   // SPYGLASS: its magnification
 import { drawNavalHud, navalTouchBrace, navalTouchGlass, navalPadPrompts, drawNavalTags, drawCrewBars, CREW_BAR_RANGE, crewBarPoint, drawCrewLines, CREW_SAY_RANGE } from '../ui/navalHud.js';   // AUDIT NAV1 (#14): and the ships' tags - SHIPMATES: and the crew's bars (CEIL-GHOST: where they stand) - LIVING CREW: and their lines
 import { createNavalCrew, CREW_RANGE, CREW_KEEP } from './navalCrew.js';   // LIVING CREW: the crews on the decks near the eye
@@ -621,7 +622,7 @@ import { hullBuild } from '../systems/naval/navalShips.js';   // LIVING CREW: a 
 import { sparedByPlayer, isShipmate } from '../combat/friendlyFire.js';   // SHIPMATES: the player's own crew, spared his blows and wearing their bars
 import { padFamily } from '../ui/padGlyphs.js';   // AUDIT NAV1 (the presentation): the pad in hand's family - the readout names its buttons
 import { hdGlyphName } from '../ui/padGlyphsHD.js';   // NAV-F: the helm's readout; AUDIT NAV1: its Brace under a finger
-import { createNavalPlunderOverlay, closeNavalPlunder, createNavalYardOverlay, closeNavalYard, createEtherChartOverlay } from '../ui/navalPlunderDoor.js';   // NAV-F: a taken ship's window, behind its door; AUDIT NAV1: the shipwright's
+import { createNavalPlunderOverlay, closeNavalPlunder, createNavalYardOverlay, closeNavalYard, createEtherChartOverlay, closeEtherChart } from '../ui/navalPlunderDoor.js';   // NAV-F: a taken ship's window, behind its door; AUDIT NAV1: the shipwright's
 import { installNavalSounds } from '../systems/naval/navalSounds.js';   // NAV-E: the guns' own sounds
 import { navalRecordKey } from '../systems/naval/navalWire.js';   // NAV-G: my sea's word, said when it changed
 import { CROWNS as NAVAL_CROWNS, crownOf as navalCrownOf } from '../systems/naval/navalShips.js';   // NAV-C: the three crowns, whose capitals name the waters; AUDIT NAV1 (B2): a raid at sea parsed in theirs
@@ -1316,6 +1317,10 @@ export async function bootWorld(canvas, renderer, params, status) {
   // worker composes its copy the same way), its climate read beside it, and its box a frame the world streams over
   // (the crossing's landfall and a save made there build from it).
   const etherSea = etherSeaOn();
+  // AUDIT CAPTAIN'S SEA G2: THE SWITCH SPLIT - the sea stands in every game (its ground, its places, its ships and the way
+  // home: a save made past the Veil loads under any skin - the classic skin threw on it), and the crossing OUT is the
+  // enhanced skin's and online's (shared.js etherCrossOutOn); `?ether=off` stands neither
+  const etherOut = etherCrossOutOn();
   let _etherCrossing = false;   // ETHER-CROSSING: a voyage under way (etherCross, far below) - declared with the switch, before any frame reads it (BOOT-TDZ2's law)
   if (etherSea) {
     woods = etherWoods(woods);
@@ -2388,7 +2393,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (!isle || isle.px !== px || isle.py !== py) return null;
     const template = etherTemplateOf(_etherTemplates, isle);
     if (!template) return null;
-    const loc = synthesizeEtherLocation(template, isle, { regionIndex: ETHER_REGION, regionName: ETHER_REGION_NAME, politic: 128 + ETHER_REGION, climate: getWorldClimateSettings(isle.climate) });
+    const loc = synthesizeEtherLocation(template, isle, { regionIndex: ETHER_REGION, regionName: REGION_NAMES[ETHER_REGION] ?? ETHER_REGION_NAME, politic: 128 + ETHER_REGION, climate: getWorldClimateSettings(isle.climate) });   // AUDIT CAPTAIN'S SEA P8: its region's own name - the quests resolve and gate a site by it
     _locIndexGen += 1;
     locationIndex.set(key, loc);
     return loc;
@@ -4706,7 +4711,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     const eye = [cam.pos[0] + _dwEyeOffset[0], cam.pos[1] + _dwEyeOffset[1], cam.pos[2] + _dwEyeOffset[2]];
     const V = lookAt(eye, [eye[0] + forward[0], eye[1] + forward[1], eye[2] + forward[2]], UP_Y);
     const worldAspect = largeHudWorldAspect(canvas.clientWidth, canvas.clientHeight);   // ROAD-E E5: the docked bar's reduced aspect, as the frame's
-    const P = mirrorProjectionX(perspective(fieldOfView() + climbFeel.fovRad(), worldAspect, 0.2, 6000));   // the frame's own lens (HANDEDNESS, mat4's law; CLIMB4: its kick)
+    const P = mirrorProjectionX(perspective(fieldOfView() + climbFeel.fovRad(), worldAspect, 0.2, 6000));   // the frame's own wide lens - the glass's narrowing left out (AUDIT CAPTAIN'S SEA H22: nothing the spawners place pops into the view the glass comes down from) (HANDEDNESS, mat4's law; CLIMB4: its kick)
     const viewport = (q) => {
       const ex = V[0] * q[0] + V[4] * q[1] + V[8] * q[2] + V[12], ey = V[1] * q[0] + V[5] * q[1] + V[9] * q[2] + V[13];
       const ez = V[2] * q[0] + V[6] * q[1] + V[10] * q[2] + V[14], ew = V[3] * q[0] + V[7] * q[1] + V[11] * q[2] + V[15];
@@ -5547,7 +5552,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     const gateClear = _gateClearNow();
     const gateLedger = { refused: false, reach: [] };   // what the clearing cost this pixel, and what it stood (world/gateClearance.js)
     const gateSite = gateSiteTest(gateClear, px, py, gateLedger);
-    if (wod && await wodOpened) {
+    if (wod && onTheBay(px, py) && await wodOpened) {   // AUDIT CAPTAIN'S SEA G8: the mod's sites are the Bay's - its pick never run off it (off the map its pixel walk is a whole-list scan, 1.3 ms a pixel, thrown away)
       // AUDIT BRANCH (WoD) M2: the mod's decision can cost this pixel its site, never the pixel - a throw out of the
       // loader failed the whole build, terrain and all, on every pixel after it
       try {
@@ -7638,7 +7643,9 @@ export async function bootWorld(canvas, renderer, params, status) {
     ridingVolumeScale: () => (_travelSoundsOff ? 0 : 1),   // AUDIT-TO1 J1: TransportManager.RidingVolumeScale = 0 for the journey
     // RR1: IsShipAvailiable's reads - the location under the player (loaded, a port) and whether they stand on the ship
     // AUDIT-RR2 G22: `travelOptionsEnabled` asks TO's "hasPort" (RoleplayRealism.cs:635-644; TravelOptionsMapWindow.cs:870-873 - the hand-written port list), else the flag - SEAT2b part two: a members' Harbour at a seat among them (travelPorts.js hasPortFor)
-    shipLocation: () => { const loc = _questLoc(); return loc ? { locationLoaded: true, portTown: (modSetting('travel-options', 'Enabled') === true ? hasPortFor(loc.mapTableData?.mapId) : (loc.exterior?.exteriorData?.portTownAndUnknown ?? 0) !== 0), onShip: isOnShip(playerEntity, playerEntity.boardShipPosition ?? null, playerTravelPixel()) } : { locationLoaded: false, onShip: false }; },   // DISC13-D: `locationLoaded`, the key isShipAvailable reads - `loaded` left shipPorts answering every port as the wilderness
+    // AUDIT CAPTAIN'S SEA P10: past the Veil an isle's place is a port by its own kind - TO's list knows only the Bay's, and a
+    // ruin kept its template's port byte
+    shipLocation: () => { const loc = _questLoc(); return loc ? { locationLoaded: true, portTown: (loc.ether ? loc.etherKind === 'port' : modSetting('travel-options', 'Enabled') === true ? hasPortFor(loc.mapTableData?.mapId) : (loc.exterior?.exteriorData?.portTownAndUnknown ?? 0) !== 0), onShip: isOnShip(playerEntity, playerEntity.boardShipPosition ?? null, playerTravelPixel()) } : { locationLoaded: false, onShip: false }; },   // DISC13-D: `locationLoaded`, the key isShipAvailable reads - `loaded` left shipPorts answering every port as the wilderness   // AUDIT CAPTAIN'S SEA P10: an isle's place a port by its kind, whatever Travel Options says
     // RR2: EnhancedRiding's reads - the look, the ground, the module's settings
     lookPitch: () => cam.pitch, lookYaw: () => cam.yaw, groundHeightAt: (x, z) => heightAt(x, z),
     enhancedRiding: () => (rrRidingOn() ? { terrainFollowing: rrRidingSetting('followTerrainEnabled') === true, softenFollow: rrRidingSetting('followTerrainSoftenFactor') ?? 8 } : null),
@@ -9249,6 +9256,13 @@ export async function bootWorld(canvas, renderer, params, status) {
   const COMPASS_WAYS = ['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east'];
   const csaNearestPort = () => {
     const here = playerTravelPixel();
+    // AUDIT CAPTAIN'S SEA P5: past the Veil the nearest of its port isles - the Bay's were named 1,500 leagues off, and a
+    // ship sent away "sailed for Gavaudon" across the Veil
+    if (etherSea && inEther(here.x, here.y)) {
+      const isle = etherRisePort(here.x, here.y);
+      const turn = Math.atan2(here.y - isle.py, isle.px - here.x) / (Math.PI / 4);
+      return { name: isle.name, way: COMPASS_WAYS[((Math.round(turn) % 8) + 8) % 8], ether: true };
+    }
     let best = null, bestD = Infinity;
     for (const id of PORT_LOCATION_IDS) {
       const summary = mapDict?.get(id & 0x000fffff);
@@ -9860,7 +9874,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       let town = null;
       const isle = etherSea && inEther(p.x, p.y) ? etherPortNear(p.x, p.y) : null;   // ETHER-PORTS: an isle's town, its harbour sounded as any port's
       const loc = isle ? etherPlaceAt(isle.px, isle.py) : null;
-      if (loc?.exterior?.exteriorData) town = { id: `ether:${isle.key}`, loc, x: isle.px, y: isle.py, name: isle.name };
+      if (loc?.exterior?.exteriorData) town = { id: `ether:${isle.key}`, loc, x: isle.px, y: isle.py, name: isle.name, reach: ETHER_HARBOUR_REACH };   // AUDIT CAPTAIN'S SEA H1/P2: its isle's shore, ETHER_PORT_SHORE_M about the town
       for (let dy = -1; dy <= 1 && !town && !isle; dy++) for (let dx = -1; dx <= 1 && !town; dx++) {
         if (!csaIsPortTown(p.x + dx, p.y + dy)) continue;
         const summary = travelLocationSummaryAt(mapDict, p.x + dx, p.y + dy);
@@ -9877,13 +9891,14 @@ export async function bootWorld(canvas, renderer, params, status) {
     // AUDIT HOLDINGS O1: whether every pixel the harbour's scan reads (the rect grown HARBOUR_REACH) is built - a pixel
     // not built reads as land, so a harbour sounded early found its shore at the streamed world's edge and two players
     // arriving by different roads found different berths and stood different quays; asked only before it is sounded
+    const reach = t.reach ?? HARBOUR_REACH;   // AUDIT CAPTAIN'S SEA H1: an isle port's sounding reaches its shore
     const ready = () => {
-      const x0 = rect.minX - HARBOUR_REACH, z0 = rect.minZ - HARBOUR_REACH, sx = rect.maxX - rect.minX + 2 * HARBOUR_REACH, sz = rect.maxZ - rect.minZ + 2 * HARBOUR_REACH;
+      const x0 = rect.minX - reach, z0 = rect.minZ - reach, sx = rect.maxX - rect.minX + 2 * reach, sz = rect.maxZ - rect.minZ + 2 * reach;
       const nx = Math.ceil(sx / 400), nz = Math.ceil(sz / 400);   // under 400 m apart, both edges read: no pixel (819.2 m) between two
       for (let i = 0; i <= nx; i++) for (let k = 0; k <= nz; k++) if (!csaPixelAt(x0 + (sx * i) / nx, z0 + (sz * k) / nz)) return false;
       return true;
     };
-    return { key: `port:${t.id}`, name: t.name, rect, ready };   // SHIP-TAGS: her name, the words a ship bound there is read by
+    return { key: `port:${t.id}`, name: t.name, rect, ready, reach };   // SHIP-TAGS: her name, the words a ship bound there is read by
   };
   // HARBOUR-BOOK (systems/naval/harbourBook.js; bible/03-World/Holdings.md section 7): THE HARBOURS NEAR THE PLAYER -
   // this host's, sounded off the port near the player every exterior frame whatever runs on the water, moved with the
@@ -10088,7 +10103,9 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** ETHER-CHART: the chart of the Etheric Sea over the world (navalPlunderDoor.js's chart door) - the ship's pixel and
    *  heading, the isles charted, the legends heard of (etherHost.js chart). Answers whether it opened. */
   function openEtherChart() {
-    const word = () => { const p = playerTravelPixel(); return etherHost.chart(p.x, p.y, cam.yaw); };
+    // AUDIT CAPTAIN'S SEA X16: the ship's heading at her helm (the camera's yaw is where the captain looks - astern, as often)
+    const heading = () => { const boat = csaRuntime?.isSailing?.() ? csaRuntime.state.CurrentBoat : null; if (!boat) return cam.yaw; const f = boatForward(boat); return Math.atan2(f[0], f[2]); };
+    const word = () => { const p = playerTravelPixel(); return etherHost.chart(p.x, p.y, heading()); };
     const win = createEtherChartOverlay({ word });
     if (!win) return false;
     townTalk.showOverlay(win);
@@ -10096,12 +10113,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   }
   /** AUDIT NAV1 (the helm): the shipwright's window over the world (navalPlunderDoor.js's yard door). */
   function navalOpenYard(model) {
-    model.office = () => {   // CAPT-BOARD: the harbourmaster's tab - ETHER-SEA: past the Veil a freeport's (etherHost.js office)
+    // AUDIT CAPTAIN'S SEA B3: the harbourmaster's tab and the exchange's for a ship lying to the quay at her helm alone -
+    // the Fleet page's yard (a ship laid up anywhere) is the shipwright's
+    if (model.atQuay) model.office = () => {   // CAPT-BOARD: the harbourmaster's tab - ETHER-SEA: past the Veil a freeport's (etherHost.js office)
       const port = navalPortHere();
       if (port?.ether) { const o = etherHost.office(port); return o ? { ...o, buyChart: () => { const r = etherHost.buyChart(port); captainSay(); return r; } } : null; }
       return harbourOffice.model({ uid: model.uid ?? null });
     };
-    model.exchange = () => harbourOffice.exchange({ uid: model.uid ?? null, cargo: model.cargo?.() ?? null });   // CAPT-TRADE: the exchange's tab
+    if (model.atQuay) model.exchange = () => harbourOffice.exchange({ uid: model.uid ?? null, cargo: model.cargo?.() ?? null, room: () => model.room?.() ?? null });   // CAPT-TRADE: the exchange's tab - AUDIT CAPTAIN'S SEA B11: and her room
     const win = createNavalYardOverlay({ model });
     if (!win) return false;
     townTalk.showOverlay(win);
@@ -10118,9 +10137,24 @@ export async function bootWorld(canvas, renderer, params, status) {
   // CAPT-LOG (bible/03-World/Captains-Sea.md): THE CAPTAIN'S LEDGER - the log, the three crowns' regard and the ranks it
   // earns, the letter of marque - its own save slot, carried whether the sea fight runs or not (AUDIT REALM2 C3's law); a
   // rank crossed is said on the screen's middle as it is crossed. The letter is held on the captain's own clock.
+  /** AUDIT CAPTAIN'S SEA L9: A RANK WON OR LOST IS SAID ONCE, AND SEEN - kept back till the centred label is at rest (the
+   *  label replaces itself: "The Terror of Ykalon is yours!" and a legend's end, said in the same breath, wiped the
+   *  promotion before it showed), the crowns that named the same rank the same way in one line. */
+  const _rankLines = [];
   const captainSay = () => {
-    for (const c of captainLedger.takeRankChanges()) setMidScreenText(c.to.rank > c.from.rank ? `The crown of ${c.crown} names you ${c.to.title}!` : `The crown of ${c.crown} no longer counts you ${c.from.title}.`, 4);
+    const groups = new Map();
+    for (const c of captainLedger.takeRankChanges()) {
+      const up = c.to.rank > c.from.rank, title = up ? c.to.title : c.from.title, key = `${up}:${title}`;
+      if (!groups.has(key)) groups.set(key, { up, title, crowns: [] });
+      groups.get(key).crowns.push(c.crown);
+    }
+    for (const g of groups.values()) {
+      const who = g.crowns.length === 1 ? `The crown of ${g.crowns[0]}` : `The crowns of ${g.crowns.slice(0, -1).join(', ')} and ${g.crowns.at(-1)}`;
+      _rankLines.push(g.up ? `${who} ${g.crowns.length === 1 ? 'names' : 'name'} you ${g.title}!` : `${who} no longer ${g.crowns.length === 1 ? 'counts' : 'count'} you ${g.title}.`);
+    }
   };
+  /** The rank lines kept back, one when the label is at rest. */
+  const captainSayFlush = () => { if (_rankLines.length && _wildMidText.timer === -1) setMidScreenText(_rankLines.shift(), 4); };
   // CAPT-BOARD (bible/03-World/Captains-Sea.md): THE HARBOUR OFFICE - the board of the port the captain lies at, the
   // contracts held and what the sea did to them, the letters a rank buys; the boards on the world's day, the terms on
   // the captain's own clock
@@ -10137,10 +10171,11 @@ export async function bootWorld(canvas, renderer, params, status) {
     notorietyOf: (crown) => naval?.notorietyOf?.(crown) ?? 0,
     port: () => navalPortHere(),
     ports: () => navalPortList(),
-    seaAt: (x, y) => seaPixel(x, y),
+    seaAt: (x, y) => (tamrielLand || (x >= 0 && y >= 0 && x < MAP_WIDTH && y < MAP_HEIGHT)) && seaPixel(x, y),   // AUDIT CAPTAIN'S SEA B10: past the map's edge only where the land beyond the Bay stands (else nothing streams there - a site out of every reach)
     waters: () => { const p = playerTravelPixel(); return etherSea && inEther(p.x, p.y) ? null : navalCrownOf(p.x, p.y, navalCapitals(), _questRegionIndex()).name; },   // ETHER-SEA: no crown's waters past the Veil
     carrack: (price, port) => { const deed = mintDeed(4, 0, csaNewItemUid(), price); return !!titleDeed(deed, { port: { name: port.name } }); },
     stow: (hold, item) => addItem(hold, item),   // CAPT-TRADE: goods into her hold
+    etherGoods: () => etherOut,   // AUDIT CAPTAIN'S SEA B16: the other sea's goods listed where the captain may sail for them
   });
   // ETHER-SEA (bible/03-World/Etheric-Sea.md): THE ETHERIC SEA'S HOST - its waters (the naval host's `where`), the isles
   // charted as they are sighted, the wild isles' strands (sites of the naval host's), its legends' coming and their ends,
@@ -10176,7 +10211,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     event: (ev) => { const r = harbourOffice.event(ev); captainSay(); return r; },
     sites: () => { const p = playerTravelPixel(); return etherSea && inEther(p.x, p.y) ? [...harbourOffice.sites(), ...etherHost.sites(p.x, p.y)] : harbourOffice.sites(); },   // ETHER-SEA: and a wild isle's strand within reach
     yardDiscount: () => harbourOffice.perksHere().yard,
-    seasonedHires: () => harbourOffice.perksHere().seasoned,
+    seasonedHires: () => { const port = navalPortHere(); return !!port && harbourOffice.perksAt(port.crown).seasoned; },   // AUDIT CAPTAIN'S SEA C4: hands hired in a Commodore's harbour - never men pressed at sea
     reliefSure: (crown) => harbourOffice.perksAt(crown).relief,
     chartFor: (cls, seed, deep) => harbourOffice.chartFor(cls, seed, deep),   // CAPT-CHARTS: a chart among a pirate's papers
     raiseCache: (id) => harbourOffice.raiseCache(id),   // CAPT-CHARTS: a cache raised and paid
@@ -10191,6 +10226,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     } : null,
     bountyOf: (e) => (e?.bounty ? harbourOffice.bountyWords(e.bounty) : null),   // CAPT-BOARD: a bounty's purse on the glass's card
     sitePoint: (px, py, seed) => navalSitePoint(px, py, seed),   // CAPT-BOARD: a held contract's waters in the scene
+    sightBlocked: (id, point) => glassSight.blocked(player.collider, [cam.pos[0] + _dwEyeOffset[0], cam.pos[1] + _dwEyeOffset[1], cam.pos[2] + _dwEyeOffset[2]], id, point),   // AUDIT CAPTAIN'S SEA S6: the glass's own sight test, from the eye the look is
     worth: (items) => navalLootWorth(items),   // CAPT-LOG: plunder's worth to the log
     packedItems: packedItemsCodec,   // COMPANION-KIT: the companions' packs saved as the cargo's are - AUDIT WK-D11: the one codec
     pool: csa,
@@ -10208,7 +10244,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       dir: [Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch)],
     }),
     level: () => playerEntity.level ?? 1,
-    where: () => { const p = playerTravelPixel(); const nearPort = navalNearPort(); const ether = etherWatersHere(); return { px: p.x, py: p.y, region: _questRegionIndex(), day: Math.floor(worldMinutes() / 1440), nearPort, port: nearPort ? navalPortHere() : null, waters: ether ? 'ether' : watersOf({ nearPort, portPx: navalPortPx() }), ether, capitals: navalCapitals(), cityLights: isCityLightsOn(minuteNow()), night: isNight(minuteNow()) }; },   // ETHER-SEA: the Etheric Sea's band and depth, its legend's haunt   // CAPT-BOARD: the port lain at   // AUDIT WK-N5: the lanterns' hours and the dark's, apart - CAPT-WATERS: the deep waters
+    where: () => { const p = playerTravelPixel(); const nearPort = navalNearPort(); const ether = etherWatersHere(); return { px: p.x, py: p.y, region: _questRegionIndex(), day: Math.floor(worldMinutes() / 1440), nearPort, port: nearPort ? navalPortHere() : null, waters: ether ? 'ether' : watersOf({ nearPort, portPx: navalPortPx() }), ether, capitals: navalCapitals(), cityLights: isCityLightsOn(minuteNow()), night: isNight(minuteNow()) }; },   // ETHER-SEA: the Etheric Sea's band and depth, and whether she is in the Veil   // CAPT-BOARD: the port lain at   // AUDIT WK-N5: the lanterns' hours and the dark's, apart - CAPT-WATERS: the deep waters
     say: (text, seconds) => townTalk.say(text, seconds),
     mid: (text, seconds) => setMidScreenText(text, seconds),
     shake: (amount) => betterAmbience.weaponKick(amount),   // FIELD-GUN6's door: a shake that is not a wound, under the player's own maxShake
@@ -10303,7 +10339,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   });
   naval.setEnabled(navalOn());   // the switch's state from the first frame (navalFrame follows it after)
   registerModSaveData(NAVAL_SAVE_VENDOR, naval);   // the player's boats' hurts, the crowns' notoriety, a raid a load carries
-  registerModSaveData(CAPTAIN_SAVE_VENDOR, captainLedger);   // CAPT-LOG: the captain's log, the crowns' regard, the letter of marque
+  registerModSaveData(CAPTAIN_SAVE_VENDOR, { ...captainLedger, restoreSaveData: (r) => { _rankLines.length = 0; captainLedger.restoreSaveData(r); } });   // CAPT-LOG: the captain's log, the crowns' regard, the letter of marque - AUDIT CAPTAIN'S SEA L9: a load says no rank line of the game it left
   // HOLDINGS (bible/03-World/Holdings.md): THE FLEET'S LEDGER - every ship's title, name and refits - its own save slot,
   // carried whether Come Sail Away runs or not (AUDIT REALM2 C3's law: an off boot never loses a record); and the
   // Holdings tab's two pages over this host's horse, wagon and boats
@@ -10324,12 +10360,15 @@ export async function bootWorld(canvas, renderer, params, status) {
     nearestPort: () => csaNearestPort(),
     terrainAt: (p) => csaTerrainOf(csaPixelAt(p[0], p[2])),
     passengersAboard: (boat) => csaPassengersOn(boat),
+    // AUDIT CAPTAIN'S SEA P5: whether she lies on the other side of the Veil from the player - standing, by her pixel;
+    // laid up, by her port's side - so no Fleet order carries her across it (the crossing is a voyage of its own)
+    veilApart: (rec, boat) => { const p = playerTravelPixel(); const hers = boat?.MapPixel ? inEther(boat.MapPixel.X, boat.MapPixel.Y) : !!rec?.port?.ether; return etherSea && inEther(p.x, p.y) !== hers; },
     changed: () => surfacePlayer(),
   }) : null;
   setHoldingsProvider({
     ...stableProviderFor({ runtime: hccRuntime, on: hccOn, hasHorse: () => hasTransport(TRANSPORT_HORSE), hasCart: () => hasTransport(TRANSPORT_SMALL_CART), wagonKind: () => activeWagonKind(playerEntity.items ?? []), items: () => playerEntity.items ?? [], onPainted: () => { _hccDirty = true; } }),   // WAGONS1: the Stable names the wagon driven - WAGONS2: and paints it
     fleet: fleetHost ? { model: () => fleetHost.model(), offer: (uid) => fleetHost.offer(uid), act: (uid, verb, arg) => fleetHost.act(uid, verb, arg) } : null,
-    captain: { model: () => captainModel() },   // CAPT-LOG: the Captain page - the crowns' regard, the letter, the contracts, the log
+    captain: fleetHost ? { model: () => captainModel() } : null,   // CAPT-LOG: the Captain page - the crowns' regard, the letter, the contracts, the log - AUDIT CAPTAIN'S SEA L15: beside the Fleet's, wherever there are ships to captain
   });
   /** CAPT-LOG: the Captain page's model - each crown's standing, rank and favours (none while it hunts me), the letter of
    *  marque held and its days, the contracts under way (CAPT-BOARD), and the log in words. */
@@ -10346,8 +10385,8 @@ export async function bootWorld(canvas, renderer, params, status) {
     };
   }
   /** The sea emptied: a transition, a teleport, the arc switched off - its window with it. */
-  const navalClear = () => { naval?.clear(); navalFlames.clear(); navalCrew.clear(); closeNavalPlunder(); closeNavalYard(); drawNavalHud(null); drawNavalTags([]); drawCrewBars([]); drawCrewLines([]); };
-  const navalTransition = () => { harbourBook.clear(); navalClear(); };   // HARBOUR-BOOK: the harbours forgotten with the sea, found again where the world is next
+  const navalClear = () => { naval?.clear(); navalFlames.clear(); navalCrew.clear(); closeNavalPlunder(); closeNavalYard(); closeEtherChart(); drawNavalHud(null); drawNavalTags([]); drawCrewBars([]); drawCrewLines([]); lowerGlass(); };   // AUDIT CAPTAIN'S SEA S1: and the glass; X15: and the Etheric chart
+  const navalTransition = () => { harbourBook.clear(); navalClear(); withdrawCrossing(); };   // HARBOUR-BOOK: the harbours forgotten with the sea, found again where the world is next; AUDIT CAPTAIN'S SEA X2: and the crossing's question taken back
   /** KEEP-PLUNDER: before a transition or a jump empties the sea, my crew stows what I left on it (navalHost
    *  stowPlunder) - ahead of Come Sail Away's own transition, while my boats still stand. Never on a load: the loaded
    *  save's hold is the one that stands. */
@@ -10373,46 +10412,104 @@ export async function bootWorld(canvas, renderer, params, status) {
     _crossLandAt = { key, d };
     return d;
   };
+  /** The way the helm's waters offer now: 'out' only where the crossing out is this game's (AUDIT CAPTAIN'S SEA G2), 'home'
+   *  in the Veil under any skin. */
+  const crossWayHere = () => {
+    const p = playerTravelPixel();
+    return crossingWayAt(p.x, p.y, etherOut && p.x < CROSS_X && !inEther(p.x, p.y) ? crossLandPx(p.x, p.y) : 0);
+  };
+  /** Why the crossing may not be sailed now - CROSS_REFUSED's key (an enemy near, another player aboard) - or null. */
+  const crossRefusal = () => (navalHostileNear() ? 'hostile' : csaPassengersOn(csaRuntime?.state?.CurrentBoat) > 0 ? 'passengers' : null);
+  let _crossBox = null, _crossSaid = null;   // the question up; the waters a refusal was said in
+  /** AUDIT CAPTAIN'S SEA X2: the question taken back unanswered - a load, a jump, a door (navalTransition). */
+  function withdrawCrossing() {
+    if (_crossBox && !_crossBox.done) _crossBox.withdraw();
+    _crossBox = null;
+  }
   /** The helm's waters asked every CROSS_CHECK_S: a way they offer, not asked since the ship came into them, asked - or
-   *  said refused (an enemy near, another player aboard). */
+   *  said refused once in those waters (an enemy near, another player aboard), and asked as soon as the deck is clear.
+   *  AUDIT CAPTAIN'S SEA X1: a refusal marked the way asked, and the question never came back while she stayed in those
+   *  waters; X3: never while the world is being moved (a party member's helm through the arrival's wait). */
   function etherCrossStep(dt) {
     if (!etherSea || _etherCrossing || !csaRuntime?.isSailing?.()) return;
     _crossCheckT -= dt;
     if (_crossCheckT > 0) return;
     _crossCheckT = CROSS_CHECK_S;
-    if (gamePaused() || _loading || townTalk.overlayActive || modes?.transitioning || _mode() !== 'exterior') return;
-    const p = playerTravelPixel();
-    const way = crossingWayAt(p.x, p.y, p.x < CROSS_X && !inEther(p.x, p.y) ? crossLandPx(p.x, p.y) : 0);
+    if (gamePaused() || _loading || townTalk.overlayActive || modes?.transitioning || worldMoveBusy() || _partyArrivalPending || _mode() !== 'exterior') return;
+    const way = crossWayHere();
+    if (way !== _crossSaid) _crossSaid = null;
     if (!crossGate.offer(way)) return;
+    const why = crossRefusal();
+    if (why) { if (_crossSaid !== way) { _crossSaid = way; townTalk.say(CROSS_REFUSED[why], 4); } return; }
     crossGate.asked(way);
-    if (navalHostileNear()) { townTalk.say(CROSS_REFUSED.hostile, 4); return; }
-    if (csaPassengersOn(csaRuntime.state.CurrentBoat) > 0) { townTalk.say(CROSS_REFUSED.passengers, 4); return; }
-    townTalk.showOverlay(new YesNoBoxWindow({ rows: crossingRows(way), onYes: () => { etherCross(way).catch((e) => console.warn('[ether] the crossing:', e?.message ?? e)); }, onNo: () => {} }));
+    const boat = csaRuntime.state.CurrentBoat;
+    _crossBox = new YesNoBoxWindow({ rows: crossingRows(way), onYes: () => { _crossBox = null; crossYes(way, boat); }, onNo: () => { _crossBox = null; } });
+    townTalk.showOverlay(_crossBox);
   }
+  /** AUDIT CAPTAIN'S SEA X2: Yes is the question as it stands NOW - the same helm, the same waters, no enemy, no passenger,
+   *  the world still (a Yes after a load sailed the loaded helm out from wherever it stood, and kept that as the way out). */
+  function crossYes(way, boat) {
+    if (_etherCrossing || worldMoveBusy() || _partyArrivalPending || !csaRuntime?.isSailing?.() || csaRuntime.state.CurrentBoat !== boat || crossWayHere() !== way) {
+      crossGate.asked(null);   // asked afresh in its own waters
+      townTalk.say(CROSS_STALE, 4);
+      return;
+    }
+    const why = crossRefusal();
+    if (why) { crossGate.asked(null); _crossSaid = way; townTalk.say(CROSS_REFUSED[why], 4); return; }
+    etherCross(way).catch((e) => console.warn('[ether] the crossing:', e?.message ?? e));
+  }
+  /** A boat's heading in the scene's XZ, off her root's rotation (her bow: +Z in her own frame). */
+  const boatForward = (boat) => {
+    const q = boat?.GameObject?.rotation;
+    if (!q) return [Math.sin(cam.yaw), 0, Math.cos(cam.yaw)];
+    const fx = 2 * (q[0] * q[2] + q[3] * q[1]), fz = 1 - 2 * (q[0] * q[0] + q[1] * q[1]);
+    const l = Math.hypot(fx, fz) || 1;
+    return [fx / l, 0, fz / l];
+  };
   /** THE VOYAGE: the captain and the ship at whose helm they stand carried across (out to Veilhaven's waters; home to the
-   *  Bay's the last crossing out set sail from), CROSS_DAYS on the clock. Answers whether she crossed. */
+   *  Bay's the last crossing out set sail from), CROSS_DAYS on the clock. Answers whether she crossed. AUDIT CAPTAIN'S SEA
+   *  X9: a voyage that could not be made brings her and her captain back where they set out, at her helm. */
   async function etherCross(way) {
     const boat = csaRuntime?.state?.CurrentBoat ?? null;
-    if (_etherCrossing || !boat || !csaRuntime.isSailing()) return false;
+    if (_etherCrossing || !boat || !csaRuntime.isSailing() || worldMoveBusy() || _partyArrivalPending) return false;
     _etherCrossing = true;
+    const here = playerTravelPixel();
+    const departure = { pixel: { x: here.x, y: here.y }, native: state.worldCoords(boat.GameObject.position), dir: boatForward(boat), was: captainLedger.crossedFrom() };
     try {
-      const here = playerTravelPixel();
       const to = crossingTarget(way, captainLedger.crossedFrom());
       if (way === 'out') captainLedger.setCrossedFrom({ px: here.x, py: here.y });
       const minutes = CROSS_DAYS * 1440;
       const dir = way === 'out' ? [-1, 0, 0] : [1, 0, 0];   // her bow on Veilhaven's quay, west - or on the Bay, east
       hudFade.smashHUDToBlack();
       csaCall(() => csaRuntime.StopSailing());   // the helm let go: she lies where she is until she is brought across
-      await _teleportToPixel(to.px, to.py, null, {
-        arriveMinutes: sharedClockOn() ? skyMinutes() : worldMinutes() + minutes,
-        modEvent: 'travel',
-        // the landfall's pixel built: the ship brought round onto its middle, where she floats, and the captain on her deck
-        resolveArrival: () => {
-          const [x, z] = state.localFromWorld((to.px + 0.5) * RAID_NATIVE_PIXEL, (499 - to.py + 0.5) * RAID_NATIVE_PIXEL);
-          csaCall(() => csaRuntime.RepositionBoat(boat, [x, tvSeaY(), z], dir, csaTerrainOf(csaPixelAt(x, z))));
-          return { pos: [x, tvSeaY() + 1, z], yaw: Math.atan2(dir[0], dir[2]) };
-        },
-      });
+      try {
+        await _teleportToPixel(to.px, to.py, null, {
+          arriveMinutes: sharedClockOn() ? skyMinutes() : worldMinutes() + minutes,
+          modEvent: 'travel',
+          // the landfall's pixel built: the ship brought round onto its middle, where she floats, and the captain on her deck
+          resolveArrival: () => {
+            const [x, z] = state.localFromWorld((to.px + 0.5) * RAID_NATIVE_PIXEL, (499 - to.py + 0.5) * RAID_NATIVE_PIXEL);
+            csaCall(() => csaRuntime.RepositionBoat(boat, [x, tvSeaY(), z], dir, csaTerrainOf(csaPixelAt(x, z))));
+            return { pos: [x, tvSeaY() + 1, z], yaw: Math.atan2(dir[0], dir[2]) };
+          },
+        });
+      } catch (error) {
+        // AUDIT CAPTAIN'S SEA X9: back where she set out - the departure's pixel built, her hull where she lay, her helm
+        console.warn('[ether] the crossing failed:', error?.message ?? error);
+        captainLedger.setCrossedFrom(departure.was);
+        try {
+          await _teleportToPixel(departure.pixel.x, departure.pixel.y, null, {
+            resolveArrival: () => {
+              const [x, z] = state.localFromWorld(departure.native.x, departure.native.z);
+              csaCall(() => csaRuntime.RepositionBoat(boat, [x, tvSeaY(), z], departure.dir, csaTerrainOf(csaPixelAt(x, z))));
+              return { pos: [x, tvSeaY() + 1, z], yaw: Math.atan2(departure.dir[0], departure.dir[2]) };
+            },
+          });
+          csaCall(() => csaRuntime.StartSailing(boat));
+        } catch (e) { console.warn('[ether] the way back:', e?.message ?? e); }
+        townTalk.say(CROSS_FAILED, 5);
+        return false;
+      }
       setSyntheticTimeIncrease(true); playerTicker.advance(minutes);
       csaCall(() => csaRuntime.StartSailing(boat));
       captainLedger.crossed();
@@ -10430,6 +10527,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** The frame: the switch read, the sounds loaded at the first sea, the host's step, the flames' clock. */
   let _officeTickT = 0;   // CAPT-BOARD: the contracts' terms asked after every OFFICE_TICK_S
   function navalFrame(dt) {
+    if (!gamePaused() && !_loading) captainSayFlush();   // AUDIT CAPTAIN'S SEA L9
     _officeTickT -= dt;
     if (_officeTickT <= 0 && !gamePaused() && !_loading) {
       _officeTickT = 2; harbourOffice.tick(); captainSay();   // CAPT-BOARD: a term run out
@@ -10455,25 +10553,62 @@ export async function bootWorld(canvas, renderer, params, status) {
   // x8). While it is up the view is the head's (mwViewHoldFirst), the lens narrowed to it (glassFov, eased over
   // spyglassView.js GLASS_EASE_S), the look slowed by it, and the naval host makes out the ship it holds (navalHost.js
   // glass) - her card under the reticle. Down at once ashore, under a window or a pause, under the travel view, with a
-  // broadside laid, and with the ships switched off.
+  // broadside laid, and with the ships switched off. Its magnification is kept between raises (the session's).
   const spyglass = { up: false, zoom: GLASS_ZOOM, lens: 1 };
-  /** Whether the glass may be up this frame. */
+  /** AUDIT CAPTAIN'S SEA S2: a press of the glass by the host's own door (the pad's d-pad, the touch corner's Glass:
+   *  inputHooks.padAction) - never its key, K, which is the road's follow too. Read once. */
+  let glassDoorPress = false;
+  /** Whether the glass may be up this frame. AUDIT CAPTAIN'S SEA S1: never while a door builds or the world is moved -
+   *  the exterior's frame runs through a door's build, and the modal arms return before this step once it stands. */
   const spyglassAllowed = () => navalOn() && !!naval?.aboard?.() && _mode() === 'exterior' && walkMode && playerSpawned && !_loading && !gamePaused()
-    && !townTalk.overlayActive && !travelView?.active && !naval?.aiming && !(townTalk.overlay instanceof DeathScreen);
-  /** The glass's frame: its press read (the key's edge, the plate's tap), lowered where it may not be up, the head held
-   *  for it, its lens eased, the ship it holds made out and its window drawn. */
+    && !townTalk.overlayActive && !travelView?.active && !naval?.aiming && !(townTalk.overlay instanceof DeathScreen)
+    && !modes?.transitioning && !worldMoveBusy();
+  /** AUDIT CAPTAIN'S SEA S1/S15: THE GLASS DOWN AT ONCE - every door, load and move of the world (navalClear's), and a
+   *  video over the world: the arms that take those frames return before spyglassStep, so a glass up through a cabin's
+   *  door stood frozen indoors (its window, its lens slowing the look, the wheel eaten, the head held). */
+  function lowerGlass() {
+    spyglass.up = false;
+    spyglass.lens = 1;
+    glassDoorPress = false;
+    mwViewHoldFirst(false);
+    naval?.glass?.(0, { up: false, zoom: spyglass.zoom });
+    drawSpyglass(null);
+    spyglassTaps();
+  }
+  /** AUDIT CAPTAIN'S SEA S3: the pad's press for the glass, as its foot names it - the button chosen for it, else the
+   *  d-pad's tap or hold the player gave it (Plus's d-pad), else none. */
+  function glassPadWords(padHand) {
+    const code = getBinding(bindings(), 'Spyglass', false);
+    if (code && /^Joystick/.test(code)) return hdGlyphName(padHand, code);
+    if (!isEnhancedPlus()) return null;
+    for (const [dir, m] of Object.entries(plusDpadMap())) {
+      if (m.tap === 'Spyglass') return hdGlyphName(padHand, DPAD_CODES[dir]);
+      if (m.hold === 'Spyglass') return `Hold ${hdGlyphName(padHand, DPAD_CODES[dir])}`;
+    }
+    return null;
+  }
+  /** AUDIT CAPTAIN'S SEA S3: the d-pad presses the player gave the glass, for the helm's prompts ([{ dir, kind }]). */
+  const glassDpad = () => (isEnhancedPlus() ? Object.entries(plusDpadMap()).flatMap(([dir, m]) => ['tap', 'hold'].filter((k) => m[k] === 'Spyglass').map((kind) => ({ dir, kind }))) : []);
+  /** The glass's frame: its press read (the key's edge, the plate's tap, the host's door, a finger's Lower), lowered where
+   *  it may not be up, the head held for it, its lens eased, the ship it holds made out and its window drawn. */
   function spyglassStep(dt) {
-    const pressedNow = hccActionPressed('Spyglass') || navalTouchGlass();
+    const taps = spyglassTaps();
+    const pressedNow = hccActionPressed('Spyglass') || navalTouchGlass() || glassDoorPress || (taps.lower && spyglass.up);
+    glassDoorPress = false;
     if (pressedNow && (spyglass.up || spyglassAllowed())) spyglass.up = !spyglass.up;
     if (spyglass.up && !spyglassAllowed()) spyglass.up = false;
+    if (taps.zoom && spyglass.up) spyglass.zoom = nextGlassZoom(spyglass.zoom);   // AUDIT CAPTAIN'S SEA S3: a finger's Magnify
     mwViewHoldFirst(spyglass.up);
     spyglass.lens = easeLens(spyglass.lens, spyglass.up ? spyglass.zoom : 1, dt);
-    const card = navalOn() && naval ? naval.glass(dt, { up: spyglass.up, zoom: spyglass.zoom }) : null;
+    // AUDIT CAPTAIN'S SEA S19: the glass holds no ship outside its own circle - the tube's radius, at the lens drawn
+    const field = Math.atan(Math.tan(glassFov(fieldOfView() + climbFeel.fovRad(), spyglass.lens) / 2) * GLASS_FIELD * Math.min(1, largeHudWorldAspect(canvas.clientWidth, canvas.clientHeight) || 1));
+    const card = navalOn() && naval ? naval.glass(dt, { up: spyglass.up, zoom: spyglass.zoom, field }) : null;
     const padHand = controllerLook() ? padFamily() : null;   // the pad in hand: its button named, not the key
-    const pad = padHand ? getBinding(bindings(), 'Spyglass', false) : null;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
     drawSpyglass(spyglass.up ? { card, zoom: spyglass.zoom } : null, {
-      keys: { glass: pad && /^Joystick/.test(pad) ? hdGlyphName(padHand, pad) : navalKeyName('Spyglass') },
+      keys: { glass: padHand ? glassPadWords(padHand) : navalKeyName('Spyglass'), zoom: padHand ? hdGlyphName(padHand, GLASS_PAD_ZOOM) : null },
       scale: enhancedHudScale(), touch: !!touch, pad: !!padHand, covered: !!townTalk.hudHidden,
+      rect: w > 0 && h > 0 ? worldRectPx(worldViewportRect(w, h), w, h) : null,   // AUDIT CAPTAIN'S SEA S10: the world's strip
     });
   }
   /** SPYGLASS: the wheel turns the glass while it is up - a notch up doubles its magnification, a notch down halves it. */
@@ -10482,6 +10617,9 @@ export async function bootWorld(canvas, renderer, params, status) {
     spyglass.zoom = Math.max(GLASS_ZOOM_MIN, Math.min(GLASS_ZOOM_MAX, deltaY < 0 ? spyglass.zoom * 2 : spyglass.zoom / 2));
     return true;
   }
+  /** AUDIT CAPTAIN'S SEA S6: the glass's own sight test - a ship behind the land is not held (the tags' law, a cache of
+   *  its own off the look the glass is held along). */
+  const glassSight = createSightCache();
   /** The attack let go (every door's release, beside the rig's and as ungated): a laid broadside fires - unless a window
    *  came up over the aim, or the world under it went, which puts it down unfired. */
   function navalRelease() {
@@ -14104,6 +14242,21 @@ export async function bootWorld(canvas, renderer, params, status) {
   // per-pixel build raises that. Every teleport used to raise the
   // travel event: a forced apply and a rebuild of the season's atlases
   // on each, and the load's own two-step apply never on a load.
+  /** AUDIT CAPTAIN'S SEA G2/P7: the landing _teleportToPixel made for a pixel this game does not stream ('ether': past the
+   *  Veil, 'edge': past the map), said once the player stands - or null. */
+  let _unstreamedLanding = null;   // declared above its door (BOOT-TDZ2's law)
+  /** AUDIT CAPTAIN'S SEA G2/P7: A PIXEL THE WORLD DOES NOT STREAM - a save made past the Veil loaded under the sea's kill
+   *  door, a continent's loaded with its land off - lands where the world stands: past the Veil at the way home (the last
+   *  crossing out's waters, else the open Abecean), else the Bay's own nearest pixel; said once it stands
+   *  (`_unstreamedLanding`). Its load list held no pixel, and the build threw on it (the start menu's Load: "boot
+   *  failed"). The pixel to land at instead, or null where `px`,`py` streams. */
+  const _streamedLanding = (px, py) => {
+    if (StreamingWorldState.streams(px, py)) return null;
+    const home = inEther(px, py) ? crossingTarget('home', captainLedger.crossedFrom()) : { px: Math.max(0, Math.min(999, Math.floor(px) || 0)), py: Math.max(0, Math.min(499, Math.floor(py) || 0)) };
+    console.warn(`[world] pixel ${px},${py} does not stream in this game - landed at ${home.px},${home.py}`);
+    _unstreamedLanding = inEther(px, py) ? 'ether' : 'edge';
+    return home;
+  };
   async function _teleportToPixel(px, py, localPos = null, { grounded = false, arriveMinutes = null, reposition = REPOSITION.None, travelStart = null, modEvent = null, resolveArrival = null } = {}) {
     // CameraRecoiler's StreamingWorld_OnInitWorld (:178-183): "player
     // can be moved by one system or another with swaying active" -
@@ -14111,6 +14264,9 @@ export async function bootWorld(canvas, renderer, params, status) {
     // landing to the new place.
     cameraRecoiler.reset();
     climbFeel.reset();   // AUDIT CLIMB-ARC F6: no climb's turn or cue rides a teleport
+    // AUDIT CAPTAIN'S SEA G2/P7: a pixel this game does not stream lands where the world stands - before the helm's word
+    const unstreamed = _streamedLanding(px, py);
+    if (unstreamed) { px = unstreamed.px; py = unstreamed.py; localPos = null; resolveArrival = null; }
     dwTeleported(performance.now() / 1000);   // DW-D: OnTeleportToCoordinates' grace
     if (modEvent !== 'load') navalStow();   // KEEP-PLUNDER: a jump's sea stowed first - never a load's
     // HELM-JUMP (FIELD BUGS 2026-10-11): the helm let go before the jump, so the landing below is the last word on where
@@ -14322,6 +14478,11 @@ export async function bootWorld(canvas, renderer, params, status) {
     // position rather than being left to the caller.
     if (resolved?.yaw != null) cam.yaw = resolved.yaw;
     else if (landing) cam.yaw = landing.yaw;
+    // AUDIT CAPTAIN'S SEA G2/P7: a landing made for a pixel this game does not stream, said where the player now stands
+    if (_unstreamedLanding) {
+      townTalk.say(_unstreamedLanding === 'ether' ? 'The Etheric Sea is closed in this game - you wake in the Bay\'s waters.' : 'That ground does not stand in this game - you wake at the edge of the Iliac Bay.', 7);
+      _unstreamedLanding = null;
+    }
     // Q4-v: StreamingWorld.OnInitWorld - the world re-initialised at a
     // new origin (fast travel, quickload); CreateFoe's pending waves
     // invalidate across live AND scheduled quests.
@@ -14682,7 +14843,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // "Anchor must be set" - the 4001 box (:268-275). The cast is
     // spent either way; DFU refunds nothing.
     if (!plan) { townTalk.say('You must set an anchor first.'); return; }
-    if (plan.kind !== 'same-interior' && wildTeleportRefused(plan.anchor?.pixel ?? null)) return;   // PVPDUNGEONS: no Recall into, out of or inside the zone
+    if (plan.kind !== 'same-interior' && (wildTeleportRefused(plan.anchor?.pixel ?? null) || veilRefused(plan.anchor?.pixel ?? null))) return;   // PVPDUNGEONS: no Recall into, out of or inside the zone - AUDIT CAPTAIN'S SEA P6: nor across the Veil
     const wildTrip = plan.kind === 'same-interior' ? { ok: true, fee: 0 } : wildTravelGate(plan.anchor.pixel);   // WILD3: Recall is a fast journey too
     if (!wildTrip.ok) return;
     wildTravelPaid(wildTrip);
@@ -14808,7 +14969,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   async function teleportTo(pick) {
     if (worldMoveBusy()) return;   // AUDIT 68 S22
     if (_teleporting) return;
-    if (wildTeleportRefused(pick.pixel)) return;   // PVPDUNGEONS: the guild's teleport never into, out of or inside the zone
+    if (wildTeleportRefused(pick.pixel) || veilRefused(pick.pixel)) return;   // PVPDUNGEONS: the guild's teleport never into, out of or inside the zone - AUDIT CAPTAIN'S SEA P6: nor across the Veil
     const wildTrip = wildTravelGate(pick.pixel);   // WILD3: the guild's teleport is a fast journey too
     if (!wildTrip.ok) return;
     wildTravelPaid(wildTrip);
@@ -14912,7 +15073,13 @@ export async function bootWorld(canvas, renderer, params, status) {
   // (GetRandomCemetery's CurrentRegionIndex, :196), and the dungeon this
   // host mounts carries this same arm (worldModes' buildDungeonContext
   // opts), so a dungeon's registration no longer drops it.
+  /** AUDIT CAPTAIN'S SEA P4: where a death past the Veil rises - the nearest port isle's town within ETHER_RISE_PX, else
+   *  Veilhaven: the Bay's temples are a crossing away. */
+  const ETHER_RISE_PX = 60;
+  const etherRisePort = (x, y) => islesNear(x, y, ETHER_RISE_PX).find((i) => i.kind === 'port') ?? veilhaven();
   function transferToCemeteryArm() {
+    // AUDIT CAPTAIN'S SEA P4: no cemetery of the Bay's past the Veil - the transfer skipped, as where a region has none
+    { const p = playerTravelPixel(); if (etherSea && inEther(p.x, p.y)) { console.warn('[infection] past the Veil - no cemetery a crossing away; the transfer is skipped'); return; } }
     const mapTable = maps.getRegion(_questRegionIndex())?.mapTable ?? [];
     const idx = randomCemeteryLocationIndex(mapTable);
     if (idx == null) {
@@ -15236,7 +15403,12 @@ export async function bootWorld(canvas, renderer, params, status) {
       const wildSite = wildRise ? wildRiseSite(px, wasInDungeon) : null;
       if (wildSite) { land = wildSite.mapPixel; kind = wildSite.kind; }
       else if (wasInDungeon && !isPrivateersHold) kind = 'dungeon';   // the door out: the pixel already under the player
-      else {
+      else if (etherSea && inEther(px.x, px.y)) {
+        // AUDIT CAPTAIN'S SEA P4: past the Veil, the nearest port isle's town - the region's search read Betony's rows, and
+        // the dead woke at a Bay temple a crossing away (the ship and her hold left past the Veil)
+        const port = etherRisePort(px.x, px.y);
+        land = { x: port.px, y: port.py }; kind = 'city';
+      } else {
         const mapTable = maps.getRegion(_questRegionIndex())?.mapTable ?? [];
         // SEA-RISE: the open sea's region holds none of the three - the nearest in any region, never the seafloor
         const safe = nearestSafeLocation(mapTable, px) ?? nearestSafeLocationAnywhere(maps, px);
@@ -16591,6 +16763,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   }
   function openTeleportMap() {
     if (!travelMapDoorReady()) return null;
+    if (veilRefused()) return null;   // AUDIT CAPTAIN'S SEA P6: past the Veil its map's every place is across it
     let win = null;
     win = buildTravelMapWindow({
       onTeleport: (pick) => { teleportTo(pick); },
@@ -16628,6 +16801,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     const refuse = (line) => { townTalk.say(line); return false; };
     const why = portalDoorRefusal();
     if (why) return refuse(why);
+    if (veilRefused()) return false;   // AUDIT CAPTAIN'S SEA P6: past the Veil its map's every place is across it
     if (!travelMapDoorReady()) return refuse(PORTAL_TEXT.noMap);
     // the list it came from, read again at the pick - a load in between stands a new pack (AUDIT PRE-MERGE 0928 S2's
     // law); a companion's or a sworn revenant's own storage is its own list (AUDIT PORTAL1 I2)
@@ -16652,6 +16826,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (!pick?.pixel) return;
     const why = portalDoorRefusal();
     if (why) { townTalk.say(why); return; }
+    if (veilRefused(pick.pixel)) return;   // AUDIT CAPTAIN'S SEA P6
     const feet = walkMode && playerSpawned ? player.feetAt() : cam.pos;
     const place = portalPlace(feet, cam.yaw, {
       ground: (o, d, m) => collider.surfaceHit(o, d, m)?.dist,   // the ground there - a mesh or the terrain, whichever is nearer (CAMP-GROUND's probe)
@@ -18472,13 +18647,21 @@ export async function bootWorld(canvas, renderer, params, status) {
     overlayActive: () => townTalk.overlayActive || !!travelView?.active || !!modes?.overlayHeld,   // AUDIT DEEP2 A2: under the view the pad is a cursor (its pick, orbit and zoom) - never the world's look, activation or swing. FIELD BUGS 29h (TOUCH-HELD): and a window on a building's or a dungeon's own stack is a window - the castle guard's terms box had no nav row, so no abc, no keyboard and no Return on a phone (the standalone dungeon host's hook always read its stack)
     // PAD-BINDS (FIELD BUGS 2026-10-04e): a d-pad choice whose action is on no key - the Overworld ships unbound
     // MODE-WHEEL: the four mode actions ship unbound too - the pad's NextMode lands here, at the host's ChangeInteractionMode
-    padAction: (act) => { if (MODE_ACTIONS[act]) return townTalk.pickMode(MODE_ACTIONS[act]); if (act !== 'TravelView' || townTalk.overlayActive) return false; travelViewKey(); return true; },
+    padAction: (act) => {
+      if (MODE_ACTIONS[act]) return townTalk.pickMode(MODE_ACTIONS[act]);
+      if (act === 'Spyglass') { glassDoorPress = true; return true; }   // AUDIT CAPTAIN'S SEA S2: the glass's own door - never K, the road's follow too
+      if (act !== 'TravelView' || townTalk.overlayActive) return false;
+      travelViewKey();
+      return true;
+    },
+    // AUDIT CAPTAIN'S SEA S3: the glass under a pad - up, the look stick's click turns its magnification
+    glass: { up: () => spyglass.up, zoom: () => { if (spyglass.up) spyglass.zoom = nextGlassZoom(spyglass.zoom); } },
     aimHold: () => !!naval?.atGuns,   // NAV-H: at a helm with guns the attack is the broadside's aim - the pad and the finger HOLD it (no gesture strokes) and look on under it
     // CSA-L: the pad's helm d-pad (ui/gamepadInput.js HELM_DPAD) - at the helm on Enhanced Plus, the helm panel's presses
     helm: {
       up: () => !!(csaRuntime?.isSailing() && csaOn() && isEnhancedPlus()),
       gesture: (dir, kind) => { let r = false; csaCall(() => { r = helmPadGesture(dir, kind, csaRuntime?.helmPanelState() ?? null, { press: csaHelmPress, hold: csaHelmHold }); }); return r; },
-      prompts: () => { let r = null; csaCall(() => { r = helmPadPrompts(csaRuntime?.helmPanelState() ?? null); }); return r && naval?.atGuns ? [...r, ...navalPadPrompts(naval.hudModel(), navalPadCodes())] : r; },   // AUDIT NAV1: and the guns' own rows
+      prompts: () => { let r = null; csaCall(() => { r = helmPadPrompts(csaRuntime?.helmPanelState() ?? null, { glass: glassDpad() }); }); return r && naval?.atGuns ? [...r, ...navalPadPrompts(naval.hudModel(), navalPadCodes())] : r; },   // AUDIT NAV1: and the guns' own rows - AUDIT CAPTAIN'S SEA S3: a d-pad press the player gave the glass is the glass's here too
     },
     stickRuns: () => !csaRuntime?.isSailing(),   // AUDIT PRE-MERGE 0928 U3: at Come Sail Away's helm Run + a side key is the oars' strafe - the stick's throw runs nowhere there, so a full push turns the boat
     // AUDIT 62 F7: the finger's pause gate - the same predicate the
@@ -19346,8 +19529,10 @@ export async function bootWorld(canvas, renderer, params, status) {
     /** PlayerGPS.DiscoverLocation (:872-890): resolve by name and file
      *  it, THROWING when the pair names nothing - C#'s own throw. */
     discoverLocation: (regionName, locationName) => {
-      const loc = maps.getLocationByName(regionName, locationName);
-      if (!loc?.loaded) throw new Error(`Error finding location ${regionName} : ${locationName}`);
+      // AUDIT CAPTAIN'S SEA P8: an isle's place is in no MAPS.BSA table - found in the index it stands in (a guild's local
+      // job in an isle town threw here on its first tick, and the quest was removed)
+      const loc = maps.getLocationByName(regionName, locationName) ?? (etherSea ? [...locationIndex.values()].find((l) => l?.ether && l.name === locationName && l.regionName === regionName) ?? null : null);
+      if (!loc?.loaded && !loc?.ether) throw new Error(`Error finding location ${regionName} : ${locationName}`);
       return discoverLocation(loc.mapTableData.mapId, { regionName: loc.regionName, locationName: loc.name });   // QREPAIR: whether it was new, for the repair's count (RevealLocation reads nothing back)
     },
     /** RevealLocation's readmap note - PlayerNotebook.AddNote(string). */
@@ -20391,7 +20576,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     random: Math.random,   // UnityEngine.Random.Range - THE ENGINE-PRNG RULE
     maps: () => maps,
     picker: () => travelMapPickerData(),   // DaggerfallUI.GetImgBitmap("TRAV0I01.IMG")
-    regionIndex: () => { const px = playerTravelPixel(); return politicClaimed(maps.getPoliticIndex(px.x, px.y)) ? _questRegionIndex() : -1; },   // fix 8: the sea (politic 64) and an unmapped pixel are no province
+    regionIndex: () => { const px = playerTravelPixel(); return !(etherSea && inEther(px.x, px.y)) && politicClaimed(maps.getPoliticIndex(px.x, px.y)) ? _questRegionIndex() : -1; },   // fix 8: the sea (politic 64) and an unmapped pixel are no province - AUDIT CAPTAIN'S SEA G7: nor the Etheric Sea (its composed politic is the isles' region's, and Betony's raids were announced to a captain past the Veil)
     regionName: (r) => REGION_NAMES[r] ?? String(r),   // GetLocalizedRegionName - the port speaks one language (ui/travelMapWindow.js)
     townHere: () => ((modes?.mode ?? 'exterior') === 'exterior' && _musicInLocationRect() ? _questLoc() : null),   // FindCurrentRaid: outdoors, in the rect, at a location
     playerPixel: () => playerTravelPixel(),
@@ -23709,6 +23894,18 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  carriage inside of tiers ofc)"): a teleport - the guild's, Recall, the party's journey to its leader - neither leaves
    *  from nor lands in the open zone. Said, and true when refused. The zone's own roads between its tiers (the travel
    *  map's journey, wildTravelGate) are the one way about it. */
+  /** AUDIT CAPTAIN'S SEA P6: NO TELEPORT ACROSS THE VEIL - Recall, a guild's teleport, a portal stone, a party's journey
+   *  to its leader: the crossing is the one way over (the sea "is reached only by THE CROSSING"), and a ship left on the
+   *  far side came round to the caster by the Fleet's Summon. `to` the pixel it would land at; null: the door itself,
+   *  asked where the player stands (a teleport map past the Veil holds the Bay's places alone). Said when refused. */
+  const veilRefused = (to = null) => {
+    if (!etherSea) return false;
+    const from = playerTravelPixel();
+    const here = inEther(from.x, from.y);
+    if (to ? here === inEther(to.x, to.y) : !here) return false;
+    townTalk.say('Nothing of the Bay\'s magic reaches across the Veil - only the crossing does.');
+    return true;
+  };
   const wildTeleportRefused = (to = null) => {
     if (TEST_GODMODE && staffPowers().god) return false;   // TESTBUILD
     const m = online?.wildOk ? wildMapMask() : null;
@@ -26719,7 +26916,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** PARTY-TRAVEL: the journey itself - the travel popup's own order (ui/travelPopUp.js tick): the screen smashed to
    *  black, then fastTravelTo, whose arrival fades it back; a journey that did not go clears it. */
   const partyTravelJourney = (pick, opts, computed) => {
-    if (pick?.besideAt && wildTeleportRefused(pick.pixel ?? null)) return Promise.resolve(false);   // PVPDUNGEONS: no teleport to the leader into, out of or inside the zone (a party's own journey on the zone's roads is fastTravelTo's, under wildTravelGate)
+    if (pick?.besideAt && (wildTeleportRefused(pick.pixel ?? null) || veilRefused(pick.pixel ?? null))) return Promise.resolve(false);   // AUDIT CAPTAIN'S SEA P6: nor to a leader across the Veil (a party is never carried across together)   // PVPDUNGEONS: no teleport to the leader into, out of or inside the zone (a party's own journey on the zone's roads is fastTravelTo's, under wildTravelGate)
     hudFade.smashHUDToBlack();
     return fastTravelTo(pick, opts, computed).then((went) => { if (!went) hudFade.clearFade(); return !!went; },
       (e) => { console.error('[party-travel] the journey failed:', e); hudFade.clearFade(); return false; });
@@ -30106,8 +30303,11 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // TV3: past the built grid, the far ring's own macro height for the pixel (render/farRing.js ringHeight) - the
     // ground the view shows out there - under the grid's current compensation
     const px = worldCoordToMapPixel(nx, nz);
-    const byte = px.x >= 0 && px.y >= 0 && px.x < 1000 && px.y < 500 ? woods.getHeightMapValue(px.x, px.y) : 0;
-    const fade = landform && px.x >= 0 && px.y >= 0 && px.x < 1000 && px.y < 500 ? cliffFadeAt((bx, by) => woods.getHeightMapValue(bx, by), px.x, px.y) : 1;   // AUDIT LANDFORMS II I1: faded beside the sea, as the ring is
+    // AUDIT CAPTAIN'S SEA G5: past the map the ground the ring reads there (the continent's, the Etheric Sea's) - an isle's
+    // plate stood at the sea's height under its silhouette
+    const ground = (px.x >= 0 && px.y >= 0 && px.x < 1000 && px.y < 500) || !!woods.isTamrielGround || !!woods.etherLaw?.(px.x, px.y);
+    const byte = ground ? woods.getHeightMapValue(px.x, px.y) : 0;
+    const fade = landform && ground ? cliffFadeAt((bx, by) => woods.getHeightMapValue(bx, by), px.x, px.y) : 1;   // AUDIT LANDFORMS II I1: faded beside the sea, as the ring is
     return [x, ringHeight(byte, !!landform, fade) + state.pixelTranslation(px.x, px.y)[1] + lift, z];   // LANDFORM1: the raised massif
   };
   /** TV4 (AUDIT TV D3): the land's height at a scene point - the built grid's, the far ring's past it. */
@@ -30162,7 +30362,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   };
   // TV-BEYOND: off the map is the sea where the world streams nothing there (DFU's empty edge), and the ground's own
   // bytes where TAMRIEL2 streams the land beyond the Bay - `woods` is its composed reader then, the sea past the frame
-  const tvWater = (px, py) => (!woods.isTamrielGround && (px < 0 || py < 0 || px >= 1000 || py >= 500)) || woods.getHeightMapValue(px, py) <= WATER_BYTE;
+  const tvWater = (px, py) => (!woods.isTamrielGround && !woods.etherLaw?.(px, py) && (px < 0 || py < 0 || px >= 1000 || py >= 500)) || woods.getHeightMapValue(px, py) <= WATER_BYTE;   // AUDIT CAPTAIN'S SEA G5: the Etheric Sea's isles land, whatever the continent's switch says
   /** The trip is over when Travel Options no longer walks it - arrived, stopped, or replaced by a journey of its own. */
   const tvTripLive = () => !!tvTrip.plan && !!travelOptions?.route && travelOptions.route === tvTrip.plan.route;
   /** `roads` (TO-ROADS x OW-PATH): by the roads whatever the Path switch says - the map's first-person pick (tvMapForcesRoads). */
@@ -32054,7 +32254,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // AUDIT WB C5: and the gate's countdown goes down with it - a DOM line over the video would stand frozen on it.
     // AUDIT DEEP X-1: and the travel view is CUT - its readout stood over the film, its listeners on the canvas, until
     // its heartbeat noticed the frames had stopped
-    if (frameHeld()) { frameAbort(); hideWorldPlaque(); last = now; requestAnimationFrame(frame); drawGateBanner(null); drawGateMarksCard(null); drawGateDamageChart(null); drawGateGround(null); travelView?.exit('video', true); return; }
+    if (frameHeld()) { frameAbort(); hideWorldPlaque(); last = now; requestAnimationFrame(frame); drawGateBanner(null); drawGateMarksCard(null); drawGateDamageChart(null); drawGateGround(null); travelView?.exit('video', true); if (spyglass.up) lowerGlass(); return; }   // AUDIT CAPTAIN'S SEA S15: the glass's DOM never frozen over the video
     const dt = Math.min(0.1, (now - last) / 1000);
     // AUDIT 28 W7 + F-C1/F-C2 (self-audit 3): PlayerMouseLook.Update's
     // three answers - paused (:241-244) returns before ApplyLook and the
@@ -32075,7 +32275,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       // moving mouse is not a case a player reaches on purpose.
       const kb = keyboardLook(keys);
       if (helmTurnKeys()) kb.x = 0;   // HELM-KEYS: at a helm the turn keys turn the ship, never the view
-      if (kb.x || kb.y) lookFilter.add(kb.x * keyboardLookRate() * dt, kb.y * keyboardLookRate() * dt * lookInvert());
+      if (kb.x || kb.y) lookFilter.add(kb.x * keyboardLookRate() * dt * glassLookScale(spyglass.lens), kb.y * keyboardLookRate() * dt * lookInvert() * glassLookScale(spyglass.lens));   // AUDIT CAPTAIN'S SEA S13: slowed by the glass, as the mouse's
       if (pressed(latch.edge, keys, 'CenterView')) lookFilter.centerPitch(cam);   // KB1: Home levels the view (classic Daggerfall's centre key; DFU binds it and reads it nowhere)
       _lockChest = lockOn.tick(dt, cam, cam.pos, lookFilter);   // TI1: the lock pays its facing into the same filter, owed to the NEXT tick like a look
     }
@@ -33643,11 +33843,13 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // EV5: the moons light the night - the masser as a second key, the
     // secunda folded into the ambient. null by day and under classic.
     const moonNow = sky.moonlight();
-    renderer.setMoonlight(moonNow);
     // SD19: the land's light leaning to brass near a standing Hollow (sdBrassLight, both lights)
     // ETHER-LIGHT (world/ethericSea.js etherLight): and cold and violet past the Veil, both lights
     const etherPx = etherSea ? playerTravelPixel() : null;
     const etherAirW = etherPx && inEther(etherPx.x, etherPx.y) ? 1 : 0;
+    // AUDIT CAPTAIN'S SEA G14: and the third, Masser's key, leaned as the sun's (it lit land, sea and hulls past the Veil in
+    // the Bay's colour) - the moon as it is under no lean, nothing made
+    renderer.setMoonlight(moonNow && etherAirW ? { scale: moonNow.scale, dir: moonNow.dir, color: etherLight(moonNow.color, etherAirW, ETHER_KEY_TINT) } : moonNow);
     renderer.setLighting(
       etherLight(sdBrassLight(sunbabyLight(dreadLight(withMoonAmbient(exteriorAmbient(minute, getFloat('Enhancements', 'NightAmbientLightScale', 0, 1), wxNow.sun), moonNow), skyDreadW), sunbabyW, sunbabyFace.evil), sdAirW), etherAirW), sunScale(minute) * wxNow.sun * flash * sky.sunFactor() * (1 - DREAD_KEY_DIM * skyDreadW),   // EVENT1: the land under the dread's light; SUNBABY1: lifted toward noon's under the sun baby (SUNBABY2: reddened under its wrath)   // ES1d: the cloud in front of the sun takes the KEY light (never the ambient - the sky still lights the ground); WX2: the scale is the front's
       etherLight(sdBrassLight(sunbabyKey(dreadLight(SUN_RIG_COLOR, skyDreadW), sunbabyW, sunbabyFace.evil), sdAirW), etherAirW, ETHER_KEY_TINT));   // SUNBABY2: the key reddened under the wrath; SD19: brass near a Hollow
@@ -34098,7 +34300,12 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
           baseX: state.current.x, baseY: state.current.y,
           relief: !!landform,   // LANDFORM1: the ring stands the massifs the streamed ground raises
           byteAt: tamrielLand || etherSea ? (x, y) => woods.getHeightMapValue(x, y) : null,   // TAMRIEL2: the continent past the map's edge, as the stream grows it (ETHER-SEA: and the Etheric Sea's isles)
-          climatePast: etherSea ? (x, y) => maps.getClimateIndex(x, y) : null,   // ETHER-SEA: the isles' own climates past the map
+          pastOwn: tamrielLand ? null : inEtherLaw,   // AUDIT CAPTAIN'S SEA G6: the ground the reader answers past the map - its cliffs faded at their own pixels (the clamp's at the clamped)
+          // ETHER-SEA: the isles' own climates past the map - AUDIT CAPTAIN'S SEA G4/G9: the continent's wherever it stands (its
+          // tint never the sea's switch's), the sea's in its law, and else the Bay edge's clamped climate as ever (the read
+          // past the map answers -1 there, and the clamped mountains and deserts past the edge turned woodland green)
+          climatePast: tamrielLand ? (x, y) => maps.getClimateIndex(x, y)
+            : etherSea ? (x, y) => maps.getClimateIndex(...(inEtherLaw(x, y) ? [x, y] : [Math.max(0, Math.min(MAP_WIDTH - 1, x)), Math.max(0, Math.min(MAP_HEIGHT - 1, y))])) : null,
         }, state.current.x, state.current.y, state.terrainDistance);
       } else {
         farRing.punchHole(state.current.x, state.current.y, state.terrainDistance);

@@ -25,6 +25,9 @@ import { sea } from './navalSea.mjs';
 const rd = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const WAYREST = { key: '100,100', name: 'Wayrest', px: 100, py: 100, region: 23, crown: 'Wayrest' };
 const SENTINEL = { key: '120,100', name: 'Sentinel', px: 120, py: 100, region: 20, crown: 'Sentinel' };
+/** AUDIT CAPTAIN'S SEA B12/H8: a port of Sentinel's that WANTS wine (its own good twisted so) - Sentinel's own key above
+ *  makes it, and the margin's check never ran. */
+const WINE_WANTED = { key: '101,100', name: 'Hegathe', px: 101, py: 100, region: 20, crown: 'Sentinel' };
 const ISLE = { key: 'e:1', name: 'Driftholm', ether: true };
 const seaAt = (x, y) => x >= 100 || y >= 104;
 
@@ -71,11 +74,13 @@ test('CAPT-TRADE a port\'s trade: its crown\'s makes and wants, twisted by one g
 test('CAPT-TRADE the price: a good\'s base at MADE_K where made, WANT_K where wanted (EXOTIC_K for the other sea\'s), drifting within PRICE_DRIFT a day, the same for every client; the exchange sells SPREAD over it and buys SPREAD under it (mutants: each mood, the drift, the day, the spread)', () => {
   assert.deepEqual([MADE_K, WANT_K, PRICE_DRIFT, SPREAD, EXOTIC_K], [0.6, 1.55, 0.12, 0.08, 1.4]);
   for (let day = 0; day < 40; day++) {
-    const made = priceOf(WAYREST, 'wine', day), wanted = priceOf(SENTINEL, 'wine', day) ?? null;
+    const made = priceOf(WAYREST, 'wine', day), wanted = priceOf(WINE_WANTED, 'wine', day);
     assert.ok(made.mid >= 30 * 0.6 * 0.88 - 1e-9 && made.mid <= 30 * 0.6 * 1.12 + 1e-9, `${made.mid}`);
     assert.equal(made.sell, Math.round(made.mid * 1.08));
     assert.equal(made.buy, Math.round(made.mid * 0.92));
-    assert.ok(wanted);
+    // PIN MOVED (AUDIT CAPTAIN'S SEA H8): `assert.ok(wanted)` held for any price - the wanted port's own, read
+    assert.equal(wanted.stand, 'wants');
+    assert.ok(wanted.mid >= 30 * 1.55 * 0.88 - 1e-9 && wanted.mid <= 30 * 1.55 * 1.12 + 1e-9, `${wanted.mid}`);
     const ex = priceOf(WAYREST, 'starglass', day);
     assert.ok(ex.mid >= 320 * 1.4 * 0.88 - 1e-9 && ex.mid <= 320 * 1.4 * 1.12 + 1e-9, 'the other sea\'s, wanted');
   }
@@ -85,8 +90,10 @@ test('CAPT-TRADE the price: a good\'s base at MADE_K where made, WANT_K where wa
   assert.ok(iron.mid >= 24 * 1.55 * 0.88 && iron.mid <= 24 * 1.55 * 1.12);
   assert.equal(priceOf(WAYREST, 'nope', 1), null);
   // a run of the trade: Wayrest's wine to Sentinel - the margin a voyage is worth
-  const w = priceOf(WAYREST, 'wine', 5), s = priceOf(SENTINEL, 'wine', 5);
-  if (standOf(SENTINEL, 'wine') === 'wants') assert.ok(s.buy > w.sell * 1.5, 'carried to where it is wanted: half again and more');
+  // PIN MOVED (AUDIT CAPTAIN'S SEA B12): the margin read where wine is wanted - the guarded check never ran at Sentinel's key
+  const w = priceOf(WAYREST, 'wine', 5), s = priceOf(WINE_WANTED, 'wine', 5);
+  assert.equal(standOf(WINE_WANTED, 'wine'), 'wants');
+  assert.ok(s.buy > w.sell * 1.5, 'carried to where it is wanted: half again and more');
 });
 
 test('CAPT-TRADE the exchange\'s board: every good of its sea, the other sea\'s it wants; how many more it sells and buys today by DAY_STOCK and the captain\'s dealing here; the other sea\'s never sold (mutants: the stock, the dealing\'s sides, the exotic rows)', () => {
@@ -258,7 +265,8 @@ test('CAPT-TRADE the exchange\'s tab: each good\'s stand, its two prices and how
   assert.equal(goodIn(hold, 'wine'), 1, 'bought from the tab');
   win.unmount();
   const w = rd('src/scenes/world.js');
-  assert.match(w, /model\.exchange = \(\) => harbourOffice\.exchange\(\{ uid: model\.uid \?\? null, cargo: model\.cargo\?\.\(\) \?\? null \}\);/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA B3/B11): the exchange for a ship lying to the quay at her helm alone, and her room with it
+  assert.match(w, /if \(model\.atQuay\) model\.exchange = \(\) => harbourOffice\.exchange\(\{ uid: model\.uid \?\? null, cargo: model\.cargo\?\.\(\) \?\? null, room: \(\) => model\.room\?\.\(\) \?\? null \}\);/);
   assert.match(w, /registerItemUseHandler\(CHART_TEMPLATE, \(item, collection\) => \{\n\s+const r = harbourOffice\.readChart\(item\);\n\s+const i = r\.ok && Array\.isArray\(collection\) \? collection\.indexOf\(item\) : -1;\n\s+if \(i >= 0\) collection\.splice\(i, 1\);/);
   assert.match(rd('src/systems/itemLaw.js'), /import '\.\/naval\/tradeGoods\.js';[^\n]*\nimport '\.\/naval\/treasureCharts\.js';/);
 });

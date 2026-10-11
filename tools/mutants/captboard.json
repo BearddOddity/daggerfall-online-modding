@@ -209,8 +209,8 @@
   {
     "name": "BOARD-advance-bounty-any",
     "file": "src/systems/naval/harbourBoard.js",
-    "old": "  if (c.kind === 'bounty') return ev.type === 'end' && ev.bounty === c.id ? 'done' : null;",
-    "new": "  if (c.kind === 'bounty') return ev.type === 'end' ? 'done' : null;",
+    "old": "  if (c.kind === 'bounty') return ev.bounty !== c.id ? null : ev.type === 'end' ? 'done' : ev.type === 'lost' ? 'void' : null;",
+    "new": "  if (c.kind === 'bounty') return ev.type === 'end' ? 'done' : ev.type === 'lost' ? 'void' : null;",
     "tests": [
       "test/captboard.test.js"
     ]
@@ -245,8 +245,8 @@
   {
     "name": "BOARD-advance-survey-crown",
     "file": "src/systems/naval/harbourBoard.js",
-    "old": "  if (c.kind === 'survey') return ev.type === 'study' && ev.crown === c.crown ? count() : null;",
-    "new": "  if (c.kind === 'survey') return ev.type === 'study' ? count() : null;",
+    "old": "    if (ev.type !== 'study' || ev.crown !== c.crown) return null;",
+    "new": "    if (ev.type !== 'study') return null;",
     "tests": [
       "test/captboard.test.js"
     ]
@@ -506,8 +506,8 @@
   {
     "name": "HOST-quarry-restood",
     "file": "src/scenes/navalHost.js",
-    "old": "        if (was && sea.has(was)) continue;\n",
-    "new": "",
+    "old": "        if (was === 'ended' || (was && sea.has(was))) continue;",
+    "new": "        if (was === 'ended') continue;",
     "tests": [
       "test/captboard.test.js"
     ]
@@ -533,8 +533,8 @@
   {
     "name": "HOST-casks-short",
     "file": "src/scenes/navalHost.js",
-    "old": "      shots.dropFlotsam({ id: String(u32()), pos: [c[0] + Math.sin(a) * d, deps.seaY(), c[2] + Math.cos(a) * d], lot: SITE_LOT + site.id, from: 'merchantGalleon', life: SITE_CASK_LIFE });",
-    "new": "      shots.dropFlotsam({ id: String(u32()), pos: [c[0] + Math.sin(a) * d, deps.seaY(), c[2] + Math.cos(a) * d], lot: SITE_LOT + site.id, from: 'merchantGalleon' });",
+    "old": "pos: wet ? [x, deps.seaY(), z] : [c[0], deps.seaY(), c[2]], lot: SITE_LOT + site.id, from: 'merchantGalleon', life: SITE_CASK_LIFE });",
+    "new": "pos: wet ? [x, deps.seaY(), z] : [c[0], deps.seaY(), c[2]], lot: SITE_LOT + site.id, from: 'merchantGalleon' });",
     "tests": [
       "test/captboard.test.js"
     ]
@@ -605,8 +605,8 @@
   {
     "name": "TAB-take-unpressed",
     "file": "src/ui/navalYardWindow.js",
-    "old": "      boardList.append(officeRow(b.title, b.words, b.can ? b.terms : `${b.terms} - ${b.why}`, b.press, b.can, () => { const r = o.take(b.id);",
-    "new": "      boardList.append(officeRow(b.title, b.words, b.can ? b.terms : `${b.terms} - ${b.why}`, b.press, b.can, () => { const r = null;",
+    "old": "b.press, b.can, () => { const r = o.take(b.id);",
+    "new": "b.press, b.can, () => { const r = null;",
     "tests": [
       "test/captboard.test.js"
     ]
@@ -614,7 +614,7 @@
   {
     "name": "TAB-lede-rank",
     "file": "src/ui/navalYardWindow.js",
-    "old": "    : `${o.port} - ${o.crown}'s harbourmaster. You are ${o.rank === 'Unsworn' ? 'Unsworn' : `a ${o.rank}`} of ${o.crown} (standing ${o.standing}).`;",
+    "old": "    : `${o.port} - ${o.crown}'s harbourmaster. You are ${o.rank === 'Unsworn' ? 'Unsworn' : `${/^[aeiou]/i.test(o.rank) ? 'an' : 'a'} ${o.rank}`} of ${o.crown} (standing ${o.standing}).`;",
     "new": "    : `${o.port} - ${o.crown}'s harbourmaster.`;",
     "tests": [
       "test/captboard.test.js"

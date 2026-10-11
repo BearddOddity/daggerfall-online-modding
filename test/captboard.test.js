@@ -96,7 +96,9 @@ test('CAPT-BOARD the board: BOARD_OFFERS a day and a rank\'s more, the same for 
   assert.ok(!nearOnly.some((o) => o.kind === 'delivery'), 'a port nearer than DELIVERY_PX_MIN: no cargo for it');
   assert.deepEqual(boardFor({ port: null, crown: 'Wayrest', day: 1 }), []);
   assert.equal(hashKey, wireHashKey, 'the board hashes with the wire\'s FNV-1a - one home');
-  assert.equal(hashKey('100,100'), hashKey('100,100'));
+  // PIN MOVED (AUDIT CAPTAIN'S SEA H24): FNV-1a's own values - the key compared with itself held for any hash
+  assert.equal(hashKey(''), 2166136261, 'the offset basis');
+  assert.equal(hashKey('100,100'), 115546219);
   assert.notEqual(hashKey('100,100'), hashKey('100,101'));
 });
 
@@ -113,6 +115,10 @@ test('CAPT-BOARD the offers\' words and terms: a bounty names her captain and sh
   assert.ok(Number.isFinite(b.target.px) && Number.isFinite(b.target.seed) && b.target.region === 23);
   assert.equal(b.days, 4);
   for (const k of ['hunt', 'salvage', 'survey']) assert.ok(by[k].need >= CONTRACT_NEED[k][0] && by[k].need <= CONTRACT_NEED[k][1], k);
+  // AUDIT CAPTAIN'S SEA H24: and every need the range holds is drawn (a draw always its least passed the range's check)
+  const needs = { hunt: new Set(), salvage: new Set(), survey: new Set() };
+  for (let day = 0; day < 120; day++) for (const o of board({ day, perks: { offers: 2 } })) needs[o.kind]?.add(o.need);
+  for (const k of ['hunt', 'salvage', 'survey']) assert.deepEqual([...needs[k]].sort((a, b) => a - b), Array.from({ length: CONTRACT_NEED[k][1] - CONTRACT_NEED[k][0] + 1 }, (_, i) => CONTRACT_NEED[k][0] + i), k);
   assert.equal(by.hunt.standing, by.hunt.need);
   assert.equal(by.survey.standing, 2 * by.survey.need);
   const d = by.delivery;
@@ -340,7 +346,8 @@ test('CAPT-BOARD at sea: a bounty\'s quarry stood within SITE_REACH_PX of her wa
   assert.ok(events.some((e) => e.type === 'haul' && e.site === 's1'), 'the haul the contract\'s');
   assert.ok(s.log.say.includes('You haul a cask of the wreck\'s cargo aboard.'));
   const host = rd('src/scenes/navalHost.js');
-  assert.match(host, /if \(was < KNOW\.studied && e\.known >= KNOW\.studied && held > 0 && !struck\) deps\.captain\?\.event\?\.\(\{ type: 'study', crown: watersCrown\(\) \}\);/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA L6): and her seed with it - each ship counted once
+  assert.match(host, /if \(was < KNOW\.studied && e\.known >= KNOW\.studied && held > 0 && !struck\) deps\.captain\?\.event\?\.\(\{ type: 'study', crown: watersCrown\(\), seed: e\.ship\.seed \}\);/);
   assert.match(host, /if \(wrecked && !s\.wasWrecked\) \{ c\.event\('wrecked'\); deps\.captain\?\.event\?\.\(\{ type: 'wrecked', boat: b\.uid \?\? null \}\); \}/);
   assert.match(host, /if \(!aboardShip\(\) \|\| !Number\.isFinite\(w\.px\) \|\| !Number\.isFinite\(w\.py\)\) return;/, 'ashore: none stood');
   assert.match(host, /const service = deps\.captain\?\.seasonedHires\?\.\(\) \? SEASONED_HIRE : 0;/);

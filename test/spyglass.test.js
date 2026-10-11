@@ -13,9 +13,9 @@ import { readFileSync } from 'node:fs';
 import {
   KNOW, NAKED_EYE_M, NAKED_EYE_DARK_M, LOOKOUT_ID_M, GLASS_FAR_M, GLASS_NEAR_M, GLASS_STUDY_S, GLASS_STUDY_NEAR_S, GLASS_ZOOM, GLASS_ZOOM_MIN, GLASS_ZOOM_MAX,
   RETICLE_DEG, DECEIT_SHARE, KNOTS, hullWord, aHull, unknownName, falseFlagOf, glassReach, knowledgeOf, glassHolds, coloursWords, cargoWords,
-  gunsWords, handsWords, mindWords, glassCard,
+  gunsWords, handsWords, mindWords, glassCard, merchantOfHull,
 } from '../src/systems/naval/shipKnowledge.js';
-import { classById, CROWNS, NAVAL_FACTIONS } from '../src/systems/naval/navalShips.js';
+import { classById, CROWNS, NAVAL_FACTIONS, shipNames, classLine } from '../src/systems/naval/navalShips.js';
 import { NIGHT_LIT_SIGHT, NIGHT_DARK_SIGHT } from '../src/systems/naval/shipWatch.js';
 import { GLASS_AIM_LIFT } from '../src/scenes/navalHost.js';
 import { easeLens, glassFov, glassLookScale, GLASS_EASE_S, glassFootWords, drawSpyglass, GLASS_TONES } from '../src/ui/spyglassView.js';
@@ -108,8 +108,9 @@ test('SPYGLASS the glass holds a ship: the look within her hull\'s own half-leng
 });
 
 test('SPYGLASS the card\'s words: a hull by her kind before her colours, her guns off her batteries, her hands to the nearest five, her hold by her cargo, her colours and her mind (mutants: each word)', () => {
-  assert.deepEqual([0, 1, 2, 3, 4].map(hullWord), ['rowboat', 'sloop', 'galleon', 'galley', 'carrack']);
-  assert.deepEqual([aHull(1), aHull(4), unknownName(2)], ['a sloop', 'a carrack', 'Unknown galleon']);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA S22): the small ship's hull a two-master - a brigantine, a galleon and a cutter by her class
+  assert.deepEqual([0, 1, 2, 3, 4].map(hullWord), ['rowboat', 'sloop', 'two-master', 'galley', 'carrack']);
+  assert.deepEqual([aHull(1), aHull(4), unknownName(2)], ['a sloop', 'a carrack', 'Unknown two-master']);
   assert.deepEqual([0, 1, 2, 3].map(gunsWords), ['no guns', '6 swivels, a swivel gun forward', '10 long guns, 2 chain guns forward, fire barrels astern', '8 long guns, 3 great guns forward']);
   assert.deepEqual([0, 3, 12, 60].map(handsWords), ['no hands', 'about 5 hands', 'about 10 hands', 'about 60 hands']);
   assert.deepEqual([1, 2, 3, 4, 9].map(cargoWords), ['riding high - a light hold', 'riding easy - some cargo', 'riding low - a full hold', 'riding deep - a rich hold', 'riding deep - a rich hold']);
@@ -156,7 +157,8 @@ test('SPYGLASS at sea, the eye: a hull with her colours unread wears no tag and 
   assert.equal(tagOf(s, near).name, near.ship.names.name);
   const card = s.host.hudModel().target;
   assert.equal(card.id, far.id, 'her on the look');
-  assert.deepEqual([card.name, card.classLine, card.faction, card.captain, card.hostile, card.friendly, card.bound], ['Unknown galleon', 'Galleon', 'unknown', null, false, false, '']);
+  assert.deepEqual([card.name, card.classLine, card.faction, card.captain, card.hostile, card.friendly, card.bound], ['Unknown two-master', 'Two-master', 'unknown', null, false, false, '']);   // PIN MOVED (AUDIT CAPTAIN'S SEA S22)
+  assert.deepEqual([card.hull, card.sail], [null, null], 'AUDIT CAPTAIN\'S SEA S24: no bars on an unknown hull');
   far.known = KNOW.colours;
   const told = s.host.hudModel().target;
   assert.deepEqual([told.name, told.faction, told.friendly, told.captain], [far.ship.names.name, 'merchant', true, null], 'her colours: her name and stance, not her captain');
@@ -171,7 +173,7 @@ test('SPYGLASS at sea, the glass: raised and held on her - her colours past GLAS
   s.run(0.2);
   let card = hold(s, a, 0.5);
   assert.equal(a.known, KNOW.hull, 'half a second: not yet');
-  assert.equal(card.title, 'Unknown galleon');
+  assert.equal(card.title, 'Unknown two-master');   // PIN MOVED (AUDIT CAPTAIN'S SEA S22)
   assert.equal(s.host._glass().on, a.id);
   hold(s, b, 0.2);
   assert.equal(s.host._glass().on, b.id, 'the glass on another');
@@ -230,10 +232,14 @@ test('SPYGLASS false colours at sea: a wary pirate under a merchantman\'s colour
   e.plain = false; e.ship.seed = seed;
   s.run(1);
   assert.equal(e.known, KNOW.colours, 'the eye reads her colours - her false ones');
+  // PIN MOVED (AUDIT CAPTAIN'S SEA S5): the trader she passes for - the merchant of her own hull, named off her seed as that
+  // trader would be under the false crown, lined as that trader's class ("A merchantman of X", "Merchantman" was the tell)
+  const trader = merchantOfHull(e.ship.hull);
+  const as = shipNames(trader, seed, { regionIndex: CROWNS.find((c) => c.name === flag).region }).name;
   const t = tagOf(s, e);
-  assert.deepEqual([t.name, t.line, t.faction, t.friendly, t.hostile, t.bound], [`A merchantman of ${flag}`, 'Merchantman', 'merchant', true, false, '']);
+  assert.deepEqual([t.name, t.line, t.faction, t.friendly, t.hostile, t.bound], [as, classLine(trader), 'merchant', true, false, '']);
   const card = s.host.hudModel().target;
-  assert.deepEqual([card.name, card.faction, card.friendly, card.hostile], [`A merchantman of ${flag}`, 'merchant', true, false]);
+  assert.deepEqual([card.name, card.faction, card.friendly, card.hostile], [as, 'merchant', true, false]);
   assert.deepEqual(e.boat.flagColor, NAVAL_FACTIONS.merchant.flag, 'a merchantman\'s pennant at her masthead');
   assert.ok(!s.log.say.some((l) => l.startsWith('Sail ho')), 'no hail for a merchantman');
   // after a weaker prey she cannot yet see (past her ENGAGE_RANGE, within the lookout's SAIL_HO_RANGE): no hail while her
@@ -259,7 +265,7 @@ test('SPYGLASS false colours at sea: a wary pirate under a merchantman\'s colour
   knowAll(r.host);
   for (let i = 0; i < 50 && !p.blackFlag; i++) r.run(0.1);
   assert.equal(p.blackFlag, true);
-  assert.ok(r.log.say.includes(`False colours! The merchantman of ${flag} runs up the black flag!`), r.log.say.join(' | '));
+  assert.ok(r.log.say.includes(`False colours! ${as} runs up the black flag!`), r.log.say.join(' | '));   // PIN MOVED (AUDIT CAPTAIN'S SEA S5): the trader she passed for
   r.run(0.5);
   assert.deepEqual(p.boat.flagColor, NAVAL_FACTIONS.pirate.flag, 'the black at her masthead');
   assert.equal(tagOf(r, p).faction, 'pirate');
@@ -292,9 +298,11 @@ test('SPYGLASS the world: the Spyglass action appended, a port row in Come Sail 
   assert.ok(PLUS_BIND_ROWS.some((r) => r.sec === 'Spyglass'));
   assert.ok(DPAD_CHOICES.some(([a]) => a === 'Spyglass'));
   const w = rd('src/scenes/world.js');
-  assert.match(w, /const spyglassAllowed = \(\) => navalOn\(\) && !!naval\?\.aboard\?\.\(\) && _mode\(\) === 'exterior' && walkMode && playerSpawned && !_loading && !gamePaused\(\)\n\s+&& !townTalk\.overlayActive && !travelView\?\.active && !naval\?\.aiming && !\(townTalk\.overlay instanceof DeathScreen\);/);
-  assert.match(w, /const pressedNow = hccActionPressed\('Spyglass'\) \|\| navalTouchGlass\(\);\n\s+if \(pressedNow && \(spyglass\.up \|\| spyglassAllowed\(\)\)\) spyglass\.up = !spyglass\.up;\n\s+if \(spyglass\.up && !spyglassAllowed\(\)\) spyglass\.up = false;\n\s+mwViewHoldFirst\(spyglass\.up\);\n\s+spyglass\.lens = easeLens\(spyglass\.lens, spyglass\.up \? spyglass\.zoom : 1, dt\);/);
-  assert.match(w, /naval\.glass\(dt, \{ up: spyglass\.up, zoom: spyglass\.zoom \}\)/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA S1): never while a door builds or the world is moved
+  assert.match(w, /const spyglassAllowed = \(\) => navalOn\(\) && !!naval\?\.aboard\?\.\(\) && _mode\(\) === 'exterior' && walkMode && playerSpawned && !_loading && !gamePaused\(\)\n\s+&& !townTalk\.overlayActive && !travelView\?\.active && !naval\?\.aiming && !\(townTalk\.overlay instanceof DeathScreen\)\n\s+&& !modes\?\.transitioning && !worldMoveBusy\(\);/);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA S2/S3/S16): the host's own door and a finger's Lower press it too; a finger's Magnify turns it
+  assert.match(w, /const pressedNow = hccActionPressed\('Spyglass'\) \|\| navalTouchGlass\(\) \|\| glassDoorPress \|\| \(taps\.lower && spyglass\.up\);\n\s+glassDoorPress = false;\n\s+if \(pressedNow && \(spyglass\.up \|\| spyglassAllowed\(\)\)\) spyglass\.up = !spyglass\.up;\n\s+if \(spyglass\.up && !spyglassAllowed\(\)\) spyglass\.up = false;\n[^\n]*\n\s+mwViewHoldFirst\(spyglass\.up\);\n\s+spyglass\.lens = easeLens\(spyglass\.lens, spyglass\.up \? spyglass\.zoom : 1, dt\);/);
+  assert.match(w, /naval\.glass\(dt, \{ up: spyglass\.up, zoom: spyglass\.zoom, field \}\)/);   // PIN MOVED (AUDIT CAPTAIN'S SEA S19): and its field
   assert.match(w, /spyglassStep\(dt\);[^\n]*\n\s+const proj = mirrorProjectionX\(perspective\(glassFov\(fieldOfView\(\) \+ climbFeel\.fovRad\(\), spyglass\.lens\), worldAspect, 0\.2, 6000\)\);/, 'the step before the lens is taken');
   assert.match(w, /sky\.draw\([^\n]*glassFov\(fieldOfView\(\) \+ climbFeel\.fovRad\(\), spyglass\.lens\), worldAspect,/, 'the sky through the glass');
   assert.match(w, /fovY: glassFov\(fieldOfView\(\) \+ climbFeel\.fovRad\(\), spyglass\.lens\), aspect: worldAspect,/, 'the far ring through it');
@@ -347,7 +355,7 @@ test('SPYGLASS the head: while the glass is up the view is held in first person 
 
 test('SPYGLASS the window: hidden while the glass is down; up, the tube and its reticle, the card of the ship it holds - her name in her tone, her line, her rows, the study\'s bar while it fills, the hint - and its foot\'s magnification and presses (mutants: the hidden, the rows, the tone, the bar, the foot\'s words)', () => {
   assert.equal(glassFootWords({ zoom: 4, keys: { glass: 'K' } }), 'x4 - Wheel: magnify - K: lower the glass');
-  assert.equal(glassFootWords({ zoom: 8, touch: true }), 'x8 - Glass: lower it');
+  assert.equal(glassFootWords({ zoom: 8, touch: true }), 'x8');   // PIN MOVED (AUDIT CAPTAIN'S SEA S3/S16): a finger's presses are the foot's own Magnify and Lower
   assert.equal(glassFootWords({ zoom: 2, pad: true, keys: { glass: 'Y' } }), 'x2 - Y: lower the glass');
   drawSpyglass(null);
   assert.equal(byClass(globalThis.document.body, 'dfglass').length, 0, 'nothing built while it is down');
@@ -364,7 +372,7 @@ test('SPYGLASS the window: hidden while the glass is down; up, the tube and its 
   assert.equal(bar.style.display, '');
   assert.equal(bar.children[0].style.width, '50%');
   assert.equal(byClass(root, 'dfglass-hint')[0].style.display, 'none');
-  assert.equal(byClass(root, 'dfglass-foot')[0].textContent, 'x4 - Wheel: magnify - K: lower the glass');
+  assert.equal(byClass(root, 'dfglass-foot-words')[0].textContent, 'x4 - Wheel: magnify - K: lower the glass');   // PIN MOVED (AUDIT CAPTAIN'S SEA S3/S16): the foot's words beside its two finger presses
   drawSpyglass({ card: { ...card, study: 1, hint: 'Close within 900 m to make out her guns and hold' }, zoom: 8 }, { keys: { glass: 'K' } });
   assert.equal(bar.style.display, 'none', 'studied: no bar');
   assert.equal(byClass(root, 'dfglass-hint')[0].textContent, 'Close within 900 m to make out her guns and hold');

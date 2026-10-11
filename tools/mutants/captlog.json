@@ -335,8 +335,8 @@
   {
     "name": "CL-meter-floor",
     "file": "src/ui/captainPage.js",
-    "old": "const floor = Number.isFinite(rank.at) ? rank.at : 0;",
-    "new": "const floor = 0;",
+    "old": "const floor = Number.isFinite(rank.at) ? rank.at : Math.min(0, standing);",
+    "new": "const floor = Math.min(0, standing);",
     "tests": [
       "test/captlog.test.js"
     ]
@@ -389,8 +389,8 @@
   {
     "name": "CL-host-deed",
     "file": "src/scenes/navalHost.js",
-    "old": "    cap.deed?.(act, s.cls, { crown, marque: under });\n",
-    "new": "",
+    "old": "    cap.deed?.(act, s.cls, paid ? { crown: null } : { crown, marque: under });",
+    "new": "    void cap;",
     "tests": [
       "test/captlog.test.js"
     ]
@@ -425,8 +425,8 @@
   {
     "name": "CL-host-quest-pays",
     "file": "src/scenes/navalHost.js",
-    "old": "for (const r of questPays ? [] : law.rewards) {",
-    "new": "for (const r of law.rewards) {",
+    "old": "for (const r of questPays || paid ? [] : law.rewards) {",
+    "new": "for (const r of paid ? [] : law.rewards) {",
     "tests": [
       "test/captlog.test.js"
     ]
@@ -470,7 +470,7 @@
   {
     "name": "CL-host-plunder",
     "file": "src/scenes/navalHost.js",
-    "old": "    notePlunder(all.filter((it) => !left.includes(it)));",
+    "old": "    tallyPlunder(all.filter((it) => !left.includes(it)));",
     "new": "    void all;",
     "tests": [
       "test/captlog.test.js"
@@ -488,7 +488,7 @@
   {
     "name": "CL-world-slot",
     "file": "src/scenes/world.js",
-    "old": "  registerModSaveData(CAPTAIN_SAVE_VENDOR, captainLedger);",
+    "old": "  registerModSaveData(CAPTAIN_SAVE_VENDOR, { ...captainLedger, restoreSaveData: (r) => { _rankLines.length = 0; captainLedger.restoreSaveData(r); } });",
     "new": "  void captainLedger;",
     "tests": [
       "test/captlog.test.js"

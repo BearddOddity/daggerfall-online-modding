@@ -51,17 +51,21 @@ test('ETHER-PLACES the location index: its own negative a cell - never -1, a spa
 });
 
 test('ETHER-PLACES the templates: the game\'s rows - towns hamlets and villages of TOWN_BLOCKS.port blocks, havens towns of TOWN_BLOCKS.haven, never main-story or with a dungeon under it, never a spawn; ruins dungeons with blocks, one block where any is - each list in map-id order (mutants: each filter, the order)', () => {
-  assert.deepEqual([...TOWN_BLOCKS.port], [2, 6]); assert.deepEqual([...TOWN_BLOCKS.haven], [6, 16]);
+  // PIN MOVED (AUDIT CAPTAIN'S SEA P1): Veilhaven's a hamlet of six to twelve - MAPS.BSA's villages are 2 or 4 blocks and its
+  // cities 30 and more, so the havens of villages and cities were always none; twelve the most its small isle stands dry
+  assert.deepEqual([...TOWN_BLOCKS.port], [2, 6]); assert.deepEqual([...TOWN_BLOCKS.haven], [6, 12]);
   const rows = [
     row(30, LOCATION_TYPES.TownHamlet, { w: 2, h: 1 }), row(10, LOCATION_TYPES.TownVillage, { w: 2, h: 2 }), row(20, LOCATION_TYPES.TownVillage, { w: 1, h: 1 }),
     row(40, LOCATION_TYPES.TownVillage, { w: 3, h: 3 }), row(45, LOCATION_TYPES.TownHamlet, { w: 3, h: 3 }), row(50, LOCATION_TYPES.TownCity, { w: 3, h: 3 }), row(60, LOCATION_TYPES.TownCity, { w: 5, h: 5 }),
     row(70, LOCATION_TYPES.TownVillage, { w: 2, h: 2, dungeon: true }), row(80, LOCATION_TYPES.TownHamlet, { w: 2, h: 1, spawned: true }), row(90, LOCATION_TYPES.HomeFarms, { w: 2, h: 1 }),
     row(110, LOCATION_TYPES.DungeonRuin, { w: 2, h: 1, dungeon: true }), row(105, LOCATION_TYPES.DungeonKeep, { w: 1, h: 1, dungeon: true }), row(100, LOCATION_TYPES.DungeonLabyrinth, { w: 1, h: 1, dungeon: true }),
     row(666, LOCATION_TYPES.TownHamlet, { w: 2, h: 1 }),
+    row(46, LOCATION_TYPES.TownHamlet, { w: 4, h: 4 }), row(47, LOCATION_TYPES.TownHamlet, { w: 4, h: 3 }),
+    { ...row(48, LOCATION_TYPES.TownHamlet, { w: 3, h: 3 }), ether: '1,1' },   // AUDIT CAPTAIN'S SEA P3: an isle's own place is never a template
   ];
   const t = etherTemplates(rows, (id) => id === 666);
   assert.deepEqual(t.towns.map((l) => l.mapTableData.mapId), [10, 30], 'hamlets and villages of two to six blocks, by id');
-  assert.deepEqual(t.havens.map((l) => l.mapTableData.mapId), [40, 50], 'Veilhaven\'s: a village or a city of six to sixteen - never a hamlet');
+  assert.deepEqual(t.havens.map((l) => l.mapTableData.mapId), [40, 45, 47], 'Veilhaven\'s: a hamlet or a village of six to twelve - never a city, never sixteen');
   assert.deepEqual(t.ruins.map((l) => l.mapTableData.mapId), [100, 105], 'the one-block dungeons, by id');
   assert.deepEqual(etherTemplates([row(110, LOCATION_TYPES.DungeonRuin, { w: 2, h: 1, dungeon: true })]).ruins.map((l) => l.mapTableData.mapId), [110], 'none of one block: any');
   assert.deepEqual(etherTemplates(null), { towns: [], havens: [], ruins: [] });
@@ -83,15 +87,17 @@ test('ETHER-PLACES the template an isle clones: a port\'s a town, Veilhaven\'s a
 test('ETHER-PLACES the clone: the template never written; its ids the place\'s (the map row\'s, the exterior\'s, the dungeon\'s), its longitude and latitude the isle\'s centre pixel, its name the isle\'s, its region the isles\' and its own index; a port\'s exterior a harbour\'s; a ruin of the deep elite (mutants: each field)', () => {
   const tpl = row(10, LOCATION_TYPES.TownVillage, { w: 2, h: 2 });
   const before = JSON.stringify(tpl);
-  const loc = synthesizeEtherLocation(tpl, port, { regionIndex: ETHER_REGION, regionName: ETHER_REGION_NAME, politic: 128 + ETHER_REGION, climate: { climateType: 9 } });
+  const loc = synthesizeEtherLocation(tpl, port, { regionIndex: ETHER_REGION, regionName: REGION_NAMES[ETHER_REGION], politic: 128 + ETHER_REGION, climate: { climateType: 9 } });   // PIN MOVED (AUDIT CAPTAIN'S SEA P8): the world's word, its region's own name
   assert.equal(JSON.stringify(tpl), before, 'the template untouched');
   const id = etherPlaceId(port);
   assert.equal(loc.mapTableData.mapId, id); assert.equal(loc.exterior.exteriorData.locationId, id);
+  assert.equal(loc.exterior.exteriorData.mapId, id, 'AUDIT CAPTAIN\'S SEA P12: and its exterior\'s map id');
   assert.equal(loc.mapTableData.locationType, LOCATION_TYPES.TownVillage);
   assert.deepEqual(longitudeLatitudeToMapPixel(loc.mapTableData.longitude, loc.mapTableData.latitude), { x: port.px, y: port.py }, 'its pixel, round the map\'s own law');
   assert.equal(loc.name, port.name);
   assert.equal(loc.regionIndex, 19); assert.equal(REGION_NAMES[ETHER_REGION], 'Betony', 'the Bay\'s westernmost isle');
-  assert.equal(loc.regionName, 'the Etheric Isles'); assert.equal(loc.politic, 147); assert.deepEqual(loc.climate, { climateType: 9 });
+  assert.equal(loc.regionName, 'Betony'); assert.equal(loc.politic, 147); assert.deepEqual(loc.climate, { climateType: 9 });
+  assert.equal(synthesizeEtherLocation(tpl, port).regionName, ETHER_REGION_NAME, 'no word: the isles\' own words');
   assert.equal(loc.locationIndex, etherLocationIndex(port));
   assert.equal(loc.exterior.exteriorData.portTownAndUnknown, 1, 'a harbour - the port\'s ships, its quays');
   assert.equal(loc.ether, port.key); assert.equal(loc.etherKind, 'port');
@@ -103,7 +109,8 @@ test('ETHER-PLACES the clone: the template never written; its ids the place\'s (
   const r = synthesizeEtherLocation(dt, shallowRuin ?? ruin);
   assert.equal(r.dungeon.recordElement.header.locationId, etherPlaceId(shallowRuin ?? ruin), 'the dungeon\'s room and save key');
   assert.equal(dt.dungeon.recordElement.header.locationId, 100, 'its template\'s untouched');
-  assert.equal(r.exterior.exteriorData.portTownAndUnknown, undefined, 'a ruin is no harbour');
+  assert.equal(r.exterior.exteriorData.portTownAndUnknown, 0, 'a ruin is no harbour');   // PIN MOVED (AUDIT CAPTAIN'S SEA P10): its template's port byte never kept
+  assert.equal(synthesizeEtherLocation({ ...dt, exterior: { ...dt.exterior, exteriorData: { ...dt.exterior.exteriorData, portTownAndUnknown: 8 } } }, shallowRuin ?? ruin).exterior.exteriorData.portTownAndUnknown, 0, 'not even a template that was one');
   assert.equal(r.regionIndex, ETHER_REGION, 'the defaults');
   assert.deepEqual([...ELITE_BANDS], ['deep', 'abyss']);
   const deep = { ...ruin, px: Math.round(VEIL_X - 60 * LEAGUE_PX), band: 'deep' };
@@ -120,7 +127,7 @@ test('ETHER-PLACES by source: the world host keeps the isles\' templates off the
   const body = src.slice(src.indexOf('function etherPlaceAt(px, py) {'), src.indexOf('/** AUDIT OW4 D4: THE CLONE a pixel\'s spawn IS'));
   assert.match(body, /if \(had\?\.ether\) return had;/);
   assert.match(body, /if \(!isle \|\| isle\.px !== px \|\| isle\.py !== py\) return null;/);
-  assert.match(body, /synthesizeEtherLocation\(template, isle, \{ regionIndex: ETHER_REGION, regionName: ETHER_REGION_NAME, politic: 128 \+ ETHER_REGION, climate: getWorldClimateSettings\(isle\.climate\) \}\)/);
+  assert.match(body, /synthesizeEtherLocation\(template, isle, \{ regionIndex: ETHER_REGION, regionName: REGION_NAMES\[ETHER_REGION\] \?\? ETHER_REGION_NAME, politic: 128 \+ ETHER_REGION, climate: getWorldClimateSettings\(isle\.climate\) \}\)/);   // PIN MOVED (AUDIT CAPTAIN'S SEA P8)
   assert.match(body, /_locIndexGen \+= 1;\n    locationIndex\.set\(key, loc\);/);
   assert.match(src, /params\.has\('online'\) && !inEtherLaw\(x, y\) && spawnsDungeon\(_spawnSalt, x, y\)/);
   assert.match(src, /const wake = inEther\(from\.x, from\.y\) \? \{ kind: 'dungeon', mapPixel: \{ x: from\.x, y: from\.y \} \} : undergroundWakeSpot/);
@@ -134,7 +141,7 @@ test('ETHER-PORTS by source: a port isle answers as a port to the Come Sail Away
   assert.match(src, /const etherPortOf = \(i\) => \(\{ key: `\$\{i\.px\},\$\{i\.py\}`, name: i\.name, px: i\.px, py: i\.py, region: ETHER_REGION, crown: null, ether: true \}\);/);
   assert.match(src, /return i && i\.kind === 'port' && i\.px === x && i\.py === y \? i : null;/);
   assert.match(src, /const isle = etherSea && inEther\(p\.x, p\.y\) \? etherPortNear\(p\.x, p\.y\) : null;/);
-  assert.match(src, /if \(loc\?\.exterior\?\.exteriorData\) town = \{ id: `ether:\$\{isle\.key\}`, loc, x: isle\.px, y: isle\.py, name: isle\.name \};/);
+  assert.match(src, /if \(loc\?\.exterior\?\.exteriorData\) town = \{ id: `ether:\$\{isle\.key\}`, loc, x: isle\.px, y: isle\.py, name: isle\.name, reach: ETHER_HARBOUR_REACH \};/);   // PIN MOVED (AUDIT CAPTAIN'S SEA H1): sounded out to its isle's shore
   assert.match(src, /_navalPortHereAt = \{ key, port: isle \? etherPortOf\(isle\) : null \};/);
   assert.match(src, /etherSea && inEther\(p\.x, p\.y\) \? null : navalCrownOf\(/);
   assert.match(src, /if \(port\?\.ether\) \{ const o = etherHost\.office\(port\);/);

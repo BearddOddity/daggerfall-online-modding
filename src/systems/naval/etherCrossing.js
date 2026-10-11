@@ -12,7 +12,7 @@
 // her crew and her hold: out to the open water off Veilhaven's quay, her bow on it; home to the Bay's waters the last
 // crossing out set sail from (the ledger's), or the open Abecean off the Bay's mouth.
 
-import { crossingWaters, inVeil, landfall, HOME_WATERS } from '../../world/ethericSea.js';
+import { crossingWaters, inVeil, inEtherLaw, landfall, HOME_WATERS } from '../../world/ethericSea.js';
 
 /** The voyage, either way (days). */
 export const CROSS_DAYS = 3;
@@ -27,8 +27,9 @@ export function crossingWayAt(px, py, landPx) {
   return null;
 }
 
-/** THE GATE: `offer(way)` answers whether to ask now - a way not asked since the ship came into its waters; `refused(way)`
- *  remembers a no until the waters are left (`offer(null)` - or another way's waters - forgets it). */
+/** THE GATE: `offer(way)` answers whether to ask now - a way not asked since the ship came into its waters; `asked(way)`
+ *  remembers it asked until the waters are left (`offer(null)` - or another way's waters - forgets it). AUDIT CAPTAIN'S
+ *  SEA H13: the doc named a `refused`; X1: the host marks it asked only when the box shows. */
 export function createCrossingGate() {
   let asked = null;
   return {
@@ -41,10 +42,11 @@ export function createCrossingGate() {
   };
 }
 
-/** Where a voyage makes landfall: out, off Veilhaven; home, the Bay's waters she set sail from, else the open Abecean. */
+/** Where a voyage makes landfall: out, off Veilhaven; home, the Bay's waters she set sail from, else the open Abecean
+ *  (AUDIT CAPTAIN'S SEA X2: never a way out that lies in the Etheric Sea's own law). */
 export function crossingTarget(way, from = null) {
   if (way === 'out') return landfall();
-  return from && Number.isFinite(from.px) && Number.isFinite(from.py) ? { px: from.px, py: from.py } : { px: HOME_WATERS.px, py: HOME_WATERS.py };
+  return from && Number.isFinite(from.px) && Number.isFinite(from.py) && !inEtherLaw(from.px, from.py) ? { px: from.px, py: from.py } : { px: HOME_WATERS.px, py: HOME_WATERS.py };
 }
 
 /** The question, in rows (ui/yesNoBox.js). */
@@ -58,8 +60,14 @@ export function crossingRows(way, { days = CROSS_DAYS } = {}) {
 export const crossingWords = (way) => (way === 'out'
   ? 'Three days out of sight of land - and then the stars came down to meet the sea. You have crossed into the Etheric Sea. Veilhaven lies ahead.'
   : 'The Veil closes astern, and the air smells of salt and tar again. The Iliac Bay - home.');
-/** Why a crossing is not asked (said once as the waters are reached). */
+/** Why a crossing is not asked (said once in those waters; AUDIT CAPTAIN'S SEA X1: asked as soon as the deck is clear,
+ *  as the words promise - the refusal once marked the way asked, and the question never came back in those waters). */
 export const CROSS_REFUSED = Object.freeze({
   passengers: 'The Veil is no place for passengers - the crossing waits until your deck is your own.',
   hostile: 'Not with an enemy at your heels.',
 });
+/** AUDIT CAPTAIN'S SEA X2: a Yes to a question the waters no longer ask (a load, a new helm, waters left) - said, and no
+ *  voyage. */
+export const CROSS_STALE = 'The moment has passed - the crossing is asked again in its own waters.';
+/** AUDIT CAPTAIN'S SEA X9: a voyage that could not be made - the ship and her captain where they set out. */
+export const CROSS_FAILED = 'The sea would not let her through - you are where you set out.';

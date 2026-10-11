@@ -263,6 +263,7 @@ export function mwViewPendingClicks() { return pendingClicks; }
  * where the player left the camera. Answers whether the view moved.
  */
 export function mwViewFirstPerson() {
+  if (heldFirst) heldFirst.changed = false;   // AUDIT CAPTAIN'S SEA S8: the head wanted for itself (MAP-POV) - the glass hands nothing back
   if (eotbLane()) {
     if (!eotbCamera.thirdPerson()) return false;
     eotbCamera.toggleOffset(false);
@@ -301,6 +302,9 @@ let heldThird = null;   // null, or { lane: 'eotb'|'mw'|null, changed: boolean }
 export function mwViewHoldThird(on) {
   if (on) {
     if (heldThird) return heldThird.lane != null;
+    // AUDIT CAPTAIN'S SEA S8: the glass's hold handed back first - the view reads the body the player stood in, never the
+    // head the glass borrowed (its release a frame later was refused under this hold, and the view's put the head back)
+    if (heldFirst) mwViewHoldFirst(false);
     if (eotbLane()) {
       const was = eotbCamera.thirdPerson();
       if (!was) eotbCamera.toggleOffset(true);
@@ -330,12 +334,13 @@ export function mwViewHoldThird(on) {
  * travel view's hold wins (it holds the body out of the head; the glass is never up under it). Answers whether the view
  * is held in the head.
  */
-let heldFirst = null;   // null, or { changed: boolean } - whether the hold took the body INTO the head
+let heldFirst = null;   // null, or { changed: boolean, lane: 'eotb'|'mw' } - whether the hold took the body INTO the head, and whose
 export function mwViewHoldFirst(on) {
   if (on) {
     if (heldFirst) return true;
     if (heldThird) return false;
-    heldFirst = { changed: mwViewFirstPerson() };
+    const lane = eotbLane() ? 'eotb' : 'mw';
+    heldFirst = { changed: mwViewFirstPerson(), lane };
     return true;
   }
   if (!heldFirst) return false;
@@ -355,6 +360,7 @@ export const mwViewHoldChanged = () => !!heldThird?.changed;
  *  its body (a save taken under the view came back in third person). */
 export function mwViewSaveCamera() {
   const s = mwCamera.state();
+  if (heldFirst?.changed && heldFirst.lane === 'mw') return { ...s, firstPerson: false };   // AUDIT CAPTAIN'S SEA S9: nor the head the glass borrowed
   return heldThird?.changed && heldThird.lane === 'mw' ? { ...s, firstPerson: true } : s;
 }
 
@@ -411,6 +417,7 @@ export function mwViewTransition(kind) {
   // AUDIT OW5 V3: a door taken under the travel view - a row that DECIDES the POV decides it for the view's hold too; the
   // view's release at the door came a frame later and put the head back (a player's "interior: third person" undone)
   if (heldThird?.lane === 'eotb' && eotbCamera.transitionDecides(kind)) heldThird.changed = false;
+  if (heldFirst?.lane === 'eotb' && eotbCamera.transitionDecides(kind)) heldFirst.changed = false;   // AUDIT CAPTAIN'S SEA S8: the glass's hold the same
   eotbCamera.transition(kind);
   return true;
 }
@@ -421,6 +428,7 @@ export function mwViewTransition(kind) {
  *  "Determines the POV when starting or loading a game"), so the sprite
  *  camera is re-seeded from the setting, not from the save. */
 export function mwViewLoadPose(pose, inside = false) {
+  heldFirst = null;   // AUDIT CAPTAIN'S SEA S8: a load decides the view - the glass hands nothing back over it
   if (pose) mwCamera.restore(pose);
   eotbCamera.onLoad(inside);   // EOTB-IL: the mod's OnLoad (IL_0a08) - a transition row when the table is armed, StartInThirdPerson otherwise
 }
@@ -429,6 +437,7 @@ export function mwViewLoadPose(pose, inside = false) {
  *  door - the same shape as the load's. `inside` is
  *  PlayerEnterExit.IsPlayerInside. */
 export function mwViewNewGame(inside = false) {
+  heldFirst = null;   // AUDIT CAPTAIN'S SEA S8: a new game's view its own
   eotbCamera.onNewGame(inside);
 }
 

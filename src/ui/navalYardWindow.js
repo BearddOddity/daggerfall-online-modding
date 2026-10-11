@@ -84,7 +84,9 @@ export function yardText(model) {
   });
   const bill = rows.reduce((sum, r) => sum + (o.rows.find((x) => x.id === r.id)?.whole ?? 0), 0);
   let purse = o.gold, paid = 0;
-  for (const r of o.rows) { if (!shown(r)) continue; const n = Math.min(r.missing, Math.floor(purse / r.price)); paid += n * r.price; purse -= n * r.price; }
+  // AUDIT CAPTAIN'S SEA B15: each row's pieces paid in whole gold, as the bill is - a discount's fractions left a purse that
+  // pays for everything a coin short of the bill ("Make good what your purse pays" for her whole)
+  for (const r of o.rows) { if (!shown(r)) continue; const n = Math.min(r.missing, Math.floor(purse / r.price)); const c = Math.ceil(n * r.price - 1e-9); paid += c; purse -= c; }
   // SEA-REPAIR, SHIP-CREW: her provisions, apart from her needs - never part of making her whole
   const po = model.provisions?.() ?? null;
   const provisions = (po?.rows ?? []).map((r) => {
@@ -120,8 +122,10 @@ export function yardText(model) {
 export function officeText(o) {
   if (!o) return null;
   if (o.ether) return etherOfficeText(o);   // ETHER-SEA: a freeport past the Veil
-  const lede = o.hunted ? `${o.port} - ${o.crown}'s navy hunts you: its harbourmaster grants no favours until your notoriety falls.`
-    : `${o.port} - ${o.crown}'s harbourmaster. You are ${o.rank === 'Unsworn' ? 'Unsworn' : `a ${o.rank}`} of ${o.crown} (standing ${o.standing}).`;
+  // AUDIT CAPTAIN'S SEA L10: the favours are refused at a quarter of the notoriety its navy hunts at - never "hunts you";
+  // B14: "an Admiral"
+  const lede = o.hunted ? `${o.port} - ${o.crown}'s harbourmaster grants you no favours while your notoriety in its waters stands so high.`
+    : `${o.port} - ${o.crown}'s harbourmaster. You are ${o.rank === 'Unsworn' ? 'Unsworn' : `${/^[aeiou]/i.test(o.rank) ? 'an' : 'a'} ${o.rank}`} of ${o.crown} (standing ${o.standing}).`;
   const board = (o.board ?? []).map((b) => ({ id: b.id, title: b.title, words: b.words, terms: `${b.pay} - ${b.term} - ${b.standing}`, press: 'Take', can: !!b.can, why: b.why ?? '' }));
   const held = (o.held ?? []).map((h) => ({ id: h.id, title: h.title, words: h.progress, state: `${h.left} - ${h.pay}` }));
   const letters = [];
@@ -156,12 +160,13 @@ export function etherOfficeText(o) {
 export function exchangeText(x) {
   if (!x) return null;
   const g = (n) => `${Math.round(n).toLocaleString('en-US')} gold`;
+  const room = x.room == null ? '' : x.room > 0 ? ` - room for ${x.room} kg more before she lies dead in the water` : ' - she can carry no more';   // AUDIT CAPTAIN'S SEA B11
   const lede = x.weight == null ? `${x.port}'s exchange - deal from your helm, into her hold.`
-    : `${x.port}'s exchange. Her hold carries ${Math.round(x.weight)} kg of goods; your purse ${g(x.gold)}.`;
+    : `${x.port}'s exchange. Her hold carries ${Math.round(x.weight)} kg of goods${room}; your purse ${g(x.gold)}.`;
   const STAND = { makes: 'Made here - cheap', wants: 'Wanted here - dear', neither: '' };
   const rows = (x.rows ?? []).map((r) => ({
     id: r.id, title: r.name, canBuy: r.sells > 0 && x.weight != null, canSell: r.have > 0 && r.buys > 0,
-    words: [STAND[r.stand], r.sells > 0 ? `buy at ${g(r.sell)} a ${r.unit} (${r.sells} left today)` : 'none to buy today', r.buys > 0 ? `sell at ${g(r.buy)} (${r.buys} wanted)` : 'none wanted today'].filter(Boolean).join(' - '),
+    words: [STAND[r.stand], r.sells > 0 ? `buy at ${g(r.sell)} a ${r.unit} (${r.sells} left today)` : r.exotic ? 'not sold here' : 'none to buy today', r.buys > 0 ? `sell at ${g(r.buy)} (${r.buys} wanted)` : 'none wanted today'].filter(Boolean).join(' - '),   // AUDIT CAPTAIN'S SEA B16
     extra: r.have > 0 ? `In her hold: ${r.have} ${r.have === 1 ? r.unit : r.units}` : '',
   }));
   return { lede, rows };
@@ -292,6 +297,7 @@ export function mountNavalYardWindow(host, deps) {
 
   let alive = true;
   const renderOffice = (o) => {
+    o.hear?.();   // AUDIT CAPTAIN'S SEA X11: the quay's talk heard where the harbourmaster's tab is shown, never in the model's read
     const ot = officeText(o);
     h2.textContent = 'The harbourmaster';
     oLede.textContent = ot.lede;
@@ -299,7 +305,7 @@ export function mountNavalYardWindow(host, deps) {
     headWords(lettersHead, ot.heads?.letters ?? ['Letters', 'a rank\'s favours']);
     for (const c of [...boardList.children]) c.remove();
     for (const b of ot.board) {
-      boardList.append(officeRow(b.title, b.words, b.can ? b.terms : `${b.terms} - ${b.why}`, b.press, b.can, () => { const r = o.take(b.id); note = r?.text ? { text: r.text, warn: !r.ok } : null; render(); }));
+      boardList.append(officeRow(b.title, b.words, b.can ? b.terms : [b.terms, b.why].filter(Boolean).join(' - '), b.press, b.can, () => { const r = o.take(b.id); note = r?.text ? { text: r.text, warn: !r.ok } : null; render(); }));   // AUDIT CAPTAIN'S SEA X10: a rumour's row carried a stray " - "
     }
     if (!ot.board.length) boardList.append(el('li', 'dfnaval-item more', ot.ether ? 'Nobody on the quay has a tale today.' : 'Nothing more on the board today.'));
     for (const c of [...heldList.children]) c.remove();

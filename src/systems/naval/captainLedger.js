@@ -24,7 +24,7 @@
 // the letter is torn up.
 
 import { CROWNS } from './navalShips.js';
-import { LEAGUE_M } from '../../world/ethericSea.js';
+import { LEAGUE_M, inEtherLaw } from '../../world/ethericSea.js';
 import { HARBOUR_CONTRACT_KINDS, CONTRACTS_MAX, STANDING_FAILED, STANDING_ABANDONED, advance, expired, restoreContract } from './harbourBoard.js';
 
 export const CAPTAIN_SAVE_VENDOR = 'Captain';
@@ -57,7 +57,7 @@ export function nextRankOf(standing) {
  * WHAT A RANK BRINGS in its crown's harbours: `yard` off the shipwright's prices, `pay` on the board's purses, `offers`
  * more on the board a day, `marque` a letter of marque for sale, `admiralty` the Admiralty's Carrack for sale, `seasoned`
  * hands hired come Seasoned (shipCrew.js SEASONED_HIRE), `relief` the crown's navy always answers a captain under a
- * pirate's guns (navalDirector.js THE RELIEF), and `salute` its ships dip their colours to the captain.
+ * pirate's guns (navalDirector.js THE RELIEF).
  */
 export const RANK_PERKS = Object.freeze([
   Object.freeze({ yard: 0, pay: 0, offers: 0, marque: false, admiralty: false, seasoned: false, relief: false }),
@@ -87,8 +87,16 @@ export const LOG_TRADES = Object.freeze(['pirate', 'merchant', 'navy', 'ether', 
 export const LOG_CONTRACTS = HARBOUR_CONTRACT_KINDS;
 /** The board's offers taken, remembered (so a taken one is off its board for the rest of its day) - the newest this many. */
 export const BOARD_TAKEN_MAX = 64;
-/** CAPT-CHARTS: the treasure charts a captain keeps marked at once. */
+/** CAPT-CHARTS: the treasure charts a captain keeps marked at once - and the caches raised, remembered (the newest this
+ *  many: AUDIT CAPTAIN'S SEA B8 - the same chart, read again, paid again). */
 export const CHARTS_MAX = 8;
+export const CHARTS_RAISED_KEEP = 64;
+/** CAPT-TRADE: the exchanges a day's dealing is kept for (AUDIT CAPTAIN'S SEA B1: every one dealt with that day). */
+export const DEALT_PORTS_MAX = 64;
+/** AUDIT CAPTAIN'S SEA L8: a log's leagues kept to this many metres (a save's absurd count read as none past it). */
+export const SAILED_MAX_M = 1e10;
+/** AUDIT CAPTAIN'S SEA L8: a letter of marque's end kept within this of the captain's clock's whole run (minutes). */
+export const MARQUE_UNTIL_MAX = 1e9;
 /** The legends a log keeps by name, and its other lists, at most this many. */
 export const LOG_LIST_MAX = 32;
 /** ETHER-SEA: the Etheric isles a captain's charts keep (the first charted, kept), and the wild isles' strands
@@ -97,6 +105,11 @@ export const ETHER_CHARTED_MAX = 4096;
 export const ETHER_HARVEST_KEEP = 128;
 /** ETHER-SEA: a new Etheric record - nothing charted, ended or gathered, no crossing made. */
 export const newEther = () => ({ charted: [], legends: {}, harvested: {}, from: null, crossings: 0, heard: [] });
+/** ETHER-CROSSING: a way out as the ledger keeps it - a whole pixel of the world's grid, never one in the Etheric Sea's
+ *  law (AUDIT CAPTAIN'S SEA X2: a stale Yes kept the sea itself as the way out, and every way home landed back in it) -
+ *  else null (the way home then the open Abecean's). */
+export const wayOutOf = (at) => (at && Number.isFinite(at.px) && Number.isFinite(at.py) && Math.abs(at.px) < 8192 && Math.abs(at.py) < 8192 && !inEtherLaw(at.px, at.py)
+  ? { px: Math.floor(at.px), py: Math.floor(at.py) } : null);
 
 const size = (cls) => Math.max(1, Math.min(4, (cls?.cargo ?? 1) | 0));
 /**
@@ -131,7 +144,7 @@ export function newLog() {
 }
 
 /**
- * THE LEDGER. `deed(act, cls, { crown, marque, flagCrown, legend, name })` a ship's fate at the captain's hands - logged by
+ * THE LEDGER. `deed(act, cls, { crown, marque, trade, legend })` a ship's fate at the captain's hands - logged by
  * her trade and her crown's regard moved (answers the rank changes `[{ crown, from, to }]`); `regard(crown, n)` a crown's
  * regard moved by anything else; `note(field, n)` a count of the log's; `sailed(m)` the way made at a helm;
  * `standing(crown)`, `rank(crown)`; the marque's three (`marque`, `setMarque`, `tearMarque`); the save's three.
@@ -145,20 +158,26 @@ export function createCaptainLedger() {
   /** CAPT-BOARD: the contracts held (harbourBoard.js takeContract's), and the board's offers taken. */
   let contracts = [];
   let taken = [];
-  /** CAPT-TRADE: the day's dealing at the last exchange dealt with - `{ port, day, bought: { id: n }, sold: { id: n } }`. */
+  /** CAPT-TRADE: the day's dealing at each exchange dealt with that day - `{ day, at: { [port]: { bought: { id: n }, sold:
+   *  { id: n } } } }` (AUDIT CAPTAIN'S SEA B1: the last exchange's alone was kept - one deal at the next port over and the
+   *  first's stock stood whole again the same day). */
   let dealt = null;
-  /** CAPT-CHARTS: the treasure charts read and marked, their caches not yet raised (treasureCharts.js chartSite's). */
+  /** CAPT-CHARTS: the treasure charts read and marked, their caches not yet raised (treasureCharts.js chartSite's), and
+   *  the caches raised (their ids, the newest CHARTS_RAISED_KEEP). */
   let charts = [];
+  let raised = [];
   /** ETHER-SEA: the captain's Etheric Sea - the isles charted (world/ethericSea.js cell keys), the legends ended (the
    *  day each was), the wild isles' strands gathered (the day each was), the Bay's waters the last crossing out set sail
    *  from (the way home's landfall), the crossings made. */
   let ether = newEther();
   let chartedSet = new Set();
 
+  /** A crown's standing - none for a name that is no crown's (AUDIT CAPTAIN'S SEA L8: 'constructor' read the prototype's). */
+  const standingOf = (crown) => (typeof crown === 'string' && Object.hasOwn(standing, crown) ? standing[crown] : 0);
   const rankChanges = [];
   /** A crown's regard moved by `n`, kept in its band - the rank it crossed into said back (a promotion or a fall). */
   function regard(crown, n) {
-    if (!(crown in standing) || !Number.isFinite(n) || n === 0) return null;
+    if (typeof crown !== 'string' || !Object.hasOwn(standing, crown) || !Number.isFinite(n) || n === 0) return null;   // AUDIT CAPTAIN'S SEA L8: never 'constructor'
     const before = crownRankOf(standing[crown]);
     standing[crown] = Math.max(CROWN_STANDING_MIN, Math.min(CROWN_STANDING_MAX, Math.round(standing[crown] + n)));
     const after = crownRankOf(standing[crown]);
@@ -169,15 +188,15 @@ export function createCaptainLedger() {
   }
   const ledger = {
     get log() { return log; },
-    standing: (crown) => standing[crown] ?? 0,
-    rank: (crown) => crownRankOf(standing[crown] ?? 0),
+    standing: (crown) => standingOf(crown),
+    rank: (crown) => crownRankOf(standingOf(crown)),
     /** Every crown's standing and rank, in CROWNS' order. */
     crowns: () => CROWNS.map((c) => ({ crown: c.name, ruler: c.ruler, standing: standing[c.name] ?? 0, rank: crownRankOf(standing[c.name] ?? 0), next: nextRankOf(standing[c.name] ?? 0) })),
     regard,
     /**
      * A SHIP'S FATE AT THE CAPTAIN'S HANDS: logged by her trade ('ether'/'legend' for the Etheric Sea's - `legend` her
      * name, kept), and her crown's regard moved - `crown` the crown the deed is charged to (the waters', a navy's own),
-     * `marque` under a letter against a rival (the regard the letter's crown's), `flagCrown` her own colours'.
+     * `marque` under a letter against a rival (the regard the letter's crown's).
      * @param {'fire'|'sink'|'board'|'repel'} act @param {any} cls
      * @param {{ crown?: string|null, marque?: string|null, trade?: string|null, legend?: string|null }} [o]
      */
@@ -235,16 +254,24 @@ export function createCaptainLedger() {
     /**
      * WHAT HAPPENED AT SEA, TO THE CONTRACTS HELD (harbourBoard.js advance's events): each one done or failed off the
      * list - done, its crown's regard (its `standing`), its kind's count and its purse in the log; failed,
-     * STANDING_FAILED - answered `{ done, failed, moved }` (`moved` the ones come further) for the host to pay and say.
+     * STANDING_FAILED; void (a bounty's quarry gone down by another hand), off it and no regard lost - answered `{ done,
+     * failed, moved, voided }` (`moved` the ones come further) for the host to pay and say.
      */
     contractEvent(ev) {
-      const done = [], failed = [], moved = [];
-      for (const c of [...contracts]) {
+      const done = [], failed = [], moved = [], voided = [];
+      // AUDIT CAPTAIN'S SEA B7: A DEED IS ONE CONTRACT'S - a ship ended, studied or a cask hauled moves the one it is
+      // most the deed of (a bounty's own quarry hers, else the soonest due): three hunts of a crown were all done by the
+      // same three kills. A berth and a wreck are every delivery's in that hold.
+      const one = ev?.type === 'end' || ev?.type === 'study' || ev?.type === 'haul';
+      const own = (c) => (c.kind === 'bounty' && c.id === ev.bounty ? 1 : 0);
+      const order = one ? [...contracts].sort((a, b) => own(b) - own(a) || a.until - b.until) : [...contracts];
+      for (const c of order) {
         const was = c.done | 0;
         const r = advance(c, ev);
-        if (r === 'done') { finish(c, true); done.push(c); } else if (r === 'failed') { finish(c, false); failed.push(c); } else if ((c.done | 0) !== was) moved.push(c);
+        if (r === 'done') { finish(c, true); done.push(c); } else if (r === 'failed') { finish(c, false); failed.push(c); } else if (r === 'void') { contracts = contracts.filter((x) => x !== c); voided.push(c); } else if ((c.done | 0) !== was) moved.push(c);
+        if (one && (r || (c.done | 0) !== was)) break;
       }
-      return { done, failed, moved };
+      return { done, failed, moved, voided };
     },
     /** Every contract whose term is out at `now` (the captain's clock) failed and off the list. */
     expireContracts(now) {
@@ -269,21 +296,35 @@ export function createCaptainLedger() {
       charts.push({ ...c });
       return true;
     },
-    /** A chart's cache raised: off the charts, and the log's `maps`. Answers it, or null. */
+    /** A chart's cache raised: off the charts, remembered raised, and the log's `maps`. Answers it, or null. */
     raiseChart(id) {
       const c = charts.find((x) => x.id === id);
       if (!c) return null;
       charts = charts.filter((x) => x !== c);
+      raised = [...raised.filter((x) => x !== id), id].slice(-CHARTS_RAISED_KEEP);
       ledger.note('maps');
       return c;
     },
+    /** Whether a cache (its site's id) has been raised - its chart, read again, marks nothing. */
+    wasRaised: (id) => raised.includes(id),
     // ── CAPT-TRADE: the exchange's dealing ──
-    /** The captain's dealing at `port`'s exchange on `day` - `{ bought, sold }`, none at another port or another day. */
-    dealtAt(port, day) { return dealt && dealt.port === port && dealt.day === day ? { bought: { ...dealt.bought }, sold: { ...dealt.sold } } : { bought: {}, sold: {} }; },
-    /** `n` of a good bought from (`side` 'bought') or sold to ('sold') `port`'s exchange on `day`. */
+    /** The captain's dealing at `port`'s exchange on `day` - `{ bought, sold }`, none on another day. */
+    dealtAt(port, day) {
+      const at = dealt && dealt.day === day && typeof port === 'string' && Object.hasOwn(dealt.at, port) ? dealt.at[port] : null;
+      return at ? { bought: { ...at.bought }, sold: { ...at.sold } } : { bought: {}, sold: {} };
+    },
+    /** `n` of a good bought from (`side` 'bought') or sold to ('sold') `port`'s exchange on `day` - another day's dealing
+     *  let go, every port's of this one kept (the newest DEALT_PORTS_MAX). */
     deal(port, day, id, n, side) {
-      if (!(dealt && dealt.port === port && dealt.day === day)) dealt = { port, day, bought: {}, sold: {} };
-      if (side === 'bought' || side === 'sold') dealt[side][id] = (dealt[side][id] | 0) + Math.max(0, n | 0);
+      if (typeof port !== 'string' || (side !== 'bought' && side !== 'sold')) return;
+      if (!(dealt && dealt.day === day)) dealt = { day, at: Object.create(null) };
+      if (!Object.hasOwn(dealt.at, port)) {
+        const ports = Object.keys(dealt.at);
+        if (ports.length >= DEALT_PORTS_MAX) delete dealt.at[ports[0]];
+        dealt.at[port] = { bought: {}, sold: {} };
+      }
+      const at = dealt.at[port];
+      at[side][id] = (Object.hasOwn(at[side], id) ? at[side][id] | 0 : 0) + Math.max(0, n | 0);
     },
     // ── ETHER-SEA: the captain's Etheric Sea ──
     /** An isle charted (its key): the log's `islands` the first time - never past ETHER_CHARTED_MAX. Answers whether it
@@ -310,7 +351,7 @@ export function createCaptainLedger() {
     },
     gatheredDay: (key) => (Number.isFinite(ether.harvested[key]) ? ether.harvested[key] : null),
     /** The Bay's waters the last crossing out set sail from `{ px, py }` (the way home makes landfall there), or null. */
-    setCrossedFrom(at) { ether.from = at && Number.isFinite(at.px) && Number.isFinite(at.py) ? { px: Math.floor(at.px), py: Math.floor(at.py) } : null; },
+    setCrossedFrom(at) { ether.from = wayOutOf(at); },
     crossedFrom: () => (ether.from ? { ...ether.from } : null),
     /** A crossing made (either way); the count. */
     crossed() { ether.crossings = whole(ether.crossings + 1); },
@@ -319,8 +360,8 @@ export function createCaptainLedger() {
     heard: () => ether.heard.slice(),
     get crossings() { return ether.crossings; },
     // ── the save ──
-    newSaveData: () => ({ v: CAPTAIN_SAVE_VERSION, log: newLog(), standing: zeros(crownNames()), marque: null, contracts: [], taken: [], dealt: null, charts: [], ether: newEther() }),
-    getSaveData: () => ({ v: CAPTAIN_SAVE_VERSION, log: JSON.parse(JSON.stringify(log)), standing: { ...standing }, marque: marque ? { ...marque } : null, contracts: JSON.parse(JSON.stringify(contracts)), taken: taken.slice(), dealt: dealt ? JSON.parse(JSON.stringify(dealt)) : null, charts: JSON.parse(JSON.stringify(charts)), ether: JSON.parse(JSON.stringify(ether)) }),
+    newSaveData: () => ({ v: CAPTAIN_SAVE_VERSION, log: newLog(), standing: zeros(crownNames()), marque: null, contracts: [], taken: [], dealt: null, charts: [], raised: [], ether: newEther() }),
+    getSaveData: () => ({ v: CAPTAIN_SAVE_VERSION, log: JSON.parse(JSON.stringify(log)), standing: { ...standing }, marque: marque ? { ...marque } : null, contracts: JSON.parse(JSON.stringify(contracts)), taken: taken.slice(), dealt: dealt ? JSON.parse(JSON.stringify(dealt)) : null, charts: JSON.parse(JSON.stringify(charts)), raised: raised.slice(), ether: JSON.parse(JSON.stringify(ether)) }),
     restoreSaveData(r) {
       log = newLog();
       standing = zeros(crownNames());
@@ -329,6 +370,7 @@ export function createCaptainLedger() {
       taken = [];
       dealt = null;
       charts = [];
+      raised = [];
       ether = newEther();
       chartedSet = new Set();
       rankChanges.length = 0;
@@ -337,30 +379,34 @@ export function createCaptainLedger() {
       for (const k of LOG_TRADES) { log.sunk[k] = whole(l.sunk?.[k]); log.taken[k] = whole(l.taken?.[k]); }
       for (const k of LOG_CONTRACTS) log.contracts[k] = whole(l.contracts?.[k]);
       for (const k of ['repelled', 'claimed', 'plunder', 'earned', 'traded', 'maps', 'islands', 'deepest']) log[k] = whole(l[k]);
-      log.sailed = Number.isFinite(l.sailed) && l.sailed > 0 ? l.sailed : 0;
+      log.sailed = Number.isFinite(l.sailed) && l.sailed > 0 ? Math.min(SAILED_MAX_M, l.sailed) : 0;   // AUDIT CAPTAIN'S SEA L8
       log.legends = Array.isArray(l.legends) ? l.legends.filter((n) => typeof n === 'string').map((n) => n.slice(0, 48)).slice(-LOG_LIST_MAX) : [];
       log.best = l.best && typeof l.best.name === 'string' && Number.isFinite(l.best.worth) ? { name: l.best.name.slice(0, 48), worth: whole(l.best.worth) } : null;
       for (const c of crownNames()) {
         const v = Number(r.standing?.[c]);
         standing[c] = Number.isFinite(v) ? Math.max(CROWN_STANDING_MIN, Math.min(CROWN_STANDING_MAX, Math.round(v))) : 0;
       }
-      if (r.marque && crownNames().includes(r.marque.crown) && Number.isFinite(r.marque.until)) marque = { crown: r.marque.crown, until: Math.floor(r.marque.until) };
-      contracts = (Array.isArray(r.contracts) ? r.contracts : []).map(restoreContract).filter((c) => c && crownNames().includes(c.crown)).slice(0, CONTRACTS_MAX);
+      if (r.marque && crownNames().includes(r.marque.crown) && Number.isFinite(r.marque.until)) marque = { crown: r.marque.crown, until: Math.floor(Math.min(MARQUE_UNTIL_MAX, r.marque.until)) };   // AUDIT CAPTAIN'S SEA L8: bounded
+      // AUDIT CAPTAIN'S SEA L8: a contract once (by its id), and charts the same - a save's twins paid twice
+      const once = (list) => list.filter((c, i) => list.findIndex((x) => x.id === c.id) === i);
+      contracts = once((Array.isArray(r.contracts) ? r.contracts : []).map(restoreContract).filter((c) => c && crownNames().includes(c.crown))).slice(0, CONTRACTS_MAX);
       taken = (Array.isArray(r.taken) ? r.taken : []).filter((id) => typeof id === 'string').slice(-BOARD_TAKEN_MAX);
       const d = r.dealt;
-      if (d && typeof d.port === 'string' && Number.isFinite(d.day)) {
-        const counts = (o) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([, n]) => Number.isFinite(n) && n > 0).map(([k, n]) => [k, Math.floor(n)]));
-        dealt = { port: d.port, day: Math.floor(d.day), bought: counts(d.bought), sold: counts(d.sold) };
-      }
-      charts = (Array.isArray(r.charts) ? r.charts : []).filter((c) => c && typeof c.id === 'string' && Number.isFinite(c.px) && Number.isFinite(c.py) && Number.isFinite(c.seed))
-        .map((c) => ({ id: c.id, seed: c.seed >>> 0, px: Math.floor(c.px), py: Math.floor(c.py), near: String(c.near ?? ''), words: String(c.words ?? '') })).slice(0, CHARTS_MAX);
+      const counts = (o) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([, n]) => Number.isFinite(n) && n > 0).map(([k, n]) => [k, Math.floor(n)]));
+      if (d && Number.isFinite(d.day) && d.at && typeof d.at === 'object') {
+        dealt = { day: Math.floor(d.day), at: Object.create(null) };
+        for (const [port, x] of Object.entries(d.at).slice(-DEALT_PORTS_MAX)) dealt.at[port] = { bought: counts(x?.bought), sold: counts(x?.sold) };
+      } else if (d && typeof d.port === 'string' && Number.isFinite(d.day)) dealt = { day: Math.floor(d.day), at: Object.assign(Object.create(null), { [d.port]: { bought: counts(d.bought), sold: counts(d.sold) } }) };   // an older save's one port's
+      charts = once((Array.isArray(r.charts) ? r.charts : []).filter((c) => c && typeof c.id === 'string' && Number.isFinite(c.px) && Number.isFinite(c.py) && Number.isFinite(c.seed))
+        .map((c) => ({ id: c.id, seed: c.seed >>> 0, px: Math.floor(c.px), py: Math.floor(c.py), near: String(c.near ?? ''), words: String(c.words ?? '') }))).slice(0, CHARTS_MAX);
+      raised = [...new Set((Array.isArray(r.raised) ? r.raised : []).filter((id) => typeof id === 'string' && id.length <= 64))].slice(-CHARTS_RAISED_KEEP);
       const e = r.ether && typeof r.ether === 'object' ? r.ether : {};
       const days = (o, keep) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([k, d]) => typeof k === 'string' && Number.isFinite(d)).map(([k, d]) => [k, Math.floor(d)]).slice(-keep));
       ether.charted = [...new Set((Array.isArray(e.charted) ? e.charted : []).filter((k) => typeof k === 'string' && /^\d{1,4},\d{1,4}$/.test(k)))].slice(0, ETHER_CHARTED_MAX);
       chartedSet = new Set(ether.charted);
       ether.legends = days(e.legends, LOG_LIST_MAX);
       ether.harvested = days(e.harvested, ETHER_HARVEST_KEEP);
-      ether.from = e.from && Number.isFinite(e.from.px) && Number.isFinite(e.from.py) ? { px: Math.floor(e.from.px), py: Math.floor(e.from.py) } : null;
+      ether.from = wayOutOf(e.from);
       ether.crossings = whole(e.crossings);
       ether.heard = [...new Set((Array.isArray(e.heard) ? e.heard : []).filter((id) => typeof id === 'string' && id.length <= 24))].slice(0, LOG_LIST_MAX);
     },
@@ -387,7 +433,7 @@ export const leagueWords = (m) => `${(Math.max(0, Number(m) || 0) / LEAGUE_M).to
 export function logLines(log) {
   const sum = (o) => Object.values(o ?? {}).reduce((s, v) => s + (v | 0), 0);
   const gold = (n) => `${Math.round(n).toLocaleString('en-US')} gold`;
-  const byTrade = (o) => LOG_TRADES.filter((k) => o[k]).map((k) => `${o[k]} ${TRADE_WORDS[k]}`).join(', ');
+  const byTrade = (o) => LOG_TRADES.filter((k) => o[k]).map((k) => `${o[k]} ${(o[k] === 1 ? TRADE_WORD : TRADE_WORDS)[k]}`).join(', ');   // AUDIT CAPTAIN'S SEA L11: "1 pirate"
   const lines = [
     ['Ships sunk', sum(log.sunk) ? `${sum(log.sunk)} - ${byTrade(log.sunk)}` : 'none'],
     ['Ships taken', sum(log.taken) ? `${sum(log.taken)} - ${byTrade(log.taken)}` : 'none'],
@@ -398,7 +444,7 @@ export function logLines(log) {
   if (log.plunder) lines.push(['Plunder hauled', gold(log.plunder)]);
   if (log.best) lines.push(['Richest prize', `${log.best.name} (${gold(log.best.worth)})`]);
   const done = sum(log.contracts);
-  if (done) lines.push(['Contracts done', `${done} - ${LOG_CONTRACTS.filter((k) => log.contracts[k]).map((k) => `${log.contracts[k]} ${k}`).join(', ')}`]);
+  if (done) lines.push(['Contracts done', `${done} - ${LOG_CONTRACTS.filter((k) => log.contracts[k]).map((k) => `${log.contracts[k]} ${(log.contracts[k] === 1 ? CONTRACT_WORD : CONTRACT_WORDS)[k]}`).join(', ')}`]);
   if (log.earned) lines.push(['Contract purses', gold(log.earned)]);
   if (log.traded) lines.push(['Sold at the exchange', gold(log.traded)]);
   if (log.maps) lines.push(['Treasure found', `${log.maps} ${log.maps === 1 ? 'cache' : 'caches'}`]);
@@ -407,5 +453,9 @@ export function logLines(log) {
   if (log.legends.length) lines.push(['Legends ended', log.legends.join(', ')]);
   return lines;
 }
-/** The trades' words in the log. */
+/** The trades' words in the log - one, and many. */
+export const TRADE_WORD = Object.freeze({ pirate: 'pirate', merchant: 'merchantman', navy: 'crown\'s ship', ether: 'Etheric ship', legend: 'legend' });
 export const TRADE_WORDS = Object.freeze({ pirate: 'pirates', merchant: 'merchantmen', navy: 'crown\'s ships', ether: 'Etheric ships', legend: 'legends' });
+/** The contracts' kinds in the log - one, and many (AUDIT CAPTAIN'S SEA L11: "2 bounty"). */
+export const CONTRACT_WORD = Object.freeze({ bounty: 'bounty', hunt: 'hunt', delivery: 'delivery', salvage: 'salvage', survey: 'survey' });
+export const CONTRACT_WORDS = Object.freeze({ bounty: 'bounties', hunt: 'hunts', delivery: 'deliveries', salvage: 'salvages', survey: 'surveys' });

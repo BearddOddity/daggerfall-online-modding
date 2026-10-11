@@ -164,8 +164,8 @@
   {
     "name": "OFFICE-buy-past-stock",
     "file": "src/scenes/harbourOffice.js",
-    "old": "    const k = Math.min(asked(n), r.sells, Math.floor((deps.gold?.() ?? 0) / r.sell));",
-    "new": "    const k = Math.min(asked(n), Math.floor((deps.gold?.() ?? 0) / r.sell));",
+    "old": "    const k = Math.min(asked(n), r.sells, Math.floor((deps.gold?.() ?? 0) / r.sell), fit);",
+    "new": "    const k = Math.min(asked(n), Math.floor((deps.gold?.() ?? 0) / r.sell), fit);",
     "tests": [
       "test/capttrade.test.js"
     ]
@@ -209,8 +209,8 @@
   {
     "name": "LEDGER-dealt-any-day",
     "file": "src/systems/naval/captainLedger.js",
-    "old": "    dealtAt(port, day) { return dealt && dealt.port === port && dealt.day === day ?",
-    "new": "    dealtAt(port, day) { return dealt && dealt.port === port ?",
+    "old": "      const at = dealt && dealt.day === day && typeof port === 'string' && Object.hasOwn(dealt.at, port) ? dealt.at[port] : null;",
+    "new": "      const at = dealt && typeof port === 'string' && Object.hasOwn(dealt.at, port) ? dealt.at[port] : null;",
     "tests": [
       "test/capttrade.test.js"
     ]
@@ -290,8 +290,8 @@
   {
     "name": "LEDGER-chart-unlogged",
     "file": "src/systems/naval/captainLedger.js",
-    "old": "      charts = charts.filter((x) => x !== c);\n      ledger.note('maps');",
-    "new": "      charts = charts.filter((x) => x !== c);",
+    "old": "      raised = [...raised.filter((x) => x !== id), id].slice(-CHARTS_RAISED_KEEP);\n      ledger.note('maps');",
+    "new": "      raised = [...raised.filter((x) => x !== id), id].slice(-CHARTS_RAISED_KEEP);",
     "tests": [
       "test/capttrade.test.js"
     ]
@@ -317,8 +317,8 @@
   {
     "name": "HOST-chart-ungiven",
     "file": "src/scenes/navalHost.js",
-    "old": "      deps.board?.giveItems?.([chart], boatInPlay() ?? null);\n",
-    "new": "",
+    "old": "deps.board?.giveItems?.([chart], boatInPlay() ?? null, { force: true });",
+    "new": "void chart;",
     "tests": [
       "test/capttrade.test.js"
     ]

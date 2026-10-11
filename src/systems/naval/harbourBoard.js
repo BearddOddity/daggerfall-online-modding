@@ -18,7 +18,8 @@
 //   salvage   a merchantman gone down off the port: CONTRACT_NEED.salvage casks of her cargo hauled out of the sea where she
 //             went down (her casks float there once the captain is near)
 //   survey    the Admiralty's measure of the shipping in the crown's waters: CONTRACT_NEED.survey ships studied through the
-//             captain's glass (shipKnowledge.js KNOW.studied - the glass held close, never a ship struck)
+//             captain's glass (shipKnowledge.js KNOW.studied - the glass held close, never a ship struck), each ship once
+//             (her seed kept on the contract - AUDIT CAPTAIN'S SEA L6: a harbour's ship stood again was counted again)
 //
 // A contract runs on the captain's own clock (playerTicker ownMinutes, as the letter of marque does - a session closed
 // is no day of her term), CONTRACTS_MAX at once. Done, it pays its purse (PAY_BASE by kind, times the captain's level's
@@ -104,7 +105,8 @@ export function payOf(kind, { level = 1, size = 1, need = 1, px = 0, pay = 0 } =
 
 /**
  * A SITE IN OPEN WATER off a port: a way drawn off `r` and a distance between SITE_PX.near and SITE_PX.far, walked in to
- * SITE_PX.near on the square ring (Chebyshev, as every map distance here) - the first map pixel there whose every
+ * SITE_PX.near on the square ring (Chebyshev, as every map distance here) and then out to SITE_PX.far (AUDIT CAPTAIN'S SEA
+ * B6: a port whose open water lay only past the drawn distance sited nothing) - the first map pixel there whose every
  * neighbour is sea (`seaAt`), the next way round when none (eight ways). Null where the port has no open water about it.
  * `band` another reach than SITE_PX's (a treasure chart's - treasureCharts.js CHART_PX).
  * @param {{ px: number, py: number }} port @param {() => number} r @param {(px: number, py: number) => boolean} seaAt
@@ -118,7 +120,9 @@ export function siteFor(port, r, seaAt, band = SITE_PX) {
   for (let k = 0; k < 8; k++) {
     const a = ((first + k) % 8) * (Math.PI / 4);
     const c = Math.cos(a), sn = Math.sin(a), m = Math.max(Math.abs(c), Math.abs(sn));   // on the square ring: `d` pixels off, Chebyshev
-    for (let d = want; d >= band.near; d--) {
+    for (let i = 0; i <= band.far - band.near; i++) {
+      const d = want - i >= band.near ? want - i : want + (i - (want - band.near));   // in from `want`, then out past it
+      if (d > band.far) break;
       const px = port.px + Math.round((c / m) * d), py = port.py - Math.round((sn / m) * d);
       if (open(px, py)) return { px, py, d: cheb({ px, py }, port) };
     }
@@ -225,19 +229,26 @@ export function takeContract(offer, { now, boat = null }) {
 /**
  * WHAT HAPPENED AT SEA, TO A CONTRACT: `ev` one of
  *   { type: 'end', act: 'sink'|'board', faction, crown, bounty }   a ship ended by the captain's hand
- *   { type: 'study', crown }                                     a ship studied through the glass in a crown's waters
+ *   { type: 'study', crown, seed }                               a ship studied through the glass in a crown's waters
  *   { type: 'haul', site }                                       a cask of a contract's wreck hauled aboard
  *   { type: 'berth', port, boat }                                a boat lying to a port's quay
  *   { type: 'wrecked', boat }                                    a boat of the captain's wrecked
- * Answers 'done', 'failed' or null (her progress moved or not, in `c.done`).
+ *   { type: 'lost', bounty }                                     a bounty's quarry gone down by another hand
+ * Answers 'done', 'failed', 'void' (AUDIT CAPTAIN'S SEA B4: a bounty whose quarry no hand of the captain's can end now) or
+ * null (her progress moved or not, in `c.done`).
  * @param {any} c @param {any} ev
  */
 export function advance(c, ev) {
   if (!c || !ev) return null;
   const count = () => { c.done = (c.done | 0) + 1; return c.done >= (c.need | 0) ? 'done' : null; };
-  if (c.kind === 'bounty') return ev.type === 'end' && ev.bounty === c.id ? 'done' : null;
+  if (c.kind === 'bounty') return ev.bounty !== c.id ? null : ev.type === 'end' ? 'done' : ev.type === 'lost' ? 'void' : null;
   if (c.kind === 'hunt') return ev.type === 'end' && ev.faction === 'pirate' && ev.crown === c.crown && (ev.act === 'sink' || ev.act === 'board') ? count() : null;
-  if (c.kind === 'survey') return ev.type === 'study' && ev.crown === c.crown ? count() : null;
+  if (c.kind === 'survey') {
+    if (ev.type !== 'study' || ev.crown !== c.crown) return null;
+    // AUDIT CAPTAIN'S SEA L6: each ship once - her seed kept (a harbour's ship stood again, studied again, counted again)
+    if (Number.isFinite(ev.seed)) { const seed = ev.seed >>> 0; if ((c.seen ??= []).includes(seed)) return null; c.seen.push(seed); }
+    return count();
+  }
   if (c.kind === 'salvage') return ev.type === 'haul' && ev.site === c.id ? count() : null;
   if (c.kind === 'delivery') {
     if (c.boat == null || ev.boat !== c.boat) return null;
@@ -256,7 +267,8 @@ export const expired = (c, now) => Number.isFinite(now) && now >= c.until;
 export function contractLine(c, now) {
   const left = Math.max(0, c.until - now);
   const days = Math.floor(left / MINUTES_PER_DAY), hours = Math.floor((left % MINUTES_PER_DAY) / 60);
-  const term = left <= 0 ? 'Her term is out' : days > 0 ? `${days} ${days === 1 ? 'day' : 'days'}${hours ? `, ${hours} ${hours === 1 ? 'hour' : 'hours'}` : ''} left` : `${Math.max(1, hours)} ${hours === 1 ? 'hour' : 'hours'} left`;
+  const last = Math.max(1, hours);   // AUDIT CAPTAIN'S SEA B13: under an hour is "1 hour", never "1 hours"
+  const term = left <= 0 ? 'Her term is out' : days > 0 ? `${days} ${days === 1 ? 'day' : 'days'}${hours ? `, ${hours} ${hours === 1 ? 'hour' : 'hours'}` : ''} left` : `${last} ${last === 1 ? 'hour' : 'hours'} left`;
   const progress = c.kind === 'hunt' ? `${c.done | 0} of ${c.need} ended`
     : c.kind === 'survey' ? `${c.done | 0} of ${c.need} studied`
       : c.kind === 'salvage' ? `${c.done | 0} of ${c.need} casks raised`
@@ -275,13 +287,23 @@ export function contractSites(list) {
   return out;
 }
 
-/** A contract from a save, or null for one that cannot be one. */
+/** AUDIT CAPTAIN'S SEA L8: a saved contract's purse and regard kept within what a board posts. */
+export const BOARD_PAY_MAX = 1e6;
+export const BOARD_STANDING_MAX = 60;
+/** A contract from a save, or null for one that cannot be one - AUDIT CAPTAIN'S SEA L8: its purse, its regard, its need
+ *  and its count within what a board posts (a purse of -9999 was paid out of the captain's gold, a hunt with no need
+ *  was done on its first kill), the ships a survey has counted its own. */
 export function restoreContract(c) {
   if (!c || typeof c !== 'object' || !HARBOUR_CONTRACT_KINDS.includes(c.kind) || typeof c.id !== 'string' || typeof c.crown !== 'string') return null;
   if (!Number.isFinite(c.until) || !Number.isFinite(c.pay) || !Number.isFinite(c.days)) return null;
   if ((c.kind === 'bounty' || c.kind === 'salvage') && !(c.target && Number.isFinite(c.target.px) && Number.isFinite(c.target.py))) return null;
   if (c.kind === 'delivery' && !(c.to && typeof c.to.key === 'string')) return null;
-  return { ...c, done: Math.max(0, c.done | 0) };
+  const range = CONTRACT_NEED[c.kind];
+  if (range && !(Number.isInteger(c.need) && c.need >= range[0] && c.need <= range[1])) return null;
+  const out = { ...c, pay: Math.max(0, Math.min(BOARD_PAY_MAX, Math.round(c.pay))), standing: Math.max(0, Math.min(BOARD_STANDING_MAX, Math.round(Number(c.standing) || 0))), done: Math.max(0, Math.min(range ? c.need : 0, c.done | 0)) };
+  if (c.kind === 'survey') out.seen = [...new Set((Array.isArray(c.seen) ? c.seen : []).filter((x) => Number.isInteger(x) && x >= 0 && x <= 0xffffffff))].slice(0, c.need);
+  else delete out.seen;
+  return out;
 }
 
 /**
