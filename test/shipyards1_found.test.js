@@ -27,7 +27,7 @@ import { findHarbour } from '../src/systems/naval/shipLife.js';
 import { markGroup, markShown, countGroups, isYardMark } from '../src/systems/travelViewFilters.js';
 import { setTutorialHandler, _resetTutorialTriggerForTests, tutorialById } from '../src/systems/tutorials.js';
 import { _resetForTests as resetPrefs } from '../src/systems/uiPrefs.js';
-import { createShipyardOverlay, createNavalYardOverlay, createNavalPlunderOverlay } from '../src/ui/navalPlunderDoor.js';
+import { createShipyardOverlay, createNavalYardOverlay, createNavalPlunderOverlay, createEtherChartOverlay } from '../src/ui/navalPlunderDoor.js';
 import { yardGlyph, portGlyph, yardMarkKind } from '../src/ui/travelViewHud.js';
 import { exteriorFrame, streetColor, same } from './yardLightRig.mjs';
 import { LAMP_RANGE } from '../src/scenes/portHost.js';
@@ -259,6 +259,8 @@ test('SHIPYARDS x TUT1: the shipmaster\'s window pops the shipyard\'s page, as t
   assert.equal(createShipyardOverlay({}), null);
   assert.equal(createNavalYardOverlay({}), null);
   assert.equal(createNavalPlunderOverlay({}), null);
+  // AUDIT CAPTAIN'S SEA (at the merge of SHIPYARDS): the chart of the Etheric Sea, through the same door, pops no page
+  assert.equal(createEtherChartOverlay({}), null);
   assert.deepEqual(noted, ['shipyard', 'shipyard', 'naval-combat']);
   off();
   _resetTutorialTriggerForTests();

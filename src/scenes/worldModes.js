@@ -329,6 +329,7 @@ import { BankWindow, preloadBankArt, bankArtLoaded, BANK_RECTS, BANK_PANEL_X, BA
 import { BankPurchaseWindow, preloadPurchaseArt, purchaseArtLoaded } from '../ui/bankPurchaseWindow.js';   // H2
 import { titleDeed, shipLabel, BOAT_DEED_TEMPLATE as FLEET_DEED_TEMPLATE } from '../systems/fleet.js';   // HOLDINGS: a bought deed into the Fleet's book
 import { createBankAccounts, createHouses, BANK_REGION_COUNT, TRANSACTION_RESULT, ownsHouse, isHouseOwned, deedStands, ownedHouseKey, houseSellPrice, housesForSale, allocateHouseToPlayer, purchaseHouse, ownsShip, ownedShipType, purchaseShip, sellShip, sellHouse, SHIP_COORDS, SHIP_INTERIOR_MAP_IDS, creditMarksSale, marksSaleCredit, crossedDeedLines, goldRegion } from '../systems/banking.js';   // H1/H2   // H3: the two leaves - the sell price and the ship
+import { isEtherPlaceId } from '../world/etherPlaces.js';   // AUDIT CAPTAIN'S SEA P9: an isle town's buildings are no deed's
 // HOME1: the online homes - the door's one answer, the offer, the owner's menu, and an owned home's own scene
 import {
   homeCandidate, homePurchasable, homeSceneName, homeDoorAnswer, homeDoorTitle, homeLockedLine, homeBelongsLine,
@@ -3164,7 +3165,7 @@ export function createWorldModes(host) {
    *  distinguishing between ships"). UXB1-N: ONE predicate, read by the container arm of the activation ladder and by
    *  the plaque, so what the plaque calls private property is exactly what the press treats as someone else's. */
   const ownsThisInterior = (b = interiorBuilding) => !privateVisitRoom && ((!!interiorCabin && b === interiorBuilding) || (b?.buildingType === BUILDING_TYPES.Ship && ownsShip(playerEntity))
-    || (interiorHome && b === interiorBuilding ? interiorHome.own : isHouseOwned(playerEntity.houses ?? [], b?.regionIndex ?? 0, b?.buildingKey)));   // HOME1: my online home's cupboards are my storage, and another's are not
+    || (interiorHome && b === interiorBuilding ? interiorHome.own : houseOwnedAt(b, b?.buildingKey)));   // HOME1: my online home's cupboards are my storage, and another's are not
   const interiorHoverName = composeNamer([
     (key) => host.profHoverName?.(key) ?? null,   // INDOOR-SKIN (PROF-MENU): a profession node's acts first (a body's knife and search), as underground
     (key) => interiorCabin && typeof key === 'string' && key.startsWith('exit:') ? { title: isCaravanRoom(interiorCabin) ? CARAVAN_TEXT.exit : 'Return to deck' } : null,   // WAGONS1: the caravan's door
@@ -4341,6 +4342,7 @@ export function createWorldModes(host) {
   function currentHousesForSale() {
     const dir = buildingDirectory?.();
     if (!dir?.buildings?.length) return [];
+    if (isEtherPlaceId(dir.mapId)) return [];   // AUDIT CAPTAIN'S SEA P9: no house is sold past the Veil - its towns are no region's slot
     return housesForSale(dir.buildings, {
       mapId: dir.mapId,
       month: Math.floor(worldMinutes() / (MINUTES_PER_DAY * DAYS_PER_MONTH)),
@@ -4722,7 +4724,7 @@ export function createWorldModes(host) {
     const b = interiorBuilding;
     if (!b) return false;
     if (b.buildingType === BUILDING_TYPES.Ship) return ownsShip(playerEntity);
-    return isHouseOwned(playerEntity.houses ?? [], b.regionIndex ?? 0, b.buildingKey ?? 0);
+    return houseOwnedAt(b, b.buildingKey ?? 0);
   }
   /** WAGONS2-VISIT: STANDING IN ANOTHER PLAYER'S CARAVAN, A VISIT (systems/caravanVisit.js) - Mac: they come in "to craft,
    *  rest, look around": its stations, its bed and its pieces to look at are mine to use; its storage and its decorator
@@ -7286,6 +7288,10 @@ export function createWorldModes(host) {
   /** The town a building record is keyed by: the door's own location (buildingDataForDoor's `townMapId` - a streamed
    *  neighbour's door is not the town under the player), else the location under the player. */
   const homeTownOf = (b) => b?.townMapId || (questSceneCtx?.()?.mapId ?? 0);
+  /** H1's IsHouseOwned for a building where it stands - DFU's (region, key) law; AUDIT CAPTAIN'S SEA P9: never a building
+   *  of an isle's town (no house is sold past the Veil, and a Betony deed's key owned the same key in every isle town of
+   *  region 19 - its residents gone, its cupboards the player's). */
+  const houseOwnedAt = (b, key) => !isEtherPlaceId(homeTownOf(b)) && isHouseOwned(playerEntity.houses ?? [], b?.regionIndex ?? 0, key);
   /** The online home a building is, as this client last heard - null offline, for a building no player can own, or
    *  while its town is not known yet. */
   function homeOf(b) {
@@ -7437,7 +7443,7 @@ export function createWorldModes(host) {
       // (buildingLocks.js:"had been omitted" - the first thing the ladder tests).
       // The hook has been in that law's contract since R1 with
       // nothing able to answer it.
-      isHouseOwned: (key) => isHouseOwned(playerEntity.houses ?? [], bd.regionIndex ?? 0, key),
+      isHouseOwned: (key) => houseOwnedAt(bd, key),
       // D6: and your own SHIP is not locked against you either
       // (buildingLocks.js's last arm - PlayerActivate.cs:1307-1308).
       // The key was simply absent here, so it defaulted false and
@@ -7753,7 +7759,7 @@ export function createWorldModes(host) {
           factionId: bd.factionId ?? 0,
           buildingUnlocked: opened,
           isBrokenIn,
-          houseOwned: home !== null || isHouseOwned(playerEntity.houses ?? [], bd.regionIndex ?? 0, bd.buildingKey),   // HOME1: a player's home has no residents to greet anyone
+          houseOwned: home !== null || houseOwnedAt(bd, bd.buildingKey),   // HOME1: a player's home has no residents to greet anyone
           isShop: isShop(bd.buildingType),
         });
         if (greet) {
@@ -8287,7 +8293,7 @@ export function createWorldModes(host) {
       const peopleVisible = (restore?.privateRoom || hit.sailingCabin) ? false : !building ? true : peopleAreVisible(building, {
         hour: _hour,
         insideOpenShop,
-        isHouseOwned: (key) => home !== null || isHouseOwned(playerEntity.houses ?? [], building?.regionIndex ?? 0, key),   // HOME1: a player's home - anyone's - has no residents
+        isHouseOwned: (key) => home !== null || houseOwnedAt(building, key),   // HOME1: a player's home - anyone's - has no residents
         guildForBuilding: (factionId) => {
           const g = guildOfFaction(factionId, resolveVariantGuild(_dict), _dict);
           if (!g) return null;
@@ -8301,7 +8307,7 @@ export function createWorldModes(host) {
       // only, as DFU does.
       // HOME1: online, the service's list decides wherever it names the building - my home's furniture is storage, a
       // stranger's home's is not mine; elsewhere Daggerfall's own deed.
-      const houseOwned = !!restore?.privateRoom || !!hit.sailingCabin || (!!building && (home ? home.own : isHouseOwned(playerEntity.houses ?? [], building.regionIndex ?? 0, building.buildingKey)));
+      const houseOwned = !!restore?.privateRoom || !!hit.sailingCabin || (!!building && (home ? home.own : houseOwnedAt(building, building.buildingKey)));
       // BASE-HIDE: a room its owner may furnish stands its own furniture piece by piece (scenes/decorBase.js) - an online
       // home, anyone's (the room its owner cleared is the room every visitor walks into), or the player's house or ship
       const baseEditable = !!home || houseOwned || (building?.buildingType === BUILDING_TYPES.Ship && ownsShip(playerEntity));
@@ -8359,7 +8365,7 @@ export function createWorldModes(host) {
       // likewise), and where it is laid out from: the landing of the building's FIRST door (its block's own order),
       // whichever door was taken - laid out from the player's feet, a load made upstairs, another door or a peer laid it
       // out anew; a first door with no floor at it, the door taken. Every way in is kept clear of the room's places.
-      ctx.ownedRoom = !!(restore?.privateRoom || hit.sailingCabin || (building && (home !== null || isHouseOwned(playerEntity.houses ?? [], building.regionIndex ?? 0, building.buildingKey))));
+      ctx.ownedRoom = !!(restore?.privateRoom || hit.sailingCabin || (building && (home !== null || houseOwnedAt(building, building.buildingKey))));
       const waysIn = siblings.map((s) => interiorLanding(doorWorldPosition(s.door), ctx.enterMarkers, ctx.doors, (p) => standsOnFloor(ctx.collider, p)));
       ctx.landing = [...(waysIn[0] ?? landing)];
       ctx.waysIn = waysIn.filter(Boolean);
@@ -8402,7 +8408,7 @@ export function createWorldModes(host) {
         // them all, and two players in one hull disagreed about whether the room existed; a hull is the boarder's own
         // HOME1: an ONLINE home keeps its room - its owner and whoever they let in stand in it together, and its
         // cupboards are never the room's (the owner's are their storage, a visitor's are shut - the container arm).
-        const owned = !!privateVisitRoom || b?.buildingType === BUILDING_TYPES.Ship || (!interiorHome && isHouseOwned(playerEntity.houses ?? [], b?.regionIndex ?? 0, b?.buildingKey));
+        const owned = !!privateVisitRoom || b?.buildingType === BUILDING_TYPES.Ship || (!interiorHome && houseOwnedAt(b, b?.buildingKey));
         _intShared = mintInteriorShared(interiorLocationKey(questSceneCtx?.()?.mapId ?? 0, b?.buildingKey ?? 0, visitLayoutNow()), { owned, home: !!interiorHome });   // WD3 (AUDIT WD3 B3): the room of the building in its layout   // AUDIT WORLD6a A1: the bag from the one mint, its key spelled as the pure half reads it
         const key = _intShared.locationKey;
         if (key) ctx.actions.onChanged = (recs) => host.onActions?.({ k: key, a: recs });
@@ -11837,7 +11843,7 @@ export function createWorldModes(host) {
       // that lets you sleep in it" - and that moment arrived in the
       // same merge: DaggerfallBankManager.IsHouseOwned is live over
       // the region's own registry slot.
-      houseOwned: !interiorHome && isHouseOwned(playerEntity.houses ?? [], b?.regionIndex ?? 0, b?.buildingKey ?? 0), homeBed: homeBedIsMine(interiorHome, Math.floor(Date.now() / 1000)) || !!interiorSeatHall?.member,   // HOME1: my online home's bed is mine; HOME-RENT: and a tenant rests in the home they rent in - RENT-REST (FIELD BUGS 2026-10-01): handed as the home's BED (homeBed), which the bag stands where a bought house stands (a tenant's visit is no permanent scene, and houseOwned alone was asked inside that test - refused); an online home never asks the offline bank's houses; GUILD1d: and a member's bed in their guild's hall (homeRent.js homeBedIsMine); SEAT-HALL: and the holder's members in their palace
+      houseOwned: !interiorHome && houseOwnedAt(b, b?.buildingKey ?? 0), homeBed: homeBedIsMine(interiorHome, Math.floor(Date.now() / 1000)) || !!interiorSeatHall?.member,   // HOME1: my online home's bed is mine; HOME-RENT: and a tenant rests in the home they rent in - RENT-REST (FIELD BUGS 2026-10-01): handed as the home's BED (homeBed), which the bag stands where a bought house stands (a tenant's visit is no permanent scene, and houseOwned alone was asked inside that test - refused); an online home never asks the offline bank's houses; GUILD1d: and a member's bed in their guild's hall (homeRent.js homeBedIsMine); SEAT-HALL: and the holder's members in their palace
       ...(caravanGuestHere() ? { homeBed: true } : {}),   // WAGONS2-VISIT: and a caravan's visitor rests in it (over the line above - a visit is no home of mine)
       // GetRentedRoom(mapId, buildingKey), through the SAME finder the
       // tavern window rents with - so the bed this answers is the bed

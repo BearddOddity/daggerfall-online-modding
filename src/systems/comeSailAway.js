@@ -916,8 +916,9 @@ export function createComeSailAwayRuntime(deps) {
     }
   }
 
-  /** UpdateBoatCargoMod (3820-3858): the cargo's weight against the threshold; a mod past half or at all, said. */
-  function UpdateBoatCargoMod(boat) {
+  /** A boat's load as the cargo rule weighs it - her hold's cargo, the player and what they carry - and the threshold it
+   *  is weighed against (UpdateBoatCargoMod's own reckoning; AUDIT CAPTAIN'S SEA B11: the exchange reads it too). */
+  function cargoLoad(boat) {
     let num = f(deps.cargoWeight?.(boat.Cargo.Items) ?? 0);
     if (setting('Cargo.PlayerWeight', true)) num = f(num + (deps.entity?.isFemale?.() ? CARGO_WEIGHTS.female : CARGO_WEIGHTS.male));
     if (setting('Cargo.PlayerCarriedWeight', true)) num = f(num + f(deps.entity?.carriedWeight?.() ?? 0));
@@ -929,7 +930,12 @@ export function createComeSailAwayRuntime(deps) {
     const hold = !(boat.modifierCargoThreshold > 0) && responsive() ? CARGO_HOLD_MISSING : boat.modifierCargoThreshold;
     // HOLDINGS: her Hold refit - the threshold her load is weighed against, times it (`deps.refit`, the Fleet's)
     const holdK = Number(refitOf(boat)?.cargo);
-    state.boatCargoMod = mathfClamp(f(2 - f(num / f(f(f(Number(setting('Cargo.CargoThreshold', 500))) * f(hold)) * (Number.isFinite(holdK) && holdK > 0 ? f(holdK) : 1)))), 0, 1);
+    return { load: num, threshold: f(f(f(Number(setting('Cargo.CargoThreshold', 500))) * f(hold)) * (Number.isFinite(holdK) && holdK > 0 ? f(holdK) : 1)) };
+  }
+  /** UpdateBoatCargoMod (3820-3858): the cargo's weight against the threshold; a mod past half or at all, said. */
+  function UpdateBoatCargoMod(boat) {
+    const { load: num, threshold } = cargoLoad(boat);
+    state.boatCargoMod = mathfClamp(f(2 - f(num / threshold)), 0, 1);
     if (state.lastWeight !== num) {
       state.lastWeight = num;
       if (state.boatCargoMod < 0.5) deps.midScreenText("You're going to need a bigger boat", 3);
@@ -3168,6 +3174,13 @@ export function createComeSailAwayRuntime(deps) {
     get placing() { return state.placing; },
     get pendingRestore() { return pendingRestore; },
     isSailing,
+    /** AUDIT CAPTAIN'S SEA B11: a boat's room as the cargo rule weighs her - `{ load, slows, stops }` (kg): she draws lower
+     *  past `slows` and lies dead in the water at `stops` (the mod's 2 - load / threshold) - or null for no boat. */
+    cargoRoom(boat) {
+      if (!boat?.Cargo) return null;
+      const { load, threshold } = cargoLoad(boat);
+      return { load, slows: threshold, stops: 2 * threshold };
+    },
     /** CSA-K: the boat at the helm's way this frame - the world velocity LateUpdate translates it by and the degrees
      *  it turns it by, each per second of Time.deltaTime (the host scales them to the real clock) - or null: no helm,
      *  or a beached boat, which does not move. */
