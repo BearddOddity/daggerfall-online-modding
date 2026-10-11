@@ -841,8 +841,8 @@ A new property specifficaly used for the card table"**.
   (the real prop, a 10 cm flood of the player's capsule round it); the doorway's, the narrow hall's, the corridor's
   and the lattice room's spots in `test/taverntable.test.js` moved with it; `tools/mutants/fb1009c_walkwhole.json`
   (`taverntable.json`'s TT-walk-order re-aimed by content).
-  AND NEVER IN THE WAY (WAY-ROUND, FIELD BUGS 2026-10-11b, the same thread: "another one at Dancing Castle in
-  Pilliweyn"; `01-Overview/Field-Bugs-2026-10-11b.md`). Read on the player's own taverns (the freeware ARENA2, both town
+  AND NEVER IN THE WAY (WAY-ROUND, FIELD BUGS 2026-10-11e, the same thread: "another one at Dancing Castle in
+  Pilliweyn"; `01-Overview/Field-Bugs-2026-10-11e.md`). Read on the player's own taverns (the freeware ARENA2, both town
   packs), WALK-WHOLE moved neither table it was written for: the Gold Dungeon's only floor for the ring is the corridor
   its two halves meet by, every spot there cut the walk, and its fallback for such a room - "stands it where it stood
   (no tavern loses its table)", RETIRED - stood it there; and a spot in a doorway or the mouth of an opening passed
@@ -851,9 +851,9 @@ A new property specifficaly used for the card table"**.
   them, fall apart with those cells taken out - WALK-WHOLE's cut is one case of it, so its walk again from the
   entrance is gone - and a table already stood that the window meets is taken in whole, so the way round the gold
   table may go round the pair. A room with no spot left whole stands none, the chips table first: with the packs, two
-  tables in 13,298 taverns, one in 2,931, none in 1,935. Pinned by `test/fb1011b_wayround.test.js` (built rooms of the
+  tables in 13,298 taverns, one in 2,931, none in 1,935. Pinned by `test/fb1011e_wayround.test.js` (built rooms of the
   reported shapes, and every tavern the towns lay, gated on ARENA2_PATH, against the player's capsule);
-  `tools/mutants/fb1011b_wayround.json` (8, all dead) and `fb1009c_walkwhole.json` (4, all dead) re-aimed.
+  `tools/mutants/fb1011e_wayround.json` (8, all dead) and `fb1009c_walkwhole.json` (4, all dead) re-aimed.
 - **The table in the room** (`scenes/interiorContext.js`, `opts.placeCardTable`). Stood after the room's own models and
   its closed doors, so the walk sees the whole room. It is one of the room's models - drawn by its own mesh, never the
   static merge (AUDIT TAVERN-TABLE H1, section 29), in the collider and on the automap (its key the next placement

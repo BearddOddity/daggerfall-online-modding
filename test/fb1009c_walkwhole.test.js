@@ -5,10 +5,10 @@
 // The walk (world/placedCardTable.js) stood the table at the cell NEAREST the entrance whose table and ring were clear
 // floor - and past an entry room too small for the ring, the nearest such cell is the mouth of the doorway the walk
 // left it by. A spot is passed over now when its table and ring, taken out of the walk, leave a walked cell unreachable
-// from the entrance. PIN MOVED (WAY-ROUND, FIELD BUGS 2026-10-11b): a room with no other spot stood it where it stood
+// from the entrance. PIN MOVED (WAY-ROUND, FIELD BUGS 2026-10-11e): a room with no other spot stood it where it stood
 // (no tavern lost a table) - and the Gold Dungeon was such a room, so it stood in its corridor all the same; a room
-// with no spot left whole stands none now (test/fb1011b_wayround.test.js).
-// `01-Overview/Field-Bugs-2026-10-09c.md`, `01-Overview/Field-Bugs-2026-10-11b.md`; `11-Multiplayer/Tavern-Cards.md`
+// with no spot left whole stands none now (test/fb1011e_wayround.test.js).
+// `01-Overview/Field-Bugs-2026-10-09c.md`, `01-Overview/Field-Bugs-2026-10-11e.md`; `11-Multiplayer/Tavern-Cards.md`
 // section 28.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

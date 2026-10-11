@@ -19,7 +19,7 @@
 // to go by. A spot is passed over when the floor its table and ring cover, taken out of the walk, leaves any walked cell
 // unreachable from the entrance. The walk's own grid, so every client the same.
 //
-// AND NEVER IN THE WAY (WAY-ROUND, FIELD BUGS 2026-10-11b, the same thread: "another one at Dancing Castle in
+// AND NEVER IN THE WAY (WAY-ROUND, FIELD BUGS 2026-10-11e, the same thread: "another one at Dancing Castle in
 // Pilliweyn"). Read on the player's own taverns, WALK-WHOLE moved no table it was written for: the Gold Dungeon's
 // floor holds its ring only in the one corridor its two halves meet by, every spot there cut the walk, and the
 // fallback for a room with no other spot stood it at the first of them - the corridor, the screenshot's table. And a
