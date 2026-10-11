@@ -25,6 +25,9 @@ import { createQuayPool, DOCKS_MARK_LIFT } from '../src/scenes/quayPool.js';
 import { QUAY_DECK_UP } from '../src/systems/naval/quays.js';
 import { findHarbour } from '../src/systems/naval/shipLife.js';
 import { markGroup, markShown, countGroups, isYardMark } from '../src/systems/travelViewFilters.js';
+import { setTutorialHandler, _resetTutorialTriggerForTests, tutorialById } from '../src/systems/tutorials.js';
+import { _resetForTests as resetPrefs } from '../src/systems/uiPrefs.js';
+import { createShipyardOverlay, createNavalYardOverlay, createNavalPlunderOverlay } from '../src/ui/navalPlunderDoor.js';
 import { yardGlyph, portGlyph, yardMarkKind } from '../src/ui/travelViewHud.js';
 import { exteriorFrame, streetColor, same } from './yardLightRig.mjs';
 import { LAMP_RANGE } from '../src/scenes/portHost.js';
@@ -234,4 +237,26 @@ test('SHIPYARDS THE LAMP REACHES THE RENDERER - the world host\'s own light comp
     assert.equal(lit.length, town.length + 1, 'beside the street\'s');
     assert.equal(exteriorFrame({ lane, night: false, town, lamps: [], eye, ranges, ports: [lamp] }).length, 0, 'by day, none');
   }
+});
+
+test('SHIPYARDS x TUT1: the shipmaster\'s window pops the shipyard\'s page, as the shipwright\'s does - a prize\'s hold the sea fight\'s; the pages say where a ship is bought now', () => {
+  resetPrefs();
+  _resetTutorialTriggerForTests();
+  const noted = [];
+  const off = setTutorialHandler((id) => { noted.push(id); return true; });
+  assert.equal(typeof document, 'undefined', 'no DOM here: each door notes its page and opens nothing');
+  assert.equal(createShipyardOverlay({}), null);
+  assert.equal(createNavalYardOverlay({}), null);
+  assert.equal(createNavalPlunderOverlay({}), null);
+  assert.deepEqual(noted, ['shipyard', 'shipyard', 'naval-combat']);
+  off();
+  _resetTutorialTriggerForTests();
+  const ships = tutorialById('ships').body.join(' ');
+  assert.doesNotMatch(ships, /general store|pawn/i, 'no counter sells a ship (SHIPYARDS: the shelves retired)');
+  assert.match(ships, /^Shipyards in port towns sell ships\./);
+  const yard = tutorialById('shipyard');
+  assert.equal(yard.title, 'Shipyards');
+  assert.match(yard.body.join(' '), /shipmaster sells ships and buys yours/);
+  assert.match(yard.body.join(' '), /crew hall/);
+  assert.equal(tutorialById('lighthouse')?.group, 'sea');
 });

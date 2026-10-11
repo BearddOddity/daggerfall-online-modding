@@ -59,7 +59,7 @@ function shut(slot) {
  * @param {any} deps - the window's own, less `onExit` (the door's close is its way out), plus `onClose(reason)`
  */
 function openNavalWindow(slot, deps) {
-  noteFirstUse(slot === YARD ? 'shipyard' : 'naval-combat');   // TUT1: the yard, or a beaten ship's hold
+  noteFirstUse(slot === PLUNDER ? 'naval-combat' : 'shipyard');   // TUT1: a beaten ship's hold, or the shipwright's yard and a port's shipyard (SHIPYARDS) - one page
   if (typeof document === 'undefined') return null;
   slot.open?.dispose();
   let fired = false;

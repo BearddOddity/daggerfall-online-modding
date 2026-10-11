@@ -60,6 +60,7 @@ import { yardToScene, yardBoxToScene, KEEPER_HALF, KEEPER_HEIGHT } from './merch
 import { boxTriangles } from './horseCartPool.js';
 import { localAabb, transformedAabb } from '../render/frustum.js';
 import { DECOR_DRAW, DECOR_SHADOW, DECOR_SKIP, castOnly } from './decorRoom.js';
+import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the lighthouse's page, at the first climb
 
 /** The ground under a place is read again every this many frames. */
 export const PORT_GROUND_EVERY = 30;
@@ -419,6 +420,7 @@ export function createPortHost({
         const yaw = sceneYaw(p.pl, down ? [0, 1] : [0, -1]);   // down: facing the town; up: facing the sea
         const r = climb(s, down ? 'down' : 'up', { feet: feetAt, yaw });
         if (r !== true) midText(typeof r === 'string' && r ? r : PORT_TEXT.shutStair);   // the host's refusal in its own words
+        else if (!down) noteFirstUse('lighthouse');   // TUT1: the first climb pops the lighthouse's page
         return true;
       }
       if (p.what === 'worker') { say(presentNpcInfoText('a shipwright at work')); return true; }

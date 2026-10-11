@@ -197,6 +197,16 @@ The General Store and the Pawn Shop no longer shelve Come Sail Away's two items,
 off the General Store. AssignVariantsToShopItems stands, ported: a shelf a save stocked before is still rewritten
 (`03-World/Come-Sail-Away.md`, the shelves).
 
+## The tutorial's pages (TUT1)
+
+TUT1 landed beside this slice, and a slice that changes how a system plays changes its page (`10-UI/Tutorials.md`).
+**Sailing** (`ships`) no longer sends the player to a general store: a port's shipyard sells ships - the Rowboat as parts,
+any other waiting at the port she was bought in. **Shipwrights** became **Shipyards** (`shipyard`): the shipmaster's
+trade, the crew hall, and the shipwright reached from the helm as before - and the shipmaster's window pops it as the
+shipwright's does (`ui/navalPlunderDoor.js` openNavalWindow: only a prize's hold pops the sea fight's page).
+**Lighthouses** (`lighthouse`) is new, popped by a climb up the host made (`scenes/portHost.js` - never the way down,
+never a refused stair).
+
 ## The four hosts
 
 - `scenes/world.js` - WIRED: each port town's build places the shipyard and the lighthouse on what its yards left and
@@ -231,8 +241,8 @@ port that finds no room logs it.
 loop online, what the shipyard takes back, the shelves, the hall's roster, the fees, signing on and paying off.
 `test/shipyards1_host.test.js` - the host's pages, buying, the fleet page and selling, the Fleet's acts, the crew hall,
 the window's words, the window mounted, the door. `test/shipyards1_place.test.js` - the footprints, backing onto the
-sea, the bearing, the town's own sea, no room, the models, the art, the pool, the hold-back, the press, the stair, the
-plaques, the lamp, the Overworld's marks. `test/shipyards1_found.test.js` - the Where-is page, the answer, the town map,
+sea, the bearing, the town's own sea, no room, the models, the art, the pool, the hold-back, the press, the stair and its
+page, the plaques, the lamp, the Overworld's marks. `test/shipyards1_found.test.js` - the Where-is page, the answer, the town map,
 the docks on the Overworld, the glyphs, the four hosts, the lamp reaching the renderer (`test/yardLightRig.mjs`, the host's
-own light composition). `test/piers1.test.js` - the pier's dress. Mutants: `tools/mutants/shipyards1.json` (72, every one
-dead).
+own light composition), the tutorial's pages. `test/piers1.test.js` - the pier's dress. Mutants:
+`tools/mutants/shipyards1.json` (76, every one dead).

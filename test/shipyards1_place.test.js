@@ -23,6 +23,8 @@ import {
 import { yardToScene } from '../src/scenes/merchantYardsHost.js';
 import { STATIC_NPC_ACTIVATION_DISTANCE, RAY_DISTANCE, presentNpcInfoText } from '../src/player/activate.js';
 import { PORT_PLACES } from '../src/systems/portPlaces.js';
+import { setTutorialHandler, _resetTutorialTriggerForTests } from '../src/systems/tutorials.js';
+import { _resetForTests as resetPrefs } from '../src/systems/uiPrefs.js';
 
 /** A town's ground (yardGround's shape) W x H cells: open, `blockedAt` closed, `roadAt` its roads. */
 function ground(W, H, { blockedAt = () => false, roadAt = () => false } = {}) {
@@ -291,6 +293,10 @@ test('SHIPYARDS THE STAIR: the lightkeeper\'s door (or the keeper) puts the play
   const { log, st, deps } = rig();
   const p = createPortHost(deps);
   p.frame();
+  resetPrefs();
+  _resetTutorialTriggerForTests();
+  const noted = [];
+  const off = setTutorialHandler((id) => { noted.push(id); return true; });
   p.activate('port:9:lighthouse|door', 'grab', 'climb');
   p.activate('port:9:lighthouse|hatch', 'grab', 'down');
   const [[k1, up, a], [, down, b]] = log.climbs;
@@ -314,6 +320,10 @@ test('SHIPYARDS THE STAIR: the lightkeeper\'s door (or the keeper) puts the play
   p.activate('port:9:lighthouse|lamp', 'grab', null);
   assert.equal(log.say.at(-1), PORT_TEXT.lampDark);
   assert.equal(log.climbs.length, 4, 'the lamp climbs nothing');
+  // TUT1: the lighthouse's page pops at a climb up the host made - never the way down, never a refused stair
+  assert.deepEqual(noted, ['lighthouse']);
+  off();
+  _resetTutorialTriggerForTests();
 });
 
 test('SHIPYARDS THE PLAQUES: a place by its name and its keeper\'s, and its rows - the shipmaster\'s four pages, the crew hall\'s one, the tower\'s climb and the hatch\'s way down', () => {
