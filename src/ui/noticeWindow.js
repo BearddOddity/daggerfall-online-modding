@@ -53,7 +53,9 @@ import {
 } from '../net/boardLaw.js';
 import { accountRefusalText } from '../net/accountClient.js';   // PROF1: a writ's refusal, in words
 import { hallPosterName, isChapterWrit, meritLineOf, chapterLineOf, chapterFocusLineOf, chapterPatronSheetLine, chapterPatronBidLine, chapterPatronBidsOf, chapterPatronBidSaid,
-  chapterBandOf, chapterBandEffectsLine, chapterDutiesLine, meritEarnsOf, chapterSeasonOf } from '../net/npcChapterLaw.js';   // CHAP7b: a chapter's patron, a guildmaster's bid; GUILD3d: the chapter's card - its band's effects, its duties
+  chapterBandOf, chapterBandEffectsLine, chapterDutiesLine, meritEarnsOf, chapterSeasonOf,
+  MERIT_WRIT, MERIT_RECEIPT, MERIT_TENURE_S, MERIT_CAP_WEEK, STRENGTH_START, STRENGTH_STEP_MAX, STRENGTH_IDLE, CHAPTER_BANDS,
+  CHAPTER_SEATS, SEAT_RANK, SEAT_TENURE_S, SEAT_MERIT_WEEKS, CHAPTER_EVENTS, CHAPTER_PATRON_MIN, CHAPTER_PATRON_BAND } from '../net/npcChapterLaw.js';   // CHAP7b: a chapter's patron, a guildmaster's bid; GUILD3d: the chapter's card - its band's effects, its duties
 import { chapterSeasonLines, chapterBackChoices, chapterBackedLine } from '../net/chapterEvents.js';   // CHAP6c: a chapter's Season - its lines, a member's choices   // CHAP2a: a hall writ's guild, named; CHAP3a: a member's own writ, its Merit; CHAP3b: a chapter's Strength
 import { movedFirstText } from '../net/bagLaw.js';   // AUDIT2 BAG1 K8: what went into the Stores before a refusal
 import { createMarketTab } from './marketTab.js';   // PROF5: the Market tab
@@ -116,6 +118,30 @@ export const BOARD_WORDS = Object.freeze({
   pinTip: 'Answers come to you as letters. A recruit button needs a guild rank that can invite.',
   noticeTip: 'Goes up on every board, under the red seal.',
 });
+
+/** PLAIN-UI (bible/10-UI/Plain-Words.md; a player: "Same issue with the new guild chapter systems"): the Work tab's fold
+ *  over the chapters' cards. */
+export const CHAPTER_GUIDE_TITLE = 'How chapters work';
+/**
+ * PLAIN-UI: HOW CHAPTERS WORK - what a chapter is and every name its card uses, `[name, words]`, its numbers the law's
+ * own (net/npcChapterLaw.js), so the words never drift from the rules. Pure.
+ */
+export function chapterGuide() {
+  const n = (/** @type {number} */ x) => Number(x).toLocaleString('en-US');
+  const days = (/** @type {number} */ s) => n(s / 86_400);
+  const bands = CHAPTER_BANDS.map((b, i) => (i ? `${b.name} from ${b.from}` : `${b.name} under ${CHAPTER_BANDS[1].from}`)).join(', ');
+  const events = CHAPTER_EVENTS.map((e) => e.name);
+  const patronBand = /** @type {{ name: string }} */ (CHAPTER_BANDS.find((b) => b.band === CHAPTER_PATRON_BAND)).name;
+  return [
+    ['What a chapter is', 'Each of Daggerfall\'s guilds - the Fighters and Mages Guilds, the temples, the knightly orders - keeps a chapter in every region where it has a hall, shared by every player online. The cards below are this region\'s. Join the guild at one of its halls, as you always would, and its chapters are yours.'],
+    ['Merit', `Your work for a chapter this week: ${n(MERIT_WRIT)} for filling your own chapter writ (one a day; goods you bought earn none), and a share of ${n(MERIT_RECEIPT)} for each Dagon's Breach closed or raided town defended in the region. It counts once you have been in the guild ${days(MERIT_TENURE_S)} days - at most ${n(MERIT_CAP_WEEK)} an account a week, and in one chapter of each guild a week.`],
+    ['Strength', `The chapter's health, 0 to 100, from ${STRENGTH_START}. At each Turning, Sunday 18:00 UTC, its members' Merit for the week raises it, up to ${STRENGTH_STEP_MAX} a week; a week with no Merit at all lowers it ${STRENGTH_IDLE}.`],
+    ['Band', `Strength's name: ${bands}. A band sets the halls' prices, their shelf and how many chapter writs they post - each card says what its band does.`],
+    ['The chairs', `Rank ${SEAT_RANK.master} (the Master) and rank ${SEAT_RANK.officer} (${CHAPTER_SEATS.officer} council chairs) go at each Turning to the members with the most Merit over the last ${SEAT_MERIT_WEEKS} weeks, among those ${days(SEAT_TENURE_S)} days in the guild and high enough in it. The Master names the week's Focus - the goods the chapter writs ask for.`],
+    ['Season', `Each Season a chapter draws one event: ${events.slice(0, -1).join(', ')} or ${events[events.length - 1]}. A Schism or a Succession asks its members to back a side; the card says what this Season's does.`],
+    ['Patron', `A player guild's Guildmaster may bid silver (at least ${n(CHAPTER_PATRON_MIN)}) for a chapter's patronage next Season. The highest bid is spent and the rest go home; the patron's members pay ${patronBand} prices in its halls.`],
+  ];
+}
 
 /**
  * The cards of a board, in the order they hang (the header's four arms, above). Pure over what the window is handed.
@@ -204,6 +230,7 @@ export function mountNoticeBoard(host, deps) {
   const character = () => deps.character?.() ?? null;
   const gme = () => gboard?.me ?? { canPin: false, live: 0, max: 3, keeper: false };
   let writs = null, writsError = null, writsStale = false, writsBusy = false;   // PROF1: the Work tab's list
+  let chapterGuideOpen = null;   // PLAIN-UI: How chapters work unfolded - null until the reader folds or unfolds it
   const work = deps.work ?? null;
   const workShown = () => !!work && work.book?.state?.open === true;
   // PROF5: the Market tab - its own state and views, the window's one-at-a-time door and its status line
@@ -614,6 +641,17 @@ export function mountNoticeBoard(host, deps) {
     // no card for (a service from before the cards)
     const carded = new Set((writs?.chapters ?? []).map((c) => c.faction));
     for (const m of writs?.merit ?? []) if (!carded.has(m.faction)) body.append(el('p', 'notice-merit', meritLineOf(m, nowS())));
+    // PLAIN-UI: HOW CHAPTERS WORK over the cards - open for a reader who earns Merit in none of them yet, folded for one who does
+    if (writs?.chapters?.length) {
+      const guide = /** @type {any} */ (el('details', 'notice-panel chapter-guide board-guide'));
+      guide.open = chapterGuideOpen ?? !(writs?.merit ?? []).length;
+      guide.addEventListener?.('toggle', () => { chapterGuideOpen = !!guide.open; });
+      guide.append(el('summary', null, CHAPTER_GUIDE_TITLE));
+      const steps = el('ol');
+      for (const [name, words] of chapterGuide()) { const li = el('li'); li.append(el('b', null, `${name}. `), words); steps.append(li); }
+      guide.append(steps);
+      body.append(guide);
+    }
     for (const c of writs?.chapters ?? []) body.append(chapterCard(c));   // GUILD3d: each chapter here, one card
     const grid = el('ul', 'notice-grid');
     grid.setAttribute('role', 'list');

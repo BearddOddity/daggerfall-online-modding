@@ -684,3 +684,7 @@ HOSTS: the wedding is the world host's alone (`scenes/exterior.js`, `scenes/worl
 null is null, each refusal the house's own, the dead, a death, a relay that cannot carry it, offline);
 `tools/mutants/legacy7wed.json` FB1008-wed-the-null-read-as-no-house, dead. Its standing survivor
 LEGACY7W-partner-dead-or-lineless survives on main as well - not this change's, recorded for its arc.
+
+## PLAIN-UI - How it works (2026-10-12)
+
+The Family tab's fourth page, HOW IT WORKS (`src/ui/familyPages.js` `familyGuide`, `drawGuidePage`): the house, death in the house's own model and its toll, who carries on, what an heir inherits, heirlooms and remains, marriage and children, playing another, and the tree's marks - every number the law's own - and the tab's type a step larger. A player: "Same issues with the project legacy system." The record: `10-UI/Plain-Words.md`.

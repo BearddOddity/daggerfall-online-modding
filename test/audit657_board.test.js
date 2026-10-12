@@ -163,8 +163,10 @@ test('AUDIT 657 B9 + D6 the words true to the law: a gold listing pays a 1% fee 
 
 test('AUDIT 657 D4 the Seat guide kept open across the window\'s redraws, as the suppliers\' fold is - unpinned, a guide that shut on every redraw survived every pin (mutant: the guide\'s open state forgotten)', async () => {
   const ANT = { key: 3021, name: 'Anticlere', region: 21, tier: 'palace', pixel: [402, 151] };
+  // PLAIN-UI (PIN MOVED, bible/10-UI/Plain-Words.md): a reader whose guild is pledged in the region - the guide stands
+  // open for one who is not in the war yet, folded for one who is
   const data = { seat: ANT, week: 6, phase: 'muster', reckoningAt: T + 3600, turningAt: T + 86400, defence: 0, holder: null, battle: null,
-    standings: [], mine: null, chronicle: [] };
+    standings: [], mine: { guild: 'g1', rank: 2, seasoned: true, bound: 'g1', pledges: [{ region: 21, key: 3021 }], influence: 0 }, chronicle: [] };
   const seatBook = { open: true, data: { seats: [] }, standings: async () => ({ data, error: null }), forts: async () => ({ data: { works: {}, stockpile: [] }, error: null }) };
   const host = document.createElement('div');
   const v = mountNoticeBoard(host, { town: { name: 'Anticlere', mapId: 3021 }, book: bookOf(EMPTY), nowS: () => T, seat: { seat: ANT, book: seatBook } });

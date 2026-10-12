@@ -974,6 +974,9 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
         tone: () => tone,
         setTone: (t2) => { tone = t2; },
         npcName,   // AUDIT 18 F5: the NPC's OWN name, not the People faction
+        // PLAIN-UI (bible/10-UI/Plain-Words.md): a living resident's regard of the player, for the enhanced panel's badge -
+        // null for anyone else (the classic face draws DFU's TALK01I0 and nothing it has no rect for)
+        regard: () => (_toneTarget ? livingTalk?.regard?.(_toneTarget) ?? null : null),
         // AUDIT 63 F5: OnPop's `PlayerEntity.Notebook.AddNote(
         // copiedEntries)` (DaggerfallTalkWindow.cs:319). townTalk holds
         // no notebook, so the sink is the host's - set beside

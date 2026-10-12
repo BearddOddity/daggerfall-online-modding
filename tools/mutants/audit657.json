@@ -214,7 +214,7 @@
   {
     "name": "AUDIT657-D4-the-guides-fold-forgotten",
     "file": "src/ui/seatTab.js",
-    "old": "guide.open = guideOpen;",
+    "old": "guide.open = guideOpen ?? seatGuideOpen(seat, data);",
     "new": "guide.open = false;",
     "tests": [
       "test/audit657_board.test.js"
