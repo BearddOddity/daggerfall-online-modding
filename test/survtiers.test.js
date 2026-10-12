@@ -201,7 +201,7 @@ test('SURV-TIERS: Hard is the arc as it stood - the rough rest, the drains, the 
   assert.equal(restCost('bed', CASUAL), REST_COST.bed); assert.equal(restCost('camp', CASUAL), REST_COST.camp, 'a bed and a camp cost the same in every tier');
   const needs = read('src/systems/survival/needs.js');
   assert.match(needs, /const rules = deps\.rules \?\? HARD_RULES;/);
-  assert.match(needs, /export function survivalStatMods\(s, temp, now, \{ endurance = 50, rules = HARD_RULES, vampire = false \} = \{\}\)/);
+  assert.match(needs, /export function survivalStatMods\(s, temp, now, \{ endurance = 50, rules = HARD_RULES, vampire = false, beast = false \} = \{\}\)/);   // AUDIT C&C N4: and the beast, fed as the mod reads it
 });
 
 test('SURV-TIERS: Casual is five rules written out - stamina only, red stages only, borrowed down to half the pool and repaid, nothing refused, rolled against you or wasted', () => {
@@ -254,7 +254,8 @@ test('SURV-TIERS: RED MEANS IT COSTS - Casual charges each need at exactly the s
       const e = body(); const log = [];
       survivalOf(e, now);
       const temp = survivalMinute(e, now, { climateIndex, month, hour, weather }, minuteDeps(e, log, rules, { worn: feet }));
-      const tax = feet === barefoot && rules === HARD && temp.abs > STATS.endurance / 2 ? DRAIN.bareFeet : 0;
+      // AUDIT C&C D5 (PIN MOVED): the bare feet read the natural temperature (the clothes shoe no foot) against the live endurance - this body's own
+      const tax = feet === barefoot && rules === HARD && Math.abs(temp.natTemp) > STATS.endurance / 2 ? DRAIN.bareFeet : 0;
       const want = (costs(temp.felt) ? DRAIN.heatPer20 * Math.trunc(temp.abs / 20) : 0) + tax;
       if (drains(log) !== want) assert.fail(`${rules.id}: felt ${temp.felt} (${temperatureWord(temp.felt)}) at climate ${climateIndex}/${month}/${hour}/${weather}${feet === barefoot ? ', barefoot' : ''} charged ${drains(log)}, not ${want}`);
       walked++;

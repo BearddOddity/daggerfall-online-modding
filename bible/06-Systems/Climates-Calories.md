@@ -73,7 +73,10 @@ with a time skip, and a replacement **tavern** window with regional
 menus and drunkenness. Its bugs and cliffs, from the code: a quadratic
 sleep counter (exhaustion after one long day), a starvation counter
 that never resets, fast travel and prison resetting every need for
-free, a thirst that rises even when freezing, a race cliff on heat
+free, a thirst that rises even when freezing (the port's rises at its
+base rate in the cold too - a body loses water in any weather; AUDIT C&C
+N8: a floor meant to halve it there could never bind, and is gone), a
+race cliff on heat
 loss, four mod-message calls a round into a mod the port does not
 carry, and everything static.
 
@@ -143,8 +146,9 @@ taxes, then stats, then health at 120 - SURV-THIRST1's departure: the
 mod asked for heat too and the port does not); sleep tired 4, drowsy 8,
 exhausted 12 (the debt grows past sixteen hours awake; a bed pays 1.5
 an hour, a rough rest 0.5 and never below tired); wet damp 5, wet 30,
-soaked 100, drenched 200. Heat and cold charge fatigue by the band (16
-units per 20 degrees), build an exposure drain past 30, and cost health
+soaked 100, drenched 200. Heat and cold charge fatigue by the band (6
+units per 20 degrees - `DRAIN.heatPer20`; AUDIT C&C N7: this said 16),
+build an exposure drain past 30, and cost health
 past 50; bare skin in the cold, bare feet, the sun on bare skin and wet
 metal all have their lines. The drains are one `activeEffects` entry
 of kind `survival` rewritten each minute, never a duration, capped so
@@ -2433,17 +2437,41 @@ re-aimed by content.
 - **N6 - a line said at every step across a stage, and five after every
   load.** A stage line is said when the need worsens (AUDIT SURV-TIERS,
   the third pass), so a body at a boundary heard it at each step across:
-  a minted character in a Hard winter's snow, stepping in and out of a
-  fire's reach every two minutes for an hour, heard twenty-one lines,
+  a minted character in a Hard winter's snow, shod, stepping in and out
+  of a fire's reach every two minutes for an hour, heard nineteen lines,
   eleven of them "Your teeth are chattering uncontrollably!". The mod
   paces every line it says (its five-minute `txtIntervals`); the port's
   pace for the lines it says once is `STAGE_REPEAT_MINUTES`: a stage line
-  or a recovery's heard within the half hour is not said again - seven
+  or a recovery's heard within the half hour is not said again - five
   lines in that hour. And the save drops the notes, so a body Hungry,
   Thirsty, Tired, Damp and Cold heard all five again in the first minute
   after every load: the load keeps every stage the record stands at as
   said (`savedNotes`, beside the boons), and a red one its way out to be
   said.
+- **N4 - a vampire cured after ten days was Starving and 240 hours
+  awake.** The minute law called a vampire fed and rested, and the
+  timestamps that ARE its hunger and wakefulness ran on under it. Both
+  stand still while the need does now, as Off's do (`pauseSurvival`). And
+  the beast: the mod reads a beast fed (Hunger.cs `Starvation`) and skips
+  its thirst; the port did neither, so a werewolf's night hunting starved
+  and parched it. In its form the hunger reads fed - the well-fed hour's
+  point back, as the mod's `FoodEffects` gives it - the thirst stands, and
+  neither drains an attribute. A declared departure (Port-Ledger A): the
+  mod's meal clock runs on under the beast, and the port's stands, as a
+  vampire's does - the body comes back from the hunt as hungry as it went.
+- **N8 - a floor that could never bind.** The thirst's rate held a factor
+  of a half for the cold over a factor never under one; the record called
+  the mod's thirst rising in the freezing a bug the port had fixed, and
+  the port's rose at its base rate too. The dead floor is gone and the
+  record says so: a body loses water in any weather, as the mod's does.
+- **D5 - the bare feet read the felt temperature.** The mod's `FeetDmg`
+  reads the natural temperature (resisted, before the clothes) against
+  half the LIVE endurance, on foot, out of the water and never inside. The
+  port read the felt temperature - a robe and a hooded cloak, at a
+  natural -30 and a felt -3, shod the feet - against the permanent
+  endurance, so a Fortify Endurance did nothing, and underground too. The
+  mod's law now - a reading corrected; by a fire too the feet freeze, as
+  there.
 
 ### Found and fixed - the boons in a fight between players (H5)
 

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { SURVIVAL_RULES } from '../src/systems/survival/difficulty.js';
-import { newSurvival, survivalMinute, runSurvivalMinutes, markOutCold, hungerStage, hungerMinutes, sleepStage, ROAD_MINUTES, STAGE_REPEAT_MINUTES, SURVIVAL_TEXT, feltCtx } from '../src/systems/survival/needs.js';
+import { newSurvival, survivalMinute, runSurvivalMinutes, markOutCold, hungerStage, hungerMinutes, awakeHours, sleepStage, ROAD_MINUTES, STAGE_REPEAT_MINUTES, SURVIVAL_TEXT, feltCtx } from '../src/systems/survival/needs.js';
+import { createVampirismCurse, cureVampirism } from '../src/systems/vampirism.js';
 import { snapshotPlayer, restorePlayer } from '../src/systems/save.js';
 import { CLIMATE_TEMP, CLIMATE_NAMES, CHEST_WARMTH, COVERING_CHEST, MONTH_TEMP, naturalTemperature, feltTemperature, temperatureBreakdown, clothingWarmth, sunlit } from '../src/systems/survival/temperature.js';
 import { createPlayerTicker } from '../src/scenes/shared.js';
@@ -12,10 +13,12 @@ import { CRIMES } from '../src/systems/court.js';
 import { PrisonScreenWindow, PRISON_UPDATE_INTERVAL } from '../src/ui/prisonScreen.js';
 import { setWorldMinutes, worldMinutes, skyMinutes, ownMinutes, setSharedClock, setOwnMinutes, alignEntityClocks, resetMagicRoundMarker, CLASSIC_MINUTES_PER_SECOND } from '../src/systems/worldTick.js';
 import { playerEntity as PLAYER_LITERAL } from '../src/characters/playerEntity.js';
-import { createCharacter } from '../src/systems/chargen.js';
+import { createCharacter, STAT_KEYS_ORDER } from '../src/systems/chargen.js';
 import { assignStartingEquipment } from '../src/systems/startingGear.js';
 import { SKILLS } from '../src/systems/skills.js';
-import { maxFatigue, clampFatigue } from '../src/systems/statMods.js';
+import { maxFatigue, clampFatigue, liveStat } from '../src/systems/statMods.js';
+import { applySpell } from '../src/systems/effects.js';
+import { buildCustomSpell } from '../src/systems/spellMaker.js';
 import { survivalFeed, feltNow } from '../src/systems/survival/env.js';
 import { SURVIVAL_PREF } from '../src/systems/survival/switch.js';
 import { setPref, _resetForTests } from '../src/systems/uiPrefs.js';
@@ -45,6 +48,11 @@ afterEach(() => { _resetForTests(); });
 const wearer = () => ({ ...body(0), isPlayer: true, career: {}, skills: new Array(35).fill(30), level: 5, gender: 'male', equip: createEquipTable() });
 const garment = (templateIndex, extra = {}) => mintCondition({ group: templateIndex >= 182 ? 'WomensClothing' : 'MensClothing', templateIndex, name: 'garment', flags: 0, variant: 0, ...extra });
 const wear = (e, item) => { e.items.push(item); equipItem(e, item); return e; };
+/** A Fortify of `stat` by `n`: the spellmaker's record cast on oneself through the one spell door (auditcc_pvp's). */
+const fortify = (e, stat, n) => applySpell(buildCustomSpell({
+  slots: [{ type: 9, subType: STAT_KEYS_ORDER.indexOf(stat), settings: { magnitudeBaseLow: n, magnitudeBaseHigh: n, magnitudePerLevel: 20, durationBase: 60 } }],
+  rangeType: 0, element: 4, name: 'Fortify',
+}), 1, e, {}, () => 0.5, { entity: e });
 /** The player as the game mints it: the pre-chargen literal, chargen's createCharacter, then AssignStartingGear (the
  *  clothes equipped, the C&C provisions while the arc is on). */
 const mintPlayer = () => {
@@ -375,22 +383,23 @@ test('AUDIT C&C N5: A DRAIN LANDS INSIDE THE POOL - DaggerfallEntity.SetFatigue 
   }
 });
 
-test('AUDIT C&C N6: A LINE HEARD LATELY IS NOT SAID AGAIN, AND A LOAD SAYS NOTHING THE BODY WAS TOLD - a Hard winter\'s snow at 19:00, stepping in and out of a fire\'s reach every two minutes for an hour, said twenty-one lines (eleven of them "Your teeth are chattering uncontrollably!") and says seven; and a body Hungry, Thirsty, Tired, Damp and Cold, saved and loaded, heard all five again in the first minute after', () => {
+test('AUDIT C&C N6: A LINE HEARD LATELY IS NOT SAID AGAIN, AND A LOAD SAYS NOTHING THE BODY WAS TOLD - a Hard winter\'s snow at 19:00, stepping in and out of a fire\'s reach every two minutes for an hour, said nineteen lines (eleven of them "Your teeth are chattering uncontrollably!") and says five; and a body Hungry, Thirsty, Tired, Damp and Cold, saved and loaded, heard all five again in the first minute after', () => {
   setPref(SURVIVAL_PREF, 'hard');
   const from = dateToClassicMinutes({ year: 405, month: 0, day: 3, hour: 19, minute: 0 });
   setWorldMinutes(from);
   const e = mintPlayer(); e.survival = { ...newSurvival(from), lastMinute: from }; e.lastGameMinutes = from;
+  equipItem(e, e.items.find((i) => i.templateIndex === 147));   // the start's own Shoes on (AUDIT C&C I7) - the stage lines alone
   let fire = false;
   const street = streetReader(e, CLIMATES.Woodlands, () => 'snow');
   const lines = [];
   const ticker = createPlayerTicker(e, { survivalEnv: () => ({ ...street(), byFire: fire }), say: (l) => lines.push(l) });
   ticker.tick(1 / CLASSIC_MINUTES_PER_SECOND);
-  assert.deepEqual(lines, ['The cold is seeping into your bones...', 'Your bare feet are freezing.'], 'the first minute in the snow');
+  assert.deepEqual(lines, ['The cold is seeping into your bones...'], 'the first minute in the snow');
   lines.length = 0;
   for (let m = 0; m < 60; m++) { fire = Math.floor(m / 2) % 2 === 0; ticker.tick(1 / CLASSIC_MINUTES_PER_SECOND); }
   const heard = {};
   for (const l of lines) heard[l] = (heard[l] ?? 0) + 1;
-  assert.deepEqual(heard, { 'You are warming up.': 1, 'Your bare feet are freezing.': 2, 'You are a bit wet.': 1, 'Your teeth are chattering uncontrollably!': 2, 'You are quite wet.': 1 });
+  assert.deepEqual(heard, { 'You are warming up.': 1, 'You are a bit wet.': 1, 'Your teeth are chattering uncontrollably!': 2, 'You are quite wet.': 1 });
   assert.equal(STAGE_REPEAT_MINUTES, 30);
   // the load: the stages the record stands at are said already (needs.js savedNotes) - a worse one is news
   const at = from + 3 * 1440;
@@ -426,4 +435,68 @@ test('AUDIT C&C N6: A LINE HEARD LATELY IS NOT SAID AGAIN, AND A LOAD SAYS NOTHI
   said.length = 0;
   createPlayerTicker(red, { survivalEnv: () => ({ climateIndex: CLIMATES.Woodlands, month: 6, hour: 12, weather: 'sunny', insideBuilding: true }), say: (l) => said.push(l) }).tick(1 / CLASSIC_MINUTES_PER_SECOND);
   assert.deepEqual(said.filter((l) => l === SURVIVAL_TEXT.warming), [SURVIVAL_TEXT.warming]);
+});
+
+test('AUDIT C&C N4: A BODY THAT DOES NOT EAT DOES NOT HUNGER - a vampire\'s hunger and wakefulness, and a beast\'s hunger and thirst, stand still while the need does (the mod reads a vampire and a beast fed and skips their thirst); the clock ran on under them, and a vampire cured after ten days was Starving and 240 hours awake in its first minute', () => {
+  setPref(SURVIVAL_PREF, 'hard');
+  const T = dateToClassicMinutes({ year: 405, month: 3, day: 3, hour: 12, minute: 0 });
+  setWorldMinutes(T);
+  const INN = { climateIndex: CLIMATES.Woodlands, month: 3, hour: 12, weather: 'cloudy', insideBuilding: true };
+  const walk = (e, from, to, env = INN) => { const f = survivalFeed(e, env); runSurvivalMinutes(e, from, to, f.env, { ...f.deps, autoDrink: false, autoEat: false }); };
+  // ten days a vampire (the real curse), then cured (the real cure)
+  const v = body(T);
+  Object.assign(v.survival, { lastMinute: T, lastAte: T - 300, awakeSince: T - 5 * 60, thirst: 20 });
+  assert.ok(createVampirismCurse(v, null, { now: T }));
+  let at = T;
+  for (let d = 0; d < 5; d++) { walk(v, at, at + 2 * 1440); at += 2 * 1440; }
+  assert.deepEqual([hungerMinutes(v.survival, at), awakeHours(v.survival, at), v.survival.thirst], [300, 5, 20], 'ten days on, the needs where the curse found them');
+  assert.ok(cureVampirism(v));
+  walk(v, at, at + 1);
+  assert.deepEqual([hungerStage(hungerMinutes(v.survival, at + 1)), Math.round(awakeHours(v.survival, at + 1) * 60)], ['peckish', 5 * 60 + 1], 'cured, the body is as it was - its first minute a mortal\'s');
+  // a werewolf's night as the beast, changed Starving and Dehydrated: eight hours, the hunger and the thirst stand and
+  // cost nothing - the beast is fed, the well-fed hour's point back as the mod's FoodEffects gives it; the sleep runs
+  const w = body(T);
+  Object.assign(w.survival, { lastMinute: T, lastAte: T - 1500, awakeSince: T - 60, thirst: 110, sleepDebt: 0 });
+  const lines = []; let restored = 0;
+  const night = (from, to, beastForm) => {
+    const f = survivalFeed(w, { ...INN, lycanthrope: true, beastForm });
+    runSurvivalMinutes(w, from, to, f.env, { ...f.deps, autoDrink: false, autoEat: false, sinks: { restoreFatigue: (n) => { restored += n; }, drainFatigue: () => {}, say: (l) => lines.push(l) } });
+  };
+  const drains = () => ({ ...(w.activeEffects.find((a) => a?.kind === 'survival')?.statMods ?? {}) });
+  night(T, T + 8 * 60, true);
+  assert.deepEqual([hungerMinutes(w.survival, T + 8 * 60), w.survival.thirst, Math.round(awakeHours(w.survival, T + 8 * 60))], [1500, 110, 9], 'the beast hunts: hunger and thirst where they were, nine hours awake');
+  assert.deepEqual(lines.filter((l) => ['starving', 'hungry', 'peckish', 'dehydrated', 'parched', 'thirsty'].some((k) => l === SURVIVAL_TEXT[k])), [], 'no need of a meal or a drink said');
+  assert.equal(restored, 8 * 64, 'fed: the well-fed hour, eight times');
+  assert.deepEqual(drains(), {}, 'and no starving or dehydrated drain on the beast');
+  night(T + 8 * 60, T + 9 * 60, false);
+  assert.equal(hungerMinutes(w.survival, T + 9 * 60), 1560, 'back in the body, the meal\'s clock runs again');
+  assert.equal(drains().strength, -5, 'and its drains with it: a starving day\'s two, and three for a thirst that ran its hour past dehydrated');
+});
+
+test('AUDIT C&C N8: THIRST RISES AT ITS BASE RATE IN THE COLD - a body loses water in any weather (the mod\'s rises at its least in the cold too); the floor meant to halve it there sat over a factor never under one, and is gone: an hour in a mountain blizzard and an hour in a comfortable room each add 100 / 6, and a desert noon more', () => {
+  const hour = (env) => { const e = body(0); for (let m = 1; m <= 60; m++) survivalMinute(e, m, env, deps()); return Math.round(e.survival.thirst * 1000) / 1000; };
+  assert.equal(hour({ climateIndex: CLIMATES.Mountain, month: 0, hour: 2, weather: 'snow' }), 16.667);
+  assert.equal(hour({ climateIndex: CLIMATES.Woodlands, month: 6, hour: 12, weather: 'sunny', insideBuilding: true }), 16.667);
+  assert.ok(hour({ climateIndex: CLIMATES.Desert2, month: 6, hour: 12, weather: 'sunny' }) > 30);
+  assert.doesNotMatch(read('src/systems/survival/needs.js'), /Math\.max\(0\.5, 1 \+ Math\.max\(0, temp\.felt - 10\) \/ 10\)/);
+});
+
+test('AUDIT C&C D5: BARE FEET READ THE NATURAL TEMPERATURE AGAINST THE LIVE ENDURANCE, OUTSIDE - the mod\'s FeetDmg: past half the live endurance, on foot, never inside; the port read the felt temperature (a robe and a cloak shod the feet), the permanent endurance (a Fortify Endurance did nothing) and underground too', () => {
+  setPref(SURVIVAL_PREF, 'hard');
+  const WOODS = { climateIndex: CLIMATES.Woodlands, month: 0, hour: 12, weather: 'sunny' };   // a natural -30
+  const bare = (e, env) => { const f = survivalFeed(e, env); survivalMinute(e, 1, f.env, { ...f.deps, autoDrink: false, autoEat: false }); return e.survival.notes.feet === 'on'; };
+  // a robe and the formal cloak, hood up, barefoot: the felt -3, the ground -30 - the feet freeze
+  const robed = wearer();
+  for (const it of [garment(163), garment(155, { variant: 1 })]) wear(robed, it);
+  assert.equal(bare(robed, WOODS), true, 'clothes shoe no foot');
+  assert.equal(feltNow(robed).felt, -3);
+  // naked, its endurance fortified to 70: half of it, 35, past the ground's 30 - the feet hold
+  const hardy = wearer();
+  fortify(hardy, 'endurance', 20);
+  assert.equal(liveStat(hardy, 'endurance'), 70);
+  assert.equal(bare(hardy, WOODS), false, 'the live endurance');
+  assert.equal(bare(wearer(), WOODS), true, 'and without the spell, 25 is under 30');
+  // underground the feet are never the ground's (a dungeon is inside): an endurance of 30 in a mountain hall's -20
+  const deep = wearer(); deep.stats.endurance = 30;
+  assert.equal(bare(deep, { climateIndex: CLIMATES.Mountain, month: 0, hour: 2, weather: 'snow', insideDungeon: true }), false);
 });

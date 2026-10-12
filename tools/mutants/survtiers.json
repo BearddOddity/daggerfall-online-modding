@@ -490,8 +490,8 @@
   {
     "name": "SURVTIERS-drink-reads-the-permanent-endurance",
     "file": "src/systems/survival/needs.js",
-    "old": "survivalStatMods(s, temp, now, { endurance: liveStat(entity, 'endurance'), rules, vampire })",
-    "new": "survivalStatMods(s, temp, now, { endurance, rules, vampire })",
+    "old": "survivalStatMods(s, temp, now, { endurance: liveStat(entity, 'endurance'), rules, vampire, beast })",
+    "new": "survivalStatMods(s, temp, now, { endurance, rules, vampire, beast })",
     "tests": [
       "test/survtiers.test.js"
     ]

@@ -244,8 +244,8 @@
   {
     "name": "SURVTIERS3-a-vampire-starves-in-hard",
     "file": "src/systems/survival/needs.js",
-    "old": "    const starve = vampire ? 0 : starvingDays(hungerMinutes(s, now));",
-    "new": "    const starve = starvingDays(hungerMinutes(s, now));",
+    "old": "    const starve = vampire || beast ? 0 : starvingDays(hungerMinutes(s, now));",
+    "new": "    const starve = beast ? 0 : starvingDays(hungerMinutes(s, now));",
     "tests": [
       "test/survtiers3.test.js"
     ]
@@ -253,8 +253,8 @@
   {
     "name": "SURVTIERS3-the-minute-law-forgets-the-vampire",
     "file": "src/systems/survival/needs.js",
-    "old": "{ endurance: liveStat(entity, 'endurance'), rules, vampire }",
-    "new": "{ endurance: liveStat(entity, 'endurance'), rules }",
+    "old": "{ endurance: liveStat(entity, 'endurance'), rules, vampire, beast }",
+    "new": "{ endurance: liveStat(entity, 'endurance'), rules, beast }",
     "tests": [
       "test/survtiers3.test.js"
     ]
