@@ -29,8 +29,8 @@
  {
   "name": "D1NEAR-summary-unwritten",
   "file": ".github/workflows/account-deploy.yml",
-  "old": "            echo \"From there, $cost - a few ms beside the primary, 150 and more across an ocean.\"\n          } >> \"$GITHUB_STEP_SUMMARY\"",
-  "new": "            echo \"From there, $cost - a few ms beside the primary, 150 and more across an ocean.\"\n          } >> /dev/null",
+  "old": "            echo \"$primary - wrangler.toml [placement] should name the cloud region nearest it.\"\n          } >> \"$GITHUB_STEP_SUMMARY\"",
+  "new": "            echo \"$primary - wrangler.toml [placement] should name the cloud region nearest it.\"\n          } >> /dev/null",
   "tests": [
    "test/d1near.test.js"
   ]
