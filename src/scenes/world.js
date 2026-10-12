@@ -599,7 +599,7 @@ import { createSailingCabinLink } from '../net/sailingCabinLink.js';
 import { capsuleFits } from '../player/parkour.js';
 import { TRIGGER_MODEL as CSA_TRIGGER_MODEL, setLights as csaSetLights, HULL_NAMES as CSA_HULL_NAMES, nodeOf as csaNodeOf, AUDIO_CLIPS as CSA_AUDIO_CLIPS, colliderBoundsInChildren as csaColliderBoundsInChildren, animatorOf as csaAnimatorOf, meshLocalBounds as csaMeshLocalBounds } from '../systems/comeSailAwayBoat.js';   // CSA-B: the probe's lanterns; CSA-D: the plaque's word for a boat; CSA-G: the loops' objects and the five clips; CSA-J: Eye of the Beholder's Collider.bounds
 import { travelMapPicture, TRAVEL_MAP_IMG, LINE_TEXTURE as CSA_LINE_TEXTURE } from '../systems/comeSailAwayMap.js';   // CSA-I: the position reading's picture and lines
-import { createComeSailAwayRuntime, comeSailAwayCarrier, WATER_WALKING_SILENT, COME_SAIL_AWAY_VENDOR, CONSOLE as CSA_CONSOLE, NO_WATER_LEVEL, NICE_BOAT_TEXT as CSA_NICE_BOAT_TEXT, activationModelOf as csaActivationModelOf, customModelOf as csaCustomModelOf, ACTIVATION_DISTANCE as CSA_ACTIVATION_DISTANCE, windWidgetFrameCount as csaWindWidgetFrameCount, BOAT_ACTIONS as CSA_BOAT_ACTIONS, hullFromMessage as csaHullFromMessage, tileMapIndexAtPosition as csaTileMapIndexAtPosition } from '../systems/comeSailAway.js';   // NAV-H: the tile a sea ship floats on
+import { createComeSailAwayRuntime, cargoModWords, comeSailAwayCarrier, WATER_WALKING_SILENT, COME_SAIL_AWAY_VENDOR, CONSOLE as CSA_CONSOLE, NO_WATER_LEVEL, NICE_BOAT_TEXT as CSA_NICE_BOAT_TEXT, activationModelOf as csaActivationModelOf, customModelOf as csaCustomModelOf, ACTIVATION_DISTANCE as CSA_ACTIVATION_DISTANCE, windWidgetFrameCount as csaWindWidgetFrameCount, BOAT_ACTIONS as CSA_BOAT_ACTIONS, hullFromMessage as csaHullFromMessage, tileMapIndexAtPosition as csaTileMapIndexAtPosition } from '../systems/comeSailAway.js';   // NAV-H: the tile a sea ship floats on
 import { windWidgetFrameUrl as csaWindWidgetFrameUrl, waveDerivedUrl as csaWaveDerivedUrl, wavePaintUrl as csaWavePaintUrl, soundUrl as csaSoundUrl } from '../systems/comeSailAwayModels.js';   // CSA-E: the wind widget's pictures; CSA-F: the waves' recipes and paints
 import { WAVE_FRAME_COUNT as CSA_WAVE_FRAME_COUNT, waveDitherOf as csaWaveDitherOf } from '../systems/comeSailAwayWaves.js';   // CSA-F
 import { ComeSailAwayRenderer, softParticleTexture as csaSoftParticleTexture } from '../render/comeSailAwayRender.js';   // CSA-F: the waves' and the particles' passes
@@ -10771,6 +10771,8 @@ export async function bootWorld(canvas, renderer, params, status) {
       if (way === 'out') captainLedger.chartIsle(veilhaven().key);   // the landfall's port, on the charts from the first
       else crossGate.asked('out');   // home in the crossing waters: not asked out again until she has left them
       setMidScreenText(crossingWords(way), 7);
+      const heavy = cargoModWords(csaRuntime.state.boatCargoMod);   // FB1012d ETHER-STRAND (bible/01-Overview/Field-Bugs-2026-10-12d.md): the crossing's words cover the helm's - her load said again beneath them, or the boat that came home never says why she will not move
+      if (heavy) townTalk.say(heavy, 7);
       captainSay();
       return true;
     } finally {
@@ -33756,6 +33758,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
             getInteractionMode(), playerEntity, {
               nearerThan,
               doorBehind: _race.doorDistance,   // TACT3d: a peaceful guard is no door (the race below, read when the arm runs)
+              behind: _race.next,   // FB1012d ALLY-YIELDS: what the press takes past him - my companion yields to it where it answers
               hud: (t) => townTalk.say(t),
               modal: (t) => townTalk.showOverlay(new ActionTextBox(String(t).split('\n'))),
               makeEnemiesHostile: _makeEnemiesHostile,
@@ -33799,7 +33802,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
             gate: _gatePick,   // WB2
             broker: _brokerPick,   // SET7
             boat: _csaBoatPick,   // CSA-D
-            doorDistance: modes.exteriorActivationDistance(cam.pos, useFwd),
+            door: modes.exteriorActivationHit(cam.pos, useFwd),   // FB1012d ALLY-YIELDS: the door set's pick, its reach with it (`doorDistance` is its distance)
             personDistances: _talkPersons().map((p) => rayPersonDistance(cam.pos, useFwd, p.pos)),
           });
           const _lootPick = _race.loot, _dropPick = _race.drop;
