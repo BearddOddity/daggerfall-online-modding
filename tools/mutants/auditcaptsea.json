@@ -2816,8 +2816,8 @@
   {
     "name": "ACS-X14-overlap",
     "file": "src/ui/etherChartWindow.js",
-    "old": "if (placed.some((p) => box[0] < p[2] && p[0] < box[2] && box[1] < p[3] && p[1] < box[3])) { i.label = false; continue; }",
-    "new": "if (false) { i.label = false; continue; }",
+    "old": "const free = sides.filter((box) => !placed.some((p) => overlaps(box, p)) && (port || !fixed.some((p) => overlaps(box, p))));",
+    "new": "const free = sides;",
     "tests": [
       "test/auditcaptsea.test.js"
     ]
@@ -2825,8 +2825,8 @@
   {
     "name": "ACS-X14-ports-first",
     "file": "src/ui/etherChartWindow.js",
-    "old": "for (const i of [...isles].sort((a, b) => (b.kind === 'port' ? 1 : 0) - (a.kind === 'port' ? 1 : 0))) {",
-    "new": "for (const i of [...isles]) {",
+    "old": "const ports = isles.filter((i) => i.kind === 'port'), lesser = isles.filter((i) => i.kind !== 'port');",
+    "new": "const ports = isles, lesser = [];",
     "tests": [
       "test/auditcaptsea.test.js"
     ]
@@ -2843,8 +2843,8 @@
   {
     "name": "ACS-X12-band-side",
     "file": "src/ui/etherChartWindow.js",
-    "old": "Math.min(w - 4, b.x - 6), 16);",
-    "new": "Math.min(w - 4, b.x + 6), 16);",
+    "old": "const right = Math.min(w - 8, x - 8), tw =",
+    "new": "const right = Math.min(w - 8, x + 8), tw =",
     "tests": [
       "test/auditcaptsea.test.js"
     ]

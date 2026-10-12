@@ -1,4 +1,4 @@
-# The Etheric Sea - past the Veil (ETHER-SEA, ETHER-PLACES, ETHER-PORTS, ETHER-SHIPS, ETHER-LEGENDS, ETHER-CROSSING, ETHER-CHART, ETHER-LIGHT, 2026-10-11)
+# The Etheric Sea - past the Veil (ETHER-SEA, ETHER-PLACES, ETHER-PORTS, ETHER-SHIPS, ETHER-LEGENDS, ETHER-CROSSING, ETHER-CHART, ETHER-LIGHT, 2026-10-11; ETHER-CHART2, 2026-10-12)
 
 The owner, 2026-10-11: *"A brand new open sea map that allows you to traverse to the etheric sea. Sail far enough and
 you are prompted to travel into the open sea. The etheric sea is a infinite procedural oceanscape with procedural
@@ -45,6 +45,7 @@ thousand leagues:
 | ETHER-LEGENDS | SIX LEGENDARY SHIPS: their classes, haunts, terrors, purses; launched in their haunts, risen again a month after their end; the rumours | `systems/naval/etherShips.js`, `systems/naval/navalShips.js` (the six classes, `LEGEND_LEVEL`), `systems/naval/navalDirector.js` (`legendSpawn`), `scenes/navalHost.js` (`legendMend`, `reachOf`), `scenes/etherHost.js` (`legendHere`, `legendEnded`, `rumours`) |
 | ETHER-CROSSING | THE CROSSING: asked at a helm on the open Abecean and in the Veil, once each time the ship comes into those waters; the voyage carries the captain, the ship, her crew and her hold | `systems/naval/etherCrossing.js`, `scenes/world.js` (`etherCrossStep`, `etherCross`, `crossLandPx`) |
 | ETHER-CHART | THE CHART OF THE ETHERIC SEA: the travel map's door past the Veil | `ui/etherChartWindow.js`, `ui/navalPlunderDoor.js` (its slot), `scenes/etherHost.js` (`chart`), `scenes/world.js` (`openEtherChart`) |
+| ETHER-CHART2 | THE CHART READ AT A GLANCE: its words in the enhanced face and drawn last; a shape for each kind's mark; the depths as waters, a grid and a scale; the haunts washed and named in view; the ship ringed and pointed to; the isle named ringed, its bearing and its card; a key | `ui/etherChartWindow.js` (`chartModel`, `paintChart`, `scaleBar`, `labelBoxes`, `edgePointer`) |
 | ETHER-LIGHT | THE LIGHT PAST THE VEIL: cold and violet on land, sea and hulls | `world/ethericSea.js` (`etherLight`), `scenes/world.js` (the frame's lights) |
 | (the ledger) | WHAT A CAPTAIN KEEPS OF IT: the isles charted, the legends ended and heard of, the strands gathered, the way out, the crossings - in the Captain save | `systems/naval/captainLedger.js` (`ether`, `chartIsle`, `endLegend`, `gathered`, `setCrossedFrom`, `crossed`, `hearLegend`), `scenes/etherHost.js` |
 
@@ -313,12 +314,12 @@ captain back where they set out, at her helm, the way out as it was (CROSS_FAILE
 
 Past the Veil the travel map's door (`toggleTravelMap`) opens the captain's chart (`ui/etherChartWindow.js`, the naval
 windows' door's third slot) - the Bay's travel map has no sea there to show, and nothing on the chart is travelled to.
-On a canvas: the sea, darker to the west; the BANDS' bounds and names - each named on its own deeper side, the Shallows
-by the Veil (X12); THE VEIL down the east edge, "to the Iliac Bay"; the HAUNTS of the legends heard of (the square a
-haunt is - X13 - red while she sails, grey and "(sunk)" while she lies sunk); the ISLES CHARTED (a port gold, a ruin red,
-a wild isle green, a rock grey - a port named at any zoom, the rest from x8, never a name lettered over another, ports
-first: LABEL_CHAR_PX, LABEL_H - X14); the SHIP and her heading at her helm (the boat's, never where the captain looks -
-X16). Zooms x1 - x16 (CHART_ZOOMS): the wheel about the pointer, a step each CHART_WHEEL_STEP of its travel (X18);
+On a canvas: the sea, each depth its own water (ETHER-CHART2); the BANDS' bounds and names - each named on its own
+deeper side, the Shallows by the Veil (X12); THE VEIL down the east edge, "to the Iliac Bay"; the HAUNTS of the legends
+heard of (the square a haunt is - X13 - red while she sails, hatched grey while she lies sunk); the ISLES CHARTED (a port
+gold, a ruin red, a wild isle green, a rock grey - a port named at any zoom, the rest from x8, never a name lettered over
+another, ports first: LABEL_CHAR_PX, LABEL_H - X14); the SHIP and her heading at her helm (the boat's, never where the
+captain looks - X16). Zooms x1 - x16 (CHART_ZOOMS): the wheel about the pointer, a step each CHART_WHEEL_STEP of its travel (X18);
 + and - (the keys and the chart's own buttons) about the centre (`chartZoomAt` keeps the point under it - H17); a
 pinch of CHART_PINCH_STEP.
 A drag or the arrows to pan (`clampChartView` keeps the view over the sea), the drag ended however its press ends (X7);
@@ -333,6 +334,57 @@ the landfall, is charted at the crossing itself - H19) and counted in the log's 
 gone is the log's `deepest`. A freeport's chart and a corsair's papers chart more - a freeport's never past the charts'
 room, ETHER_CHARTED_MAX (X5: the gold was taken for nothing); a harbourmaster's rumours are heard (their haunts charted)
 where his tab is shown (X11). The helm's plate says "The Veil" in the Veil itself (D19).
+
+## ETHER-CHART2 - the chart read at a glance
+
+The owner, 2026-10-12: *"I want to improve the [Etheric] sea map, its icons, the highlight areas, etc and improve
+readability."* Read in Chromium before the change (`ui/etherChartWindow.js` mounted alone, a captain's word of a hundred
+isles charted and three legends heard of, at every zoom and a phone's width - the window needs no game data), the chart
+had six faults, and each is fixed where it starts:
+
+- **ITS WORDS WERE IN A FACE NO ONE LOADS.** The canvas named "Cormorant Garamond"; the skin's one request carries
+  Cormorant (`FONT_DISPLAY`), so every name on the chart was the browser's Georgia - and FONT1's law is that every
+  enhanced surface speaks the enhanced face. The chart letters in the pixel stack at FONT3's reading pair (`CHART_FONT`,
+  weight 500, `CHART_TRACKING` half a pixel), and paints itself again when the face lands (heldMap.js's law for its
+  ink). A name's width is the canvas's own measure; LABEL_CHAR_PX (6.7) is the face's mean letter over 755 isles'
+  names, measured, where no canvas measures (node).
+- **A MARK CROSSED OUT A NAME.** Each isle drew its disc and then its name, so every later disc painted over the names
+  before it (a ruin's disc stood in the middle of "Old Nymuond"). Every word is drawn LAST now (`paintChart`, back to front: the world's edge, the depths and
+  the grid, the Veil, the bounds, the haunts, the lands, the bearing, the marks, the ship - then the words), under a
+  hard halo, never a blur. A name tries its isle's east side, then its west (`labelBoxes`); of the sides clear of every
+  name lettered it takes the first on the canvas and clear of the chart's own words, the ship's ring and every other
+  isle's mark. The names are laid IN LAYERS: the ports' (X14's law kept whole - a port weighs only the ports' marks and
+  the chart's own words, so a lesser isle never moves a port's name, and a port goes unlettered only where both its
+  sides stand under ports' names); then the band names and the Veil's give way to them (the Veil's tries the bottom of
+  its strip first; a band's name is lettered only inside its own water - at x1 the Shallows' ran over the Reaches'); then
+  the haunts' names; then the lesser isles', which never stand over a band's name, the scale, the Veil's name or a
+  haunt's. With two sides, every port of Veilhaven's waters is lettered at x2 (X14's crowded view is x1's now).
+- **A RUIN AND A WILD ISLE WERE TOLD APART BY RED AND GREEN ALONE** - the pair a red-green eye cannot tell. Each kind's
+  MARK is a shape too (`paintMark`): a port round with its harbour's dot, a ruin a diamond, a wild isle a peak, a rock a
+  cross - in its kind's colour (`KIND_COLOURS`, lifted to read on the depths' water), outlined in ink, its half side by
+  the zoom (`ICON_PX`, a port's one more). Once an isle's own land outgrows its mark it is drawn too, at the chart's scale,
+  under the mark. Veilhaven, the landfall, is ringed in gold.
+- **THE DEPTHS WERE A LINE AND A WORD.** Each band is its own water now (`depths`, `DEPTH_TONES` - the Shallows' the
+  lightest by the Veil, the Abyss the darkest), the band names on plates; past the sea's box the world's edge is
+  hatched. The ninety fixed stars - drawn on the screen, not the sea, so they never moved with a drag and read as rocks -
+  are gone for a GRID whose squares are the SCALE BAR's length (`scaleBar`: the longest of SCALE_LEAGUES no longer than
+  SCALE_MAX_PX - 20, 10, 5, 2 and 1 leagues from x1 to x16), the bar in the corner.
+- **A HAUNT WAS A HAIRLINE, ITS NAME OFF THE CANVAS.** A haunt's square is washed red while she sails and hatched and
+  dashed grey while she lies sunk; her name and her state - "Her haunt" ("- by night" for the Lantern-Eater), "Sunk - she
+  will rise again" - stand on a plate in the first corner of the square's part in view that no name or plate takes. Where
+  that part is smaller than the plate (a far zoom), her name alone stands over the square, giving way to a port's. The
+  name stood above the square's top edge, off the canvas whenever the square ran past it.
+- **THE SHIP WAS A NINE-PIXEL ARROW IN THE PORTS' GOLD.** She is a bone arrowhead on her heading in a brass ring; off
+  the canvas, a pointer at its edge (`edgePointer`, EDGE_INSET in) says "Your ship - 29 leagues east-south-east" from
+  the chart's middle.
+
+And three the reading turned up: the ISLE NAMED by a pointer or a tap is ringed, a bearing drawn to it from the ship and
+its card beside it (its name, and "A port - 3 leagues east-north-east"), the header's line kept as it was for a screen
+reader (`aria-live`) - and that line's height is held now, because a name said grew the head and slid the chart under
+the pointer, which could take the pointer off the isle it named; a mouse gone off the chart names nothing. A KEY under
+the chart draws each mark by the chart's own painter beside its word (`CHART_KEY`). The zoom buttons are disabled at the
+ends and named for a screen reader; on a phone the sheet's narrow rule no longer stretches the Close and zoom buttons to
+a row each, so the title keeps its room.
 
 ## ETHER-LIGHT - the light past the Veil
 
@@ -414,6 +466,16 @@ fixes moved pins in `test/ethersea.test.js` (the margin 64, the port isle's land
 Veil's refusal), `test/travelmap.test.js` (the landing before the build), and P9's deed in eleven house suites; the
 page names each.
 
-**Not verified here:** the look and feel in a real browser (the isles on the horizon, the chart, the light), a crossing
-end to end in a running world (its jump, the ship brought round, the stream past the Veil), a town's buildings and a
-ruin's halls entered on an isle, and online play past the Veil.
+ETHER-CHART2: `test/etherchart2.test.js` (9) holds the chart read at a glance - the face, a mark's shape by kind (a
+stub context watching the painter), every word last, the names in layers, the depths, the grid and the scale, the
+haunts named in view, the ship's pointer and the Veil's name, the isle named and the window's line - in
+`tools/mutants/etherchart2.json`. PIN MOVED: `test/auditcaptsea.test.js` X12/X14 read the model's own boxes (a name on
+either side of its isle; X14's crowded view x1's, since x2 letters every port of Veilhaven's waters now, and its
+ports-first check a second, crowded view where a lesser name met first still takes a port's only place - with two sides
+the old view could not fail `ACS-X14-ports-first`), and three of its records are re-aimed at the new sites
+(`ACS-X14-overlap`, `ACS-X14-ports-first`, `ACS-X12-band-side`). The 49 records aimed at `ui/etherChartWindow.js`
+across the three lists all die.
+
+**Not verified here:** the look and feel in a real browser (the isles on the horizon, the light - the chart was read in
+Chromium at ETHER-CHART2, mounted alone), a crossing end to end in a running world (its jump, the ship brought round,
+the stream past the Veil), a town's buildings and a ruin's halls entered on an isle, and online play past the Veil.

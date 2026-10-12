@@ -818,32 +818,43 @@ test('AUDIT CAPTAIN\'S SEA X6/X7/X8/X12/X13/X14/X18: the chart under a finger an
   const M = await import('../src/ui/etherChartWindow.js');
   const ES = await import('../src/world/ethericSea.js');
   const h = ES.veilhaven();
-  // the labels: packed names at x8 never overlap
+  // the labels: packed names at x8 never overlap (PIN MOVED, ETHER-CHART2: a name stands on its isle's east side or its
+  // west - the model's own `box`, not a box re-derived east of the isle)
   const charted = ES.islesNear(h.px - 30, h.py, 30).map((i) => i.key);
   const m = M.chartModel({ px: h.px, py: h.py, charted, legends: [], stats: {} }, { cx: h.px - 30, cy: h.py, zoom: 3 }, 1000, 700);
-  const boxes = m.isles.filter((i) => i.label).map((i) => [i.x + i.r + 4, i.y - M.LABEL_H / 2 - 2, i.x + i.r + 4 + M.capFirst(i.name).length * M.LABEL_CHAR_PX, i.y + M.LABEL_H / 2 - 2]);
+  const boxes = m.isles.filter((i) => i.label).map((i) => i.box);
   for (let a = 0; a < boxes.length; a++) for (let b = a + 1; b < boxes.length; b++) {
     const [p, q] = [boxes[a], boxes[b]];
     assert.ok(!(p[0] < q[2] && q[0] < p[2] && p[1] < q[3] && q[1] < p[3]), 'no two names over each other');
   }
   assert.ok(m.isles.some((i) => !i.label), 'a crowded chart leaves some unlettered');
   assert.ok(m.isles.filter((i) => i.kind === 'port').every((i) => i.label), 'every port lettered - placed first');
-  // ports first: a port goes unlettered only under another port's name, never a lesser isle's
-  const boxOf = (i) => [i.x + i.r + 4, i.y - M.LABEL_H / 2 - 2, i.x + i.r + 4 + M.capFirst(i.name).length * M.LABEL_CHAR_PX, i.y + M.LABEL_H / 2 - 2];
+  // ports first: a port goes unlettered only under another port's name, never a lesser isle's (PIN MOVED, ETHER-CHART2:
+  // on BOTH its sides - `labelBoxes` - each under a lettered port's own box)
   const over = (p, q) => p[0] < q[2] && q[0] < p[2] && p[1] < q[3] && q[1] < p[3];
-  const mz = M.chartModel({ px: h.px, py: h.py, charted: ES.islesNear(h.px, h.py, 40).map((i) => i.key), legends: [], stats: {} }, { cx: h.px, cy: h.py, zoom: 1 }, 1000, 700);
+  const mz = M.chartModel({ px: h.px, py: h.py, charted: ES.islesNear(h.px, h.py, 60).map((i) => i.key), legends: [], stats: {} }, { cx: h.px, cy: h.py, zoom: 0 }, 1000, 700);   // x1: x2 now letters every port of these waters on one side or the other
   const lettered = mz.isles.filter((i) => i.label);
   assert.ok(mz.isles.some((i) => i.kind === 'port' && !i.label), 'a view crowded with ports');
-  for (const p of mz.isles.filter((i) => i.kind === 'port' && !i.label)) assert.ok(lettered.some((q) => q.kind === 'port' && over(boxOf(p), boxOf(q))), `${p.name}: unlettered under a port's name alone`);
+  for (const p of mz.isles.filter((i) => i.kind === 'port' && !i.label)) {
+    for (const side of M.labelBoxes(p, M.capFirst(p.name).length * M.LABEL_CHAR_PX)) assert.ok(lettered.some((q) => q.kind === 'port' && over(side, q.box)), `${p.name}: unlettered under a port's name alone`);
+  }
   // ...and the ports lettered are the ones a chart of its ports alone letters (at x8 off Veilhaven a wild isle's name, met
   // first in the chart's order, took a port's place)
-  const near = ES.islesNear(h.px, h.py, 45);
-  const at8 = (keys) => M.chartModel({ px: h.px, py: h.py, charted: keys, legends: [], stats: {} }, { cx: h.px, cy: h.py, zoom: 3 }, 1000, 700);
+  // PIN MOVED (ETHER-CHART2): and in the crowded waters seventy pixels west and thirty south, where - a name standing on
+  // either side of its isle now - a lesser isle's name met first in the chart's order still takes a port's only place
   const letteredPorts = (mm) => mm.isles.filter((i) => i.kind === 'port' && i.label).map((i) => i.key).sort();
-  assert.deepEqual(letteredPorts(at8(near.map((i) => i.key))), letteredPorts(at8(near.filter((i) => i.kind === 'port').map((i) => i.key))), 'the ports lettered as they would be with no lesser isle on the chart');
+  for (const [dx, dy, reach] of [[0, 0, 45], [-70, 30, 60]]) {
+    const near = ES.islesNear(h.px + dx, h.py + dy, reach);
+    const at8 = (keys) => M.chartModel({ px: h.px, py: h.py, charted: keys, legends: [], stats: {} }, { cx: h.px + dx, cy: h.py + dy, zoom: 3 }, 1000, 700);
+    assert.deepEqual(letteredPorts(at8(near.map((i) => i.key))), letteredPorts(at8(near.filter((i) => i.kind === 'port').map((i) => i.key))), 'the ports lettered as they would be with no lesser isle on the chart');
+  }
   // the bands: the Shallows named by the Veil with no line of its own, every deeper band its bound
   const mv = M.chartModel({ px: ES.VEIL_X - 2, py: h.py, charted: [], legends: [], stats: {} }, { cx: ES.VEIL_X - 13 * ES.LEAGUE_PX, cy: h.py, zoom: 0 }, 1000, 700);
   assert.deepEqual(mv.bands.map((b) => [b.name, b.line]), [['the Shallows', false], ['the Reaches', true], ['the Deep Aether', true]]);
+  // PIN MOVED (ETHER-CHART2: the band names' boxes are the model's): each name lettered stands west of its own bound
+  const mb = M.chartModel({ px: h.px, py: h.py, charted: [], legends: [], stats: {} }, { cx: ES.VEIL_X - 30 * ES.LEAGUE_PX, cy: h.py, zoom: 1 }, 1000, 700);
+  assert.ok(mb.bands.filter((b) => b.box).length >= 2, 'names lettered in view');
+  for (const b of mb.bands) if (b.box) assert.ok(b.box[2] <= b.x - 6 && b.box[2] <= 1000, `${b.name} on its deeper side`);
   const src = rd('src/ui/etherChartWindow.js');
   assert.match(src, /if \(e\.pointerType === 'mouse' && e\.button !== 0\) return;/, 'the mouse\'s first button alone');
   assert.match(src, /if \(drag && e\.pointerType === 'mouse' && !\(e\.buttons & 1\)\) endDrag\(e\);/, 'no button held: no drag');
@@ -857,7 +868,6 @@ test('AUDIT CAPTAIN\'S SEA X6/X7/X8/X12/X13/X14/X18: the chart under a finger an
   assert.match(src, /if \(Math\.abs\(wheelAcc\) < CHART_WHEEL_STEP\) return;/, 'the wheel gathered');
   assert.equal(M.CHART_WHEEL_STEP, 100);
   assert.match(src, /g\.strokeRect\(t\.x - t\.r, t\.y - t\.r, 2 \* t\.r, 2 \* t\.r\);/, 'a haunt a square');
-  assert.match(src, /g\.textAlign = 'right'; g\.fillText\(capFirst\(b\.name\), Math\.min\(w - 4, b\.x - 6\), 16\);/, 'a band on its deeper side');
 });
 
 test('AUDIT CAPTAIN\'S SEA X15/X16: the chart goes with the world it charts - shut at every load, jump and move (it stood over the Bay after a load); its arrow the ship\'s heading at her helm, never where the captain looks (mutants: the close, the boat\'s heading)', () => {
