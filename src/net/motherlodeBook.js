@@ -153,7 +153,7 @@ export function createMotherlodeBook({ door, character, me, nowS, onChange = () 
       for (const l of state.lodes) {
         if (state.day !== today) break;
         // AUDIT SILVER-WAYS D7: the names made only for a line said
-        // FIELD BUGS 2026-10-12e LODE-MARK: never to an account whose Motherlode today is found - it stands for them nowhere
+        // FIELD BUGS 2026-10-12g LODE-MARK: never to an account whose Motherlode today is found - it stands for them nowhere
         if (state.found) break;
         if (t >= l.opensAt - ahead && t < l.opensAt && !said.has(`warn|${l.key}`)) {
           said.add(`warn|${l.key}`);
@@ -203,7 +203,7 @@ export function createMotherlodeBook({ door, character, me, nowS, onChange = () 
       for (const l of state.lodes) if (standing(l, t)) out.push(l);
       return out;
     },
-    /** FIELD BUGS 2026-10-12e LODE-MARK: what the compass marks - every Motherlode standing now, and every one the
+    /** FIELD BUGS 2026-10-12g LODE-MARK: what the compass marks - every Motherlode standing now, and every one the
      *  warning has told of that is still to break ground ("Look for it on your compass" was said before anything stood
      *  to mark), into `out` as standingAll's. */
     markedAll(out = []) {

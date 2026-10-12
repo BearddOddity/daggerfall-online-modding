@@ -1,10 +1,10 @@
-// FIELD BUGS 2026-10-12e PANE-CLIP - "Wall missing through window": "I should be looking at the outside wall there"
+// FIELD BUGS 2026-10-12g PANE-CLIP - "Wall missing through window": "I should be looking at the outside wall there"
 // (The Savage Goat in Fontbridge). The view out left out every fragment inside the entered building's model box and a
 // quarter metre round it - the building's own other wing across a notch, a second model of it, a neighbour's wall
 // against it, and (that near face gone, the rest seen from behind) the whole neighbour: the street showed where a wall
 // stands. Now the watched frame's glass and cutout sub-meshes are drawn again, depth alone, under the view out's lens,
 // and the street draws only past that depth. Pinned by execution over a recording GL (the bracket's own state is
-// windows1_view.test.js V4's). bible/01-Overview/Field-Bugs-2026-10-12e.md.
+// windows1_view.test.js V4's). bible/01-Overview/Field-Bugs-2026-10-12g.md.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';

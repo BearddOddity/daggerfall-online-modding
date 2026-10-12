@@ -746,7 +746,7 @@ export function createHorseCartPool({
     if (!rig || !c) return 0;
     let n = 0, open = false;
     const own = !!renderer?.beginCharacterSpriteBatch && !renderer.characterSpriteBatchOpen;
-    // FIELD BUGS 2026-10-12e BATCH-SHUT: opened once, flushed in a finally. A batch opened for a horse that did not draw
+    // FIELD BUGS 2026-10-12g BATCH-SHUT: opened once, flushed in a finally. A batch opened for a horse that did not draw
     // (out of view) was never flushed, and one opened twice was flushed once: the batch stood open, every later body
     // pass joined it, and no Morrowind body - the player's own, every NPC's, foe's, peer's and horse's - drew again
     try {

@@ -111,7 +111,7 @@ export function bindQuestFoeHost(f, behaviour, pool) {
  *  collider's triangle soup (its own comment says so), where Unity's
  *  OverlapSphere sees their capsules - the caller supplies foe and
  *  player proximity. */
-/** FIELD BUGS 2026-10-12e SHOP-RATS ("Starter quests keep breaking": "Quests that spawn enemies inside of shops like the
+/** FIELD BUGS 2026-10-12g SHOP-RATS ("Starter quests keep breaking": "Quests that spawn enemies inside of shops like the
  *  rat quests from the fighters guild keep spawning nothing"). DFU's interior arm is PlaceFoeFreely alone
  *  (CreateFoe.PlaceFoeBuildingInterior, "Always place foes around player rather than use spawn points"): a bearing just
  *  outside the view, at least 5 m clear plus 1.25 m, every tick and never anything else. A shop's counter and shelves

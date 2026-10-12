@@ -185,7 +185,7 @@ uniform vec4 uRoomLamp;    // rgb a lit room's lamp; a the night (the window sty
 uniform vec3 uRoomDay;     // the light a room takes from the day outside
 uniform mat4 uModel;       // the room's seed reads the model's own frame (a floating origin moves the world, not it)
 uniform highp sampler2D uPaneDepth; // the view out's pass: the glass's own depth - nothing on the room's side of a pane draws
-uniform float uPaneOn;              //   (on in that pass alone; FIELD BUGS 2026-10-12e PANE-CLIP)
+uniform float uPaneOn;              //   (on in that pass alone; FIELD BUGS 2026-10-12g PANE-CLIP)
 vec3 rwDecode(vec3 c) { return ${decode}; }   // the lane's colour decode of an sRGB constant
 const vec3 RW_COL[${cols.length}] = vec3[${cols.length}](${cols.map(v3).join(', ')});
 const vec4 RW_PAT[${pats.length}] = vec4[${pats.length}](${pats.join(', ')});
@@ -391,7 +391,7 @@ export const VIEW_RELEASE_MS = 10000;
 /** The streamed world's rings the view out walks: the player's pixel and the eight round it (through a pane, a town's
  *  next street is the far distance - the fog and the sky take the rest). */
 export const VIEW_RINGS = 1;
-/** FIELD BUGS 2026-10-12e PANE-CLIP ("Wall missing through window", The Savage Goat in Fontbridge): THE VIEW OUT DRAWS
+/** FIELD BUGS 2026-10-12g PANE-CLIP ("Wall missing through window", The Savage Goat in Fontbridge): THE VIEW OUT DRAWS
  *  ONLY WHAT STANDS PAST THE GLASS. The watched frame's glass and cutout sub-meshes are drawn again, depth alone, under the
  *  view out's own lens, and a fragment of the street at or before that depth is the room's side of a pane - it never
  *  draws. It was the building's model box (and a quarter metre round it), and every fragment in it: the building's own

@@ -288,7 +288,7 @@ function again(target, damage) {
   const f = recordOf(door, target);
   const n = Math.max(1, Math.round(damage));
   if (f) { if (!f.dead) door.hurtFoe(f, n); return; }
-  oweFoe(target, n);   // FIELD BUGS 2026-10-12e OPEN-HAND: a body the relay runs (the gate's Warden) - its host's claim carries it
+  oweFoe(target, n);   // FIELD BUGS 2026-10-12g OPEN-HAND: a body the relay runs (the gate's Warden) - its host's claim carries it
 }
 /** Chain Lightning: the nearest other foe within `metres` of the struck one takes `amount` as shock. */
 function arc(target, amount, metres) {

@@ -1339,7 +1339,7 @@ export function repairUnloseableBindings(store) {
     if (actionIsReachable(store, action)) continue;
     const def = DEFAULT_BINDINGS.find(([, a]) => a === action);
     if (!def) continue;
-    // FIELD BUGS 2026-10-12e KEEP-CLICK: never a key another action holds. SetBinding steals, and this ran on every
+    // FIELD BUGS 2026-10-12g KEEP-CLICK: never a key another action holds. SetBinding steals, and this ran on every
     // boot: Swing on Left Click with Activate (mouse) cleared came back Activate's, Swing on nothing - the very
     // stranding this pass exists to stop, written back to the file, and a cascade on the next boots. DFU's own
     // autofill (TestSetBinding) fills only a free code; a player who gave the key away keeps their layout.

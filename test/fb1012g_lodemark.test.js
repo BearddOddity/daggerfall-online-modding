@@ -1,10 +1,10 @@
-// FIELD BUGS 2026-10-12e LODE-MARK - "Motherlodes don't show up on compass": "In the announce text it says to look for
+// FIELD BUGS 2026-10-12g LODE-MARK - "Motherlodes don't show up on compass": "In the announce text it says to look for
 // the motherlode on your compass but it doesn't come up at all unless its only from a certain distance? Makes it to
 // where motherlodes can only be found by luck wandering around." The warning said "Look for it on your compass" ten
 // minutes (a Sense's thirty) before anything stood to be marked; an account whose Motherlode today was found was told the
 // same of lodes that stood for it nowhere; and the far mark was Mining's copper, under every vein and boulder in reach.
 // The book's marks (net/motherlodeBook.js markedAll), the compass's colour (ui/nodeMarks.js) and the world host's
-// wiring. bible/01-Overview/Field-Bugs-2026-10-12e.md.
+// wiring. bible/01-Overview/Field-Bugs-2026-10-12g.md.
 import './chargenDom.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

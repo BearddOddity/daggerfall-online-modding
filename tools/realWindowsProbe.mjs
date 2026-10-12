@@ -92,7 +92,7 @@ try {
         q([-2.5, 3, -2.5], [2.5, 3, -2.5], [2.5, 3, 2.5], [-2.5, 3, 2.5], [0, -1, 0], 2, 2);
       });
     });
-    // PANE-CLIP (FIELD BUGS 2026-10-12e, "Wall missing through window"): the building's own other wing, past the glass
+    // PANE-CLIP (FIELD BUGS 2026-10-12g, "Wall missing through window"): the building's own other wing, past the glass
     // and inside what was its model box (red), and a wall of it between the eye and the glass - a room that reaches past
     // its shell (green). Through the pane the wing shows; the near wall never does
     r.uploadTexture(3004, 0, paint(() => [200, 40, 40]), { opaque: true });

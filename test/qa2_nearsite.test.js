@@ -21,7 +21,7 @@ import { BUILDING_TYPES } from '../src/world/buildingNames.js';
 import { loadTables, rmbBlock, town, typeAtKey, mark, SPAWN, ITEM } from './fb1004dTowns.mjs';
 import { fakeBlocks } from './wd3Fakes.mjs';
 import { readFileSync } from 'node:fs';
-import { entryTarget } from '../src/ui/questLens.js';   // FIELD BUGS 2026-10-12e QUEST-TOWN
+import { entryTarget } from '../src/ui/questLens.js';   // FIELD BUGS 2026-10-12g QUEST-TOWN
 
 loadTables();
 const BV = 'beautiful-villages';
@@ -353,10 +353,10 @@ test('AUDIT QA2: NEAR-SITE\'s nearest town is the nearest by the travel reckonin
   } finally { _resetLayoutPins(); _resetWorldDataReplacement(); }
 });
 
-// FIELD BUGS 2026-10-12e QUEST-TOWN ("'Open a Chest' quest doesn't record the town you need to go to": "The town is mentioned
+// FIELD BUGS 2026-10-12g QUEST-TOWN ("'Open a Chest' quest doesn't record the town you need to go to": "The town is mentioned
 // in the first message you get ('... the finest locksmiths in Gothhead...') but not in the text in the quest list, and it
 // doesn't show up as a quest location on the map either"). N0B00Y16's `Place _shop_ local pawnshop` taken by NEAR-SITE in
-// the nearest town that has one; its log names "a local merchant" and no town. bible/01-Overview/Field-Bugs-2026-10-12e.md.
+// the nearest town that has one; its log names "a local merchant" and no town. bible/01-Overview/Field-Bugs-2026-10-12g.md.
 const chestQuest = () => readFileSync(new URL('../vendor/dfu-quests/Quests/N0B00Y16.txt', import.meta.url), 'utf8').replace(/^\uFEFF/, '')
   .replace('group Spellcaster remote', 'group Questor').replace('group Pawnbroker female', 'group Questor').split(/\r?\n/);   // the rig's factions: questors all
 test('QUEST-TOWN a local site NEAR-SITE takes in another town is marked so; the quest\'s start puts that town on the travel map; the log entry that names its merchant points at it, the town and the region named - and a site in the quest\'s own town is DFU\'s, unmarked, unrevealed, its entry pointing nowhere (mutants: the mark never written; the reveal never made; the lens not following the merchant; the town not named)', () => {

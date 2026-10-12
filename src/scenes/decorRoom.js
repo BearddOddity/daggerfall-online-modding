@@ -702,7 +702,7 @@ export function createDecorRoom({
     for (const [id, list] of held) if (list.length) out[id] = list.map((it) => ({ ...it }));
     return out;
   }
-  /** HOLD-KEPT (FIELD BUGS 2026-10-12e): what the pieces the service no longer has held - `served` is its whole list,
+  /** HOLD-KEPT (FIELD BUGS 2026-10-12g): what the pieces the service no longer has held - `served` is its whole list,
    *  every piece it has (read by this build or not) - taken out of the record whole, for the caller to set down. A record
    *  for a piece no one will ever stand again is otherwise kept, and out of reach, for good. */
   function takeUnserved(served) {

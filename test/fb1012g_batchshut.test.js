@@ -1,10 +1,10 @@
-// FIELD BUGS 2026-10-12e BATCH-SHUT - "Keep turning invisible, horses and any MW models": "models are disappearing
+// FIELD BUGS 2026-10-12g BATCH-SHUT - "Keep turning invisible, horses and any MW models": "models are disappearing
 // including myself ... when I reload it shows my MW models for a second but then disappears"; "my character, enemy and
 // npc sometimes (often) turn invisible, restarting the client seems to fix it for some minutes". horseCartPool's
 // drawVeiled3d (a concealed peer's 3D horses, AUDIT COATS3D A5) opened the renderer's one body batch for a horse and
 // flushed it only if one drew: a horse out of view left it open, and two opens met one flush. Every later body pass
 // joined the open batch and no Morrowind picture drew again. The real batch doors, drawRigSpriteBox, the horse rig and
-// the pool; GL alone is stubbed. bible/01-Overview/Field-Bugs-2026-10-12e.md.
+// the pool; GL alone is stubbed. bible/01-Overview/Field-Bugs-2026-10-12g.md.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

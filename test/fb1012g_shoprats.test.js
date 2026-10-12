@@ -1,9 +1,9 @@
-// FIELD BUGS 2026-10-12e SHOP-RATS - "Starter quests keep breaking": "Quests that spawn enemies inside of shops like the
+// FIELD BUGS 2026-10-12g SHOP-RATS - "Starter quests keep breaking": "Quests that spawn enemies inside of shops like the
 // rat quests from the fighters guild keep spawning nothing. It seems like it works if it spawns them in a residence, but
 // not in shops?" M0B00Y15 and M0C00Y14 (`Place _house_ local random` - any building, shops among them) `create foe` at
 // the house: DFU's interior arm is PlaceFoeFreely alone, a bearing just outside the view with 5 m + 1.25 m clear, and a
 // shop's counter and shelves leave it none - the wave waited forever. Over the real Collider in a shop-shaped room, the
-// ring alone and the host's law (questFoeHost.js placeRoomQuestFoe). bible/01-Overview/Field-Bugs-2026-10-12e.md.
+// ring alone and the host's law (questFoeHost.js placeRoomQuestFoe). bible/01-Overview/Field-Bugs-2026-10-12g.md.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

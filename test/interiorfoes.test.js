@@ -82,9 +82,9 @@ test('IF: CreateFoe\'s interior arm is the dungeon arm with one term changed', (
   const arm = WM.slice(WM.indexOf('function tryPlaceInteriorQuestFoe'));
   const body = arm.slice(0, arm.indexOf('\n  }\n') + 4);
   assert.match(body, /collider: interiorCtx\.collider,/, 'the ONE term that differs from the dungeon arm');
-  // PIN MOVED (FIELD BUGS 2026-10-12e SHOP-RATS): the same law first, every tick - placeRoomQuestFoe tries DFU's ring
+  // PIN MOVED (FIELD BUGS 2026-10-12g SHOP-RATS): the same law first, every tick - placeRoomQuestFoe tries DFU's ring
   // before anything, and only a foe it has missed thirty times takes the near ring and the room's markers
-  // (test/fb1012e_shoprats.test.js)
+  // (test/fb1012g_shoprats.test.js)
   assert.match(body, /placeRoomQuestFoe\(env, handle, /, 'the same placement law, first');
   assert.match(body, /if \(!interiorCtx \|\| !interiorFoes\) return false;/, 'false = retry next machine tick, verbatim');
   assert.match(body, /_fly \? spot\.y \+ 1\.5 : spot\.y/, 'FinalizeFoe lifts a FLYING foe 1.5 (:341-359)');

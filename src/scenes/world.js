@@ -26628,7 +26628,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const motherlodeMarks = () => {
     _lodeMarks.length = 0;
     if (!motherlodeBook || profBook?.state.open !== true || _mode() !== 'exterior') return _lodeMarks;
-    for (const l of motherlodeBook.markedAll(_lodesUp)) {   // LODE-MARK (FIELD BUGS 2026-10-12e): from its warning on, in its own colour
+    for (const l of motherlodeBook.markedAll(_lodesUp)) {   // LODE-MARK (FIELD BUGS 2026-10-12g): from its warning on, in its own colour
       const tr = state.pixelTranslation(l.x, l.y, _lodeTr), m = _lodePool[_lodeMarks.length] ??= { profession: 'motherlode', at: [0, 0, 0], d: 0, reach: 1 };
       m.at[0] = tr[0] + TERRAIN_SIZE / 2; m.at[1] = tr[1]; m.at[2] = tr[2] + TERRAIN_SIZE / 2; _lodeMarks.push(m);
     }
@@ -29529,7 +29529,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   // machine asks, renderer.outsideViewFrame runs it): the clock's light over the exterior the last street frame kept,
   // and the pixels' merged statics, odd models, ground and flats out to VIEW_RINGS, culled to the glass's own frustum.
   // The building the player stands in is drawn with the rest: its walls seen from inside are back faces, and what stands
-  // on the room's side of a pane the renderer leaves out (PANE-CLIP, FIELD BUGS 2026-10-12e - its model's box left out
+  // on the room's side of a pane the renderer leaves out (PANE-CLIP, FIELD BUGS 2026-10-12g - its model's box left out
   // its own other wing and a neighbour's wall against it, "Wall missing through window").
   /** RW1 (AUDIT): the town's lanterns as the street frame lights them - its pool refilled, the nearest the installed set
    *  takes - for a street looked out on after dark (the kept frame's were the hour the player went in). */

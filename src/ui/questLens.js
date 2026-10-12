@@ -208,7 +208,7 @@ export function entryTarget(message, where = {}) {
   // A raw token array (a host's filed entry, a test's fixture) has no resources to name: it points nowhere.
   if (typeof message?.getTextTokens !== 'function') return null;
   let place = lastPlaceMentionedInMessage(message, QUIET_ROLL);
-  // FIELD BUGS 2026-10-12e QUEST-TOWN: an entry that names no place, but names a person who stands at a site taken in
+  // FIELD BUGS 2026-10-12g QUEST-TOWN: an entry that names no place, but names a person who stands at a site taken in
   // another town (place.js NEAR-SITE - DFU's `local` is always this town, and the entry says "a local merchant"), points
   // at that site, its town named: the quest list's where-line, the map's diamond and the compass have it
   const moved = place ? null : movedSiteOf(message);

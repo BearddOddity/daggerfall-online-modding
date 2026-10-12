@@ -1,11 +1,11 @@
-// FIELD BUGS 2026-10-12e HOLD-KEPT ("Housing items lost in storage": "a lot of lagging and my housing decorations didnt
+// FIELD BUGS 2026-10-12g HOLD-KEPT ("Housing items lost in storage": "a lot of lagging and my housing decorations didnt
 // load ... the boxes i had put all my legendaries and rares along with some potions was gone, i relogged and checked but
 // it stayed empty"). A house's own chest was its record's INDEX in the room's list (`container:<i>`, worldModes.js
 // currentSceneState): a placement whose model did not stand (interiorContext.js skips it) moved every chest after it
 // down one, the restore laid each record on the next chest along, and the last record - no chest at its index - was
 // dropped, and written over at the next save. A chest's record now says which chest it is - its model, and where it
 // stands in the building's own frame - and is matched by that; a record written before says its index, as ever, and
-// takes a chest no record has named. The host sets down what an unmatched record held. bible/01-Overview/Field-Bugs-2026-10-12e.md.
+// takes a chest no record has named. The host sets down what an unmatched record held. bible/01-Overview/Field-Bugs-2026-10-12g.md.
 
 /** How far a chest may stand from where its record says and still be that chest (metres, the building's frame). */
 export const CHEST_MATCH_REACH = 0.5;

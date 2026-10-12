@@ -208,7 +208,7 @@ test('RW1 view V4: the view out\'s pass is a bracket - it draws into its own tar
   assert.ok(log.some((c) => c[0] === 'framebufferRenderbuffer' && c[4] === t.rb), 'a depth of its own');
   const draws = log.filter((c) => c[0] === 'bindVertexArray').map((c) => c[1]?.id);
   assert.ok(draws.includes('wallvao') && !draws.includes('wagonvao'), 'the skipped mesh is left out of the pass');
-  assert.ok(!uploads(log, 'uPaneOn').some((u) => u[0] === 1), 'no watched frame met glass: no pane clips the street (PANE-CLIP - test/fb1012e_paneclip.test.js)');
+  assert.ok(!uploads(log, 'uPaneOn').some((u) => u[0] === 1), 'no watched frame met glass: no pane clips the street (PANE-CLIP - test/fb1012g_paneclip.test.js)');
   // after the pass
   assert.equal(r._ambient, roomAmb, 'the room\'s light back'); assert.equal(r._fogMode, 2, 'its fog');
   assert.equal(r._fogColor, roomFog); assert.equal(r._windowEmission, roomEm, 'its window style');
@@ -448,7 +448,7 @@ test('RW1 view V10: THE FOUR HOSTS, the interior arm - the view out is asked onc
   assert.ok(!rd('src/scenes/dungeonContext.js').includes('outsideViewFrame') && !rd('src/scenes/dungeonContext.js').includes('setGlassView'), 'the dungeon host draws no view out');
   for (const host of ['src/scenes/world.js', 'src/scenes/exterior.js']) {
     const s = rd(host);
-    assert.match(s, /const outsideView = \(\) => \(\{\n\s+setup: \(r\) => \{/, `${host}: the street, and no box - FIELD BUGS 2026-10-12e PANE-CLIP (it left out the building's own other wing and a neighbour's wall against it)`);
+    assert.match(s, /const outsideView = \(\) => \(\{\n\s+setup: \(r\) => \{/, `${host}: the street, and no box - FIELD BUGS 2026-10-12g PANE-CLIP (it left out the building's own other wing and a neighbour's wall against it)`);
     assert.doesNotMatch(s, /outsideViewClip|VIEW_CLIP_PAD/, `${host}: the building's box is gone`);
     assert.match(s, /return sunDirection\(clockMinute\);/, `${host}: the clock's sun`);
   }

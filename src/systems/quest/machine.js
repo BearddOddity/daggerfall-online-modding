@@ -359,7 +359,7 @@ const REPLAYABLE_ONE_TIME_ACTIONS = new Set(['TeleportPc', 'GivePc', 'TrainPc', 
  *  left, so the set stays within twice the live behaviours at an amortised O(1) per registration. */
 const BEHAVIOUR_SWEEP_MIN = 64;
 
-/** FIELD BUGS 2026-10-12e QUEST-TOWN ("'Open a Chest' quest doesn't record the town you need to go to": "The town is
+/** FIELD BUGS 2026-10-12g QUEST-TOWN ("'Open a Chest' quest doesn't record the town you need to go to": "The town is
  *  mentioned in the first message you get ... but not in the text in the quest list, and it doesn't show up as a quest
  *  location on the map either"). In DFU a `local` place is always the town the quest was given in - N0B00Y16's log names
  *  "a local merchant" and no town - but where the town mods took a kind away the port takes the site in the nearest
@@ -686,7 +686,7 @@ export class QuestMachine {
     if (this.quests.has(quest.uid)) throw new Error('An item with the same key has already been added.');
     this.quests.set(quest.uid, quest);
     this.deps.onQuestStarted?.(quest);
-    revealNearSites(quest);   // FIELD BUGS 2026-10-12e QUEST-TOWN: its town on the map, once the quest is the machine's
+    revealNearSites(quest);   // FIELD BUGS 2026-10-12g QUEST-TOWN: its town on the map, once the quest is the machine's
     if (this.lastNPCClicked != null) {
       this.assignQuestResourceBehaviour(this.lastNPCClickedHost ?? null, this.lastNPCClicked);
     }

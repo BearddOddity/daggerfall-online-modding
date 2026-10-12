@@ -5260,7 +5260,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     this._activeTexture(gl.TEXTURE0);
     this._proj = proj;
     this._view = view;
-    // FIELD BUGS 2026-10-12e BATCH-SHUT: a body batch no pass flushed is let go as the frame begins - its pictures are one
+    // FIELD BUGS 2026-10-12g BATCH-SHUT: a body batch no pass flushed is let go as the frame begins - its pictures are one
     // frame's loss. Left open, every later pass's begin joined it and its flush only stepped the depth down: no
     // Morrowind body drew again until a reload
     const sb = this._spriteBatch;
@@ -5560,7 +5560,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     gl.deleteFramebuffer(t.paneFbo); gl.deleteTexture(t.paneTex);   // PANE-CLIP
   }
 
-  /** PANE-CLIP (FIELD BUGS 2026-10-12e): THE PANES' DEPTH - the last watched frame's glass and cutout sub-meshes, depth
+  /** PANE-CLIP (FIELD BUGS 2026-10-12g): THE PANES' DEPTH - the last watched frame's glass and cutout sub-meshes, depth
    *  alone, under the view out's lens and into its own texture (cleared to the far plane: no pane). Answers whether any
    *  drew. A pane whose mesh was let go since (the room left) is passed over. */
   _rwDrawPanes(t, pv) {

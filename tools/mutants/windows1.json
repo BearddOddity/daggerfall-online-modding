@@ -262,7 +262,7 @@
     "old": "        this._use(this.program); gl.uniform1f(this.rwLocs.paneOn, 0); gl.uniform1i(this.rwLocs.pane, 0);",
     "new": "        this._use(this.program);",
     "tests": [
-      "test/fb1012e_paneclip.test.js"
+      "test/fb1012g_paneclip.test.js"
     ]
   },
   {

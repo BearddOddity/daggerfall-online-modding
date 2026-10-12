@@ -29,7 +29,7 @@ export function setPlayerDoor(door) { _door = door && typeof door === 'object' ?
 /** The scene the player stands in, or null before a host has run a frame. */
 export const playerDoor = () => _door;
 
-// FIELD BUGS 2026-10-12e OPEN-HAND ("Im doing less dmg with the Rose gauntlets then I do without them"): a follow-up blow
+// FIELD BUGS 2026-10-12g OPEN-HAND ("Im doing less dmg with the Rose gauntlets then I do without them"): a follow-up blow
 // on the body a blow of mine just struck (Open Hand's second, for half; Many Endings' echo) lands through the struck
 // foe's own record - and the gate's Warden, his crystals, his host and the Remnant are no foe record of any host: the
 // relay runs them, and every blow of mine on one goes out as ONE claim, the relay's caps deciding what lands. Such a

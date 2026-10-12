@@ -1939,7 +1939,7 @@ export function createWorldModes(host) {
    * (CreateFoe.cs:220-234), which is PlaceFoeFreely over this
    * building's collider. The dungeon arm's twin, to the term - until
    * the ring has missed this foe ROOM_RING_MISSES times: then the near
-   * ring and the room's own markers (SHOP-RATS, FIELD BUGS 2026-10-12e:
+   * ring and the room's own markers (SHOP-RATS, FIELD BUGS 2026-10-12g:
    * a shop's counter and shelves leave DFU's ring no room at all).
    */
   function tryPlaceInteriorQuestFoe(handle) {
@@ -5158,7 +5158,7 @@ export function createWorldModes(host) {
     if (back.length) say(ownBackLines(back, (n) => (n === 1 ? 'One of your things no longer stood here, and came back to your pack.' : `${n} of your things no longer stood here, and came back to your pack.`)));
     return back.length;
   }
-  /** HOLD-KEPT (FIELD BUGS 2026-10-12e): WHAT A STORAGE PIECE HELD THAT THE SERVICE NO LONGER HAS - one taken away while
+  /** HOLD-KEPT (FIELD BUGS 2026-10-12g): WHAT A STORAGE PIECE HELD THAT THE SERVICE NO LONGER HAS - one taken away while
    *  the room's things looked empty (a visit of another layout, a list not yet stood) - set down at the owner's feet and
    *  said. The pieces are the service's to say (its whole list, every piece it has, read or not); what they held is the
    *  save's, and it was kept, unreachable, under an id no piece would ever stand for again. */

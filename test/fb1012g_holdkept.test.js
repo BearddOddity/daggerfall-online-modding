@@ -1,11 +1,11 @@
-// FIELD BUGS 2026-10-12e HOLD-KEPT - "Housing items lost in storage": "2 day ago there was alot of lagging and my
+// FIELD BUGS 2026-10-12g HOLD-KEPT - "Housing items lost in storage": "2 day ago there was alot of lagging and my
 // housing decorations didnt load ... the boxes i had put all my legendaries and rares along with some potions was gone,
 // i relogged and checked but it stayed empty". Two ways a home's storage went out of reach for good: a house's own chest
 // was its record's INDEX in the room's list, so a placement that did not stand moved every chest after it and dropped
 // the last record (written over at the next save); and what a storage piece held stayed keyed to a piece the service no
 // longer has (one taken away while the room looked empty), where no piece would ever stand for it again. The chest
 // records (scenes/chestRecords.js), the room's taking of what an unserved piece held (decorRoom.js takeUnserved) and the
-// host's wiring. bible/01-Overview/Field-Bugs-2026-10-12e.md.
+// host's wiring. bible/01-Overview/Field-Bugs-2026-10-12g.md.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

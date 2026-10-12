@@ -36,7 +36,7 @@ const FALLBACK = 'mining';
  *  more than the 75 the nodes keep from each other (the quest's gold, the nearest, by 91). Not a profession: its own
  *  mark word, 'fire'. */
 export const FIRE_MARK_CSS = '#ffd000';
-/** FIELD BUGS 2026-10-12e LODE-MARK ("Motherlodes don't show up on compass"): a Motherlode's far mark, in an aqua clear of
+/** FIELD BUGS 2026-10-12g LODE-MARK ("Motherlodes don't show up on compass"): a Motherlode's far mark, in an aqua clear of
  *  every other mark on the strip by more than the 75 the nodes keep (a Fisher's blue, the nearest, by 113) - it was
  *  Mining's copper, beside every vein and boulder in reach. Its own mark word, 'motherlode'. */
 export const MOTHERLODE_MARK_CSS = '#00e5c8';

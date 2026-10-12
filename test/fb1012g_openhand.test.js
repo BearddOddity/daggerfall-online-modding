@@ -1,11 +1,11 @@
-// FIELD BUGS 2026-10-12e OPEN-HAND - "Im doing less dmg with the Rose gauntlets then I do without them": "The gauntlets
+// FIELD BUGS 2026-10-12g OPEN-HAND - "Im doing less dmg with the Rose gauntlets then I do without them": "The gauntlets
 // do 2 Hits for hand to hand (2nd Hit only 50% since last update) ... from Place 11 in Gate without them to 26 with the
 // biggest Hand to hand Upgrade". BAL7's half is right, and on the first blow it changes nothing; the second blow went
 // through the struck foe's record in the player's door, and the gate's Warden is no host's foe record - the relay runs
 // him - so at the Gate Open Hand struck once. Its follow-up is owed now (systems/playerDoor.js) and the dungeon host's
 // claim to the relay carries it, one frame and one blow token; a player's body takes none (BAL8). The 80-90 a crit
 // against 100-130 is the lycanthrope's curse made the beast's alone (BAL6), in the same update - answered on the page.
-// bible/01-Overview/Field-Bugs-2026-10-12e.md.
+// bible/01-Overview/Field-Bugs-2026-10-12g.md.
 import './modsOff.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
