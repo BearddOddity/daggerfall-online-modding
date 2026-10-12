@@ -644,6 +644,17 @@ card's Salvage; `tools/mutants/loot9.json` (52, all dead).
 now spends a shard unlocked AND UNWORN - a shard is a gem, a crystal a slot takes, and a worn one spent left a ghost on
 the doll (the Reforge's since LOOT9).
 
+**SALVAGE-CLASSIC (FIELD BUGS 2026-10-12b; Discord: "magic item with only cast on use effect cannot be salvaged")**: a
+"Blazing Holy Dagger of Fireballs" - MAGIC.DEF's "Blazing %it of Fireballs" on a Holy Dagger - wore Magic on its card
+(`lootRarity.js` `rarityOf` derives it for any enchanted piece) and the Salvage page dropped it without a word. The law
+above stands: DFU's own magic, an Item Maker's piece and a soul-bound one are never graded and break for no shard (a
+guild's shelf sells that magic every day; a found one cannot be told from a bought one, and five shards are a Portal
+Stone). The faces say so now: `reforge.js` `salvageRefusal` answers `'classic'` for a piece that wears Magic, has no
+grade and no `provenance` (a made piece stays `'not'` - the Enchanting Station's disenchant is its door, as F2 below
+says); the Salvage page lists it after every piece that breaks, its press "Classic magic" and disabled, "No shards",
+the reason its title; the pack card's Salvage, pressed, says why (`enhancedInventory.js` `SALVAGE_CLASSIC`) and asks
+nothing. `test/fb1012b_salvageclassic.test.js` (4), `tools/mutants/fb1012b_salvageclassic.json` (11, all dead).
+
 ### LOOT10 - the codex, and the imprint (2026-10-01)
 
 **`systems/lootCodex.js`** (new): the character's CODEX - every Legendary record and every Aetheric piece taken, with
