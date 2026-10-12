@@ -2435,6 +2435,63 @@ with `surv5_ui`, `survtiers`, `survtiers3`, `survboons`,
 `fb0930_cc_drink`, `fb0930_cc_innwater` and `fb0930_cc_menuclimate`
 re-aimed by content.
 
+### Found and fixed - what the player sees
+
+- **S1 - the pack's Felt plaque stood on the R-Weapon panel.** Each
+  plaque stood alone on `gridArea: '1 / 2'`, and an absolutely placed
+  grid child's unnamed end lines run to the map's edge. The two plaques
+  stand in one row now (`.wornplaques`, on '1 / 2 / 2 / 3'): Armour, then
+  Felt, wrapping under it on a narrow figure - probed in Chromium over
+  eight screens and both dresses, no plaque on a panel.
+- **S3, S10, S12 - the plate went off the screen, stuck compact, and
+  hid.** On a phone at HUD scale 1.25 to 2 it ran past the edge, the
+  compass's X took it away, it stayed compact after the scale came back,
+  and it stood under the FPS read-out. The plate is a HUD piece of its own
+  inside the compass (its own X and move), measured whole on every change
+  of size, scale, word or foe's bar, and placed whole, compact beside the
+  compass with room for its mark, hung under the compass's end, or aside
+  - clear of the FPS read-out, the foe's bar, the quest card and the party
+  list (711 Chromium checks). Recorded: the chat's peek lines are not yet
+  among what it keeps clear of.
+- **S4 - the Grimoire dress drowned the cost's signal.** The wood's chip
+  rule outweighed the plate's level frames, and the Felt plaque's number
+  wore the Armour plaque's red. The level frames win now, and the number
+  takes its side's ink (cold, hot, the bone's).
+- **S5 (D1, D2) - red that did not cost, amber that did.** The strip's
+  table fixed Casual's levels, so Hard's costing Warm, Cold, Tired, Drowsy
+  and Stiff were amber, and Drenched was red in every tier. One law now,
+  `status.js` `needLevel`, off the live tier's own rules - red where the
+  tier's minute charges for the stage, the wet amber everywhere, Boons
+  never red but the drink - read by the chips, the plate and the plaque.
+  And under REST6's Waking Salts the sleep costs nothing, so its chip is
+  not red (it stayed red).
+- **S6 (D4) - an unidentified piece's comparison counted its hidden
+  power.** `armourCard.js` `asKnown` reads it as its card knows it: no
+  lines, no power - the Wrothgar Pass Mantle unknown -85 to -73 (it read
+  -53).
+- **S8, S13 - the words.** Boons' neglect costs nothing (it said
+  "nothing taken"; the drink still swings); the tutorial's icons are at
+  the screen's left edge, shown when a need first shows.
+- **S9 (D3) - two readings on one HUD.** The chip read the record and the
+  plate the live air, so for up to a minute the strip said Freezing
+  beside a plate's Deadly cold. One live reading a frame now, its fire
+  read off the live air (`needs.js` `warmedByFire`, the minute law's own).
+- **S11 - the Status page read the tier a minute late.** It reads the
+  live tier.
+- **S14 - colour alone said a cost.** A need's tile, the plate and the
+  plaque say their level in words on their title and label, and a costing
+  one carries a mark.
+- **D6, R11** - the comfortable thermometer is neutral, not the red that
+  says a reading costs; the hearth wears a flame of its own.
+- **R5, R6, R7 - pins that held source, driven now.** The enhanced menu's
+  Attributes page and the Stats side's Boons section through their real
+  builders, a lined cloak's card (+16 - the wear's own wardrobe), and the
+  plate on a tier turned before a minute ran.
+
+Pinned by `test/auditcc_ui.test.js`, with `auditsurv`,
+`fb0929d_accompare`, `surv5_ui`, `survboons`, `survtiers`, `survtiers3`,
+`tempui` and `ui3_status` re-aimed by content.
+
 ### Found and fixed - the needs
 
 - **N5 - a drain left the pool over its ceiling.** DFU's `SetFatigue`

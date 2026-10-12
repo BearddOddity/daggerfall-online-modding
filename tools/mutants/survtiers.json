@@ -209,8 +209,8 @@
   {
     "name": "SURVTIERS-heat-band-ignored",
     "file": "src/systems/survival/needs.js",
-    "old": "  const tempRed = !warmedByFire && (temp.felt >= rules.stamina.hotFrom || temp.felt <= rules.stamina.coldFrom);",
-    "new": "  const tempRed = !warmedByFire && abs >= 20;",
+    "old": "  const tempRed = !warmed && (temp.felt >= rules.stamina.hotFrom || temp.felt <= rules.stamina.coldFrom);",
+    "new": "  const tempRed = !warmed && abs >= 20;",
     "tests": [
       "test/survtiers.test.js"
     ]
@@ -775,8 +775,8 @@
   {
     "name": "SURVTIERS-the-fire-cools-the-heat-too",
     "file": "src/systems/survival/needs.js",
-    "old": "  const warmedByFire = !!(rules.stamina.fireWarms && env.byFire && temp.felt < 0);",
-    "new": "  const warmedByFire = !!(rules.stamina.fireWarms && env.byFire);",
+    "old": "export const warmedByFire = (rules, env, felt) => !!((rules ?? HARD_RULES).stamina.fireWarms && env?.byFire && felt < 0);",
+    "new": "export const warmedByFire = (rules, env, felt) => !!((rules ?? HARD_RULES).stamina.fireWarms && env?.byFire);",
     "tests": [
       "test/survtiers.test.js"
     ]

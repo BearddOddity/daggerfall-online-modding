@@ -213,7 +213,7 @@ test('TEMP-UI: the HUD plate, executed - at the compass\'s right end; hidden wit
   globalThis.document = { createElement: (t) => mk(t), createElementNS: () => mk(), getElementById: () => null, head: mk(), body: mk(), querySelector: () => null, querySelectorAll: () => [] };
   const { drawEnhancedHud, destroyEnhancedHud, TEMP_HUD_PREF } = await import('../src/ui/enhancedHud.js');
   try {
-    const entity = { health: 40, maxHealth: 80, magicka: 0, maxMagicka: 10, fatigue: 100, items: [], equip: { slots: {} }, lightSource: null, activeEffects: [], survival: newSurvival(0) };
+    const entity = { health: 40, maxHealth: 80, magicka: 0, maxMagicka: 10, fatigue: 100, items: [], equip: createEquipTable(), lightSource: null, activeEffects: [], survival: newSurvival(0) };   // PIN MOVED (AUDIT C&C R7): the equip table the game mints
     setPref(SURVIVAL_PREF, 'casual');
     drawEnhancedHud(entity, 0, 0, {});
     const root = document.body.children.find((n) => n.className === 'hud');
@@ -240,7 +240,7 @@ test('TEMP-UI: the HUD plate, executed - at the compass\'s right end; hidden wit
     drawEnhancedHud(entity, 0, 0, {});
     assert.equal(find(plate, 'hud-tempglyph').src, statusGlyphSrc('hot'), 'hot: the sun');
     entity.survival.felt = 4;
-    setPref(SURVIVAL_PREF, 'boons'); entity.survival.felt = -60; entity.survival.boons = [];
+    setPref(SURVIVAL_PREF, 'boons'); entity.survival.felt = -60;   // PIN MOVED (AUDIT C&C R7): the tier turned, the record not rewritten - the plate reads the live tier
     drawEnhancedHud(entity, 0, 0, {});
     assert.equal(plate.dataset.level, 'warn', 'Boons: nothing costs, nothing red');
     setPref(TEMP_HUD_PREF, false);
@@ -282,7 +282,7 @@ test('TEMP-UI: the pack - the plaque says the live felt temperature, its word in
     assert.equal(p.className, 'worntemp-total');
     assert.deepEqual(p.children.map((c) => c.textContent), ['Felt', signedDegrees(r.felt)]);
     assert.deepEqual({ ...p.dataset }, { side: 'cold', level: 'danger' });
-    assert.equal(p.title, `Felt temperature ${signedDegrees(r.felt)}: deadly cold (comfortable from -10° to +10°)\n${breakdownLines(r.rows).join('\n')}`);
+    assert.equal(p.title, `Felt temperature ${signedDegrees(r.felt)}: deadly cold - it costs you (comfortable from -10° to +10°)\n${breakdownLines(r.rows).join('\n')}`);   // PIN MOVED (AUDIT C&C S14): and that it costs, in words
     const rows = temperatureStatRows(e);
     assert.deepEqual(rows.at(-1).slice(0, 2), ['= Felt (deadly cold)', signedDegrees(r.felt)]);
     assert.equal(rows.length, r.rows.length + 1);
@@ -324,10 +324,10 @@ test('TEMP-UI: the pack - the plaque says the live felt temperature, its word in
   assert.deepEqual([-25, -10, 0, 10, 31].map(discomfort), [15, 0, 0, 0, 21]);
   // wired where the pack draws: the plaque in the figure's head cell, the block under the card's comparisons, the section on the Stats side
   const inv = read('src/ui/enhancedInventory.js');
-  assert.match(inv, /const temp = temperaturePlaque\(deps\.entity\);\n {2}if \(temp\) \{ temp\.style\.gridArea = '1 \/ 2'; map\.append\(temp\); \}/);
+  assert.match(inv, /plaques\.style\.gridArea = '1 \/ 2 \/ 2 \/ 3';\n {2}plaques\.append\(armourPlaque\(deps\.entity\)\);\n {2}const temp = temperaturePlaque\(deps\.entity\);\n {2}if \(temp\) plaques\.append\(temp\);/);   // PIN MOVED (AUDIT C&C S1): the two in one row on the figure's first cell named whole
   assert.match(inv, /const tc = temperatureCompareBlock\(deps\.entity, picked, wear\); if \(tc\) into\.append\(tc\);/);
   assert.match(read('src/ui/statsCard.js'), /const tempRows = temperatureStatRows\(entity\);\n {2}if \(tempRows\.length\) \{\n {4}const tp = section\('Temperature', 13\);/);
-  assert.match(read('src/ui/enhancedPlusStyle.js'), /\.pack-shell \.wornmap \.worntemp-total \{ position: absolute; right: 4px; top: 4px;/, 'the Armour plaque\'s twin, in the other corner');
+  assert.match(read('src/ui/enhancedPlusStyle.js'), /\.pack-shell \.wornmap \.wornplaques \{ position: absolute; left: 4px; right: 4px; top: 4px; z-index: 2; display: flex; flex-wrap: wrap;\n {2}justify-content: space-between;/, 'the Armour plaque\'s twin, at the other end of their row');   // PIN MOVED (AUDIT C&C S1): the row's, wrapping under on a narrow figure
   assert.match(read('src/ui/grimoireDress.js'), /\$\{G\} \.statflip-btn, \$\{G\} \.wornac-total, \$\{G\} \.worntemp-total \{ background:/, 'the Grimoire dress paints it as the Armour plaque');
 });
 

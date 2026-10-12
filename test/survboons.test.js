@@ -374,12 +374,12 @@ test('SURV-BOONS: the strip and the page - the boons are green tiles on their ow
   assert.deepEqual(survivalHudChips(worst, 1).filter((c) => c.level === 'danger').map((c) => c.key), ['drunk'], 'only the drink, chosen at a bar, is red');
   const hard = body({ survival: { ...newSurvival(0), lastAte: -5000, thirst: 140, sleepDebt: 20, wet: 250, drunk: 60 } });
   survivalMinute(hard, 1, BLIZZARD, deps(hard, [], HARD));
-  assert.deepEqual(survivalHudChips(hard, 1).filter((c) => c.level === 'danger').map((c) => c.key), ['hunger', 'thirst', 'sleep', 'wet', 'temp', 'drunk'], 'Hard keeps its red');
+  assert.deepEqual(survivalHudChips(hard, 1, { rules: HARD }).filter((c) => c.level === 'danger').map((c) => c.key), ['hunger', 'thirst', 'sleep', 'temp', 'drunk'], 'Hard keeps its red');   // PIN MOVED (AUDIT C&C S5, D2): the tier handed in, and Drenched amber in every tier - its cost is the temperature's
   // C14: the live tier, handed in, beats the record's last minute both ways
-  assert.equal(survivalHudChips(worst, 1, { rewarding: false }).filter((c) => c.level === 'danger').length, 6, 'turned to Hard: red at once');
-  assert.equal(survivalHudChips(hard, 1, { rewarding: true }).filter((c) => c.level === 'danger').map((c) => c.key).join(), 'drunk', 'turned to Boons: no red at once');
-  assert.equal(survivalHudChips(e, 481, { rewarding: false }).some((c) => c.level === 'boon'), false, 'and no green');
-  assert.equal(temperatureReadout(worst, undefined, { rewarding: false }).level, 'danger');
+  assert.equal(survivalHudChips(worst, 1, { rules: HARD }).filter((c) => c.level === 'danger').length, 5, 'turned to Hard: red at once');   // PIN MOVED (AUDIT C&C S5): the rules handed in; no red Drenched
+  assert.equal(survivalHudChips(hard, 1, { rules: BOONS }).filter((c) => c.level === 'danger').map((c) => c.key).join(), 'drunk', 'turned to Boons: no red at once');
+  assert.equal(survivalHudChips(e, 481, { rules: CASUAL }).some((c) => c.level === 'boon'), false, 'and no green');
+  assert.equal(temperatureReadout(worst, undefined, { rules: HARD }).level, 'danger');
   // the page, in words
   assert.deepEqual(survivalStatusLines(e, 481, { endurance: 50 }).slice(-6), [
     'You are very drunk.',
@@ -416,8 +416,8 @@ test('SURV-BOONS: the sheet explains the points - the Stats side\'s Boons rows i
   assert.match(read('src/ui/enhancedHud.js'), /if \(needs\.some\(\(c\) => c\.level !== 'boon'\)\) noteFirstUse\('survival'\);/, 'a boon is no felt need');
   const page = TUTORIALS.find((t) => t.id === 'survival');
   assert.deepEqual(page.body, [
-    'You need food, water, warmth and sleep. Icons next to your bars show what you are short on, and on Boons what you have earned.',
+    'You need food, water, warmth and sleep. Icons at the screen\'s left edge show what you are short on, and on Boons what you have earned.',   // PIN MOVED (AUDIT C&C S13): where the tiles stand
     'Survival can be Off, Boons, Casual (the default) or Hard. On Boons, needs met give bonuses; on Hard, needs can hurt you and make you sick. Change it in Settings > Features.',
   ]);
-  assert.match(read('src/ui/credits.js'), /in four tiers in Settings: Off, Boons \(nothing taken, and a body kept fed, watered and rested earns bonuses\), Casual/);
+  assert.match(read('src/ui/credits.js'), /in four tiers in Settings: Off, Boons \(neglect costs nothing, and a body kept fed, watered and rested earns bonuses\), Casual/);   // PIN MOVED (AUDIT C&C S8): the drink's swing is taken in Boons too
 });

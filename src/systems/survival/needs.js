@@ -184,6 +184,10 @@ export const SURVIVAL_TEXT = Object.freeze({
 export function feltCtx(entity, s, base = null, mods = entity?._mods) {
   return { ...(base ?? {}), wet: s?.wet ?? 0, hasWater: !!findDrink(entity?.items ?? []), ...wardrobeCtx(base, mods) };
 }
+/** AUDIT SURV-TIERS (the second pass): whether a lit fire answers the cold - in a tier whose `fireWarms` says so (Casual,
+ *  Boons), beside a fire, on a reading under nought. AUDIT C&C S9: ONE LAW - the minute law writes it on the record
+ *  (`s.warmed`) and the HUD reads it off the live reading (survival/status.js), so the two never disagree. */
+export const warmedByFire = (rules, env, felt) => !!((rules ?? HARD_RULES).stamina.fireWarms && env?.byFire && felt < 0);
 
 /** A fresh record at `now`: just fed, watered, dry and awake. */
 export function newSurvival(now = 0) {
@@ -384,8 +388,9 @@ const STAGE_SEVERITY = Object.freeze({
  * SAID, ONCE. The rule above is right for the stages and left every
  * recovery unsaid: the cold seeping into your bones was said and its
  * going never was, and a drenching dried without a word. Leaving a red
- * temperature (the strip's danger words - scorching, freezing, deadly
- * cold) for any stage that is not red says "You are cooling down." or
+ * temperature (scorching, freezing, deadly cold - Casual's strip's danger
+ * words; AUDIT C&C S5: each tier's strip paints its own band, and these
+ * lines keep to the extremes) for any stage that is not red says "You are cooling down." or
  * "You are warming up."; a soaking or a drenching dried all the way says
  * "You have dried off." Each is said once a recovery - the temperature
  * at its first stage out of the red, the wet at dry (its way down passes
@@ -617,9 +622,9 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
   // AUDIT SURV-TIERS (the second pass): and in a tier whose `fireWarms` says so (Casual), a lit fire answers the cold
   // outright - the fire's fifteen degrees alone left a camper in a snowstorm Deadly cold beside it, charged, and the
   // cold's loan never repaid. The felt reading stays the world's; the body is warm.
-  const warmedByFire = !!(rules.stamina.fireWarms && env.byFire && temp.felt < 0);
-  if (warmedByFire) s.warmed = true; else if (s.warmed) delete s.warmed;   // AUDIT SURV-TIERS (the third pass): the strip's word for it (status.js)
-  const tempRed = !warmedByFire && (temp.felt >= rules.stamina.hotFrom || temp.felt <= rules.stamina.coldFrom);
+  const warmed = warmedByFire(rules, env, temp.felt);   // AUDIT C&C S9: the one law the HUD reads live too
+  if (warmed) s.warmed = true; else if (s.warmed) delete s.warmed;   // AUDIT SURV-TIERS (the third pass): the strip's word for it (status.js)
+  const tempRed = !warmed && (temp.felt >= rules.stamina.hotFrom || temp.felt <= rules.stamina.coldFrom);
   if (!resting || !env.byFire) {
     if (tempRed && (!resting || rules.stamina.duringRest)) tire(DRAIN.heatPer20 * Math.trunc(abs / 20), 'temp');
     // AUDIT SURV-TIERS (the second pass): SURV-THIRST1's law for a harm that can kill (above), which this one never

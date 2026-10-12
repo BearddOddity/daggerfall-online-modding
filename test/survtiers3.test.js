@@ -258,10 +258,10 @@ test('the third pass: beside a lit fire in Casual the cold is felt, not paid - i
   assert.deepEqual(survivalHudChips(warm, 0).filter((c) => c.key === 'temp').map((c) => [c.text, c.level]), [['Warm', 'warn']], 'Warm, the Cold\'s twin');
   const vamp = body(); Object.assign(survivalOf(vamp, 0), { thirst: 110 });
   assert.equal(survivalHudChips(vamp, 0, { vampire: true }).some((c) => c.key === 'thirst'), false, 'a vampire\'s frozen thirst shows no chip');
-  // and Drenched is RED as a warning - it costs through the felt temperature, not a stamina charge of its own - while
-  // Soaked stays amber (status.js HUD_NEED_WORDS; lens D found the red unpinned)
+  // and Drenched is AMBER, as Soaked is (PIN MOVED, AUDIT C&C S5 decision D2: it costs through the felt temperature,
+  // which has its own chip, never a charge of its own - it had stood red as a warning; status.js needLevel)
   const wetChip = (wet) => { const w = body(); Object.assign(survivalOf(w, 0), { wet }); return survivalHudChips(w, 0).find((c) => c.key === 'wet'); };
-  assert.deepEqual([wetChip(NEED.WET_DRENCHED), wetChip(NEED.WET_SOAKED)].map((c) => [c.text, c.level]), [['Drenched', 'danger'], ['Soaked', 'warn']]);
+  assert.deepEqual([wetChip(NEED.WET_DRENCHED), wetChip(NEED.WET_SOAKED)].map((c) => [c.text, c.level]), [['Drenched', 'warn'], ['Soaked', 'warn']]);
 });
 
 test('the third pass: the words - one "waterskin", the empty skin names the sources that fill one, and Rations eat at the first Peckish minute; no meal writes a marker in the future', () => {

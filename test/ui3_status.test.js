@@ -87,7 +87,7 @@ test('UI3 the spells, bundle by bundle (AUDIT UI C3/C5): a party mate\'s gift is
 });
 
 test('UI3 the needs\' glyphs: every need the strip can raise has one - the temperature\'s by the way it runs, the cold words (read off the chips\' own table) a snowflake and the warm ones the sun (mutants: every temperature a sun; a need left without a glyph)', () => {
-  for (const [w, [text]] of Object.entries(HUD_NEED_WORDS.temp)) {
+  for (const [w, text] of Object.entries(HUD_NEED_WORDS.temp)) {   // PIN MOVED (AUDIT C&C S5): the table is words alone
     assert.equal(needGlyph({ key: 'temp', text }), ['cold', 'freezing', 'deadly cold'].includes(w) ? 'cold' : 'hot', text);
   }
   for (const key of [...Object.keys(HUD_NEED_WORDS).filter((k) => k !== 'temp'), 'stiff', 'drunk']) {

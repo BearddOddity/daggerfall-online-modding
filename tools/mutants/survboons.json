@@ -575,8 +575,8 @@
   {
     "name": "SURVBOONS-red-in-boons",
     "file": "src/systems/survival/status.js",
-    "old": "    for (const c of out) if (c.level === 'danger') c.level = 'warn';\n",
-    "new": "",
+    "old": "const tires = r.stamina.floor < 1, takes = !!r.attributes;",
+    "new": "const tires = r.stamina.floor <= 1, takes = !!r.attributes;",
     "why": "a need is red in Boons",
     "tests": [
       "test/survboons.test.js"
@@ -645,8 +645,8 @@
   {
     "name": "SURVBOONS-the-record-not-the-tier",
     "file": "src/systems/survival/status.js",
-    "old": "const rewarding = (s, opt = undefined) => (typeof opt === 'boolean' ? opt : Array.isArray(s.boons));",
-    "new": "const rewarding = (s, opt = undefined) => Array.isArray(s.boons);",
+    "old": "const tierOf = (s, rules) => rules ?? (Array.isArray(s.boons) ? SURVIVAL_RULES.boons : SURVIVAL_RULES[SURVIVAL_DEFAULT]);",
+    "new": "const tierOf = (s, rules) => (Array.isArray(s.boons) ? SURVIVAL_RULES.boons : SURVIVAL_RULES[SURVIVAL_DEFAULT]);",
     "why": "AUDIT SURV-BOONS C14: a turn of the tier shown a minute late",
     "tests": [
       "test/survboons.test.js"

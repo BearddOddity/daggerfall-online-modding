@@ -187,7 +187,7 @@
   {
     "name": "SURVTIERS3-the-fire-warms-nobody-on-the-strip",
     "file": "src/systems/survival/needs.js",
-    "old": "  if (warmedByFire) s.warmed = true; else if (s.warmed) delete s.warmed;",
+    "old": "  if (warmed) s.warmed = true; else if (s.warmed) delete s.warmed;",
     "new": "",
     "tests": [
       "test/survtiers3.test.js"
@@ -280,8 +280,8 @@
   {
     "name": "SURVTIERS3-the-warmed-cold-stays-red",
     "file": "src/systems/survival/status.js",
-    "old": "    if (warmedBy(s, word) && out.at(-1)?.key === 'temp') out.at(-1).level = 'warn';",
-    "new": "",
+    "old": "  if (key === 'temp') return tires && !warmed && (felt >= r.stamina.hotFrom || felt <= r.stamina.coldFrom) ? 'danger' : 'warn';",
+    "new": "  if (key === 'temp') return tires && (felt >= r.stamina.hotFrom || felt <= r.stamina.coldFrom) ? 'danger' : 'warn';",
     "tests": [
       "test/survtiers3.test.js"
     ]
@@ -298,7 +298,7 @@
   {
     "name": "SURVTIERS3-no-warm-chip",
     "file": "src/systems/survival/status.js",
-    "old": "warm: ['Warm', 'warn'], ",
+    "old": "warm: 'Warm', ",
     "new": "",
     "tests": [
       "test/survtiers3.test.js"
@@ -494,13 +494,14 @@
     ]
   },
   {
-    "name": "SURVTIERS3-drenched-is-amber",
+    "name": "SURVTIERS3-drenched-is-red",
     "file": "src/systems/survival/status.js",
-    "old": "drenched: ['Drenched', 'danger']",
-    "new": "drenched: ['Drenched', 'warn']",
+    "old": "  return 'warn';   // the wet",
+    "new": "  return stage === 'drenched' ? 'danger' : 'warn';   // the wet",
     "tests": [
       "test/survtiers3.test.js"
-    ]
+    ],
+    "why": "AUDIT C&C S5 (decision D2): Drenched red again - it costs nothing of its own (its cost is the felt temperature's, whose chip says so); the record flipped with the law, it had been the amber mutant of a red Drenched"
   },
   {
     "name": "SURVTIERS3-a-flavour-line-repeats-every-minute",
