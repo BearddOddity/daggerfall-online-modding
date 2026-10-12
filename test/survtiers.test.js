@@ -109,11 +109,11 @@ test('SURV-TIERS: one key, three tiers - the row, the table and the shelf agree;
   // AUDIT SURV-TIERS: each segment writes its tier's STORED value (Off the old switch's own false), in the table's order
   assert.deepEqual(c.tiers.map(([v]) => v), SURVIVAL_TIER_IDS.map((t) => SURVIVAL_STORED[t]), 'the bar\'s segments write the table\'s stored values');
   assert.deepEqual(c.tiers.map(([v]) => tierOfStored(v)), [...SURVIVAL_TIER_IDS], '...which read back as the tiers, in order');
-  assert.deepEqual(c.tiers.map(([, label]) => label), ['Off', 'Casual', 'Hard']);
+  assert.deepEqual(c.tiers.map(([, label]) => label), ['Off', 'Boons', 'Casual', 'Hard']);   // PIN MOVED (SURV-BOONS): the fourth tier, the gentlest first after Off
   // AUDIT SURV-TIERS: the note is two sentences, as FT15's title asks (FT15 itself counts only characters)
   assert.equal(row.note.split(/(?<=[.!?])\s+(?=[A-Z\u2018\u201c"'(])/).length, 2, `the note is two sentences: ${row.note}`);
   assert.equal(c.tiers[0][0], false, 'Off is stored as the switch always stored it');
-  assert.equal(new Set(c.tiers.map(([v]) => String(v))).size, 3, 'the bar matches a stored value by its string - three distinct strings');
+  assert.equal(new Set(c.tiers.map(([v]) => String(v))).size, 4, 'the bar matches a stored value by its string - four distinct strings');   // PIN MOVED (SURV-BOONS)
   assert.equal(c.initial, SURVIVAL_STORED[SURVIVAL_DEFAULT]); assert.equal(SURVIVAL_DEFAULT, 'casual');
   assert.equal(FEATURE_PREF_DEFAULTS.survival, 'casual', 'the shelf takes its default from the row (RF4)');
   assert.deepEqual(Object.keys(SURVIVAL_RULES), SURVIVAL_TIER_IDS.filter((t) => t !== SURVIVAL_OFF), 'every tier but Off has rules');
@@ -124,10 +124,11 @@ test('SURV-TIERS: one key, three tiers - the row, the table and the shelf agree;
   // a tier is a whole answer: both carry the same fields, frozen through
   const shape = (o) => Object.entries(o).map(([k, v]) => (v && typeof v === 'object' ? `${k}{${shape(v)}}` : k)).sort().join(',');
   assert.equal(shape(CASUAL), shape(HARD), 'no field one tier forgot');
+  assert.equal(shape(SURVIVAL_RULES.boons), shape(HARD), '...Boons included (SURV-BOONS)');
   assert.ok(Object.isFrozen(CASUAL) && Object.isFrozen(CASUAL.stamina) && Object.isFrozen(HARD.roughRest) && Object.isFrozen(SURVIVAL_STORED), 'frozen through');
   // the reads
   assert.equal(rulesForTier('off'), null); assert.equal(rulesForTier('nonsense'), null); assert.equal(rulesForTier(false), null);
-  assert.equal(rulesForTier('casual'), CASUAL); assert.equal(rulesForTier('hard'), HARD);
+  assert.equal(rulesForTier('casual'), CASUAL); assert.equal(rulesForTier('hard'), HARD); assert.equal(rulesForTier('boons'), SURVIVAL_RULES.boons);
   for (const t of SURVIVAL_TIER_IDS) { assert.equal(isStoredTier(SURVIVAL_STORED[t]), true, t); assert.equal(tierOfStored(SURVIVAL_STORED[t]), t); }
   for (const v of [true, undefined, null, 0, '', 3, 'off', 'false', 'Casual', {}]) {
     assert.equal(isStoredTier(v), false, `${JSON.stringify(v)} is stored by no tier`);

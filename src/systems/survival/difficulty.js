@@ -14,6 +14,8 @@
 // windows and systems/useItem.js. A law handed no
 // rules (undefined or null) runs HARD, the arc at full strength, so every
 // pin written before the tiers still pins Hard.
+// (SURV-BOONS, 2026-10-12: FOUR ANSWERS - BOONS, the rewards-only tier,
+// stands between Off and Casual; its rules are at the end of this note.)
 //
 // CASUAL IS NOT HARD WITH THE NUMBERS TURNED DOWN. It is five rules, and
 // the table below is those rules written out:
@@ -61,12 +63,38 @@
 // window, a cooked meal feeds more than a raw one and a fresh one more than
 // a spoiled one, a fed hour gives stamina back.
 //
+// SURV-BOONS (2026-10-12, the owner: "a completely different version. Instead
+// of punishing players for not tending, we instead provides boons to those
+// who upkeep. Much like [Valheim]. Players would still be able to switch
+// between CAC versions") - THE FOURTH TIER, BOONS. Not Casual turned down
+// again: Casual and Hard ask what a need left unmet COSTS; Boons asks what
+// a need met EARNS. Its rules, written out:
+//
+//   1. SAME WORLD, as above - the counters, the stages, the food, the
+//      camps and the words are the world's, so a Boons player stands in
+//      one world with a Hard one.
+//   2. NOTHING IS EVER TAKEN. The needs may take none of the stamina pool
+//      (`stamina.floor` 1 - the share they may not take is all of it), and
+//      no attribute, health, condition, disease, coin or hour - Casual's
+//      `false` on every other cost. The drink's swing stays, as in every
+//      tier: it is chosen at a bar.
+//   3. A BODY KEPT EARNS. `boons` (needs.js BOON, survivalBoons): Well fed
+//      (strength and endurance), Quenched (agility and speed), Well rested
+//      (intelligence and willpower - banked only by a night in a bed or by
+//      a fire, never the rest window) and, all three at once, Thriving
+//      (luck); and a lit fire beside a waking player refills their stamina
+//      (Hearth). Like Valheim's food and its Rested: the bonus is the
+//      reason to tend, and its fading is the only price of not tending.
+//   4. NO RED. A need's chip goes no further than amber in Boons (status.js
+//      survivalHudChips) - RED MEANS IT COSTS, and nothing here costs. The
+//      boons are the strip's green tiles.
+//
 // A LEAF: no imports, so the laws, the switch and the prefs shelf read it
 // without a cycle.
 
 export const SURVIVAL_OFF = 'off';
 /** The tiers in the Features bar's order. */
-export const SURVIVAL_TIER_IDS = Object.freeze([SURVIVAL_OFF, 'casual', 'hard']);
+export const SURVIVAL_TIER_IDS = Object.freeze([SURVIVAL_OFF, 'boons', 'casual', 'hard']);   // SURV-BOONS: the gentlest first after Off
 export const SURVIVAL_DEFAULT = 'casual';
 
 /** AUDIT SURV-TIERS: what each tier is STORED as on the prefs shelf -
@@ -77,7 +105,7 @@ export const SURVIVAL_DEFAULT = 'casual';
  *  tiers - an older desktop install reading the same file - still reads
  *  a player's Off as off. Casual and Hard are stored by name, and the
  *  default is never stored at all (uiPrefs.js PREF1). */
-export const SURVIVAL_STORED = Object.freeze({ off: false, casual: 'casual', hard: 'hard' });
+export const SURVIVAL_STORED = Object.freeze({ off: false, boons: 'boons', casual: 'casual', hard: 'hard' });
 const TIER_OF_STORED = new Map(Object.entries(SURVIVAL_STORED).map(([tier, v]) => [v, tier]));
 /** Whether a stored value names a tier. */
 export const isStoredTier = (v) => TIER_OF_STORED.has(v);
@@ -96,6 +124,22 @@ const deepFreeze = (o) => {
  *  DIFFER on it - the world's numbers (the stages, the drain rates, the
  *  sleep a bed pays) live with their laws in needs.js and rest.js. */
 export const SURVIVAL_RULES = deepFreeze({
+  // SURV-BOONS: Casual's every `false`, a floor that is the whole pool, and the boons. hotFrom / coldFrom are Casual's
+  // red words: with nothing charged they decide nothing, and they stay a real band rather than a sentinel.
+  boons: {
+    id: 'boons',
+    stamina: { floor: 1, hotFrom: 51, coldFrom: -31, bareFeet: false, duringRest: false, repaid: false, fireWarms: true },
+    attributes: false,
+    health: false,
+    rust: false,
+    sickness: false,
+    roughRest: { recovery: 1, encounters: 1, stiffHours: 0 },
+    roughSleepFloor: null,
+    restGate: false,
+    blackout: false,
+    wastedMeal: false,
+    boons: true,         // a need met earns its boon (needs.js survivalBoons)
+  },
   casual: {
     id: 'casual',
     /** The needs' stamina: `floor` is the share of the pool they may not
@@ -123,6 +167,7 @@ export const SURVIVAL_RULES = deepFreeze({
     restGate: false,     // too cold without a fire, or too hot, refuses the sleep
     blackout: false,     // drinking past the endurance passes the night on the tavern floor
     wastedMeal: false,   // a meal bought on a full stomach is charged, takes its half hour and goes to waste
+    boons: false,        // SURV-BOONS: a need met earns a bonus - Boons alone
   },
   hard: {
     id: 'hard',
@@ -136,6 +181,7 @@ export const SURVIVAL_RULES = deepFreeze({
     restGate: true,
     blackout: true,
     wastedMeal: true,
+    boons: false,
   },
 });
 

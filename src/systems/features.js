@@ -1475,7 +1475,8 @@ export const FEATURES = Object.freeze([
     group: 'character',
     title: 'Climates & Calories by Ralzar',   // AUDIT SURV E: the author's name, as every mod row carries it
     note: 'Heat, cold, rain and travel wear you down, so eat, drink, sleep, dress for the weather and rest by a '
-      + 'campfire or in a bed. On Casual, unmet needs only drain some stamina (never more than half) and it '
+      + 'campfire or in a bed. On Boons nothing is taken and a body kept fed, watered and rested earns bonuses; '
+      + 'on Casual, unmet needs only drain some stamina (never more than half) and it '
       + 'comes back once you’ve seen to them; on Hard they cost attributes and health and can make you sick; '
       + 'Off is the classic game.',
     effect: 'Takes effect at once. Online, each player picks their own.',
@@ -1510,9 +1511,13 @@ export const FEATURES = Object.freeze([
     // still sees Off as off), Casual and Hard by name - and the default
     // is its SURVIVAL_DEFAULT (test/survtiers.test.js holds the row to
     // them, as the Gore row is held to GORE_TIERS).
+    //
+    // SURV-BOONS (2026-10-12, the owner: "Players would still be able to switch between CAC versions"): A FOURTH SEGMENT ON
+    // THE SAME KEY - Boons, stored by name, between Off and Casual (the gentlest first). The default stays Casual, and
+    // the same reading holds: a boon is MY body's, so the tier is the player's online.
     control: Object.freeze({
       store: 'prefs', key: 'survival', initial: 'casual', online: 'player',
-      tiers: Object.freeze([[false, 'Off'], ['casual', 'Casual'], ['hard', 'Hard']]),
+      tiers: Object.freeze([[false, 'Off'], ['boons', 'Boons'], ['casual', 'Casual'], ['hard', 'Hard']]),
     }),
   }),
   // NAV (2026-09-28, Mac: "proper naval combat with a huge reference to assassins creed black flag ... directly integrate

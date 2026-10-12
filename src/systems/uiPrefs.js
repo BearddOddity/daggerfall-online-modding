@@ -289,6 +289,8 @@ export function loadPrefs() {
         // `true`, a corrupted value) names no tier and is dropped HERE, so
         // the Features bar - which matches a stored value by its string -
         // and the laws read the one default rather than two answers.
+        // SURV-BOONS (2026-10-12): a fourth tier, Boons, stored by name -
+        // isStoredTier reads the table, so it is kept like the others.
         if (p.survival !== undefined && !isStoredTier(p.survival)) _prefs.survival = PREF_DEFAULTS.survival;
       }
     }

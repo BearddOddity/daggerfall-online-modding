@@ -26,7 +26,10 @@
 //     classic art has no icon for - hunger, thirst, sleep, wet, hot,
 //     cold, stiff, drunk - framed amber while it is felt and red while
 //     it costs (the chips' own two levels: RED MEANS IT COSTS), how bad
-//     at its foot ("2/3", NEED-TIER);
+//     at its foot ("2/3", NEED-TIER); and in the Boons tier (SURV-BOONS)
+//     a BOON, framed green as a buff - the need's own glyph for the need
+//     it rewards, the campfire for the hearth and a gold sparkle for
+//     Thriving, a Well rested bank's hours at its foot;
 //   - a POISON and a DISEASE, shown at last - on the Status box's own
 //     law (systems/healthStatus.js): a poison once it has left its
 //     waiting, a disease once its incubation is over and by the name
@@ -146,6 +149,13 @@ export const STATUS_GLYPHS = Object.freeze({
     '..kbbaaaaaaakak.', '..kbbaaaaaaakak.', '..kbbaaaaaaakak.', '..kbbaaaaaaaaak.',
     '..kcccccccckkkk.', '..kbbaaaaaak....', '..kbbaaaaaak....', '..kkkkkkkkkk....',
   ] }),
+  // SURV-BOONS: a four-point sparkle in gold - Thriving, the boon of a body kept fed, watered and rested at once
+  thriving: Object.freeze({ pal: { a: '#ffd24a', b: '#fff6c8', c: '#c8902a' }, rows: [
+    '................', '................', '......kkkk......', '......kaak......',
+    '......kaak......', '.....kkaakk.....', '..kkkkaaaakkkk..', '..kaaaabbaccck..',
+    '..kaaaabbcccck..', '..kkkkaacckkkk..', '.....kkcckk.....', '......kcck......',
+    '......kcck......', '......kkkk......', '................', '................',
+  ] }),
   // a skull, in the poison's green
   poison: Object.freeze({ pal: { a: '#8fd46a', b: '#d4ffc0', c: '#4f9a3a' }, rows: [
     '......kkkk......', '....kkkbbkkk....', '...kkbbbaaakk...', '..kkbbbaaaaakk..',
@@ -252,6 +262,7 @@ let _coldWords = null;
 /** A need chip's glyph: its own key's, and the temperature's by which way it runs - the cold words (read off the
  *  chips' own table, never restated) a snowflake, the warm ones the sun. */
 export function needGlyph(chip) {
+  if (typeof chip?.glyph === 'string') return Object.hasOwn(STATUS_GLYPHS, chip.glyph) ? chip.glyph : null;   // SURV-BOONS: a boon names its own
   if (chip?.key === 'temp') {
     _coldWords ??= new Set(['cold', 'freezing', 'deadly cold'].map((w) => HUD_NEED_WORDS.temp[w][0]));
     return _coldWords.has(chip.text) ? 'cold' : 'hot';
@@ -293,7 +304,8 @@ export function statusTiles({ spells = [], powers = [], afflictions = [], needs 
   for (const a of afflictions) tile({ key: a.key, kind: 'debuff', name: a.name, glyph: a.glyph, foot: a.foot ?? null, blink: !!a.blink });   // TELL9: a bleed's ticks
   // NEED-TIER: and how bad, at its foot ("2/3" - Hungry of Peckish, Hungry, Starving), as a spell's rounds are: the glyph
   // is one picture for every stage and the name goes where there is no room, so the foot is what says it there
-  for (const c of needs) tile({ key: `need:${c.key}`, kind: c.level === 'danger' ? 'danger' : 'warn', name: String(c.text ?? ''), glyph: needGlyph(c), foot: c.tier ? `${c.tier}/${c.of}` : null });
+  // SURV-BOONS: and a boon (level 'boon') is a buff, its own foot (a Well rested bank's hours) where it has one
+  for (const c of needs) tile({ key: `need:${c.key}`, kind: c.level === 'boon' ? 'buff' : c.level === 'danger' ? 'danger' : 'warn', name: String(c.text ?? ''), glyph: needGlyph(c), foot: c.foot != null ? String(c.foot) : c.tier ? `${c.tier}/${c.of}` : null });
   // REST1: Rested - the night interval's real minutes left at its foot (systems/restAct.js nightRealMinutesLeft), a buff
   if (rested?.minutes > 0) tile({ key: 'rested', kind: 'buff', name: 'Rested', foot: `${rested.minutes}m`, glyph: 'rested' });
   return out;

@@ -8,7 +8,7 @@
 // chains the same way (healthStatus.js's ActionTextBox.addNext) and
 // keeps the words its own, plus a HUD strip the mod never had - one
 // chip a need, shown only while the need is felt.
-import { survivalOf, hungerStage, thirstStage, sleepStage, wetStage, hungerMinutes, NEED } from './needs.js';
+import { survivalOf, hungerStage, thirstStage, sleepStage, wetStage, hungerMinutes, NEED, BOON } from './needs.js';
 import { temperatureWord } from './temperature.js';
 import { isStiff } from './rest.js';
 
@@ -26,6 +26,18 @@ export const HUD_NEED_WORDS = Object.freeze({
  *  minute law's `s.warmed`) is felt, not paid, so its chip is the amber of a felt need - the same word, RED MEANS
  *  IT COSTS kept - and the page says what the fire does. Beside the fire the strip had said Deadly cold in red while
  *  nothing was charged and the pool refilled. */
+/**
+ * SURV-BOONS (2026-10-12): A BOON'S CHIP - its word and the glyph it stands on (ui/hudStatus.js STATUS_GLYPHS): the need's
+ * own for the need it rewards, the campfire for the hearth, a sparkle for Thriving. The strip reads them off the
+ * record's `boons` (needs.js survivalBoons, written by the minute law), so it shows what the body has; and a record that
+ * carries `boons` is a rewarding tier's, where nothing costs - so no need's chip there is red (RED MEANS IT COSTS). The
+ * drink is the exception it is in every tier: its swing is the drink's.
+ */
+export const HUD_BOON_WORDS = Object.freeze({
+  fed: Object.freeze(['Well fed', 'hunger']), quenched: Object.freeze(['Quenched', 'thirst']), rested: Object.freeze(['Well rested', 'sleep']),
+  thriving: Object.freeze(['Thriving', 'thriving']), hearth: Object.freeze(['Hearth', 'rested']),
+});
+const rewarding = (s) => Array.isArray(s.boons);
 const warmedBy = (s, word) => !!s.warmed && (word === 'cold' || word === 'freezing' || word === 'deadly cold');
 
 /** NEED-TIER (2026-10-02, Mac: "the debuffs you get from Climates and Calories no longer show the severity (how much
@@ -60,6 +72,17 @@ export function survivalHudChips(entity, now, { vampire = false, endurance = 50 
     if (warmedBy(s, word) && out.at(-1)?.key === 'temp') out.at(-1).level = 'warn';
   }
   if (isStiff(s, now)) out.push({ key: 'stiff', text: 'Stiff', level: 'warn' });
+  // SURV-BOONS: in a rewarding tier no need costs, so none is red; the boons follow, green (level 'boon')
+  if (rewarding(s)) {
+    for (const c of out) if (c.level === 'danger') c.level = 'warn';
+    for (const id of s.boons) {
+      const w = HUD_BOON_WORDS[id];
+      if (!w) continue;
+      const chip = { key: `boon:${id}`, text: w[0], level: 'boon', glyph: w[1] };
+      if (id === 'rested' && s.wellRested > 0) chip.foot = `${Math.ceil(s.wellRested / 60)}h`;   // the bank's hours left
+      out.push(chip);
+    }
+  }
   // AUDIT SURV C/D: the page's own bands (the mod's LiveEndurance / 2 and - 10), not a hard forty
   if (s.drunk > endurance / 2) out.push({ key: 'drunk', text: s.drunk > endurance - 10 ? 'Very drunk' : 'Drunk', level: s.drunk > endurance - 10 ? 'danger' : 'warn', tier: s.drunk > endurance - 10 ? 2 : 1, of: 2 });
   return out;
@@ -78,6 +101,14 @@ export const STATUS_TEXT = Object.freeze({
   drunk: 'You are drunk.', veryDrunk: 'You are very drunk.',
   vampire: 'You have no need for food or sleep.',
   invigorated: 'You are invigorated from your last meal.',
+  // SURV-BOONS: a boon's line - its word and what it gives, read off needs.js BOON (never restated); the hearth's own
+  boon: (id, s = null) => {
+    if (id === 'hearth') return 'The fire\u2019s warmth restores your stamina.';
+    const w = HUD_BOON_WORDS[id]?.[0];
+    if (!w || !BOON[id]) return null;
+    const left = id === 'rested' && s?.wellRested > 0 ? ` (${Math.ceil(s.wellRested / 60)} hours left)` : '';
+    return `${w}${left}: ${Object.entries(BOON[id]).map(([k, n]) => `+${n} ${k}`).join(', ')}.`;
+  },
 });
 
 /**
@@ -98,6 +129,7 @@ export function survivalStatusLines(entity, now, { vampire = false, endurance = 
   if (Number.isFinite(s.felt)) { const word = temperatureWord(s.felt); lines.push(warmedBy(s, word) ? STATUS_TEXT.warmedByFire : STATUS_TEXT.temp(word)); }
   if (isStiff(s, now)) lines.push(STATUS_TEXT.stiff);
   if (s.drunk > endurance / 2) lines.push(s.drunk > endurance - 10 ? STATUS_TEXT.veryDrunk : STATUS_TEXT.drunk);
+  if (rewarding(s)) for (const id of s.boons) lines.push(STATUS_TEXT.boon(id, s));   // SURV-BOONS: what the body has earned
   return lines.filter(Boolean);
 }
 /** The box's rows, in the hosts' `{ text, center }` shape. */

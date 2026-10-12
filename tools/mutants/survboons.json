@@ -1,0 +1,385 @@
+[
+  {
+    "name": "SURVBOONS-boons-lends-half",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    stamina: { floor: 1, hotFrom: 51, coldFrom: -31, bareFeet: false, duringRest: false, repaid: false, fireWarms: true },",
+    "new": "    stamina: { floor: 0.5, hotFrom: 51, coldFrom: -31, bareFeet: false, duringRest: false, repaid: false, fireWarms: true },",
+    "why": "the needs take half the pool in Boons",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-boons-takes-the-pool",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    stamina: { floor: 1, hotFrom: 51, coldFrom: -31, bareFeet: false, duringRest: false, repaid: false, fireWarms: true },",
+    "new": "    stamina: { floor: 0, hotFrom: 51, coldFrom: -31, bareFeet: false, duringRest: false, repaid: false, fireWarms: true },",
+    "why": "the needs empty the pool in Boons",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-boons-bare-feet",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    stamina: { floor: 1, hotFrom: 51, coldFrom: -31, bareFeet: false, duringRest: false, repaid: false, fireWarms: true },",
+    "new": "    stamina: { floor: 0, hotFrom: 51, coldFrom: -31, bareFeet: true, duringRest: false, repaid: false, fireWarms: true },",
+    "why": "bare feet tax a Boons body",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-boons-drains-attributes",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    attributes: false,\n    health: false,\n    rust: false,\n    sickness: false,\n    roughRest: { recovery: 1, encounters: 1, stiffHours: 0 },\n    roughSleepFloor: null,\n",
+    "new": "    attributes: true,\n    health: false,\n    rust: false,\n    sickness: false,\n    roughRest: { recovery: 1, encounters: 1, stiffHours: 0 },\n    roughSleepFloor: null,\n",
+    "why": "the needs take attributes in Boons",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-boons-rusts",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    rust: false,\n    sickness: false,\n    roughRest: { recovery: 1, encounters: 1, stiffHours: 0 },\n    roughSleepFloor: null,\n",
+    "new": "    rust: true,\n    sickness: false,\n    roughRest: { recovery: 1, encounters: 1, stiffHours: 0 },\n    roughSleepFloor: null,\n",
+    "why": "wet armour rusts in Boons",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-boons-sickens",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    sickness: false,\n    roughRest: { recovery: 1, encounters: 1, stiffHours: 0 },\n    roughSleepFloor: null,\n",
+    "new": "    sickness: true,\n    roughRest: { recovery: 1, encounters: 1, stiffHours: 0 },\n    roughSleepFloor: null,\n",
+    "why": "a raw meal rolls for sickness in Boons",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-boons-rough-hour-halved",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    roughRest: { recovery: 1, encounters: 1, stiffHours: 0 },\n    roughSleepFloor: null,\n    restGate",
+    "new": "    roughRest: { recovery: 0.5, encounters: 1, stiffHours: 0 },\n    roughSleepFloor: null,\n    restGate",
+    "why": "the rest window keeps half the hour in Boons",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-boons-gate",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    restGate: false,\n    blackout: false,\n    wastedMeal: false,\n    boons: true,",
+    "new": "    restGate: true,\n    blackout: false,\n    wastedMeal: false,\n    boons: true,",
+    "why": "the gate refuses a Boons sleep",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-boons-blackout",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    blackout: false,\n    wastedMeal: false,\n    boons: true,",
+    "new": "    blackout: true,\n    wastedMeal: false,\n    boons: true,",
+    "why": "the barkeep pours a Boons drinker to a blackout",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-boons-rewards-nothing",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    boons: true,         // a need met earns",
+    "new": "    boons: false,         // a need met earns",
+    "why": "Boons earns nothing",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-casual-rewards",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    boons: false,        // SURV-BOONS: a need met earns a bonus - Boons alone",
+    "new": "    boons: true,        // SURV-BOONS: a need met earns a bonus - Boons alone",
+    "why": "Casual earns boons",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-hard-rewards",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "    wastedMeal: true,\n    boons: false,",
+    "new": "    wastedMeal: true,\n    boons: true,",
+    "why": "Hard earns boons",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-no-fourth-tier",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "[SURVIVAL_OFF, 'boons', 'casual', 'hard']",
+    "new": "[SURVIVAL_OFF, 'casual', 'hard']",
+    "why": "the tier is not a tier",
+    "tests": [
+      "test/survboons.test.js",
+      "test/survtiers.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-stored-misnamed",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "boons: 'boons', casual: 'casual'",
+    "new": "boons: 'Boons', casual: 'casual'",
+    "why": "Boons stored under a name the load drops",
+    "tests": [
+      "test/survboons.test.js",
+      "test/survtiers.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-bar-without-boons",
+    "file": "src/systems/features.js",
+    "old": "[[false, 'Off'], ['boons', 'Boons'], ['casual', 'Casual'], ['hard', 'Hard']]",
+    "new": "[[false, 'Off'], ['casual', 'Casual'], ['hard', 'Hard']]",
+    "why": "the bar has no Boons segment",
+    "tests": [
+      "test/survboons.test.js",
+      "test/survtiers.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-rough-banks",
+    "file": "src/systems/survival/needs.js",
+    "old": "if (rules?.boons && sleeping !== 'rough' && minutes > 0)",
+    "new": "if (rules?.boons && minutes > 0)",
+    "why": "the rest window banks Well rested",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-any-tier-banks",
+    "file": "src/systems/survival/needs.js",
+    "old": "if (rules?.boons && sleeping !== 'rough' && minutes > 0)",
+    "new": "if (sleeping !== 'rough' && minutes > 0)",
+    "why": "Casual and Hard bank Well rested",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-bank-rate",
+    "file": "src/systems/survival/needs.js",
+    "old": "export const WELL_RESTED_PER_SLEEP_MINUTE = 1.5;",
+    "new": "export const WELL_RESTED_PER_SLEEP_MINUTE = 1;",
+    "why": "a night banks only itself",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-bank-uncapped",
+    "file": "src/systems/survival/needs.js",
+    "old": "s.wellRested = Math.min(WELL_RESTED_MAX_MINUTES, (s.wellRested ?? 0) + WELL_RESTED_PER_SLEEP_MINUTE * minutes);",
+    "new": "s.wellRested = (s.wellRested ?? 0) + WELL_RESTED_PER_SLEEP_MINUTE * minutes;",
+    "why": "the bank has no ceiling",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-fed-at-peckish",
+    "file": "src/systems/survival/needs.js",
+    "old": "    if (hungerStage(hungerMinutes(s, now)) === 'fed') out.push('fed');",
+    "new": "    if (hungerStage(hungerMinutes(s, now)) !== 'starving') out.push('fed');",
+    "why": "Well fed lasts to Starving",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-quenched-when-thirsty",
+    "file": "src/systems/survival/needs.js",
+    "old": "    if (thirstStage(s.thirst ?? 0) === 'fine') out.push('quenched');",
+    "new": "    if (thirstStage(s.thirst ?? 0) !== 'dehydrated') out.push('quenched');",
+    "why": "Quenched lasts to Dehydrated",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-thriving-of-two",
+    "file": "src/systems/survival/needs.js",
+    "old": "    if (out.length === 3) out.push('thriving');",
+    "new": "    if (out.length >= 2) out.push('thriving');",
+    "why": "Thriving for two of three",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-vampire-earns",
+    "file": "src/systems/survival/needs.js",
+    "old": "  const out = [];\n  if (!vampire) {",
+    "new": "  const out = [];\n  if (true) {",
+    "why": "a vampire earns the needs' boons",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-points-in-any-tier",
+    "file": "src/systems/survival/needs.js",
+    "old": "  if ((rules ?? HARD_RULES).boons) for (const id of s.boons ?? [])",
+    "new": "  for (const id of s.boons ?? [])",
+    "why": "a stale grant pays in Casual and Hard",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-tier-keeps-the-bank",
+    "file": "src/systems/survival/needs.js",
+    "old": "if (!rules.boons && ('boons' in s || 'wellRested' in s)) { delete s.boons; delete s.wellRested;",
+    "new": "if (!rules.boons && ('boons' in s || 'wellRested' in s)) {",
+    "why": "turning from Boons keeps the boons on the record",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-tier-keeps-the-lines",
+    "file": "src/systems/survival/needs.js",
+    "old": "delete s.wellRested; for (const id of BOON_IDS) delete s.notes[`boon:${id}`]; }",
+    "new": "delete s.wellRested; }",
+    "why": "a return to Boons never says a boon again",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-bank-never-spent",
+    "file": "src/systems/survival/needs.js",
+    "old": "    if (s.wellRested > 0 && !sleeping) s.wellRested = Math.max(0, s.wellRested - 1);\n",
+    "new": "",
+    "why": "Well rested lasts for ever",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-bank-spent-asleep",
+    "file": "src/systems/survival/needs.js",
+    "old": "    if (s.wellRested > 0 && !sleeping) s.wellRested",
+    "new": "    if (s.wellRested > 0) s.wellRested",
+    "why": "Well rested is spent while sleeping",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-hearth-at-rest",
+    "file": "src/systems/survival/needs.js",
+    "old": "    const hearth = !!env.byFire && !resting && !sleeping;",
+    "new": "    const hearth = !!env.byFire;",
+    "why": "the hearth pays on top of the camp's rest",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-hearth-anywhere",
+    "file": "src/systems/survival/needs.js",
+    "old": "    const hearth = !!env.byFire && !resting && !sleeping;",
+    "new": "    const hearth = !resting && !sleeping;",
+    "why": "the hearth without a fire",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-hearth-past-the-pool",
+    "file": "src/systems/survival/needs.js",
+    "old": "      const give = Math.min(HEARTH_FATIGUE, Math.max(0, maxFatigue(entity) - (entity.fatigue ?? 0)));",
+    "new": "      const give = HEARTH_FATIGUE;",
+    "why": "the hearth fills past the pool",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-lines-every-minute",
+    "file": "src/systems/survival/needs.js",
+    "old": "note(s, `boon:${id}`, now, say, SURVIVAL_TEXT.boon[id], { once: true });",
+    "new": "say?.(SURVIVAL_TEXT.boon[id]);",
+    "why": "a boon said every minute",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-red-in-boons",
+    "file": "src/systems/survival/status.js",
+    "old": "    for (const c of out) if (c.level === 'danger') c.level = 'warn';\n",
+    "new": "",
+    "why": "a need is red in Boons",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-boon-chip-amber",
+    "file": "src/systems/survival/status.js",
+    "old": "const chip = { key: `boon:${id}`, text: w[0], level: 'boon', glyph: w[1] };",
+    "new": "const chip = { key: `boon:${id}`, text: w[0], level: 'warn', glyph: w[1] };",
+    "why": "a boon framed as a need",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-no-rested-foot",
+    "file": "src/systems/survival/status.js",
+    "old": "      if (id === 'rested' && s.wellRested > 0) chip.foot = `${Math.ceil(s.wellRested / 60)}h`;   // the bank's hours left\n",
+    "new": "",
+    "why": "Well rested says no hours",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-page-silent",
+    "file": "src/systems/survival/status.js",
+    "old": "  if (rewarding(s)) for (const id of s.boons) lines.push(STATUS_TEXT.boon(id, s));",
+    "new": "",
+    "why": "the page says no boon",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-buff-tile-amber",
+    "file": "src/ui/hudStatus.js",
+    "old": "kind: c.level === 'boon' ? 'buff' : c.level",
+    "new": "kind: c.level === 'boon' ? 'warn' : c.level",
+    "why": "a boon tile framed amber",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "SURVBOONS-glyph-ignored",
+    "file": "src/ui/hudStatus.js",
+    "old": "  if (typeof chip?.glyph === 'string') return Object.hasOwn(STATUS_GLYPHS, chip.glyph) ? chip.glyph : null;   // SURV-BOONS: a boon names its own\n",
+    "new": "",
+    "why": "a boon tile without its glyph",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  }
+]

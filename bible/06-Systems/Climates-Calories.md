@@ -29,6 +29,15 @@ the manifest, the mod's item templates and sixteen of its item icons.
 > SURV-TIERS** (three passes) and **SURV-OFFSIGHT** at the end of this
 > page.
 
+> **SURV-BOONS (2026-10-12): A FOURTH TIER, BOONS - between Off and
+> Casual, and a different game rather than a gentler one.** Casual and
+> Hard ask what a need left unmet COSTS; Boons asks what a need met EARNS,
+> the way Valheim's food and its Rested do. The same world, nothing ever
+> taken, and a body kept fed, watered and rested earns attribute bonuses
+> (plus the hearth's stamina beside a lit fire). The design, the table and
+> the pins are in **SURV-BOONS** at the end of this page; the default
+> stays Casual.
+
 > **HUNT-OUT (2026-10-04, "I want to remove the text based hunting
 > minigame entirely"): THE TEXT HUNT IS REMOVED.** SURV6's wilderness
 > roll, its Yes/No box, its result page, its finds and harms and the
@@ -69,6 +78,7 @@ carry, and everything static.
 | SURV6 | RETIRED by HUNT-OUT (2026-10-04) - was: hunting, foraging and the water search as real-time events: the wilderness roll, the Yes/No box, the busy page, the finds and the harms, the hunted | DELETED: `survival/hunting.js`, `scenes/hunting.js`, `ui/huntWindow.js` (its busy page kept as `ui/waitWindow.js`, Foraging's wait), the overworld host's bag and tick |
 | SURV7 | the feed: the four hosts say where the player stands and the minute law runs in every mode; the rest gate on DFU's seam; the needs aligned at a load and an arrival; fast travel charged; the records | `survival/env.js` (the feed, the gate); `scenes/shared.js` createPlayerTicker's `survivalEnv`; the four hosts' readers; `save.js`'s load arm; `worldTick.js` tickPlayerMinutes' `survival` |
 | SURV-TIERS | Off, Casual (the default) and Hard on the one key: the tiers as data, every charging law reading its tier's rules, Off stored as the old switch's own `false`; AUDIT SURV-TIERS: the loan, a rest is a rest, the house's order, Off keeping the camps and the place, four laws Hard shares | `survival/difficulty.js` (the table, the stored values), `survival/switch.js` (`survivalTier`, `survivalRules`), the laws (`needs.js`, `rest.js`, `food.js`, `tavernMenu.js`, `temperature.js`; `hunting.js` until HUNT-OUT DELETED it), the compositions (`env.js`, `scenes/shared.js`, `scenes/hunting.js` until HUNT-OUT, `scenes/camps.js`, `useItem.js`, both tavern windows), `encounters.js` (the asks), `uiPrefs.js` (the load), the four hosts' `restKind`, the Features row |
+| SURV-BOONS | Boons, the fourth tier: nothing taken, a need met earns a boon - Well fed, Quenched, Well rested (banked by a bed or a fire), Thriving, the hearth; green tiles on the strip, no red need | `survival/difficulty.js` (the tier), `survival/needs.js` (`BOON`, `survivalBoons`, the bank in `paySleep`, the minute law's grant), `survival/status.js` (the chips and lines), `ui/hudStatus.js` (the buff tiles, the Thriving glyph), the Features row |
 | SURV-OFFSIGHT | Off sees another player's camp - the flame, its light, the tent - and uses none of it; its own stay out of sight | `scenes/camps.js` (`seen`, the doors of sight, beside `shown`, the doors of use) |
 
 ### The temperature (SURV1)
@@ -1664,3 +1674,131 @@ once however many it eats (four in two days); an eight-hour night now eats one a
 waking anyone (no rest reads hunger, and the line goes to the HUD as the skin's drink does); a freshly fed player
 refuses a dish or a Casual tavern meal "not hungry enough" twice as often, and perishables want eating by hand before
 Hungry now, since the sack - which never spoils - goes first.
+
+## SURV-BOONS - THE FOURTH TIER, BOONS (2026-10-12)
+
+> The owner: *"I want to force a new version of Climates and Calories, but a
+> completely different version. Instead of punishing players for not
+> tending, we instead provides boons to those who unkeep. Much like
+> veilham. Players would still be able to switch between CAC versions"*
+> (Valheim, read as the game whose food and Rested buffs are the model).
+
+**One key, four answers.** The Features bar reads `Off | Boons | Casual |
+Hard`; Boons is stored by name (`'boons'`), the load keeps it as it keeps
+the others (`isStoredTier` reads the table), the default stays Casual, and
+like every tier it is the player's online - a boon is MY body's.
+
+### The design: what a need met earns
+
+Casual is not Hard turned down, and Boons is not Casual turned down again.
+Casual and Hard price neglect; Boons prices nothing and pays for care. Four
+rules, written out as data in `survival/difficulty.js` (`SURVIVAL_RULES.boons`)
+and as law in `survival/needs.js`:
+
+1. **Same world.** The counters, the stages, the felt temperature, the food
+   and its spoiling, the water, the camps, the tavern's menus and every word
+   are the world's, as in the other tiers - a Boons player stands in one
+   world with a Hard one, and the strip still says Peckish and Cold.
+2. **Nothing is ever taken.** The needs may take none of the stamina pool
+   (`stamina.floor` 1: the share they may not take is all of it), no loan is
+   kept (`repaid` false - there is nothing to repay), and every other cost is
+   Casual's `false`: no attribute, health, condition, disease, gate,
+   blackout or wasted meal, the rest window DFU's whole hour with one ask and
+   no stiff morning. The drink's swing stays, as in every tier: it is chosen
+   at a bar.
+3. **A body kept earns** (`boons: true`; `needs.js` `BOON`, `survivalBoons`):
+
+   | Boon | While | Gives |
+   |---|---|---|
+   | Well fed | the hunger at its first stage - under Peckish's four hours (a better meal banks more: cooked over raw, fresh over stale) | +5 strength, +5 endurance - a bigger stamina pool, Valheim's food |
+   | Quenched | the thirst at its first stage - under Thirsty (a skin with water in it keeps it) | +5 agility, +5 speed |
+   | Well rested | a bank of minutes, `wellRested`: one and a half a minute asleep in a bed or by a fire, to twelve hours; spent a waking minute at a time. The rest window's rough sleep banks none - the bed and the fire are the go-to rest, Mac's SURV brief | +5 intelligence, +5 willpower - Valheim's Rested |
+   | Thriving | all three at once | +5 luck |
+   | Hearth | a waking minute within a lit fire's reach (a camp's or the world's - HEARTH1) | a point of stamina back a minute, up to the pool (a rest by the fire is already the camp's whole rest, so it gives nothing on top) |
+
+   The points ride the needs' one `survival` entry - the door the drains
+   leave by - so they read everywhere a stat is read (`statMods.js`
+   `liveStat`), go with the tier the next minute, and a save carries them as
+   it carries any effect. A vampire has no need for food, drink or sleep and
+   earns none of their boons; the hearth is anyone's.
+4. **No red.** RED MEANS IT COSTS, and nothing in Boons costs, so a need's
+   chip goes no further than amber there; the drink alone stays red, as it
+   costs in every tier. The boons are the strip's GREEN tiles (`level:
+   'boon'`, a `buff` tile): the need's own glyph for the need it rewards, the
+   campfire for the hearth, a gold sparkle for Thriving (`ui/hudStatus.js`
+   `STATUS_GLYPHS.thriving`), Well rested's hours left at its foot. The
+   status page says each in a line read off `BOON` - "Well fed: +5 strength,
+   +5 endurance." - and each is said once as it is earned, and again only
+   after it lapsed.
+
+Fading is the only price of not tending: a Boons player who never eats is
+the classic game's body, never less.
+
+### How it is built
+
+- **The table** (`difficulty.js`): Boons is its own literal - every field
+  written out, not Casual spread - so a later change to Casual's prices can
+  never move Boons by accident; one field, `boons`, is new on all three
+  (Boons `true`, Casual and Hard `false`), and the shape pin holds the three
+  to one set of fields.
+- **The record keeps two fields, and only in Boons**, like Casual's loan:
+  `wellRested` (the bank) and `boons` (the ids the last minute granted, in
+  the strip's order). The minute law drops both - and the lines that said
+  them - the first minute of any other tier, so Casual's and Hard's records
+  are what they were, and a return to Boons says each boon again.
+- **The bank is paid where sleep is paid** (`paySleep`): the minute law's
+  night and REST-SLEEP1's short rest (`restAct.js` `sleepShortRest`, the
+  online night) both come through it, so neither can bank and the other not.
+- **The grant is the minute law's**, last before the entry is written: the
+  bank spent, the hearth's stamina given, `s.boons` written by
+  `survivalBoons`, and `survivalStatMods` adds `BOON`'s points for each id -
+  only in a tier whose `boons` says so, so a stale grant pays nothing.
+  What the strip says is what the body has: both read the same `s.boons`.
+- **The strip and the page read the record** (`status.js`): a record that
+  carries `boons` is a rewarding tier's - no red there - and the four hosts'
+  status chain needs no change. No host changed: every host's minute runs
+  through the one `survivalFeed` and every rest through the one
+  `createRestDeps`, so the tier reaches all four (`world.js`, `exterior.js`,
+  `worldModes.js`, `dungeonContext.js`) through those two doors.
+
+### The pins
+
+`test/survboons.test.js`, 10 tests: the fourth tier on the one key (the
+bar's segment, the stored name, the switch, the feed's rules, no gate, the
+player's online, Casual still the default); NOTHING IS EVER TAKEN (the worst
+day in wet plate on 1% rust rolls - no drain, wound, attribute or condition
+- and every climate, both ends of the year and the day, four weathers, from a
+body with every need red; the rough rest, the meal's roll and the house's
+pour too); Well fed and Quenched at their stages' edges, and a cooked meal
+longer than a raw one; Well rested banked by a bed and a camp, through the
+minute law and the short rest, never by the rest window or another tier,
+capped, spent awake, gone when spent; Thriving's luck coming and going with
+the third; the hearth (up to the pool, not at rest, not away from a fire,
+not in Casual or Hard); the vampire; only Boons rewards (a turn from Boons
+drops the bank, the grant and the points; a return says the boons again);
+a jump's boons said once as it lands; and the strip and the page (the green
+tiles, their glyphs and foot, no red need but the drink, Hard's red kept,
+the lines read off `BOON`). The pre-tier pins moved where the vocabulary
+did: `test/survtiers.test.js` reads four segments and holds Boons to the
+same shape; `test/ui3_status.test.js` counts fourteen glyphs; FT15's
+ceiling rose by the row's growth, 81 characters.
+
+Mutants: `tools/mutants/survboons.json`, 38 records - every Boons rule
+broken one at a time (a floor of half and of nothing, bare feet, the
+attributes, the rust, the sickness, the halved rough hour, the gate, the
+blackout), Boons earning nothing and Casual or Hard earning, the tier
+dropped from the table or the bar, misstored, the bank (rough sleep, any
+tier, its rate, its ceiling, never spent, spent asleep), each boon's edge,
+Thriving of two, a vampire's, a stale grant paying, a turn keeping the
+bank or the lines, the hearth (at rest, without a fire, past the pool), the
+lines every minute, the red, the chip's level, the foot, the page, the tile
+and the glyph - all 38 dead. The edit moved eight records in other lists,
+re-aimed by content and run again: `survtiers.json`'s four rough-rest and
+sleep-floor records (now anchored with Casual's own comment on the next
+line, since Boons writes the same values), `needtier.json`'s two and
+`ui3.json`'s one on the tile line, and `restsleep1.json`'s on `paySleep`'s
+close - 8 dead.
+
+**Not driven in the container:** no ARENA2, so the game was not played on
+Boons; the tiles were checked through the pure `statusTiles` and the
+chips, not drawn in a browser.

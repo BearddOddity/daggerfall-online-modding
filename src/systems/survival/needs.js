@@ -33,6 +33,13 @@
 // (undefined or null) is Hard, the law at full strength. A tier that
 // repays (Casual) keeps one more field, `borrowed`: the stamina each need
 // took, returned when that need is met.
+//
+// SURV-BOONS (2026-10-12): AND A TIER THAT REWARDS (Boons) KEEPS TWO MORE -
+// `wellRested`, the minutes of Well rested a night in a bed or by a fire
+// banked (paySleep), spent a waking minute at a time; and `boons`, the
+// boons the last minute granted (survivalBoons), which the strip and the
+// status page read as they read `felt`. Both are the body's, like the
+// loan: a tier without boons carries neither.
 import { feltTemperature, temperatureWord, wardrobeCtx } from './temperature.js';
 import { drinkFrom, findDrink, waterskinName, DRINK_RELIEF, TEMPLATE, isFood, foodStage, FOOD_STAGE, rotFoodDay, rotWeight, ROT_DAY_MINUTES } from './food.js';
 import { STAT_KEYS_ORDER, maxFatigue, liveStat } from '../statMods.js';
@@ -73,6 +80,25 @@ export const HARM_EVERY_MINUTES = 10;
 export const HEALTH_FLOOR = 5;
 /** AUDIT SURV A: the well-fed hour - a point of fatigue back for every hour spent fed (the mod's 500-tally was minutes and paid twenty). */
 export const WELL_FED_MINUTES = 60;
+/**
+ * SURV-BOONS: WHAT A NEED MET EARNS, in a tier whose `boons` says so (Boons - difficulty.js). Attribute points on the
+ * needs' one entry, the same door the drains leave by: Well fed while the hunger is at its first stage (a better meal
+ * is a longer one - food.js satiety), Quenched while the thirst is, Well rested while a night's bank lasts, and
+ * Thriving for all three at once. The order is the strip's.
+ */
+export const BOON = Object.freeze({
+  fed: Object.freeze({ strength: 5, endurance: 5 }),
+  quenched: Object.freeze({ agility: 5, speed: 5 }),
+  rested: Object.freeze({ intelligence: 5, willpower: 5 }),
+  thriving: Object.freeze({ luck: 5 }),
+});
+export const BOON_IDS = Object.freeze(['fed', 'quenched', 'rested', 'thriving', 'hearth']);
+/** SURV-BOONS: the hearth - fatigue units (one classic point) a waking minute beside a lit fire gives back. */
+export const HEARTH_FATIGUE = 64;
+/** SURV-BOONS: Well rested - minutes banked a minute asleep in a bed or by a fire (an eight-hour night banks twelve
+ *  hours), and the most a body holds. The rest window's rough sleep banks none: the bed and the fire are the go-to rest. */
+export const WELL_RESTED_PER_SLEEP_MINUTE = 1.5;
+export const WELL_RESTED_MAX_MINUTES = 12 * 60;
 // SURV-TIERS: `FLOOR_FATIGUE = 64` stood here under "rough drains cannot
 // take the last of a pool by themselves", and nothing read it. Hard's
 // drains DO take the last point - the collapse that follows is the cost
@@ -126,6 +152,14 @@ export const SURVIVAL_TEXT = Object.freeze({
   repaid: 'You feel your strength returning.',   // AUDIT SURV-TIERS: a tier that repays - the need met, what it borrowed comes back
   ateRations: 'You eat some rations.',
   emptiedRations: 'You empty your sack of rations.',
+  // SURV-BOONS: a boon earned, said once until it lapses
+  boon: Object.freeze({
+    fed: 'You feel well fed.',
+    quenched: 'Your thirst is quenched.',
+    rested: 'You feel well rested.',
+    thriving: 'You are in fine form.',
+    hearth: 'The fire\u2019s warmth restores you.',
+  }),
 });
 
 /** A fresh record at `now`: just fed, watered, dry and awake. */
@@ -196,6 +230,26 @@ export function paySleep(s, sleeping, minutes, now, rules = HARD_RULES) {
   const next = s.sleepDebt - rate * minutes / 60;
   s.sleepDebt = s.sleepDebt >= floor ? Math.max(floor, next) : Math.max(0, next);   // AUDIT SURV A: the floor holds from above and never lifts a rested sleeper up to it
   s.awakeSince = now;
+  // SURV-BOONS: a night in a bed or by a fire banks Well rested, in a tier that rewards - both payers (the minute law's
+  // night and REST-SLEEP1's short rest) come through here
+  if (rules?.boons && sleeping !== 'rough' && minutes > 0) s.wellRested = Math.min(WELL_RESTED_MAX_MINUTES, (s.wellRested ?? 0) + WELL_RESTED_PER_SLEEP_MINUTE * minutes);
+}
+
+/**
+ * SURV-BOONS: THE BOONS A BODY HAS EARNED, in the strip's order - pure, off the record. A vampire has no need for
+ * food, drink or sleep (the minute law freezes them), so it earns none of theirs; the hearth is anyone's, and is the
+ * minute law's to say (`hearth`, a waking minute beside a lit fire).
+ */
+export function survivalBoons(s, now, { vampire = false, hearth = false } = {}) {
+  const out = [];
+  if (!vampire) {
+    if (hungerStage(hungerMinutes(s, now)) === 'fed') out.push('fed');
+    if (thirstStage(s.thirst ?? 0) === 'fine') out.push('quenched');
+    if (s.wellRested > 0) out.push('rested');
+    if (out.length === 3) out.push('thriving');
+  }
+  if (hearth) out.push('hearth');
+  return out;
 }
 
 export function survivalStatMods(s, temp, now, { endurance = 50, rules = HARD_RULES, vampire = false } = {}) {
@@ -214,6 +268,9 @@ export function survivalStatMods(s, temp, now, { endurance = 50, rules = HARD_RU
     if (sleep === 'tired') sub(ALL, 2); else if (sleep === 'drowsy') sub(ALL, 5); else if (sleep === 'exhausted') sub(ALL, 10);
     if (Number.isFinite(s.stiffUntil) && now < s.stiffUntil) sub(['speed', 'agility'], STIFF_PENALTY);   // SURV4: the rough night's morning
   }
+  // SURV-BOONS: the boons the minute granted (the record's `boons`, written by the law before this is read), in a tier
+  // that rewards - the hearth is stamina, not an attribute, and has no row here
+  if ((rules ?? HARD_RULES).boons) for (const id of s.boons ?? []) for (const [k, n] of Object.entries(BOON[id] ?? {})) mods[k] = (mods[k] ?? 0) + n;
   if (s.drunk > endurance / 2) {
     const d = Math.trunc((s.drunk - endurance / 2) / 10);
     sub(['agility', 'intelligence', 'willpower', 'speed'], d);
@@ -387,6 +444,9 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
   // what it takes, and so keeps what was taken).
   if (!rules.attributes && s.stiffUntil) s.stiffUntil = 0;
   if (!repays && s.borrowed) { delete s.borrowed; delete s.loanPool; }
+  // SURV-BOONS: and a tier that does not reward carries no boon - the bank and the last minute's grant go, with the
+  // lines that said them, so a return to Boons says each again as it is earned
+  if (!rules.boons && ('boons' in s || 'wellRested' in s)) { delete s.boons; delete s.wellRested; for (const id of BOON_IDS) delete s.notes[`boon:${id}`]; }
   // AUDIT SURV-TIERS (the second pass): A LOAN IS NEVER MORE THAN THE POOL IS SHORT. A bed, a potion, the fed
   // hour or the collapse's hour refills the pool without meeting the need - and the loan stayed owed, so the meal
   // after paid it AGAIN: a player who slept starving banked a pool of stamina a day and ate it mid-fight. Whatever
@@ -597,6 +657,23 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
     if (give > 0) { sinks.restoreFatigue?.(give); note(s, 'repaid', now, say, SURVIVAL_TEXT.repaid); }
   }
   if (s.borrowed) s.loanPool = (entity.fatigue ?? 0) - refunded; else if ('loanPool' in s) delete s.loanPool;
+
+  // SURV-BOONS: A BODY KEPT EARNS (Boons - difficulty.js). The bank of Well rested is spent a waking minute at a time;
+  // a lit fire beside a waking player gives a point of stamina back each minute, up to the pool (the rest window by a
+  // fire is already the camp's whole rest - this is the minute it is not opened); and the minute's boons ride the
+  // record, which the entry below and the strip both read, so what the strip says is what the body has. Each is said
+  // once as it is earned and again only after it lapsed.
+  if (rules.boons) {
+    if (s.wellRested > 0 && !sleeping) s.wellRested = Math.max(0, s.wellRested - 1);
+    if (!(s.wellRested > 0) && 'wellRested' in s) delete s.wellRested;
+    const hearth = !!env.byFire && !resting && !sleeping;
+    if (hearth) {
+      const give = Math.min(HEARTH_FATIGUE, Math.max(0, maxFatigue(entity) - (entity.fatigue ?? 0)));
+      if (give > 0) sinks.restoreFatigue?.(give);
+    }
+    s.boons = survivalBoons(s, now, { vampire, hearth });
+    for (const id of BOON_IDS) { if (s.boons.includes(id)) note(s, `boon:${id}`, now, say, SURVIVAL_TEXT.boon[id], { once: true }); else clearNote(s, `boon:${id}`); }
+  }
 
   // AUDIT SURV-TIERS: the drink's bands on the LIVE endurance - the mod's LiveEndurance, the one the tavern, the HUD
   // and the status page already read (the permanent stat here put the swing out of step with the word that named it)
