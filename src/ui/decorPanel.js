@@ -185,11 +185,17 @@ body .dfdecor-tabs .dfdecor-chip[aria-pressed="true"] { color: #f2c46b; box-shad
 .dfdecor-bar .dfdecor-chip, .dfdecor-bar .dfdecor-btn { pointer-events: auto; }
 .dfdecor-bar.touch .dfdecor-chip, .dfdecor-bar.touch .dfdecor-btn { min-height: 44px; min-width: 44px; touch-action: none; }
 .dfdecor-bar.touch { bottom: auto; top: calc(8px + env(safe-area-inset-top, 0px)); max-width: calc(100vw - 272px); }
+/* MENU-ORDER: a portrait phone's bar. Clear of the touch layer's top-left presses beside it, a 390px screen gave it 118px -
+   a word a line; under them (16px down, 48px tall, ui/touch.js) it has the screen's width */
+@media (orientation: portrait) { .dfdecor-bar.touch { top: calc(72px + env(safe-area-inset-top, 0px)); max-width: calc(100vw - 24px); } }
 /* MENU-ORDER: PICTURES BEFORE WORDS. A model has no picture until it turns in the preview: its kind's glyph stands in its
    tile over the letters, which stay for a reader. */
 .dfdecor-thumb { position: relative; }
 .dfdecor-thumb[data-dficon] { color: transparent; }
 .dfdecor-thumb[data-dficon]::before { position: absolute; inset: 0; margin: auto; width: 62%; height: 62%; color: #c9bba1; }
+/* ...and the model's own picture over it once the host has turned it small (decorTool.js modelPicture) */
+.dfdecor-thumb img.dfdecor-modelpic { position: relative; z-index: 1; image-rendering: auto; }
+.dfdecor-thumb img.dfdecor-modelpic:not([src]) { display: none; }
 .dfdecor-row-main { min-width: 0; }
 .dfdecor-badges { display: flex; gap: 6px; color: #c9bba1; }
 .dfdecor-badges:empty, .dfdecor-card:not([data-view="grid"]) .dfdecor-badges { display: none; }
@@ -657,6 +663,17 @@ export function createDecorPanel({
     }, { root: list })
     : null;
 
+  /** MENU-ORDER: A MODEL'S OWN PICTURE IN ITS TILE - asked as a flat's is (when its row comes into view, if `r` is one the
+   *  observer can watch), drawn over the kind's glyph, which stands until it lands and wherever the host draws none. */
+  function modelPicture(thumb, shape, r = null) {
+    const img = el('img', 'dfdecor-modelpic');
+    img.setAttribute('alt', '');
+    thumb.append(img);
+    const known = thumbs.get(thumbKeyOf(shape));
+    if (known) img.setAttribute('src', known);
+    else if (r && watcher) { r.decorThumb = () => askThumb(shape, img); watcher.observe(r); } else askThumb(shape, img);
+  }
+
   const placedSelected = () => (view?.placed ?? []).find((it) => it.piece.id === placedId) ?? null;
   /** HOME-RENT: a room row's own key (a found room by its number, an offer whose walls changed by the offer's), the row
    *  chosen, and the price shown for it - the one being set, else the one it is offered at, else the first. */
@@ -776,6 +793,7 @@ export function createDecorPanel({
     } else {
       thumb.textContent = (DECOR_KINDS[shape.kind] ?? 'Decorations').slice(0, 2);
       thumb.dataset.dficon = DECOR_KINDS[shape.kind] ? shape.kind : 'decor';   // MENU-ORDER: its kind's picture over the letters
+      if (shape.model != null) modelPicture(thumb, shape);   // ...and its own over that
     }
     const main = el('span', 'dfdecor-row-main');
     main.append(el('div', 'dfdecor-row-name', it.name), el('div', 'dfdecor-row-sub', decorPlacedSub(it)),
@@ -801,6 +819,7 @@ export function createDecorPanel({
     } else {
       thumb.textContent = (DECOR_KINDS[it.kind] ?? DECOR_KINDS.furniture).slice(0, 2);
       thumb.dataset.dficon = DECOR_KINDS[it.kind] ? it.kind : 'furniture';   // MENU-ORDER
+      if (it.model != null) modelPicture(thumb, baseShape(it));
     }
     const main = el('span', 'dfdecor-row-main');
     main.append(el('div', 'dfdecor-row-name', it.name), el('div', 'dfdecor-row-sub', decorBaseSub(it)));
@@ -939,7 +958,8 @@ export function createDecorPanel({
       else if (watcher) { r.decorThumb = () => askThumb(e, img); watcher.observe(r); } else askThumb(e, img);
     } else {
       thumb.textContent = DECOR_KINDS[e.kind].slice(0, 2);
-      thumb.dataset.dficon = e.kind;   // MENU-ORDER: a model has no picture until it turns in the preview - its kind's
+      thumb.dataset.dficon = e.kind;   // MENU-ORDER: a model's kind's glyph, until its own picture lands over it
+      if (e.model != null) modelPicture(thumb, e, r);
     }
     const main = el('span', 'dfdecor-row-main');
     main.append(el('div', 'dfdecor-row-name', e.name), el('div', 'dfdecor-row-sub', decorRowSub(e, radiusOf(e))),
@@ -1259,6 +1279,8 @@ export function createDecorPanel({
     previewRect: () => (open && preview.getBoundingClientRect ? preview.getBoundingClientRect() : null),
     /** The canvas the host copies the turning model into. */
     previewCanvas: () => previewGl,
+    /** MENU-ORDER: the card's box on the page - the host draws a model's tile picture in the game canvas under it. */
+    cardRect: () => (open && card.getBoundingClientRect ? card.getBoundingClientRect() : null),
     /** Choose a piece by its key (the host's reopen after a placement keeps the choice). */
     select(key) { selectedKey = key; if (open) redraw(); },
     /** HOME-RENT: the rooms view. */

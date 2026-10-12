@@ -10,9 +10,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DFICON_ROWS, DFICON_CSS, dficonSvg } from '../src/ui/menuGlyphs.js';
 import { DECOR_KINDS } from '../src/systems/decorCatalogue.js';
-import { createDecorBar, decorBarKeys, decorFiltersText, DECOR_LAYOUT_WORDS, DECOR_KEYS_WORD } from '../src/ui/decorPanel.js';
+import { createDecorBar, decorBarKeys, decorFiltersText, DECOR_LAYOUT_WORDS, DECOR_KEYS_WORD, DECOR_CSS } from '../src/ui/decorPanel.js';
 import { all, one, text, chipNamed, rows, panelRig } from './decorFakes.mjs';
-import { fakeDoc } from './decorFakes.mjs';
+import { fakeDoc, fakeWin, settle, toolRig } from './decorFakes.mjs';
+import { createDecorPanel } from '../src/ui/decorPanel.js';
+import { decorThumbCamera, DECOR_THUMB_PX, DECOR_THUMBS_A_FRAME, DECOR_THUMB_WAIT_MS } from '../src/scenes/decorTool.js';
 import { withDom } from './invdrag.mjs';
 import { mountEnhancedTrade, TRADE_TITLE, TRADE_OWN_HEAD, TRADE_COST_WORD, TRADE_GOLD_WORD, TRADE_VIEW_WORDS, tradeGoldText } from '../src/ui/enhancedTrade.js';
 import { stockShopShelf } from '../src/systems/shopStock.js';
@@ -30,6 +32,8 @@ import { SHIPYARD_HULLS } from '../src/systems/shipyards.js';
 import { mountNavalYardWindow } from '../src/ui/navalYardWindow.js';
 import { mountEnhancedMerchantPanel, MERCHANT_ICONS } from '../src/ui/enhancedMerchantPanel.js';
 import { REFORGE_CSS } from '../src/ui/enhancedPlusStyle.js';
+import { BROKER_CSS } from '../src/ui/enhancedPlusStyle.js';
+import { refusePress, brokerSkinCss } from '../src/ui/brokerWindow.js';
 
 const lit = (rows) => rows.join('').split('').filter((c) => c === '#').length;
 
@@ -73,7 +77,7 @@ test('MENU-ORDER the decorator as pictures: the catalogue tiles by default, a mo
   assert.ok(chips.indexOf(chipNamed(root, DECOR_LAYOUT_WORDS.grid)) > chips.indexOf(tabs.at(-1)), 'the layout after the views');
 });
 
-test('MENU-ORDER the decorator\'s presses: a placed piece\'s each its glyph, Remove edged as a warning, the room tiles too; the bar\'s keys folded behind Keys, its presses pictured; the legend\'s pairs and the phone fold\'s count (mutants: Remove not a warning; the legend shown from the first; the fold\'s count)', () => {
+test('MENU-ORDER the decorator\'s presses: a placed piece\'s each its glyph, Remove edged as a warning, the room tiles too; the bar\'s keys folded behind Keys, its presses pictured; the legend\'s pairs and the phone fold\'s count; a portrait phone\'s bar the screen\'s width under the touch layer\'s presses (mutants: Remove not a warning; the legend shown from the first; the fold\'s count; the portrait bar narrow)', () => {
   const rig = panelRig();
   const piece = { id: 'p1', model: 41000, paid: 120, light: 1, storage: false };
   rig.panel.open(rig.view({ placed: [{ piece, name: 'Bed', entry: rig.entries[0], holds: false }] }));
@@ -100,6 +104,10 @@ test('MENU-ORDER the decorator\'s presses: a placed piece\'s each its glyph, Rem
   assert.deepEqual(decorBarKeys(true).map(([k]) => k), ['Fly', 'Look']);
   assert.equal(decorFiltersText({ kinds: new Set(), size: null, storage: null, light: null }), 'Filters');
   assert.equal(decorFiltersText({ kinds: new Set(['bed', 'light']), size: 'small', storage: true, light: null }), 'Filters (4)');
+  // a portrait phone's bar: under the touch layer's top-left presses (16px down, 48px tall), the screen's width
+  assert.ok(DECOR_CSS.includes('@media (orientation: portrait) { .dfdecor-bar.touch { top: calc(72px + env(safe-area-inset-top, 0px)); max-width: calc(100vw - 24px); } }'),
+    'a portrait phone\'s bar the screen\'s width, below the presses');
+  assert.ok(DECOR_CSS.includes('.dfdecor-bar.touch { bottom: auto; top: calc(8px + env(safe-area-inset-top, 0px)); max-width: calc(100vw - 272px); }'), 'a landscape one keeps its clearance beside them');
 });
 
 /** Every word under a node - the fake's textContent is its own alone. */
@@ -289,4 +297,145 @@ test('MENU-ORDER the rest: the Vendor page\'s pieces and the Market\'s crafted p
   assert.match(W, /hubs: marketHubs, name: \(k\) => materialLabel\(k\), countName: materialCountLabel,\n\s*picture: \(k, wake\) => materialPicture\(k, \{ onReady: wake \}\), itemPicture: \(it, wake\) => itemPicture\(it, \{ onReady: wake \}\), piecePicture: marketPiecePicture,/, 'the market');
   assert.equal((W.match(/picture: \(it, wake\) => itemPicture\(it, \{ onReady: wake \}\),/g) ?? []).length, 3, 'the board\'s traders, a stall and the Vendor page');
   assert.match(W, /const marketPiecePicture = \(piece, wake\) => \{[^]*?return itemPicture\(_pieceItems\.get\(piece\.provenance\), \{ onReady: wake \}\);/, 'a crafted piece, minted once');
+});
+
+test('MENU-ORDER a refused press says why when pressed (Plain-Words law 5, A FINGER HAS NO HOVER): never disabled - it reads refused and keeps its title for the pointer, and a press tells its whole reason and does nothing else; every refusal the Reforge draws is one, and the Broker\'s Buy; both skins grey it (mutants: disabled still; no title; the reason untold; the grey on one skin)', () => {
+  const attrs = {};
+  let acted = 0, told = null, stopped = 0;
+  const btn = { setAttribute: (k, v) => { attrs[k] = v; }, onclick: () => { acted++; } };
+  refusePress(btn, 'Not enough gold', (r) => { told = r; });
+  assert.deepEqual(attrs, { 'aria-disabled': 'true', title: 'Not enough gold' }, 'refused to the eye and a screen reader, never `disabled`');
+  btn.onclick({ stopPropagation: () => { stopped++; } });
+  assert.deepEqual([acted, told, stopped], [0, 'Not enough gold', 1], 'pressed: its reason told, its act never run, the row under it never picked');
+  const reforge = readFileSync('src/ui/reforgeWindow.js', 'utf8');
+  assert.equal((reforge.match(/setAttribute\('disabled'/g) ?? []).length, 0, 'no press of the Reforge is disabled');
+  assert.equal((reforge.match(/\) refusePress\(\w+, /g) ?? []).length, 9, 'its nine refusals: salvage, reforge, hone, imprint, extract, unset, set, scry, lift');
+  const broker = readFileSync('src/ui/brokerWindow.js', 'utf8');
+  assert.equal((broker.match(/\) refusePress\(\w+, /g) ?? []).length, 2, 'the Broker\'s Buy and an insignia\'s');
+  for (const css of [BROKER_CSS, brokerSkinCss()]) {
+    assert.ok(css.includes('.broker-shell .act[aria-disabled="true"], .broker-shell .act[aria-disabled="true"]:hover, .broker-shell .act[aria-disabled="true"]:active {'), 'grey at rest, under the pointer and held - on both skins');
+  }
+});
+
+const at = (m, [x, y, z]) => [0, 1, 2].map((i) => m[i] * x + m[4 + i] * y + m[8 + i] * z + m[12 + i]);
+test('MENU-ORDER a model\'s own picture in its tile: the catalogue\'s, a placed piece\'s and a built-in one\'s each ask the host for it and show it over the kind\'s glyph; the host draws each with the preview\'s own pass, a few a frame, in a square under the card, copies it out and hands it back - the model whole, turned and looked down on - and an ask made in another room\'s textures, or for a model that never came, gives none (mutants: the tile never asks; the pass drawn every ask at once; the square off the card; the copy from the wrong square; the camera level; another room\'s textures drawn)', async () => {
+  // the panel: a model's tile asks as a flat's does, and wears what it is handed over its glyph
+  const doc = fakeDoc();
+  const asked = [];
+  const panel = createDecorPanel({ doc, win: fakeWin(), onPlace() {}, thumbOf: async (e) => { asked.push(e.key); return `data:${e.key}`; } });
+  const { entries } = panelRig();
+  const models = entries.filter((e) => !e.flat && e.model != null);
+  const base = [{ key: 'm0:41100', shape: 'm41100', name: 'Table', kind: 'furniture', model: 41100, flat: null, hidden: false, holds: false, dist: 1.4 }];
+  const piece = { id: 'p1', model: models[0].model, paid: 120 };
+  const view = { where: 'Your house', entries, progress: 1, ready: true, gold: 1000, count: 1, cap: 200, radiusOf: () => 0.5, priceOf: () => 75, placed: [{ piece, name: 'Bed', entry: models[0], holds: false }], own: [], base };
+  panel.open(view);
+  await settle();
+  assert.ok(models.length > 0 && models.every((e) => asked.includes(e.key)), 'every model\'s tile asked for its picture');
+  const pic = (r) => all(r, 'dfdecor-modelpic')[0];
+  for (const r of rows(panel.root).filter((x) => models.some((e) => e.key === x.dataset.key))) {
+    assert.equal(pic(r).getAttribute('src'), `data:${r.dataset.key}`);
+    assert.ok(one(r, 'dfdecor-thumb').dataset.dficon, 'its kind\'s glyph under it, for the moment before it lands');
+  }
+  panel.showRoom('p1');
+  await settle();
+  assert.equal(pic(rows(panel.root)[0]).getAttribute('src'), `data:${models[0].key}`, 'a placed piece: its entry\'s picture');
+  all(panel.root, 'dfdecor-chip').find((c) => String(c.textContent).startsWith('Built in')).fire('click');
+  await settle();
+  assert.equal(pic(rows(panel.root)[0]).getAttribute('src'), 'data:m41100', 'a built-in piece: its own');
+  assert.ok(DECOR_CSS.includes('.dfdecor-thumb img.dfdecor-modelpic { position: relative; z-index: 1;'), 'drawn over the glyph');
+  assert.ok(DECOR_CSS.includes('.dfdecor-thumb img.dfdecor-modelpic:not([src]) { display: none; }'));
+  // the camera: the box's middle at the middle, looked down on
+  const cam = decorThumbCamera([-0.5, -0.1, -0.5, 0.5, 0.9, 0.5]);
+  assert.ok(at(cam.model, [0, 0.4, 0]).every((v) => Math.abs(v) < 1e-6), 'the box\'s middle at the origin');
+  const near = at(cam.view, at(cam.model, [0, 0.9, 0]))[2], mid = at(cam.view, [0, 0, 0])[2];
+  assert.ok(mid < 0 && near > mid + 0.1, 'the top nearer the eye than the middle - looked down on');
+  // the host: the preview's pass, a few a frame, in a square under the card, copied out
+  const rig = toolRig();
+  rig.frame();
+  rig.tool.drawPreview('remap');
+  rig.tool.openPanel();
+  for (let i = 0; i < 6; i++) { rig.frame({ overlayUp: true }); await settle(); }
+  const root = rig.doc.body.children.find((c) => c.className === 'dfdecor');
+  one(root, 'dfdecor-card').getBoundingClientRect = () => ({ left: 100, top: 50, width: 600, height: 350 });
+  const copies = [];
+  const make = rig.doc.createElement;
+  rig.doc.createElement = (t) => {
+    const n = make(t);
+    if (t === 'canvas') { n.getContext = () => ({ drawImage: (...a) => copies.push(a) }); n.toDataURL = () => `data:model${copies.length}`; }
+    return n;
+  };
+  const tiles = rows(root).filter((r) => pic(r));
+  assert.ok(tiles.length > DECOR_THUMBS_A_FRAME, 'more models than a frame draws');
+  assert.ok(tiles.every((r) => !pic(r).getAttribute('src')), 'none before the frame');
+  rig.tool.drawPreview('remap');   // the frame asks the models up; they land after it
+  await settle();
+  assert.ok(tiles.every((r) => !pic(r).getAttribute('src')), 'none before its model has come');
+  rig.draws.length = 0;
+  rig.tool.drawPreview('remap');
+  await settle();
+  const passes = rig.draws.filter((d) => d.panel && d.panel.rect.w === DECOR_THUMB_PX);
+  assert.equal(passes.length, DECOR_THUMBS_A_FRAME, 'a few a frame');
+  assert.deepEqual(passes[0].panel.rect, { x: 736, y: 386, w: DECOR_THUMB_PX, h: DECOR_THUMB_PX }, 'a square of the canvas under the card\'s middle');
+  assert.deepEqual(copies[0].slice(1), [736, 386, DECOR_THUMB_PX, DECOR_THUMB_PX, 0, 0, DECOR_THUMB_PX, DECOR_THUMB_PX], 'copied out of that square');
+  assert.equal(rig.draws.filter((d) => d.gpu != null && d.remap === 'remap').length >= DECOR_THUMBS_A_FRAME, true, 'in the room\'s textures');
+  assert.equal(tiles.filter((r) => String(pic(r).getAttribute('src') ?? '').startsWith('data:model')).length, DECOR_THUMBS_A_FRAME);
+  for (let i = 0; i < 40; i++) { rig.tool.drawPreview('remap'); await settle(); }
+  const shown = rows(root).filter((r) => pic(r));
+  assert.ok(shown.every((r) => String(pic(r).getAttribute('src') ?? '').startsWith('data:model')), 'every tile in the end');
+  // another room's textures: what was asked in this one is never drawn in them
+  const other = toolRig({ now: () => 0 });
+  other.frame();
+  other.tool.drawPreview('remap');
+  other.tool.openPanel();
+  for (let i = 0; i < 6; i++) { other.frame({ overlayUp: true }); await settle(); }
+  const oroot = other.doc.body.children.find((c) => c.className === 'dfdecor');
+  one(oroot, 'dfdecor-card').getBoundingClientRect = () => ({ left: 100, top: 50, width: 600, height: 350 });
+  other.draws.length = 0;
+  other.tool.drawPreview('elsewhere');
+  await settle();
+  other.tool.drawPreview('elsewhere');
+  await settle();
+  assert.equal(other.draws.filter((d) => d.panel && d.panel.rect.w === DECOR_THUMB_PX).length, 0, 'none drawn in another room\'s textures');
+  assert.ok(rows(oroot).filter((r) => pic(r)).every((r) => !pic(r).getAttribute('src')), 'the glyph stands');
+  // a picture is its room's textures: the panel opened in another room asks again, and is drawn in those
+  rig.tool.close();
+  rig.tool.drawPreview('elsewhere');
+  rig.tool.openPanel();
+  for (let i = 0; i < 6; i++) { rig.frame({ overlayUp: true }); await settle(); }
+  assert.ok(rows(root).filter((r) => pic(r)).every((r) => !pic(r).getAttribute('src')), 'none kept from the last room\'s textures');
+  rig.draws.length = 0;
+  for (let i = 0; i < 3; i++) { rig.tool.drawPreview('elsewhere'); await settle(); }
+  assert.ok(rig.draws.some((d) => d.gpu != null && d.remap === 'elsewhere') && rows(root).filter((r) => pic(r)).some((r) => pic(r).getAttribute('src')), 'drawn again in this one\'s');
+  // a model that comes too late is given up on - the tile keeps its glyph and nothing is drawn after
+  let t = 0;
+  const lands = [];
+  const slow = toolRig({ now: () => t, getGpuMesh: (id) => new Promise((r) => { lands.push(() => r({ gpu: id })); }) });
+  const open = async (r, remap) => {
+    r.frame();
+    r.tool.drawPreview(remap);
+    r.tool.openPanel();
+    for (let i = 0; i < 6; i++) { r.frame({ overlayUp: true }); await settle(); }
+    one(r.doc.body.children.find((c) => c.className === 'dfdecor'), 'dfdecor-card').getBoundingClientRect = () => ({ left: 100, top: 50, width: 600, height: 350 });
+  };
+  await open(slow, 'remap');
+  slow.tool.drawPreview('remap');
+  t = DECOR_THUMB_WAIT_MS + 1;
+  slow.tool.drawPreview('remap');   // given up on
+  for (const land of lands) land();
+  await settle();
+  slow.draws.length = 0;
+  slow.tool.drawPreview('remap');
+  await settle();
+  assert.equal(slow.draws.filter((d) => d.panel && d.panel.rect.w === DECOR_THUMB_PX).length, 0, 'nothing drawn of a model given up on');
+  // drawn in the host's law only once it answered (AUDIT 05b A5), as the preview is
+  const table = new Map();
+  let answer = null;
+  const law = toolRig({ prepareModel: () => new Promise((r) => { answer = r; }) });
+  await open(law, table);
+  for (let i = 0; i < 3; i++) { law.tool.drawPreview(table); await settle(); }
+  assert.equal(law.draws.filter((d) => d.panel && d.panel.rect.w === DECOR_THUMB_PX).length, 0, 'not before the law answered');
+  answer?.();
+  await settle();
+  for (let i = 0; i < 3; i++) { law.tool.drawPreview(table); await settle(); }
+  assert.ok(law.draws.filter((d) => d.panel && d.panel.rect.w === DECOR_THUMB_PX).length > 0, 'drawn once it did');
 });

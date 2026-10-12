@@ -286,14 +286,22 @@ test('SET7 the window: the purse (and its locked stones) and the turn of the day
       const buys = rows.map((r) => one(r, 'broker-buy'));
       assert.equal(buys[1].textContent, 'Bought');
       assert.equal(buys[1].attrs.title, 'Bought today', 'the whole reason in its title');
-      assert.equal(buys[1].attrs.disabled, '', 'a refused offer cannot be pressed');
+      assert.equal(buys[1].attrs['aria-disabled'], 'true', 'a refused offer reads refused');
+      assert.equal(buys[1].attrs.disabled, undefined, 'MENU-ORDER: and is never disabled - a finger has no hover');
       assert.ok(rows[1].classList.contains('no-bought'));
       assert.equal(buys[5].textContent, 'Need 5 more', 'the Regalia at twelve, a purse of seven');
       assert.equal(buys[5].attrs.title, 'Not enough Deadlands Embers');
-      assert.equal(buys[5].attrs.disabled, '');
+      assert.equal(buys[5].attrs['aria-disabled'], 'true');
       assert.equal(buys[0].attrs.title, undefined, 'a Buy that may be pressed needs no reason');
       assert.equal(buys[0].textContent, 'Buy');
       assert.equal(buys[0].attrs.disabled, undefined);
+      assert.equal(buys[0].attrs['aria-disabled'], undefined);
+      // MENU-ORDER (Plain-Words law 5): a refused Buy pressed sells nothing and says its whole reason under the header
+      buys[5].onclick({ stopPropagation() {} });
+      assert.deepEqual(sales, [], 'a refused offer is never sold');
+      assert.equal(one(shell, 'broker-note').textContent, 'Not enough Deadlands Embers');
+      assert.ok(!one(shell, 'broker-note').classList.contains('ok'), 'in the refusal\'s colour');
+      rows = kids(shell, 'broker-offer');
       assert.equal(buys[0].attrs.type, 'button');
       // the card: the first offer, whole
       let card = one(shell, 'broker-card');

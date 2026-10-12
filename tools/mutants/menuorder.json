@@ -421,5 +421,266 @@
     "tests": [
       "test/menuorder.test.js"
     ]
+  },
+  {
+    "name": "MENUORDER-refused-still-disabled",
+    "file": "src/ui/brokerWindow.js",
+    "old": "  btn.setAttribute('aria-disabled', 'true');\n",
+    "new": "  btn.setAttribute('disabled', '');\n",
+    "tests": [
+      "test/menuorder.test.js",
+      "test/set7_broker.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-refused-no-title",
+    "file": "src/ui/brokerWindow.js",
+    "old": "  btn.setAttribute('title', reason);\n  btn.onclick",
+    "new": "  btn.onclick",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-refused-untold",
+    "file": "src/ui/brokerWindow.js",
+    "old": "btn.onclick = (e) => { e?.stopPropagation?.(); tell(reason); };",
+    "new": "btn.onclick = (e) => { e?.stopPropagation?.(); };",
+    "tests": [
+      "test/menuorder.test.js",
+      "test/loot9_reforge.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-refused-row-picked",
+    "file": "src/ui/brokerWindow.js",
+    "old": "btn.onclick = (e) => { e?.stopPropagation?.(); tell(reason); };",
+    "new": "btn.onclick = () => { tell(reason); };",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-broker-refusal-unsaid",
+    "file": "src/ui/brokerWindow.js",
+    "old": "const refused = (reason) => { note = { ok: false, text: reason }; render(); };",
+    "new": "const refused = () => { render(); };",
+    "tests": [
+      "test/set7_broker.test.js",
+      "test/wb9g_insignia.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-insignia-refusal-pressable",
+    "file": "src/ui/brokerWindow.js",
+    "old": "        if (!can && !busy && !pendingInsig) refusePress(btn, BROKER_REFUSALS.stones, refused);",
+    "new": "        if (false) refusePress(btn, BROKER_REFUSALS.stones, refused);",
+    "tests": [
+      "test/wb9g_insignia.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-reforge-refusal-unsaid",
+    "file": "src/ui/reforgeWindow.js",
+    "old": "const refused = (reason) => { asking = null; say(false, reason); render(); };",
+    "new": "const refused = (reason) => { asking = null; render(); };",
+    "tests": [
+      "test/loot9_reforge.test.js",
+      "test/loot16_curses.test.js",
+      "test/loot17_hone.test.js",
+      "test/loot19_scry.test.js",
+      "test/fb1012d_salvageclassic.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-reforge-refusal-undrawn",
+    "file": "src/ui/reforgeWindow.js",
+    "old": "const refused = (reason) => { asking = null; say(false, reason); render(); };",
+    "new": "const refused = (reason) => { asking = null; say(false, reason); };",
+    "tests": [
+      "test/loot9_reforge.test.js",
+      "test/fb1012d_salvageclassic.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-reforge-refusal-keeps-ask",
+    "file": "src/ui/reforgeWindow.js",
+    "old": "const refused = (reason) => { asking = null; say(false, reason); render(); };",
+    "new": "const refused = (reason) => { say(false, reason); render(); };",
+    "tests": [
+      "test/fb1012d_salvageclassic.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-refused-grey-dropped",
+    "file": "src/ui/enhancedPlusStyle.js",
+    "old": ".broker-shell .act[aria-disabled=\"true\"], .broker-shell .act[aria-disabled=\"true\"]:hover, .broker-shell .act[aria-disabled=\"true\"]:active {",
+    "new": ".broker-shell .act[aria-disabled=\"true\"] {",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-portrait-bar-narrow",
+    "file": "src/ui/decorPanel.js",
+    "old": "@media (orientation: portrait) { .dfdecor-bar.touch { top: calc(72px + env(safe-area-inset-top, 0px)); max-width: calc(100vw - 24px); } }",
+    "new": "@media (orientation: portrait) { .dfdecor-bar.touch { top: calc(72px + env(safe-area-inset-top, 0px)); } }",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-model-tile-never-asks",
+    "file": "src/ui/decorPanel.js",
+    "old": "      if (e.model != null) modelPicture(thumb, e, r);\n",
+    "new": "",
+    "tests": [
+      "test/menuorder.test.js",
+      "test/decor1d.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-model-tile-unwatched",
+    "file": "src/ui/decorPanel.js",
+    "old": "    else if (r && watcher) { r.decorThumb = () => askThumb(shape, img); watcher.observe(r); } else askThumb(shape, img);",
+    "new": "    else askThumb(shape, img);",
+    "tests": [
+      "test/decor1d.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-placed-model-unpictured",
+    "file": "src/ui/decorPanel.js",
+    "old": "      if (shape.model != null) modelPicture(thumb, shape);   // ...and its own over that\n",
+    "new": "",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-base-model-unpictured",
+    "file": "src/ui/decorPanel.js",
+    "old": "      if (it.model != null) modelPicture(thumb, baseShape(it));\n",
+    "new": "",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-model-pic-under-glyph",
+    "file": "src/ui/decorPanel.js",
+    "old": ".dfdecor-thumb img.dfdecor-modelpic { position: relative; z-index: 1; image-rendering: auto; }",
+    "new": ".dfdecor-thumb img.dfdecor-modelpic { image-rendering: auto; }",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-host-model-unasked",
+    "file": "src/scenes/decorTool.js",
+    "old": "        return entry.model != null ? modelPicture(entry.model) : null;   // MENU-ORDER: a model's own, drawn small",
+    "new": "        return null;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-thumbs-every-ask-at-once",
+    "file": "src/scenes/decorTool.js",
+    "old": "    for (let i = 0; i < thumbAsks.length && drawn < DECOR_THUMBS_A_FRAME;) {",
+    "new": "    for (let i = 0; i < thumbAsks.length;) {",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-thumb-square-off-card",
+    "file": "src/scenes/decorTool.js",
+    "old": "x: Math.round((card.left - c.left + card.width / 2) * sx - side / 2)",
+    "new": "x: Math.round((card.left - c.left) * sx - side / 2)",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-thumb-copy-wrong-square",
+    "file": "src/scenes/decorTool.js",
+    "old": "drawImage(deps.canvas, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h)",
+    "new": "drawImage(deps.canvas, 0, 0, rect.w, rect.h, 0, 0, rect.w, rect.h)",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-thumb-other-room-drawn",
+    "file": "src/scenes/decorTool.js",
+    "old": "      if (ask.remap !== texRemap || now() - ask.asked > DECOR_THUMB_WAIT_MS) {",
+    "new": "      if (now() - ask.asked > DECOR_THUMB_WAIT_MS) {",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-thumb-never-given-up",
+    "file": "src/scenes/decorTool.js",
+    "old": "      if (ask.remap !== texRemap || now() - ask.asked > DECOR_THUMB_WAIT_MS) {",
+    "new": "      if (ask.remap !== texRemap) {",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-thumb-out-of-law",
+    "file": "src/scenes/decorTool.js",
+    "old": "      if (!m || !inLaw(m.gpu, texRemap)) { i++; continue; }",
+    "new": "      if (!m) { i++; continue; }",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-thumb-key-roomless",
+    "file": "src/scenes/decorTool.js",
+    "old": "        if (entry.model != null && !entry.flat && !entry.icon) return `${entry.key}~${remapTag()}`;",
+    "new": "        if (entry.model != null && !entry.flat && !entry.icon) return entry.key;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-thumb-remap-unkept",
+    "file": "src/scenes/decorTool.js",
+    "old": "    remapNow = texRemap;\n",
+    "new": "",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-thumbs-undrawn",
+    "file": "src/scenes/decorTool.js",
+    "old": "    drawThumbs(texRemap);   // MENU-ORDER",
+    "new": "    // drawThumbs(texRemap);   // MENU-ORDER",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-thumb-camera-level",
+    "file": "src/scenes/decorTool.js",
+    "old": "export const DECOR_THUMB_LOOK_DOWN = 0.35;",
+    "new": "export const DECOR_THUMB_LOOK_DOWN = 0;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-thumb-camera-uncentred",
+    "file": "src/scenes/decorTool.js",
+    "old": "trs(-(x0 + x1) / 2, -(y0 + y1) / 2, -(z0 + z1) / 2, 0, 0, 0));\n  return { proj, view, model };",
+    "new": "trs(-(x0 + x1) / 2, 0, -(z0 + z1) / 2, 0, 0, 0));\n  return { proj, view, model };",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
   }
 ]

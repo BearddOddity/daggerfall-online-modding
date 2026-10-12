@@ -981,6 +981,12 @@ export const BROKER_CSS = `/* ── SET7: THE SIGIL BROKER'S WINDOW (ui/brokerW
 .broker-shell .insignia-sign.hero .aura-ring { width: 110px; height: 110px; filter: drop-shadow(0 0 12px #ff6b14) drop-shadow(0 0 3px #ffd152); }
 .broker-insignia-card .insignia-what { margin: 0 0 8px; font-size: 13px; line-height: 1.45; color: #e6dccb; }
 .broker-insignia-card .insignia-kept { margin: 0; font-size: 12px; line-height: 1.45; color: #b9ab93; }
+/* MENU-ORDER (Plain-Words law 5, A FINGER HAS NO HOVER): a refused press is never disabled - pressed, it says why in the
+   note (brokerWindow.js refusePress) - and it reads refused as the kit's disabled press does, under the pointer and held
+   too; its word in the dim bone, never faded by opacity (the reason it shortens has to be read) */
+.broker-shell .act[aria-disabled="true"], .broker-shell .act[aria-disabled="true"]:hover, .broker-shell .act[aria-disabled="true"]:active {
+  color: #9c937d; text-shadow: none; border-color: rgba(125,116,96,0.3); background-color: rgba(12,14,18,0.6); background-image: none;
+  box-shadow: 0 0 0 1px rgba(5,6,8,0.6); translate: none; cursor: help; }
 @media (prefers-reduced-motion: reduce) { .broker-shell .aura-ring { animation: none; } }
 @media (max-width: 720px) {
   .broker-shell { padding: 8px; }
