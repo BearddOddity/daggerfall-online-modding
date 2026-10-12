@@ -142,7 +142,7 @@ Pinned by `test/fb1012d_salvageclassic.test.js` (4), every fixture the real prod
 
 ## ETHER-STRAND: no lock crosses the Veil; the load's word is said beneath the crossing's (4)
 
-`src/systems/comeSailAway.js` cargoWords, UpdateBoatCargoMod, cargoLoad; `src/scenes/world.js` the crossing's words;
+`src/systems/comeSailAway.js` cargoModWords, UpdateBoatCargoMod, cargoLoad; `src/scenes/world.js` the crossing's words;
 `src/scenes/fleetHost.js` the Veil's refusal.
 
 FOUND - NOT REPRODUCED. Nothing ties a ship's side of the Veil to Come Sail Away's motor: `comeSailAway.js` reads no
@@ -167,9 +167,9 @@ but movement was disabled ... regardless of sail length", and the Carrack the on
 helm is taken, three seconds mid-screen ("You're going to need a bigger boat") - and on the boat that came home it was
 covered: the crossing's own words take the same mid-screen line for seven seconds right after StartSailing has said it.
 
-FIXED - the silence. The two lines have one home (`comeSailAway.js:"export const cargoWords = (mod) =>"`), and the
+FIXED - the silence. The two lines have one home (`comeSailAway.js:"export const cargoModWords = (mod) =>"`), and the
 crossing says her load's word beneath its own, on the HUD line, as long
-(`world.js:"      const heavy = cargoWords(csaRuntime.state.boatCargoMod);"`). The helm's law is unchanged; a ship left
+(`world.js:"      const heavy = cargoModWords(csaRuntime.state.boatCargoMod);"`). The helm's law is unchanged; a ship left
 past the Veil is still sailed back by her captain.
 
 THE FOUR HOSTS. scenes/world.js holds the sea, the crossing and the Fleet's seam: wired (the crossing's line).
