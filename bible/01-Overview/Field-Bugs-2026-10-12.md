@@ -1,11 +1,11 @@
 # FIELD BUGS 2026-10-12 - eight threads from the bug-reports channel
 
 Eight Discord threads from the evening of 2026-10-11, handed over as screenshots. Read on the code as it stands at
-main's `e18e54322`. Five are fixed here; one is a switch that is Mac's to throw; two are not defects this tree can show.
+main's `e18e54322`. Five are fixed here; one was a switch, thrown on Mac's word; two are not defects this tree can show.
 
 | | Report | What it was | Done |
 |---|---|---|---|
-| 1 | "Guild Chapters stuff never appears" - "The stuff described in the 'The Chapters' update never seems to appear on any noticeboards" | `server-account/wrangler.toml` still reads `CHAPTERS_OPEN = "dev"`: only DEVELOPER_HANDLES witness halls, list chapters or post hall and member writs; #734's patch notes told everyone | not changed - the switch is Mac's (CHAPTERS-ON, below) |
+| 1 | "Guild Chapters stuff never appears" - "The stuff described in the 'The Chapters' update never seems to appear on any noticeboards" | `server-account/wrangler.toml` still reads `CHAPTERS_OPEN = "dev"`: only DEVELOPER_HANDLES witness halls, list chapters or post hall and member writs; #734's patch notes told everyone | switched on (CHAPTERS-ON; Mac: "Turn them on") |
 | 2 | "Docks Crossing - In Penwall Derry there are two docks crossing over and blocking each other" | each berth's quay planned alone; round a point of land two berths' jetties, walked landward up to JETTY_MAX over the shelf, crossed | fixed (QUAY-CROSSING) |
 | 3 | "Decorating Issue - Room 3 is bugged - clip through wall, cant place" | the room finder took the void between two storeys (a ceiling's top under the next floor) for a room; its tab's flight began inside the gap | fixed (VOID-ROOM) |
 | 4 | "Possible key press parsing glitch (sound stuttering only when holding down a button)" | no keydown path touches audio, and every one filters auto-repeat; the likeliest cause is walking (streaming hitches past the music's 0.25 s lookahead), not the keys | not changed - questions to the reporter (KEY-STUTTER, below) |
@@ -76,9 +76,15 @@ The client path is whole - the board's Work tab, `/v1/writs/list`, the witness r
 asks `chaptersOpenFor` (`server-account/src/npcRoll.js`), and production's `CHAPTERS_OPEN` is `"dev"`: an ordinary
 player's witness answers 403 `chapters-closed`, the board lists no chapter, no hall writ, no member's writ. Measured
 over the real migrations with production's vars: `dev` gives `chapters=[]`; `on` gives both halls' chapters and the
-member's writ. Throwing it gives the Roll every online character's guild standing, so it is Mac's word, not a fix:
-`CHAPTERS_OPEN = "on"` and the two pins that hold `"dev"` (chap1_roll, chap2_halls). Otherwise #734's notes should say
-the Chapters are not open yet.
+member's writ. Throwing it gives the Roll every online character's guild standing, so it waited on Mac's word.
+
+SWITCHED ON (2026-10-12, Mac: "Turn them on"). `CHAPTERS_OPEN = "on"`; the two pins that held `"dev"` moved
+(chap1_roll, chap2_halls); CHAPTER_TITLES is its own switch and stays off. test/chapterson.test.js stands the service
+under the toml's own vars: three ordinary week-old accounts witness a town's halls, and a member's board lists both
+chapters, a hall writ and the member's own writ (at `dev` the witness answers 403). What follows the deploy: boards fill region by
+region as three week-old accounts witness each town - a client refused today stamped today's date for that town, so it
+reports again the next UTC day - and the first week settled `on` starts every chapter's Strength from 50 (AUDIT CHAP3
+S2). The service carries no code change, so its version is unchanged; the account service deploys the line.
 
 ## KEY-STUTTER: no key reaches the audio (4)
 
