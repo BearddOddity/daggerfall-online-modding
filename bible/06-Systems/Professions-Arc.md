@@ -431,7 +431,8 @@ else Foraging's Fish (1605). A **trophy** is the species' own Deep Waters templa
   `03-World/Eltheric-Ocean.md`): a map pixel is the Bay's 1000 x 500 or the Eltheric Ocean's box past the Veil
   (`pixelOk`) - its isles stand the day's nodes by their climates, its water the schools, and an id there is read four
   digits east and a sign north (`herb:8009:-5194:...`), in its one spelling. The law knew the Bay alone: an isle's
-  harvest was refused `bad-node`, its witnesses `bad-pixels`.
+  harvest was refused `bad-node`, its witnesses `bad-pixels`. The service at acct124; `world/ethericSea.js` in the account
+  deploy's path filter (the law imports it).
 - **How many** - per wilderness map pixel per day, never inside a location's rect:
 
 | Climate | Trees | Herb patches | Veins | Boulders (quarry) |

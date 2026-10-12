@@ -510,7 +510,10 @@ THE LAW. The nodes' ground is the Bay's map and the Eltheric's box
 else moves: the day's counts by climate, the tiers, the witnessed world (an isle pixel is unconfirmed until three
 week-old accounts agree, worth its kind's least till then), the regions' materials (an isle's herbs are Betony's), a
 Levy in Betony's seat. The service reads the same law: it takes an isle's harvest and answers its pixels' witnesses -
-no migration (its keys are text). `test/ether_nodes.test.js` holds the ground, the spelling, and the service end to end
+no migration (its keys are text). Its law moved, so `ACCOUNT_VERSION` is acct124 (service.js's discipline: a deploy
+that did not happen looks exactly like one that did), and `world/ethericSea.js` - the box's one home - joins the account
+Worker's bundle, so the deploy's path filter carries it (`.github/workflows/account-deploy.yml`, held to the import
+graph by `test/accountdeploy.test.js`, which caught it in CI). `test/ether_nodes.test.js` holds the ground, the spelling, and the service end to end
 over the real database.
 
 ## The ledger's record
