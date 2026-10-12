@@ -147,7 +147,7 @@ export function buildStatsPage(entity, repaint, opts = {}) {
   const build = section('Breakdown', 8);
   const p = d.parts;
   build.append(row(s.weapon ? 'Weapon roll' : 'Fists', `${p.roll[0]}\u2013${p.roll[1]}`, 'The span the weapon (or your Hand-to-Hand) rolls in, with its own modifiers.'));
-  if (p.matMod) build.append(row('Material', signed(p.matMod)));
+  if (p.matMod) build.append(s.weapon ? row('Material', signed(p.matMod)) : row('Gauntlets', signed(p.matMod), 'Your gauntlets’ metal on your claws: the damage a blade of that metal adds.'));   // BAL6-GAUNTLETS (combat/clawMetal.js)
   build.append(row('Strength', signed(p.strMod) + (p.twoHanded && s.core === 'overhaul' ? ' (two-handed)' : ''), 'Your Strength\u2019s damage modifier.'));
   if (p.prof) build.append(row('Proficiency', signed(p.prof), 'Your career\u2019s expertise with this weapon.'));
   if (p.racial) build.append(row('Race', signed(p.racial), 'Your race\u2019s bonus with this kind of attack.'));

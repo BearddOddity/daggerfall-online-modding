@@ -38,6 +38,7 @@ import { SPECIAL_ABILITY_BITS, PROFICIENCY_BITS } from '../systems/specialAdvant
 import { weaponMinDamage, weaponMaxDamage, weaponSkillUsed } from '../characters/weapons.js';   // AUDIT 18: GetBaseDamageMin/Max and GetWeaponSkillIDAsShort resolve the TEMPLATE, never a baked field or a display name
 import { equipTableOf, lowerCondition, dfuBlowWear, slotForBodyPart, EQUIP_SLOTS, weaponProficiencyFlag } from '../systems/equip.js';   // C-slice: DamageEquipment; CF1: GetWeaponSkillUsed as a ProficiencyFlag, -1 quirk included
 import { SHIELD_PARTS } from '../systems/armorMaterials.js';
+import { clawMetalDamage } from './clawMetal.js';   // BAL6-GAUNTLETS: the beast's claws take its gauntlets' metal
 import { totalWeight } from '../systems/inventory.js';   // EW1: ItemCollection.GetWeight, the one home for a stack's kg
 import { liveVampirism } from '../systems/racialLive.js';   // VU1: an import-free LEAF - vampirism.js cycles back here through loot.js
 import { breakNormalPowerConcealment } from '../systems/concealment.js';   // wave 31: BreakNormalPowerConcealmentEffects, in its own leaf so this import cannot cycle
@@ -430,6 +431,9 @@ export function handToHandAttackDamage(attacker, target, damageMod, isPlayer, ro
   // a strength drain (diseases.js writes signed statMods) moved a
   // player's weapon damage and left their fists untouched.
   if (isPlayer) damage += damageModifier(liveStat(attacker, 'strength'));   // "not applied in classic" for AI - DFU preserves that
+  // BAL6-GAUNTLETS (combat/clawMetal.js): A DEPARTURE - the beast's claws add its gauntlets' metal where the weapon
+  // path's material modifier stands, after Strength and before the enemy-type term
+  if (isPlayer) damage += clawMetalDamage(attacker);
   damage += bonusOrPenaltyByEnemyType(attacker, target);
   return damage;
 }

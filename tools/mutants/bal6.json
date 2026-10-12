@@ -108,6 +108,105 @@
     ]
   },
   {
+    "name": "BAL6-GAUNTLETS-every-fists",
+    "file": "src/combat/clawMetal.js",
+    "old": "  if (!entity?.isInBeastForm) return 0;\n",
+    "new": "  if (!entity) return 0;\n",
+    "tests": [
+      "test/bal6_curses.test.js"
+    ]
+  },
+  {
+    "name": "BAL6-GAUNTLETS-irons-minus-one-taken",
+    "file": "src/combat/clawMetal.js",
+    "old": "Math.max(0, weaponMaterialModifier(metal))",
+    "new": "weaponMaterialModifier(metal)",
+    "tests": [
+      "test/bal6_curses.test.js"
+    ]
+  },
+  {
+    "name": "BAL6-GAUNTLETS-the-wrong-slot",
+    "file": "src/combat/clawMetal.js",
+    "old": "[EQUIP_SLOTS.Gloves]",
+    "new": "[EQUIP_SLOTS.ChestArmor]",
+    "tests": [
+      "test/bal6_curses.test.js"
+    ]
+  },
+  {
+    "name": "BAL6-GAUNTLETS-leather-and-chain-a-metal",
+    "file": "src/systems/armorMaterials.js",
+    "old": "(isPlate(m) && m <= ARMOR_MATERIAL.Daedric ? m - ARMOR_MATERIAL.Iron : null)",
+    "new": "(m <= ARMOR_MATERIAL.Daedric ? m & 0xFF : null)",
+    "tests": [
+      "test/bal6_curses.test.js"
+    ]
+  },
+  {
+    "name": "BAL6-GAUNTLETS-a-metal-past-daedric",
+    "file": "src/systems/armorMaterials.js",
+    "old": "isPlate(m) && m <= ARMOR_MATERIAL.Daedric ?",
+    "new": "isPlate(m) ?",
+    "tests": [
+      "test/bal6_curses.test.js"
+    ]
+  },
+  {
+    "name": "BAL6-GAUNTLETS-the-overhaul-without",
+    "file": "src/combat/pcaao.js",
+    "old": "    damage += clawMetalDamage(attacker);\n",
+    "new": "",
+    "tests": [
+      "test/bal6_curses.test.js"
+    ]
+  },
+  {
+    "name": "BAL6-GAUNTLETS-dfu-without",
+    "file": "src/combat/formulas.js",
+    "old": "  if (isPlayer) damage += clawMetalDamage(attacker);\n",
+    "new": "",
+    "tests": [
+      "test/bal6_curses.test.js"
+    ]
+  },
+  {
+    "name": "BAL6-GAUNTLETS-the-overhaul-metal-as-to-hit",
+    "file": "src/combat/pcaao.js",
+    "old": "    unarmedAttack = true;\n",
+    "new": "    unarmedAttack = true;\n    chanceToHitMod += clawMetalDamage(attacker) * 2;\n",
+    "tests": [
+      "test/bal6_curses.test.js"
+    ]
+  },
+  {
+    "name": "BAL6-GAUNTLETS-dfu-metal-as-to-hit",
+    "file": "src/combat/formulas.js",
+    "old": "  if (weapon) chanceToHitMod += _overrides.get('calculateWeaponToHit')?.(weapon) ?? (WEAPON_MATERIAL_MODIFIER[weapon.material] ?? 0) * 10;\n",
+    "new": "  if (weapon) chanceToHitMod += _overrides.get('calculateWeaponToHit')?.(weapon) ?? (WEAPON_MATERIAL_MODIFIER[weapon.material] ?? 0) * 10;\n  else chanceToHitMod += clawMetalDamage(attacker) * 10;\n",
+    "tests": [
+      "test/bal6_curses.test.js"
+    ]
+  },
+  {
+    "name": "BAL6-GAUNTLETS-the-card-without",
+    "file": "src/combat/combatStats.js",
+    "old": "    matMod = clawMetalDamage(entity);   // BAL6-GAUNTLETS: both cores add it where a weapon's material stands\n",
+    "new": "",
+    "tests": [
+      "test/bal6_curses.test.js"
+    ]
+  },
+  {
+    "name": "BAL6-GAUNTLETS-the-plate-offset-off-by-one",
+    "file": "src/systems/itemTemplates.js",
+    "old": "conditionMultipliersByMaterial[plateMetal(mat)]",
+    "new": "conditionMultipliersByMaterial[plateMetal(mat) + 1]",
+    "tests": [
+      "test/audit23_systems.test.js"
+    ]
+  },
+  {
     "name": "BAL6-the-hood-the-nights",
     "file": "src/systems/vampirism.js",
     "old": "(sunAverse ? -VAMPIRE_STAT_MOD : 0)",

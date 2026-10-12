@@ -221,6 +221,21 @@ mod's premise: armour reduces damage and never the chance to be hit. The
 fight against a foe at the 97% clamp moves through the crit (damage taken
 about 14% more), and against a lower foe through the to-hit.
 
+## The fifth departure: the beast's claws take its gauntlets' metal (BAL6-GAUNTLETS, 2026-10-12)
+
+The owner, 2026-10-12: "based on your equipped gauntlets it would affect
+your attacks as a wereboar/werewolf. Like scaling without being
+overpowered" (`05-Combat/Balance-Arc.md` section 12). The mod's
+`CalculateHandToHandAttackDamage` rolls the fist, adds the swing's and
+the career's modifiers and its own strength term, and reads no item. A
+transformed lycanthrope's plate gauntlets now add their metal's
+GetWeaponMaterialModifier there, after the strength term and before the
+`< 1` floor, where `CalculateWeaponAttackDamage` adds a weapon's (Elven
++1 to Daedric +6, never below 0). `pcaaoHandToHandAttackDamage` reads
+`combat/clawMetal.js` clawMetalDamage, the one law DFU's core and the
+stats card read too. The hit chance is untouched, and a fist that is not
+the beast's is the mod's as written.
+
 ## What is kept bug for bug
 
 - `Mathf.Round` rounds half to EVEN (`unityRound`), and every float the

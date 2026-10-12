@@ -96,6 +96,7 @@ import { stampedTier } from '../systems/rarityTier.js';   // RARE-BREAK1: a piec
 import { entityEnchantArmorMod, entityArmorPoints, weaponDamageMods, weaponBlowMods } from '../systems/entityMods.js';   // RF1: the enchantment channels and the port's points (AUDIT SET P-M1: read apart) (SET2: and the weapon's own and the blow's, read here too)
 import { getItemHands, ITEM_HANDS } from '../characters/equipTable.js';
 import { createWeapon } from './enemyEquipment.js';
+import { clawMetalDamage } from './clawMetal.js';   // BAL6-GAUNTLETS: the beast's claws take its gauntlets' metal
 import {
   registerFormulaOverride, handToHandMinDamage, handToHandMaxDamage,
   WEAPON_MATERIAL_MODIFIER, enemyEntityGroup, careerAttackModifier, ENEMY_GROUPS, dice100,
@@ -468,7 +469,9 @@ export function pcaaoBonusOrPenaltyByEnemyType(attacker, target, rolls) {
 
 /** CalculateHandToHandAttackDamage: the player rolls DFU's own
  *  min..max, adds the modifier and the mod's STRENGTH term; a monster's
- *  `damageModifier` IS its summed attack damage. */
+ *  `damageModifier` IS its summed attack damage. BAL6-GAUNTLETS: the
+ *  beast's claws add its gauntlets' metal where a weapon's material
+ *  modifier stands (after Strength, before the floor - combat/clawMetal.js). */
 export function pcaaoHandToHandAttackDamage(attacker, target, damageModifier, player, rolls) {
   let damage = 0;
   if (player) {
@@ -476,6 +479,7 @@ export function pcaaoHandToHandAttackDamage(attacker, target, damageModifier, pl
     damage = range(handToHandMinDamage(h2h), handToHandMaxDamage(h2h), rolls);
     damage += damageModifier;
     damage += pcaaoDamageModifier(stat(attacker, 'strength'));
+    damage += clawMetalDamage(attacker);
   } else {
     damage += damageModifier;
   }

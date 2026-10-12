@@ -24,6 +24,11 @@ export const ARMOR_MATERIAL = Object.freeze({
 export const isLeather = (m) => m === ARMOR_MATERIAL.Leather;
 export const isChain = (m) => m === ARMOR_MATERIAL.Chain || m === ARMOR_MATERIAL.Chain2;
 export const isPlate = (m) => m >= ARMOR_MATERIAL.Iron;
+/** A plate piece's metal as WeaponMaterialTypes (Iron 0 .. Daedric 9): ItemBuilder.RandomArmorMaterial mints plate as
+ *  `0x0200 + RandomMaterial(...)` (combat/enemyEquipment.js randomArmorMaterial), so the low byte IS the metal - the
+ *  index ItemBuilder's per-material tables take for armour (itemTemplates.js mintCondition's condition multiplier).
+ *  Null for leather, chain, or a value past Daedric. */
+export const plateMetal = (m) => (isPlate(m) && m <= ARMOR_MATERIAL.Daedric ? m - ARMOR_MATERIAL.Iron : null);
 
 /** BodyParts (ItemEnums.cs:140-150). */
 export const BODY_PARTS = Object.freeze({ Head: 0, RightArm: 1, LeftArm: 2, Chest: 3, Hands: 4, Legs: 5, Feet: 6 });

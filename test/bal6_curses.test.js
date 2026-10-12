@@ -22,8 +22,13 @@ import { liveStat } from '../src/systems/statMods.js';
 import { skillValue, SKILLS } from '../src/systems/skills.js';
 import { clampMarkersAheadOf } from '../src/systems/save.js';
 import { WEAPON_MATERIALS } from '../src/characters/weapons.js';
-import { pcaaoModules, pcaaoAttackDamage } from '../src/combat/pcaao.js';
-import { calculateAttackDamage } from '../src/combat/formulas.js';
+import { pcaaoModules, pcaaoAttackDamage, pcaaoHandToHandAttackDamage } from '../src/combat/pcaao.js';
+import { calculateAttackDamage, handToHandAttackDamage } from '../src/combat/formulas.js';
+import { clawMetalDamage } from '../src/combat/clawMetal.js';
+import { computeCombatStats } from '../src/combat/combatStats.js';
+import { equipItem, equipTableOf, EQUIP_SLOTS } from '../src/systems/equip.js';
+import { mintCondition } from '../src/systems/itemTemplates.js';
+import { ARMOR_MATERIAL, plateMetal } from '../src/systems/armorMaterials.js';
 import { makeEnemyEntity } from '../src/characters/enemyEntity.js';
 import { ENEMY_BASICS } from '../src/characters/enemyBasics.js';
 import { vampireStatMod, VAMPIRE_STAT_MOD } from '../src/systems/vampirism.js';
@@ -151,6 +156,81 @@ test('BAL6-CLAWS: the beast\'s claws meet no metal - DFU\'s bare hand, ungated a
   assert.ok(dfuBeast > 0, `DFU's core: the claws land (${dfuBeast})`);
   assert.equal(dfu(beast, WEAPON_MATERIALS.Mithril, 3), dfuBeast, 'DFU\'s core: the claws at Mithril whole');
   assert.equal(dfu(man, WEAPON_MATERIALS.Mithril, 3), dfu(man, -1, 3), 'DFU\'s core: a man\'s fist whole');
+});
+
+// BAL6-GAUNTLETS: a lycanthrope as the curse makes one, its gauntlets minted and put on in human form (the pack is
+// refused to the beast), then the change - every producer the game's own
+const GAUNTLETS = 103;   // Armor.Gauntlets (ItemTemplates.txt)
+const gauntletsOf = (p, material) => { const g = mintCondition({ group: 'Armor', templateIndex: GAUNTLETS, material, name: 'Gauntlets' }); p.items.push(g); equipItem(p, g); return p; };
+const cursed = (material = null) => {
+  const p = P();
+  createLycanthropyCurse(p, LYCANTHROPY_TYPES.Werewolf, { now: QUIET });
+  return material === null ? p : gauntletsOf(p, material);
+};
+const beastIn = (material = null) => { const p = cursed(material); morphSelf(p, { force: true, nowMinutes: QUIET + 2 }); return p; };
+const ARMOUR_METALS = ['Leather', 'Chain', 'Chain2', 'Iron', 'Steel', 'Silver', 'Elven', 'Dwarven', 'Mithril', 'Adamantium', 'Ebony', 'Orcish', 'Daedric'];
+
+test('BAL6-GAUNTLETS: the beast\'s claws take the metal of the gauntlets it wears - GetWeaponMaterialModifier\'s damage, never below bare; leather, chain, bare claws, human form, the change back and a man nothing (mutants: every fist\'s; iron\'s -1 taken; leather or chain a metal; a metal past Daedric; the wrong slot)', () => {
+  // DFU's plate encoding: 0x0200 + WeaponMaterialTypes (ItemBuilder.RandomArmorMaterial)
+  assert.deepEqual(ARMOUR_METALS.map((k) => plateMetal(ARMOR_MATERIAL[k])), [null, null, null, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.equal(plateMetal(ARMOR_MATERIAL.Daedric + 1), null, 'nothing past Daedric');
+  assert.equal(plateMetal(undefined), null, 'an empty slot');
+  // through the curse, the equip table and the change: Elven +1 to Daedric +6, the same points a blade of it adds;
+  // iron's -1 not taken
+  assert.deepEqual(ARMOUR_METALS.map((k) => clawMetalDamage(beastIn(ARMOR_MATERIAL[k]))), [0, 0, 0, 0, 0, 0, 1, 2, 3, 3, 4, 5, 6]);
+  const p = cursed(ARMOR_MATERIAL.Daedric);
+  assert.equal(clawMetalDamage(p), 0, 'human form: the man\'s bare hand');
+  morphSelf(p, { force: true, nowMinutes: QUIET + 2 });
+  assert.equal(equipTableOf(p)[EQUIP_SLOTS.Gloves]?.material, ARMOR_MATERIAL.Daedric, 'MorphSelf empties the hands, never the gauntlets');
+  assert.equal(clawMetalDamage(p), 6, 'the beast in Daedric');
+  morphSelf(p, { nowMinutes: QUIET + 4 });
+  assert.equal(p.isInBeastForm, false);
+  assert.equal(clawMetalDamage(p), 0, 'the change back takes it away');
+  assert.equal(clawMetalDamage(beastIn()), 0, 'bare claws');
+  assert.equal(clawMetalDamage(gauntletsOf(P(), ARMOR_MATERIAL.Daedric)), 0, 'a man\'s fist in Daedric gauntlets: DFU\'s bare hand');
+});
+
+test('BAL6-GAUNTLETS through both cores and the stats card: Daedric gauntlets add 6 to every claw hit, the hit chance as it was; a man\'s fist and the man in human form in the same gauntlets untouched (mutants: either core without it; the metal as to-hit in either core; the card without it)', () => {
+  const daedric = beastIn(ARMOR_MATERIAL.Daedric);
+  const bareBeast = beastIn();
+  const lichOpen = lich(-1);
+  // the blow's own damage, one fixed roll: where a weapon's material modifier stands, in both cores
+  const at = (who) => [pcaaoHandToHandAttackDamage(who, lichOpen, 0, true, () => 0.5), handToHandAttackDamage(who, lichOpen, 0, true, () => 0.5)];
+  const [pcBare, dfuBare] = at(bareBeast);
+  assert.deepEqual(at(daedric), [pcBare + 6, dfuBare + 6], 'the overhaul\'s and DFU\'s claws, +6 each');
+  const man = gauntletsOf(P(), ARMOR_MATERIAL.Daedric);
+  assert.deepEqual(at(man), at(P()), 'a man\'s fist in the same gauntlets: DFU\'s');
+  assert.deepEqual(at(cursed(ARMOR_MATERIAL.Daedric)), at(cursed()), 'the man in human form: the same');
+  // 2,000 seeded swings through each whole core at a Lich's Mithril (the claws ungated, BAL6-CLAWS): the same blows land -
+  // no to-hit rides the metal - and every one is heavier; DFU's core adds exactly 6 a landed blow
+  const run = (who, core) => {
+    const rolls = mulberry(11);
+    let hits = 0, sum = 0;
+    for (let i = 0; i < 2000; i++) {
+      const notes = {};
+      const d = core === 'overhaul'
+        ? pcaaoAttackDamage(who, lich(WEAPON_MATERIALS.Mithril), { weapon: null, rolls, dfRand: () => Math.floor(rolls() * 32768), modules: modsOf(), notes })
+        : calculateAttackDamage(who, lich(WEAPON_MATERIALS.Mithril), { rolls, dfRand: () => Math.floor(rolls() * 32768) });
+      if (core === 'overhaul' ? notes.hit : d > 0) hits++;
+      sum += d;
+    }
+    return { hits, sum };
+  };
+  const pc = [run(bareBeast, 'overhaul'), run(daedric, 'overhaul')];
+  assert.ok(pc[0].hits > 200, `the claws land (${pc[0].hits})`);
+  assert.equal(pc[1].hits, pc[0].hits, 'the overhaul: the same blows land');
+  assert.ok(pc[1].sum > pc[0].sum, `and heavier (${pc[0].sum} -> ${pc[1].sum})`);
+  const df = [run(bareBeast, 'dfu'), run(daedric, 'dfu')];
+  assert.ok(df[0].hits > 20, `DFU's core: the claws land, seldom on a Lich (${df[0].hits})`);
+  assert.equal(df[1].hits, df[0].hits, 'DFU\'s core: the same blows land');
+  assert.equal(df[1].sum - df[0].sum, 6 * df[0].hits, 'DFU\'s core: 6 more a landed blow');
+  // the stats card, both cores: the claws' span 6 higher, the metal its own line
+  for (const core of ['overhaul', 'classic']) {
+    const card = (who) => computeCombatStats(who, { core }).swings[0].byFoe[0].dmg;
+    const [b, d] = [card(bareBeast), card(daedric)];
+    assert.deepEqual([d.min, d.max, d.parts.matMod], [b.min + 6, b.max + 6, 6], `${core}: the card`);
+    assert.equal(b.parts.matMod, 0);
+  }
 });
 
 test('BAL6: the hood shields, it does not make it night - bare in the street\'s sun -20, hooded there 0, out of the sun +20 hooded or not (mutants: the hood the night\'s +20, HOOD-SUN\'s; the hood shielding nothing)', () => {

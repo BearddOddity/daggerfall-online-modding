@@ -283,6 +283,7 @@ thirteen. The simulation leaves out the formulas' tail (an elite, the mentor, a 
 | BAL5 | the blow paid back (section 11, 2026-10-11) | one law at the door, one cap, one flavour retired |
 | BAL6 | the curses (section 12, 2026-10-12) | the beast's advantages, its heal, its claws; the vampire's hood |
 | BAL6-CLAWS | the claws' silver taken back (section 12, 2026-10-12) | one law reverted: both cores' gates as before BAL6 |
+| BAL6-GAUNTLETS | the gauntlets are the claws' metal (section 12, 2026-10-12) | one law, read by both cores and the stats card |
 | BAL7 | the loot that wins alone (section 13, 2026-10-12) | one flavour retired, one cap, two powers halved |
 | BAL8 | the PvP referee, one rule for every striker (section 14, 2026-10-12) | one ceiling at the referee, one door's facing |
 
@@ -469,17 +470,36 @@ THE LAWS.
   day. Both cores' material gates ask a weapon alone again (`combat/pcaao.js`, `combat/formulas.js`, as before BAL6;
   `characters/weapons.js` strikeMaterialOf and BEAST_CLAW_MATERIAL are gone), so the claws are the bare hand:
   hand-to-hand and ungated, as a monk's and a vampire's fists are. Measurement 3 stands as it was measured.
+- **The gauntlets are the claws' metal - its damage** (BAL6-GAUNTLETS, 2026-10-12; the owner: *"based on your
+  equipped gauntlets it would affect your attacks as a wereboar/werewolf. Like scaling without being overpowered"*;
+  asked: "Metal's damage bonus"). MorphSelf empties the hands, never the gauntlets, and the pack is refused to the
+  beast, so it fights in what it wore. `combat/clawMetal.js` clawMetalDamage: in beast form, plate gauntlets
+  (`systems/armorMaterials.js` plateMetal - DFU mints plate as `0x0200` plus the metal) add their metal's
+  GetWeaponMaterialModifier to every claw hit: the same points a blade of it adds, Elven +1 to Daedric +6, never below
+  the bare claws (Iron's -1 is not taken). Leather and chain have no metal. Damage alone: no to-hit, no gate, no
+  silver's double. Both cores add it where a weapon's material modifier stands (`combat/pcaao.js`
+  pcaaoHandToHandAttackDamage, after the strength term and before the floor; `combat/formulas.js`
+  handToHandAttackDamage, before the enemy-type term), and the stats card shows it as the claws' own line
+  (`combat/combatStats.js`; `ui/statsCard.js`, "Gauntlets"). A man's fist takes none, nor a monk's or a vampire's.
 - **The hood shields, it does not make it night** (asked: "Hood only shields"). `systems/vampirism.js` vampireStatMod:
   bare in the street's sun -20, hooded there 0, out of the sun (a roof, underground, a cell, the night) DFU's +20, hood
   or not - Mac's "Should be buffed in interiors" and "shielding against the sun" both kept.
 
+THE GAUNTLETS, MEASURED (BAL6-GAUNTLETS; 40,000 seeded swings a cell through both cores, section 2's builds, the real
+curse and change). Three shapes were put to the owner. The metal's damage alone scales evenly: at level 20 with the
+overhaul, Elven +6%, Mithril +17%, Ebony +22% and Daedric +34% a swing, against an Orc Warlord, a Lich and an Ancient
+Lich alike (level 12, Daedric +36%; DFU's core +26-28%). A blade's metal whole, its to-hit with it, reached +41%, +71%
+and +84% at Daedric on the three - and in DFU's core, whose to-hit takes the metal x10, up to x25 a bare beast's on an
+Ancient Lich. Half of both reached +22%, +34% and +39%. The owner chose the damage alone.
+
 WHAT MOVES. A lycanthrope in human form strikes and takes as the character it is (19.5 -> 6.8 a second at level 12,
-35.6 -> 19.9 at level 20; a duel's 30.1 -> 18.2); the beast is unchanged, a metal-hided foe included (BAL6-CLAWS); two
-healing changes a day are one, and the Ring's endless ones are one. A hooded vampire in the street by day is +0 where
-it was +20 (its +30 skills alone: about x1.10-1.17 a mortal's damage). THE FOUR HOSTS: none is touched - each law is
-the curse's or the blow's, read wherever the curse runs its round and the blow is struck (`scenes/world.js`,
-`scenes/worldModes.js`, `scenes/dungeonContext.js` and `scenes/exterior.js` all strike through the same two cores and
-run the same round).
+35.6 -> 19.9 at level 20; a duel's 30.1 -> 18.2); the bare-clawed beast is unchanged, a metal-hided foe included
+(BAL6-CLAWS), and a beast in plate gauntlets strikes its metal's points harder a hit (BAL6-GAUNTLETS: Daedric about a
+third more a swing). Two healing changes a day are one, and the Ring's endless ones are one. A hooded vampire in the
+street by day is +0 where it was +20 (its +30 skills alone: about x1.10-1.17 a mortal's damage). THE FOUR HOSTS: none
+is touched - each law is the curse's or the blow's, read wherever the curse runs its round and the blow is struck
+(`scenes/world.js`, `scenes/worldModes.js`, `scenes/dungeonContext.js` and `scenes/exterior.js` all strike through the
+same two cores and run the same round).
 
 RECORDED, NOT CHANGED:
 
@@ -488,17 +508,29 @@ RECORDED, NOT CHANGED:
 - **The vampire's clan spells** stay at DFU's flat 5 spell points (MinimumCastingCost; asked: "Leave at 5"), Ice Storm
   and Wildfire among them. A refereed fight bounds every cast whatever it cost (INT10, and section 14's ceiling).
 - **Every fist** - a vampire's, a monk's and, since BAL6-CLAWS, the beast's - stays ungated: DFU's rule.
+- **The referees' fist bounds** (BAL6-GAUNTLETS). Both clip a claim, never refuse it. The siege's (`net/siegeRef.js`
+  siegeBlowMax: the bare hand's 21 at skill 100 and the bonuses at their caps, x2) holds a beast in Daedric gauntlets
+  at skill 100 with every bonus at its cap: 55 of its 56 before the critical and 110 of 112 after under the overhaul,
+  52 in DFU's core. Past skill 100 (the softcap's 200, which `net/arenaLaw.js` ARENA_HAND_MAX reads) the siege's bound
+  already clipped any fist, gauntlets or none, and the arena's room past a bare hand's 41 (ARENA_MOD_MAX, 20) is under
+  a Khajiit hand-to-hand expert's own 28 in the overhaul. Both are the relay's, and neither moved here.
 - **The silver-to-hit of a beast in a refereed fight**: every referee rolls a striker's claim against the striker's own
   stand-in, so the beast's defence never counts there - reading it would make the beast stronger in PvP, not weaker.
 - **The wereboar** is the werewolf in another skin (the same advantages, claws and change), as in DFU.
 
-Pinned: `test/bal6_curses.test.js` (4) by execution - the advantages through liveStat and skillValue in both forms, at
+Pinned: `test/bal6_curses.test.js` (6) by execution - the advantages through liveStat and skillValue in both forms, at
 the change's instant and after a round, a pre-BAL6 save's word rewritten; the heal's day, the Ring's change without it,
 the stamp clamped on a load; BAL6-CLAWS: 2,000 seeded beast swings at a Lich's Mithril whole, as at no metal, with
-the soft rule on and off and nothing said, a man's fist the same, and DFU's core seed for seed; vampireStatMod in the
-street and under a roof, bare and hooded. `tools/mutants/bal6.json` (15, all dead: BAL6-CLAWS retired the five claw
-records and aimed four at the restored gates - the claws as silver in either core, the claws refused with DFU's line
-under the overhaul with its soft rule off, every fist gated).
+the soft rule on and off and nothing said, a man's fist the same, and DFU's core seed for seed; BAL6-GAUNTLETS:
+plateMetal over every armour material, the claws' metal through the curse, the equip table and the change (Elven +1
+to Daedric +6; iron, leather, chain, bare claws, human form, the change back and a man nothing), +6 a hit in both
+cores at one roll, 2,000 seeded swings in each core landing the same blows (DFU's exactly 6 heavier each), and the
+stats card's span and line in both cores; vampireStatMod in the street and under a roof, bare and hooded.
+`tools/mutants/bal6.json` (26, all dead: BAL6-CLAWS retired the five claw records and aimed four at the restored
+gates - the claws as silver in either core, the claws refused with DFU's line under the overhaul with its soft rule
+off, every fist gated; BAL6-GAUNTLETS aimed eleven - every fist's, iron's -1 taken, leather or chain a metal, a metal
+past Daedric, the wrong slot, either core without it, the metal as to-hit in either core, the card without it, and
+mintCondition's plate offset, which `test/audit23_systems.test.js` pins).
 
 ## 13. BAL7 - the loot that wins alone (2026-10-12)
 
