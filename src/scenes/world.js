@@ -908,7 +908,7 @@ import { createQuestBridge, tokensToRows } from './questBridge.js';
 import { loadQuestPack } from './questData.js';
 import { ensureFactionRep, getReputation, changeReputation } from '../systems/factionRep.js';
 import { changeLegalRep, legalRepOf, CRIMES, setCrimeCommitted, lowerRepForCrime, setCrimeRepFactor } from '../systems/court.js';   // the region's LegalRep: the status box, the quest actions, the crimes (REP1 retired :498-511's levy)
-import { isEquipped, unequipSlot, unequipItem } from '../systems/equip.js';
+import { isEquipped, unequipSlot, unequipItem, wearableItem } from '../systems/equip.js';   // HACKED-GOLD: a worn offer holds what can be worn
 import { ServiceFlowWindow } from '../ui/guildServiceWindows.js';
 import { makeItemPermanent } from '../systems/quest/item.js';
 import { isShelved } from '../systems/quest/quest.js';   // QUEST-SHELF: a quest set aside
@@ -23976,7 +23976,10 @@ export async function bootWorld(canvas, renderer, params, status) {
     remotePlayers?.holdCorpse?.(from, WILD_DEATH_HOLD_S * 1000);   // "the body ... disappears in 2 minutes"
     // AUDIT INT9: each record minted alone, its place in the offer kept - a record the law refused shifted every later one,
     // and the pick named another piece
-    const minted = (Array.isArray(body.items) ? body.items : []).map((it) => validLootList([it])?.[0] ?? null);
+    // HACKED-GOLD: and a WORN offer holds what can be worn (systems/wildDropLaw.js wornOffer: the fallen's worn pieces
+    // alone) - a coin pile in one went through the window's gold arm, which pays the purse and answers before the
+    // choice, so a modified client's offer paid its killer up to a million gold and was never chosen
+    const minted = (Array.isArray(body.items) ? body.items : []).map((it) => { const r = validLootList([it])?.[0] ?? null; return r && wearableItem(r) ? r : null; });
     const items = minted.filter(Boolean);
     if (!items.length || !wildOutdoors()) return;
     const mark = remotePlayers?.corpseMarks?.(onlineToScene)?.find((c) => c.id === from) ?? null;
