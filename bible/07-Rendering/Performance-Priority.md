@@ -489,6 +489,39 @@ Pins: `test/peerhullrange.test.js` (+2): every lane's fog closed at the near edg
 ship under way given back and built again, each in her record's dress. Mutants (+6): the first cut's edge, each of the
 three remembered things kept, her fires left hung, whole in a frame.
 
+## NAV-FAR-AI — a far captain keeps her watch every FAR_LIFE_EVERY frames
+
+*The owner's live client (2026-10-12), main with every open performance fix built in: the captains of the sea's ships
+were 12% of the main thread and some 29% of what the page allocated while walking the coast, the ships this tab holds
+with no owner numbering 2 to 31 through the day (its own traffic, and every peer's fleet it adopts as they leave the
+room - `releaseOwner`), most of them tens to hundreds of km off.*
+
+**Found.** `stepSea` stepped every captain of mine every frame wherever she was: her lookout over every contact, her
+land probes ahead, her wandering course. AUDIT NAV1 already let a far ship's RIGGING step every FAR_LIFE_EVERY frames
+past NEAR_LIFE_M on the time it missed; her captain had no such law.
+
+**The fix** (`scenes/navalHost.js keepWatch`, `watchesFar`). Past FAR_WATCH_M (5,500 m - where she stands no hull
+to be seen, PEER_HULL_FAR_M) of the eye, a captain afloat, in no fight of her own (engage or board), lashed to no prize
+and no fight's target keeps her watch every FAR_LIFE_EVERY frames, each ship on her own frame of the stride, on the
+time she missed - never more than FRAME_STEP_S at once (the sea's own step: what she owes is stepped first when a frame
+would carry it past), and come near, what she owes is stepped with her first frame there. Her damage, fires and sinking
+keep every frame's clock; a frame between watches fires and runs out nothing. Unlike NAV-COST this is not the same
+answer: a far captain's course is integrated in coarser steps (at most FRAME_STEP_S, the step the sea already takes
+on a slow frame), seen by nobody here - her hull stands nowhere past PEER_HULL_FAR_M - and by a peer near her only
+through this tab's word, which comes far more seldom than the stride.
+
+**Measured.** On the live client, standing on the coast, NAV-COST alone against NAV-COST with this, alternating every
+15 s four times: the captains' share of the main thread 0.06 -> 0.02 ms a frame (-67%), allocation 306 -> 295 MB/s -
+but the sea emptied while it ran (17 ships of mine to 2: the peers came back for theirs), so the absolute numbers are
+that hour's. With the 14-31 far ships of the day's worst hours the captains were 1-2.4 ms a frame
+(OVERWORLD-WALK's profile), most of them past FAR_WATCH_M - two thirds of that is what this takes off.
+
+Pins: `test/navfarai.test.js` (4), over the real sea: a captain past FAR_WATCH_M one frame in FAR_LIFE_EVERY on her
+own stride, every second of her clock kept, a near one every frame; never more than FRAME_STEP_S at once at a slow
+frame; `watchesFar`'s every case (near, the eye on the flat, no eye, engage, board, lashed, struck, sinking, a fight's
+target, the fights asked last); a far captain come near steps what she owes, then every frame. Mutants:
+`tools/mutants/navfarai.json`, 11, all dead.
+
 ## What is left, ranked
 
 Each with what was found and whether it moves the picture (those are the owner's).
