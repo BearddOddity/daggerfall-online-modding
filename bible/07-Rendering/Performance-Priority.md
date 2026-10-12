@@ -520,7 +520,11 @@ let go every 2 s so both dye the same horses over and over (336 and 329 walk set
 | average | 97.2 FPS | 95.3 FPS |
 
 The same work, spread: the average holds under a load no road makes (every horse dyed again every two seconds), and
-the hitch is gone. A first cut of the probe, a breakpoint on every `ensureLook` call, cost 118 -> 51 FPS by itself and
+the hitch is gone. Then four minutes' plain travel across the overworld, nothing forced, the two alternating every
+30 s: of the frames a walk set began in, 25 of 74 ran over 50 ms the old way (worst 104 ms) and 5 of 88 this way
+(worst 92 ms, other work in the same frame). The travel's other hitches are not the dye's (the professions' store
+reads, the ports' ships, the collector), and its average moved with the road, not the mode - the dye is some 3% of
+the frame time either way. A first cut of the probe, a breakpoint on every `ensureLook` call, cost 118 -> 51 FPS by itself and
 was thrown away.
 
 Pins: `test/perfdye.test.js` (4), over a real pool: never more than `HORSE_DYE_PICTURES` a frame, among two looks too;
