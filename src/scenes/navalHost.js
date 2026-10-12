@@ -221,6 +221,26 @@ export const BLAST_SHAKE = 3.2;
  *  the CPU, their rigging stepped as a near one's). */
 export const NEAR_LIFE_M = 600;
 export const FAR_LIFE_EVERY = 4;
+/** NAV-FAR-AI (2026-10-12, the owner's live client walking the coast: the captains of the sea's ships were 12% of the
+ *  main thread and some 29% of what it allocated - every ship of mine, every frame, the adopted ones hundreds of km off
+ *  among them): A FAR CAPTAIN KEEPS HER WATCH EVERY FAR_LIFE_EVERY FRAMES, on the time she missed (never more than
+ *  FRAME_STEP_S at once, the sea's own step) - past FAR_WATCH_M of the eye, where she stands no hull to be seen
+ *  (PEER_HULL_FAR_M), afloat and in no fight (hers, or one that targets her), nor lashed to a prize. Her damage, her
+ *  fires and her sinking keep every frame's clock. */
+export const FAR_WATCH_M = 5500;
+/** NAV-FAR-AI: a far captain's frame between her watches - nothing fired, nothing run out. */
+const NO_WATCH = Object.freeze({ volleys: Object.freeze([]), barrels: Object.freeze([]), grapple: null, runOuts: Object.freeze([]) });
+/**
+ * NAV-FAR-AI: WHETHER ONE OF MY SEA'S CAPTAINS KEEPS A FAR WATCH - past FAR_WATCH_M of the eye, afloat, in no fight of
+ * her own (engage or board), lashed to no prize, and no ship's target in a fight (`fought()`, asked last: the targets
+ * of every ship in one).
+ * @param {any} e a sea entry @param {number[]|null} eye @param {() => Set<string>} fought
+ */
+export function watchesFar(e, eye, fought) {
+  const s = e.ship;
+  return !!eye && s.damage.state === SHIP_STATES.afloat && s.mode !== 'engage' && s.mode !== 'board' && !s.lashed
+    && Math.hypot(s.pos[0] - eye[0], s.pos[2] - eye[2]) > FAR_WATCH_M && !fought().has(e.id);
+}
 /** PEER-HULL-RANGE: ANOTHER'S SHIP FAR OFF STANDS NO HULL HERE. Every peer in the room says their sea in their word
  *  (applyWord), so a client held every player's ships wherever they sailed - 30-40 of them, most 80-700 km off - and
  *  Come Sail Away's pool walked and baked each one every frame (scenes/comeSailAwayPool.js frame: her objects' walk and
@@ -4382,6 +4402,22 @@ export function createNavalHost(deps) {
     }
   }
 
+  /** NAV-FAR-AI: her captain's step this frame - every frame near, in a fight, lashed or not afloat; past FAR_WATCH_M of
+   *  the eye every FAR_LIFE_EVERY frames on the time she missed (a far captain's leftover kept for her first frame near). */
+  function keepWatch(e, d, world, eye, fought) {
+    const s = e.ship;
+    const owed = e.watchDt ?? 0;
+    // the time she missed is never more than FRAME_STEP_S at once (the sea's own step): owed and this frame's together
+    // past it, what she owes is kept first, and this frame's waits for her next watch
+    if (owed > 0 && owed + d > FRAME_STEP_S) { e.watchDt = d; return stepCaptain(s, { ...world, dt: owed }); }
+    if (!watchesFar(e, eye, fought)) { e.watchDt = 0; return stepCaptain(s, owed > 0 ? { ...world, dt: owed + d } : world); }
+    e.watchDt = owed + d;
+    e.watchN = ((e.watchN ?? e.n) + 1) % FAR_LIFE_EVERY;   // each ship on her own frame of the stride (her number's)
+    if (e.watchN !== 0) return NO_WATCH;
+    e.watchDt = 0;
+    return stepCaptain(s, { ...world, dt: owed + d });
+  }
+
   function stepSea(d, seaY, boat) {
     clock += d;
     // my boats: their clocks, the brace, their fires
@@ -4473,13 +4509,16 @@ export function createNavalHost(deps) {
       night,   // SHIP-WATCH: the dark hours - a lit ship seen far, a dark one close
     };
     life.night = night;   // SHIP-WATCH: a merchantman waits at her berth for the morning; a pirate lurks nearer the mouth
+    // NAV-FAR-AI: the eye the far captains are measured from, and the ships a fight targets
+    const watchEye = deps.look?.()?.origin ?? deps.feet();
+    let fought = null;
     for (const e of [...sea.values()]) {
       if (e.owner) continue;
       const s = e.ship;
       if (s.damage.state === SHIP_STATES.sunk) { quarryGone(e); drop(e); continue; }
       const was = s.damage.state;
       if (boarding?.shipId === e.id) { const change = s.damage.step(d, clock); if (change) stateChanged(e, was, change, e.fireBy ?? null); continue; }
-      const out = stepCaptain(s, world);
+      const out = keepWatch(e, d, world, watchEye, () => (fought ??= new Set([...sea.values()].filter((x) => engagedOf(x.ship)).map((x) => x.ship.target))));
       if (e.fromHarbour && s.errand?.kind !== 'moored') { departedOf(e.fromHarbour, where().day ?? 0).add(s.seed); e.fromHarbour = null; }   // SHIP-LIFE: sailed - not stood at her berth again today
       // AUDIT CAPTAIN'S SEA D17: a legend of the night is abroad between dusk and dawn alone - day come, she sails out of
       // the world once no fight holds her (she fought on in the sun)
