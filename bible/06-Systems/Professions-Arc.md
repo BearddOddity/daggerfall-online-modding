@@ -1794,7 +1794,10 @@ instruction), and what was found (FACT):
   item flat (TEXTURE.254, the metal's own, a new ore Lodestone's; a boulder's loose stone Lodestone's), a small
   cluster at the piece's foot, as PROF1's patches are the herb's own flat (law 6). VEIN-WASH
   (`01-Overview/Field-Bugs-2026-10-11d.md`): an ore on a picture another ore shares wears its own wash
-  (`scenes/mineHost.js` ORE_WASH - 4.8's "tinted per ore"); Lead and Lodestone keep DFU's colours.
+  (`scenes/mineHost.js` ORE_WASH - 4.8's "tinted per ore"); Lead keeps DFU's colours. VEIN-HUE
+  (`01-Overview/Field-Bugs-2026-10-12b.md`): every wash is its hue at full spread, Lodestone wears one of its own (the
+  boulder's loose stone is its lump, unwashed), and a washed vein's wash is its colour (`ORE_DYE`, `uBatchDye`: the
+  lit flat's brightness in the wash's hue), not a multiply over the picture's own.
 - **The dungeon veins** (section 6): `1 + hash % 4` a dungeon a UTC day, a dungeon named by DFU's own identity
   (`MapTableData.MapId & 0xfffff`, `mapsFile.js`), the id `dvein:<id>:<day>:<slot>`. Their table: Silver 3, Gold 4,
   Dwarven Scrap 4, Platinum 5, Adamantium 6, and Moonstone 4 in a Woodlands or HauntedWoodlands dungeon (4.1's deep
