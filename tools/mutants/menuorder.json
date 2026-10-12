@@ -241,5 +241,77 @@
     "tests": [
       "test/menuorder.test.js"
     ]
+  },
+  {
+    "name": "MENUORDER-market-picture-never-asked",
+    "file": "src/ui/marketTab.js",
+    "old": "const matPic = (key) => pictureNode(m.picture?.(key, wake) ?? null, el, 'market-pic');",
+    "new": "const matPic = (key) => (key, null);",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-market-picture-wrong-key",
+    "file": "src/ui/marketTab.js",
+    "old": "named(`${m.name(row.material)} x${row.units.toLocaleString('en-US')}`, matPic(row.material))",
+    "new": "named(`${m.name(row.material)} x${row.units.toLocaleString('en-US')}`, matPic(String(row.id)))",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-market-supplier-unpictured",
+    "file": "src/ui/marketTab.js",
+    "old": "matPic(w.key)), el('span', 'market-price', `${marksText(w.marks)} a bolt`)",
+    "new": "null), el('span', 'market-price', `${marksText(w.marks)} a bolt`)",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-market-name-unpictured",
+    "file": "src/ui/marketTab.js",
+    "old": "const named = (text, pic) => { const n = el('b', null, text); if (pic) { if (n.prepend) n.prepend(pic); else n.append(pic); } return n; };",
+    "new": "const named = (text) => el('b', null, text);",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-market-views-bare",
+    "file": "src/ui/marketTab.js",
+    "old": "        t.setAttribute('data-dficon', MARKET_VIEW_ICONS[id] ?? 'list');   // MENU-ORDER\n",
+    "new": "",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-market-phone-views-collapsed",
+    "file": "src/ui/enhancedPlusStyle.js",
+    "old": "  .market-views { flex: none; flex-wrap: nowrap;",
+    "new": "  .market-views { flex-wrap: nowrap;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-vendor-unpictured",
+    "file": "src/ui/vendorTab.js",
+    "old": "const pic = pictureNode(v.picture?.(row.item, () => ui.rerender()) ?? null, el, 'market-pic');",
+    "new": "const pic = null;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-stores-card-unpictured",
+    "file": "src/ui/profPages.js",
+    "old": "const pic = pictureNode(_provider?.picture?.(r.material, rerender) ?? null, el, 'prof-matpic');",
+    "new": "const pic = null;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
   }
 ]

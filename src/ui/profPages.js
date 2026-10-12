@@ -88,11 +88,13 @@ import { marksText } from '../net/marksLaw.js';   // AUDIT 32 R13: "1 Drake", as
 import { accountRefusalText } from '../net/accountClient.js';
 import { chainPlan, chainNeeded, chainYield, storesRoom } from '../net/chainLaw.js';   // CRAFT1: the works a craft's inputs want first
 import { getPref, setPref } from '../systems/uiPrefs.js';
+import { pictureNode } from './menuGlyphs.js';   // MENU-ORDER: a material's picture, the host's
 
 /**
  * @typedef {object} ProfPagesProvider
  * @property {any} book                                   net/profBook.js - the character's professions
  * @property {(key: string) => string} name               a material's name (systems/profItems.js materialLabel)
+ * @property {(key: string, wake: () => void) => ({ src: string, w: number, h: number }|null)} [picture]   MENU-ORDER: a material's picture (ui/menuPicture.js), null while made
  * @property {(key: string, qty: number) => Promise<{ ok: boolean, text: string }>} withdraw   out of the Stores, into the pack
  * @property {() => ({ kind: 'shop'|'home', fee: number }|null)} [forge]   PROF2: the forge the player stands at, or null
  * @property {(recipe: string, count: number, opts?: { clean?: boolean }) => Promise<{ ok: boolean, text: string }>} [smelt]   PROF2: a
@@ -686,7 +688,7 @@ export function drawStoresPage(detail, rerender, kit) {
   for (const r of rows) {
     const card = el('button', `prof-mat${_stores.picked === r.material ? ' on' : ''}`);
     card.type = 'button';
-    card.append(el('b', null, r.name), el('span', 'prof-count', r.total.toLocaleString('en-US')), el('span', 'prof-split', storesSplit(r)));
+    card.append(matName(el, r, rerender), el('span', 'prof-count', r.total.toLocaleString('en-US')), el('span', 'prof-split', storesSplit(r)));
     card.onclick = () => { _stores.picked = r.material; _stores.qty = Math.min(_stores.qty, r.total) || 1; _stores.word = null; rerender(); };
     grid.append(card);
   }
@@ -733,6 +735,14 @@ export function drawStoresPage(detail, rerender, kit) {
   ]);
 }
 
+/** MENU-ORDER (2026-10-12): a material card's name with its picture before it - the item the Stores withdraw it as, the
+ *  host's to make (`picture`); none (no data, or not made yet) is the name alone. */
+function matName(el, r, rerender) {
+  const n = el('b', null, r.name);
+  const pic = pictureNode(_provider?.picture?.(r.material, rerender) ?? null, el, 'prof-matpic');
+  if (pic) { if (n.prepend) n.prepend(pic); else n.append(pic); }
+  return n;
+}
 /** MENU-ORDER (2026-10-12): THE STATIONS AS TILES - each its picture and its short name, the ones worked here lit. */
 export const STATION_TILES = Object.freeze({
   forge: ['Forge', 'forge'], anvil: ['Anvil', 'anvil'], 'temper-anvil': ['Temper (anvil)', 'temper'], workbench: ['Workbench', 'saw'],
@@ -867,7 +877,7 @@ function drawCarryStores(detail, rerender, kit) {
   for (const r of rows) {
     const card = el('button', `prof-mat${_stores.picked === r.material ? ' on' : ''}`);
     card.type = 'button';
-    card.append(el('b', null, r.name), el('span', 'prof-count', r.total.toLocaleString('en-US')),
+    card.append(matName(el, r, rerender), el('span', 'prof-count', r.total.toLocaleString('en-US')),
       el('span', 'prof-split', [r.total ? storesSplit(r) : null, r.carried ? `${r.carried.toLocaleString('en-US')} carried` : null, r.uncounted ? BAG_PAGE_WORDS.uncountedSplit(r.uncounted) : null].filter(Boolean).join(' · ')));
     card.onclick = () => { _stores.picked = r.material; _stores.qty = Math.max(1, Math.min(_stores.qty, Math.max(r.total, r.carried))); _stores.word = null; rerender(); };
     grid.append(card);

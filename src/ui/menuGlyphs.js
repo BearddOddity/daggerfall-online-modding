@@ -509,6 +509,49 @@ export const DFICON_ROWS = Object.freeze({
     '.....##.....',
     '.....##.....',
   ],
+  // ── the Market's views (ui/marketTab.js) ──
+  ore: [
+    '............',
+    '............',
+    '....####....',
+    '..#######...',
+    '.####.####..',
+    '.###.#.###..',
+    '##########..',
+    '#.####.####.',
+    '############',
+    '.##########.',
+    '............',
+    '............',
+  ],
+  gavel: [
+    '...####.....',
+    '..######....',
+    '..######....',
+    '...####.#...',
+    '.......###..',
+    '........###.',
+    '.........###',
+    '..........#.',
+    '............',
+    '#########...',
+    '#########...',
+    '............',
+  ],
+  chart: [
+    '#...........',
+    '#.........#.',
+    '#........###',
+    '#.......#...',
+    '#..#...#....',
+    '#.###.#.....',
+    '#.#..#......',
+    '##..........',
+    '#...........',
+    '#...........',
+    '############',
+    '............',
+  ],
   // ── the presses ──
   place: [
     '............',
@@ -737,3 +780,15 @@ export const DFICON_CSS = `
   background-color: currentColor; -webkit-mask: var(--dficon) center / contain no-repeat; mask: var(--dficon) center / contain no-repeat; }
 ${Object.keys(DFICON_ROWS).map((k) => `[data-dficon="${k}"] { --dficon: ${dficonUrl(k)}; }`).join('\n')}
 `;
+
+/** MENU-ORDER: a host's picture (ui/menuPicture.js - `{ src, w, h }`) as a row's `<img>`, made with the row's own `el`:
+ *  its fitted size, no words of its own (the row's name says them). Null for none. */
+export function pictureNode(pic, el, cls) {
+  if (!pic?.src) return null;
+  const img = el('img', cls);
+  img.setAttribute('src', pic.src);
+  img.setAttribute('alt', '');
+  img.setAttribute('width', String(pic.w));
+  img.setAttribute('height', String(pic.h));
+  return img;
+}

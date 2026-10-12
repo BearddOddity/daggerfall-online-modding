@@ -63,10 +63,26 @@ where a picture cannot say it (a price, a name).
   button, a field, a choice (`stationWorkable`); a station a press asked the page to land on (STATION-DOOR) is shown. A
   station's works (smelt, burn, saw, cure, weave, transmute) and its patterns are **cards** in a grid (`.prof-works`,
   `.prof-recipes`), a dark one still drawn where it stood. The material chips a step larger (12px).
+- **MENU-ORDER e, the Notice Board's Market and Vendors, and the Stores' materials** (the owner, of the next surfaces:
+  "Continue"). A Market material row, a supplier's row (the Weavers', the Apothecaries'), a pack piece listed for gold, a
+  trader's piece and a Stores card each wear the game's own item picture before their name: the item the Stores would
+  hand the material out as (systems/profItems.js `mintMaterialItem`), or the piece itself, read off its inventory record
+  and fitted to a row's box (`src/ui/menuPicture.js`, new: `materialPicture`, `itemPicture` - the pack's and the shop's
+  own door, `requestFittedIcon`). The tabs read no game law, so the host hands the picture over (`picture`,
+  `itemPicture` on the board's market, `picture` on its traders, a stall's and the Stores page's provider) and the tab
+  draws it (`pictureNode`, `ui/menuGlyphs.js`); with no data there is none and the row is its words. The Market's views
+  are pictured chips (`MARKET_VIEW_ICONS`: ore, hammer, gavel, pack, list, coin, chart), never a second row of the
+  board's tabs. FOUND on the way: on a phone the views' row scrolled sideways inside the tab's column and took no height
+  at all (`overflow-x` makes `min-height: auto` nought) - a phone's Market showed Materials and nothing to switch to;
+  it is `flex: none` now.
 
-THE FOUR HOSTS (Home.md, 17e): none touched. The decorator, the counter and the pages are each one surface every host
-opens through its one door (`scenes/decorTool.js`, `ui/tradeDoor.js`, the pause menu's pages) - nothing here is wired
-per host.
+THE FOUR HOSTS (Home.md, 17e): the decorator, the counter and the pages are each one surface every host opens through
+its one door (`scenes/decorTool.js`, `ui/tradeDoor.js`, the pause menu's pages). MENU-ORDER e's pictures are handed by
+the providers that stand them: `src/scenes/world.js` WIRED - the Stores page's (`setProfessionsPages`), the board's
+market and traders (`showNoticeWindow`'s `market`, `vendorBoardHost`) and a trader's stall (`openHomeVendorWindow`), the
+only places those providers are built; `src/scenes/worldModes.js` (the interiors), `src/scenes/dungeonContext.js` and
+`src/scenes/exterior.js` build none of them (the board is the streaming world's, its stall opens through world.js's
+door), so there is nothing there to wire.
 
 ## 3. The laws
 
@@ -83,8 +99,9 @@ per host.
 
 - **The classic windows** - DFU's trade window (INVE00I0/SHOP00I0), the potion maker (MASK00I0) and the item maker
   (ITEM00I0) - draw DFU's rects (THE NATIVE-WINDOW RULE, Home.md): no picture is added there.
-- **The Market, Vendors and Work tabs** and the Reforge, the Broker and the shipyards were not in this pass: the same
-  treatment fits them (their rows are columns of text too) - OPEN, for the owner's word.
+- **The Work tab** is cards already (the writs pinned on the cork); **the Market's crafted pieces** (a provenance, not an
+  item, until minted) show no picture; **the Vendor page** in the pause menu, the Reforge, the Broker and the shipyards
+  were not in this pass - OPEN, for the owner's word.
 - **A model's own picture in a tile.** A model has none until the host turns it in the preview; its tile wears its
   kind's glyph. Rendering every model small for the grid is a renderer's pass - OPEN.
 - **A portrait phone's placing bar** keeps its 272px clearance for the touch layer (DECOR1e), so it is narrow there -
@@ -92,19 +109,21 @@ per host.
 
 ## 5. Proof
 
-- `test/menuorder.test.js` (5): the glyphs (twelve by twelve, a rect a lit pixel, a mask each, every kind and station
+- `test/menuorder.test.js` (6): the glyphs (twelve by twelve, a rect a lit pixel, a mask each, every kind and station
   pictured); the decorator's tiles, its kind glyphs and letters, its badges, the Pictures / List switch, the tabs' and
   chips' glyphs, the switch after the tabs; a placed piece's pictured presses, Remove warned, the bar's legend folded
   behind Keys, the legend's pairs, the fold's count; the counter's title, its named column, its two figures, a price on
   every shelf row equal to the strip's quote, Steal apart, the switch; the Stores page's tiles, Here and Away, an away
   station's words hidden until pressed and again, a section with a button read as worked, the works and patterns as
-  cards. PINS MOVED: the bar's keys read whole (`decor1e`, `decorfigure`), DECOR-FLIP reads the legend's own pair
+  cards; the board's rows pictured - a Market material row, a supplier's and a trader's piece, none without a picture,
+  a Stores card - the Market's views their glyphs, a phone's row of them its height. PINS MOVED: the bar's keys read whole (`decor1e`, `decorfigure`), DECOR-FLIP reads the legend's own pair
   (`decorflip`), PLUS-DRESS's warn literals carry the decorator's Remove and the counter's Steal (`plusdress1`), the
   stations' order read in the tiles' list (`prof9_client`, `prof10_client`, `prof11_client`, `prof12_client`).
-- `tools/mutants/menuorder.json`: 27 mutants, 27 dead. Re-aimed by content and dead again: `decorfigure.json`'s
+- `tools/mutants/menuorder.json`: 35 mutants, 35 dead. Re-aimed by content and dead again: `decorfigure.json`'s
   DECOR-FIGURE-buttons-kept, `craft4.json`'s CRAFT4-pages-no-loom, `prof10.json`'s PROF10-pages-no-bench,
   `prof11.json`'s PROF11-pages-bench-undrawn, `prof12.json`'s PROF12-pages-alchemy-undrawn and
   PROF12-pages-enchant-undrawn.
 - Photographed in Chromium over the real enhanced sheet, at 1440x900 and a 390px phone: the decorator's catalogue,
   room, pack and bar; the counter's Buy and Sell in both lays; the Stores page at a smith's and away from every bench,
-  an away tile pressed.
+  an away tile pressed; the board's Market and Vendors (`tools/noticeBoardProbe.mjs`, its every tab inside the viewport
+  at a desktop and a phone, and a copy handed stand-in pictures).

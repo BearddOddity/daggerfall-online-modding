@@ -4,6 +4,7 @@
 // the decorator's catalogue and its rooms as tiles, every kind and press its glyph, the bar's keys folded; the shop
 // counter's prices on its rows and its lists as pictures on a press; the Stores page's stations as tiles, its works and
 // patterns as cards.
+import './chargenDom.mjs';   // a document for the tabs that draw after an await (withDom's is the call's alone)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DFICON_ROWS, DFICON_CSS, dficonSvg } from '../src/ui/menuGlyphs.js';
@@ -17,6 +18,10 @@ import { stockShopShelf } from '../src/systems/shopStock.js';
 import { BUILDING_TYPES } from '../src/world/buildingNames.js';
 import { setProfessionsPages, drawStoresPage, stationWorkable, STATION_TILES, STATION_TILE_WORDS } from '../src/ui/profPages.js';
 import { xpForRank, trackOf } from '../src/net/professionLaw.js';
+import { createMarketTab, MARKET_VIEW_ICONS, MARKET_VIEW_GROUPS } from '../src/ui/marketTab.js';
+import { createVendorTab } from '../src/ui/vendorTab.js';
+import { PROF_CSS } from '../src/ui/enhancedPlusStyle.js';
+import { pictureNode } from '../src/ui/menuGlyphs.js';
 
 const lit = (rows) => rows.join('').split('').filter((c) => c === '#').length;
 
@@ -159,6 +164,56 @@ test('MENU-ORDER the Stores page\'s stations as tiles: a tile a station, the one
     assert.equal(awayBox().hidden, true, 'pressed again: put away');
     assert.equal(stationWorkable({ children: [{ tag: 'div', children: [{ tagName: 'BUTTON', children: [] }] }] }), true);
     assert.equal(stationWorkable({ children: [{ tag: 'h3', children: [] }, { tag: 'p', children: [] }] }), false);
+    setProfessionsPages(null);
+  });
+});
+
+test('MENU-ORDER the board\'s rows pictured: a Market material row, a supplier\'s row and a trader\'s piece wear the host\'s picture before their name (and none without one); a Stores card its material\'s; the market\'s views each their glyph, and a phone\'s row of them never squeezed to nothing (mutants: the picture never asked; asked of the wrong key; the views bare; the phone\'s views collapsed)', async () => {
+  const PIC = { src: 'data:pic', w: 26, h: 26 };
+  const asked = [];
+  const picOf = (root) => { const out = []; const walk = (n) => { for (const c of n.children ?? []) { if (c.tagName === 'IMG') out.push(c); walk(c); } }; walk(root); return out; };
+  {
+    const data = { materials: { rows: [{ id: 'A', kind: 'material', material: 'ore:iron', units: 9, price: 3, region: 17, road: { courier: 0, seconds: 0, road: 0 } }], medians: {} } };
+    const book = { state: { open: true, balance: 50, road: [], counts: {} }, pending: 0, cached: () => null, read: async (view) => ({ ok: true, data: data[view] ?? { rows: [] } }), settle: async () => ({ ok: true, settled: 0 }) };
+    const m = { book, stores: () => new Map(), region: 17, regionName: 'Daggerfall', regionNameOf: () => 'Wayrest', hubs: {}, name: (k) => k, countName: (k) => k,
+      pieces: () => [], take: () => true, putBack: () => {}, mint: () => {}, pieceName: () => 'a piece', weavers: [{ key: 'cloth:linen', marks: 2 }], stock: async () => ({ ok: true }),
+      picture: (k) => { asked.push(k); return k === 'ore:iron' || k === 'cloth:linen' ? PIC : null; } };
+    let root = null;
+    const tab = createMarketTab(m, { busy: () => false, run: async (go) => go(), rerender: () => { root = tab.body(); }, nowS: () => 0, alive: () => true });
+    await tab.open();
+    root = tab.body();
+    const row = find(root, '.market-row');
+    const name = row.children[0];
+    assert.equal(name.tagName, 'B');
+    assert.deepEqual(picOf(name).map((i) => [i.className, i.attrs.src]), [['market-pic', 'data:pic']], 'the material\'s picture before its name');
+    assert.ok(asked.includes('ore:iron') && asked.includes('cloth:linen'), 'asked of the row\'s own material and the supplier\'s');
+    const counter = find(root, '.market-counterrow');
+    assert.equal(picOf(counter).length, 1, 'the supplier\'s row pictured');
+    const views = root.querySelectorAll('.market-view');
+    assert.deepEqual(views.map((v) => v.attrs['data-dficon']), MARKET_VIEW_GROUPS.flatMap(([, ids]) => ids).map((id) => MARKET_VIEW_ICONS[id]), 'each view its glyph');
+    for (const icon of Object.values(MARKET_VIEW_ICONS)) assert.ok(DFICON_ROWS[icon], `a glyph for ${icon}`);
+    const bare = createMarketTab({ ...m, picture: undefined }, { busy: () => false, run: async (go) => go(), rerender: () => {}, nowS: () => 0, alive: () => true });
+    await bare.open();
+    assert.equal(picOf(find(bare.body(), '.market-row')).length, 0, 'no picture: the name alone');
+    const vendors = createVendorTab({ mode: 'board', read: async () => ({ ok: true, data: { rows: [{ id: 'v', item: { name: 'Dagger' }, price: 9, owner: 'Eve', map: 1, buildingKey: 2, expiresAt: 99 }] } }),
+      nameOf: (i) => i.name, townOf: () => 'Daggerfall', picture: (it) => (it.name === 'Dagger' ? PIC : null) }, { busy: () => false, run: async (go) => go(), rerender: () => {}, nowS: () => 0, alive: () => true });
+    await vendors.open?.();
+    const vrow = find(vendors.body(), '.market-row');
+    assert.deepEqual(picOf(vrow.children[0]).map((i) => i.attrs.src), ['data:pic'], 'a trader\'s piece pictured');
+  }
+  assert.match(PROF_CSS, /@media \(max-width: [0-9]+px\) \{[^]*?\.market-views \{ flex: none; flex-wrap: nowrap; overflow-x: auto;/, 'a phone\'s views keep their height');
+  assert.equal(pictureNode(null, () => null, 'x'), null);
+  withDom(() => {
+    const held = new Map([['ore:iron', 34]]);
+    const stores = new Map([...held].map(([k, n]) => [k, { material: k, own: n, bought: 0 }]));
+    const book = { state: { open: true, day: 1, character: 'c', account: 'a', readAt: Date.now(), stores, tracks: new Map(), today: {}, caps: null }, stale: () => false, refresh: async () => ({ ok: true }),
+      held: (k) => held.get(k) ?? 0, store: (k) => stores.get(k), track: (pr) => ({ profession: trackOf(pr), xp: 0, rank: 0, specs: { 50: null, 100: null } }), materials: () => [], pendingWithdrawals: 0, pendingCrafts: 0 };
+    setProfessionsPages({ book, name: (k) => k, withdraw: async () => ({ ok: true, text: '' }), picture: (k) => (k === 'ore:iron' ? PIC : null) });
+    const el = (tag, cls, t) => { const n = document.createElement(tag); if (cls) n.className = cls; if (t != null) n.textContent = t; return n; };
+    const root = el('div');
+    drawStoresPage(root, () => {}, { el, divider: (w) => el('h3', null, w), meter: () => el('div') });
+    const card = find(root, '.prof-mat');
+    assert.deepEqual(picOf(card.children[0]).map((i) => [i.className, i.attrs.src]), [['prof-matpic', 'data:pic']], 'a Stores card its material\'s picture');
     setProfessionsPages(null);
   });
 });

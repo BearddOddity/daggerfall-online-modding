@@ -1772,6 +1772,14 @@ ${DFICON_CSS}
 .market-views { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; }
 .market-viewgroup { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
 .market-viewpart { margin-right: 4px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #a89a84; }
+/* MENU-ORDER (2026-10-12): the market's views are pictured chips, never a second row of the board's tabs; a row's name
+   wears its piece's picture (the host's, from the player's data) */
+.market-views .market-view { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; font-size: 13px; letter-spacing: 0.06em;
+  border: 1px solid rgba(192,138,62,0.22); background: rgba(10,8,6,0.4); }
+.market-views .market-view[data-dficon]::before { width: 16px; height: 16px; margin: 0; }
+.market-views .market-view.on { color: #f3cf86; border-color: var(--brass, #c08a3e); background: rgba(192,138,62,0.16); box-shadow: none; }
+.market-viewgroup { gap: 4px; }
+.market-pic, .prof-matpic { flex: none; vertical-align: middle; margin-right: 8px; image-rendering: pixelated; }
 .market-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .market-search { flex: 1 1 140px; min-width: 0; }
 .market-num { width: 5.5em; }
@@ -1882,7 +1890,7 @@ ${DFICON_CSS}
   /* AUDIT 657 B2: a counter's row on two lines at a phone's width - its name on the first, the price, the count and the
      press under it; four columns left the name none, a letter a line */
   .market-counterrow { grid-template-columns: minmax(0, 1fr) 4.5em auto; } .market-counterrow > b { grid-column: 1 / -1; }
-  .market-views { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .market-views { flex: none; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }   /* MENU-ORDER: flex none - a scroller in the tab's column took no height (min-height: auto is 0 past an overflow), and a phone's views were gone */
   .market-viewgroup { flex: none; flex-wrap: nowrap; }
   .market-view { flex: none; white-space: nowrap; }
   .market-auction { grid-template-columns: minmax(0, 1fr); } .market-auction > * { grid-column: 1 / -1; }
