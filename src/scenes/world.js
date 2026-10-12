@@ -295,7 +295,7 @@ import { huntKind, createBodyStamps, bodiesHere, trackerMarks } from './huntHost
 import { fishKind } from './fishHost.js';   // PROF8: Fishing's casts and schools - a kind in it
 import { utcDayOfMs } from '../net/nodeLaw.js';   // PROF8: a haul's UTC day
 import { registerPlayerKillListener } from '../systems/playerKills.js';   // PROF7: the player's own kill stamps a body
-import { setProfessionsPages } from '../ui/profPages.js';   // PROF1: the Professions and Stores pages on the character sheet's rail
+import { setProfessionsPages, forgeOffered, focusStoresStation, WORKBENCH_COLD_LINE } from '../ui/profPages.js';   // PROF1: the Professions and Stores pages on the character sheet's rail; CARP-YARD: the joinery's bench opens it
 import { createSaddleHost } from './saddleHost.js';   // STEED-UI: the saddle panel - the horse and the wagon on screen (Enhanced Plus)
 import { setHoldingsProvider, stableProviderFor } from '../ui/holdingsPages.js';   // HOLDINGS: the Stable and the Fleet pages on the pause menu's Holdings tab
 import { fleetBook, fleetShip, titleDeed, knowShip, retitle, setShipPort, forgetShip, fleetSaveSlot, FLEET_SAVE_VENDOR } from '../systems/fleet.js';   // HOLDINGS: the Fleet's ledger and its book of titles
@@ -309,8 +309,8 @@ import { createShipyardHost } from './shipyardHost.js';   // SHIPYARDS: the ship
 import { createWardenShows } from './wagonWardenShow.js';   // WARDEN1: the town watch's throw, played
 import { createWagonWarden, wardenTownIn } from './wagonWardenHost.js';   // WARDEN1: the town watch - my wagon's stamp, the cell's words, the offline clock; AUDIT WARDEN1 D3: the town under a point, one pure home
 import { WARDEN_VENDOR, isWardenTown } from '../systems/wagonWarden.js';   // WARDEN1: the stamp's save slot, and the towns a watch keeps
-import { townGroundOf, yardSitesOn, carveYards, MONUMENT_KEEP_M, yardMeasuresOf, placedModelBox } from '../world/merchantYardSites.js';   // MERCHANT-YARDS: where they stand off the town's layout, and the people's navgrid carved round them
-import { isYardTown, yardKeeper, YARD_KIND_ORDER } from '../systems/merchantYards.js';   // MERCHANT-YARDS: the towns that stand them, who keeps them, the town's people
+import { townGroundOf, yardSitesOn, craftYardSitesOn, carveYards, MONUMENT_KEEP_M, yardMeasuresOf, placedModelBox } from '../world/merchantYardSites.js';   // MERCHANT-YARDS: where they stand off the town's layout, and the people's navgrid carved round them
+import { isYardTown, yardKeeper, ALL_YARD_KINDS, YARD_BENCH } from '../systems/merchantYards.js';   // MERCHANT-YARDS: the towns that stand them, who keeps them, the town's people
 import { isPortTown, portTownByData, portKeeper, portPlaceName, PORT_SITE_ORDER } from '../systems/portPlaces.js';   // SHIPYARDS: the port towns, their keepers and their places' names
 import { townSeaOf, seaBearing, seaField, portSitesOn, portPlaceRows, sceneToLocationXZ } from '../world/portSites.js';   // SHIPYARDS: where a port town's shipyard and lighthouse stand - its seaward ground
 import { SHIPYARD as SHIPYARD_LAYOUT } from '../world/shipyardModel.js';   // SHIPYARDS: the crew hall's table, for the talk directory's row
@@ -881,7 +881,7 @@ import { setZoneEntity } from '../ui/hudActiveSpells.js';   // WILD1: the classi
 import { createWedManager, wedWhyText, wedMineText } from '../net/wedSession.js';   // LEGACY7 part three: two players wed - the handshake's state machine (pure)
 import { createFamilyBodies, familyRoomSprites } from '../world/familyBodies.js';
 import { createPopulationLane, holdNpcBodies } from '../characters/npcBodies.js'; import { folkActor } from '../characters/folkBodies.js'; import { residentWalkerActor } from '../characters/rosterBodies.js';
-import { personLook, personActor } from '../characters/peopleBodies.js'; import { staticNpcData } from '../characters/staticNpc.js';   // MWNPC8b: the street's standing people   // MWNPC7: the street's walkers in Morrowind bodies   // LEGACY7 part four: the line drawn in its own body, as an online peer is
+import { personLook, personActor, figureLook } from '../characters/peopleBodies.js'; import { staticNpcData } from '../characters/staticNpc.js';   // MWNPC8b: the street's standing people   // MWNPC7: the street's walkers in Morrowind bodies   // LEGACY7 part four: the line drawn in its own body, as an online peer is
 import { houseLine } from '../net/houseLaw.js'; import { houseWord } from '../systems/legacy/houseName.js';   // LEGACY7 part three: the house a proposal comes from, on its prompt; LEGACY-NAME: a seat's house said once
 import { createDuelRecords, duelUncountedText } from '../net/duelRecord.js';   // DUEL1: the Inspect card's duelling record, asked and kept
 import { createDuelPrompt } from '../ui/duelPrompt.js';   // DUEL1: the challenge, as the challenged player sees it
@@ -957,6 +957,8 @@ import { ROTOR_HUB, rotorPhase, advanceRotor, mountRotor, MILL_SOUND, millSoundP
 import { BODY } from '../world/windmillMesh.js';   // WM2d: the tower, for the collider
 import { remapSubMeshes } from '../world/texRemap.js';   // WM3: the one climate/dungeon remap seam
 import { homeLookRemap, HOME_LOOK_BUILD_WAIT_MS } from '../world/homeLook.js';   // HOME-LOOK: a painted house's own table
+import { createStandingHorses, isStandingHorseFlat } from '../world/standingHorses.js';   // STAND-HORSE: the town's and the Stable's horses as the 3D horse
+import { isStandFlat, standFlatId, standFlatRecord } from '../world/standFlats.js';   // STAND-FLAT: a town horse and a person's flat no StaticNPC holds, a batch each
 import { DECOR_DRAW, decorCullVerdict, offerDecorFigures } from './decorRoom.js';   // PERF-YARD: a placed piece's verdict, from the host's view test; MWNPC18: a yard's figures in their bodies
 import { createHomeYards, yardLampRows } from './homeYards.js';   // HOME-YARD: the town's yards, and the owner's decorator outside; YARD-LIGHT: a yard's lamps as the night's scene lights
 import { modelFootRects, footRectsAt } from './homeYards.js';   // FB1009 HOME-FOOT: a building's ground, its models' faces seen from above
@@ -1993,7 +1995,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   // one latch holds every craft and brew (profBook.js _craftBusy), so a station's own word named another's work: the
   // book's refusal says the hands are busy (accountClient.js 'prof-busy')
   const craftStation = (profession) => (profession === 'carpentry'
-    ? { here: () => modes?.workbenchHere?.() ?? null, a: 'a workbench', who: 'furnisher', noun: 'workbench', kept: BENCH_KEPT_TEXT, xp: professionName('carpentry') }   // CRAFT3: each discipline's craft's track - Building's
+    ? { here: () => workbenchHere(), a: 'a workbench', who: 'furnisher', noun: 'workbench', kept: BENCH_KEPT_TEXT, xp: professionName('carpentry') }   // CRAFT3: each discipline's craft's track - Building's
     : profession === 'outfitting'
       ? { here: () => modes?.loomHere?.() ?? null, a: 'a loom', who: 'tailor', noun: 'loom', kept: LOOM_KEPT_TEXT, xp: 'Outfitting' }
       : profession === 'masonry'   // PROF11: the mason's bench - a General Store's or a home's
@@ -3498,7 +3500,34 @@ export async function bootWorld(canvas, renderer, params, status) {
   // MWNPC8b (section 13b): AND THE STREET'S STANDING PEOPLE - each StaticNPC flat its own batch (standPixelNpcs), offered
   // from the near rings as the pixels are walked, read as the buildings' are (their data, their faction's row)
   const streetPeople = createPopulationLane({ laneName: 'people', renderer, collider: () => collider });
+  // STAND-HORSE (Morrowind-NPCs.md section 28): THE HORSES THAT STAND - the town's (TEXTURE.201's) of the near rings and
+  // the Stables' three - each the 3D horse on the Morrowind lane, as the pool's and the road's horses already are
+  const standingHorses = createStandingHorses({ renderer });
+  /** The street's frame ends the standing horses after its people are drawn and before its flats: the Stables' offered
+   *  (the town's were in the pixel walk), the cut made, the horses drawn in a bind of their own. A function of the host's,
+   *  not a statement of the frame's (PERF-V8). */
+  function standingHorsesFrame(canvas, proj, view, eye, dt) {
+    if (merchantYards && _mode() === 'exterior') merchantYards.offerHorses(standingHorses);   // the Stables' horses (their flats ride livePersonBatches)
+    if (standingHorses.end(dt, { proj, view })) standingHorses.draw(canvas, { eye, proj, view });
+  }
   const offerStreetPerson = (a, b) => streetPeople.offer(a, b);   // AUDIT MW-NPC II P1: the yards' keepers offered on it
+  // STAND-FLAT (Morrowind-NPCs.md section 28): a boat's crew (scenes/comeSailAwayPool.js people) offered on it, read as a
+  // placed figure is, at their flat's base - a concealed owner's crew keeps the owner's veiled flats; off the lane, or a
+  // crew no body stands for, their flats drawn
+  const crewFlatDrawn = (f, b) => { b.castOnly = false; };
+  let _crewEye = [0, 0, 0], _crewDt = 0;   // the frame's eye and clock, set before the crews are walked
+  const offerCrewPerson = (f, b) => {
+    const look = b.conceal ? null : figureLook(f, yardFigureCtx);
+    if (look) streetPeople.offer(personActor(f, look, b.origin, _crewEye, _crewDt), b);
+    else b.castOnly = false;
+  };
+  /** The street's frame offers the crews (`on` - the people lane's frame is up), before the lane draws. A function of the
+   *  host's, not a statement of the frame's (PERF-V8: the frame's bytecode keeps its quarter under V8's ceiling). */
+  function offerCrews(eye, dt, on) {
+    if (!csaOn() || _mode() !== 'exterior') return;
+    _crewEye = eye; _crewDt = dt;
+    csa.people(on ? offerCrewPerson : crewFlatDrawn);
+  }
   // MWNPC18: what a yard's figure is read by - FLATS.CFG and the region's race, asked only when a figure is first looked at
   const yardFigureCtx = { get flats() { return pipeline.flatsFile?.() ?? null; }, get race() { return REGION_RACES[_questRegionIndex()] + 1; } };
   const streetLook = (pn) => {
@@ -3976,7 +4005,8 @@ export async function bootWorld(canvas, renderer, params, status) {
     return false;
   };
   /** MERCHANT-YARDS + SHIPYARDS: A TOWN'S PLACES - its yards placed on its ground as they always were (townGroundOf, then
-   *  yardSitesOn - yardSitesOf's own two steps), and a port town's shipyard and lighthouse on what they left (portSitesOn
+   *  yardSitesOn - yardSitesOf's own two steps; CARP-YARD: the joinery last, on what the port left - craftYardSitesOn),
+   *  and a port town's shipyard and lighthouse on what they left (portSitesOn
    *  off the sea: the town's own shoreline cells, else the sea's bearing off the map pixels round it - seaPixel), each
    *  keyed by the town and its kind, with its keepers (systems/portPlaces.js portKeeper - the shipyard's crewmaster beside
    *  its shipmaster), its name and the town's people. One memo a town, keyed by its measures and whether it is a port;
@@ -4011,11 +4041,12 @@ export async function bootWorld(canvas, renderer, params, status) {
           const bearing = seaBearing(lp.x, lp.y, seaPixel);   // AUDIT SHIPYARDS U2: and the town's own water against it is no sea
           ports = portSitesOn(g, seaField(g.width, g.height, townSeaOf(yl, bearing), bearing));
         }
+        if (g && yardTown) sites.push(...craftYardSitesOn(g));   // CARP-YARD: the joinery on what the yards and the port left - none of theirs moves
         memo = { sig, sites, ports };
         _yardMemo.delete(mapId);
         _yardMemo.set(mapId, memo);
         while (_yardMemo.size > 8) _yardMemo.delete(_yardMemo.keys().next().value);
-        if (yardTown && memo.sites.length < YARD_KIND_ORDER.length) console.log(`[yards] ${dfLocation.name}: no room for ${YARD_KIND_ORDER.filter((k) => !memo.sites.some((t) => t.kind === k)).join(' or ')}`);
+        if (yardTown && memo.sites.length < ALL_YARD_KINDS.length) console.log(`[yards] ${dfLocation.name}: no room for ${ALL_YARD_KINDS.filter((k) => !memo.sites.some((t) => t.kind === k)).join(' or ')}`);
         if (port && memo.ports.length < PORT_SITE_ORDER.length) console.log(`[port] ${dfLocation.name}: no room for its ${PORT_SITE_ORDER.filter((k) => !memo.ports.some((t) => t.kind === k)).join(' or its ')}`);
       }
       const shipmaster = portKeeper(mapId, 'shipyard', regionIndex), crewmaster = portKeeper(mapId, 'crewhall', regionIndex), lightkeeper = portKeeper(mapId, 'lighthouse', regionIndex);
@@ -4281,6 +4312,9 @@ export async function bootWorld(canvas, renderer, params, status) {
       for (let i = 0; i < 3; i++) { p._box[i] = Math.min(p._box[i], batch._box[i]); p._box[3 + i] = Math.max(p._box[3 + i], batch._box[3 + i]); }
       armFlatAnim(batch, t, act.archive, act.record, p.flatAnims, (p.placeHold ?? pipeline).uploadRecordFrame);
       p.batches.push(batch);
+      // STAND-FLAT (bible/04-Characters/Morrowind-NPCs.md section 28): a person the marker stood is a standing person -
+      // the street's lane stands their body as it does a site's own people
+      if (isStandFlat(act.archive, act.record)) p.standFlats?.push(standFlatRecord({ archive: act.archive, record: act.record, x: base[0], y: base[1], z: base[2] }, batch, standFlatId(`${p.px},${p.py}`, base[0], base[2])));
     }).catch(() => {});
   }
   // WOD4: PrivateersHold.Start's seven rolls (rollHoldFoes). Each foe is
@@ -5744,6 +5778,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     const pixelAnimals = []; // A4: archive-201 town animals, pixel-local {pos, sound}
     const pixelSprings = []; // SURV3: the mod's water sources - fountains and wells (212: 0, 2, 8, 9; 85: 0), the dry fountain (212: 3), the troughs (41220-41222) - pixel-local {pos, dry}
     const pixelNpcFlats = []; // AUDIT 26 (F019): the flats RMBLayout stands as StaticNPCs, pixel-local
+    const pixelStandFlats = [];   // STAND-FLAT / STAND-HORSE: the town horses and the people no StaticNPC holds, pixel-local - a batch each
     const pixelBoards = [];   // the block's BULLETIN BOARDS (model 41739), pixel-local boxes
     const pixelGraves = [];   // SEARCH1: a Graveyard location's headstones (systems/searchables.js isTombstoneModel), pixel-local boxes
     const light210 = await getTexture(LIGHTS_ARCHIVE);
@@ -6052,6 +6087,11 @@ export async function bootWorld(canvas, renderer, params, status) {
           // read it - it simply never reaches a batch.
           if (flat.editor) continue;
           const fx = locLocal[0] + b.originX + flat.x, fz = locLocal[2] + b.originZ + flat.z;
+          // STAND-FLAT / STAND-HORSE (bible/04-Characters/Morrowind-NPCs.md section 28): a town horse and a person no
+          // StaticNPC holds (a flat of a person's archive with no faction) stand in batches of their own
+          // (standPixelFlats, below), so a 3D horse or a Morrowind body can take one's place. Neither was ever cover
+          // (201 is NOT_COVER's; a person never is - AUDIT TACT B3).
+          if (isStandFlat(flat.archive, flat.record)) { pixelStandFlats.push({ archive: flat.archive, record: flat.record, x: fx, y: locLocal[1] + flat.y, z: fz }); continue; }
           // NATURE-GROUND (2026-09-26, Ilvi: "a lot of floating sprites across Illiac Bay"): the block's ground scenery and nature
           // flats stand on the DRAWN ground - the plane holds only inside the flattened rect, the band past it is only eased toward
           // it (DFU's too: AddNatureFlats reads no terrain); inside the rect the lift is exactly 0. A lamp, a sign, an animal keep the
@@ -6301,7 +6341,8 @@ export async function bootWorld(canvas, renderer, params, status) {
         if (vergeNet && !vergeClear(vergeNet, px, py, f.base[0], f.base[2], WOD_PIECE_ROAD_CLEAR / UNITS_PER_METRE + ((await halfWidthsOf(f.archive))[f.record] ?? 0) * f.scale.x)) { _wodOffRoad++; continue; }
         if (pointNearGate(gateClear, px, py, f.base[0], f.base[2], WOD_FLAT_GATE_CLEAR_M)) { gateLedger.refused = true; _wodOffGate++; continue; }   // GATE-CLEAR: and one in the gate's clearing
         gateLedger.reach.push(f.base[0], f.base[2], f.base[0], f.base[2], WOD_FLAT_GATE_CLEAR_M);
-        if (f.scale.x === 1 && f.scale.y === 1) addFlat(f.archive, f.record, f.base[0], f.base[1], f.base[2]);
+        if (f.scale.x === 1 && f.scale.y === 1 && isStandFlat(f.archive, f.record)) pixelStandFlats.push({ archive: f.archive, record: f.record, x: f.base[0], y: f.base[1], z: f.base[2] });   // STAND-FLAT / STAND-HORSE: a site's horse or person, a batch of its own
+        else if (f.scale.x === 1 && f.scale.y === 1) addFlat(f.archive, f.record, f.base[0], f.base[1], f.base[2]);
         else addScaledFlat(f.archive, f.record, f.scale, f.base[0], f.base[1], f.base[2]);
       }
       // AddLight: DaggerfallUnity's interior light prefab under the flat,
@@ -6510,6 +6551,27 @@ export async function bootWorld(canvas, renderer, params, status) {
       batches.push(batch);
       if (isCoverFlat(archive, record, size)) for (const c of centers) coverItems.push(coverProxy(c, size));
     }
+    // STAND-FLAT / STAND-HORSE (bible/04-Characters/Morrowind-NPCs.md section 28): each town horse and each person no
+    // StaticNPC holds a batch of its own in the pixel's list (its cull, its far-ring rule, its animation and its teardown
+    // the groups'), minted as a group's plain picture is - a person's picture the clothed stand-in's under NUDE-FLATS, the
+    // born flat their identity. The record is world/standFlats.js's (a horse's heading and look, a person's piece for
+    // figureLook - MWNPC18's reading: FLATS.CFG's sex and caption, the region's race).
+    const standFlats = [];
+    for (const sf of pixelStandFlats) {
+      const horse = isStandingHorseFlat(sf.archive, sf.record);
+      const [archive, record] = horse ? [sf.archive, sf.record] : drawnFlat(sf.archive, sf.record);
+      const t = await getTexture(archive);
+      if (!t || record >= t.recordCount) continue;
+      uploadRecord(archive, record);
+      const size = billboardSize(t, record);
+      const centers = [[sf.x, sf.y, sf.z]];
+      const batch = renderer.createBillboardBatch(archive, record, size, centers);
+      batch._box = flatBatchAabb(centers, size);
+      unionBox(batch._box);
+      armFlatAnim(batch, t, archive, record, flatAnims, uploadRecordFrame);
+      batches.push(batch);
+      standFlats.push(standFlatRecord(sf, batch, standFlatId(`${px},${py}`, sf.x, sf.z)));
+    }
     // TACT1: under the pixel's own bucket key - it leaves with the pixel (Collider.removeBucket) - and a rebuild stands it anew
     collider.cover.remove(key);
     if (coverItems.length) collider.cover.add(key, coverItems, ((o) => () => state.pixelTranslation(px, py, o))([0, 0, 0]));
@@ -6632,6 +6694,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       portSites,   // SHIPYARDS: the shipyard's and the lighthouse's sites, location frame - null off a port town
       wardenTown: dfLocation && isWardenTown(dfLocation.mapTableData?.locationType) ? (dfLocation.mapTableData?.mapId ?? 0) >>> 0 : null,   // WARDEN1: a city's, a hamlet's or a village's map id - its watch throws a wagon parked too long on its road, or past its fourth
       npcs: pixelNpcs,   // AUDIT 26 (F019): RMBLayout's street StaticNPCs, pixel-local
+      standFlats,   // STAND-FLAT / STAND-HORSE: the town horses and the people no StaticNPC holds, a batch each (in `batches`), pixel-local
       npcBatches: [], npcQuestPass: false,   // E3: their billboards (a subset of `batches`) and the one-shot SetupIndividualStaticNPC latch
       boards: pixelBoards,   // the block's bulletin boards (41739), pixel-local boxes
       graves: pixelGraves,   // SEARCH1: a graveyard's headstones, pixel-local boxes
@@ -8362,6 +8425,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** PROF9 (bible/06-Systems/Professions-Arc.md 3.3): whether the player stands as a Field Cook - online, the professions
    *  the account's, Cooking's choice at 50 - so a night at their own Campfire spends no fuel (survival/camp.js spendCampNight). */
   const fieldCookNow = () => profBook?.state?.open === true && profBook.track('cooking')?.specs?.[50] === 'field-cook';
+  /** CARP-YARD (bible/03-World/Merchant-Yards.md CARP-YARD): THE WORKBENCH THE PLAYER STANDS AT for Carpentry - in the
+   *  street a joinery's (scenes/merchantYardsHost.js workbenchNear: its bench within the yard's reach - YARD_BENCH, the
+   *  carpenter's, at the furnisher's own fee), in a building the mode machine's (worldModes workbenchHere: a Furniture
+   *  Store's, a home's, a hall's, a caravan's) - or null. */
+  function workbenchHere() {
+    if (_mode() !== 'exterior') return modes?.workbenchHere?.() ?? null;
+    return merchantYards?.workbenchNear?.(walkMode && playerSpawned ? player.feetAt() : null) ? YARD_BENCH : null;
+  }
   /** PROF9 (professionLaw COOK_FIRE): THE FIRE THE PLAYER STANDS AT for Cooking - on the street and in the wilderness any
    *  lit camp or the world's own brazier within C&C's reach of its flame (camps.js fireNear, the world's fire in every
    *  tier); in a building or a dungeon the mode machine's own (worldModes cookFireHere) - or null. */
@@ -12587,7 +12658,7 @@ export async function bootWorld(canvas, renderer, params, status) {
           const st = craftStation(recipeById(recipe)?.profession);
           const f = st.here();
           if (!f) return { ok: false, text: `You are not at ${st.a}.` };
-          if (f.fee > 0 && totalGoldAmount(playerEntity) < f.fee) return { ok: false, text: `The ${st.who} asks ${f.fee} gold for the use of the ${st.noun}.` };
+          if (f.fee > 0 && totalGoldAmount(playerEntity) < f.fee) return { ok: false, text: `The ${f.who ?? st.who} asks ${f.fee} gold for the use of the ${st.noun}.` };   // CARP-YARD: the joinery's carpenter
           // AUDIT 30 C4: the fee rides the kept craft and is paid as its pieces are minted (profMintCraft) - by this press's
           // answer, or a settle's later; A4: the workbench's kept word its own
           // SEAT2b part two (Seats-Arc 7.5): the town the station stands in, where my guild holds it and its crafting halls
@@ -12601,7 +12672,7 @@ export async function bootWorld(canvas, renderer, params, status) {
           const paid = f.fee > 0 && !r.elsewhere;
           const rec = recipeById(recipe);
           const made = rec?.kind === 'siege' ? storedText(rec.name, Number(r.data.count) || 1) : craftedText(mintPieces(r.data));   // SEAT2b part two: a Ram Kit is the Stores'
-          return { ok: true, text: `${chain ? `${chain} ` : ''}${made} (+${r.data.xp} ${st.xp} XP)${paid ? `, and paid the ${st.who} ${f.fee} gold` : ''}.` };
+          return { ok: true, text: `${chain ? `${chain} ` : ''}${made} (+${r.data.xp} ${st.xp} XP)${paid ? `, and paid the ${f.who ?? st.who} ${f.fee} gold` : ''}.` };
         },
         stock: async (material, qty, counter = stockOf(material)?.counter) => {
           const r = await profBook.stock(material, qty);
@@ -12611,7 +12682,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         },
         heatBand: () => heatBand({ strength: liveStat(playerEntity, 'strength'), agility: liveStat(playerEntity, 'agility') }),
         // PROF4 (bible/06-Systems/Professions-Arc.md 25): THE WORKBENCH the player stands at, and the plane's band
-        workbench: () => modes?.workbenchHere?.() ?? null,
+        workbench: () => workbenchHere(),   // CARP-YARD: and a joinery's in the street
         planeBand: () => planeBand({ agility: liveStat(playerEntity, 'agility'), willpower: liveStat(playerEntity, 'willpower') }),
         purse: () => totalGoldAmount(playerEntity),   // AUDIT 30 U13: a station's fee the purse cannot meet is not offered
         // PROF7 (bible/06-Systems/Professions-Arc.md 29): THE LOOM the player stands at, the stitch's band, and the clothing
@@ -12769,9 +12840,9 @@ export async function bootWorld(canvas, renderer, params, status) {
           const work = smeltRecipe(recipe);
           const bench = work?.station === 'workbench', loom = work?.station === 'loom', mason = work?.station === 'mason';
           const alch = work?.station === 'alchemy';   // PROF12: a Transmuter's transmutation, at the alchemy station
-          const f = (alch ? modes?.alchemyHere?.() : mason ? modes?.masonHere?.() : loom ? modes?.loomHere?.() : bench ? modes?.workbenchHere?.() : modes?.forgeHere?.()) ?? null;
+          const f = (alch ? modes?.alchemyHere?.() : mason ? modes?.masonHere?.() : loom ? modes?.loomHere?.() : bench ? workbenchHere() : modes?.forgeHere?.()) ?? null;
           if (!f) return { ok: false, text: alch ? 'You are not at an alchemy station.' : mason ? 'You are not at a mason\'s bench.' : loom ? 'You are not at a loom.' : bench ? 'You are not at a workbench.' : 'You are not at a forge.' };
-          const who = alch ? 'alchemist' : mason ? 'mason' : loom ? 'tailor' : bench ? 'furnisher' : 'smith';
+          const who = alch ? 'alchemist' : mason ? 'mason' : loom ? 'tailor' : bench ? (f.who ?? 'furnisher') : 'smith';   // CARP-YARD: the joinery's carpenter
           if (f.fee > 0 && totalGoldAmount(playerEntity) < f.fee) return { ok: false, text: `The ${who} asks ${f.fee} gold for the use of the ${alch ? 'station' : mason ? 'mason\'s bench' : loom ? 'loom' : bench ? 'workbench' : 'forge'}.` };
           const r = await profBook.smelt(recipe, count, { clean });
           if (!r?.ok) return { ok: false, text: `${accountRefusalText(r?.error)}${movedFirstText(r)}` };
@@ -26016,7 +26087,18 @@ export async function bootWorld(canvas, renderer, params, status) {
     open: (site, mode, name) => modes?.openYardTrade?.(site.kind, site.regionIndex, mode, name, site.mapId) ?? false,   // STEED1: the town's own horses
     say: (text) => townTalk.say(text), midText: (text) => setMidScreenText(text),
     mend: () => mendAtYard(),   // WAGONS4: the Wagon Yard's wright
+    bench: () => openYardBench(),   // CARP-YARD: the joinery's workbench
   });
+  /** CARP-YARD (bible/03-World/Merchant-Yards.md CARP-YARD): THE JOINERY'S WORKBENCH PRESSED - the Stores page, landed on
+   *  the workbench's section, as a home's workbench opens it (worldModes useDecorStation: the page's own gate,
+   *  forgeOffered); where the page is not (offline, the switch shut) the bench says so, as a home's does. Answers true
+   *  (the press handled). */
+  function openYardBench() {
+    if (!forgeOffered()) { townTalk.say(WORKBENCH_COLD_LINE); return true; }
+    focusStoresStation('workbench');
+    hudCtx.togglePause({ at: 'stores' });
+    return true;
+  }
   /** WAGONS4 (bible/06-Systems/Wagon-Upkeep.md): THE WAGON YARD'S MEND - the wagon driven made whole for the wright's
    *  price (systems/wagonUpkeep.js mendPrice), MEND_FETCH more when it is not drawn up at the yard (Horse Cart and
    *  Cargo's wagon standing out of the counter's reach - the reach its load is taken at, horseCart.js
@@ -32838,6 +32920,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // ApplySmoothing pays it out at the setting's fraction. Before the
     // camera is read.
     gamepad?.tick(dt);   // GP1: the pad's frame - its keys, its stick, its look - before the paused gate, so a window still sees Back and a lifted thumb still releases
+    const frameLook = () => {   // PERF-V8 (MWNPC19: the frame back under three quarters of the ceiling)
     if (!gamePaused()) {
       if (swingSuppressesLook({ swingHeld: rightHeld || swipeHeld || swingKeyLatch, weaponIsBow: weaponRig.playerWeapon.machine?.isBow }) && walkMode && modeNow() === 'exterior' && !naval?.atGuns) lookFilter.settle();   // MAC-O2: the law is lookFilter.js's one seam (:246-248, WeaponSwingMode included); `walkMode` and the mode are this host's own - the mode host owns another screen weapon; NAV-H: at a helm with guns the held attack is the aim, which is laid BY the look
       else lookFilter.tick(dt, cam);
@@ -32854,6 +32937,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       if (pressed(latch.edge, keys, 'CenterView')) lookFilter.centerPitch(cam);   // KB1: Home levels the view (classic Daggerfall's centre key; DFU binds it and reads it nowhere)
       _lockChest = lockOn.tick(dt, cam, cam.pos, lookFilter);   // TI1: the lock pays its facing into the same filter, owed to the NEXT tick like a look
     }
+    };
+    frameLook();
     // DEATH-KEPT (FIELD BUGS 2026-09-30b, Niwy: "If you cure a disease and die at the same time you will became
     // immortal"): A PLAYER AT ZERO IS DYING, whatever took the screen. The damage door raises a death on the blow that
     // crosses to zero and never again (the TRANSITION, AUDIT 21), so the death lives in its screen - and a window written
@@ -33109,6 +33194,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       if (livingWorldOn()) livingCarriedStep(LIVING_CARRIED_SLICE_MS);   // AUDIT LW-II-2 H7: the word carried worked indoors and below too - a town first asked from a room (a save loaded in its tavern, a day begun abed) told none all its stay
       folkStreet.destroy();   // MWNPC7: indoors, the walkers' bodies let go with the street they walked
       streetPeople.destroy();   // MWNPC8b: and the standing people's
+      standingHorses.destroy();   // STAND-HORSE: and the standing horses'
+      csa.people(crewFlatDrawn);   // STAND-FLAT: and a boat's crew drawn as their flats again - they still stand where a boat does indoors (extraBillboards)
       heatHaze.suppress();   // HAZE1: inside is no exterior - the strength is 0 at once (HeatHazeMod.Update), and eases up again outside
       { const _wfPx = playerTravelPixel(); windfall.frame({ dt: gamePaused() ? 0 : dt * worldTimeScale(), outside: false, weather, minutes: skyMinutes(), climate: maps.getClimateIndex(_wfPx.x, _wfPx.y), mapPixel: _wfPx, feet: player.pos, height: player.height }); }   // WINDFALL1: WindMod.Update indoors - the gust eases out, the sources fade, the leaves stop (AUDIT ENVIRONS W1: on the game's seconds)
       { const _snPx = playerTravelPixel(); _snowPixels.clear(); snowfall.frame({ now: now / 1000, inside: true, player: null, weather, seconds: worldMinutes() * 60, winter: season === SEASON.Winter, climate: maps.getClimateIndex(_snPx.x, _snPx.y), corpses: snowBodies }); }   // SNOWFALL1: DynamicSnowController.Update indoors - the surfaces hidden, the snowpack and the refill kept by the event clock
@@ -34701,6 +34788,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // distance from the player's own pixel - a hundred-odd integers,
     // sorted into a scratch array kept across frames, no allocation.
     const _peopleOn = streetPeople.frame();   // MWNPC8b
+    standingHorses.begin(tvf ? null : mwViewHorseRig(), mwv.eye);   // STAND-HORSE: the standing horses' frame - the lane's rig (none under the travel view)
     _pixelOrder.length = 0;
     for (const p of built.values()) { p._dist2 = (p.px - state.current.x) ** 2 + (p.py - state.current.y) ** 2; _pixelOrder.push(p); }
     _pixelOrder.sort((a, b) => a._dist2 - b._dist2);
@@ -34830,13 +34918,31 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         f[0] = pn.x + t[0]; f[1] = pn.y + t[1]; f[2] = pn.z + t[2];
         streetPeople.offer(personActor(pn, look, f, mwv.eye, dt), pn.standBatch);
       }
+      // STAND-FLAT / STAND-HORSE (Morrowind-NPCs.md section 28): the near rings' town horses offered their 3D horse, and
+      // the people no StaticNPC holds their bodies, read as a placed figure is (MWNPC18's figureLook) - every other
+      // ring's keep their billboards (a horse let go draws its own again)
+      if (p.standFlats && ring <= 1) for (const sf of p.standFlats) {
+        if (sf.kind === 'horse') {
+          sf.feet[0] = sf.x + t[0]; sf.feet[1] = sf.y + t[1]; sf.feet[2] = sf.z + t[2];
+          standingHorses.offer(sf, sf.feet, sf.yaw, sf.look, sf.batch, sf.seed);
+          continue;
+        }
+        const look = _peopleOn ? figureLook(sf, yardFigureCtx) : null;
+        if (!look) { sf.batch.castOnly = false; continue; }
+        const f = sf._mwFeet ??= [0, 0, 0];
+        f[0] = sf.x + t[0]; f[1] = sf.y + t[1]; f[2] = sf.z + t[2];
+        streetPeople.offer(personActor(sf, look, f, mwv.eye, dt), sf.batch);
+      }
+      else if (p.standFlats) for (const sf of p.standFlats) if (sf.kind === 'person') sf.batch.castOnly = false;
     }
     };
     framePixelWalk();
     if (yards && _mode() === 'exterior') offerDecorFigures(yards.figures(), streetPeople, _peopleOn, yardFigureCtx, mwv.eye, townTalk.overlayActive ? 0 : dt);   // MWNPC18: the figures an owner set down in a yard, standing people too (their flats ride the yards' batches)
     portBodies(mwv.eye, dt);   // SHIPYARDS: the shipmasters, crewmasters, sailors, shipwrights and lightkeepers, standing people as the yards' keepers are
+    offerCrews(mwv.eye, townTalk.overlayActive ? 0 : dt, _peopleOn);   // STAND-FLAT: the boats' crews, standing people (their flats ride livePersonBatches)
     if (merchantYards && _mode() === 'exterior') merchantYards.offerBodies(offerStreetPerson, mwv.eye, townTalk.overlayActive ? 0 : dt);   // AUDIT MW-NPC II P1: the Stables' and the Wagon Yards' keepers, standing people (their flats ride livePersonBatches)
     streetPeople.draw(canvas, proj, view, mwv.eye, townTalk.overlayActive ? 0 : dt);   // MWNPC8b: the standing people's bodies - before the flats draw
+    standingHorsesFrame(canvas, proj, view, mwv.eye, dt);   // STAND-HORSE: the standing horses in 3D, their billboards drawing nothing - before the flats draw
     siegeNpcs?.drawBodies(canvas, proj, view, mwv.eye, dt);   // MWNPC10: and the siege's fighters' (their batches ride the flats)
     // SNOWFALL1 (AUDIT ENVIRONS G7): THE SNOW BEFORE THE GROUND UNDER IT - GROUND-LAST's own law a layer up: an opaque
     // surface over the ground (SNOW_LAYER keeps it over whichever is drawn first), so a ground fragment under the snow
