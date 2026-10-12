@@ -129,7 +129,7 @@ test('SURV7: by source - the four hosts feed their env (the roof, the floor, the
   for (const [name, src] of [['world', world], ['exterior', ext]]) {
     assert.match(src, /const survivalEnvNow = \(\) => \{/, `${name}: the reader`);
     assert.match(src, /insideBuilding: m === 'interior', insideDungeon: m === 'dungeon',/, `${name}: the mode's flags`);
-    assert.match(src, /inSunlight: m === 'exterior' && !isNight\(minuteNow\(\)\) && \(weather === 'sunny' \|\| weather === 'cloudy'\),/, `${name}: the sun`);
+    assert.match(src, /inSunlight: m === 'exterior' && sunlit\(\{ hour, weather \}\),/, `${name}: the sun - AUDIT C&C's one law (temperature.js sunlit), the replay's too`);
     assert.match(src, /byFire: m === 'exterior' && camps\.byFire\(feet\),/, `${name}: the fire`);
     assert.match(src, /sleeping: playerEntity\.isResting && !playerEntity\.isLoitering \? \(playerEntity\.restKind \?\? 'rough'\) : null,/, `${name}: the sleep and its kind`);
     assert.match(src, /fireResist: elementalResistanceChance\(playerEntity, ELEMENTS\.Fire\), frostResist: elementalResistanceChance\(playerEntity, ELEMENTS\.Frost\),/, `${name}: the resistances`);
@@ -172,7 +172,7 @@ test('SURV7: by source - the four hosts feed their env (the roof, the floor, the
 test('AUDIT-FIELD: `resting` holds the needs\' per-minute harms and NOT one accrual - the law TO-FIELD sits an accelerated journey on', () => {
   const env = { ...ENV_DEFAULTS, insideBuilding: false, climateIndex: 231, month: 6, weather: 'sunny', inSunlight: true };
   const run = (resting) => {
-    const e = { stats: { endurance: 50, strength: 50 }, health: 50, maxHealth: 50, items: [], raceId: 1 };
+    const e = { stats: { endurance: 50, strength: 50 }, health: 50, maxHealth: 50, fatigue: 6400, items: [], raceId: 1 };   // AUDIT C&C N2: a body's pool, as every producer mints one - a jump leaves its last point
     let fatigue = 0, hurt = 0;
     const sinks = { drainFatigue: (n) => { fatigue += n; }, restoreFatigue: () => {}, hurt: (n) => { hurt += n; }, say: () => {} };
     // start hungry, thirsty and sleepless so every harm arm is LIVE -

@@ -377,14 +377,23 @@ test('AUDIT TEMP-UI E1: the body\'s own warmth is not resisted - a Resist Fire n
   assert.equal(feltTemperature(winter, worn, { raceId: RACES.Breton, fireResist: 9 }).felt, warm.felt, 'where a fire resistance moves nothing');
 });
 
-test('AUDIT TEMP-UI E2: a swimmer is in the water - the feed says `submerged` for any host that says `swimming`, so a swim soaks at once; a reader that says `submerged` itself is believed; and the dungeon\'s swim is its own', () => {
+test('AUDIT TEMP-UI E2: a swimmer is in the water - and, AUDIT C&C (lens T D3), as the mod has it: a swim on the surface wades (fifty a minute), only a head under the water is submerged (the whole three hundred at once); a reader that says either is believed; and the dungeon\'s swim and its head under are its own', () => {
   setPref(SURVIVAL_PREF, 'casual');
+  const RIVER = { climateIndex: CLIMATES.Woodlands, month: 6, hour: 12, weather: 'sunny' };   // a summer river: no weather to soak, nothing to dry while in it
   const e = player();
-  for (let m = 1; m <= 3; m++) stand(e, { ...BLIZZARD, swimming: true }, m);
-  assert.equal(e.survival.wet, 300, 'drenched in the first minute, as the law\'s submerged reads (it stayed dry for half an hour)');
-  assert.equal(survivalFeed(e, { ...BLIZZARD, swimming: true, submerged: false }).env.submerged, false, 'a host that knows better says so');
-  assert.equal(survivalFeed(e, BLIZZARD).env.submerged, undefined, 'on land, nothing');
-  assert.match(read('src/scenes/dungeonContext.js'), /insideBuilding: false, insideDungeon: true, inSunlight: false, swimming: !!_activity\.swimming, transport: false,/);
+  stand(e, { ...RIVER, swimming: true }, 1);
+  assert.equal(e.survival.wet, 50, 'a minute on the surface: fifty (it was the whole three hundred, Drenched for five hours)');
+  for (let m = 2; m <= 3; m++) stand(e, { ...RIVER, swimming: true }, m);
+  assert.equal(e.survival.wet, 150, 'three minutes\' swim');
+  const d = player();
+  stand(d, { ...RIVER, swimming: true, submerged: true }, 1);
+  assert.equal(d.survival.wet, 300, 'the head under: soaked at once');
+  assert.deepEqual(['wading', 'submerged'].map((k) => survivalFeed(e, { ...BLIZZARD, swimming: true }).env[k]), [true, false], 'a swim wades');
+  assert.equal(survivalFeed(e, { ...BLIZZARD, swimming: true, wading: false }).env.wading, false, 'a host that knows better says so');
+  assert.equal(survivalFeed(e, { ...BLIZZARD, swimming: true, submerged: true }).env.wading, false, 'under the water is no wade');
+  assert.deepEqual(['wading', 'submerged'].map((k) => survivalFeed(e, BLIZZARD).env[k]), [false, false], 'on land, nothing');
+  assert.match(read('src/scenes/dungeonContext.js'), /insideBuilding: false, insideDungeon: true, inSunlight: false, swimming: !!_activity\.swimming, transport: false,\n\s*submerged: _submergedNow,/);
+  assert.match(read('src/scenes/world.js'), /submerged: m === 'exterior' && !!dwPlayer\?\.submerged,/);
 });
 
 test('AUDIT TEMP-UI E3: underground, the clothes, the armour\'s metal and the food read the dungeon\'s air - a desert dungeon reads the starting kit as every other dungeon does, and the food spoils at the dungeon\'s pace', () => {

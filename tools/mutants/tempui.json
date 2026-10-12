@@ -162,7 +162,7 @@
   {
     "name": "TEMPUI-E2-a-swim-stays-dry",
     "file": "src/systems/survival/env.js",
-    "old": "  if (full.swimming && !Object.hasOwn(env, 'submerged')) full.submerged = true;\n",
+    "old": "  if (full.swimming && !full.submerged && !Object.hasOwn(env, 'wading')) full.wading = true;\n",
     "new": "",
     "why": "AUDIT TEMP-UI E2: thirty minutes' swim left the body dry",
     "tests": [
@@ -183,7 +183,7 @@
   {
     "name": "TEMPUI-E6-the-landing-kills-again",
     "file": "src/systems/survival/needs.js",
-    "old": "    walk.landing = !walk.replay && end - start > 1;",
+    "old": "    walk.landing = !walk.replay && jump;",
     "new": "    walk.landing = false;",
     "why": "AUDIT TEMP-UI E6: one landing in ten on a harm tick kills",
     "tests": [

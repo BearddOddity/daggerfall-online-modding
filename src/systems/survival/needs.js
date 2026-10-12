@@ -40,7 +40,7 @@
 // boons the last minute granted (survivalBoons), which the strip and the
 // status page read as they read `felt`. Both are the body's, like the
 // loan: a tier without boons carries neither.
-import { feltTemperature, temperatureWord, wardrobeCtx } from './temperature.js';
+import { feltTemperature, temperatureWord, wardrobeCtx, sunlit } from './temperature.js';
 import { drinkFrom, findDrink, waterskinName, DRINK_RELIEF, TEMPLATE, isFood, foodStage, FOOD_STAGE, rotFoodDay, rotWeight, ROT_DAY_MINUTES } from './food.js';
 import { STAT_KEYS_ORDER, maxFatigue, liveStat, FATIGUE_MULTIPLIER } from '../statMods.js';
 import { HARD_RULES } from './difficulty.js';
@@ -74,8 +74,10 @@ export const DRAIN = Object.freeze({ heatPer20: 6, starving: 4, parched: 6, dehy
  *  not every minute, and the bare-skin harms leave the last five
  *  points - a starting character (short shirt, casual pants, no shoes,
  *  25 health) walked a clear winter afternoon and died in two hours.
- *  Only EXPOSURE past DAMAGE_AT kills, and never in your sleep - the
- *  rest gate refuses the freezing and the scorching night (rest.js). */
+ *  Exposure past DAMAGE_AT and dehydration past THIRST_HARM can kill
+ *  (SURV-THIRST1), never in your sleep - the rest gate refuses the
+ *  freezing and the scorching night (rest.js) - and never inside a jump
+ *  (runSurvivalMinutes: the minute lived after it is the first that may). */
 export const HARM_EVERY_MINUTES = 10;
 export const HEALTH_FLOOR = 5;
 /** AUDIT SURV A: the well-fed hour - a point of fatigue back for every hour spent fed (the mod's 500-tally was minutes and paid twenty). */
@@ -111,6 +113,9 @@ export const WELL_RESTED_MAX_MINUTES = 12 * 60;
 // `stamina.floor`, the share of the pool the needs may not take - none
 // in Hard, half in Casual.
 export const MAX_CATCHUP_MINUTES = 2 * MINUTES_PER_DAY;
+/** AUDIT C&C (2026-10-12): a ROAD - a jump of more than this that is not a rest (a fast travel, a training, a span the
+ *  clock was moved over) - is felt under a fair sky (runSurvivalMinutes): the weather it met is nobody's to know. */
+export const ROAD_MINUTES = 60;
 /** The sleep-debt stage a tier's rough night cannot pay below (difficulty.js `roughSleepFloor`), as hours of debt. */
 const SLEEP_FLOOR_AT = Object.freeze({ tired: NEED.SLEEP_TIRED, drowsy: NEED.SLEEP_DROWSY, exhausted: NEED.SLEEP_EXHAUSTED });
 export const NOTE_EVERY_MINUTES = 5;
@@ -547,11 +552,11 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
     // session - so six game-hours of travel is thirty-six harm ticks in
     // one frame, which took a starting character from full health to
     // dead ON ARRIVAL. A replayed minute may wound to the floor and no
-    // further; the LAST minute of the walk is the one the player is
-    // standing in, and that one may finish them. So a thirsty journey
-    // still lands you at death's door, and the next minute you do not
-    // drink is the one that kills - which is the behaviour asked for,
-    // without the arrival being a coin flip.
+    // further, and so may the minute a jump lands in (AUDIT TEMP-UI E6);
+    // the first minute lived after the landing is the one that may finish
+    // them. So a thirsty journey still lands you at death's door, and the
+    // next minute you do not drink is the one that kills - which is the
+    // behaviour asked for, without the arrival being a coin flip.
     //
     // SURV-TIERS: and only in a tier that wounds (Hard). Casual's
     // dehydration is the stamina above and nothing more.
@@ -596,8 +601,8 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
   if (!resting || !env.byFire) {
     if (tempRed && (!resting || rules.stamina.duringRest)) tire(DRAIN.heatPer20 * Math.trunc(abs / 20), 'temp');
     // AUDIT SURV-TIERS (the second pass): SURV-THIRST1's law for a harm that can kill (above), which this one never
-    // had - a REPLAYED minute (a jump) wounds to the floor and no further, and the minute the player stands in may
-    // finish them. A cautious fast travel through a summer desert healed the traveller whole and then replayed the
+    // had - a REPLAYED minute (a jump) and the one a jump lands in wound to the floor and no further (AUDIT TEMP-UI E6),
+    // and the first minute lived after may finish them. A cautious fast travel through a summer desert healed the traveller whole and then replayed the
     // trip's heat as waking minutes: dead on arrival, in Hard, since SURV1.
     if (rules.health && abs > NEED.DAMAGE_AT && !sleeping && harmTick) {
       const bite = Math.max(1, Math.trunc((abs - 40) / 10));
@@ -744,37 +749,79 @@ export function runSurvivalMinutes(entity, from, to, env, deps) {
   // rest or a training session, all of which run this same loop. A harm
   // that may kill must not be charged hundreds of times inside one
   // frame: six game-hours of fast travel is 36 harm ticks, and that
-  // killed a starting character dead on arrival. The last minute is the
-  // one the player is standing in, and it is the one that may finish
-  // them. ONE object, mutated - this loop runs up to 2,880 times and a
-  // fresh deps per minute would be 2,880 objects a jump (EV2's rule).
+  // killed a starting character dead on arrival. Neither a replayed
+  // minute nor the one a jump lands in may finish them (AUDIT TEMP-UI E6,
+  // below): the next minute lived is the first that may. ONE object,
+  // mutated - this loop runs up to 2,880 times and a fresh deps per minute
+  // would be 2,880 objects a jump (EV2's rule).
   if (s.offFor) delete s.offFor;   // AUDIT SURV-TIERS: the arc is on again - an Off span ends (pauseSurvival)
   // AUDIT SURV-TIERS (the third pass): AND WHAT A JUMP SAYS, IT SAYS ONCE, AS IT LANDS. Every replayed minute spoke
   // as if lived, so a three-day journey arrived with thirty lines - eighteen of them "You drink from your waterskin."
   // - and a blackout night drank from the skin while its drinker was out cold. The replay's lines are gathered, each
   // said once when the walk reaches the minute the player stands in; the stage lines wait for that minute
   // (stageNote), which says the net change.
-  // AUDIT C&C (2026-10-12, E5): A JUMP'S MINUTES ARE FELT AT THEIR OWN HOUR. The host reads the air once a frame, so a
-  // fast travel or a night's rest was felt whole at the hour it was read in - three days set out at a mountain midnight
-  // froze at -60 every minute, set out at noon never met a night. Where the sky is this clock (`skyFollows`: offline,
-  // worldTick.js) a replayed minute is felt at its own hour and month; online the sky is the world's and stands while
-  // the character's clock moves (LIVED1), so the host's hour holds. The minute stood in is always the host's own.
-  const sky = deps.skyFollows && end - start > 1 ? { ...env } : null;
+  // AUDIT C&C (2026-10-12, E5): A JUMP'S MINUTES ARE FELT AT THEIR OWN SKY. The host reads the air once a frame, BEFORE
+  // the clock moves, so a fast travel or a night's rest was felt whole at the hour it set out in - three days set out at
+  // a mountain midnight froze at -60 every minute, set out at noon never met a night. Where the sky is this clock
+  // (`skyFollows`: offline, worldTick.js) EVERY minute of a jump - the one it lands in too (AUDIT C&C N1/H4/R1: the
+  // landing was felt at the departure's hour, so a noon departure landed Scorching at midnight and said the sun on bare
+  // skin) - is felt at its own hour and month, under its own sun (temperature.js sunlit - AUDIT C&C T6/R3: a replayed
+  // 01:00 had kept the noon's sun on its metal). Online the sky is the world's and stands while the character's clock
+  // moves (LIVED1), so the host's reading holds. A one-minute step is no jump: it is that minute, the host's own.
+  // AUDIT C&C H3/N1: AND A ROAD MEETS NO WEATHER IT CANNOT KNOW. A jump of more than ROAD_MINUTES that is not a rest - a
+  // fast travel, a training, a span the clock was moved over - is felt under a fair sky, away from the fire and the
+  // water it set out from: the sim rolls each day's weather at its date change, from the dice, and the departure's rain
+  // held for two days landed a traveller Drenched under a clear desert sky with every steel piece rusted. A rest keeps
+  // the host's weather, which its window re-reads every few minutes.
+  const jump = end - start > 1;
+  const sky = deps.skyFollows && jump ? { ...env } : null;
+  if (sky && !env.resting && end - start > ROAD_MINUTES) Object.assign(sky, { weather: 'sunny', byFire: false, swimming: false, submerged: false, wading: false });
   const sinks = deps.sinks ?? {};
+  // AUDIT C&C N2/H1: A JUMP NEVER EMPTIES THE POOL. In Hard every replayed minute drained the live pool, and at nothing
+  // the host's collapse fired from inside the replay - a nested hour and a box each time: a three-day fast travel
+  // collapsed 83 times and landed 6.46 days out, and a foe near the arrival made one of them a death. A replayed minute,
+  // and the one a jump lands in, leaves the pool its last point (FATIGUE_MULTIPLIER): the next minute lived is the first
+  // that may collapse, as it is the first that may kill (SURV-THIRST1's floor, and E6's).
+  const drainFloored = (n, a) => sinks.drainFatigue?.(Math.min(n, Math.max(0, (entity.fatigue ?? 0) - FATIGUE_MULTIPLIER)), a);
+  // AUDIT C&C N2: the collapse's hour, marked by its host (markOutCold), is walked as a night on the ground
+  const coldTill = Number.isFinite(s.outColdUntil) ? s.outColdUntil : -Infinity;
+  const cold = coldTill > start ? { ...(sky ?? env), resting: true, sleeping: 'rough' } : null;
   const heard = [];
-  const walk = { ...deps, replay: true, sinks: { ...sinks, say: (t) => { if (!heard.includes(t)) heard.push(t); } } };
+  const walk = { ...deps, replay: true, sinks: { ...sinks, drainFatigue: drainFloored, say: (t) => { if (!heard.includes(t)) heard.push(t); } } };
   for (let m = start + 1; m <= end; m++) {
     walk.replay = m < end;
     // AUDIT TEMP-UI E6: AND THE MINUTE A JUMP LANDS IN WOUNDS TO THE FLOOR TOO - "without the arrival being a coin flip"
     // (SURV-THIRST1) was false: a landing on a harm tick (one minute in ten) killed outright. The next minute lived is
-    // the one that may kill. A one-minute step is no jump: it is that minute.
-    walk.landing = !walk.replay && end - start > 1;
-    if (!walk.replay) { walk.sinks = sinks; const say = sinks.say ?? deps.say; for (const t of heard) say?.(t); }
-    if (sky && walk.replay) { sky.hour = (((m % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY) / 60; sky.month = dateFromClassicMinutes(m).month; }
-    temp = survivalMinute(entity, m, sky && walk.replay ? sky : env, walk);
+    // the one that may kill.
+    walk.landing = !walk.replay && jump;
+    if (!walk.replay) { walk.sinks = jump ? { ...sinks, drainFatigue: drainFloored } : sinks; const say = sinks.say ?? deps.say; for (const t of heard) say?.(t); }
+    if (sky) { sky.hour = (((m % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY) / 60; sky.month = dateFromClassicMinutes(m).month; sky.inSunlight = sunlit(sky); }
+    let at = sky ?? env;
+    if (cold && m <= coldTill) { if (sky) Object.assign(cold, { hour: sky.hour, month: sky.month, inSunlight: sky.inSunlight }); at = cold; }
+    temp = survivalMinute(entity, m, at, walk);
   }
   if (end > (s.lastMinute ?? -Infinity)) s.lastMinute = end;
+  if (s.outColdUntil <= end) delete s.outColdUntil;
   return temp;
+}
+
+/**
+ * AUDIT C&C (2026-10-12, N2): THE COLLAPSE'S HOUR IS A NIGHT ON THE GROUND. DFU's CollapseFromExhaustion raises the clock
+ * an hour with the body out cold (RaiseTime), and the four hosts' hour (CAMP-REST: "the forced hour is a rest") reached
+ * the needs as an hour AWAKE - the debt that had collapsed the body grew by it, and in Hard the exhaustion drained the
+ * hour through. A host marks the hour as it raises it: the `minutes` after the minute in hand (the character's own
+ * clock, whichever that is) are felt as a rough sleep. The minute in hand is the tick's: a collapse fires from INSIDE
+ * one - its fatigue band, or a minute's drain here, before that minute is written on the record - and the tick's marker
+ * (PlayerEntity's lastGameMinutes, worldTick.js) already stands at it, where the record's last paid minute is one
+ * behind: read alone, it left the raised hour's last minute awake. The needs only - DFU's own laws read the raise as DFU
+ * does (worldTick.js's walking drain reads isResting, which the collapse never sets).
+ */
+export function markOutCold(entity, minutes = 60) {
+  const s = entity?.survival;
+  const marks = [s?.lastMinute, entity?.lastGameMinutes].filter(Number.isFinite);
+  if (!s || typeof s !== 'object' || !marks.length) return false;
+  s.outColdUntil = Math.max(Number.isFinite(s.outColdUntil) ? s.outColdUntil : -Infinity, Math.floor(Math.max(...marks)) + minutes);
+  return true;
 }
 /**
  * AUDIT SURV-TIERS: OFF'S MINUTES ARE NOBODY'S NEEDS - paused as they

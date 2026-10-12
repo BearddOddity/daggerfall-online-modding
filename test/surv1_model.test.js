@@ -486,10 +486,10 @@ test('SURV-THIRST1 AUDIT: the replay flag is the WALK’s, and only the last min
   const src = readFileSync(new URL('../src/systems/survival/needs.js', import.meta.url), 'utf8');
   // one object for the whole walk, not one per minute (EV2: this loop
   // runs up to MAX_CATCHUP_MINUTES times)
-  assert.match(src, /const walk = \{ \.\.\.deps, replay: true, sinks: \{ \.\.\.sinks, say: [^\n]+ \} \};\s*\n\s*for \(let m = start \+ 1; m <= end; m\+\+\) \{\n\s*walk\.replay = m < end;/,
+  assert.match(src, /const walk = \{ \.\.\.deps, replay: true, sinks: \{ \.\.\.sinks, drainFatigue: drainFloored, say: [^\n]+ \} \};\s*\n\s*for \(let m = start \+ 1; m <= end; m\+\+\) \{\n\s*walk\.replay = m < end;/,
     'the walk marks every minute but the last as a replay, from one object (AUDIT SURV-TIERS, the third pass: its lines gathered)');
   // a bare survivalMinute - the live per-minute call every host makes -
   // is NOT a replay, or nothing would ever die of thirst
   assert.match(src, /autoEat = true, replay = false, landing = false \} = deps;[^\n]*\n\s+const rules = deps\.rules \?\? HARD_RULES;/, 'a caller that says nothing is live (and, SURV-TIERS, runs Hard - AUDIT SURV-TIERS: a null too)');   // PIN MOVED (AUDIT TEMP-UI E6): and not a landing
-  assert.match(src, /walk\.replay = m < end;\n(?:\s*\/\/[^\n]*\n)*\s*walk\.landing = !walk\.replay && end - start > 1;/, 'AUDIT TEMP-UI E6: the minute a JUMP lands in is a landing - floored, as its replayed minutes are; a one-minute step is that minute, live');
+  assert.match(src, /const jump = end - start > 1;[\s\S]*walk\.replay = m < end;\n(?:\s*\/\/[^\n]*\n)*\s*walk\.landing = !walk\.replay && jump;/, 'AUDIT TEMP-UI E6: the minute a JUMP lands in is a landing - floored, as its replayed minutes are; a one-minute step is that minute, live');
 });

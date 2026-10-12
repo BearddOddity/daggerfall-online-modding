@@ -728,8 +728,10 @@ player, because thirst had been nought when they set out.
 minute but the LAST as a `replay` (one object mutated for the whole
 walk, not one per minute - the loop runs up to `MAX_CATCHUP_MINUTES`
 times, and EV2's rule holds here as anywhere). A replayed minute may
-wound only to `HEALTH_FLOOR`; the last minute is the one the player is
-standing in, and that one may finish them. So a thirsty journey lands
+wound only to `HEALTH_FLOOR`, and so may the minute a jump lands in
+(AUDIT TEMP-UI E6 - it killed one landing in ten); the first minute
+lived after the landing is the one that may finish them (AUDIT C&C
+R9: this page said the landing). So a thirsty journey lands
 you at death's door and the next minute you do not drink is the one
 that kills - the behaviour asked for, without the arrival being a coin
 flip. A longer jump now costs no more than a shorter one, because the
@@ -2200,3 +2202,89 @@ fixed; four lenses found the jump's sky independently.
 Pinned by `test/auditcc.test.js`, with the moved pins in
 `surv1_model`, `fb0930_cc_roof` and `fb0930_cc_said` re-aimed to the law
 by content.
+
+### Found and fixed - a jump, the collapse, the prison and the swim
+
+- **N1/H4/R1 - the minute a jump lands in was felt at the departure's
+  sky.** E5 felt each replayed minute at its own hour, but the landing -
+  the minute the player stands in - took the host's reading, and a host
+  reads BEFORE the clock moves (`createPlayerTicker.advance` builds the
+  feed first): a mountain summer midnight to 09:00 landed at -45, the
+  midnight's, where 09:00 reads -5, and a twelve-hour desert travel from
+  noon landed at midnight Scorching and said the sun on bare skin. E5's
+  own pin handed the landing a reading no host makes. Every minute of a
+  jump is felt at its own sky now, the landing too, and the pin drives the
+  real ticker with a reader shaped like world.js's. Four lenses found it.
+- **T6/R3 - and under the departure's sun.** A replayed minute kept the
+  frame's `inSunlight`, so a noon departure's metal baked through the
+  night. The sun has one law (temperature.js `sunlit`: outdoors, sunny or
+  cloudy, dawn to dusk), which the hosts' readers and every minute of a
+  jump read.
+- **H3/N1 - a road met the weather it set out in, for days.** The
+  departure's rain held for the whole replay: a Hard two-day fast travel
+  through a desert landed Drenched with every steel piece rusted (6,144
+  condition to 1,081). The sim rolls each day's weather from its dice at
+  the date change, so what a road met is nobody's to know: a jump of more
+  than an hour (`ROAD_MINUTES`) that is not a rest is felt under a fair
+  sky, away from the fire and the water it set out from. A rest keeps the
+  host's weather, which its window re-reads. A declared departure
+  (Port-Ledger A): the mod charges nothing inside a fast travel and
+  resets its counters at the landing.
+- **N2/H1 - a Hard journey collapsed from inside its own replay.** Every
+  replayed minute drained the live pool, and at nothing the host's
+  collapse fired inside the replay - a nested hour and a box of its own -
+  with nothing offline to refuse the next: AUDIT LIVED1b K1 had kept DFU's
+  popup guard online alone, and exterior.js had none. A three-day fast
+  travel collapsed 83 times and landed 6.46 days out (out of food, 282
+  times and 14.75 days), and a foe near the arrival made one of them a
+  death. A replayed minute, and the landing, leave the pool its last point
+  now - the first minute lived after may collapse, as it is the first
+  that may kill - and DFU's popup guard (PlayerEntity.cs
+  `displayingExhaustedPopup`) stands in both lanes in the three hosts.
+- **N2 - the collapse's hour was an hour awake.** DFU's collapse raises
+  the clock an hour with the body out cold, and the needs walked it awake:
+  the debt that had collapsed the body grew by it, and in Hard the
+  exhaustion drained it through. A host marks the hour as it raises it
+  (`markOutCold`), and the needs walk it as a night on the ground. The
+  mark stands at the minute in hand - the tick's own marker: a collapse
+  fires inside a tick, before its minute is written on the record, and the
+  record read alone left the hour's last minute awake, in both lanes.
+  Recorded, not changed: offline a collapse out of the tick's fatigue band
+  leaves that tick's own minute unwalked by the needs, the nested raise
+  AUDIT LIVED1 recorded as K6's twin - one minute.
+- **N3/H2 - a sentence was served in the street after the release.**
+  The sentence is a bare move of the clock, and DFU's `FillVitalSigns`
+  refilled the body first: the first frame out walked the sentence's last
+  two days, awake and unfed, in the street's weather - a ten-day Hard
+  sentence released a prisoner at 5 health and no stamina, -20 to every
+  attribute, Drenched, Starving and Exhausted, under 194 collapse boxes.
+  The needs start fresh at the minute the sentence ends now
+  (`alignSurvival`, the port's law for every long absence), and the
+  release's hours are walked from there. The mod's own shape: a sentence
+  takes its fast-travel branch, which resets every counter and sets the
+  last meal just past fed.
+- **D3 (lens T) - every swim was submerged.** AUDIT TEMP-UI E2 read a
+  swim as `submerged`, so one minute in a river soaked the whole three
+  hundred and left the body Drenched for five hours. The mod's `Water()`:
+  a swim on the surface wades, fifty a minute, and only a head under the
+  water is submerged, the three hundred at once. The feed wades a swim
+  now, and world.js and the dungeon say `submerged` when the head is under
+  (`dwPlayer.submerged`, `_submergedNow`) - a reading corrected.
+- **R9 - "the last minute may finish them".** Three comments in
+  `needs.js`, this page's SURV-THIRST1 and the `surv1_model` row still
+  said the landing could kill after AUDIT TEMP-UI E6 floored it, and "Only
+  EXPOSURE past DAMAGE_AT kills" had been false since SURV-THIRST1.
+  Rewritten to the law.
+- **The re-run of a list this audit re-aimed: two pins that held either
+  copy.** `auditlived1b.json` left two survivors from before this branch:
+  the zone's death checkpoint (WILD1) had copied the realm checkpoint's
+  gate, and the legacy heir's birth (LEGACY1) the wizard's skill-check
+  stamp, and each pin's pattern held either copy - so the first could go
+  under a pin that still passed. Each names its own line now, and each
+  copy is pinned and has its mutant.
+
+Pinned by `test/auditcc.test.js` - the jump through the real ticker, the
+collapse fired from inside a live minute in both lanes, the prison
+through the real arrest flow - with the moved pins in `tempui` (E2),
+`surv7_feed`, `surv1_model`, `audit68_dungeonctx`, `auditlived1b`,
+`csa_close` and `roadb_push_doors` re-aimed by content.

@@ -3,8 +3,18 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { SURVIVAL_RULES } from '../src/systems/survival/difficulty.js';
-import { newSurvival, survivalMinute, runSurvivalMinutes } from '../src/systems/survival/needs.js';
-import { CLIMATE_TEMP, CLIMATE_NAMES, CHEST_WARMTH, COVERING_CHEST, MONTH_TEMP, naturalTemperature, feltTemperature, temperatureBreakdown, clothingWarmth } from '../src/systems/survival/temperature.js';
+import { newSurvival, survivalMinute, runSurvivalMinutes, markOutCold, hungerStage, hungerMinutes, sleepStage, ROAD_MINUTES, feltCtx } from '../src/systems/survival/needs.js';
+import { CLIMATE_TEMP, CLIMATE_NAMES, CHEST_WARMTH, COVERING_CHEST, MONTH_TEMP, naturalTemperature, feltTemperature, temperatureBreakdown, clothingWarmth, sunlit } from '../src/systems/survival/temperature.js';
+import { createPlayerTicker } from '../src/scenes/shared.js';
+import { createArrestFlow, RELEASE_MINUTES } from '../src/scenes/arrestFlow.js';
+import { CRIMES } from '../src/systems/court.js';
+import { PrisonScreenWindow, PRISON_UPDATE_INTERVAL } from '../src/ui/prisonScreen.js';
+import { setWorldMinutes, worldMinutes, skyMinutes, ownMinutes, setSharedClock, setOwnMinutes, alignEntityClocks, resetMagicRoundMarker, CLASSIC_MINUTES_PER_SECOND } from '../src/systems/worldTick.js';
+import { playerEntity as PLAYER_LITERAL } from '../src/characters/playerEntity.js';
+import { createCharacter } from '../src/systems/chargen.js';
+import { assignStartingEquipment } from '../src/systems/startingGear.js';
+import { SKILLS } from '../src/systems/skills.js';
+import { maxFatigue } from '../src/systems/statMods.js';
 import { survivalFeed, feltNow } from '../src/systems/survival/env.js';
 import { SURVIVAL_PREF } from '../src/systems/survival/switch.js';
 import { setPref, _resetForTests } from '../src/systems/uiPrefs.js';
@@ -34,6 +44,35 @@ afterEach(() => { _resetForTests(); });
 const wearer = () => ({ ...body(0), isPlayer: true, career: {}, skills: new Array(35).fill(30), level: 5, gender: 'male', equip: createEquipTable() });
 const garment = (templateIndex, extra = {}) => mintCondition({ group: templateIndex >= 182 ? 'WomensClothing' : 'MensClothing', templateIndex, name: 'garment', flags: 0, variant: 0, ...extra });
 const wear = (e, item) => { e.items.push(item); equipItem(e, item); return e; };
+/** The player as the game mints it: the pre-chargen literal, chargen's createCharacter, then AssignStartingGear (the
+ *  clothes equipped, the C&C provisions while the arc is on). */
+const mintPlayer = () => {
+  const e = structuredClone(PLAYER_LITERAL);
+  const career = {
+    name: 'Pin', primarySkills: [SKILLS.LongBlade, SKILLS.CriticalStrike, SKILLS.Dodging], majorSkills: [SKILLS.Archery, SKILLS.Climbing, SKILLS.Running],
+    minorSkills: [SKILLS.Swimming, SKILLS.Jumping, SKILLS.Medical, SKILLS.Stealth, SKILLS.Backstabbing, SKILLS.Mercantile],
+    hitPointsPerLevel: 10, advancementMultiplier: 0.3, abilityFlagsAndSpellPointsBitfield: 0x1000,
+    strength: 45, intelligence: 45, willpower: 45, agility: 45, endurance: 45, personality: 45, speed: 45, luck: 45,
+  };
+  createCharacter(e, career, 16, { rolls: () => 0.5 });
+  e.armorValues = new Array(7).fill(100); e.items = []; e.equip = null; e.activeEffects = [];
+  assignStartingEquipment(e, { classIndex: 0, rolls: () => 0.5 });
+  return e;
+};
+/** world.js survivalEnvNow's shape for the street, read when the ticker asks - BEFORE its clock moves: the sky's month
+ *  and fractional hour, the weather the land wears, and the one sun law. */
+const streetReader = (e, climateIndex, weather = () => 'sunny') => () => {
+  const wm = skyMinutes(), hour = (((wm % 1440) + 1440) % 1440) / 60, w = weather();
+  return {
+    climateIndex, month: dateFromClassicMinutes(wm).month, hour, weather: w, insideBuilding: false, insideDungeon: false,
+    inSunlight: sunlit({ hour, weather: w }), swimming: false, transport: false, byFire: false,
+    resting: !!e.isResting, sleeping: e.isResting && !e.isLoitering ? (e.restKind ?? 'rough') : null,
+    lycanthrope: false, beastForm: false, fireResist: 0, frostResist: 0,
+  };
+};
+/** The minute law's own reading for `e` where the reader says it stands now (feltCtx - THE ONE CONSTRUCTION SEAM). */
+const readingNow = (e, reader) => { const f = survivalFeed(e, reader()); return feltTemperature(f.env, f.deps.worn, feltCtx(e, e.survival, f.deps.ctx)).felt; };
+const steel = (templateIndex) => mintCondition({ group: 'Armor', templateIndex, material: 0x0202, name: 'Steel', flags: 0, variant: 0 });
 const hourOf = (m) => (((m % 1440) + 1440) % 1440) / 60;
 /** The env a host hands at classic minute `m` (world.js survivalEnvNow: the sky's month and fractional hour). */
 const skyAt = (base, m) => ({ ...base, hour: hourOf(m), month: dateFromClassicMinutes(m).month });
@@ -62,8 +101,10 @@ test('AUDIT C&C E5: A JUMP\'S MINUTES ARE FELT AT THEIR OWN HOUR AND MONTH OFFLI
     for (let m = from + 1; m <= to; m++) survivalMinute(e, m, stepped || m === to ? skyAt(MOUNTAIN, m) : skyAt(MOUNTAIN, to), deps({ replay: m < to, landing: m === to }));
     return e.survival;
   };
-  const jump = (skyFollows) => { const e = body(from); runSurvivalMinutes(e, from, to, skyAt(MOUNTAIN, to), deps({ skyFollows })); return e.survival; };
-  const off = jump(true), on = jump(false);
+  // the env a host hands a jump is read BEFORE the clock moves - the departure's (AUDIT C&C R1: the pin had handed the
+  // landing's own, which no host produces); online the sky stands at the world's hour, here the landing's day
+  const jump = (skyFollows, envAt) => { const e = body(from); runSurvivalMinutes(e, from, to, skyAt(MOUNTAIN, envAt), deps({ skyFollows })); return e.survival; };
+  const off = jump(true, from), on = jump(false, to);
   assert.equal(off.exposure, 357, 'offline: 00:01 to 07:59 past 30 (+479), then 08:00 to 09:00 by day (-2 x 61)');
   assert.equal(on.exposure, 0, 'online: the whole jump at the landing\'s day hour - never past 30');
   for (const k of ['exposure', 'thirst', 'wet', 'felt']) {
@@ -73,15 +114,16 @@ test('AUDIT C&C E5: A JUMP\'S MINUTES ARE FELT AT THEIR OWN HOUR AND MONTH OFFLI
   // AND THE MONTH: across a month's end in the subtropics, the old month's last hour is a month cooler (less thirst)
   const SUB = { climateIndex: CLIMATES.Subtropical, weather: 'sunny' };
   const turn = dateToClassicMinutes({ year: 405, month: 6, day: 0, hour: 0, minute: 0 });
-  const t = (skyFollows) => { const e = body(turn - 60); runSurvivalMinutes(e, turn - 60, turn + 60, skyAt(SUB, turn + 60), deps({ skyFollows })); return e.survival.thirst; };
+  const t = (skyFollows) => { const e = body(turn - 60); runSurvivalMinutes(e, turn - 60, turn + 60, skyAt(SUB, skyFollows ? turn - 60 : turn + 60), deps({ skyFollows })); return e.survival.thirst; };
   const walkedMonth = () => { const e = body(turn - 60); for (let m = turn - 59; m <= turn + 60; m++) survivalMinute(e, m, skyAt(SUB, m), deps({ replay: m < turn + 60, landing: m === turn + 60 })); return e.survival.thirst; };
   assert.equal(t(true), walkedMonth(), 'offline: each side of the month\'s end at its own month');
   assert.ok(t(true) < t(false), `the old month's hour is cooler: ${t(true)} < ${t(false)}`);
-  // the minute landed in is the host's: a jump that lands at 08:00 feels its last minute by day, not at 07:59's dawn
+  // the minute landed in is felt at its own hour too (AUDIT C&C N1/H4/R1): handed the midnight departure's env, a jump that
+  // lands at 08:00 feels its last minute by day (it was felt at 00:00's night: 480)
   const edge = from + 8 * 60;
-  const landed = () => { const e = body(from); runSurvivalMinutes(e, from, edge, skyAt(MOUNTAIN, edge), deps({ skyFollows: true })); return e.survival.exposure; };
+  const landed = () => { const e = body(from); runSurvivalMinutes(e, from, edge, skyAt(MOUNTAIN, from), deps({ skyFollows: true })); return e.survival.exposure; };
   assert.equal(landed(), 477, 'offline: 00:01 to 07:59 past 30 (+479), and the landing at 08:00 by day (-2)');
-  // a one-minute step is that minute: the host's own env, stepped or not
+  // a one-minute step is no jump - that minute, the host's own env, stepped or not
   const one = (skyFollows) => { const e = body(from); runSurvivalMinutes(e, from, from + 1, skyAt(MOUNTAIN, from + 600), deps({ skyFollows })); return e.survival.felt; };
   assert.equal(one(true), one(false), 'one minute is lived in the host\'s env');
   // the tick says it: offline (no shared clock) the sky is the clock
@@ -179,6 +221,134 @@ test('AUDIT C&C T7: THE LAW READS WHOLE WETNESS - a weatherproof garment turns p
     assert.ok(Number.isInteger(feltNow(e).felt) && Number.isInteger(e.survival.felt), `minute ${m}: wet ${e.survival.wet}, felt ${feltNow(e).felt}`);
   }
   assert.ok(fractional, 'the weatherproofing kept a fraction on the counter');
+});
+
+test('AUDIT C&C E5, THROUGH THE TICKER (N1/H4/R1, T6/R3): EVERY minute of an offline jump - the one it lands in too - is felt at its own hour, month and sun; the host reads the sky BEFORE the clock moves, so the landing had been felt at the departure\'s hour (a mountain summer midnight landing at 09:00 read -45 where 09:00 reads -5) and a replayed night had kept the noon\'s sun on its metal', () => {
+  setPref(SURVIVAL_PREF, 'casual');
+  // a mountain summer night into the morning, through the real ticker and a reader shaped like world.js's
+  const from = dateToClassicMinutes({ year: 405, month: 6, day: 10, hour: 0, minute: 0 });
+  setWorldMinutes(from);
+  const e = mintPlayer(); e.survival = { ...newSurvival(from), lastMinute: from };
+  const reader = streetReader(e, CLIMATES.Mountain);
+  createPlayerTicker(e, { survivalEnv: reader }).advance(9 * 60);
+  assert.equal(worldMinutes(), from + 9 * 60);
+  assert.equal(e.survival.felt, readingNow(e, reader), 'the landing is the 09:00 reading');
+  assert.equal(e.survival.felt, -5);
+  // the same nine hours walked a minute at a time, each at its own sky (the landing too)
+  const w = mintPlayer(); w.survival = { ...newSurvival(from), lastMinute: from };
+  for (let m = from + 1; m <= from + 9 * 60; m++) { setWorldMinutes(m); const f = survivalFeed(w, streetReader(w, CLIMATES.Mountain)()); survivalMinute(w, m, f.env, { ...f.deps, replay: m < from + 540, landing: m === from + 540, autoDrink: false, autoEat: false }); }
+  assert.equal(e.survival.exposure, w.survival.exposure, 'the jump is the minutes walked at their own sky');
+  // and the sun: plate in the Subtropics, a summer noon into the small hours - the night is felt with no sun on the metal
+  const noon = dateToClassicMinutes({ year: 405, month: 6, day: 12, hour: 12, minute: 0 });
+  setWorldMinutes(noon);
+  const p = mintPlayer(); for (const t of [102, 104]) { const it = steel(t); p.items.push(it); equipItem(p, it); }
+  p.survival = { ...newSurvival(noon), lastMinute: noon };
+  const sub = streetReader(p, CLIMATES.Subtropical);
+  createPlayerTicker(p, { survivalEnv: sub }).advance(14 * 60);
+  assert.equal(p.survival.felt, readingNow(p, sub), 'the 02:00 landing, in the dark');
+  setWorldMinutes(noon + 13 * 60);
+  assert.equal(sunlit(sub()), false, '01:00 is no sunlit minute');
+});
+
+test('AUDIT C&C H3/N1: A ROAD MEETS NO WEATHER IT CANNOT KNOW - a jump of more than an hour that is not a rest is felt under a fair sky, so a fast travel set out in the rain no longer lands Drenched with its steel rusted; a rest, and an hour\'s jump, keep the host\'s weather', () => {
+  setPref(SURVIVAL_PREF, 'hard');
+  const RAIN = () => 'rain';
+  const run = ({ minutes, resting = false }) => {
+    const from = dateToClassicMinutes({ year: 405, month: 6, day: 14, hour: 12, minute: 0 });
+    setWorldMinutes(from);
+    const e = mintPlayer(); const pieces = [102, 104].map(steel); for (const it of pieces) { e.items.push(it); equipItem(e, it); }
+    e.survival = { ...newSurvival(from), lastMinute: from };
+    if (resting) { e.isResting = true; e.restKind = 'rough'; }
+    createPlayerTicker(e, { survivalEnv: streetReader(e, CLIMATES.Woodlands, RAIN) }).advance(minutes);
+    return { wet: e.survival.wet, condition: pieces.map((i) => i.currentCondition === i.maxCondition) };
+  };
+  assert.deepEqual(run({ minutes: 2 * 1440 }), { wet: 0, condition: [true, true] }, 'two days on the road: dry, nothing rusted');
+  assert.ok(run({ minutes: ROAD_MINUTES }).wet > 0, 'an hour\'s jump keeps the host\'s rain');
+  assert.equal(run({ minutes: ROAD_MINUTES + 1 }).wet, 0, 'past an hour it is a road');
+  assert.ok(run({ minutes: 2 * 60, resting: true }).wet > 0, 'a rest keeps the host\'s rain - its window re-reads it');
+});
+
+test('AUDIT C&C N2/H1: A JUMP NEVER EMPTIES THE POOL, AND THE COLLAPSE\'S HOUR IS A NIGHT ON THE GROUND - a Hard three-day journey collapsed from inside its own replay 83 times and landed 6.46 days out; now no replayed or landing minute takes the last point, and a host\'s collapse hour (markOutCold) is walked as a rough sleep', () => {
+  setPref(SURVIVAL_PREF, 'hard');
+  const from = dateToClassicMinutes({ year: 405, month: 6, day: 16, hour: 12, minute: 0 });
+  setWorldMinutes(from);
+  const e = mintPlayer();
+  e.survival = { ...newSurvival(from), lastMinute: from, lastAte: from - 1500, thirst: 90, sleepDebt: 13, awakeSince: from - 2000 };
+  let collapses = 0;
+  createPlayerTicker(e, { survivalEnv: streetReader(e, CLIMATES.Desert), onExhausted: () => { collapses++; } }).advance(3 * 1440);
+  assert.equal(collapses, 0, 'no collapse inside the jump');
+  assert.equal(worldMinutes(), from + 3 * 1440, 'the clock moved three days, and no more');
+  assert.ok(e.fatigue >= 64, `the pool keeps its last point (${e.fatigue})`);
+  // the collapse's hour: marked, it pays the rough night's half hour and the needs take nothing; unmarked, an hour awake
+  const hour = (mark) => {
+    const b = body(from); b.survival.sleepDebt = 13; b.survival.awakeSince = from - 2000; b.survival.lastMinute = from;
+    let drained = 0;
+    if (mark) assert.equal(markOutCold(b), true);
+    runSurvivalMinutes(b, from, from + 60, { climateIndex: CLIMATES.Woodlands, month: 6, hour: 12, weather: 'sunny' }, deps({ rules: SURVIVAL_RULES.hard, sinks: { drainFatigue: (n) => { drained += n; } } }));
+    return { debt: Math.round(b.survival.sleepDebt * 1000) / 1000, drained, marked: 'outColdUntil' in b.survival };
+  };
+  assert.deepEqual(hour(true), { debt: 12.5, drained: 0, marked: false });
+  assert.deepEqual(hour(false), { debt: 14, drained: 8 * 60, marked: false });
+  // and fired from INSIDE a live minute, as the hosts' drain sink fires it - through the real ticker, in both lanes: the
+  // hour is the sixty after the minute in hand, walked asleep to its last (the record's last paid minute is one behind
+  // there, and the mark read alone left the hour's last minute awake)
+  for (const lane of ['offline', 'online']) {
+    const at = from + 10 * 1440, sky = { clock: at + 900 * 1440 };
+    const b = { ...body(at), fatigue: 10, lastGameMinutes: at };
+    Object.assign(b.survival, { lastMinute: at, lastAte: at - 1500, thirst: 90, sleepDebt: 13, awakeSince: at - 2000 });
+    if (lane === 'online') { setSharedClock(() => sky.clock); setOwnMinutes(at); alignEntityClocks(b, sky.clock); } else { setSharedClock(null); setWorldMinutes(at); }
+    resetMagicRoundMarker(at);
+    let latch = false, collapses = 0, clock = null;
+    const ticker = createPlayerTicker(b, {
+      survivalEnv: () => ({ climateIndex: CLIMATES.Desert, month: 6, hour: 12, weather: 'sunny', inSunlight: true }),
+      onExhausted: () => { if (latch) return; latch = true; collapses++; try { markOutCold(b); ticker.advance(60); b.fatigue = 6400; } finally { latch = false; } },
+    });
+    try {
+      if (lane === 'online') sky.clock += 1;
+      ticker.tick(1 / CLASSIC_MINUTES_PER_SECOND);   // a live minute, whose drain empties the pool
+      if (lane === 'online') sky.clock += 0.01;
+      ticker.tick(0.001);   // and the frame after it
+      clock = Math.floor(ownMinutes()) - at;
+    } finally { setSharedClock(null); }
+    assert.deepEqual({ collapses, clock, asleepTo: b.survival.awakeSince - at, marked: 'outColdUntil' in b.survival }, { collapses: 1, clock: 61, asleepTo: 61, marked: false }, lane);
+  }
+  // the four hosts mark it as they raise it
+  for (const [file, raise] of [['src/scenes/world.js', 'playerTicker.advance(60);'], ['src/scenes/exterior.js', 'playerTicker.advance(60);'], ['src/scenes/worldModes.js', 'interiorTicker.advance(60);'], ['src/scenes/dungeonContext.js', 'advanceOwnMinutes(60);']]) {
+    const src = read(file), i = src.indexOf(raise);
+    assert.ok(i > 0 && /markOutCold\(playerEntity\);[^\n]*\n\s*$/.test(src.slice(Math.max(0, i - 400), i)), `${file}: marked before the hour is raised`);
+  }
+});
+
+test('AUDIT C&C N3/H2: A PRISONER LEAVES FED, WATERED AND RESTED - the sentence is a bare move of the clock, and the first frame out walked its last two days after the refill, awake and unfed, in the street\'s weather; the needs start fresh at the minute the sentence ends, and the walk resumes from there', () => {
+  setPref(SURVIVAL_PREF, 'hard');
+  const start = dateToClassicMinutes({ year: 405, month: 0, day: 3, hour: 12, minute: 0 });
+  setWorldMinutes(start);
+  const slot = { win: null, onClosed: null };
+  const townTalk = { slot, texts: () => null, showOverlay(win, onClosed = null) { if (slot.win && slot.win !== win) slot.win.dispose?.(); slot.win = win; slot.onClosed = onClosed; }, close() { const cb = slot.onClosed; slot.win = null; slot.onClosed = null; cb?.(); } };
+  const player = {
+    name: 'Mack', health: 1, maxHealth: 40, fatigue: 0, maxFatigue: 100, magicka: 0, maxMagicka: 20,
+    stats: { ...STATS }, crimeCommitted: CRIMES.Murder, legalRep: { 17: -25 }, items: [], skills: 30,
+    haveShownSurrenderDialogue: true, arrested: false, activeEffects: [], chargedCrime: CRIMES.Murder, raceId: RACES.Breton,
+    survival: { ...newSurvival(start), lastMinute: start, lastAte: start - 2000, thirst: 110, sleepDebt: 13, awakeSince: start - 2000, wet: 250 },
+  };
+  // the real flow, with its own clock moves - the sentence's days and the release's four hours
+  const flow = createArrestFlow({ townTalk, playerEntity: player, regionIndex: 17, rolls: () => 0.99, guildRankOf: () => null, clearEnemies: () => {}, positionPlayerAtLocationEntrance: () => {} });
+  flow.startCourtFlow();
+  townTalk.slot.win.input('KeyG');
+  const prison = townTalk.slot.win;
+  assert.ok(prison instanceof PrisonScreenWindow);
+  const days = prison.daysInPrison;
+  assert.ok(days >= 1);
+  for (let i = 0; i < days; i++) prison.tick(PRISON_UPDATE_INTERVAL);
+  townTalk.close();
+  flow.dispose();
+  const s = player.survival, out = ownMinutes();
+  assert.equal(s.lastMinute, out - RELEASE_MINUTES, 'the needs stand at the sentence\'s end - only the release\'s hours are left to walk');
+  assert.deepEqual([s.thirst, s.wet, s.sleepDebt, s.awakeSince], [0, 0, 0, out - RELEASE_MINUTES]);
+  // the first frame out, in a Hard winter street: the release's four hours, not the sentence
+  runSurvivalMinutes(player, s.lastMinute, out, { climateIndex: CLIMATES.Woodlands, month: 0, hour: 16, weather: 'snow' }, deps({ rules: SURVIVAL_RULES.hard, skyFollows: true }));
+  assert.equal(hungerStage(hungerMinutes(s, out)), 'peckish');
+  assert.equal(sleepStage(s.sleepDebt), 'rested');
 });
 
 test('AUDIT C&C B11: THE ENHANCED MENU\'S ATTRIBUTES PAGE NAMES THE BOONS THAT RAISE THEM - under the meters, from the pack\'s one source (ui/temperatureCard.js boonStatRows: nothing outside the Boons tier), so a raised attribute is explained on every sheet that shows it', () => {

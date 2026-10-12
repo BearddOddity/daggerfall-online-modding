@@ -18,7 +18,7 @@
 import { EQUIP_SLOTS } from '../../characters/paperdoll.js';
 import { CLIMATES } from '../../formats/mapsFile.js';
 import { RACES } from '../races.js';
-import { MONTH_NAMES } from '../gameDate.js';   // TEMP-UI: the breakdown names the month (an import-free leaf)
+import { MONTH_NAMES, DAWN_HOUR, DUSK_HOUR } from '../gameDate.js';   // TEMP-UI: the breakdown names the month (an import-free leaf); AUDIT C&C: the sun's hours
 
 /** spellcast.js's EFFECT_FLAGS.Fire and .Frost (DFCareer.EffectFlags),
  *  restated so this leaf imports no combat module: spellcast sits on the
@@ -166,6 +166,15 @@ export function hourTemperature(hour, climateIndex) {
   if (h >= 16 && h <= 19) return -10 * m;
   if (h >= 4 && h <= 7) return -10 * m;
   return -20 * m;   // 20:00 - 03:59
+}
+
+/** AUDIT C&C (2026-10-12): THE SUN'S ONE LAW - outdoors, between DFU's dawn and dusk (DaggerfallDateTime.IsDay: 6:00 to
+ *  17:59), under a sky the sun comes through (sunny or cloudy), and not under a pitched tent's canvas. The exterior
+ *  hosts' readers ask it for their minute, and a jump's replay for each of its own (needs.js runSurvivalMinutes): a
+ *  replayed minute had its own hour and month but the frame's sun, so a jump set out at noon met the sun at 01:00. */
+export function sunlit({ hour = 12, weather = 'sunny', insideBuilding = false, insideDungeon = false, sheltered = false } = {}) {
+  const h = ((Math.floor(hour ?? 12)) % 24 + 24) % 24;
+  return !insideBuilding && !insideDungeon && !sheltered && h >= DAWN_HOUR && h < DUSK_HOUR && (weather === 'sunny' || weather === 'cloudy');
 }
 
 /** TEMP-UI (2026-10-12): the hour's band by NAME - the bands hourTemperature reads, said for the breakdown ('day' its

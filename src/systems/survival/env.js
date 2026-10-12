@@ -36,7 +36,7 @@ const LAST_FEED = new WeakMap();
 /** The env keys a host feeds, with their defaults (the reader may give a subset). */
 export const ENV_DEFAULTS = Object.freeze({
   climateIndex: 232, month: 0, hour: 12, weather: 'sunny', insideBuilding: false, insideDungeon: false, inSunlight: false,
-  swimming: false, transport: false, byFire: false, resting: false, sleeping: null,
+  swimming: false, submerged: false, wading: false, transport: false, byFire: false, resting: false, sleeping: null,
   lycanthrope: false, beastForm: false, fireResist: 0, frostResist: 0,
 });
 
@@ -61,10 +61,13 @@ export function survivalFeed(entity, env = null, { rolls = null, say = null } = 
   const rules = survivalRules();
   if (!rules || !entity || !env) return null;
   const full = { ...ENV_DEFAULTS, ...env };
-  // AUDIT TEMP-UI E2: A SWIMMER IS IN THE WATER. The law soaks on `submerged` (temperature.js environmentWet), and no
-  // host ever said it - every host says `swimming` - so thirty minutes' swim left the body dry. A reader that says
-  // `submerged` itself is believed.
-  if (full.swimming && !Object.hasOwn(env, 'submerged')) full.submerged = true;
+  // AUDIT TEMP-UI E2: A SWIMMER IS IN THE WATER - every host says `swimming` and the law soaks on `submerged` or
+  // `wading` (temperature.js environmentWet), so thirty minutes' swim had left the body dry. AUDIT C&C (lens T D3): AS
+  // THE MOD HAS IT - a swim on the surface WADES (Climates.cs Water(): the motor's OnExteriorWater Swimming, fifty a
+  // minute), and only a head under the water is SUBMERGED (IsPlayerSubmerged, the whole three hundred at once): E2 read
+  // every swim as submerged, so one minute in a river left a body Drenched for five hours. The hosts that know the head
+  // is under say `submerged` (world.js the sea's, dungeonContext.js the hall's); a reader that says `wading` is believed.
+  if (full.swimming && !full.submerged && !Object.hasOwn(env, 'wading')) full.wading = true;
   const deps = { worn: entity.equip?.slots ?? null, ctx: survivalCtx(entity, full), rules };
   LAST_FEED.set(entity, { env: full, ctx: deps.ctx });   // TEMP-UI: where the body last stood, for the pack's live reading
   if (rolls) deps.rolls = rolls;
