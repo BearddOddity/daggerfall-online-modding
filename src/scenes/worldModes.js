@@ -5510,8 +5510,11 @@ export function createWorldModes(host) {
       }),
       // SetHealth, through the entity's own ceiling.
       heal: (n) => { playerEntity.health = Math.min(playerEntity.maxHealth, playerEntity.health + n); },
-      // SURV5: the mod's menu - the climate keys it, the tavern's quality tiers it, a meal or a drink takes its minutes
-      // off this host's clock (a blackout the night; online the character's own, LIVED1), the endurance bands the drink
+      // SURV5: the mod's menu - the region keys it and the climate where the region names none (AUDIT C&C I8: the mod's
+      // regionMenuDay, PlayerGPS.CurrentRegionIndex then CurrentClimateIndex), the tavern's quality tiers it, a meal or a
+      // drink takes its minutes off this host's clock (a blackout the night to the sky's six, AUDIT C&C I4; online the
+      // character's own, LIVED1), the endurance bands the drink
+      regionIndex: () => host.currentRegionIndex?.() ?? -1,
       climateIndex: () => host.climateIndex?.() ?? 232,
       advanceMinutes: (n) => interiorTicker.advance(n),
       endurance: () => liveStat(playerEntity, 'endurance'),

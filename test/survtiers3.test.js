@@ -15,7 +15,7 @@ import { REST_KIND, REST_TEXT_SURVIVAL } from '../src/systems/survival/rest.js';
 import { TEMPLATE, FOOD, eatLaw } from '../src/systems/survival/food.js';
 import { createSurvivalItem, useSurvivalItem, SURVIVAL_USE_TEXT, startingProvisions } from '../src/systems/survival/items.js';
 import { CAMP_TEXT, TENT_MODEL, FIRE_LIGHT_RANGE, FIRE_MINUTES, BY_FIRE_REACH } from '../src/systems/survival/camp.js';
-import { TAVERN_MENU_TEXT, blackout } from '../src/systems/survival/tavernMenu.js';
+import { TAVERN_MENU_TEXT, blackout, blackoutWaking } from '../src/systems/survival/tavernMenu.js';
 import { createCamps, CAMP_LIGHT_REACH, CAMP_LIGHTS_MAX } from '../src/scenes/camps.js';
 import { createRestDeps, createPlayerTicker } from '../src/scenes/shared.js';
 import { TavernWindow } from '../src/ui/tavernWindow.js';
@@ -286,7 +286,9 @@ test('the third pass: a Casual rough night that leaves the sleeper short says so
 });
 
 test('the third pass: a Hard blackout says the waking - the classic window\'s box carries it after the fall, and the law hands it', () => {
-  assert.deepEqual(blackout({ drunk: 60 }, 23 * 60, { endurance: 50 }).text, TAVERN_MENU_TEXT.woke);
+  // PIN MOVED (AUDIT C&C I4): the law hands the waking under the sky the sleeper wakes to (blackoutWaking) - offline the
+  // night carries the one clock to six
+  assert.deepEqual(blackoutWaking(23 * 60 + blackout({ drunk: 60 }, 23 * 60, { endurance: 50 }).minutes), TAVERN_MENU_TEXT.woke);
   setPref(SURVIVAL_PREF, 'hard');
   const now = 1440 * 10 + 23 * 60;
   const entity = { name: 'Mac', goldPieces: 100, health: 20, maxHealth: 40, stats: { endurance: 50 }, rentedRooms: [], items: [], activeEffects: [], lastTimePlayerAteOrDrankAtTavern: 0, survival: { ...newSurvival(now), drunk: 45 } };

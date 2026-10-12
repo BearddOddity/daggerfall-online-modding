@@ -141,8 +141,9 @@ test('SURV-BOONS: NOTHING IS EVER TAKEN - the worst day (starving, dehydrated, e
   assert.equal(eatLaw(raw, { lastAte: 0, now: 5000, luck: 10, rolls: () => 0.99, rules: BOONS }).sick, null, 'no sickness roll');
   assert.deepEqual(tavernOrder({ ...newSurvival(0), drunk: 45 }, 0, { kind: 'drink', strength: 35, price: 1 }, { endurance: 50, rules: BOONS }), { ok: false, text: TAVERN_MENU_TEXT.cutOff }, 'the barkeep stops pouring before a blackout');
   const meal = { kind: 'food', worth: 200, price: 5 };
-  assert.deepEqual(tavernOrder({ ...newSurvival(0), lastAte: 1000 - 199 }, 1000, meal, { rules: BOONS }), { ok: false, text: TAVERN_MENU_TEXT.fullForMeal }, 'AUDIT SURV-BOONS D2: the kitchen will not waste a meal - and so takes no coin for one');
-  assert.deepEqual(tavernOrder({ ...newSurvival(0), lastAte: 1000 - 200 }, 1000, meal, { rules: BOONS }), { ok: true }, 'a meal\'s worth of hunger buys it');
+  // PIN MOVED (AUDIT C&C I3): the hunger at the meal's end, its half hour passed first - 170 now is 200 then
+  assert.deepEqual(tavernOrder({ ...newSurvival(0), lastAte: 1000 - 169 }, 1000, meal, { rules: BOONS }), { ok: false, text: TAVERN_MENU_TEXT.fullForMeal }, 'AUDIT SURV-BOONS D2: the kitchen will not waste a meal - and so takes no coin for one');
+  assert.deepEqual(tavernOrder({ ...newSurvival(0), lastAte: 1000 - 170 }, 1000, meal, { rules: BOONS }), { ok: true }, 'a meal\'s worth of hunger buys it');
 });
 
 test('SURV-BOONS: THE OVER-CEILING POOL (AUDIT SURV-BOONS D1/A4) - Well fed fills a pool that Peckish then shrinks, and a Fortify ends under a full one: the fatigue above the new ceiling is never drained by a need', () => {
