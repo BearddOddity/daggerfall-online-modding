@@ -2706,3 +2706,23 @@ SENTENCE):
   The argument is gone, and the record with it; LOOT14's record re-aimed.
 - **A pin that passed at -1 (R21).** SURVART-4 survived since DW3; the
   door is driven past a vendored archive's end now (SURV-ART, above).
+
+### The run that closed it
+
+Stated as its rule, so it can be run again: every record in the
+survival lists - `auditcc`, `auditcc_items`, `auditcc_tavern`,
+`auditcc_ui`, `auditcc_pvp`, `surv1`-`surv7`, `surv_thirst1`,
+`survboons`, `survtiers`, `survtiers3`, `tempui`, `survart`, `auditsurv`,
+`auditlived1b`, `hearth1`, `fb0930_cc_*`, `fb0930_hoodsaid`, `loot14`,
+`loot15`, `deathloop1`, `restsleep1`, `rationshungry`, `needtier`,
+`ui3`, `vamphood`, `auditloot2`, and the rest lists (`rest3`-`rest8`,
+`auditrest*`) - and every record in any other list whose target lies
+within six lines of a line this branch changed against `main`, on the
+tree with `main` merged in (`tools/mutate.mjs --jobs 4`): 1,603 records
+in 84 lists - 1,595 dead, 8 equivalent as recorded, none surviving, none
+stale, none that did not apply. The eight: this audit's three (R18's
+two, above, and S12's boxless node - a node with no box measures 0x0 at
+the corner, where the plate never stands), CLOTHES-BREATHE's threshold
+(continuous since E7), and four older ones the run met standing as
+recorded (SURVTIERS-off-eats-at-hard, SURVTIERS3-a-meal-in-the-future,
+and AUDITREST-F1's and REST6's Ember Jar).
