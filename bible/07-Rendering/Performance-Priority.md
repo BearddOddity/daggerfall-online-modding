@@ -489,6 +489,42 @@ Pins: `test/peerhullrange.test.js` (+2): every lane's fog closed at the near edg
 ship under way given back and built again, each in her record's dress. Mutants (+6): the first cut's edge, each of the
 three remembered things kept, her fires left hung, whole in a frame.
 
+## WILD-DRY — the dry-ground answer, read only until it is certain
+
+*The owner (2026-10-12): "as soon as you enter the game and open the map with V, the game freezes for 4 to 5
+seconds."*
+
+**Found.** One frame of 6.7 s on the live client, 94% of it in one question. The map's overlay draws the Wrothgarian
+zone's giants (`wildGiants`), and their walking ground (`systems/wildGiants.js cellsOf`, built once a zone mask)
+asks every pixel of the zone the wild halls' `free` test - whose dear half is SPAWN-SHORE's
+`createSpawnGround`: is the plateau a ruin would stand on dry? Each answer read the pixel's whole noiseless kernel,
+129 x 129 = 16,641 samples, and averaged them (`spawnPlateauFloor`), for 12,564 pixels. Kept per pixel after, so
+only the first open froze - and the zone's halls ask the same question as the world loads in it.
+
+**The fix** (`world/spawnedDungeons.js spawnGroundDry`). The same answer, read only until it is certain: every
+sample is in [0, 1] (sampleKernel's clamp01), so the running sum never falls - nor does a float sum of non-negatives,
+nor the division and the product by positive constants - so once a column's running average is over the line, the
+whole one is. A pixel that never gets there is answered by the very sum `spawnPlateauFloor` makes, in its order.
+`createSpawnGround` asks it; `spawnPlateauFloor` stands as it was for its other readers.
+
+**Measured.** Over the real zone (the owner's ARENA2): the 12,564 pixels 17.9 s -> 1.0 s (17x), every answer the same.
+On the live client, the map's first open in a fresh session, the old and the new in two sessions:
+
+| the map's first open (V) | before | WILD-DRY |
+|---|---|---|
+| the frozen frame | 6,714 ms | **692 ms** |
+| of which the giants' ground | ~6,300 ms | 393 ms |
+
+And the zone's halls as the world loads (the same question; WILD-FREE's bench, the real zone): their first day
+19.2 s -> 1.06 s on main's picks, 4.0 s -> 0.24 s with WILD-FREE's.
+
+Pins: `test/wilddry.test.js` (3) - every pixel of thirteen grounds (the sea, a beach, coasts four ways, slopes, a
+ridge, a ground whose first columns stand over the line and the rest under it, one the ground noise would lift over
+it) answers as `spawnPlateauFloor(...) > SPAWN_DRY_ELEVATION` did, with four large-map levels; a dry pixel stops
+reading early (inland under half the kernel, the mountains under a tenth) and the open sea reads it all; the spawns'
+ground asks it. Mutants: `tools/mutants/wilddry.json`, 5, all dead; `spawnshore.json`'s SHORE-law-byte-only
+re-aimed at the gate's new line, still dead.
+
 ## What is left, ranked
 
 Each with what was found and whether it moves the picture (those are the owner's).
