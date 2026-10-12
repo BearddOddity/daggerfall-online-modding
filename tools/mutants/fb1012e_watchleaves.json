@@ -214,5 +214,14 @@
   "tests": [
    "test/fb1012e_watchleaves.test.js"
   ]
+ },
+ {
+  "name": "WATCH-LEAVES-walk-off-leaks-batch",
+  "file": "src/scenes/cityGuards.js",
+  "old": "if (Number.isFinite(yaw) ? popAllowChange(dx, dz, yaw, dist) : dist > POP_VISIBLE_RANGE) { g.dead = true; releaseGuardBatch(g); continue; }",
+  "new": "if (Number.isFinite(yaw) ? popAllowChange(dx, dz, yaw, dist) : dist > POP_VISIBLE_RANGE) { g.dead = true; continue; }",
+  "tests": [
+   "test/audit24_lifetimes.test.js"
+  ]
  }
 ]
