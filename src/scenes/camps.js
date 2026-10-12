@@ -38,7 +38,7 @@ import { ListPickerWindow } from '../ui/listPicker.js';
 import { survivalOn } from '../systems/survival/switch.js';   // AUDIT SURV-TIERS: Off keeps what stands and uses none of it (shown, below); SURV-OFFSIGHT: it sees another's (seen)
 import {
   TENT_MODEL, FIRE_FLAT, FIRE_LIGHT_RANGE, CAMP_REACH, CAMP_KIND, CAMP_TEXT, CAMPS_PER_OWNER,
-  placeCampItem, packCamp, stokeFire, canStoke, fireLit, campExpired, tentPos, nearestFire, campInfoText, campMenu, campSpot, campDecision,
+  placeCampItem, packCamp, stokeFire, canStoke, fireLit, campExpired, tentNear as tentInReach, tentPos, nearestFire, campInfoText, campMenu, campSpot, campDecision,
   cookables, cookFood, hasSkillet, campWire, mergeOwnerCamps, BY_FIRE_REACH, FIRE_MINUTES, spendCampNight,
   strikeCamp,   // FIELD BUGS 2026-10-04d CAMP-CAP: a placing at the cap strikes the oldest
   validDeck, deckYaw, TENT_BEHIND,
@@ -667,6 +667,8 @@ export function createCamps({
    */
   const fireNear = (pos) => !!nearestFire(camps.map((c) => c.rec), pos, now())
     || hearthNear(hearths ? hearths() : null, pos, BY_FIRE_REACH);
+  /** AUDIT C&C I2: a tent this player uses in reach - the roof a rest at it sleeps under (the hosts' `sheltered`). */
+  const tentNear = (pos) => tentInReach(shown().map((c) => c.rec), pos);
 
   /** DestroyLightSources' twin: every transition and every load. */
   function destroyAll() {
@@ -806,7 +808,7 @@ export function createCamps({
   }
 
   return {
-    placeItem, ride, tick, tend, batches, lights, draw, targets, hoverName, activate, openMenu, openCook, byFire, fireNear, spendNightNear,   // DECK-CAMP: ride
+    placeItem, ride, tick, tend, batches, lights, draw, targets, hoverName, activate, openMenu, openCook, byFire, fireNear, tentNear, spendNightNear,   // DECK-CAMP: ride; AUDIT C&C I2: tentNear
     restPointAt, bedrollNear, packOwnFires,   // REST6; AUDIT REST F1
     destroyAll, dropOwn, collectPixel, offsetAll, groundMoved, snapshot, restore, wireRecords, applyOwner, sweepOwners, sweepColdAbsent,
     get camps() { return camps; }, own,

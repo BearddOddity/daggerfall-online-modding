@@ -9,10 +9,10 @@ import { newSurvival, survivalMinute } from '../src/systems/survival/needs.js';
 import { TEMPLATE, foodStage, waterIn } from '../src/systems/survival/food.js';
 import { createSurvivalItem, spoilFood, provisionsStock, drinkAtSource, useSurvivalItem, SURVIVAL_TEMPLATES } from '../src/systems/survival/items.js';
 import { campMenu, CAMP_TEXT, CAMP_KIND, FIRE_MINUTES, PLACE_AHEAD, TENT_MODEL } from '../src/systems/survival/camp.js';
-import { hoodUp } from '../src/systems/survival/temperature.js';
+import { hoodUp, sunlit } from '../src/systems/survival/temperature.js';
 import { createCamps } from '../src/scenes/camps.js';
 import { setWorldMinutes, setSharedClock } from '../src/systems/worldTick.js';
-import { inventoryItemImage } from '../src/systems/itemTemplates.js';
+import { inventoryItemImage, mintCondition } from '../src/systems/itemTemplates.js';
 import { resolveItemName, survivalInfoTokens } from '../src/systems/itemInfo.js';
 import { useItem } from '../src/systems/useItem.js';
 import { assignStartingGear } from '../src/systems/startingGear.js';
@@ -247,4 +247,43 @@ test('AUDIT C&C I1: A REST AT YOUR OWN COLD CAMP LIGHTS IT FIRST, AS ITS MENU WO
   t.camps.activate(tkey, 'grab', 'rest');
   assert.deepEqual(t.said, ['REST'], 'nothing said stoked');
   assert.equal(tent.litUntil <= 30000 + FIRE_MINUTES + 5, true, 'and nothing lit');
+});
+
+test('AUDIT C&C I2: A REST IN A TENT SLEEPS UNDER ITS ROOF, AND NO REST RUSTS - the mod\'s camp rest is its "inside or camping" arm, where the rain wets nothing and the wet only dries, and its ArmorDmg is rolled only in the arm "If not camping, bed sleeping or traveling": a Hard night asleep in the tent in the rain had soaked its sleeper and rusted the steel all night; the pool answers a tent in reach (a Campfire alone is no roof), and both outdoor hosts hand it', async () => {
+  const HARD = SURVIVAL_RULES.hard;
+  const RAIN = { climateIndex: CLIMATES.Woodlands, month: 6, hour: 2, weather: 'rain' };
+  const night = (env, minutes = 10) => {
+    const steel = mintCondition({ group: 'Armor', templateIndex: 102, material: 0x0202, name: 'Steel', flags: 0, variant: 0 });
+    const worn = []; worn[18] = steel;
+    const e = { stats: { ...STATS }, raceId: RACES.Breton, items: [steel], activeEffects: [], health: 40, maxHealth: 40, fatigue: 6400, survival: newSurvival(0) };
+    e.survival.wet = 50;
+    for (let m = 1; m <= minutes; m++) survivalMinute(e, m, env, { worn, sinks: {}, autoDrink: false, autoEat: false, rules: HARD, rolls: () => 0.01, ctx: { raceId: RACES.Breton } });
+    return { wet: e.survival.wet, rusted: steel.currentCondition < steel.maxCondition };
+  };
+  const asleep = { resting: true, sleeping: 'camp', byFire: true };
+  assert.deepEqual(night({ ...RAIN, ...asleep, sheltered: true }), { wet: 20, rusted: false }, 'in the tent: drying, nothing rusts');
+  assert.deepEqual(night({ ...RAIN, resting: true, sleeping: 'rough', sheltered: true }), { wet: 20, rusted: false }, 'its fire out, the roof dries as well');
+  assert.deepEqual(night({ ...RAIN, ...asleep }), { wet: 80, rusted: false }, 'asleep under the rain by a fire alone: soaking, still no rust');
+  assert.deepEqual(night({ ...RAIN, insideBuilding: true }), { wet: 20, rusted: false }, 'awake under a roof: drying, no rust');
+  assert.equal(night({ ...RAIN }).rusted, true, 'awake in the rain: the mod\'s own rust');
+  assert.equal(sunlit({ hour: 12, weather: 'sunny', sheltered: true }), false, 'and no sun under canvas');
+  // the pool: a tent in reach, a Campfire alone none
+  setWorldMinutes(40000);
+  const h = campHost();
+  const gear = createSurvivalItem(TEMPLATE.CampingEquipment), fire = createSurvivalItem(TEMPLATE.Campfire);
+  h.entity.items.push(gear, fire);
+  assert.equal(h.camps.placeItem(gear, h.entity.items), true);
+  await settle();
+  assert.equal(h.camps.tentNear([0, 1, PLACE_AHEAD - 1]), true, 'by the tent');
+  h.state.feet = [40, 1, 0];
+  assert.equal(h.camps.placeItem(fire, h.entity.items), true);
+  await settle();
+  assert.deepEqual([h.camps.tentNear([40, 1, PLACE_AHEAD - 1]), h.camps.byFire([40, 1, PLACE_AHEAD - 1])], [false, true], 'by a lone Campfire: a fire, no roof');
+  // the hosts: a rest at a tent is sheltered, and the sun is the sheltered sun
+  for (const file of ['src/scenes/world.js', 'src/scenes/exterior.js']) {
+    const src = read(file);
+    assert.match(src, /const sheltered = m === 'exterior' && !!playerEntity\.isResting && !!camps\.tentNear\(feet\);/, file);
+    assert.match(src, /inSunlight: m === 'exterior' && sunlit\(\{ hour, weather, sheltered \}\),/, file);
+    assert.match(src, /byFire: m === 'exterior' && camps\.byFire\(feet\), sheltered,/, file);
+  }
 });

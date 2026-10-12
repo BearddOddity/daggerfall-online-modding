@@ -311,6 +311,10 @@ export function nearestFire(camps, pos, now, reach = BY_FIRE_REACH) {
   return best;
 }
 export const byFire = (camps, pos, now) => !!nearestFire(camps, pos, now);
+/** AUDIT C&C I2: a TENT in the camp's reach of `pos` - its fire lit or not, anyone's: a roof over a rest (the hosts'
+ *  `sheltered`). A Campfire alone is no roof. */
+export const tentNear = (camps, pos, reach = BY_FIRE_REACH) => !!pos && (camps ?? []).some((c) => c?.kind === CAMP_KIND.Tent
+  && Math.hypot(c.pos[0] - pos[0], c.pos[1] - pos[1], c.pos[2] - pos[2]) <= reach);
 
 /** What the eye sees (Info and Talk modes). */
 export function campInfoText(camp, now, mine) {

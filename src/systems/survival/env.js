@@ -36,7 +36,7 @@ const LAST_FEED = new WeakMap();
 /** The env keys a host feeds, with their defaults (the reader may give a subset). */
 export const ENV_DEFAULTS = Object.freeze({
   climateIndex: 232, month: 0, hour: 12, weather: 'sunny', insideBuilding: false, insideDungeon: false, inSunlight: false,
-  swimming: false, submerged: false, wading: false, transport: false, byFire: false, resting: false, sleeping: null,
+  swimming: false, submerged: false, wading: false, transport: false, byFire: false, resting: false, sleeping: null, sheltered: false,
   lycanthrope: false, beastForm: false, fireResist: 0, frostResist: 0,
 });
 

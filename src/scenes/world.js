@@ -7470,14 +7470,15 @@ export async function bootWorld(canvas, renderer, params, status) {
     const weather = shownWeather();   // AUDIT TEMP-UI E11: the weather the land wears - the Sun Baby's clear day too (SUNBABY1); the sim's rain soaked a body under a clear sky
     const lyc = liveLycanthropy(playerEntity);
     const hour = (((wm % 1440) + 1440) % 1440) / 60;
+    const sheltered = m === 'exterior' && !!playerEntity.isResting && !!camps.tentNear(feet);   // AUDIT C&C I2: a rest at a tent sleeps under its roof
     return {
       climateIndex: maps.getClimateIndex(playerTravelPixel().x, playerTravelPixel().y),
       month: dateFromClassicMinutes(wm).month, hour, weather,
       insideBuilding: m === 'interior', insideDungeon: m === 'dungeon',
-      inSunlight: m === 'exterior' && sunlit({ hour, weather }),   // AUDIT C&C: the sun's one law, the replay's too
+      inSunlight: m === 'exterior' && sunlit({ hour, weather, sheltered }),   // AUDIT C&C: the sun's one law, the replay's too
       swimming: m === 'exterior' && !!(walkMode && playerSpawned && player.isPlayerSwimming), transport: !!player.riding,
       submerged: m === 'exterior' && !!dwPlayer?.submerged,   // AUDIT C&C (lens T D3): the head under the sea soaks at once; a swim on the surface wades (env.js)
-      byFire: m === 'exterior' && camps.byFire(feet),
+      byFire: m === 'exterior' && camps.byFire(feet), sheltered,
       resting: !!playerEntity.isResting, sleeping: playerEntity.isResting && !playerEntity.isLoitering ? (playerEntity.restKind ?? 'rough') : null,
       lycanthrope: !!lyc, beastForm: !!lyc?.isTransformed,
       fireResist: elementalResistanceChance(playerEntity, ELEMENTS.Fire), frostResist: elementalResistanceChance(playerEntity, ELEMENTS.Frost),

@@ -2373,6 +2373,17 @@ through the real arrest flow - with the moved pins in `tempui` (E2),
   tent with wear left, or your own cold Campfire with fuel, never an
   Ember Jar's), which the menu offers its Stoke and Relight rows on and
   the rest meets first - said only when it lit.
+- **I2 - a tent kept no rain off its sleeper, and a rest rusted.** The
+  mod's camp rest is its "inside or camping" arm: the counters only
+  dry, two a minute, and the weather wets nothing. The port had a tent's
+  sleeper in the rain soaked as one in the open, and in Hard the wet
+  steel rusted all night - the mod rolls `ArmorDmg` only in its arm "If
+  not camping, bed sleeping or traveling". A rest at a tent is
+  `sheltered` now (the camp pool's `tentNear`, handed by both outdoor
+  hosts while resting): no rain or snow wets, it dries as under a roof,
+  and no sun reaches the sleeper (`sunlit`). A Campfire alone is no roof.
+  And rust is rolled where the mod rolls it: never at rest, never under a
+  roof - a reading corrected.
 
 Pinned by `test/auditcc_items.test.js` (the real producers, the real camp
 pool), with the camp lists in `auditrest2_camps`, `auditrest3`,

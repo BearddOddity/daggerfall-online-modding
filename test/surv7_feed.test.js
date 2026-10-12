@@ -129,7 +129,7 @@ test('SURV7: by source - the four hosts feed their env (the roof, the floor, the
   for (const [name, src] of [['world', world], ['exterior', ext]]) {
     assert.match(src, /const survivalEnvNow = \(\) => \{/, `${name}: the reader`);
     assert.match(src, /insideBuilding: m === 'interior', insideDungeon: m === 'dungeon',/, `${name}: the mode's flags`);
-    assert.match(src, /inSunlight: m === 'exterior' && sunlit\(\{ hour, weather \}\),/, `${name}: the sun - AUDIT C&C's one law (temperature.js sunlit), the replay's too`);
+    assert.match(src, /inSunlight: m === 'exterior' && sunlit\(\{ hour, weather, sheltered \}\),/, `${name}: the sun - AUDIT C&C's one law (temperature.js sunlit), the replay's too, none under a tent's canvas (I2)`);
     assert.match(src, /byFire: m === 'exterior' && camps\.byFire\(feet\),/, `${name}: the fire`);
     assert.match(src, /sleeping: playerEntity\.isResting && !playerEntity\.isLoitering \? \(playerEntity\.restKind \?\? 'rough'\) : null,/, `${name}: the sleep and its kind`);
     assert.match(src, /fireResist: elementalResistanceChance\(playerEntity, ELEMENTS\.Fire\), frostResist: elementalResistanceChance\(playerEntity, ELEMENTS\.Frost\),/, `${name}: the resistances`);

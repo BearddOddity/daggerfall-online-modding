@@ -206,7 +206,7 @@ test('HEARTH1: warmth and drying follow, because they are the same reader', asyn
   assert.ok(warm.felt > cold.felt, 'a fire is warmer than no fire');
   assert.equal(cold.fire, 0, 'no fire is no term');
   assert.equal(warm.fire, 15, 'and it is the law’s own fifteen degrees, not a new number');
-  assert.match(read('src/systems/survival/needs.js'), /if \(env\.byFire \|\| env\.insideBuilding\) dry \+= 2;/, 'the drying rides the same flag');
+  assert.match(read('src/systems/survival/needs.js'), /if \(env\.byFire \|\| env\.insideBuilding \|\| env\.sheltered\) dry \+= 2;/, 'the drying rides the same flag (AUDIT C&C I2, PIN MOVED: and a rest at a tent\'s roof)');
 });
 
 

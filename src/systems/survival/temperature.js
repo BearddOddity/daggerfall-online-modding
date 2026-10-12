@@ -207,9 +207,10 @@ export function naturalParts(env = {}) {
   return { climate, season, hour: 0, weather: 0, roof: natural - climate - season, natural };
 }
 
-/** How wet a minute in this weather makes you, outdoors. */
-export function weatherWetGain(weather, { cloak = false, hood = false, insideBuilding = false, insideDungeon = false } = {}) {
-  if (insideBuilding || insideDungeon) return 0;
+/** How wet a minute in this weather makes you, outdoors - AUDIT C&C I2: and none at rest in a tent (`sheltered`: the
+ *  mod's camp rest is its "inside or camping" arm, where the counter only dries). */
+export function weatherWetGain(weather, { cloak = false, hood = false, insideBuilding = false, insideDungeon = false, sheltered = false } = {}) {
+  if (insideBuilding || insideDungeon || sheltered) return 0;
   const row = WEATHER_WET[weather];
   if (!row) return 0;
   return cloak ? (hood ? row[2] : row[1]) : row[0];
@@ -406,7 +407,7 @@ export function feltTemperature(env = {}, worn = null, ctx = {}) {
     // TEMP-UI: the rest of the sum, so a breakdown adds up to `felt` exactly (temperatureBreakdown): the resistances on
     // the air, the ground's correction, the bare skin, the drink to hand, a garment's degrees
     worldResist: natTemp - air, dungeon: air - natural, naked: NAKED_OFFSET, waterCools: watered - unwatered, degrees: felt - watered,
-    wetGain: weatherWetGain(env.weather, { cloak: cloakState(worn).cloak, hood: clothes.hood, insideBuilding: env.insideBuilding, insideDungeon: env.insideDungeon })
+    wetGain: weatherWetGain(env.weather, { cloak: cloakState(worn).cloak, hood: clothes.hood, insideBuilding: env.insideBuilding, insideDungeon: env.insideDungeon, sheltered: !!env.sheltered })
         * (1 - Math.min(GEAR_DRY_MOST, Math.max(0, Number(ctx.gearDry) || 0)) / 100)   // LOOT14: weatherproofing turns the weather's soaking aside
       + environmentWet(env),
   };

@@ -504,7 +504,7 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
   s.wet = Math.min(NEED.WET_MAX, s.wet + temp.wetGain);
   if (temp.wetGain <= 0) {
     let dry = temp.air > 10 ? Math.trunc(temp.air / 10) : 1;   // AUDIT C&C T1: the air dries the clothes - a Resist Fire made a Soaked shirt at an Alik'r noon take six times as long
-    if (env.byFire || env.insideBuilding) dry += 2;
+    if (env.byFire || env.insideBuilding || env.sheltered) dry += 2;   // AUDIT C&C I2: and at rest in a tent, the mod's camp arm
     s.wet = Math.max(0, s.wet - dry);
   }
   const wetNow = wetStage(s.wet);
@@ -667,7 +667,9 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
   if (temp.metal < -5) note(s, 'armor:cold', now, say, SURVIVAL_TEXT.armorCold, { once: true }); else clearNote(s, 'armor:cold');
 
   // RUST: a wet metal piece loses a point on a 5% minute - in a tier that rusts (Hard; Casual takes no item's condition).
-  if (rules.rust && s.wet > NEED.WET_DAMP && worn && rolls() < 0.05) {
+  // AUDIT C&C I2: and only where the mod rolls it - its ArmorDmg is in the arm "If not camping, bed sleeping or
+  // traveling": never at rest and never under a roof. A sleeper in a tent in the rain rusted all night.
+  if (rules.rust && !resting && !env.insideBuilding && s.wet > NEED.WET_DAMP && worn && rolls() < 0.05) {
     const metal = [18, 23, 12, 13, 15, 26, 20].map((k) => worn[k]).filter((i) => i && i.group === 'Armor' && ((i.material ?? 0) & 0x0f00) !== 0);
     if (metal.length) {
       const piece = metal[Math.floor(rolls() * metal.length)];
