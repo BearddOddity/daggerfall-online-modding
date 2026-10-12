@@ -34,13 +34,14 @@
 //      or an hour. (The drink's own attribute swing stays: it is a choice
 //      made at a bar with an upside, not a need left unmet.)
 //   3. RED MEANS IT COSTS. A need charges only at the stages the HUD
-//      already paints red (survival/status.js HUD_NEED_WORDS): Starving;
-//      Parched and Dehydrated; Exhausted; Freezing, Deadly cold and
-//      Scorching. Amber is information. The rates are Hard's own (needs.js
-//      DRAIN) - the body tires as fast in both tiers once it is in trouble.
-//      (Wetness and the drink are not needs: Drenched is red as a warning -
-//      it works through the felt temperature - and the drink's swing is
-//      the drink's, from its amber Drunk on.)
+//      paints red in Casual (survival/status.js needLevel reads every
+//      tier's red off this table - AUDIT C&C S5): Starving; Parched and
+//      Dehydrated; Exhausted; Freezing, Deadly cold and Scorching. Amber is
+//      information. The rates are Hard's own (needs.js DRAIN) - the body
+//      tires as fast in both tiers once it is in trouble. (Wetness and the
+//      drink are not needs: Drenched is amber - it costs through the felt
+//      temperature, whose own chip says so - and the drink's swing is the
+//      drink's, from its amber Drunk on.)
 //   4. BORROWED, NOT TAKEN. The needs may take stamina down to half the
 //      pool and no further - so on their own they can never raise DFU's
 //      exhaustion collapse, which kills a player with a foe near
@@ -93,7 +94,7 @@
 //      the bonus is the reason to tend, and its fading is the only price of
 //      not tending.
 //   4. NO RED. A need's chip goes no further than amber in Boons (status.js
-//      survivalHudChips) - RED MEANS IT COSTS, and nothing here costs. The
+//      needLevel) - RED MEANS IT COSTS, and nothing here costs. The
 //      boons are the strip's green tiles.
 //
 // A LEAF: no imports, so the laws, the switch and the prefs shelf read it

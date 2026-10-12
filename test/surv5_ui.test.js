@@ -8,7 +8,7 @@ import {
   MENU_KEY_BY_CLIMATE, menuKeyFor, menuTier, breakfastHours, KITCHEN_CLOSED_HOUR, MEAL_WORTH, DRINK_STRENGTH, MEAL_MINUTES, DRINK_MINUTES,
   FOOD_MENUS, DRINK_MENUS, drinkMenuFor, drinkKind, tavernMenu, tavernEat, tavernDrink, blackout, TAVERN_MENU_TEXT, BLACKOUT_WAKE_HOUR,
 } from '../src/systems/survival/tavernMenu.js';
-import { survivalHudChips, survivalStatusLines, survivalStatusRows, STATUS_TEXT, HUD_NEED_WORDS } from '../src/systems/survival/status.js';
+import { survivalHudChips, survivalStatusLines, survivalStatusRows, STATUS_TEXT, HUD_NEED_WORDS, needLevel } from '../src/systems/survival/status.js';
 import { newSurvival, survivalOf, runSurvivalMinutes, NEED } from '../src/systems/survival/needs.js';
 import { STIFF_HOURS } from '../src/systems/survival/rest.js';
 import { createSurvivalItem } from '../src/systems/survival/items.js';
@@ -102,7 +102,8 @@ test('SURV5: the strip and the page - one chip a felt need, nothing while every 
   e.survival = { ...newSurvival(0), lastAte: 0, thirst: 90, wet: 40, sleepDebt: 5, drunk: 45, felt: -35, stiffUntil: 5000 };
   assert.deepEqual(survivalHudChips(e, 800).map((c) => `${c.key}:${c.text}:${c.level}`),
     ['hunger:Hungry:warn', 'thirst:Parched:danger', 'sleep:Tired:warn', 'wet:Wet:warn', 'temp:Freezing:danger', 'stiff:Stiff:warn', 'drunk:Very drunk:danger']);
-  assert.equal(HUD_NEED_WORDS.hunger.starving[1], 'danger');
+  assert.equal(HUD_NEED_WORDS.hunger.starving, 'Starving');   // PIN MOVED (AUDIT C&C S5): the table is words; the level is the tier's (needLevel)
+  assert.equal(needLevel('hunger', 'starving'), 'danger', 'Starving costs in the default tier');
   assert.deepEqual(survivalStatusLines(e, 800, { endurance: 50 }), [
     STATUS_TEXT.hunger.hungry, STATUS_TEXT.thirst.parched, STATUS_TEXT.sleep.tired, STATUS_TEXT.wet.wet, 'You feel freezing.',
     'Felt temperature: -35 (comfortable from -10 to +10).',   // PIN MOVED (TEMP-UI): the number under the word
@@ -200,10 +201,10 @@ test('SURV5: by source - the four hosts chain the third box, the enhanced HUD ca
   }
   // ...and the ONE place it becomes rows, so the page cannot be dropped
   // by a host that forgets it.
-  assert.match(read('src/ui/statusBox.js'), /if \(survival\) rows\.push\('', \.\.\.survivalStatusRows\(entity, survival\.minutes, survival\)\);/);
+  assert.match(read('src/ui/statusBox.js'), /if \(survival\) rows\.push\('', \.\.\.survivalStatusRows\(entity, survival\.minutes, \{ rules: survivalRules\(\), \.\.\.survival \}\)\);/);   // PIN MOVED (AUDIT C&C S11): and the live tier, read once
   const hud = read('src/ui/enhancedHud.js');
   // UI3: the needs are the status widget's tiles - a felt need amber, one that costs red
-  assert.match(hud, /const needs = survivalOn\(\) \? survivalHudChips\(vitals, Math\.floor\(ownMinutes\(\)\), \{ vampire: !!liveVampirism\(vitals\), endurance: liveStat\(vitals, 'endurance'\), rewarding: !!survivalRules\(\)\?\.boons \}\) : \[\];/);   // PIN MOVED (AUDIT SURV-BOONS C14): and the live tier
+  assert.match(hud, /const needs = survivalOn\(\) \? survivalHudChips\(vitals, Math\.floor\(ownMinutes\(\)\), \{ vampire: !!liveVampirism\(vitals\), endurance: liveStat\(vitals, 'endurance'\), rules: survivalRules\(\), live \}\) : \[\];/);   // PIN MOVED (AUDIT SURV-BOONS C14): and the live tier   // PIN MOVED (AUDIT C&C S5/S9): its rules, and the frame's one live reading
   assert.match(hud, /const all = statusTiles\(\{ spells, powers, afflictions: afflictionRows\(vitals\), needs, rested \}\);/);   // REST1: and the Rested tile
   assert.match(read('src/ui/enhancedStyle.js'), /\.hst-cell\.danger \{/);
   const wm = read('src/scenes/worldModes.js');

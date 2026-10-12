@@ -1427,7 +1427,7 @@ export const FEATURES = Object.freeze([
   // character carries, camps and campfires, the costed rest.
   // Off is the classic game: no needs, no provisions minted.
   // SURV-TIERS (2026-09-23): the one switch is tiers - Off, Boons
-  // (SURV-BOONS, 2026-10-12: nothing taken, a need met earns a bonus),
+  // (SURV-BOONS, 2026-10-12: neglect costs nothing, a need met earns a bonus),
   // Casual (the default: the needs only borrow stamina, and a rest,
   // a meal or a drink never costs more than it gives) and Hard (the arc
   // as above, the costed rest with it); survival/difficulty.js.

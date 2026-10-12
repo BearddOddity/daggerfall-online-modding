@@ -74,7 +74,7 @@ import { sigilRuneTileSrc } from './sigilRune.js';   // UI3: a set power's tile 
 import { techniqueGlyphTileSrc } from './techniqueGlyph.js';   // TECH-CARD: a technique's tile is its own glyph, the card block's
 import { liveVampirism } from '../systems/racialLive.js';   // AUDIT SURV C: no hunger or sleep chip on a vampire
 import { survivalOn, survivalRules } from '../systems/survival/switch.js';   // AUDIT SURV-BOONS C14: and the live tier's rules
-import { temperatureReadout } from '../systems/survival/status.js';   // TEMP-UI: the temperature plate's reading
+import { temperatureReadout, levelSaid } from '../systems/survival/status.js';   // TEMP-UI: the temperature plate's reading; AUDIT C&C S14: its level in words
 import { feltNow } from '../systems/survival/env.js';   // TEMP-UI: live, where the body stands this frame
 
 import { ownMinutes, sharedClockOn } from '../systems/worldTick.js';   // LIVED1: the needs' strip reads the character's own clock   // REST1: and the Rested tile is online's
@@ -592,10 +592,12 @@ function build(doc) {
   // word, and a scale from deadly cold to scorching with the comfortable band in its middle and a mark where you stand.
   // It reads the felt temperature LIVE (survival/env.js feltNow: the minute law's own sum where the body stands this
   // frame - AUDIT TEMP-UI E9: the record's `felt` waits a game minute, so a door read the street's for five seconds) and
-  // wears the level the strip's chip gives that reading (survival/status.js temperatureReadout): amber felt, red
-  // costing - RED MEANS IT COSTS. Only while Climates & Calories is on and its part (`survivalTempHud`, the row's
-  // drawer) is; a phone keeps the glyph and the number, and so does a screen where the whole plate would run off its
-  // right edge (a large HUD scale - tools/tempUiProbe.mjs).
+  // wears the level the strip's chip gives that reading - the chip reads the same live reading (AUDIT C&C S9) - amber
+  // felt, red where the live tier charges for it (survival/status.js needLevel - RED MEANS IT COSTS), said in words on
+  // its title and marked where it costs (AUDIT C&C S14). Only while Climates & Calories is on and its part
+  // (`survivalTempHud`, the row's drawer) is. AUDIT C&C S3: a HUD piece of its own inside the compass (ui/hudLayout.js
+  // HUD_PIECES 'temp'), with its own X - the compass switched off leaves it standing; a phone keeps the glyph and the
+  // number, and so does a screen where the whole plate would run off its right edge or under the FPS read-out (fitTemp).
   const temp = el('div', 'hud-temp');
   const tempGlyph = el('img', 'hud-tempglyph');
   tempGlyph.alt = '';
@@ -1256,8 +1258,10 @@ export function drawEnhancedHud(vitals, heading01, dt = 0, opts = {}) {
   }
 
   // UI3: THE STATUS WIDGET - the spells, the set powers, the poisons and diseases and the needs, a square tile each
-  drawStatus(vitals, opts);
-  drawTemp(vitals);   // TEMP-UI: the temperature plate
+  // AUDIT C&C S9 (decision D3): ONE TEMPERATURE READING A FRAME - the strip's chip and the plate read the same live one
+  const live = survivalOn() ? feltNow(vitals) : null;
+  drawStatus(vitals, opts, live);
+  drawTemp(vitals, live);   // TEMP-UI: the temperature plate
 }
 
 /** TEMP-UI: the temperature plate's part on the Climates & Calories row (systems/features.js) - shown unless switched off. */
@@ -1265,11 +1269,10 @@ export const TEMP_HUD_PREF = 'survivalTempHud';
 /** TEMP-UI: the glyph for the way a reading runs (ui/hudStatus.js STATUS_GLYPHS). */
 const TEMP_GLYPHS = Object.freeze({ cold: 'cold', hot: 'hot', mild: 'thermo' });
 /** TEMP-UI - ONE FRAME OF THE TEMPERATURE PLATE: written only when what it says changes (the reading moves once a game
- *  minute; the frame is sixty a second). */
-function drawTemp(vitals) {
+ *  minute; the frame is sixty a second). `live` is the frame's one live reading (AUDIT C&C S9), the record's with none. */
+function drawTemp(vitals, live = null) {
   const on = survivalOn() && getPref(TEMP_HUD_PREF) !== false;
-  const live = on ? feltNow(vitals) : null;
-  const r = on ? temperatureReadout(vitals, live ? live.felt : undefined, { rewarding: !!survivalRules()?.boons }) : null;
+  const r = on ? temperatureReadout(vitals, live ? live.felt : undefined, { rules: survivalRules(), env: live?.env ?? null }) : null;
   const k = r ? `${r.text}|${r.label}|${r.level}|${r.side}|${r.at.toFixed(3)}` : '';
   const t = parts.temp;
   if (last.temp !== k) {
@@ -1282,28 +1285,70 @@ function drawTemp(vitals) {
     t.num.textContent = r.text;
     t.word.textContent = r.label;
     t.mark.style.left = `${(r.at * 100).toFixed(1)}%`;
+    // AUDIT C&C S14: what its level means, in words - and the sheet marks a costing plate (`!`): its frame's colour said it alone
+    const said = `Felt temperature ${r.text}: ${levelSaid(r.label, r.level)}`;
+    t.el.title = said;
+    t.el.setAttribute('aria-label', said);
     last.tempFit = -1;   // a new word is a new width: measured again
   }
   if (r) fitTemp(t);
 }
-/** TEMP-UI: the room right of the compass, now and then - the whole plate where it fits short of the screen's edge, the
- *  glyph and the number (`compact`) where it does not; the whole plate's width is remembered from when it last stood,
- *  so the compact one knows when there is room again. */
+/**
+ * TEMP-UI: WHERE THE PLATE STANDS, measured now and then - and at once on a new screen size, HUD scale or word, and as a
+ * foe's bar comes or goes. AUDIT C&C S3, S10, S12: measured from the WHOLE plate every time - it stayed compact after a
+ * HUD scale of 2 went back to 1, judged by its width at 2 - and stepped down only as far as it must, each place taken
+ * only where it meets nothing it keeps clear of (TEMP_CLEAR_OF - the FPS read-out stood on it at 1440, 1280 and 1024):
+ * the whole plate right of the compass, its air short of the screen's edge; the glyph and the number there (`compact`),
+ * on the screen with its costing mark (TEMP_MARK); the compact plate HUNG under the compass's right end (`temp-hung`) -
+ * where a phone at a HUD scale of 1.25 to 2 had lost half of it or all of it past the edge - kept on the screen
+ * (`--hud-temp-in`), and below what stands there (`--hud-temp-drop`: the FPS read-out's foot, a foe's bar); and where
+ * even that meets something, it steps aside (`temp-aside`) until there is room, as the status widget does - the strip's
+ * tile still says the reading. Never while the player drags it (the HUD editor - it is a piece of its own).
+ */
 function fitTemp(t) {
-  const vp = `${globalThis.innerWidth}x${last.scale ?? 1}`;
+  const vp = `${globalThis.innerWidth}x${globalThis.innerHeight}x${last.scale ?? 1}x${parts.foe?.classList?.contains('on') ? 1 : 0}`;
   if (last.tempVp !== vp) { last.tempVp = vp; last.tempFit = -1; }
   last.tempFit = ((last.tempFit ?? -1) + 1) % STAT_MEASURE_EVERY;
-  if (last.tempFit !== 0 || typeof t.el.getBoundingClientRect !== 'function') return;
-  const edge = (globalThis.innerWidth ?? Infinity) - TEMP_EDGE;
-  const compact = t.el.classList.contains('compact');
+  if (last.tempFit !== 0 || typeof t.el.getBoundingClientRect !== 'function' || t.el.hasAttribute?.('data-hm-drag')) return;
+  const vw = globalThis.innerWidth ?? Infinity;
+  const shown = (n) => {
+    const b = n?.getBoundingClientRect?.();
+    if (!b || !(b.width > 0) || !(b.height > 0)) return null;   // display:none - no box
+    try { if (globalThis.getComputedStyle?.(n)?.visibility === 'hidden') return null; } catch { /* a stub's node: shown */ }
+    return b;
+  };
+  const others = [...(document.querySelectorAll?.(TEMP_CLEAR_OF) ?? [])].map(shown).filter(Boolean);
+  const meets = (r, o) => r.left < o.right + TEMP_EDGE && o.left - TEMP_EDGE < r.right && r.top < o.bottom + TEMP_EDGE && o.top - TEMP_EDGE < r.bottom;
+  const clear = (r, edge) => r.right <= edge && !others.some((o) => meets(r, o));
+  const s = t.el.style;
+  s.removeProperty?.('--hud-temp-in');
+  s.removeProperty?.('--hud-temp-drop');
+  t.el.classList.remove('compact', 'temp-hung', 'temp-aside');
+  if (clear(t.el.getBoundingClientRect(), vw - TEMP_EDGE)) return;
+  t.el.classList.add('compact');
+  if (clear(t.el.getBoundingClientRect(), vw - TEMP_MARK)) return;
+  t.el.classList.add('temp-hung');
   const r = t.el.getBoundingClientRect();
-  if (!compact) {
-    last.tempFullW = r.width;
-    if (r.right > edge) t.el.classList.add('compact');
-  } else if (r.left + (last.tempFullW ?? Infinity) <= edge) t.el.classList.remove('compact');
+  const k = r.height > 0 && t.el.offsetHeight > 0 ? r.height / t.el.offsetHeight : 1;   // screen pixels to the plate's own
+  const dx = Math.max(0, r.right - (vw - TEMP_EDGE));
+  if (dx > 0) s.setProperty?.('--hud-temp-in', `${Math.ceil(dx / k)}px`);
+  let h = { left: r.left - dx, right: r.right - dx, top: r.top, bottom: r.bottom };
+  const under = others.filter((o) => meets(h, o));
+  if (!under.length) return;
+  const dy = Math.max(...under.map((o) => o.bottom)) + TEMP_EDGE - h.top;
+  s.setProperty?.('--hud-temp-drop', `${Math.ceil(dy / k)}px`);
+  h = { ...h, top: h.top + dy, bottom: h.bottom + dy };
+  if (!clear(h, vw)) t.el.classList.add('temp-aside');
 }
-/** TEMP-UI: the air the plate keeps from the screen's right edge. */
+/** TEMP-UI: the air the plate keeps from the screen's right edge - and (AUDIT C&C S3, S12) from what it keeps clear of. */
 const TEMP_EDGE = 8;
+/** AUDIT C&C S3, S14: how far a costing plate's mark stands past its box (ui/enhancedStyle.js: 7px past its padding,
+ *  inside a 2px frame) - the compact plate beside the compass keeps it on the screen at every level, so the mark moves
+ *  nothing (a 360 phone had the plate a pixel from the edge, and the mark past it). */
+const TEMP_MARK = 5;
+/** AUDIT C&C S3, S12: what the plate keeps clear of, where it would stand: the FPS read-out (ui/fpsCounter.js, over every
+ *  host at the top right), a foe's bar under the compass, and down the right edge the quest card and the party list. */
+const TEMP_CLEAR_OF = '#fps-counter, .hud-foe.on, .qtrack, .dfparty';
 
 /** UI3: frames between two measures of the widget's band - a layout read is not free, and a band moves only when the
  *  chat, the escorts or the quickslot block do. */
@@ -1323,7 +1368,7 @@ const STAT_ABOVE = '.dfchat, .dfsocial[data-open="1"], .wb-boss-bar, .travelpane
  * what stands above it; with no band above the caption it stands beside the diamond; and where there is no room for
  * the names (statPlace) they go.
  */
-function drawStatus(vitals, opts) {
+function drawStatus(vitals, opts, live = null) {
   last.statEntity = vitals;   // BUFF-END: the entity a right-click ends a spell on is the one this frame drew
   // BUFF-END: the freed mouse (Enter, or FreeMouse) with no window up and no pad in hand - the hotbar's own mouse mode -
   // lets a spell the player may end take the pointer; the rest of the HUD stays pointer-transparent
@@ -1333,7 +1378,7 @@ function drawStatus(vitals, opts) {
   const powers = setPowerChips(vitals);   // SET5: the set powers (the host's - setHudSetChips)
   powers.push(...techniqueChips(vitals));   // TECH1: and the weapon's technique beside them (the host's - setHudTechniqueChips)
   // SURV5: the needs - one a felt need (survival/status.js), none while every need is met, and none with the switch off
-  const needs = survivalOn() ? survivalHudChips(vitals, Math.floor(ownMinutes()), { vampire: !!liveVampirism(vitals), endurance: liveStat(vitals, 'endurance'), rewarding: !!survivalRules()?.boons }) : [];   // AUDIT SURV C: the vampire's strip, the page's drunk bands; AUDIT SURV-BOONS C14: the live tier's, so a turn shows at once
+  const needs = survivalOn() ? survivalHudChips(vitals, Math.floor(ownMinutes()), { vampire: !!liveVampirism(vitals), endurance: liveStat(vitals, 'endurance'), rules: survivalRules(), live }) : [];   // AUDIT SURV C: the vampire's strip, the page's drunk bands; AUDIT SURV-BOONS C14: the live tier's, so a turn shows at once (AUDIT C&C S5: and its levels are that tier's); AUDIT C&C S9: the plate's live reading
   if (needs.some((c) => c.level !== 'boon')) noteFirstUse('survival');   // TUT1: the first felt need - AUDIT SURV-BOONS C2: a boon is none (a fresh Boons character is fed and watered, and met the page in its first minute)
   const rested = sharedClockOn() ? { minutes: nightRealMinutesLeft(vitals, ownMinutes()) } : null;   // REST1: the night interval, online
   const all = statusTiles({ spells, powers, afflictions: afflictionRows(vitals), needs, rested });
@@ -1410,12 +1455,13 @@ function bindStatEnding(stat) {
 
 /** UI3: one tile - its frame's kind, its picture (a spell's icon, a set's rune, a glyph), its foot and its name. */
 function statTile(t, dpr, box) {
-  const cell = el('div', `hst-cell ${t.kind}${t.blink ? ' blink' : ''}${t.item ? ' item' : ''}${t.recovering ? ' recovering' : ''}`);
+  const cell = el('div', `hst-cell ${t.kind}${t.blink ? ' blink' : ''}${t.item ? ' item' : ''}${t.recovering ? ' recovering' : ''}${t.cost ? ' hst-cost' : ''}`);   // AUDIT C&C S14: a costing need marked (the sheet's `!`)
   if (t.endable && t.bundle != null) {   // BUFF-END: a spell the player may end, by a right-click with the mouse freed
     cell.classList.add('can-end');
     cell.dataset.bundle = String(t.bundle);
     cell.title = END_SPELL_HINT;
   }
+  if (t.say) { cell.title = t.say; cell.setAttribute('aria-label', t.say); }   // AUDIT C&C S14: a need's level in words
   const tile = el('span', 'hst-tile');
   const pic = el('img', 'hst-pic');
   pic.alt = '';

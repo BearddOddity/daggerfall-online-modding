@@ -3,8 +3,9 @@
 // window untouched - THE NATIVE-WINDOW RULE - and says the number on the Status page, survival/status.js).
 //
 // Three places, one reading:
-//   - THE PLAQUE on the figure, top right of its column where the Armour plaque stands top left: the felt temperature
-//     and its word, in the strip's colours, with what makes it on its title;
+//   - THE PLAQUE on the figure, top right of its column where the Armour plaque stands top left (under it where the
+//     figure is too narrow for both - AUDIT C&C S1): the felt temperature and its word, in the strip's colours, with
+//     what makes it on its title;
 //   - THE CARD'S COMPARISON under a wearable's stats: the felt temperature now and as it would be in it - or, for a
 //     piece already worn, without it - green where it brings the reading toward the comfortable band, red where away;
 //   - THE STATS SIDE's Temperature section (ui/statsCard.js): every part that makes the number, one row each, adding up
@@ -14,11 +15,12 @@
 // window: a cloak put on under it would wait for the next minute to show. So the pack asks survival/env.js feltNow -
 // the minute law's own sum (feltTemperature over needs.js feltCtx) where the body last stood - over the slots as they
 // are, or as a wear would leave them (ui/armourCard.js wearComparison's `worn`, its wardrobe through modsForSlots). The
-// HUD's plate keeps the record's (what the strip's chip says and the next minute charges); the two meet at that minute.
+// HUD reads the same live reading - its plate and, AUDIT C&C S9, the strip's chip - each level the live tier's and its
+// fire the live air's (survival/status.js temperatureReadout, needs.js warmedByFire), so the pack and the HUD say one thing.
 import { survivalOn } from '../systems/survival/switch.js';
 import { feltNow } from '../systems/survival/env.js';
 import { temperatureBreakdown, signedDegrees } from '../systems/survival/temperature.js';
-import { temperatureReadout, HUD_BOON_WORDS, boonEffect, restedLeft } from '../systems/survival/status.js';
+import { temperatureReadout, HUD_BOON_WORDS, boonEffect, restedLeft, levelSaid } from '../systems/survival/status.js';
 import { survivalRules } from '../systems/survival/switch.js';
 import { equipTableOf, isEquipped } from '../systems/equip.js';
 import { modsForSlots } from './armourCard.js';
@@ -46,10 +48,10 @@ export function packTemperature(entity) {
   if (!survivalOn() || !entity) return null;
   const t = feltNow(entity);
   if (t) {
-    const r = temperatureReadout(entity, t.felt, { rewarding: !!survivalRules()?.boons });
+    const r = temperatureReadout(entity, t.felt, { rules: survivalRules(), env: t.env });   // AUDIT C&C S5/S9: the live tier's level, the live air's fire
     return r ? { ...r, rows: temperatureBreakdown(t.env, t), live: true } : null;
   }
-  const r = temperatureReadout(entity, undefined, { rewarding: !!survivalRules()?.boons });
+  const r = temperatureReadout(entity, undefined, { rules: survivalRules() });
   return r ? { ...r, rows: [], live: false } : null;
 }
 
@@ -66,8 +68,9 @@ export function temperaturePlaque(entity) {
   n.dataset.level = r.level;
   n.append(el('span', 'k', 'Felt'), el('span', 'v', r.text));
   const sum = breakdownLines(r.rows);
-  n.title = `Felt temperature ${r.text}: ${r.label.toLowerCase()} (${BAND_TEXT})${sum.length ? `\n${sum.join('\n')}` : ''}`;
-  n.setAttribute('aria-label', `Felt temperature ${r.text}, ${r.label}`);
+  // AUDIT C&C S14: and whether it costs, in words - its frame's colour said it alone
+  n.title = `Felt temperature ${r.text}: ${levelSaid(r.label.toLowerCase(), r.level)} (${BAND_TEXT})${sum.length ? `\n${sum.join('\n')}` : ''}`;
+  n.setAttribute('aria-label', `Felt temperature ${r.text}, ${levelSaid(r.label, r.level)}`);
   return n;
 }
 
@@ -99,8 +102,7 @@ export function temperatureWear(entity, item, wear = null) {
 export function temperatureCompareBlock(entity, item, wear = null) {
   const w = temperatureWear(entity, item, wear);
   if (!w) return null;
-  const tier = { rewarding: !!survivalRules()?.boons };
-  const a = temperatureReadout(entity, w.before.felt, tier), b = temperatureReadout(entity, w.after.felt, tier);
+  const a = temperatureReadout(entity, w.before.felt), b = temperatureReadout(entity, w.after.felt);   // the number and its word (no level is drawn here)
   const box = el('div', 'cmp tcmp');
   box.append(el('p', 'cmp-head', 'Temperature'));
   const dl = el('dl', 'stats cmp-rows');

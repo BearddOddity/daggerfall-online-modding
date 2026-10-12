@@ -234,8 +234,8 @@
   {
     "name": "TEMPUI-the-fire-s-cold-red",
     "file": "src/systems/survival/status.js",
-    "old": "chip[1] === 'danger' && (warmed || rewarding(s, rewardingTier)) ? 'warn' : chip[1]",
-    "new": "chip[1] === 'danger' && rewarding(s, rewardingTier) ? 'warn' : chip[1]",
+    "old": "  const level = label ? needLevel('temp', word, { rules: tier, felt, warmed }) : 'ok';",
+    "new": "  const level = label ? needLevel('temp', word, { rules: tier, felt }) : 'ok';",
     "why": "the plate red beside a fire that answers the cold",
     "tests": [
       "test/tempui.test.js"
@@ -274,7 +274,7 @@
   {
     "name": "TEMPUI-the-plate-reads-the-record",
     "file": "src/ui/enhancedHud.js",
-    "old": "  const live = on ? feltNow(vitals) : null;",
+    "old": "  const live = survivalOn() ? feltNow(vitals) : null;",
     "new": "  const live = null;",
     "why": "AUDIT TEMP-UI E9: a door read the street's for five seconds",
     "tests": [
@@ -424,7 +424,7 @@
   {
     "name": "TEMPUI-the-plaque-not-mounted",
     "file": "src/ui/enhancedInventory.js",
-    "old": "  if (temp) { temp.style.gridArea = '1 / 2'; map.append(temp); }",
+    "old": "  if (temp) plaques.append(temp);\n",
     "new": "",
     "why": "the plaque never stands on the figure",
     "tests": [
@@ -454,8 +454,8 @@
   {
     "name": "TEMPUI-the-plaque-undressed",
     "file": "src/ui/enhancedPlusStyle.js",
-    "old": ".pack-shell .wornmap .worntemp-total { position: absolute; right: 4px; top: 4px;",
-    "new": ".pack-shell .wornmap .worntemp-total { position: static; right: 4px; top: 4px;",
+    "old": ".pack-shell .wornmap .wornplaques { position: absolute; left: 4px;",
+    "new": ".pack-shell .wornmap .wornplaques { position: static; left: 4px;",
     "why": "the plaque out of its corner",
     "tests": [
       "test/tempui.test.js"

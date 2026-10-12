@@ -12,7 +12,7 @@ import {
   NEED, DRAIN, WELL_FED_MINUTES, HEALTH_FLOOR, newSurvival, survivalOf, survivalMinute, runSurvivalMinutes, survivalStatMods, applySurvivalMods, SURVIVAL_TEXT,
 } from '../src/systems/survival/needs.js';
 import { temperatureWord, hourTemperature, WEATHER_TEMP } from '../src/systems/survival/temperature.js';
-import { HUD_NEED_WORDS, survivalHudChips } from '../src/systems/survival/status.js';
+import { HUD_NEED_WORDS, survivalHudChips, needLevel } from '../src/systems/survival/status.js';
 import { REST_COST, REST_TEXT_SURVIVAL, STIFF_HOURS, restCost, restHour, stiffen } from '../src/systems/survival/rest.js';
 import { survivalFeed, installSurvivalGate, survivalGateOn } from '../src/systems/survival/env.js';
 import { TEMPLATE, FOOD, FOOD_STAGE, eatLaw } from '../src/systems/survival/food.js';
@@ -215,8 +215,9 @@ test('SURV-TIERS: RED MEANS IT COSTS - Casual charges each need at exactly the s
   // the temperature: the band's edges ARE the red words' edges, every degree from -150 to 150
   for (let felt = -150; felt <= 150; felt++) {
     const word = temperatureWord(felt);
-    const red = HUD_NEED_WORDS.temp[word]?.[1] === 'danger';
+    const red = needLevel('temp', word, { rules: CASUAL, felt }) === 'danger';   // PIN MOVED (AUDIT C&C S5): the HUD's level is the tier's (needLevel), read by Casual's rules
     assert.equal(felt >= CASUAL.stamina.hotFrom || felt <= CASUAL.stamina.coldFrom, red, `felt ${felt} (${word})`);
+    assert.equal(red, ['scorching', 'freezing', 'deadly cold'].includes(word), `felt ${felt}: Casual's band IS its red words`);
   }
   // hunger, thirst, sleep: one comfortable minute at each stage - the charge is there iff the chip is red
   const stages = [
@@ -232,7 +233,8 @@ test('SURV-TIERS: RED MEANS IT COSTS - Casual charges each need at exactly the s
   ];
   const now = 20001;   // not a harm tick
   for (const [need, stage, set, rate] of stages) {
-    const red = HUD_NEED_WORDS[need][stage][1] === 'danger';
+    const red = needLevel(need, stage, { rules: CASUAL }) === 'danger';   // PIN MOVED (AUDIT C&C S5): what the HUD says in Casual
+    assert.ok(HUD_NEED_WORDS[need][stage], `${need}:${stage} has a word`);
     assert.equal(rate != null, red, `${need}:${stage} - the table above says what the HUD says`);
     const e = body(); const log = [];
     set(survivalOf(e, now), now);
