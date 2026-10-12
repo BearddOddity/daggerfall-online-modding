@@ -1774,7 +1774,7 @@ export async function bootExterior(canvas, renderer, params, status) {
   });
   /** The clock passed by an act of upkeep (a kit's hour), as a camp meal's: the ticker, then the encounters it owes. */
   const upkeepPass = (n) => { playerTicker.advance(n); runEncounterTick(walkMode ? player.pos : cam.pos, true); };
-  setRideWalk((mode) => upkeep.rideWalks(mode));   // HORSE-WALK: horse care's horse walks unless it gallops (bible/06-Systems/Horse-Care.md)
+  setRideWalk((mode) => upkeep.rideWalks(mode));   // HORSE-WALK: horse care's horse walks unless it gallops (bible/06-Systems/Horse-Care.md) - the fixed city stands no Overworld and runs no journey, so no road keeps the ride's pace here (world.js rideOnTheRoad)
   setGallopGate((mode, mods) => upkeep.gallopGate(mode, mods));
   registerUpkeepUses(upkeep, {
     reach: () => upkeepReach(hccRuntimeOn(), !!hccRuntimeOn()), horseCare: horseCareOn, wagonUpkeep: wagonUpkeepOn,

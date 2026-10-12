@@ -158,6 +158,53 @@ test('HORSE-WALK THE RIDING SPRITE AND ITS CLOP: a walk is the slow horse - the 
   assert.equal(c.update(0.01, { mode: TRANSPORT_MODES.Cart, movingLessThanHalfSpeed: false }).clip, RIDING_SOUND.cart);
 });
 
+/** scenes/world.js's own lines, lifted from its source and run (the tv8_party_walk technique). */
+const WORLD = rd('src/scenes/world.js');
+const liftWorld = (re, what) => { const m = re.exec(WORLD); assert.ok(m, `lifted from scenes/world.js: ${what}`); return m[1]; };
+
+test('HORSE-WALK x THE OVERWORLD (the owner: "Ensure the overworld speed isnt affected"): ON THE ROAD THE RIDE KEEPS ITS PACE. world.js\'s own predicate and install, lifted from its source and run over the real motor and upkeep: under the Overworld\'s view - rising, up or falling - and while a journey\'s autopilot drives the motor, the horse rides DFU\'s ride and gallops as ever (at the view\'s x60 the ~650 m/s TV0 measured the clock against); the view down, or a journey\'s panel left up over a stopped journey, and it walks; the saddle panel reads the same word (mutants: HORSEWALK-road-ignored, -road-view-only, -road-journey-only, -road-panel-alone, -road-view-up-only, -saddle-reads-upkeep)', () => {
+  const ROAD = liftWorld(/\n {2}(const rideOnTheRoad = \(\) => [^\n]*;)\n/, 'the road');
+  const INSTALL = liftWorld(/\n {2}(setRideWalk\(\(mode\) => [^\n]*?\);)/, 'the walk\'s install');
+  const travelView = { active: false, state: 'off' };
+  const travelOptions = { isTravelActive: false, state: { autopilot: null } };
+  const items = [horse(2, { horseFed: T0 + 600 })];
+  const upkeep = createUpkeep({ items: () => items, now: () => T0, horseCare: () => true });
+  const onTheRoad = new Function('d', `const { travelView, travelOptions, upkeep, setRideWalk } = d; ${ROAD} ${INSTALL} return rideOnTheRoad;`)({ travelView, travelOptions, upkeep, setRideWalk });
+  const saddle = createSaddleHost({
+    upkeep, runtime: () => null, items: () => items, wagonKg: () => 0, wagonLimit: () => 0, say: () => {}, pass: () => {},
+    openStable: () => {}, canView: () => false, toggleView: () => {}, foot: () => {},
+  });
+  const m = motorOn();
+  m.transportMode = TRANSPORT_MODES.Horse;
+  setCanRunOverride(null);
+  setGallopGate((mode, mods) => upkeep.gallopGate(mode, mods));
+  try {
+    const k = upkeep.rideScale('Horse');
+    m.rideSpeedScale = k;
+    ride(m);
+    assert.deepEqual([onTheRoad(), near(m.speed, WALK_50 * k), saddle.read('Horse').walks], [false, true, true], 'off the road: the walk');
+    for (const state of ['rising', 'up', 'falling']) {
+      travelView.active = true; travelView.state = state;
+      ride(m);
+      assert.ok(near(m.speed, RIDE_50 * k), `the Overworld's view ${state}: the ride's own pace (${m.speed.toFixed(2)} m/s, ${(m.speed * 60).toFixed(0)} m/s at x60)`);
+      assert.deepEqual([m.rideWalking, m.slowRide, saddle.read('Horse').walks], [false, false, false], 'the clop, the 3D horse, the peers and the panel read the ride');
+    }
+    ride(m, { run: true });
+    assert.ok(near(m.speed, RIDE_50 * (1.35 + 40 / 200) * k), 'and Run gallops it as ever');
+    travelView.active = false; travelView.state = 'off';
+    travelOptions.isTravelActive = true;
+    ride(m);
+    assert.ok(near(m.speed, WALK_50 * k), 'a journey\'s panel left up over a stopped journey (no autopilot): the walk');
+    travelOptions.state.autopilot = {};
+    ride(m);
+    assert.ok(near(m.speed, RIDE_50 * k), 'a journey under way - the view\'s on the ground at x1, First-Person Travel\'s, a party\'s: the ride\'s pace');
+    assert.equal(saddle.read('Horse').walks, false);
+    travelOptions.isTravelActive = false; travelOptions.state.autopilot = null;
+    ride(m);
+    assert.deepEqual([near(m.speed, WALK_50 * k), saddle.read('Horse').walks], [true, true], 'off the road again: the walk');
+  } finally { setRideWalk(null); setGallopGate(null); }
+});
+
 /** The GL half's doors the rig's load and step use (test/coats3d_horse3d.test.js records them all). */
 function stepRenderer() {
   const r = { uploads: 0 };
@@ -204,7 +251,7 @@ test('HORSE-WALK THE 3D HORSE UNDER ITS RIDER: a slow ride (gallops false - the 
   assert.match(rd('src/net/peerBodies.js'), /look: shown\.rc \| 0, gallops: !shown\.hs \}\);/);
 });
 
-test('HORSE-WALK THE SADDLE PANEL SAYS IT: Walking where horse care walks the horse, Galloping on the run, Trotting at DFU\'s ride (care off), Rolling on a bench, Standing still; the host reads the walk off the upkeep\'s word, and the panel draws it (mutants: HORSEWALK-saddle-trots, -saddle-cart-walks, -saddle-host-unread, -saddle-panel-unread)', () => {
+test('HORSE-WALK THE SADDLE PANEL SAYS IT: Walking where horse care walks the horse, Galloping on the run, Trotting at DFU\'s ride (care off, or on the road), Rolling on a bench, Standing still; the host reads the very word the motor reads (transport.js rideWalks - the host\'s install), and the panel draws it (mutants: HORSEWALK-saddle-trots, -saddle-cart-walks, -saddle-host-unread, -saddle-panel-unread)', () => {
   assert.deepEqual(
     [saddleGait('Horse', 5, false, true), saddleGait('Horse', 17, true, true), saddleGait('Horse', 11, false, false), saddleGait('Horse', 11), saddleGait('Cart', 7, false, true), saddleGait('Horse', 0.1, false, true)],
     ['Walking', 'Galloping', 'Trotting', 'Trotting', 'Rolling', 'Standing'],
@@ -213,28 +260,30 @@ test('HORSE-WALK THE SADDLE PANEL SAYS IT: Walking where horse care walks the ho
   const upkeep = {
     saddle: () => ({ horse: null, wagon: null, oats: 0, apples: 0, kits: 0 }),
     act: () => null,
-    rideWalks: (mode) => walks && mode === 'Horse',
+    rideWalks: () => { throw new Error('the panel reads the installed word, never the upkeep\'s own'); },
   };
   const host = createSaddleHost({
     upkeep, runtime: () => null, items: () => [], wagonKg: () => 0, wagonLimit: () => 0, say: () => {}, pass: () => {},
     openStable: () => {}, canView: () => false, toggleView: () => {}, foot: () => {},
   });
-  assert.deepEqual([host.read('Horse').walks, host.read('Cart').walks], [true, false]);
-  walks = false;
-  assert.equal(host.read('Horse').walks, false, 'care off: the law\'s word, read each frame');
   const doc = fakeDoc();
+  setRideWalk((mode) => walks && mode === TRANSPORT_MODES.Horse);
   try {
+    assert.deepEqual([host.read('Horse').walks, host.read('Cart').walks], [true, false]);
+    walks = false;
+    assert.equal(host.read('Horse').walks, false, 'care off, or on the road: the installed word, read each frame');
     const saddle = { mode: 'Horse', name: 'Shadow', wagonName: '', speed: WALK_50, galloping: false, walks: true, horse: null, wagon: null, oats: 0, apples: 0, kits: 0, load: null, near: true, wagonNear: false, cargo: null, view: false, hcc: false };
     const root = drawEnhancedSaddle({ saddle, keyOf: () => 'LEFTSHIFT', mouseFree: true }, {}, { doc });
     assert.equal(one(root, 'saddlepanel-gait').textContent, 'Walking · 18 km/h');
-  } finally { hideEnhancedSaddle(); }
+  } finally { hideEnhancedSaddle(); setRideWalk(null); }
 });
 
 test('HORSE-WALK THE HOSTS (world.js, exterior.js): the walk installed beside the gallop, off the one upkeep; the 3D horse handed the motor\'s slow ride; the riding sprite its walk (mountRig.js, both hosts\' one rig); the peers the slow ride on the pose\'s hs (world.js, the online host). THE FOUR HOSTS: worldModes.js (interiors) and dungeonContext.js (dungeons) stand no transport - a building or a dungeon puts the rider on foot (transport.js dismountOnTransition) - and are named, not wired (mutants: HORSEWALK-host-install, -host-slow-unhanded, -peers-hear-half-only, -mountrig-unwalked)', () => {
   for (const host of ['src/scenes/world.js', 'src/scenes/exterior.js']) {
     const s = rd(host);
     assert.match(s, /import \{ setGallopGate, setRideWalk \} from '\.\.\/systems\/transport\.js';/, host);
-    assert.match(s, /\n\s*setRideWalk\(\(mode\) => upkeep\.rideWalks\(mode\)\);[^\n]*\n\s*setGallopGate\(\(mode, mods\) => upkeep\.gallopGate\(mode, mods\)\);/, `${host}: the walk beside the gallop`);
+    const install = host.endsWith('world.js') ? 'setRideWalk\\(\\(mode\\) => !rideOnTheRoad\\(\\) && upkeep\\.rideWalks\\(mode\\)\\);' : 'setRideWalk\\(\\(mode\\) => upkeep\\.rideWalks\\(mode\\)\\);';
+    assert.match(s, new RegExp(`\\n\\s*${install}[^\\n]*\\n\\s*setGallopGate\\(\\(mode, mods\\) => upkeep\\.gallopGate\\(mode, mods\\)\\);`), `${host}: the walk beside the gallop (world.js never on the road - the Overworld's view and the journeys are its alone)`);
     assert.match(s, /\{ look: riddenHorseLook\(playerEntity\.items \?\? \[\]\), slow: player\.slowRide \}/, `${host}: the 3D horse held on a slow ride`);
   }
   assert.match(rd('src/scenes/world.js'), /_hsLatch = player\.slowRide; \}/, 'the peers hear the slow ride');

@@ -8548,7 +8548,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   });
   /** The clock passed by an act of upkeep (a kit's hour), as a camp meal's: the ticker, then the encounters it owes. */
   const upkeepPass = (n) => { playerTicker.advance(n); runEncounterTick(walkMode && playerSpawned ? player.pos : cam.pos, true); };
-  setRideWalk((mode) => upkeep.rideWalks(mode));   // HORSE-WALK: horse care's horse walks unless it gallops (bible/06-Systems/Horse-Care.md)
+  /** HORSE-WALK x THE OVERWORLD (2026-10-12, the owner: "Ensure the overworld speed isnt affected"): ON THE ROAD THE RIDE
+   *  KEEPS ITS PACE. Under the Overworld's view (rising, up or falling) or while a Travel Options journey's autopilot
+   *  drives the motor (walkJourneying's test - the view's journeys, First-Person Travel's, a party's), the horse rides at
+   *  the ride's own pace as it always did: the travel clock and its governor, the steering's reach, a band's chase (5.2
+   *  m/s at the world's scale) and a ride's time across the map are all set against it. Declared over the two bindings
+   *  declared above it (BOOT-TDZ), never walkJourneying itself, which stands below. */
+  const rideOnTheRoad = () => !!travelView?.active || !!(travelOptions?.isTravelActive && travelOptions.state?.autopilot);
+  setRideWalk((mode) => !rideOnTheRoad() && upkeep.rideWalks(mode));   // HORSE-WALK: horse care's horse walks unless it gallops - never on the road (bible/06-Systems/Horse-Care.md)
   setGallopGate((mode, mods) => upkeep.gallopGate(mode, mods));
   registerUpkeepUses(upkeep, {   // the inventory's Use on the oats and the kit
     reach: () => upkeepReach(hccRuntimeOn(), !!hccRuntimeOn()), horseCare: horseCareOn, wagonUpkeep: wagonUpkeepOn,

@@ -117,7 +117,18 @@ speed's riding arm and the half-speed base; `rideWalking` - the step's gait; `sl
 base). Off horse care a horse is DFU's - one pace, no run in the saddle, the mod's gallop where it rules: a walk with no
 gallop to shift into would hold its rider to it. A cart rolls on its own base. A winded or starving horse, and one in a
 town Roleplay & Realism keeps from galloping, walk with Run held; autorun's latched run gallops whenever the breath
-allows. An accelerated journey on horseback walks unless Run is held, as a journey on foot does.
+allows.
+
+**ON THE ROAD THE RIDE KEEPS ITS PACE** (AUDIT HORSE-WALK, 2026-10-12, the owner: "Ensure the overworld speed isnt
+affected"). The Overworld moves the real body under the travel clock (`06-Systems/Travel-View.md`), so its ground speed
+is the motor's pace times the clock - and a walk would have halved a horse's (TV0's ~650 m/s at x60 to ~300), slowed a
+journey's, and let a band's chase (5.2 m/s at the world's scale) close on a rider. So the walk is never the road's:
+under the Overworld's view (rising, up or falling) and while a Travel Options journey's autopilot drives the motor - the
+view's journeys, its journey held on the ground at x1, First-Person Travel's, a party's - the horse rides the ride's own
+pace and gallops on Run exactly as before the walk (`scenes/world.js` rideOnTheRoad, over the walk's install; a
+journey's panel left up over a stopped journey is no road). The clock, its governor and the pace dials read no pace of
+the body's and are untouched; the steering's reach and the ground's lookahead read the motor's, the ride's again. The
+fixed city (`scenes/exterior.js`) stands no Overworld and runs no journey.
 
 What reads the gait:
 
@@ -134,13 +145,13 @@ What reads the gait:
   was its history's: a trot from a stand, a slow-motion gallop after a gallop. Held under, it trots - the Courser's
   stride that carries 5 m/s (its walk covers 0.67).
 - **Eye Of The Beholder's rider** draws MoveHorse at the walk and GallopHorse at the gallop, by its own speed law.
-- **The saddle panel** says Walking (`ui/enhancedSaddle.js` saddleGait, the upkeep's word through
-  `scenes/saddleHost.js`), Galloping on the run, Trotting at DFU's ride (horse care off).
+- **The saddle panel** says Walking (`ui/enhancedSaddle.js` saddleGait - the very word the motor reads, `transport.js`
+  rideWalks, through `scenes/saddleHost.js`), Galloping on the run, Trotting at DFU's ride (horse care off).
 - **The head's bob** is DFU's Horse style at the walk, by its velocity; the gallop's is Running's (HeadBobber's order).
 - **The words**: the Features row, and the Horses tutorial ("Your horse walks; hold {Run} to gallop").
 
-Unchanged: the breath's law (under a rider at its own pace - now the walk - half back), the gallop's gate and pace,
-fast travel's times (DFU's TravelTimeCalculator), a following or waiting horse.
+Unchanged: the Overworld's and a journey's pace (above), the breath's law (under a rider at its own pace, now the walk,
+half back), the gallop's gate and pace, fast travel's times (DFU's TravelTimeCalculator), a following or waiting horse.
 
 ## The motor (`player/motor.js` rideSpeedScale)
 
@@ -193,12 +204,13 @@ templates - so online a Stable sells oats as it did offline from the first (`sys
 ## The four hosts
 
 `scenes/world.js` and `scenes/exterior.js` build the upkeep (`createUpkeep`) before Horse Cart and Cargo's runtime, set
-the walk (`setRideWalk`, HORSE-WALK) and the gallop gate, hand the 3D horse the motor's slow ride, register the oats'
-Use, hand the motor its pace and the frame's upkeep its odometer's metres, the HUD its bar and the Stable page its acts.
-`scenes/worldModes.js` (interiors) and `scenes/dungeonContext.js` (dungeons) stand no transport - a building or a
-dungeon puts the rider on foot (`transport.js` dismountOnTransition) - and are named, not wired.
+the walk (`setRideWalk`, HORSE-WALK - world.js's never on the road, the Overworld's and the journeys' host) and the
+gallop gate, hand the 3D horse the motor's slow ride, register the oats' Use, hand the motor its pace and the frame's
+upkeep its odometer's metres, the HUD its bar and the Stable page its acts. `scenes/worldModes.js` (interiors) and
+`scenes/dungeonContext.js` (dungeons) stand no transport - a building or a dungeon puts the rider on foot
+(`transport.js` dismountOnTransition) - and are named, not wired.
 
 Pinned: `test/steed1_horsecare.test.js`; mutants `tools/mutants/steed1.json`, and HORSE-LIVES's and UPKEEP-ONLINE's
-`tools/mutants/wagonmend.json`. THE WALK: `test/horsewalk.test.js`; mutants `tools/mutants/horsewalk.json` (31, all
+`tools/mutants/wagonmend.json`. THE WALK: `test/horsewalk.test.js`; mutants `tools/mutants/horsewalk.json` (37, all
 dead). The saddle panel and the page's polish:
 `test/steedui_saddle.test.js`; mutants `tools/mutants/steedui.json`.
