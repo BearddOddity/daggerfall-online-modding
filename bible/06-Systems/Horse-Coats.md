@@ -311,6 +311,12 @@ the player's horse is let go, so a remount never gallops in place on the gait it
   owner's horses are drawn translucent after the opaque world (drawVeiled3d, beside the concealed peers' bodies): a
   veiled picture blends with no depth of its own, and the world drawn after it would paint it out.
 - **The road's teams** (`world/roadTeams.js`): likewise, each stranger's horse in its own look.
+- **The horses that stand** (STAND-HORSE, 2026-10-12, the owner: "Some models arent affected when morrowind is
+  attached, like static NPCs, static horses, etc" - `04-Characters/Morrowind-NPCs.md` section 28): Daggerfall's own
+  town horses (TEXTURE.201 records 0 and 1, a block's or a World of Daggerfall site's flats - `scenes/world.js`,
+  `scenes/exterior.js`) in a stranger's look off their place, and the Stable's three in the bay their sprite is drawn
+  in (`scenes/merchantYardsHost.js` offerHorses) - each idling at its billboard's base, its billboard drawing nothing,
+  the nearest eight within 60 m (`world/standingHorses.js`).
 
 Every horse alone is drawn only when it is in the view (`horseRig.js` outOfView - not behind the eye, not wholly past a
 side of the lens), and a horse is let go through the rig that made it: the gate (`mwViewHorseRig`) answers null under a
