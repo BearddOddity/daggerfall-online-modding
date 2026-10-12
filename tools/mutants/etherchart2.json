@@ -38,17 +38,17 @@
   {
     "name": "E2-names-last",
     "file": "src/ui/etherChartWindow.js",
-    "old": "  if (m.veilLabel) {\n    g.save();",
-    "new": "  for (const i of m.isles) paintMark(g, i.kind, i.x, i.y, i.icon);\n  if (m.veilLabel) {\n    g.save();",
+    "old": "  if (!s.on && s.edge && s.label) {",
+    "new": "  for (const i of m.isles) paintMark(g, i.kind, i.x, i.y, i.icon);\n  if (!s.on && s.edge && s.label) {",
     "tests": [
       "test/etherchart2.test.js"
     ]
   },
   {
-    "name": "E2-plates-hard",
+    "name": "E2-haunts-held",
     "file": "src/ui/etherChartWindow.js",
-    "old": "(port || !fixed.some((p) => overlaps(box, p)))",
-    "new": "true",
+    "old": "    if (t.box) placed.push(t.box);",
+    "new": "    void 0;",
     "tests": [
       "test/etherchart2.test.js"
     ]
@@ -56,8 +56,8 @@
   {
     "name": "E2-marks-soft",
     "file": "src/ui/etherChartWindow.js",
-    "old": " && !isles.some((o) => o !== i && (!port || o.kind === 'port') && overlaps(box, mark(o)))) ?? free[0];",
-    "new": ") ?? free[0];",
+    "old": " && !(port ? portMarks : marks).some((k) => k.o !== i && overlaps(box, k.box))) ?? free.find(onChart)",
+    "new": ") ?? free.find(onChart)",
     "tests": [
       "test/etherchart2.test.js"
     ]
@@ -65,8 +65,8 @@
   {
     "name": "E2-port-marks",
     "file": "src/ui/etherChartWindow.js",
-    "old": "(!port || o.kind === 'port') && overlaps(box, mark(o))",
-    "new": "overlaps(box, mark(o))",
+    "old": "portMarks = marks.filter((k) => k.o.kind === 'port');",
+    "new": "portMarks = marks;",
     "tests": [
       "test/etherchart2.test.js"
     ]
@@ -81,19 +81,19 @@
     ]
   },
   {
-    "name": "E2-band-fit",
+    "name": "E2-ruler-fit",
     "file": "src/ui/etherChartWindow.js",
-    "old": "right - tw >= Math.max(0, boundX(n + 1)) + 8 ?",
-    "new": "true ?",
+    "old": "find((t) => width(t, CHART_FONT.small) + 12 <= seg.x1 - seg.x0) ?? null;",
+    "new": "find(() => true) ?? null;",
     "tests": [
       "test/etherchart2.test.js"
     ]
   },
   {
-    "name": "E2-band-yield",
+    "name": "E2-ruler-order",
     "file": "src/ui/etherChartWindow.js",
-    "old": "for (const b of bands) if (b.box && placed.some((p) => overlaps(plateOf(b), p))) b.box = null;",
-    "new": "void plateOf;",
+    "old": "  ruler.sort((a, b) => a.x0 - b.x0);   // read west to east\n",
+    "new": "",
     "tests": [
       "test/etherchart2.test.js"
     ]
@@ -119,7 +119,7 @@
   {
     "name": "E2-haunt-corner",
     "file": "src/ui/etherChartWindow.js",
-    "old": "t.box = corners.find((b) => !taken(b)) ?? corners[0];",
+    "old": "t.box = clear.reduce((best, b) => (marksUnder(b) < marksUnder(best) ? b : best));",
     "new": "t.box = corners[0];",
     "tests": [
       "test/etherchart2.test.js"
@@ -128,8 +128,8 @@
   {
     "name": "E2-haunt-yield",
     "file": "src/ui/etherChartWindow.js",
-    "old": "if (!taken(box)) { t.box = box; t.at = [cx, cy]; }",
-    "new": "{ t.box = box; t.at = [cx, cy]; }",
+    "old": "if (hers && !taken(box)) { t.box = box; t.at = [cx, cy]; }",
+    "new": "if (hers) { t.box = box; t.at = [cx, cy]; }",
     "tests": [
       "test/etherchart2.test.js"
     ]
@@ -153,10 +153,10 @@
     ]
   },
   {
-    "name": "E2-veil-yield",
+    "name": "E2-ruler-veil",
     "file": "src/ui/etherChartWindow.js",
-    "old": "const veilLabel = veilSpots.find((at) => !placed.some((p) => overlaps(at.box, p))) ?? null;",
-    "new": "const veilLabel = veilSpots[0] ?? null;",
+    "old": "  if (veil < w) segment('veil', Math.max(0, veil), w);\n",
+    "new": "",
     "tests": [
       "test/etherchart2.test.js"
     ]
@@ -173,8 +173,8 @@
   {
     "name": "E2-note-line",
     "file": "src/ui/etherChartWindow.js",
-    "old": "noteLine.style.cssText = 'line-height:1.25;min-height:1.25em';",
-    "new": "void 0;",
+    "old": ".dfchart-note { min-height: 1.25em; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
+    "new": ".dfchart-note { min-height: 1.25em; line-height: 1.25; }",
     "tests": [
       "test/etherchart2.test.js"
     ]
@@ -184,6 +184,33 @@
     "file": "src/ui/etherChartWindow.js",
     "old": "zoomIn.disabled = view.zoom === CHART_ZOOMS.length - 1;",
     "new": "void 0;",
+    "tests": [
+      "test/etherchart2.test.js"
+    ]
+  },
+  {
+    "name": "E2-haunt-marks",
+    "file": "src/ui/etherChartWindow.js",
+    "old": "(marksUnder(b) < marksUnder(best) ? b : best)",
+    "new": "best",
+    "tests": [
+      "test/etherchart2.test.js"
+    ]
+  },
+  {
+    "name": "E2-pointer-spot",
+    "file": "src/ui/etherChartWindow.js",
+    "old": "ship.label = spots.reduce((best, sp) => (crossed(sp) < crossed(best) ? sp : best));",
+    "new": "ship.label = spots[0];",
+    "tests": [
+      "test/etherchart2.test.js"
+    ]
+  },
+  {
+    "name": "E2-ruler-centre",
+    "file": "src/ui/etherChartWindow.js",
+    "old": "halo(g, seg.words, (seg.x0 + seg.x1) / 2, h / 2 - 1,",
+    "new": "halo(g, seg.words, seg.x0 + 6, h / 2 - 1,",
     "tests": [
       "test/etherchart2.test.js"
     ]

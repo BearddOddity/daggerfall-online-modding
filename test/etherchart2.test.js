@@ -19,7 +19,6 @@ const charted = [...new Set([h.key, ...ES.islesNear(h.px - 40, h.py, 70).map((i)
 const word = (o = {}) => ({ px: h.px - 18, py: h.py + 3, yaw: 0, charted, legends: LEGENDS, stats: {}, ...o });
 const W = 1064, H = 550;
 const at = (zoom, dx = 0, dy = 0) => ({ cx: h.px - 17.5 + dx, cy: h.py + 3.5 + dy, zoom });
-const plateOf = (b) => [b.box[0] - 6, b.box[1] - 2, b.box[2] + 6, b.box[3] + 2];
 
 /** A context that records what it is asked: [name, ...args] for a call, ['=', name, value] for a set. */
 function stubContext() {
@@ -83,15 +82,14 @@ test('ETHER-CHART2 every word drawn last: no mark, ring or ship is painted after
   assert.ok(g.log.some((c) => c[0] === 'strokeText' && names.has(c[1])), 'under a halo');
 });
 
-test('ETHER-CHART2 a name on either side of its isle, in layers: none over another; a lesser isle\'s never over a band\'s name, a haunt\'s or the Veil\'s; on the side clear of the other isles\' marks where one is; a port weighing the ports\' marks alone (mutants: the plates, the marks, the ports\' marks)', () => {
+test('ETHER-CHART2 a name on either side of its isle, in layers: none over another nor over a haunt\'s; on the side clear of the other isles\' marks where one is; a port weighing the ports\' marks alone (mutants: the marks, the ports\' marks) - PIN MOVED (AUDIT ETHER-CHART2 U2: the band names and the Veil\'s are on the ruler, off the map)', () => {
   let west = 0, views = 0;
   for (const [zoom, dx, dy] of [[2, 0, 0], [3, 0, 0], [3, -40, 0], [3, -60, 10], [4, -20, 0], [2, -30, -20], [3, -10, 30]]) {
     const m = M.chartModel(word(), at(zoom, dx, dy), W, H);
     const named = m.isles.filter((i) => i.label);
     const boxes = [...named.map((i) => i.box), ...m.haunts.filter((t) => t.box).map((t) => t.box)];
     for (let a = 0; a < boxes.length; a++) for (let b = a + 1; b < boxes.length; b++) assert.ok(!over(boxes[a], boxes[b]), `zoom ${zoom}: two names over each other`);
-    const plates = [...m.bands.filter((b) => b.box).map(plateOf), ...m.haunts.filter((t) => t.box).map((t) => t.box), ...(m.veilLabel ? [m.veilLabel.box] : [])];
-    for (const i of named.filter((n) => n.kind !== 'port')) assert.ok(!plates.some((p) => over(i.box, p)), `${i.name} over the chart's own words`);
+    const plates = m.haunts.filter((t) => t.box).map((t) => t.box);
     const mark = (o) => [o.x - o.icon - 1, o.y - o.icon - 1, o.x + o.icon + 1, o.y + o.icon + 1];
     for (const i of named) {
       if (!m.isles.some((o) => o !== i && (i.kind !== 'port' || o.kind === 'port') && over(i.box, mark(o)))) continue;
@@ -113,7 +111,7 @@ test('ETHER-CHART2 a name on either side of its isle, in layers: none over anoth
   }
 });
 
-test('ETHER-CHART2 the depths as waters: each band\'s across the canvas, edge to edge, the Abyss\'s to the box\'s west edge; a band\'s name inside its own water or none, giving way to a port\'s; the world\'s edge (mutants: the waters, the fit, the yield)', () => {
+test('ETHER-CHART2 the depths as waters: each band\'s across the canvas, edge to edge, the Abyss\'s to the box\'s west edge; the world\'s edge (mutants: the waters) - and (PIN MOVED, AUDIT ETHER-CHART2 U2) THE DEPTH RULER: the world\'s edge, each band\'s water and the Veil\'s across it edge to edge, each named in its own water by the longest of its words that fits, the names drawn centred in it (mutants: the ruler\'s fit, its centre)', () => {
   assert.deepEqual({ ...M.DEPTH_TONES }, { shallows: '#173a55', reaches: '#112b42', deep: '#0b1d31', abyss: '#06101d' });
   const m = M.chartModel(word(), { cx: ES.VEIL_X - 60 * ES.LEAGUE_PX, cy: h.py, zoom: 0 }, W, H);
   assert.deepEqual(m.depths.map((d) => d.id), ['shallows', 'reaches', 'deep', 'abyss']);
@@ -123,19 +121,35 @@ test('ETHER-CHART2 the depths as waters: each band\'s across the canvas, edge to
   const edge = M.chartModel(word(), { cx: ES.ETHER_BOX.x0, cy: ES.ETHER_BOX.y0, zoom: 2 }, W, H);
   assert.ok(edge.edge[0] > 0 && edge.edge[1] > 0, 'the box\'s corner in view');
   assert.equal(edge.depths.at(-1).x0, edge.edge[0], 'the Abyss\'s water stops at the world\'s edge');
-  // at x1 by the Veil the Shallows are narrower than their name: unlettered, the Reaches' lettered in their own water
+  // the ruler: its words
+  assert.equal(M.RULER_H, 22);
+  assert.deepEqual(JSON.parse(JSON.stringify(M.RULER_WORDS)), { shallows: ['THE SHALLOWS', 'SHALLOWS'], reaches: ['THE REACHES', 'REACHES'], deep: ['THE DEEP AETHER', 'DEEP AETHER'], abyss: ['THE ABYSS', 'ABYSS'], veil: ['THE VEIL - TO THE ILIAC BAY', 'THE VEIL', 'VEIL'], edge: ['THE WORLD\'S EDGE', 'EDGE'] });
+  const tile = (mm, w) => {
+    assert.equal(mm.ruler[0].x0, 0, 'from the canvas\'s west edge');
+    for (let n = 0; n + 1 < mm.ruler.length; n++) assert.equal(mm.ruler[n].x1, mm.ruler[n + 1].x0, 'edge to edge');
+    assert.equal(mm.ruler.at(-1).x1, w, 'to its east edge');
+    for (const seg of mm.ruler) if (seg.words) assert.ok(seg.words.length * M.LABEL_CHAR_PX + 12 <= seg.x1 - seg.x0 && M.RULER_WORDS[seg.id].includes(seg.words), `${seg.id}: its own words, inside its own water`);
+  };
+  tile(m, W);
+  assert.deepEqual(m.ruler.map((seg) => seg.id), ['abyss', 'deep', 'reaches', 'shallows', 'veil']);
+  assert.deepEqual(edge.ruler.map((seg) => [seg.id, seg.words]), [['edge', 'THE WORLD\'S EDGE'], ['abyss', 'THE ABYSS']]);
+  tile(edge, W);
+  // by the Veil at x1 the Shallows are narrower than their name: their short word, the Reaches\' whole; the longest that fits
   const x1 = M.chartModel(word(), at(0, -40), W, H);
-  const shallows = x1.bands.find((b) => b.name === 'the Shallows'), reaches = x1.bands.find((b) => b.name === 'the Reaches');
-  assert.equal(shallows.box, null);
-  assert.ok(reaches.box && reaches.box[0] >= x1.depths.find((d) => d.id === 'reaches').x0, 'inside its own water');
-  // a band's name gives way to a port's lettered on it (a phone's width, where a port's name stands under the Shallows' -
-  // and with no port charted there, the Shallows' is lettered: their water had the room)
-  const phone = M.chartModel(word(), at(2), 346, 420);
-  const ports = phone.isles.filter((i) => i.kind === 'port' && i.label);
-  assert.equal(phone.bands.find((b) => b.name === 'the Shallows').box, null, 'the Shallows\' name gave way');
-  const bare = M.chartModel(word({ charted: charted.filter((k) => ES.isleByKey(k)?.kind !== 'port') }), at(2), 346, 420);
-  assert.ok(bare.bands.find((b) => b.name === 'the Shallows').box, '...to a port, not for want of room');
-  for (const b of phone.bands.filter((n) => n.box)) assert.ok(!ports.some((p) => over(plateOf(b), p.box)), `${b.name} under a port's name`);
+  tile(x1, W);
+  const word1 = (id) => x1.ruler.find((seg) => seg.id === id).words;
+  assert.deepEqual([word1('shallows'), word1('reaches')], ['SHALLOWS', 'THE REACHES']);
+  // every water in view named, whatever the bounds in view: x16 about Veilhaven has no bound in it, and is the Shallows
+  const close = M.chartModel(word(), { cx: h.px, cy: h.py, zoom: 4 }, 400, 300);
+  assert.deepEqual(close.bands, []);
+  assert.deepEqual(close.ruler.map((seg) => [seg.id, seg.words]), [['shallows', 'THE SHALLOWS']]);
+  // drawn centred in its own water, on the ruler and not the map
+  const g = stubContext();
+  M.paintRuler(g, m, W);
+  for (const seg of m.ruler.filter((n) => n.words)) assert.ok(g.log.some((c) => c[0] === 'fillText' && c[1] === seg.words && Math.abs(c[2] - Math.round((seg.x0 + seg.x1) / 2)) < 1e-9), `${seg.id} centred`);
+  const map = stubContext();
+  M.paintChart(map, m, W, H);
+  assert.ok(!map.log.some((c) => c[0] === 'fillText' && /^THE (SHALLOWS|REACHES|DEEP AETHER|ABYSS|VEIL)/.test(c[1])), 'no band name on the map');
 });
 
 test('ETHER-CHART2 the grid and the scale: the longest bar of 1, 2, 5, 10, 20, 50 or 100 leagues no longer than 120 px at each zoom, the grid\'s squares its length, measured from the Veil and Veilhaven\'s row (mutants: the bar)', () => {
@@ -154,18 +168,36 @@ test('ETHER-CHART2 the grid and the scale: the longest bar of 1, 2, 5, 10, 20, 5
   assert.ok(m.grid.ys.some((y) => Math.abs(y - hy) < 1e-6), 'Veilhaven\'s row a line');
 });
 
-test('ETHER-CHART2 a haunt named in view: on a plate in the first corner of her square\'s part in view no name takes, below the band names\' row; at a far zoom her name alone over it, giving way to a port\'s; her state in words (mutants: the corner, the yield)', () => {
+test('ETHER-CHART2 a haunt named in view: on a plate in a corner of her square\'s part in view no name takes - of those (AUDIT ETHER-CHART2 U6) the one over the fewest isles\' marks; at a far zoom her name alone over it, giving way to a port\'s; her state in words (mutants: the corner, the marks, the yield)', () => {
   const m = M.chartModel(word(), at(2), W, H);
   const wake = m.haunts.find((t) => t.name === 'Sorrow\'s Wake'), queen = m.haunts.find((t) => t.name === 'The Drowned Queen');
   assert.equal(wake.sub, 'Her haunt');
   assert.equal(queen.sub, 'Sunk - she will rise again');
   for (const t of [wake, queen]) {
     assert.equal(t.inside, true);
-    assert.ok(t.box[1] >= M.BAND_ROW && t.box[0] >= 0 && t.box[2] <= W && t.box[3] <= H, `${t.name}: in view, below the band names`);
+    assert.ok(t.box[1] >= 0 && t.box[0] >= 0 && t.box[2] <= W && t.box[3] <= H, `${t.name}: in view`);
     assert.ok(t.box[0] >= Math.max(0, t.x - t.r) && t.box[2] <= Math.min(W, t.x + t.r) && t.box[3] <= Math.min(H, t.y + t.r), `${t.name}: inside her square`);
     assert.ok(!m.isles.some((i) => i.label && over(i.box, t.box)), `${t.name}: no name under her plate`);
   }
-  assert.ok(m.haunts.some((t) => t.box[0] > Math.max(0, t.x - t.r) + 4 || t.box[1] > Math.max(M.BAND_ROW, t.y - t.r) + 4), 'a plate moved off its first corner, a name standing there');
+  assert.ok(m.haunts.some((t) => t.box[0] > Math.max(0, t.x - t.r) + 4 || t.box[1] > Math.max(0, t.y - t.r) + 4), 'a plate moved off its first corner');
+  // U6: of the corners no name takes, the one over the fewest marks (the Pale Regent's plate hid a ruin)
+  const mark = (o) => [o.x - o.icon - 1, o.y - o.icon - 1, o.x + o.icon + 1, o.y + o.icon + 1];
+  const under = (mm, b) => mm.isles.filter((o) => over(b, mark(o))).length;
+  let weighed = 0;
+  for (const [zoom, dx, dy] of [[2, 0, 0], [2, -20, 10], [3, -30, 20], [1, 0, 0]]) {
+    const mm = M.chartModel(word(), at(zoom, dx, dy), W, H);
+    for (const t of mm.haunts.filter((n) => n.inside)) {
+      const pw = t.box[2] - t.box[0];
+      const vx0 = Math.max(t.x - t.r, 0), vy0 = Math.max(t.y - t.r, 0), vx1 = Math.min(t.x + t.r, W), vy1 = Math.min(t.y + t.r, H);
+      const corners = [[vx0 + 4, vy0 + 4], [vx1 - 4 - pw, vy0 + 4], [vx0 + 4, vy1 - 38], [vx1 - 4 - pw, vy1 - 38]].map(([x0, y0]) => [x0, y0, x0 + pw, y0 + 34]);
+      const names = mm.isles.filter((i) => i.label && i.kind === 'port').map((i) => i.box);
+      const clear = corners.filter((b) => !names.some((n) => over(b, n)) && !mm.haunts.some((o) => o !== t && o.box && mm.haunts.indexOf(o) < mm.haunts.indexOf(t) && over(b, o.box)));
+      if (clear.length < 2) continue;
+      weighed++;
+      assert.equal(under(mm, t.box), Math.min(...clear.map((b) => under(mm, b))), `${t.name} at zoom ${zoom}: the clear corner over the fewest marks`);
+    }
+  }
+  assert.ok(weighed >= 2, `corners weighed (${weighed})`);
   const night = M.chartModel(word({ legends: [{ id: 'lantern', name: 'The Lantern-Eater', trait: 'night', sails: true }] }), { cx: h.px - 300, cy: h.py, zoom: 0 }, W, H);
   assert.equal(night.haunts[0]?.sub, 'Her haunt - by night');
   // x1: her name alone over her square - or none, where a port's name stands
@@ -176,30 +208,34 @@ test('ETHER-CHART2 a haunt named in view: on a plate in the first corner of her 
   assert.ok(far.haunts.some((t) => !t.box && !t.at), 'a far haunt\'s name gave way');
 });
 
-test('ETHER-CHART2 the ship ringed on the canvas, and off it a pointer at the edge saying how far from the chart\'s middle; the Veil\'s name down its strip, giving way to a port\'s (mutants: the pointer, the inset, the Veil\'s yield)', () => {
+test('ETHER-CHART2 the ship ringed on the canvas, and off it a pointer at the edge saying how far from the chart\'s middle - its words (AUDIT ETHER-CHART2 U7) inward, above, below or further in, clear of the names lettered where a spot is (mutants: the pointer, the inset, the words\' spot) - PIN MOVED (AUDIT ETHER-CHART2 U2: the Veil\'s name is the ruler\'s)', () => {
   assert.equal(M.EDGE_INSET, 26);
   assert.deepEqual(M.edgePointer(2000, 300, 800, 600), { x: 774, y: 300, a: 0 });
   const up = M.edgePointer(400, -900, 800, 600);
   assert.ok(Math.abs(up.y - 26) < 1e-9 && Math.abs(up.x - 400) < 1e-9 && Math.abs(up.a + Math.PI / 2) < 1e-9);
   const on = M.chartModel(word(), at(2), W, H);
-  assert.equal(on.ship.on, true); assert.equal(on.ship.edge, null);
+  assert.equal(on.ship.on, true); assert.equal(on.ship.edge, null); assert.equal(on.ship.label, null);
   const v = at(2, -160, -30);
   const off = M.chartModel(word(), v, W, H);
   assert.equal(off.ship.on, false);
   assert.deepEqual(off.ship.edge, M.edgePointer(off.ship.x, off.ship.y, W, H));
   assert.equal(off.ship.way, M.wayWords({ px: v.cx, py: v.cy }, { px: h.px - 17.5, py: h.py + 3.5 }));
   assert.match(off.ship.way, /^\d+ leagues east/);
-  assert.match(src, /const words = `Your ship - \$\{s\.way\}`;/);
-  // the Veil's name: down its strip from the top, else from the bottom, else none - never under a port's name
-  assert.equal(M.VEIL_WORDS, 'THE VEIL - to the Iliac Bay');
-  let moved = 0;
-  for (const [zoom, dx] of [[1, 0], [1, 10], [2, 0], [0, 0], [3, 10]]) {
-    const m = M.chartModel(word(), at(zoom, dx), W, H);
-    if (!m.veilLabel) continue;
-    assert.ok(!m.isles.some((i) => i.kind === 'port' && i.label && over(i.box, m.veilLabel.box)), `zoom ${zoom}: the Veil's name under a port's`);
-    if (m.veilLabel.y > H / 2) moved++;
+  assert.equal(off.ship.label.words, `Your ship - ${off.ship.way}`);
+  // its words clear of every name where one of its spots is; inside the canvas always
+  let moved = 0, seen = 0;
+  for (const [zoom, dx, dy] of [[2, -160, -30], [1, -300, 0], [0, -700, 0], [0, -600, 20], [2, 200, 40], [1, 0, -200], [3, -80, 0], [3, 0, 60], [1, -280, 40], [0, -660, 0], [0, -640, -100]]) {
+    const mm = M.chartModel(word({ legends: [] }), at(zoom, dx, dy), W, H);
+    if (mm.ship.on) continue;
+    seen++;
+    const l = mm.ship.label, names = mm.isles.filter((i) => i.label).map((i) => i.box);
+    assert.ok(l.box[0] >= 0 && l.box[2] <= W && l.box[1] >= 0 && l.box[3] <= H, 'on the canvas');
+    const e = mm.ship.edge, tw = l.box[2] - l.box[0] - 12;
+    const first = Math.max(M.MARGIN, Math.min(W - tw - M.MARGIN, e.x - Math.cos(e.a) * 28 - tw / 2));
+    if (Math.abs(l.x - first) > 1e-6 || Math.abs(l.y - Math.max(M.MARGIN + 9, Math.min(H - M.MARGIN - 9, e.y - Math.sin(e.a) * 28))) > 1e-6) { moved++; assert.ok(!names.some((n) => over(n, l.box)), 'moved: to a clear spot'); }
   }
-  assert.ok(moved > 0, 'the Veil\'s name gave its top to a port');
+  assert.ok(seen >= 4);
+  assert.ok(moved >= 1, `a pointer's words moved off a name (${moved} of ${seen})`);
 });
 
 test('ETHER-CHART2 the isle named: ringed, its card its name and its kind and way from the ship; none for an isle off the canvas; the window\'s line held, the hover cleared, the zoom\'s ends and the buttons named (mutants: the pick, the line, the ends)', () => {
@@ -208,7 +244,9 @@ test('ETHER-CHART2 the isle named: ringed, its card its name and its kind and wa
   assert.equal(m.pick.x, m.isles.find((i) => i.key === h.key).x);
   assert.equal(M.chartModel(word(), at(2, -400), W, H, { pick: h.key }).pick, null, 'off the canvas');
   assert.equal(M.chartModel(word(), at(2), W, H).pick, null);
-  assert.match(src, /noteLine\.style\.cssText = 'line-height:1\.25;min-height:1\.25em';/);
+  // PIN MOVED (AUDIT ETHER-CHART2 U8): the line held by the sheet - one line, its height kept, cut short with an ellipsis
+  assert.match(src, /const noteLine = el\('p', 'dfnaval-note dfchart-note'\);/);
+  assert.match(M.ETHER_CHART_CSS, /\.dfchart-note \{ min-height: 1\.25em; line-height: 1\.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; \}/);
   assert.match(src, /const named = isle\?\.key \?\? null;\n\s+if \(named !== pick\) \{ pick = named; draw\(\); \}/);
   assert.match(src, /canvas\.addEventListener\('pointerleave', \(e\) => \{ if \(e\.pointerType === 'mouse' && !downs\.size && pick\) \{ pick = null; noteLine\.textContent = ''; draw\(\); \} \}\);/);
   assert.match(src, /zoomOut\.disabled = view\.zoom === 0;\n\s+zoomIn\.disabled = view\.zoom === CHART_ZOOMS\.length - 1;/);

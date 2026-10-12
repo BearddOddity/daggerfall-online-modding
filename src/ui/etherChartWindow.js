@@ -16,18 +16,22 @@
 // ETHER-CHART2 (2026-10-12, the owner: "I want to improve the [Etheric] sea map, its icons, the highlight areas, etc and
 // improve readability") - THE CHART READ AT A GLANCE. Its words are the enhanced face (FONT1's law - every enhanced
 // surface in the pixel face; the chart named "Cormorant Garamond", which no request loads, so every name on it was
-// Georgia), drawn LAST under a hard halo (an isle's mark painted after a name crossed it out), each on its isle's east
-// side or its west, whichever is clear. Every isle's MARK is a shape as well as a colour (a port round, a ruin a
-// diamond, a wild isle a peak, a rock a cross - a ruin's red and a wild isle's green are the pair a red-green eye cannot
-// tell apart), over its land at the chart's own scale once the land outgrows the mark; Veilhaven ringed. The DEPTHS are
-// areas, each band its own water, under a grid a scale bar long; the world's edge hatched. A HAUNT is a washed square,
-// a sunk legend's hatched and dashed, her name in the first clear corner of the square's part in view. The SHIP is a
-// bone arrowhead in a brass ring and, off the canvas, a pointer at the edge saying how far. The isle named is ringed, a bearing drawn to it
-// from the ship and its card beside it. A key under the chart says what each mark is.
+// Georgia), painted after every mark (an isle's mark painted after a name crossed it out) - each name under a hard halo,
+// on its isle's east side or its west, in layers that keep any two from standing over each other. Every isle's MARK is a
+// shape as well as a colour (a port round, a ruin a diamond, a wild isle a peak, a rock a cross - a ruin's red and a
+// wild isle's green are the pair a red-green eye cannot tell apart), over its land at the chart's own scale once the
+// land outgrows the mark; Veilhaven ringed. The DEPTHS are areas, each band its own water, under a grid a scale bar
+// long; the world's edge drawn and hatched. A HAUNT is a washed square, a sunk legend's hatched and dashed, her name and
+// state on a plate in a clear corner of her square's part in view. The SHIP is a bone arrowhead in a brass ring and, off
+// the canvas, a pointer at the edge saying how far. The isle named is ringed, a bearing drawn to it from the ship and its
+// card beside it. AUDIT ETHER-CHART2 (bible/01-Overview/Audit-Ether-Chart2.md) took the chart's own words off the map:
+// a DEPTH RULER over it names each water in view, the Veil's and the world's edge, and the scale stands in the KEY under
+// it, which says what each mark is.
 //
 // deps = { word() -> etherHost.js chart's, onExit(reason) }. Pure beside the mount: the view's sums (`toScreen`,
 // `toChart`, `chartZoomAt`), the chart's model (`chartModel`), the scale (`scaleBar`), a name's two sides
-// (`labelBoxes`) and the edge's pointer (`edgePointer`); `paintChart` the one function that draws, handed its context.
+// (`labelBoxes`) and the edge's pointer (`edgePointer`). The painters are handed their contexts: `paintChart` the
+// chart, `paintRuler` the ruler, `paintScale` the key's bar, `paintMark` and `paintKey` a mark and a key's mark.
 import { closeOnOutsideTap } from './enhancedOverlays.js';
 import { overlayAction, bindings } from './input.js';
 import { actionsForCode } from '../systems/inputActions.js';
@@ -56,21 +60,28 @@ export const CHART_TRACKING = '0.5px';
  *  this - the mean of 755 isles' names in CHART_FONT.name, measured in Chromium. */
 export const LABEL_CHAR_PX = 6.7;
 export const LABEL_H = 14;
-/** ETHER-CHART2: the band names' row (its top), and how far below it a haunt's name stands. */
-export const BAND_TOP = 8;
-export const BAND_ROW = BAND_TOP + LABEL_H + 8;
+/** ETHER-CHART2: the margin the chart's own words keep from the canvas's edge. */
+export const MARGIN = 8;
 /** ETHER-CHART2: an isle's mark's half side at each zoom (a port's one more). */
 export const ICON_PX = Object.freeze([2.5, 3, 4, 5, 6]);
 /** ETHER-CHART2: the scale bar's lengths (leagues) and its longest (px) - the grid's squares the bar's length. */
 export const SCALE_LEAGUES = Object.freeze([1, 2, 5, 10, 20, 50, 100]);
 export const SCALE_MAX_PX = 120;
-/** ETHER-CHART2: the Veil's name, down its edge. */
-export const VEIL_WORDS = 'THE VEIL - to the Iliac Bay';
+/** AUDIT ETHER-CHART2 U2: THE DEPTH RULER - its height over the chart, and each water's words on it, longest first: a
+ *  band's name and its name alone, the Veil's way home, the world's edge past the sea's box. */
+export const RULER_H = 22;
+export const RULER_WORDS = Object.freeze({
+  ...Object.fromEntries(BANDS.map((b) => [b.id, Object.freeze([b.name.toUpperCase(), b.name.replace(/^the /, '').toUpperCase()])])),
+  veil: Object.freeze(['THE VEIL - TO THE ILIAC BAY', 'THE VEIL', 'VEIL']),
+  edge: Object.freeze(['THE WORLD\'S EDGE', 'EDGE']),
+});
 /** ETHER-CHART2: the ship's pointer stands this far in from the canvas's edge. */
 export const EDGE_INSET = 26;
 /** ETHER-CHART2: the depths' waters, the Shallows' lightest by the Veil; past the box the world's edge. */
 export const DEPTH_TONES = Object.freeze({ shallows: '#173a55', reaches: '#112b42', deep: '#0b1d31', abyss: '#06101d' });
 export const VOID_TONE = '#030508';
+/** AUDIT ETHER-CHART2 U3: the world's edge's line, where the sea's box meets the void. */
+export const EDGE_LINE = 'rgba(170,195,230,0.55)';
 /** ETHER-CHART2: the key under the chart - each mark, and what it is. */
 export const CHART_KEY = Object.freeze([['port', 'Port'], ['ruin', 'Ruin'], ['wild', 'Wild isle'], ['rock', 'Bare rock'], ['ship', 'Your ship'], ['haunt', 'A legend\'s haunt'], ['sunk', 'A legend sunk']]);
 /** AUDIT CAPTAIN'S SEA X18: the wheel's travel a zoom step takes (a trackpad's light brush was a step an event). */
@@ -142,13 +153,13 @@ const ticks = (a, b, step) => {
  * THE CHART'S MODEL for a canvas of `w` x `h` over the view: the charted isles on it (`{ key, name, kind, x, y, r, land,
  * icon, home, label, box }` - `land` the isle's own radius at the zoom, `icon` its mark's half side, `r` the larger;
  * lettered by the zoom, ports first, on the first of its sides clear of every name lettered (`box`)), the bands' bounds
- * on it (`{ x, box, name, line }` - each name lettered on its own deeper side, the Shallows by the Veil with no line of
- * its own; `box` null where it gave way), the depths' waters (`{ id, x0, x1 }`), the sea's box (`edge`), the grid, the
- * scale, the Veil's x (null off it) and its name (`veilLabel`, null where it gave way), the ship (`{ x, y, yaw, on, edge,
- * way }` - off the canvas, her pointer and her way from its middle), the haunts heard of on it (`{ x, y, r, name, sails,
- * sub, inside, at, box }` - `r` a haunt's half side: a haunt is the square legendAt reads; `inside` her name on a plate
- * in her square, else alone over it; `at` and `box` null where it gave way), the isle named (`pick`), and the header's
- * two lines.
+ * on it (`{ x, name, line }` - the Shallows' the Veil, no line of its own), the depths' waters (`{ id, x0, x1 }`), the
+ * depth ruler's (`ruler`: `{ id, x0, x1, words }` - the world's edge, the bands', the Veil's; `words` null where none
+ * fits), the sea's box (`edge`), the grid, the scale, the Veil's x (null off it), the ship (`{ x, y, yaw, on, edge, way,
+ * label }` - off the canvas, her pointer, her way from its middle and its words' place), the haunts heard of on it (`{ x,
+ * y, r, name, sails, sub, inside, at, box }` - `r` a haunt's half side: a haunt is the square legendAt reads; `inside`
+ * her name on a plate in her square, else alone over it; `at` and `box` null where it gave way), the isle named (`pick`:
+ * `{ key, x, y, r, title, words, box }`, its card's `box`), and the header's two lines.
  * @param {any} word - etherHost.js chart's @param {ChartView} v @param {number} w @param {number} h
  * @param {{ measure?: ((text: string, font: string) => number) | null, pick?: string | null }} [opts] - a name's width
  *   in a face (the window's canvas; the mean letter, LABEL_CHAR_PX, without one) and the isle named
@@ -181,13 +192,20 @@ export function chartModel(word, v, w, h, { measure = null, pick = null } = {}) 
   const bands = [];
   BANDS.forEach((b, n) => {
     const x = boundX(n);
-    // AUDIT CAPTAIN'S SEA X12: on its own side of its line - west of it, the deeper - right-aligned to it. ETHER-CHART2:
-    // and inside its own water - a name wider than its band in view goes unlettered (at x1 the Shallows' ran over the
-    // Reaches' own); its box the model's, the plate under it the painter's
-    const right = Math.min(w - 8, x - 8), tw = width(b.name.toUpperCase(), CHART_FONT.small);
-    const box = right - tw >= Math.max(0, boundX(n + 1)) + 8 ? [right - tw, BAND_TOP, right, BAND_TOP + LABEL_H] : null;
-    if (x >= 0 && x <= w + 80) bands.push({ x, box, name: b.name, line: b.from > 0 });   // AUDIT CAPTAIN'S SEA X12: the Shallows named by the Veil
+    if (x >= 0 && x <= w + 80) bands.push({ x, name: b.name, line: b.from > 0 });   // AUDIT CAPTAIN'S SEA X12: the Shallows named by the Veil
   });
+  const [veil] = toScreen(v, VEIL_X, 0, w, h);
+  // AUDIT ETHER-CHART2 U2: THE DEPTH RULER over the chart - the water across it, west to east: the world's edge, each
+  // band's, the Veil's to the canvas's east edge - each named on it, centred in its own water (AUDIT CAPTAIN'S SEA X12's
+  // deeper side kept: a name stands between its own bounds), the longest of its words that fits, or none. Off the map, so
+  // no name of the chart's own is ever crowded out by an isle's, nor stands over one.
+  const ruler = [];
+  const segment = (id, x0, x1) => ruler.push({ id, x0, x1, words: /** @type {string|null} */ (null) });
+  if (bx0 > 0) segment('edge', 0, Math.min(w, bx0));
+  for (const d of depths) segment(d.id, d.x0, d.x1);
+  if (veil < w) segment('veil', Math.max(0, veil), w);
+  ruler.sort((a, b) => a.x0 - b.x0);   // read west to east
+  for (const seg of ruler) seg.words = RULER_WORDS[seg.id].find((t) => width(t, CHART_FONT.small) + 12 <= seg.x1 - seg.x0) ?? null;
   const scale = scaleBar(v.zoom);
   const depthAt = (sx) => (VEIL_X - toChart(v, sx, 0, w, h)[0]) / LEAGUE_PX;
   const rowY = veilhaven().py + 0.5, rowAt = (sy) => (toChart(v, 0, sy, w, h)[1] - rowY) / LEAGUE_PX;
@@ -198,7 +216,7 @@ export function chartModel(word, v, w, h, { measure = null, pick = null } = {}) 
   const shipAt = { px: word.px + 0.5, py: word.py + 0.5 };
   const [sx, sy] = toScreen(v, shipAt.px, shipAt.py, w, h);
   const shipOn = on(sx, sy);
-  const ship = { x: sx, y: sy, yaw: word.yaw ?? 0, on: shipOn, edge: shipOn ? null : edgePointer(sx, sy, w, h), way: shipOn ? '' : wayWords({ px: v.cx, py: v.cy }, shipAt) };
+  const ship = { x: sx, y: sy, yaw: word.yaw ?? 0, on: shipOn, edge: shipOn ? null : edgePointer(sx, sy, w, h), way: shipOn ? '' : wayWords({ px: v.cx, py: v.cy }, shipAt), label: /** @type {{ x: number, y: number, words: string, box: number[] } | null} */ (null) };
   const haunts = [];
   for (const l of word.legends ?? []) {
     const legend = legendById(l.id);
@@ -208,66 +226,93 @@ export function chartModel(word, v, w, h, { measure = null, pick = null } = {}) 
     const r = HAUNT_PX * k;
     if (on(x, y, r)) haunts.push({ x, y, r, name: l.name, sails: !!l.sails, sub: l.sails ? `Her haunt${l.trait === 'night' ? ' - by night' : ''}` : 'Sunk - she will rise again', inside: false, at: /** @type {number[]|null} */ (null), box: /** @type {number[]|null} */ (null) });
   }
-  // ETHER-CHART2: the Veil's name down its edge - from the top, else up from the bottom - clear of the canvas's middle
-  // (where the ship and Veilhaven lie, and the ports round them)
-  const [veil] = toScreen(v, VEIL_X, 0, w, h);
-  const vw = width(VEIL_WORDS), vx = Math.min(w - 12, veil + 16);
-  const veilAt = (vy) => ({ x: vx, y: vy, box: [vx - LABEL_H / 2, vy - vw / 2, vx + LABEL_H / 2, vy + vw / 2] });
-  const veilSpots = veil <= w ? [veilAt(Math.max(BAND_TOP + vw / 2, Math.min(h - vw / 2 - 8, BAND_ROW + vw / 2))), veilAt(Math.max(BAND_ROW + vw / 2, h - 44 - vw / 2))] : [];
   // AUDIT CAPTAIN'S SEA X14: the names placed greedily - ports first, then by the chart's own order - and one that would
   // stand over a name already lettered on both its sides left unlettered (a pointer or a tap still names it).
-  // ETHER-CHART2: IN LAYERS - the ports' names; then the chart's own words give way to them (a band's name and the Veil's,
-  // which tries the other end of its strip first); then the haunts' names; then the lesser isles'. A lesser isle's name
-  // never stands over a band's name, the scale, the Veil's name or a haunt's either. Of the sides left, a name takes the
-  // first on the canvas and clear of those, the ship's ring and every other isle's mark - a port of the ports' marks
-  // alone, so a lesser isle never moves a port's name (and so never which ports are lettered) - else the first.
+  // ETHER-CHART2: IN LAYERS - the ports' names, then the haunts', then the lesser isles' (which never stand over a
+  // haunt's). Of the sides left, a name takes the first on the canvas and clear of the ship's ring and every other isle's
+  // mark - a port of the ports' marks alone, so a lesser isle never moves a port's name (and so never which ports are
+  // lettered) - else the first.
   const placed = [];
-  const plateOf = (b) => [b.box[0] - 6, b.box[1] - 2, b.box[2] + 6, b.box[3] + 2];
-  const scaleBox = [6, h - 36, 22 + Math.max(scale.px, width(scale.words, CHART_FONT.small)), h - 7];
-  const chrome = (veilBox) => [...bands.filter((b) => b.box).map(plateOf), scaleBox, ...(veilBox ? [veilBox] : [])];
-  let fixed = chrome(veilSpots[0]?.box);
   const ring = shipOn ? [[sx - 16, sy - 16, sx + 16, sy + 16]] : [];
   const mark = (o) => [o.x - o.icon - 1, o.y - o.icon - 1, o.x + o.icon + 1, o.y + o.icon + 1];
+  // AUDIT ETHER-CHART2 C10: each mark's box once, and a port's name weighed against the ports' alone (it scanned them all)
+  const marks = isles.map((o) => ({ o, box: mark(o) })), portMarks = marks.filter((k) => k.o.kind === 'port');
+  const onChart = (box) => box[0] >= 0 && box[2] <= w;
   const letter = (i) => {
     if (!i.label) return;
     const port = i.kind === 'port';
     const sides = labelBoxes(i, width(capFirst(i.name)));
-    const free = sides.filter((box) => !placed.some((p) => overlaps(box, p)) && (port || !fixed.some((p) => overlaps(box, p))));
+    const free = sides.filter((box) => !placed.some((p) => overlaps(box, p)));
     if (!free.length) { i.label = false; return; }
-    i.box = free.find((box) => box[0] >= 0 && box[2] <= w && ![...fixed, ...ring].some((p) => overlaps(box, p)) && !isles.some((o) => o !== i && (!port || o.kind === 'port') && overlaps(box, mark(o)))) ?? free[0];
+    // AUDIT ETHER-CHART2 C7: where no side is clear of everything, the one on the chart before one cut by its edge
+    i.box = free.find((box) => onChart(box) && !ring.some((p) => overlaps(box, p)) && !(port ? portMarks : marks).some((k) => k.o !== i && overlaps(box, k.box))) ?? free.find(onChart) ?? free[0];
     placed.push(i.box);
   };
-  // ...a haunt's name and state on a plate in the first corner of her square's part in view (below the band names' row)
-  // clear of every name and plate - or, where that part is smaller than the plate, her name alone over the square, given
-  // way where a port's name stands (a plate wider than her haunt hid the isles round it); her square stands either way
+  // ...a haunt's name and state on a plate in a corner of her square's part in view clear of every name - of those, the
+  // one over the fewest isles' marks (AUDIT ETHER-CHART2 U6: a plate hid a ruin). Where that part is smaller than the
+  // plate, or no corner of it is clear (AUDIT ETHER-CHART2 T1: the plate went to the first corner over a port's name), her
+  // name alone over the square, given way where a name stands (a plate wider than her haunt hid the isles round it); her
+  // square stands either way
+  const marksUnder = (b) => isles.filter((o) => overlaps(b, mark(o))).length;
   const nameHaunt = (t) => {
     const tw = width(t.name), pw = Math.max(tw, width(t.sub, CHART_FONT.small)) + 12;
-    const vx0 = Math.max(t.x - t.r, 0), vy0 = Math.max(t.y - t.r, BAND_ROW), vx1 = Math.min(t.x + t.r, w), vy1 = Math.min(t.y + t.r, h);
-    const taken = (b) => [...placed, ...fixed].some((p) => overlaps(b, p));
+    const vx0 = Math.max(t.x - t.r, 0), vy0 = Math.max(t.y - t.r, 0), vx1 = Math.min(t.x + t.r, w), vy1 = Math.min(t.y + t.r, h);
+    const taken = (b) => placed.some((p) => overlaps(b, p));
     if (vx1 - vx0 >= pw + 16 && vy1 - vy0 >= 50) {
       const corners = [[vx0 + 4, vy0 + 4], [vx1 - 4 - pw, vy0 + 4], [vx0 + 4, vy1 - 38], [vx1 - 4 - pw, vy1 - 38]].map(([x0, y0]) => [x0, y0, x0 + pw, y0 + 34]);
-      t.box = corners.find((b) => !taken(b)) ?? corners[0];
-      t.inside = true; t.at = [t.box[0] + 6, t.box[1] + 4];
-    } else {
-      const cx = Math.max(tw / 2 + 6, Math.min(w - tw / 2 - 6, t.x)), cy = Math.max(BAND_ROW + 8, t.y - t.r - 10);
+      const clear = corners.filter((b) => !taken(b));
+      if (clear.length) {
+        t.box = clear.reduce((best, b) => (marksUnder(b) < marksUnder(best) ? b : best));
+        t.inside = true; t.at = [t.box[0] + 6, t.box[1] + 4];
+      }
+    }
+    if (!t.box) {
+      const cx = Math.max(tw / 2 + 6, Math.min(w - tw / 2 - 6, t.x)), cy = Math.max(MARGIN + LABEL_H / 2, t.y - t.r - 10);
       const box = [cx - tw / 2 - 3, cy - LABEL_H / 2, cx + tw / 2 + 3, cy + LABEL_H / 2];
-      if (!taken(box)) { t.box = box; t.at = [cx, cy]; }
+      // AUDIT ETHER-CHART2 C8: over her own square - never below it nor beside it (held to the canvas, a square running
+      // off its top or side set her name in open water, or in another legend's square)
+      const hers = box[3] <= t.y + t.r && box[0] < t.x + t.r && t.x - t.r < box[2];
+      if (hers && !taken(box)) { t.box = box; t.at = [cx, cy]; }
     }
     if (t.box) placed.push(t.box);
   };
   const ports = isles.filter((i) => i.kind === 'port'), lesser = isles.filter((i) => i.kind !== 'port');
   for (const i of ports) letter(i);
-  for (const b of bands) if (b.box && placed.some((p) => overlaps(plateOf(b), p))) b.box = null;
-  const veilLabel = veilSpots.find((at) => !placed.some((p) => overlaps(at.box, p))) ?? null;
-  fixed = chrome(veilLabel?.box);
   for (const t of haunts) nameHaunt(t);
+  // AUDIT ETHER-CHART2 U7: the ship's pointer's words - inward from it, else above or below, else further in - clear of
+  // the names lettered, or over the fewest where every spot stands on one; laid after the ports' and the haunts' names and
+  // before the lesser isles' (AUDIT ETHER-CHART2 C4: its plate, painted after them, covered one in six of the views where
+  // she was off the chart)
+  if (ship.edge) {
+    const e = ship.edge, words = `Your ship - ${ship.way}`, tw = width(words, CHART_FONT.small);
+    const at = (lx, ly) => { const x = Math.max(MARGIN, Math.min(w - tw - MARGIN, lx)), y = Math.max(MARGIN + 9, Math.min(h - MARGIN - 9, ly)); return { x, y, words, box: [x - 6, y - 9, x + tw + 6, y + 9] }; };
+    const ix = e.x - Math.cos(e.a) * 28 - tw / 2, iy = e.y - Math.sin(e.a) * 28;
+    const ox = -Math.cos(e.a) * 40, oy = -Math.sin(e.a) * 40;
+    const spots = [at(ix, iy), at(ix, iy - 24), at(ix, iy + 24), at(ix + ox, iy + oy), at(ix + ox, iy + oy - 24), at(ix + ox, iy + oy + 24)];
+    const crossed = (sp) => placed.filter((p) => overlaps(sp.box, p)).length;
+    ship.label = spots.reduce((best, sp) => (crossed(sp) < crossed(best) ? sp : best));   // the first clear, else the one over the fewest
+    placed.push(ship.label.box, [e.x - 16, e.y - 16, e.x + 16, e.y + 16]);   // C4: the lesser isles' names keep off it and its arrow
+  }
   for (const i of lesser) letter(i);
+  // AUDIT ETHER-CHART2 U9: the named isle's card - above it to the east, then the west, then below - clear of the isle,
+  // the ship and the names lettered where it can be
   const named = pick ? isles.find((i) => i.key === pick) : null;
   const isle = named ? isleByKey(named.key) : null;
+  let card = null;
+  if (named && isle) {
+    const title = capFirst(named.name), words = `${capFirst(KIND_WORDS[named.kind] ?? 'an isle')} - ${wayWords(shipAt, isle)}`;
+    const cw = Math.max(width(title), width(words, CHART_FONT.small)) + 16, ch = 36;
+    const box = (x, y) => { const x0 = Math.max(4, Math.min(w - cw - 4, x)), y0 = Math.max(4, Math.min(h - ch - 4, y)); return [x0, y0, x0 + cw, y0 + ch]; };
+    const o = named.r + 10;
+    const spots = [box(named.x + o, named.y - o - ch), box(named.x - o - cw, named.y - o - ch), box(named.x + o, named.y + o), box(named.x - o - cw, named.y + o)];
+    const self = [named.x - named.r - 6, named.y - named.r - 6, named.x + named.r + 6, named.y + named.r + 6];
+    const fits = spots.filter((b) => !overlaps(b, self));
+    card = { key: named.key, x: named.x, y: named.y, r: named.r, title, words, box: fits.find((b) => ![...placed, ...ring].some((p) => overlaps(b, p))) ?? fits[0] ?? spots[0] };
+  }
   const st = word.stats ?? {};
   return {
-    isles, bands, veil: veil <= w ? veil : null, veilLabel, ship, haunts, depths, edge: [bx0, by0, bx1, by1], grid, scale,
-    pick: named && isle ? { key: named.key, x: named.x, y: named.y, r: named.r, title: capFirst(named.name), words: `${capFirst(KIND_WORDS[named.kind] ?? 'an isle')} - ${wayWords(shipAt, isle)}` } : null,
+    isles, bands, veil: veil <= w ? veil : null, ruler, ship, haunts, depths, edge: [bx0, by0, bx1, by1], grid, scale,
+    pick: card,
     title: 'A chart of the Etheric Sea',   // the haunts' `r` the square's half side (X13)
     sub: `${st.charted ?? 0} ${st.charted === 1 ? 'isle' : 'isles'} charted - deepest ${st.deepest ?? 0} leagues past the Veil - ${st.crossings ?? 0} ${st.crossings === 1 ? 'crossing' : 'crossings'}${st.legends ? ` - ${st.legends} ${st.legends === 1 ? 'legend' : 'legends'} ended` : ''}`,
   };
@@ -343,16 +388,17 @@ function paintHaunt(g, t) {
   g.setLineDash([]); g.lineWidth = 1;
 }
 /** A key's mark, on a canvas of its own, about its middle. */
-function paintKey(g, what, x, y) {
+export function paintKey(g, what, x, y) {
   if (what === 'ship') paintShip(g, x, y, Math.PI / 4, 0.55);
   else if (what === 'haunt' || what === 'sunk') paintHaunt(g, { x, y, r: 6, sails: what === 'haunt' });
   else paintMark(g, what, x, y, what === 'port' ? 4.5 : 4);
 }
 
 /**
- * THE CHART DRAWN, back to front: the world's edge, the depths and the grid, the Veil and the bands' bounds, the haunts,
- * the isles' lands, the bearing, their marks, the ship, the ring on the isle named - then every word, last, so no mark
- * crosses one: the names, the bands', the haunts', the Veil's, the named isle's card, the ship's pointer, the scale.
+ * THE CHART DRAWN, back to front: the void past the world's edge, the depths and the grid, the Veil and the bands'
+ * bounds, the world's edge, the haunts, the isles' lands, the bearing, their marks, the ship, the ring on the isle named -
+ * then the words, after every mark: the haunts' plates and lone names, the isles' names under their halos, the ship's
+ * pointer and its words, the named isle's card. The model lays every one of them clear of the others it can.
  * @param {CanvasRenderingContext2D} g @param {ReturnType<typeof chartModel>} m @param {number} w @param {number} h
  */
 export function paintChart(g, m, w, h) {
@@ -377,6 +423,14 @@ export function paintChart(g, m, w, h) {
   for (const b of m.bands) if (b.line) { g.beginPath(); g.moveTo(Math.round(b.x) + 0.5, 0); g.lineTo(Math.round(b.x) + 0.5, h); g.stroke(); }
   g.setLineDash([]);
   g.restore();
+  // AUDIT ETHER-CHART2 U3: the world's edge drawn where the sea's box meets it (the Abyss's water and the void were one black)
+  if (sea[0] > 0 || sea[1] > 0 || sea[3] < h) {
+    g.strokeStyle = EDGE_LINE; g.lineWidth = 1.5; g.beginPath();
+    if (sea[0] > 0) { g.moveTo(sea[0], sea[1]); g.lineTo(sea[0], sea[3]); }
+    if (sea[1] > 0) { g.moveTo(sea[0], sea[1]); g.lineTo(w, sea[1]); }
+    if (sea[3] < h) { g.moveTo(sea[0], sea[3]); g.lineTo(w, sea[3]); }
+    g.stroke(); g.lineWidth = 1;
+  }
   for (const t of m.haunts) paintHaunt(g, t);
   // the isles' lands, once a land outgrows its mark - the isle's own size at the zoom
   for (const i of m.isles) {
@@ -398,12 +452,6 @@ export function paintChart(g, m, w, h) {
   // every word, last
   g.textBaseline = 'middle';
   track(g, CHART_TRACKING);
-  g.font = CHART_FONT.small;
-  for (const b of m.bands) {
-    if (!b.box) continue;
-    plate(g, b.box[0] - 6, b.box[1] - 2, b.box[2] + 6, b.box[3] + 2);
-    g.fillStyle = '#b8cee8'; g.textAlign = 'right'; g.fillText(b.name.toUpperCase(), Math.round(b.box[2]), Math.round((b.box[1] + b.box[3]) / 2));
-  }
   for (const t of m.haunts) {
     if (!t.at || !t.box) continue;
     const [x, y] = t.at;
@@ -415,39 +463,98 @@ export function paintChart(g, m, w, h) {
   }
   g.font = CHART_FONT.name;
   for (const i of m.isles) if (i.label && i.box) halo(g, capFirst(i.name), i.box[0], (i.box[1] + i.box[3]) / 2, i.kind === 'port' ? '#f6e2b0' : '#e2dccf');
-  if (m.veilLabel) {
-    g.save(); g.translate(Math.round(m.veilLabel.x), Math.round(m.veilLabel.y)); g.rotate(-Math.PI / 2);
-    g.font = CHART_FONT.name; halo(g, VEIL_WORDS, 0, 0, '#ece4ff', 'center'); g.restore();
-  }
-  if (p) {
-    g.font = CHART_FONT.name; const tw = g.measureText(p.title).width;
-    g.font = CHART_FONT.small; const sw = g.measureText(p.words).width;
-    const cw = Math.max(tw, sw) + 16, ch = 36;
-    const x0 = Math.max(4, Math.min(w - cw - 4, p.x + p.r + 10)), y0 = Math.max(BAND_ROW, Math.min(h - ch - 4, p.y - p.r - 10 - ch));
-    plate(g, x0, y0, x0 + cw, y0 + ch, 'rgba(243,207,134,0.75)');
-    g.textAlign = 'left';
-    g.font = CHART_FONT.name; g.fillStyle = '#f6e2b0'; g.fillText(p.title, x0 + 8, y0 + 11);
-    g.font = CHART_FONT.small; g.fillStyle = '#d8cfae'; g.fillText(p.words, x0 + 8, y0 + 26);
-  }
-  if (!s.on && s.edge) {
-    const e = s.edge;
+  if (!s.on && s.edge && s.label) {
+    const e = s.edge, l = s.label;
     g.save(); g.translate(e.x, e.y); g.rotate(e.a);
     g.beginPath(); g.moveTo(14, 0); g.lineTo(-6, -9); g.lineTo(-2, 0); g.lineTo(-6, 9); g.closePath();
     g.fillStyle = '#f3cf86'; g.fill(); g.lineWidth = 1.5; g.strokeStyle = INK; g.stroke(); g.lineWidth = 1;
     g.restore();
-    const words = `Your ship - ${s.way}`;
-    g.font = CHART_FONT.small; const tw = g.measureText(words).width;
-    const lx = Math.max(10, Math.min(w - tw - 10, e.x - Math.cos(e.a) * 26 - tw / 2)), ly = Math.max(BAND_ROW + 4, Math.min(h - 14, e.y - Math.sin(e.a) * 24));
-    plate(g, lx - 6, ly - 9, lx + tw + 6, ly + 9, 'rgba(243,207,134,0.75)');
-    g.textAlign = 'left'; g.fillStyle = '#f3cf86'; g.fillText(words, Math.round(lx), Math.round(ly));
+    plate(g, l.box[0], l.box[1], l.box[2], l.box[3], 'rgba(243,207,134,0.75)');
+    g.font = CHART_FONT.small; g.textAlign = 'left'; g.fillStyle = '#f3cf86'; g.fillText(l.words, Math.round(l.x), Math.round(l.y));
   }
-  const sc = m.scale, sx0 = 14, sy0 = h - 14;
-  g.font = CHART_FONT.small; const sw = g.measureText(sc.words).width;
-  plate(g, sx0 - 8, sy0 - 22, sx0 + Math.max(sc.px, sw) + 8, sy0 + 7);
-  g.strokeStyle = '#d8cfae'; g.lineWidth = 2; g.beginPath();
-  g.moveTo(sx0, sy0 - 4); g.lineTo(sx0, sy0); g.lineTo(sx0 + sc.px, sy0); g.lineTo(sx0 + sc.px, sy0 - 4); g.stroke(); g.lineWidth = 1;
-  g.textAlign = 'left'; g.fillStyle = '#d8cfae'; g.fillText(sc.words, sx0, sy0 - 12);
+  if (p) {
+    const [x0, y0, x1, y1] = p.box;
+    plate(g, x0, y0, x1, y1, 'rgba(243,207,134,0.75)');
+    g.textAlign = 'left';
+    g.font = CHART_FONT.name; g.fillStyle = '#f6e2b0'; g.fillText(p.title, Math.round(x0 + 8), Math.round(y0 + 11));
+    g.font = CHART_FONT.small; g.fillStyle = '#d8cfae'; g.fillText(p.words, Math.round(x0 + 8), Math.round(y0 + 26));
+  }
   track(g, '0px');
+}
+
+/**
+ * AUDIT ETHER-CHART2 U2: THE DEPTH RULER drawn - each water's own tone across its span (the Veil's violet, the world's
+ * edge hatched), a bound between each two, the grid's ticks along its foot, the ship's caret where she is, and each
+ * water's words centred in it. `w` its width, the chart's; RULER_H its height.
+ * @param {CanvasRenderingContext2D} g @param {ReturnType<typeof chartModel>} m @param {number} w
+ */
+export function paintRuler(g, m, w) {
+  const h = RULER_H;
+  g.fillStyle = VOID_TONE; g.fillRect(0, 0, w, h);
+  for (const seg of m.ruler) {
+    if (seg.id === 'edge') { hatch(g, seg.x0, 0, seg.x1, h, 'rgba(120,140,170,0.25)', 6); continue; }
+    if (seg.id === 'veil') {
+      const veil = g.createLinearGradient(seg.x0, 0, Math.max(seg.x1, seg.x0 + 1), 0);
+      veil.addColorStop(0, '#2b2f57'); veil.addColorStop(1, '#4b4f86');
+      g.fillStyle = veil;
+    } else g.fillStyle = tint(DEPTH_TONES[seg.id] ?? DEPTH_TONES.abyss, 1);
+    g.fillRect(seg.x0, 0, seg.x1 - seg.x0, h);
+  }
+  g.strokeStyle = 'rgba(170,205,240,0.45)'; g.lineWidth = 1; g.beginPath();
+  for (const seg of m.ruler) if (seg.x0 > 0) { g.moveTo(Math.round(seg.x0) + 0.5, 0); g.lineTo(Math.round(seg.x0) + 0.5, h); }
+  for (const x of m.grid.xs) { g.moveTo(Math.round(x) + 0.5, h - 4); g.lineTo(Math.round(x) + 0.5, h); }
+  g.stroke();
+  g.strokeStyle = 'rgba(160,190,225,0.35)'; g.beginPath(); g.moveTo(0, h - 0.5); g.lineTo(w, h - 0.5); g.stroke();
+  if (m.ship.on) {
+    const x = Math.round(m.ship.x);
+    g.beginPath(); g.moveTo(x, h - 1); g.lineTo(x + 5, h - 7); g.lineTo(x - 5, h - 7); g.closePath();
+    g.fillStyle = '#f3cf86'; g.fill(); g.lineWidth = 1; g.strokeStyle = INK; g.stroke();
+  }
+  g.textBaseline = 'middle'; g.textAlign = 'center'; g.font = CHART_FONT.small;
+  track(g, CHART_TRACKING);
+  for (const seg of m.ruler) if (seg.words) halo(g, seg.words, (seg.x0 + seg.x1) / 2, h / 2 - 1, seg.id === 'veil' ? '#ece4ff' : '#b8cee8', 'center');
+  track(g, '0px');
+}
+
+/** AUDIT ETHER-CHART2 U4: THE SCALE BAR drawn, in the key - the bar its length in leagues at the chart's zoom, its ends
+ *  ticked. @param {CanvasRenderingContext2D} g @param {{ px: number }} scale @param {number} h */
+export function paintScale(g, scale, h) {
+  g.strokeStyle = INK; g.lineWidth = 4; g.lineCap = 'square';
+  g.beginPath(); g.moveTo(1.5, 2); g.lineTo(1.5, h - 2); g.lineTo(scale.px + 1.5, h - 2); g.lineTo(scale.px + 1.5, 2); g.stroke();
+  g.strokeStyle = '#d8cfae'; g.lineWidth = 2; g.stroke(); g.lineCap = 'butt'; g.lineWidth = 1;
+}
+
+/** AUDIT ETHER-CHART2 U1: THE CHART WINDOW'S SHEET - the window as tall as the screen allows and the chart in the room it
+ *  leaves (a fixed 64vh put the key and the zoom under the fold on a phone held sideways), the ruler over it, the note
+ *  one line (a name said on a narrow screen wrapped it to two, and the chart slid), the key and the tools, the hint set
+ *  down where the height is short. */
+export const ETHER_CHART_STYLE_ID = 'dfchart-style';
+export const ETHER_CHART_CSS = `
+.dfchart-win { width: min(96vw, 1100px); max-width: 96vw; height: min(92vh, 900px); }
+.dfchart-win .dfnaval-winbody { flex: 1 1 auto; gap: 8px; }
+.dfchart-note { min-height: 1.25em; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dfchart-chart { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgba(5,6,8,0.85); }
+.dfchart-ruler { display: block; width: 100%; height: ${RULER_H}px; flex: 0 0 auto; }
+.dfchart-stage { position: relative; flex: 1 1 auto; min-height: 120px; }
+.dfchart-map { position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; background: ${DEPTH_TONES.reaches}; }
+.dfchart-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; flex: 0 0 auto; }
+.dfchart-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; flex: 1 1 320px; font-size: 12px; color: #c9bfa4; }
+.dfchart-key > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dfchart-tools { display: flex; gap: 8px; justify-content: flex-end; flex: 0 0 auto; }
+.dfchart-hint { flex: 0 0 auto; }
+@media (max-height: 520px) {
+  .dfchart-hint { display: none; }
+  .dfchart-win .dfnaval-winhead { padding-top: 8px; padding-bottom: 8px; }
+  .dfchart-key { font-size: 11px; gap: 2px 10px; }
+}
+`;
+/** The sheet, once a document. */
+export function injectEtherChartStyle(doc = document) {
+  if (doc.getElementById?.(ETHER_CHART_STYLE_ID)) return;
+  const st = doc.createElement('style');
+  st.id = ETHER_CHART_STYLE_ID;
+  st.textContent = ETHER_CHART_CSS;
+  (doc.head ?? doc.body).append(st);
 }
 
 /** @param {string} tag @param {string|null} [cls] @param {string|null} [text] */
@@ -467,21 +574,19 @@ export function mountEtherChartWindow(host, deps) {
   injectEnhancedFonts();
   injectNavalWindowStyle();
   injectNavalKit(document);
+  injectEtherChartStyle();
   const exit = (reason = 'close') => deps.onExit?.(reason);
   const shell = el('div', 'dfnaval-shell');
   shell.setAttribute('role', 'dialog');
   shell.setAttribute('aria-label', 'A chart of the Etheric Sea');
-  const win = el('div', 'dfnaval-win');
-  win.style.width = 'min(96vw, 1100px)';
-  win.style.maxWidth = '96vw';
+  const win = el('div', 'dfnaval-win dfchart-win');
   shell.append(win);
   const head = el('header', 'dfnaval-winhead');
   const title = el('div', 'dfnaval-wintitle');
   const h2 = el('h2');
   const sub = el('p', 'dfnaval-winsub');
-  const noteLine = el('p', 'dfnaval-note');
+  const noteLine = el('p', 'dfnaval-note dfchart-note');   // ETHER-CHART2: its line kept - a name said grew the head and slid the chart under the pointer
   noteLine.setAttribute('aria-live', 'polite');
-  noteLine.style.cssText = 'line-height:1.25;min-height:1.25em';   // ETHER-CHART2: its line kept - a name said grew the head and slid the chart under the pointer
   title.append(h2, sub, noteLine);
   const close = /** @type {HTMLButtonElement} */ (el('button', 'dfnaval-btn dfnaval-close', 'Close'));
   close.type = 'button';
@@ -489,22 +594,26 @@ export function mountEtherChartWindow(host, deps) {
   close.style.flex = '0 0 auto';   // ETHER-CHART2: the sheet's narrow rule grows every button to a row; the title keeps its room
   close.addEventListener('click', () => exit('close'));
   head.append(title, close);
-  const canvas = /** @type {HTMLCanvasElement} */ (el('canvas'));
-  canvas.style.cssText = `display:block;width:100%;height:min(64vh,640px);border-radius:3px;cursor:grab;touch-action:none;background:${DEPTH_TONES.reaches}`;
+  // AUDIT ETHER-CHART2 U1/U2: the depth ruler over the chart, and the chart in the room the window leaves it
+  const ruler = /** @type {HTMLCanvasElement} */ (el('canvas', 'dfchart-ruler'));
+  ruler.setAttribute('aria-hidden', 'true');
+  const canvas = /** @type {HTMLCanvasElement} */ (el('canvas', 'dfchart-map'));
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'A chart of the Etheric Sea: your ship, the isles you have charted, the depths, the Veil and the legends\' haunts');
-  const hint = el('p', 'dfnaval-lede', 'Drag or the arrows to pan - the wheel, a pinch or + and - to zoom - C finds your ship - point at or tap an isle to name it.');
+  const stage = el('div', 'dfchart-stage');
+  stage.append(canvas);
+  const chart = el('div', 'dfchart-chart');
+  chart.append(ruler, stage);
+  const hint = el('p', 'dfnaval-lede dfchart-hint', 'Drag or the arrows to pan - the wheel, a pinch or + and - to zoom - C finds your ship - point at or tap an isle to name it.');
   // AUDIT CAPTAIN'S SEA X6: the window's own presses - a finger and a pad's cursor zoom and find the ship by them
-  const tools = el('div', 'dfnaval-chart-tools');
-  tools.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex:0 0 auto';
+  const tools = el('div', 'dfnaval-chart-tools dfchart-tools');
   const tool = (label, fn) => { const b = /** @type {HTMLButtonElement} */ (el('button', 'dfnaval-btn', label)); b.type = 'button'; b.style.minWidth = '0'; b.addEventListener('click', () => { fn(); draw(); }); tools.append(b); return b; };
-  // ETHER-CHART2: the key - each mark drawn by the chart's own painter beside its word
-  const key = el('div', 'dfnaval-chart-key');
-  key.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;flex:1 1 320px;font-size:12px;color:#c9bfa4';
+  // ETHER-CHART2: the key - each mark drawn by the chart's own painter beside its word - and (AUDIT ETHER-CHART2 U4) the
+  // scale bar, its length the chart's own at the zoom
+  const key = el('div', 'dfnaval-chart-key dfchart-key');
   const dpr0 = Math.max(1, Math.min(3, globalThis.devicePixelRatio || 1));
   for (const [what, words] of CHART_KEY) {
     const item = el('span');
-    item.style.cssText = 'display:inline-flex;align-items:center;gap:6px;white-space:nowrap';
     const c = /** @type {HTMLCanvasElement} */ (el('canvas'));
     c.width = c.height = Math.round(18 * dpr0);
     c.style.cssText = 'width:18px;height:18px;flex:0 0 auto';
@@ -514,11 +623,29 @@ export function mountEtherChartWindow(host, deps) {
     item.append(c, el('span', null, words));
     key.append(item);
   }
-  const foot = el('div', 'dfnaval-chart-foot');
-  foot.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;margin-top:8px';
+  const scaleItem = el('span', 'dfchart-scale');
+  const scaleBarCanvas = /** @type {HTMLCanvasElement} */ (el('canvas'));
+  scaleBarCanvas.setAttribute('aria-hidden', 'true');
+  const scaleWords = el('span');
+  scaleItem.append(scaleBarCanvas, scaleWords);
+  key.append(scaleItem);
+  let scaleShown = '';
+  const showScale = (sc) => {
+    const dpr = Math.max(1, Math.min(3, globalThis.devicePixelRatio || 1));
+    const at = `${sc.words}:${sc.px}:${dpr}`;   // every zoom's bar is near SCALE_MAX_PX long: its words tell them apart
+    if (at === scaleShown) return;
+    scaleShown = at;
+    const cw = Math.ceil(sc.px) + 4, ch = 10;
+    scaleBarCanvas.width = Math.round(cw * dpr); scaleBarCanvas.height = Math.round(ch * dpr);
+    scaleBarCanvas.style.cssText = `width:${cw}px;height:${ch}px;flex:0 0 auto`;
+    const sg = scaleBarCanvas.getContext('2d');
+    if (sg) { sg.setTransform(dpr, 0, 0, dpr, 0, 0); sg.clearRect(0, 0, cw, ch); paintScale(sg, sc, ch); }
+    scaleWords.textContent = sc.words;
+  };
+  const foot = el('div', 'dfnaval-chart-foot dfchart-foot');
   foot.append(key, tools);
   const body = el('div', 'dfnaval-winbody');
-  body.append(canvas, foot, hint);
+  body.append(chart, foot, hint);
   win.append(head, body);
   host.append(shell);
 
@@ -536,15 +663,17 @@ export function mountEtherChartWindow(host, deps) {
   const [zoomOut, zoomIn, shipBtn] = /** @type {HTMLButtonElement[]} */ ([...tools.children]);
   zoomOut.setAttribute('aria-label', 'Zoom out'); zoomIn.setAttribute('aria-label', 'Zoom in'); shipBtn.setAttribute('aria-label', 'Find your ship');
   for (const b of [zoomOut, zoomIn, shipBtn]) { b.style.flex = '0 0 auto'; b.style.minWidth = '44px'; }
-  const g = canvas.getContext('2d');
+  const g = canvas.getContext('2d'), rg = ruler.getContext('2d');
   /** A name's width in a face, the canvas's own measure (FONT3's tracking on). */
   const measure = (t, font) => { if (!g) return t.length * LABEL_CHAR_PX; g.font = font; track(g, CHART_TRACKING); return g.measureText(t).width; };
 
   function draw() {
     if (!alive) return;
+    showScale(scaleBar(view.zoom));   // AUDIT ETHER-CHART2 U11: the key's words first - their reflow moves the chart's room
     const [w, h] = size();
     const dpr = Math.max(1, Math.min(3, globalThis.devicePixelRatio || 1));
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+    if (ruler.width !== Math.round(w * dpr) || ruler.height !== Math.round(RULER_H * dpr)) { ruler.width = Math.round(w * dpr); ruler.height = Math.round(RULER_H * dpr); }
     if (!g) return;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     model = chartModel(word, view, w, h, { measure, pick });
@@ -553,6 +682,7 @@ export function mountEtherChartWindow(host, deps) {
     zoomOut.disabled = view.zoom === 0;
     zoomIn.disabled = view.zoom === CHART_ZOOMS.length - 1;
     paintChart(g, model, w, h);
+    if (rg) { rg.setTransform(dpr, 0, 0, dpr, 0, 0); paintRuler(rg, model, w); }
   }
   /** What lies under a canvas point: the nearest isle drawn within its reach and a little. */
   function isleUnder(sx, sy) {
@@ -645,23 +775,34 @@ export function mountEtherChartWindow(host, deps) {
   const offOutside = closeOnOutsideTap(shell, '.dfnaval-win', () => exit('close'));
   const onResize = () => draw();
   globalThis.addEventListener('resize', onResize);
+  // AUDIT ETHER-CHART2 U11: and whenever the chart's room changes inside the window (the key's rows, the header's) - a
+  // canvas whose box moved after it was painted is drawn stretched until it is painted again
+  const RO = globalThis.ResizeObserver;
+  const roomWatch = typeof RO === 'function' ? new RO(() => draw()) : null;
+  roomWatch?.observe(stage);
   draw();
   // ETHER-CHART2: the words are lettered in the web face; the first paint may run before it lands, so the chart is
-  // painted again when it does (heldMap.js's law for its ink)
+  // painted again when it does (heldMap.js's law for its ink). AUDIT ETHER-CHART2 U10: and whenever a face lands while
+  // it is open - a window opened before the fonts' stylesheet came had no face to load and none pending, so `load` and
+  // `ready` answered at once and the chart kept the fallback face until it was next touched
+  const fonts = /** @type {FontFaceSet | undefined} */ (globalThis.document?.fonts);
+  const landed = () => draw();
   try {
-    const fonts = document.fonts;
-    const landed = () => draw();
     fonts?.load?.(CHART_FONT.name)?.then?.(landed, () => {});
     fonts?.ready?.then?.(landed);
+    fonts?.addEventListener?.('loadingdone', landed);
   } catch { /* no font set */ }
   close.focus?.({ preventScroll: true });
   return {
-    repaint: () => { word = deps.word(); draw(); },
+    // AUDIT ETHER-CHART2 C11: the note said again of the isle named, from where the ship is now - as the card is
+    repaint: () => { word = deps.word(); const isle = pick ? isleByKey(pick) : null; noteLine.textContent = isle ? isleWords(isle, { px: word.px + 0.5, py: word.py + 0.5 }) : ''; draw(); },
     unmount() {
       if (!alive) return;
       alive = false;
       globalThis.removeEventListener('keydown', onKey, { capture: true });
       globalThis.removeEventListener('resize', onResize);
+      fonts?.removeEventListener?.('loadingdone', landed);
+      roomWatch?.disconnect();
       offOutside();
       shell.remove();
     },

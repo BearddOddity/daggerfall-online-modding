@@ -851,10 +851,19 @@ test('AUDIT CAPTAIN\'S SEA X6/X7/X8/X12/X13/X14/X18: the chart under a finger an
   // the bands: the Shallows named by the Veil with no line of its own, every deeper band its bound
   const mv = M.chartModel({ px: ES.VEIL_X - 2, py: h.py, charted: [], legends: [], stats: {} }, { cx: ES.VEIL_X - 13 * ES.LEAGUE_PX, cy: h.py, zoom: 0 }, 1000, 700);
   assert.deepEqual(mv.bands.map((b) => [b.name, b.line]), [['the Shallows', false], ['the Reaches', true], ['the Deep Aether', true]]);
-  // PIN MOVED (ETHER-CHART2: the band names' boxes are the model's): each name lettered stands west of its own bound
+  // PIN MOVED (ETHER-CHART2, then AUDIT ETHER-CHART2 U2: the band names stand on the depth ruler over the chart): each
+  // name lettered stands in its own water - west of its own bound, east of the next deeper band's
   const mb = M.chartModel({ px: h.px, py: h.py, charted: [], legends: [], stats: {} }, { cx: ES.VEIL_X - 30 * ES.LEAGUE_PX, cy: h.py, zoom: 1 }, 1000, 700);
-  assert.ok(mb.bands.filter((b) => b.box).length >= 2, 'names lettered in view');
-  for (const b of mb.bands) if (b.box) assert.ok(b.box[2] <= b.x - 6 && b.box[2] <= 1000, `${b.name} on its deeper side`);
+  const named = mb.ruler.filter((seg) => seg.words && seg.id !== 'veil' && seg.id !== 'edge');
+  assert.ok(named.length >= 2, 'names lettered in view');
+  for (const seg of named) {
+    const n = ES.BANDS.findIndex((b) => b.id === seg.id);
+    const [east] = M.toScreen({ cx: ES.VEIL_X - 30 * ES.LEAGUE_PX, cy: h.py, zoom: 1 }, ES.VEIL_X - ES.BANDS[n].from * ES.LEAGUE_PX, 0, 1000, 700);
+    const [west] = ES.BANDS[n + 1] ? M.toScreen({ cx: ES.VEIL_X - 30 * ES.LEAGUE_PX, cy: h.py, zoom: 1 }, ES.VEIL_X - ES.BANDS[n + 1].from * ES.LEAGUE_PX, 0, 1000, 700) : [-Infinity];
+    const half = seg.words.length * M.LABEL_CHAR_PX / 2, mid = (seg.x0 + seg.x1) / 2;
+    assert.ok(seg.x1 === Math.min(1000, east) && seg.x0 === Math.max(0, west), `${seg.id}: its water its own, bound to bound`);
+    assert.ok(mid + half <= Math.min(1000, east) && mid - half >= Math.max(0, west), `${seg.id} on its deeper side of its own bound, in its own water`);
+  }
   const src = rd('src/ui/etherChartWindow.js');
   assert.match(src, /if \(e\.pointerType === 'mouse' && e\.button !== 0\) return;/, 'the mouse\'s first button alone');
   assert.match(src, /if \(drag && e\.pointerType === 'mouse' && !\(e\.buttons & 1\)\) endDrag\(e\);/, 'no button held: no drag');

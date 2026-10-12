@@ -2816,7 +2816,7 @@
   {
     "name": "ACS-X14-overlap",
     "file": "src/ui/etherChartWindow.js",
-    "old": "const free = sides.filter((box) => !placed.some((p) => overlaps(box, p)) && (port || !fixed.some((p) => overlaps(box, p))));",
+    "old": "const free = sides.filter((box) => !placed.some((p) => overlaps(box, p)));",
     "new": "const free = sides;",
     "tests": [
       "test/auditcaptsea.test.js"
@@ -2843,8 +2843,8 @@
   {
     "name": "ACS-X12-band-side",
     "file": "src/ui/etherChartWindow.js",
-    "old": "const right = Math.min(w - 8, x - 8), tw =",
-    "new": "const right = Math.min(w - 8, x + 8), tw =",
+    "old": "x1 = Math.min(w, boundX(n));",
+    "new": "x1 = Math.min(w, boundX(n) + 60);",
     "tests": [
       "test/auditcaptsea.test.js"
     ]
