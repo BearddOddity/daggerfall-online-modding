@@ -1,0 +1,164 @@
+// MENU-ORDER (2026-10-12; the owner: "I want to really organize and enhance the decoration menu/buttons. Making it for
+// palatable, readable and easy to understand. I want to do the same for stores, crafting menus, etc", then "I just feel
+// like text lists are too much. Why cant you try something else"): bible/10-UI/Menu-Order.md. Pictures before words -
+// the decorator's catalogue and its rooms as tiles, every kind and press its glyph, the bar's keys folded; the shop
+// counter's prices on its rows and its lists as pictures on a press; the Stores page's stations as tiles, its works and
+// patterns as cards.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { DFICON_ROWS, DFICON_CSS, dficonSvg } from '../src/ui/menuGlyphs.js';
+import { DECOR_KINDS } from '../src/systems/decorCatalogue.js';
+import { createDecorBar, decorBarKeys, decorFiltersText, DECOR_LAYOUT_WORDS, DECOR_KEYS_WORD } from '../src/ui/decorPanel.js';
+import { all, one, text, chipNamed, rows, panelRig } from './decorFakes.mjs';
+import { fakeDoc } from './decorFakes.mjs';
+import { withDom } from './invdrag.mjs';
+import { mountEnhancedTrade, TRADE_TITLE, TRADE_OWN_HEAD, TRADE_COST_WORD, TRADE_GOLD_WORD, TRADE_VIEW_WORDS, tradeGoldText } from '../src/ui/enhancedTrade.js';
+import { stockShopShelf } from '../src/systems/shopStock.js';
+import { BUILDING_TYPES } from '../src/world/buildingNames.js';
+import { setProfessionsPages, drawStoresPage, stationWorkable, STATION_TILES, STATION_TILE_WORDS } from '../src/ui/profPages.js';
+import { xpForRank, trackOf } from '../src/net/professionLaw.js';
+
+const lit = (rows) => rows.join('').split('').filter((c) => c === '#').length;
+
+test('MENU-ORDER the glyphs: every one twelve rows of twelve, drawn a rect a lit pixel, each its own mask in the sheet; every kind the catalogue sorts by and every station tile has one (mutants: a glyph a pixel short; a kind with none; the mask never named)', () => {
+  for (const [name, rows] of Object.entries(DFICON_ROWS)) {
+    assert.equal(rows.length, 12, `${name}: twelve rows`);
+    for (const r of rows) assert.equal(r.length, 12, `${name}: a row of twelve`);
+    assert.equal((dficonSvg(rows).match(/<rect /g) ?? []).length, lit(rows), `${name}: a rect a lit pixel`);
+    assert.ok(DFICON_CSS.includes(`[data-dficon="${name}"] { --dficon: url("data:image/svg+xml,`), `${name}: its mask`);
+  }
+  assert.match(DFICON_CSS, /\[data-dficon\]::before \{ content: ''; [^}]*background-color: currentColor; -webkit-mask: var\(--dficon\)/, 'drawn in the word\'s own colour');
+  for (const kind of Object.keys(DECOR_KINDS)) assert.ok(DFICON_ROWS[kind], `the kind ${kind} has its picture`);
+  for (const [, icon] of Object.values(STATION_TILES)) assert.ok(DFICON_ROWS[icon], `the station glyph ${icon}`);
+});
+
+test('MENU-ORDER the decorator as pictures: the catalogue tiles by default, a model\'s tile its kind\'s glyph over the letters it keeps, a flat\'s its picture, what a piece does a badge; List lays it as lines and Pictures back; every tab, kind and has-filter its glyph; the layout\'s two chips after the tabs (mutants: the grid never laid; the model\'s glyph dropped; the badges dropped; the switch dead)', async () => {
+  const rig = panelRig();
+  rig.panel.open(rig.view());
+  const root = rig.panel.root;
+  const card = one(root, 'dfdecor-card');
+  assert.equal(card.dataset.view, 'grid', 'pictures first');
+  const byKey = new Map(rows(root).map((r) => [r.dataset.key, r]));
+  const bed = rig.entries.find((e) => e.model != null && e.kind === 'bed');
+  const bedThumb = one(byKey.get(bed.key), 'dfdecor-thumb');
+  assert.deepEqual([bedThumb.dataset.dficon, bedThumb.textContent], ['bed', 'Be'], 'a model: its kind\'s glyph, the letters kept for a reader');
+  const flat = rig.entries.find((e) => e.flat);
+  assert.equal(one(byKey.get(flat.key), 'dfdecor-thumb').children[0].tag, 'img', 'a flat: its own picture');
+  const chest = rig.entries.find((e) => e.storage);
+  assert.deepEqual(all(byKey.get(chest.key), 'dfdecor-badge').map((b) => b.dataset.dficon), ['storage'], 'holds things, as a picture');
+  const candle = rig.entries.find((e) => e.light != null);
+  assert.ok(all(byKey.get(candle.key), 'dfdecor-badge').some((b) => b.dataset.dficon === 'light'), 'gives light, as a picture');
+  chipNamed(root, DECOR_LAYOUT_WORDS.list).fire('click');
+  assert.equal(card.dataset.view, 'list', 'List: lines');
+  chipNamed(root, DECOR_LAYOUT_WORDS.grid).fire('click');
+  assert.equal(card.dataset.view, 'grid', 'Pictures: tiles again');
+  const tabs = all(one(root, 'dfdecor-tabs'), 'dfdecor-chip');
+  assert.deepEqual(tabs.map((t) => t.dataset.dficon), ['all', 'room', 'own', 'furniture'], 'each view its picture');
+  assert.equal(chipNamed(root, DECOR_KINDS.bed).dataset.dficon, 'bed');
+  assert.deepEqual(['Holds things', 'Gives light'].map((w) => chipNamed(root, w).dataset.dficon), ['storage', 'light']);
+  const chips = all(root, 'dfdecor-chip');
+  assert.ok(chips.indexOf(chipNamed(root, DECOR_LAYOUT_WORDS.grid)) > chips.indexOf(tabs.at(-1)), 'the layout after the views');
+});
+
+test('MENU-ORDER the decorator\'s presses: a placed piece\'s each its glyph, Remove edged as a warning, the room tiles too; the bar\'s keys folded behind Keys, its presses pictured; the legend\'s pairs and the phone fold\'s count (mutants: Remove not a warning; the legend shown from the first; the fold\'s count)', () => {
+  const rig = panelRig();
+  const piece = { id: 'p1', model: 41000, paid: 120, light: 1, storage: false };
+  rig.panel.open(rig.view({ placed: [{ piece, name: 'Bed', entry: rig.entries[0], holds: false }] }));
+  rig.panel.showRoom('p1');
+  const root = rig.panel.root;
+  assert.equal(one(root, 'dfdecor-card').dataset.view, 'grid', 'the room\'s pieces tile too');
+  assert.deepEqual(all(rows(root)[0], 'dfdecor-badge').map((b) => b.dataset.dficon), ['light']);
+  const btn = (re) => all(root, 'dfdecor-btn').find((b) => re.test(b.textContent));
+  assert.deepEqual([/^Move$/, /^Turn left$/, /^Turn right$/, /^Light/, /^Holds things/, /^Station:/, /^Remove$/].map((re) => btn(re).dataset.dficon),
+    ['move', 'turn-left', 'turn-right', 'light', 'storage', 'list', 'remove']);
+  assert.ok(String(btn(/^Remove$/).className).split(/\s+/).includes('warn'), 'Remove, edged as a warning');
+  const bar = createDecorBar({ on: {}, doc: fakeDoc() });
+  assert.equal(bar.root.dataset.keys, '0', 'the legend folded');
+  const keysChip = all(bar.root, 'dfdecor-chip').find((c) => c.textContent === DECOR_KEYS_WORD);
+  keysChip.fire('click');
+  assert.equal(bar.root.dataset.keys, '1', 'Keys unfolds it');
+  keysChip.fire('click');
+  assert.equal(bar.root.dataset.keys, '0');
+  assert.deepEqual(['Place', 'Raise', 'Lower', 'Grid', 'Back'].map((w) => all(bar.root, w === 'Place' ? 'dfdecor-btn' : 'dfdecor-chip').find((c) => c.textContent === w).dataset.dficon),
+    ['place', 'up', 'down', 'grid', 'back']);
+  assert.match(text(one(bar.root, 'dfdecor-bar-keys')), /^Fly: walk keys/, 'the legend, a name and what presses it');
+  assert.deepEqual(decorBarKeys(false).map(([k]) => k), ['Fly', 'Look', 'Turn', 'Raise/lower', 'Size', 'Grid', 'Place', 'Back']);
+  assert.ok(!decorBarKeys(false, false).some(([k]) => k === 'Size'), 'a figure: no Size');
+  assert.deepEqual(decorBarKeys(true).map(([k]) => k), ['Fly', 'Look']);
+  assert.equal(decorFiltersText({ kinds: new Set(), size: null, storage: null, light: null }), 'Filters');
+  assert.equal(decorFiltersText({ kinds: new Set(['bed', 'light']), size: 'small', storage: true, light: null }), 'Filters (4)');
+});
+
+/** Every word under a node - the fake's textContent is its own alone. */
+const said = (n) => (n.textContent || '') + (n.children ?? []).map(said).join('');
+const find = (root, sel, txt = null) => root.querySelectorAll(sel).find((n) => txt == null || n.textContent === txt) ?? null;
+const shelf = () => stockShopShelf({ buildingType: BUILDING_TYPES.GeneralStore, quality: 10 }, {}, { rolls: () => 0, torchesFromItems: false });
+
+test('MENU-ORDER the shop counter: the mode whole in its title, the player\'s column named, the footer\'s two figures each under its name, a price on every shelf row (the strip\'s own), Steal set apart; the lists as pictures on a press (mutants: the row\'s price dropped; the figures run together; the switch dead)', () => {
+  assert.equal(TRADE_TITLE.SellMagic, 'Sell magic items');
+  withDom((dom) => {
+    const host = dom.mk('div');
+    dom.body.append(host);
+    const items = shelf();
+    const view = mountEnhancedTrade(host, { mode: 'Buy', shopName: 'The Shop', shelfItems: () => items, packItems: () => [], accepts: () => true,
+      enchanted: () => false, priceCtx: () => ({ quality: 10, priceAdjustment: 1000, skills: { mercantile: 50, personality: 50 } }), gold: () => 1840 });
+    assert.equal(find(host, '.sb-who').children[0].textContent, 'The Shop — Buy');   // the title (the fake's tag reader stops at a digit)
+    assert.equal(find(find(host, '.trade-ownhead'), '.remotewho').children[0].textContent, TRADE_OWN_HEAD);   // the fake reads one compound selector: nested finds
+    assert.deepEqual(host.querySelectorAll('.trade-fig').map((f) => f.children.map((n) => [n.tagName, n.textContent])),
+      [[['SMALL', TRADE_COST_WORD.Buy], ['B', tradeGoldText(0)]], [['SMALL', TRADE_GOLD_WORD], ['B', '1,840 gold']]], 'each figure under its name');
+    const shelfRows = () => find(host, '.packremote').querySelectorAll('.itemrow');
+    const row = shelfRows()[0];
+    const price = find(row, '.itemprice').textContent;
+    row.onclick({ timeStamp: 1 });
+    const quote = Number(/^Buy for (\d+) gold$/.exec(find(host, '.trade-quote').textContent)?.[1]);
+    assert.ok(quote > 0);
+    assert.equal(price, tradeGoldText(quote), 'the row says what the strip quotes');
+    assert.equal(shelfRows().filter((r) => !find(r, '.itemprice')).length, 0, 'every shelf row priced');
+    assert.ok(find(host, '.trade-steal', 'Steal'), 'Steal, set apart');
+    const shell = find(host, '.trade-shell');
+    assert.equal(shell.dataset.view, 'list', 'lines first');
+    find(find(host, '.trade-view'), '.act', TRADE_VIEW_WORDS.grid).onclick();
+    assert.equal(find(host, '.trade-shell').dataset.view, 'grid', 'pictures on a press');
+    find(find(host, '.trade-view'), '.act', TRADE_VIEW_WORDS.list).onclick();
+    assert.equal(find(host, '.trade-shell').dataset.view, 'list');
+    view.unmount();
+  });
+});
+
+test('MENU-ORDER the Stores page\'s stations as tiles: a tile a station, the ones worked here lit and drawn below, the ones away kept hidden until their tile is pressed (and hidden again on a second press); a section worked here is one with a press in it; the forge\'s works and the anvil\'s patterns are cards (mutants: an away station shown; the press never toggling; a section with a button read as away)', () => {
+  withDom((dom) => {
+    const held = new Map([['ore:iron', 34], ['ingot:iron', 6], ['wood:charcoal', 20]]);
+    const tracks = new Map([['smithing', { profession: 'smithing', xp: xpForRank(10), rank: 10, specs: { 50: null, 100: null } }]]);
+    const stores = new Map([...held].map(([k, n]) => [k, { material: k, own: n, bought: 0 }]));
+    const book = {
+      state: { open: true, day: 1, character: 'c', account: 'a', readAt: Date.now(), stores, tracks, today: {}, caps: null }, stale: () => false, refresh: async () => ({ ok: true }),
+      held: (k) => held.get(k) ?? 0, store: (k) => stores.get(k) ?? { material: k, own: 0, bought: 0 },
+      track: (p) => tracks.get(trackOf(p)) ?? { profession: trackOf(p), xp: 0, rank: 0, specs: { 50: null, 100: null } }, materials: () => [], pendingWithdrawals: 0, pendingCrafts: 0,
+      choose: async () => ({ ok: true }),
+    };
+    setProfessionsPages({ book, name: (k) => k, withdraw: async () => ({ ok: true, text: '' }), forge: () => ({ kind: 'shop', fee: 50 }), workbench: () => null,
+      smelt: async () => ({ ok: true, text: '' }), craft: async () => ({ ok: true, text: '' }), stock: async () => ({ ok: true, text: '' }), heatBand: () => 1, planeBand: () => 1 });
+    const el = (tag, cls, t) => { const n = document.createElement(tag); if (cls) n.className = cls; if (t != null) n.textContent = t; return n; };
+    const kit = { el, divider: (w) => el('h3', null, w), meter: () => el('div') };
+    let root = null;
+    const draw = () => { root = el('div'); drawStoresPage(root, draw, kit); };
+    draw();
+    const tile = (id) => root.querySelectorAll('.prof-stile').find((t) => t.attrs['data-station'] === id);
+    assert.deepEqual([tile('forge').className.includes('here'), find(tile('forge'), '.prof-stile-state').textContent], [true, STATION_TILE_WORDS.here], 'the forge, worked here');
+    assert.deepEqual([tile('workbench').className.includes('here'), find(tile('workbench'), '.prof-stile-state').textContent], [false, STATION_TILE_WORDS.away]);
+    assert.equal(tile('forge').attrs['data-dficon'], STATION_TILES.forge[1]);
+    const awayBox = () => find(root, '.prof-awaynotes').querySelectorAll('.prof-station').find((b) => /The Workbench/.test(said(b)));
+    assert.equal(awayBox().hidden, true, 'away: its words kept, hidden');
+    assert.ok(find(root, '.prof-works'), 'the forge\'s works, cards');
+    assert.ok(find(root, '.prof-works').querySelectorAll('button').some((b) => b.textContent === 'Smelt'));
+    assert.ok(find(root, '.prof-recipes'), 'the anvil\'s patterns, cards');
+    tile('workbench').onclick();
+    assert.equal(awayBox().hidden, false, 'pressed: where it is worked');
+    assert.ok(tile('workbench').className.includes('on'));
+    tile('workbench').onclick();
+    assert.equal(awayBox().hidden, true, 'pressed again: put away');
+    assert.equal(stationWorkable({ children: [{ tag: 'div', children: [{ tagName: 'BUTTON', children: [] }] }] }), true);
+    assert.equal(stationWorkable({ children: [{ tag: 'h3', children: [] }, { tag: 'p', children: [] }] }), false);
+    setProfessionsPages(null);
+  });
+});

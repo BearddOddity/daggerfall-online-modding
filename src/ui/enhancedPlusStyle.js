@@ -17,6 +17,7 @@ import { MOTION_CSS } from './windowMotion.js';
 import { CURSOR_CSS } from './plusCursor.js';   // PLUS7: the gauntlet pointer
 import { SIGIL_RUNE_TILE_URL } from './sigilRune.js';   // SIGIL-UI: the rune in a sigil weapon's tile corner (AUDIT MERGE-PLUS D5: a picture, its outline drawn in)
 import { PROF_ACT_CSS } from './profActStyle.js';   // PROF-RETICLE: the acts on the crosshair, dressed
+import { DFICON_CSS } from './menuGlyphs.js';   // MENU-ORDER: the stations' pictures
 import { PROF_STATION_CSS } from './profStationStyle.js';   // PROF-STATIONS: the stations' acts, dressed
 import { plusDress, GRIMOIRE_DRESS, mountGrimoireDress } from './grimoireDress.js';   // GRIM1: the DFO Grimoire dress over the kit
 import { mountTextFont } from './textFont.js';   // TEXT-FONT: the words' face and the names'
@@ -1545,6 +1546,7 @@ body .aw-shell .aw-boutacts .act { min-width: 0; padding: 3px 12px; font-size: 1
  *  the day's chip under the compass and the rank's banner. The stone, the brass and the bone of the rest; the meters'
  *  still forms under the system's reduced motion. */
 export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
+${DFICON_CSS}
 .notice-tab { cursor: pointer; }
 .notice-card.seal-court, .notice-read.seal-court { --seal: #6b3fa0; }
 .notice-writ { cursor: default; }
@@ -1607,6 +1609,28 @@ export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
 .prof-mat.on { border-color: var(--brass, #c08a3e); background: rgba(192,138,62,0.16); }
 .prof-count { color: #f3cf86; font-variant-numeric: tabular-nums; }
 .prof-split { grid-column: 1 / -1; font-size: 11px; color: var(--bone); }
+/* MENU-ORDER (2026-10-12): THE STATIONS AS TILES - a picture, a name, Here (lit) or Away; an away station's words under
+   the tiles while its tile is pressed */
+.prof-stations { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; margin: 16px 0 8px; }
+.prof-stile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 84px; padding: 10px 4px 8px;
+  font: inherit; font-size: 12px; line-height: 1.2; text-align: center; color: #b9ab93; background: rgba(10,8,6,0.55);
+  border: 1px solid rgba(192,138,62,0.22); cursor: pointer; }
+.prof-stile[data-dficon]::before { width: 30px; height: 30px; margin: 0; }
+.prof-stile:hover, .prof-stile:focus-visible { border-color: rgba(192,138,62,0.6); outline: none; }
+.prof-stile.here { color: #f3cf86; border-color: var(--brass, #c08a3e); background: rgba(192,138,62,0.12); }
+.prof-stile.on { border-color: #c9bba1; background: rgba(201,187,161,0.1); color: #efe0b8; }
+.prof-stile-state { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
+.prof-awaynotes > .prof-station { margin: 0 0 10px; padding: 4px 12px 10px; border: 1px solid rgba(201,187,161,0.3); background: rgba(10,8,6,0.45); }
+.prof-awaynotes > .prof-station[hidden] { display: none; }
+.prof-awaynotes .px-divider { margin: 8px 0 4px; }
+.prof-awaynotes .px-note { margin: 4px 0 0; font-size: 15px; }
+.prof-stile-hint { margin: 2px 0 10px; font-size: 13px; color: #b9ab93; text-align: center; }
+/* MENU-ORDER: a station's works and patterns as cards in a grid - a short page of tiles where a long column of lines stood */
+.prof-works { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 6px; margin: 4px 0 10px; }
+.prof-works > .prof-smelt { margin: 0; padding: 8px 10px; border: 1px solid rgba(192,138,62,0.22); background: rgba(10,8,6,0.45); }
+.prof-works > .prof-smelt.prof-locked { border-color: rgba(192,138,62,0.1); }
+.prof-recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 6px; margin: 4px 0 10px; }
+.prof-recipes > .prof-recipe { margin: 0; grid-template-columns: minmax(0, 1fr); align-content: center; min-height: 46px; }
 /* Existing readable text roles follow the active theme rather than one hard-coded Stone palette. */
 .px-qdetail.prof-detail .px-note { color: var(--bone); }
 .prof-matbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 4px; font-size: 12px; color: #d9cfbd; }

@@ -1,0 +1,245 @@
+[
+  {
+    "name": "MENUORDER-glyph-pixel-dropped",
+    "file": "src/ui/menuGlyphs.js",
+    "old": "if (row[x] === '#') rects.push(",
+    "new": "if (row[x] === '#' && x > 0) rects.push(",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-glyph-mask-unnamed",
+    "file": "src/ui/menuGlyphs.js",
+    "old": "`[data-dficon=\"${k}\"] { --dficon: ${dficonUrl(k)}; }`",
+    "new": "`[data-dficon=\"${k}\"] { }`",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-glyph-own-colour",
+    "file": "src/ui/menuGlyphs.js",
+    "old": "  background-color: currentColor; -webkit-mask: var(--dficon)",
+    "new": "  background-color: #fff; -webkit-mask: var(--dficon)",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-grid-never-laid",
+    "file": "src/ui/decorPanel.js",
+    "old": "const shape = layout === 'grid' && DECOR_GRID_MODES.includes(mode) ? 'grid' : 'list';",
+    "new": "const shape = 'list';",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-model-glyph-dropped",
+    "file": "src/ui/decorPanel.js",
+    "old": "      thumb.dataset.dficon = e.kind;   // MENU-ORDER: a model has no picture until it turns in the preview - its kind's\n",
+    "new": "",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-badges-dropped",
+    "file": "src/ui/decorPanel.js",
+    "old": "badges({ storage: !!e.storage, light: e.light != null })",
+    "new": "badges({})",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-room-badges-dropped",
+    "file": "src/ui/decorPanel.js",
+    "old": "badges({ storage: !!it.piece.storage, light: !!it.piece.light, station: !!it.piece.station })",
+    "new": "badges({})",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-switch-dead",
+    "file": "src/ui/decorPanel.js",
+    "old": "() => { layout = 'list'; redraw(); }",
+    "new": "() => { redraw(); }",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-tab-icons-one",
+    "file": "src/ui/decorPanel.js",
+    "old": "if (w) c.dataset.dficon = w[1];",
+    "new": "if (w) c.dataset.dficon = 'all';",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-layout-before-tabs",
+    "file": "src/ui/decorPanel.js",
+    "old": "tabLine.append(tabs, layoutChips);",
+    "new": "tabLine.append(layoutChips, tabs);",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-remove-not-warned",
+    "file": "src/ui/decorPanel.js",
+    "old": "removeBtn.className += ' warn flat';",
+    "new": "removeBtn.className += ' flat';",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-legend-shown",
+    "file": "src/ui/decorPanel.js",
+    "old": "root.dataset.keys = '0';   // MENU-ORDER: the legend folded",
+    "new": "root.dataset.keys = '1';   // MENU-ORDER: the legend folded",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-fold-count-size",
+    "file": "src/ui/decorPanel.js",
+    "old": "(size != null ? 1 : 0)",
+    "new": "0",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-kind-chips-bare",
+    "file": "src/ui/decorPanel.js",
+    "old": "      }, k)));   // MENU-ORDER: each kind its picture",
+    "new": "      })));   // MENU-ORDER: each kind its picture",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-decor-presses-bare",
+    "file": "src/ui/decorPanel.js",
+    "old": "[allBackBtn, 'put-back'], [offerBtn, 'rent'], [withdrawBtn, 'remove'], [collectBtn, 'treasure'], [ownBtn, 'back'], [paintBtn, 'paint'], [backBtn, 'back']]) b.dataset.dficon = icon;",
+    "new": "[allBackBtn, 'put-back'], [offerBtn, 'rent'], [withdrawBtn, 'remove'], [collectBtn, 'treasure'], [ownBtn, 'back'], [paintBtn, 'paint'], [backBtn, 'back']]) b.dataset.dficon = b === moveBtn ? icon : null;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-trade-row-price-dropped",
+    "file": "src/ui/enhancedTrade.js",
+    "old": "  if (price != null) row.append(el('span', 'itemprice', tradeGoldText(price)));\n",
+    "new": "",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-trade-shelf-unpriced",
+    "file": "src/ui/enhancedTrade.js",
+    "old": "if (from === 'remote') return inBuy() ? (quotePriceFor(item, 'remote')?.price ?? null) : null;",
+    "new": "if (from === 'remote') return null;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-trade-figures-together",
+    "file": "src/ui/enhancedTrade.js",
+    "old": "figs.append(fig(TRADE_COST_WORD[mode] ?? TRADE_COST_WORD.Buy, tradeGoldText(c)), fig(TRADE_GOLD_WORD, tradeGoldText(deps.gold?.() ?? 0)));",
+    "new": "figs.append(fig(TRADE_COST_WORD[mode] ?? TRADE_COST_WORD.Buy, `${tradeGoldText(c)} ${tradeGoldText(deps.gold?.() ?? 0)}`));",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-trade-switch-dead",
+    "file": "src/ui/enhancedTrade.js",
+    "old": "b.onclick = () => { tradeView = v; render(); };",
+    "new": "b.onclick = () => { render(); };",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-trade-magic-title",
+    "file": "src/ui/enhancedTrade.js",
+    "old": "SellMagic: 'Sell magic items' });",
+    "new": "SellMagic: 'Sell' });",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-trade-own-column-unnamed",
+    "file": "src/ui/enhancedTrade.js",
+    "old": "  head.append(who);\n  col.append(head);\n  const tabsEl",
+    "new": "  col.append(head);\n  const tabsEl",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-stores-away-shown",
+    "file": "src/ui/profPages.js",
+    "old": "for (const { id, box } of away) { box.hidden = _stores.awayPick !== id; notes.append(box); }",
+    "new": "for (const { box } of away) { box.hidden = false; notes.append(box); }",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-stores-press-never-folds",
+    "file": "src/ui/profPages.js",
+    "old": "_stores.awayPick = _stores.awayPick === id ? null : id;",
+    "new": "_stores.awayPick = id;",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-stores-button-read-as-away",
+    "file": "src/ui/profPages.js",
+    "old": "if (/^(button|input|select|textarea)$/i.test(",
+    "new": "if (/^(input|select|textarea)$/i.test(",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-stores-here-unlit",
+    "file": "src/ui/profPages.js",
+    "old": "`prof-stile${here ? ' here' : ''}",
+    "new": "`prof-stile${''}",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-stores-works-a-column",
+    "file": "src/ui/profPages.js",
+    "old": "const cards = el('div', 'prof-works');",
+    "new": "const cards = el('div', 'prof-works-off');",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  },
+  {
+    "name": "MENUORDER-stores-patterns-a-column",
+    "file": "src/ui/profPages.js",
+    "old": "const grid = el('div', 'prof-recipes');",
+    "new": "const grid = el('div', 'prof-recipes-off');",
+    "tests": [
+      "test/menuorder.test.js"
+    ]
+  }
+]

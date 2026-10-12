@@ -105,6 +105,9 @@ export const TRADE_GOLD_WORD = 'Your gold';
 export const tradeGoldText = (n) => `${Math.max(0, Math.round(Number(n) || 0)).toLocaleString('en-US')} gold`;
 /** MENU-ORDER: how many things a column lists, said under its name. */
 export const tradeCountText = (n) => `${n} item${n === 1 ? '' : 's'}`;
+/** MENU-ORDER: the counter's two ways to lay its lists, and the one chosen (kept across counters while the page stands). */
+export const TRADE_VIEW_WORDS = Object.freeze({ list: 'List', grid: 'Pictures' });
+let tradeView = 'list';
 
 let host = null;
 let deps = {};      // the hooks bag, nativeTrade.js's own shape
@@ -770,7 +773,8 @@ export function repairReadyLine(c) {
 // ── ROWS ──────────────────────────────────────────────────────────
 
 function itemTile(line) {
-  const pic = linePicture(line, { box: SLOT_BOX.row, onReady: render });   // DISC22-D / DISC24-B: the pack's own door - the item's dye, the cart's model; UI1: fitted to the row's box
+  const pic = tradeView === 'grid' ? linePicture(line, { box: SLOT_BOX.grid, onReady: render })   // MENU-ORDER: a tile's picture, the pack grid's box
+    : linePicture(line, { box: SLOT_BOX.row, onReady: render });   // DISC22-D / DISC24-B: the pack's own door - the item's dye, the cart's model; UI1: fitted to the row's box
   if (pic) {
     const tile = el('span', 'tile has-icon');
     tile.append(fittedImg(pic));
@@ -795,6 +799,8 @@ function itemRow(item, from) {
   if (sub) mid.append(el('small', null, sub));
   row.append(mid);
   row.append(el('span', 'itemwt', `${line.weight.toFixed(2)} kg`));
+  const price = rowPrice(item, from);   // MENU-ORDER: what it costs, or brings, on its own row - not only after a click
+  if (price != null) row.append(el('span', 'itemprice', tradeGoldText(price)));
   if (mode === 'Repair' && from === 'remote') {
     const now = deps.nowMinutes?.() ?? 0;
     const done = itemIsBeingRepaired(item) ? isRepairFinished(item, now) : true;
@@ -877,6 +883,14 @@ function remoteCol() {
   for (const it of items) list.append(itemRow(it, 'remote'));
   col.append(list);
   return col;
+}
+
+/** MENU-ORDER: a row's own price - the shelf's at a counter that sells, the player's piece's where this counter buys,
+ *  repairs or identifies it (quotePriceFor's law, the strip's own figure) - or null where a press would move nothing. */
+function rowPrice(item, from) {
+  if (from === 'remote') return inBuy() ? (quotePriceFor(item, 'remote')?.price ?? null) : null;
+  if (inBuy()) return null;
+  return quotePriceFor(item, 'local')?.price ?? null;
 }
 
 /** The single-click tooltip: itemLine's own stats, the same fields
@@ -988,13 +1002,22 @@ function render() {
   repairEst = repairEstimatesNow();   // UXB1-K: one scheduler pass for every row this paint draws
   host.innerHTML = '';
   const shell = el('div', 'px-home px-over trade-shell');
+  shell.dataset.view = tradeView;   // MENU-ORDER
   const win = el('div', 'px-win trade-win');
   for (const c of ['tl', 'tr', 'bl', 'br']) win.append(el('span', `px-gem px-corner px-${c}`));
 
   const head = el('header', 'sb-top');
+  // MENU-ORDER: the lists as lines or as pictures (tiles with their prices) - the player's choice, kept
+  const views = el('span', 'sb-spacer trade-view');
+  for (const [v, word] of [['list', TRADE_VIEW_WORDS.list], ['grid', TRADE_VIEW_WORDS.grid]]) {
+    const b = el('button', `act${tradeView === v ? ' on' : ''}`, word);
+    b.setAttribute('aria-pressed', tradeView === v ? 'true' : 'false');
+    b.onclick = () => { tradeView = v; render(); };
+    views.append(b);
+  }
   const who = el('div', 'sb-who');
   who.append(el('h2', null, `${deps.shopName ?? 'Shop'} — ${TRADE_TITLE[mode] ?? mode}`));   // MENU-ORDER: the mode whole
-  head.append(el('span', 'sb-spacer'), who);
+  head.append(views, who);
   const closeBtn = el('button', 'act', 'Close');
   closeBtn.onclick = close;
   head.append(closeBtn);

@@ -54,6 +54,7 @@ import {
 } from '../net/homeLaw.js';   // HOME-LOOK: the house outside, painted
 import { homeLookSwatch } from '../world/homeLook.js';
 import { decorIsDoor } from '../systems/decorDoorways.js';   // HOME-DOORS (AUDIT): a door's controls
+import { DFICON_CSS } from './menuGlyphs.js';   // MENU-ORDER: a kind and a press each wear a picture
 /** The crafts a piece may be made here: every station, the Forge only where it works (AUDIT 29 B2). HOME-VENDOR: and a
  *  trader only where the market trades - online, the trades open (its stock is market listings). */
 /** WAGONS2 (FINAL AUDIT): `trader` - whether the room is a home, where a hired trader trades (the view's `trader`); a
@@ -63,6 +64,7 @@ export const stationsOffered = (trader = true) => DECOR_STATIONS.filter((k) => (
 export const DECOR_STYLE_ID = 'dagger-decor-style';
 export const DECOR_CSS = `
 ${PIXELIFY_FIVE_FACE}
+${DFICON_CSS}
 .dfdecor-open { position: fixed; right: calc(12px + env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%);
   z-index: 6; display: none; pointer-events: auto; min-height: 32px; padding: 6px 12px; border-radius: 3px;
   border: 1px solid var(--iron, #2b323b); background: rgba(14, 16, 19, .9); color: var(--bone, #e9e4d9);
@@ -166,7 +168,7 @@ body .dfdecor-tabs .dfdecor-chip[aria-pressed="true"] { color: #f2c46b; box-shad
   padding-top: 6px; border-top: 1px solid var(--iron, #2b323b); }
 .dfdecor-foot > span:empty { display: none; }
 .dfdecor-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  z-index: 8; display: none; flex-direction: column; gap: 6px; padding: 8px 12px; width: min(880px, calc(100vw - 24px)); max-width: calc(100vw - 24px);
+  z-index: 8; display: none; flex-direction: column; gap: 6px; padding: 8px 12px; width: max-content; max-width: min(1120px, calc(100vw - 24px));
   box-sizing: border-box; background: rgba(14, 16, 19, .92); border: 1px solid #b8943f; border-radius: 6px;
   pointer-events: none; ${PIXEL_FONT_CSS} color: var(--bone, #e9e4d9); }
 .dfdecor-bar[data-up="1"] { display: flex; }
@@ -175,6 +177,7 @@ body .dfdecor-tabs .dfdecor-chip[aria-pressed="true"] { color: #f2c46b; box-shad
 .dfdecor-bar-keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2px 16px;
   font-size: 13px; color: var(--dim, #9a9486); line-height: 1.4; }
 .dfdecor-key b { font-weight: normal; color: var(--bone, #e9e4d9); }
+.dfdecor-bar[data-keys="0"] .dfdecor-bar-keys { display: none; }
 .dfdecor-bar-why { font-size: 13px; color: #d9a441; }
 .dfdecor-bar-why:empty { display: none; }
 .dfdecor-bar-btns { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -182,9 +185,46 @@ body .dfdecor-tabs .dfdecor-chip[aria-pressed="true"] { color: #f2c46b; box-shad
 .dfdecor-bar .dfdecor-chip, .dfdecor-bar .dfdecor-btn { pointer-events: auto; }
 .dfdecor-bar.touch .dfdecor-chip, .dfdecor-bar.touch .dfdecor-btn { min-height: 44px; min-width: 44px; touch-action: none; }
 .dfdecor-bar.touch { bottom: auto; top: calc(8px + env(safe-area-inset-top, 0px)); max-width: calc(100vw - 272px); }
+/* MENU-ORDER: PICTURES BEFORE WORDS. A model has no picture until it turns in the preview: its kind's glyph stands in its
+   tile over the letters, which stay for a reader. */
+.dfdecor-thumb { position: relative; }
+.dfdecor-thumb[data-dficon] { color: transparent; }
+.dfdecor-thumb[data-dficon]::before { position: absolute; inset: 0; margin: auto; width: 62%; height: 62%; color: #c9bba1; }
+.dfdecor-row-main { min-width: 0; }
+.dfdecor-badges { display: flex; gap: 6px; color: #c9bba1; }
+.dfdecor-badges:empty, .dfdecor-card:not([data-view="grid"]) .dfdecor-badges { display: none; }
+.dfdecor-badge::before { margin: 0; }
+.dfdecor-tabline { display: flex; align-items: flex-end; gap: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--iron, #2b323b); }
+.dfdecor-tabline > .dfdecor-tabs { flex: 1 1 auto; min-width: 0; padding-bottom: 0; border-bottom: 0; }
+.dfdecor-layout { flex: none; }
+/* the lists as tiles: a picture, its name, its price, its badges */
+.dfdecor-card[data-view="grid"] .dfdecor-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  grid-auto-rows: max-content; gap: 6px; padding: 6px; align-content: start; }
+.dfdecor-card[data-view="grid"] .dfdecor-row { display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 5px; min-height: 148px; padding: 8px 6px 6px; text-align: center; box-sizing: border-box;
+  border: 1px solid rgba(43, 50, 59, .9); background: rgba(10, 12, 15, .55); }
+.dfdecor-card[data-view="grid"] .dfdecor-row[aria-selected="true"] { border-color: #b8943f; background: rgba(242, 196, 107, .12); }
+.dfdecor-card[data-view="grid"] .dfdecor-thumb { flex: none; width: 76px; height: 76px; border-color: rgba(43, 50, 59, .5); background: rgba(0, 0, 0, .25); }
+.dfdecor-card[data-view="grid"] .dfdecor-thumb img { width: 76px; height: 76px; max-width: none; max-height: none; object-fit: contain; }
+.dfdecor-card[data-view="grid"] .dfdecor-thumb[data-dficon]::before { width: 46%; height: 46%; }
+.dfdecor-card[data-view="grid"] .dfdecor-row-main { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
+.dfdecor-card[data-view="grid"] .dfdecor-row-name { font-size: 13px; line-height: 1.25; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.dfdecor-card[data-view="grid"] .dfdecor-row-sub { display: none; }
+.dfdecor-card[data-view="grid"] .dfdecor-row-price { font-size: 13px; }
+.dfdecor-card[data-view="grid"] .dfdecor-empty { grid-column: 1 / -1; }
+/* a side's presses as picture tiles - the glyph over its word */
+.dfdecor-acts-btns > .dfdecor-btn[data-dficon] { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 52px; min-width: 76px; padding: 5px 8px; font-size: 13px; line-height: 1.2; text-align: center; }
+.dfdecor-acts-btns > .dfdecor-btn[data-dficon]::before { width: 20px; height: 20px; margin: 0; }
+.dfdecor-acts-btns > .dfdecor-btn.flat[data-dficon] { flex-direction: row; min-height: 36px; gap: 8px; }
+.dfdecor-acts-btns > .dfdecor-btn.flat[data-dficon]::before { width: 16px; height: 16px; }
+.dfdecor-place[data-dficon]::before { width: 16px; height: 16px; }
+.dfdecor-bar [data-dficon]::before { width: 14px; height: 14px; margin-right: 5px; }
+.dfdecor-open[data-dficon]::before { width: 16px; height: 16px; }
 @media (max-height: 480px) { .dfdecor-preview { min-height: 60px; } }   /* AUDIT HOME-STATIONS S5: a landscape phone keeps the acts on the card */
 /* MENU-ORDER: a piece's own presses leave its picture smaller - the groups stand on the card, not below it */
-.dfdecor-card:not([data-mode="catalogue"]):not([data-mode="look"]):not([data-mode="own"]) .dfdecor-preview { flex: none; min-height: 0; height: 110px; }
+.dfdecor-card:not([data-mode="catalogue"]):not([data-mode="look"]):not([data-mode="own"]) .dfdecor-preview { flex: none; min-height: 0; height: 92px; }
 @media (max-width: 640px) {
   .dfdecor-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
   .dfdecor-preview { min-height: 90px; max-height: 120px; }
@@ -201,11 +241,22 @@ body .dfdecor-tabs .dfdecor-chip[aria-pressed="true"] { color: #f2c46b; box-shad
   .dfdecor-ftoggle { display: inline-block; flex: none; }
   .dfdecor-filters:not([data-open="1"]) .dfdecor-fline-more { display: none; }
   .dfdecor-bar-keys { grid-template-columns: minmax(0, 1fr); }
+  .dfdecor-card[data-view="grid"] .dfdecor-list { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }
+  .dfdecor-card[data-view="grid"] .dfdecor-row { min-height: 120px; }
+  .dfdecor-card[data-view="grid"] .dfdecor-thumb, .dfdecor-card[data-view="grid"] .dfdecor-thumb img { width: 56px; height: 56px; }
+  .dfdecor-layout { display: none; }
 }
 `;
 
 /** The sorts the panel offers (systems/decorCatalogue.js filterDecor's). */
 export const DECOR_SORTS = Object.freeze({ common: 'Most common', price: 'Cheapest', name: 'By name' });
+/** MENU-ORDER: the two ways the lists are laid - pictures (tiles) or lines - and the views that tile (a room to rent and
+ *  a part of the house to paint are words, never pictures). */
+export const DECOR_LAYOUT_WORDS = Object.freeze({ grid: 'Pictures', list: 'List' });
+export const DECOR_GRID_MODES = Object.freeze(['catalogue', 'look', 'own', 'room', 'base']);
+/** MENU-ORDER: each view's tab's picture, by the word it starts with. */
+const TAB_ICONS = Object.freeze([['Catalogue', 'all'], ['In this room', 'room'], ['In this yard', 'nature'], ['Your things', 'own'], ['Built in', 'furniture'],
+  ['Rooms to rent', 'rent'], ['Paint', 'paint'], ['Exterior', 'paint']]);
 /** MENU-ORDER: the names over the panel's rows of choices - its rooms, and each group of a side's presses. */
 export const DECOR_ROOMS_WORD = 'Room';
 export const DECOR_FILTERS_WORD = 'Filters';
@@ -343,6 +394,7 @@ export function createDecorButton({ onPress, touch = false, doc = document }) {
   const el = maker(doc);
   const btn = el('button', `dfdecor-open${touch ? ' touch' : ''}`, 'Decorate');
   btn.type = 'button';
+  btn.dataset.dficon = 'decorate';   // MENU-ORDER
   btn.dataset.up = '0';
   swallowPresses(btn);
   btn.addEventListener('click', () => { if (btn.dataset.up === '1') onPress(); });
@@ -405,6 +457,8 @@ export function createDecorPanel({
   const where = el('div', 'dfdecor-where');
   const close = el('button', 'dfdecor-btn dfdecor-close', 'Close');
   close.type = 'button';
+  // MENU-ORDER: the lists as pictures (tiles) or as lines - the player's choice, kept while the panel stands
+  const layoutChips = el('div', 'dfdecor-chips dfdecor-layout');
   head.append(el('div', 'dfdecor-title', 'Decorate'), where, close);
 
   // DECOR1e: the two views - the catalogue to place from, and the pieces already in the room to change
@@ -481,7 +535,8 @@ export function createDecorPanel({
     if (what) onToggle(it.piece, what);
   });
   for (const b of [lightBtn, storeBtn, stationPick, stationBtn]) b.className += ' dfdecor-yardless';   // HOME-YARD
-  removeBtn.className += ' warn';   // MENU-ORDER: a press that costs something, edged in blood (enhancedFrame.js FRAME_ROLES.warn)
+  for (const b of [stationPick, stationBtn]) b.className += ' flat';   // MENU-ORDER: a long word lies beside its picture
+  removeBtn.className += ' warn flat';   // MENU-ORDER: a press that costs something, edged in blood (enhancedFrame.js FRAME_ROLES.warn)
   // MENU-ORDER: the eight presses in four named groups, not one wrapping row - where it stands, what it does, the craft it
   // serves, and taking it away (its own row, last); the yard's three a group of their own, hidden with it
   roomActions.append(actGroup(DECOR_ACT_GROUPS.arrange, [moveBtn, turnLeftBtn, turnRightBtn]),
@@ -525,6 +580,11 @@ export function createDecorPanel({
   const pickWhy = el('div', 'dfdecor-pick-why');
   // MENU-ORDER: why it cannot be done stands with what it costs, above the press it stops - never under every group
   side.append(preview, pickName, pickLine, pickPrice, pickWhy, place, roomActions, baseActions, rentActions, paintActions);
+  // MENU-ORDER: each press its picture, beside its word
+  for (const b of [offerBtn, withdrawBtn, collectBtn]) b.className += ' flat';
+  for (const [b, icon] of [[place, 'place'], [moveBtn, 'move'], [turnLeftBtn, 'turn-left'], [turnRightBtn, 'turn-right'], [lightBtn, 'light'],
+    [storeBtn, 'storage'], [stationPick, 'list'], [stationBtn, 'station'], [removeBtn, 'remove'], [baseBtn, 'take-out'], [allOutBtn, 'take-out'],
+    [allBackBtn, 'put-back'], [offerBtn, 'rent'], [withdrawBtn, 'remove'], [collectBtn, 'treasure'], [ownBtn, 'back'], [paintBtn, 'paint'], [backBtn, 'back']]) b.dataset.dficon = icon;
   body.append(list, side);
 
   const foot = el('div', 'dfdecor-foot');
@@ -533,7 +593,9 @@ export function createDecorPanel({
   const footStatus = el('span', '');
   foot.append(footCount, footGold, footStatus);
 
-  card.append(head, tabs, roomsBar, filters, body, foot);
+  const tabLine = el('div', 'dfdecor-tabline');   // MENU-ORDER: the views, and how their lists are laid, on one line
+  tabLine.append(tabs, layoutChips);
+  card.append(head, tabLine, roomsBar, filters, body, foot);
   doc.body?.append(root);
 
   // ── state ────────────────────────────────────────────────────────
@@ -545,6 +607,7 @@ export function createDecorPanel({
   const f = { kinds: new Set(), text: '', size: null, storage: null, light: null, sort: 'common' };
   let selectedKey = null;
   let hoverKey = null;
+  let layout = 'grid';        // MENU-ORDER: 'grid' (pictures) or 'list'
   let mode = 'catalogue';     // DECOR1e: or 'room'; DECOR2a: or 'own'; DECOR2b: or 'look'; BASE-HIDE: or 'base'; HOME-RENT: or 'rent'
   let rentKey = null;         // HOME-RENT: the room chosen in the rooms view
   let paintPart = null;       // HOME-LOOK: the part chosen in the painter
@@ -629,18 +692,32 @@ export function createDecorPanel({
   const priceOf = (e) => (e && view?.priceOf ? view.priceOf(e) : null);
   const radiusOf = (e) => (e && view?.radiusOf ? view.radiusOf(e) : null);
 
-  function chip(label, pressed, onClick) {
+  function chip(label, pressed, onClick, icon = null) {
     const c = el('button', 'dfdecor-chip', label);
     c.type = 'button';
+    if (icon) c.dataset.dficon = icon;   // MENU-ORDER
     c.setAttribute('aria-pressed', pressed ? 'true' : 'false');
     c.addEventListener('click', onClick);
     return c;
   }
+  /** MENU-ORDER: a row's badges - a picture each for what the piece does (holds things, gives light, serves a craft),
+   *  each named on the hover and to a reader; drawn where the tiles hide the row's words. */
+  function badges({ storage = false, light = false, station = false }) {
+    const b = el('span', 'dfdecor-badges');
+    const one = (icon, word) => { const x = el('span', 'dfdecor-badge'); x.dataset.dficon = icon; x.title = word; x.setAttribute('aria-label', word); return x; };
+    if (storage) b.append(one('storage', 'Holds things'));
+    if (light) b.append(one('light', 'Gives light'));
+    if (station) b.append(one('station', 'A crafting station'));
+    return b;
+  }
+  /** MENU-ORDER: each view's tab its picture, read off its own word. */
+  function tabIcons() { for (const c of tabs.children ?? []) { const w = TAB_ICONS.find(([lead]) => String(c.textContent).startsWith(lead)); if (w) c.dataset.dficon = w[1]; } }
   function drawTabs() {
     if (card.dataset.yard !== (view?.yard ? '1' : '0')) card.dataset.yard = view?.yard ? '1' : '0';
     if (view?.yard) {   // HOME-YARD: the catalogue, the yard's pieces, and (HOME-LOOK) the house outside
       tabs.replaceChildren(chip('Catalogue', mode === 'catalogue', () => setMode('catalogue')), chip(`In this yard (${(view.placed ?? []).length})`, mode === 'room', () => setMode('room')),
         ...(view.paint ? [chip('Exterior', mode === 'paint', () => setMode('paint'))] : []));
+      tabIcons();
       roomsBar.replaceChildren();
       return;
     }
@@ -652,6 +729,7 @@ export function createDecorPanel({
       chip(`Built in (${k})`, mode === 'base', () => setMode('base')),   // BASE-HIDE: the room's own furniture
       ...(view?.rent ? [chip(`Rooms to rent (${(view.rent.rows ?? []).filter((r) => r.offer).length})`, mode === 'rent', () => setMode('rent'))] : []),   // HOME-RENT
       ...(view?.paint?.caravan ? [chip('Paint', mode === 'paint', () => setMode('paint'))] : []));   // WAGONS2: a caravan's inside, painted
+    tabIcons();
     roomsBar.replaceChildren(...roomChips());   // DECOR-ROOMS; MENU-ORDER: a row of their own
   }
   /** DECOR-ROOMS: THE ROOM TABS - one a room, the chosen one pressed, each saying how many pieces stand in it. Choosing
@@ -697,9 +775,11 @@ export function createDecorPanel({
       if (known) img.setAttribute('src', known); else askThumb(shape, img);
     } else {
       thumb.textContent = (DECOR_KINDS[shape.kind] ?? 'Decorations').slice(0, 2);
+      thumb.dataset.dficon = DECOR_KINDS[shape.kind] ? shape.kind : 'decor';   // MENU-ORDER: its kind's picture over the letters
     }
-    const main = el('span', '');
-    main.append(el('div', 'dfdecor-row-name', it.name), el('div', 'dfdecor-row-sub', decorPlacedSub(it)));
+    const main = el('span', 'dfdecor-row-main');
+    main.append(el('div', 'dfdecor-row-name', it.name), el('div', 'dfdecor-row-sub', decorPlacedSub(it)),
+      badges({ storage: !!it.piece.storage, light: !!it.piece.light, station: !!it.piece.station }));   // MENU-ORDER: what it does, as pictures
     r.append(thumb, main, el('span', 'dfdecor-row-price', it.piece.item ? 'yours' : `${decorRefundText(it.piece.paid)} back${view?.hall ? ' to the guild' : ''}`));   // AUDIT GUILD1d A9: a hall's half is the guild's
     r.addEventListener('click', () => { placedId = it.piece.id; redraw(); });
     return r;
@@ -720,8 +800,9 @@ export function createDecorPanel({
       if (known) img.setAttribute('src', known); else askThumb(shape, img);
     } else {
       thumb.textContent = (DECOR_KINDS[it.kind] ?? DECOR_KINDS.furniture).slice(0, 2);
+      thumb.dataset.dficon = DECOR_KINDS[it.kind] ? it.kind : 'furniture';   // MENU-ORDER
     }
-    const main = el('span', '');
+    const main = el('span', 'dfdecor-row-main');
     main.append(el('div', 'dfdecor-row-name', it.name), el('div', 'dfdecor-row-sub', decorBaseSub(it)));
     r.append(thumb, main, el('span', 'dfdecor-row-price', it.hidden ? 'out' : 'free'));
     r.addEventListener('click', () => { baseKey = it.key; redraw(); });
@@ -733,7 +814,7 @@ export function createDecorPanel({
     r.setAttribute('role', 'option');
     r.dataset.key = part;
     r.setAttribute('aria-selected', part === paintPart ? 'true' : 'false');
-    const main = el('span', '');
+    const main = el('span', 'dfdecor-row-main');
     const was = homeLookSig(view?.paint?.current?.[part] ? { [part]: view.paint.current[part] } : null) !== homeLookSig(paintLook?.[part] ? { [part]: paintLook[part] } : null);
     main.append(el('div', 'dfdecor-row-name', HOME_LOOK_PART_NAMES[part]), el('div', 'dfdecor-row-sub', decorLookText(part, paintLook?.[part] ?? null)));
     r.append(el('span', 'dfdecor-thumb', HOME_LOOK_PART_NAMES[part].slice(0, 2)), main, el('span', 'dfdecor-row-price', was ? 'changed' : ''));
@@ -755,7 +836,7 @@ export function createDecorPanel({
     r.setAttribute('role', 'option');
     r.dataset.key = row.part;
     r.setAttribute('aria-selected', row.part === paintPart ? 'true' : 'false');
-    const main = el('span', '');
+    const main = el('span', 'dfdecor-row-main');
     main.append(el('div', 'dfdecor-row-name', row.name), el('div', 'dfdecor-row-sub', row.choices[row.current] ?? ''));
     r.append(el('span', 'dfdecor-thumb', row.name.slice(0, 2)), main, el('span', 'dfdecor-row-price', 'Free'));
     r.addEventListener('click', () => { paintPart = row.part; redraw(); });
@@ -817,7 +898,7 @@ export function createDecorPanel({
     r.setAttribute('role', 'option');
     r.dataset.key = rentKeyOf(it);
     r.setAttribute('aria-selected', rentKeyOf(it) === rentKey ? 'true' : 'false');
-    const main = el('span', '');
+    const main = el('span', 'dfdecor-row-main');
     main.append(el('div', 'dfdecor-row-name', it.name), el('div', 'dfdecor-row-sub', rentRowSub(it, view?.rent?.now ?? 0)));
     r.append(el('span', 'dfdecor-thumb', String(it.id ?? it.offer?.room ?? '')), main, el('span', 'dfdecor-row-price', it.offer ? `${it.offer.price} a day` : '-'));
     r.addEventListener('click', () => { rentKey = rentKeyOf(it); redraw(); });
@@ -825,16 +906,16 @@ export function createDecorPanel({
   }
   function drawChips() {
     const present = new Set((view?.entries ?? []).map((e) => e.kind));
-    kindChips.replaceChildren(chip('All', f.kinds.size === 0, () => { f.kinds.clear(); redraw(); }),
+    kindChips.replaceChildren(chip('All', f.kinds.size === 0, () => { f.kinds.clear(); redraw(); }, 'all'),
       ...Object.keys(DECOR_KINDS).filter((k) => present.has(k)).map((k) => chip(DECOR_KINDS[k], f.kinds.has(k), () => {
         if (f.kinds.has(k)) f.kinds.delete(k); else f.kinds.add(k);
         redraw();
-      })));
+      }, k)));   // MENU-ORDER: each kind its picture
     sizeChips.replaceChildren(chip('Any size', f.size === null, () => { f.size = null; redraw(); }),
-      ...Object.keys(DECOR_SIZES).map((k) => chip(DECOR_SIZES[k], f.size === k, () => { f.size = f.size === k ? null : k; redraw(); })));
+      ...Object.keys(DECOR_SIZES).map((k) => chip(DECOR_SIZES[k], f.size === k, () => { f.size = f.size === k ? null : k; redraw(); }, `size-${k[0]}`)));
     hasChips.replaceChildren(
-      chip('Holds things', f.storage === true, () => { f.storage = f.storage ? null : true; redraw(); }),
-      chip('Gives light', f.light === true, () => { f.light = f.light ? null : true; redraw(); }));
+      chip('Holds things', f.storage === true, () => { f.storage = f.storage ? null : true; redraw(); }, 'storage'),
+      chip('Gives light', f.light === true, () => { f.light = f.light ? null : true; redraw(); }, 'light'));
     sortChips.replaceChildren(...Object.keys(DECOR_SORTS).map((k) => chip(DECOR_SORTS[k], f.sort === k, () => { f.sort = k; redraw(); })));
     const words = decorFiltersText(f);   // MENU-ORDER: the phone's fold says how many it hides
     if (filterToggle.textContent !== words) filterToggle.textContent = words;
@@ -858,9 +939,11 @@ export function createDecorPanel({
       else if (watcher) { r.decorThumb = () => askThumb(e, img); watcher.observe(r); } else askThumb(e, img);
     } else {
       thumb.textContent = DECOR_KINDS[e.kind].slice(0, 2);
+      thumb.dataset.dficon = e.kind;   // MENU-ORDER: a model has no picture until it turns in the preview - its kind's
     }
-    const main = el('span', '');
-    main.append(el('div', 'dfdecor-row-name', e.name), el('div', 'dfdecor-row-sub', decorRowSub(e, radiusOf(e))));
+    const main = el('span', 'dfdecor-row-main');
+    main.append(el('div', 'dfdecor-row-name', e.name), el('div', 'dfdecor-row-sub', decorRowSub(e, radiusOf(e))),
+      badges({ storage: !!e.storage, light: e.light != null }));   // MENU-ORDER
     r.append(thumb, main, el('span', 'dfdecor-row-price', look ? 'free' : decorPriceText(price)));
     r.addEventListener('click', () => { if (look) lookKey = e.key; else selectedKey = e.key; redraw(); });
     r.addEventListener('mouseenter', () => { hoverKey = e.key; paintSide(); });
@@ -884,8 +967,9 @@ export function createDecorPanel({
       if (known) img.setAttribute('src', known); else askThumb(e, img);
     } else {
       thumb.textContent = (DECOR_KINDS[e.looks?.[0]] ?? DECOR_KINDS.furniture).slice(0, 2);
+      thumb.dataset.dficon = DECOR_KINDS[e.looks?.[0]] ? e.looks[0] : 'furniture';   // MENU-ORDER
     }
-    const main = el('span', '');
+    const main = el('span', 'dfdecor-row-main');
     const count = (e.count ?? 1) > 1 ? ` (${e.count})` : '';
     main.append(el('div', 'dfdecor-row-name', `${e.name}${count}`), el('div', 'dfdecor-row-sub', ownLine(e)));
     r.append(thumb, main, el('span', 'dfdecor-row-price', 'free'));
@@ -899,6 +983,10 @@ export function createDecorPanel({
   function redraw() {
     if (!view) return;
     drawTabs();
+    layoutChips.replaceChildren(chip(DECOR_LAYOUT_WORDS.grid, layout === 'grid', () => { layout = 'grid'; redraw(); }, 'all'),
+      chip(DECOR_LAYOUT_WORDS.list, layout === 'list', () => { layout = 'list'; redraw(); }, 'list'));
+    const shape = layout === 'grid' && DECOR_GRID_MODES.includes(mode) ? 'grid' : 'list';   // MENU-ORDER: the rooms and the painter are lines
+    if (card.dataset.view !== shape) card.dataset.view = shape;
     drawChips();
     const entries = view.entries;
     watcher?.disconnect();   // the rows it watched are gone
@@ -1079,6 +1167,7 @@ export function createDecorPanel({
     pickLine.textContent = it ? decorBaseSub(it) : '';
     pickPrice.textContent = it || rows.length ? 'Free - taken out or put back' : '';
     baseBtn.textContent = it?.hidden ? 'Put back' : 'Take out';
+    baseBtn.dataset.dficon = it?.hidden ? 'put-back' : 'take-out';   // MENU-ORDER
     baseBtn.disabled = !it || (!it.hidden && it.holds);
     allOutBtn.disabled = !rows.some((r) => !r.hidden && !r.holds);
     allBackBtn.disabled = !rows.some((r) => r.hidden);
@@ -1194,6 +1283,11 @@ export function createDecorPanel({
   };
 }
 
+/** MENU-ORDER: the bar's press that unfolds its keys' legend. */
+export const DECOR_KEYS_WORD = 'Keys';
+/** MENU-ORDER: each of the bar's presses its picture. */
+const DECOR_BAR_ICONS = Object.freeze({ place: 'place', turnLeft: 'turn-left', turnRight: 'turn-right', raise: 'up', lower: 'down',
+  smaller: 'smaller', bigger: 'bigger', grid: 'grid', back: 'back' });
 /** MENU-ORDER: THE BAR'S LEGEND - each key's name and what presses it, a pair a line (a finger's two: the stick and
  *  Fly, and the look). DECOR-FIGURE: `sized` false tells no Size key. */
 export function decorBarKeys(touch, sized = true) {
@@ -1217,6 +1311,7 @@ export function createDecorBar({ on, touch = false, doc = document }) {
   const el = maker(doc);
   const root = el('div', `dfdecor-bar${touch ? ' touch' : ''}`);
   root.dataset.up = '0';
+  root.dataset.keys = '0';   // MENU-ORDER: the legend folded
   const what = el('div', 'dfdecor-bar-what');
   // DECOR-FIGURE: a piece that takes no size step (one of Daggerfall's people) is told no Size key. MENU-ORDER: a legend,
   // a key's name and then what presses it
@@ -1232,6 +1327,7 @@ export function createDecorBar({ on, touch = false, doc = document }) {
   const b = (label, key, cls = 'dfdecor-chip') => {
     const n = el('button', cls, label);
     n.type = 'button';
+    if (DECOR_BAR_ICONS[key]) n.dataset.dficon = DECOR_BAR_ICONS[key];   // MENU-ORDER
     n.addEventListener('click', () => on[key]?.());
     return n;
   };
@@ -1243,6 +1339,7 @@ export function createDecorBar({ on, touch = false, doc = document }) {
   const hold = (label, dir) => {
     const n = el('button', 'dfdecor-chip', label);
     n.type = 'button';
+    n.dataset.dficon = dir > 0 ? 'up' : 'down';   // MENU-ORDER
     n.addEventListener('pointerdown', (e) => { try { n.setPointerCapture?.(e.pointerId); } catch { /* a pointer gone already */ } flyTo(dir); });
     for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) n.addEventListener(t, () => { if (flyDir === dir) flyTo(0); });
     return n;
@@ -1254,8 +1351,14 @@ export function createDecorBar({ on, touch = false, doc = document }) {
   btns.append(b('Place', 'place', 'dfdecor-btn'), sep(), b('Turn left', 'turnLeft'), b('Turn right', 'turnRight'), sep(), b('Raise', 'raise'),
     b('Lower', 'lower'), sep(), smaller, bigger, grid);
   if (touch) btns.append(hold('Fly up', 1), hold('Fly down', -1));
-  btns.append(sep(), b('Back', 'back'));
-  root.append(what, keys, why, btns);
+  // MENU-ORDER: the keys' legend folded behind one press - the pictured buttons are the bar; the words wait to be asked
+  const keysChip = el('button', 'dfdecor-chip dfdecor-keys-toggle', DECOR_KEYS_WORD);
+  keysChip.type = 'button';
+  keysChip.dataset.dficon = 'list';
+  keysChip.setAttribute('aria-pressed', 'false');
+  keysChip.addEventListener('click', () => { const on = root.dataset.keys !== '1'; root.dataset.keys = on ? '1' : '0'; keysChip.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  btns.append(sep(), b('Back', 'back'), keysChip);
+  root.append(what, why, btns, keys);   // MENU-ORDER: the presses first, the legend under them when asked
   swallowPresses(root);
   doc.body?.append(root);
   let alive = true;

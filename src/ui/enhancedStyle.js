@@ -3734,6 +3734,20 @@ ${paceControlsCss('tview')}
 .trade-shell .trade-fig:first-child b { color: rgb(243,239,44); }
 .trade-shell .trade-steal { margin-right: 18px; }
 .trade-shell .trade-ownhead { margin-bottom: 8px; }
+/* MENU-ORDER: a row's own price; the lists as lines or as pictures - the header's switch */
+.trade-shell .itemprice { flex: 0 0 auto; margin-left: 12px; font-size: 13px; color: rgb(243,239,44); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.trade-shell .trade-view { display: flex; gap: 4px; justify-self: start; }
+.trade-shell .trade-view .act { min-height: 32px; padding: 4px 10px; font-size: 12px; }
+.trade-shell[data-view="grid"] .remotelist { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  grid-auto-rows: max-content; gap: 6px; align-content: start; }
+.trade-shell[data-view="grid"] .itemrow { flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px;
+  min-height: 0; padding: 8px 6px; text-align: center; border: 1px solid rgba(125,116,96,0.35); }
+.trade-shell[data-view="grid"] .itemrow .tile { width: 56px; height: 56px; }
+.trade-shell[data-view="grid"] .itemname { align-items: center; width: 100%; }
+.trade-shell[data-view="grid"] .itemname > span:first-child { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.trade-shell[data-view="grid"] .itemname small, .trade-shell[data-view="grid"] .itemwt { display: none; }
+.trade-shell[data-view="grid"] .itemprice, .trade-shell[data-view="grid"] .itemrepair { margin-left: 0; }
+.trade-shell[data-view="grid"] .packempty { grid-column: 1 / -1; }
 .trade-shell .itemrow.on { background: rgba(125,116,96,0.16); box-shadow: inset 2px 0 0 var(--brass); }
 .trade-shell .itemrow.ghost { opacity: 0.5; }
 .trade-shell .itemrow.picked { background: rgba(125,116,96,0.22); box-shadow: inset 2px 0 0 var(--brass); }
