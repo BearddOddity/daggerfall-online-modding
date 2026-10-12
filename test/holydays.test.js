@@ -1,4 +1,4 @@
-// HOLY-DAYS (2026-10-11, a profile of the owner's live client entering the world: a 14.5 s and a 5.1 s frozen frame,
+// HOLY-DAYS (2026-10-11, a profile of a player's live client entering the world: a 14.5 s and a 5.1 s frozen frame,
 // ~10 s of them the Living World planning its roads' day; bible/07-Rendering/Performance-Priority.md HOLY-DAYS) - THE
 // PILGRIMS' HOLY DAY, THE SAME ANSWER FOR LESS. Every pilgrim of every town the roads asked built its town's temples again
 // (a filter and a sort of the towns near) and asked getHolidayId of every day of its cycle at every one of them - a

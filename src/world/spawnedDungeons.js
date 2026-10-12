@@ -104,7 +104,7 @@ export function spawnPlateauFloor(woods, px, py) {
 }
 
 /**
- * WILD-DRY (2026-10-12, the owner's live client: the map's first open froze 6.7 s - the zone's giants' walking ground,
+ * WILD-DRY (2026-10-12, a player's live client: the map's first open froze 6.7 s - the zone's giants' walking ground,
  * systems/wildGiants.js cellsOf, asks every pixel of the zone whether it is dry, and each answer read the whole
  * 129 x 129 kernel): WHETHER THE PLATEAU ON (px, py) STANDS OVER SPAWN_DRY_ELEVATION - `spawnPlateauFloor(...) >
  * SPAWN_DRY_ELEVATION` to the bit, read only until it is certain. Every sample is in [0, 1] (sampleKernel's clamp01),

@@ -363,11 +363,11 @@ Then "as centered as possible not on the border to the other tier... dont overri
   `WILD_HALL_SPACING` (3) pixels apart at least, each next one of the best few by the day's own roll - eased (two
   pixels, one, the whole ring) before the tier is ever short of its count (`wildHallPicks`,
   `wildDungeons.js:"export function wildHallPicks"`).
-- THE COST (WILD-FREE, 2026-10-11 - the owner's load captured from the installed client: entering the world froze it
+- THE COST (WILD-FREE, 2026-10-11 - a player's load captured from the installed client: entering the world froze it
   14.5 s, 8.1 s of them the day's first picks, asked by the nearest dungeon's list). `wildHallFree` is the host's
   dearest pixel test - its last word the spawns' plateau (`spawnedDungeons.js:"export function spawnPlateauFloor"`, a
   heightmap kernel summed for a pixel) - and the picks asked it of every pixel of every ring before they cut the band:
-  12,564 asks over the real zone (the owner's ARENA2, its box 164 x 107), where the band reads 2,628. They ask it now
+  12,564 asks over the real zone (the player's ARENA2, its box 164 x 107), where the band reads 2,628. They ask it now
   where an answer is read, once a pixel (`isFree`): the deepest level holding a free pixel (the old reduce's `maxBd`),
   the band and its lowerings, the whole ring when the band is short. Every client stands the same halls, so nothing
   moves - each step reads the free pixels it read, in the scan's order. Measured over the real zone in node 22: the

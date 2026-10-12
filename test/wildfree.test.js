@@ -1,4 +1,4 @@
-// WILD-FREE (2026-10-11, the owner's load captured from the live client: 8.1 s of a 14.5 s frozen frame; bible/
+// WILD-FREE (2026-10-11, a player's load captured from the live client: 8.1 s of a 14.5 s frozen frame; bible/
 // 11-Multiplayer/Wild-Zone.md section 12, THE COST) - THE DAY'S HALLS, ASKING `free` ONLY WHERE AN ANSWER IS READ.
 // wildHallPicks asked the host's dearest question (world.js wildHallFree: the spawns' plateau, a heightmap kernel summed)
 // of every pixel of every ring before it cut the band; it asks now where the picks read the answer, once a pixel. Every

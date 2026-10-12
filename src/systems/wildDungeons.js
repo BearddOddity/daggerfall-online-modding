@@ -85,7 +85,7 @@ const borderDist = (mask) => { let d = _bd.get(mask); if (!d) _bd.set(mask, d = 
  * THE DAY'S HALLS. `free(x, y)` says a pixel may hold one (land, dry, no place on it or beside it - the host's map files
  * answer); `day` the relay's day. Returns `[{ x, y, ring, key }]`, the foothills' first.
  *
- * WILD-FREE (2026-10-11, the owner's load captured from the live client: 8.1 s of a 14.5 s frozen frame): `free` is the
+ * WILD-FREE (2026-10-11, a player's load captured from the live client: 8.1 s of a 14.5 s frozen frame): `free` is the
  * host's dearest question (world.js wildHallFree - the spawns' plateau, a whole heightmap kernel summed for a pixel), and
  * it was asked of every pixel of every ring before the band was cut - 12,564 times over the real zone, where the picks
  * read 2,628 answers. It is asked now where an answer is read, once a pixel: the deepest free level, the band and its

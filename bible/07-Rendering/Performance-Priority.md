@@ -25,9 +25,18 @@ player's ship far off stands no hull on my client. It does not move the picture 
 fog on every lane (AUDIT PEER-HULL-RANGE moved its edges there and gave a hull built again her record's dress). Its
 section is after PERF-WAGON.
 
-STORE-CACHE (2026-10-11, the owner: "faz uma verificacao no meu jogo aberto ... o que mais esta custando o FPS") is the
+STORE-CACHE (2026-10-11, a player: "faz uma verificacao no meu jogo aberto ... o que mais esta custando o FPS") is the
 next profile of the live desktop client: a storage read was a file read, and the game reads storage every frame. It
 does not move the picture. Its section is after PEER-HULL-RANGE.
+
+The same player's next profiles (2026-10-11 and 12) brought six more, merged together: PERF-DYE (a horse's look dyed a
+few pictures a frame), OWN-HULL-RANGE (my own sea's ship far off stands no hull either), OVERWORLD-WALK (walking the
+overworld, the same answers for less), NAV-FAR-AI (a far captain keeps her watch every few frames) and WILD-DRY (the
+dry-ground answer, read only until it is certain), their sections in that order after STORE-CACHE's; and HOLY-DAYS (the
+pilgrims' holy day, the same answer for less), its section after What is left. PERF-DYE wears a new look a few frames
+later (the bay's until then, as before); the rest do not move the picture - OWN-HULL-RANGE's and NAV-FAR-AI's ships are
+past the fog. WILD-FREE, the same load's other half, is written in
+`11-Multiplayer/Wild-Zone.md` section 12, THE COST.
 
 ## How the pass was run
 
@@ -461,7 +470,7 @@ hideouts' line). Every existing record within three lines of a changed line was 
 
 ## HARNESS-REST — a standing team's harness comes to rest
 
-*The owner (2026-10-11): "agora ataca os arreios das carroças" - the next cost in a profile of their live client (a
+*A player (2026-10-11): "agora ataca os arreios das carroças" - the next cost in a profile of their live client (a
 town at night, 1080p, RX 6700 XT).*
 
 **Found.** 4.0% of the main thread (598 ms of 15,014; again 512 of 14,152 the same evening, 0.42 ms a frame at 76
@@ -479,7 +488,7 @@ frame, so an ease creeping a hair a frame adds up and wakes it. Three seconds is
 0.97 at 60 steps a second at least, so under 0.5% of a swing is left. A floating-origin shift, a horse led off, a wagon
 driven: each moves an end and wakes it. Nothing a player sees but the jitter gone.
 
-**Measured.** In the owner's running client, a LOWER BOUND by A/B: the bundle is not open to a live edit (Electron's
+**Measured.** In the player's running client, a LOWER BOUND by A/B: the bundle is not open to a live edit (Electron's
 V8 refuses `Debugger.setScriptSource`, and its `dagger://` chunks pass no CDP `Fetch`), but the pool's harness map is
 public (`harness`), so each harness's `ropes.forEach` (the tube laid again) and the renderer's `updateMeshVertices` (the
 send) were wrapped as own properties: on B a harness under this law (0.1 mm, 3 s) was neither laid nor sent, on A as
@@ -534,7 +543,7 @@ three remembered things kept, her fires left hung, whole in a frame.
 
 ## STORE-CACHE — the desktop store answers a read from memory
 
-*The owner's own client (2026-10-11): the installed app at 1920x1080 on a Radeon RX 6700 XT, online in a town at night
+*A player's own client (2026-10-11): the installed app at 1920x1080 on a Radeon RX 6700 XT, online in a town at night
 with five players about. A 15 s CPU profile through the shell's debugging port (`--remote-debugging-port`, CDP
 `Profiler`), 86 FPS over it, script 13.7 ms a frame on the HUD.*
 
@@ -557,8 +566,8 @@ it, so a save copied into the open Saves folder reads as itself the moment the s
 screenshot is never kept. The game's readers are untouched: one change at the seam answers every reader there is and
 every one to come, and the browser build has no file to read.
 
-**Measured.** The store over the owner's own Prefs, the session read 20,000 times: 67.9 us a read on main, 0.095 us on
-the branch (`node` 22; the shell's asar-patched `fs` is slower still). And in the owner's running client, A/B: the
+**Measured.** The store over the player's own Prefs, the session read 20,000 times: 67.9 us a read on main, 0.095 us on
+the branch (`node` 22; the shell's asar-patched `fs` is slower still). And in the player's running client, A/B: the
 bridge object is frozen, so the page's own wrapper (`appStorage.js`'s, which every reader holds and which looks its
 `getItem` up at each call) was found through CDP `Runtime.queryObjects` and answered, on B, from a cache under this
 law (1 s, forgotten on its own writes) with one bridge crossing kept a read (`key(0)`), so B costs what the branch
@@ -574,7 +583,7 @@ write, a remove and a thrown write each leave the next read the disk's truth. Mu
 
 ## PERF-DYE — a horse's look is dyed a few pictures a frame
 
-*The owner's live client (2026-10-12), two minutes' travel across the overworld: 58 FPS on average, 122 frames over
+*A player's live client (2026-10-12), two minutes' travel across the overworld: 58 FPS on average, 122 frames over
 50 ms.*
 
 **Found.** 29 of those 122 frames were one thing: a horse look met on the road (a passing team, a parked one come into
@@ -617,7 +626,7 @@ by `HORSE_DYE_PICTURES` (PIN MOVED). Mutants: `tools/mutants/perfdye.json`, 7, a
 
 ## OWN-HULL-RANGE — my own sea's ship far off stands no hull either
 
-*The owner's live client (2026-10-12), main with every open performance fix built in, travelling the overworld along
+*A player's live client (2026-10-12), main with every open performance fix built in, travelling the overworld along
 the Iliac Bay's coast.*
 
 **Found.** Halfway through the run fourteen hulls stood at once, 9 to 727 km off, in four regions - and the frame went
@@ -654,7 +663,7 @@ given back, a peer's never kept by it. Mutants: `tools/mutants/ownhullrange.json
 
 ## OVERWORLD-WALK — walking the overworld, the same answers for less
 
-*The owner (2026-10-12): "when I stand on the coast my FPS is 130, when I start walking it drops to 40 practically."
+*A player (2026-10-12): "when I stand on the coast my FPS is 130, when I start walking it drops to 40 practically."
 Measured on the live client with every open performance fix built in: standing 115 FPS, walking the same coast 55 -
 the frame's main thread 8.5 ms standing, 18.2 walking, and the page allocating some 430 MB a second.*
 
@@ -704,7 +713,7 @@ is the cost alone), `pixelkeys.json` (4), `perfrope.json` (4), all dead.
 
 ## NAV-FAR-AI — a far captain keeps her watch every FAR_LIFE_EVERY frames
 
-*The owner's live client (2026-10-12), main with every open performance fix built in: the captains of the sea's ships
+*A player's live client (2026-10-12), main with every open performance fix built in: the captains of the sea's ships
 were 12% of the main thread and some 29% of what the page allocated while walking the coast, the ships this tab holds
 with no owner numbering 2 to 31 through the day (its own traffic, and every peer's fleet it adopts as they leave the
 room - `releaseOwner`), most of them tens to hundreds of km off.*
@@ -737,7 +746,7 @@ target, the fights asked last); a far captain come near steps what she owes, the
 
 ## WILD-DRY — the dry-ground answer, read only until it is certain
 
-*The owner (2026-10-12): "as soon as you enter the game and open the map with V, the game freezes for 4 to 5
+*A player (2026-10-12): "as soon as you enter the game and open the map with V, the game freezes for 4 to 5
 seconds."*
 
 **Found.** One frame of 6.7 s on the live client, 94% of it in one question. The map's overlay draws the Wrothgarian
@@ -753,7 +762,7 @@ nor the division and the product by positive constants - so once a column's runn
 whole one is. A pixel that never gets there is answered by the very sum `spawnPlateauFloor` makes, in its order.
 `createSpawnGround` asks it; `spawnPlateauFloor` stands as it was for its other readers.
 
-**Measured.** Over the real zone (the owner's ARENA2): the 12,564 pixels 17.9 s -> 1.0 s (17x), every answer the same.
+**Measured.** Over the real zone (the player's ARENA2): the 12,564 pixels 17.9 s -> 1.0 s (17x), every answer the same.
 On the live client, the map's first open in a fresh session, the old and the new in two sessions:
 
 | the map's first open (V) | before | WILD-DRY |
@@ -820,12 +829,12 @@ Each with what was found and whether it moves the picture (those are the owner's
    circle, a bounty farm, the quays and the LeFay monument are each drawn whole wherever they stand streamed. One each:
    a box apiece and the street's test would save a few draws a frame. Nothing a player sees.
 
-**From the owner's profile** (STORE-CACHE's, above; the boats' 7% there is PEER-HULL-RANGE's, merged after that build).
-10. **The harness** - 4.0% of the main thread: `horseCartPool.js:"function stepHarness(dt) {"` steps every owner's
-    ropes - every player's hitched wagon in the room, however far - refills the tube and sends it to the GPU, every
-    frame; `renderer.updateMeshVertices` then walks the vertices three times over (the mesh's sphere, each sub-mesh's,
-    the bake's comparison). PERF-WAGON culls its draw, not this. A distance past which a peer's harness is not stepped
-    (the team's own cut, PERF-TEAMS) would take most of it. Nothing a player sees inside the cut.
+**From a player's profile** (STORE-CACHE's, above; the boats' 7% there is PEER-HULL-RANGE's, merged after that build).
+10. **The harness** - 4.0% of the main thread - is HARNESS-REST's (above): a team past PERF-TEAMS' reach is dropped
+    from `_teams` and lays no harness, and every harness the profile held was a parked team's inside it, which now comes
+    to rest. Left: a team on the move steps, lays and sends its harness every frame
+    (`horseCartPool.js:"function stepHarness(dt) {"`), its rope stepped in place since OVERWORLD-WALK's PERF-ROPE. It
+    moves, so nothing more is spared without changing what a player sees.
 11. **The hover pick** - 3.3%: the exterior's tooltip ray is cast every frame over every target list (corpses, piles,
     torches, wagons, carts, camps). Asked only when the eye moved, or every other frame, it would halve. Moves the
     tooltip's answer by a frame.
@@ -837,7 +846,7 @@ governor - each the owner's.
 
 ## HOLY-DAYS — the pilgrims' holy day, the same answer for less
 
-*The owner (2026-10-11): "eu sei que quando o jogo carrega normalmente da uma travada, tem alguma forma de voce medir
+*A player (2026-10-11): "eu sei que quando o jogo carrega normalmente da uma travada, tem alguma forma de voce medir
 isso?" - the installed client's load captured from its first second through the debugging port (CDP Tracing, the
 page's CPU profile, every frame's length and the long animation frames).*
 

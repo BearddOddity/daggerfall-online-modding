@@ -1,4 +1,4 @@
-// PIXEL-KEYS (2026-10-12, a profile of the owner's live client walking the overworld's coast: the sea's captains sound
+// PIXEL-KEYS (2026-10-12, a profile of a player's live client walking the overworld's coast: the sea's captains sound
 // the water ahead of them - scenes/world.js navalIsWater, three points a step of every probe - and each sounding made
 // its pixel's key text anew to ask the built pixels for it, `${x},${y}`: some 0.4 ms a frame and a string a call,
 // for the few pixels a probe crosses). A PIXEL'S KEY, THE TEXT THE BUILT PIXELS ARE FILED UNDER, MADE ONCE: kept by

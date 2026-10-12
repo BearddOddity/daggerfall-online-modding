@@ -178,7 +178,7 @@ export const PEER_TEAM_DRAW_SLACK_M = 25;
  *  how far it rises above the wagon's point and sinks below it - every kind's body, its wheels and a hitched pair
  *  inside it (the Caravan is the longest, its team at the pole's end ahead of it). Generous by design: a box too big
  *  costs a draw, one too small loses a wagon at the screen's edge. */
-/** HARNESS-REST (2026-10-11, a profile of the owner's live client in a town: 4.0% of the main thread, eleven parked
+/** HARNESS-REST (2026-10-11, a profile of a player's live client in a town: 4.0% of the main thread, eleven parked
  *  teams' harnesses stepped, laid and sent to the GPU every frame): A HARNESS WHOSE ENDS STAND STILL COMES TO REST. Once
  *  every end has stayed within HARNESS_STILL_M of where it stood for HARNESS_REST_S, its ropes are neither stepped nor
  *  laid nor sent again - they hang as last drawn - until an end moves. By then the damping has taken any swing (ROPE's

@@ -53,7 +53,7 @@ export function layRope(rope, a, b) {
  * ROPE.maxStep, at most ROPE.maxSteps of them - a longer frame's rest is dropped, not caught up), `scale` the drawn
  * scale (the Overworld's grown rig: its gravity and its leap grow with it, so a grown rope hangs as the small one does).
  */
-/** PERF-ROPE (2026-10-12, an allocation profile of the owner's live client walking the overworld's coast: the moving
+/** PERF-ROPE (2026-10-12, an allocation profile of a player's live client walking the overworld's coast: the moving
  *  teams' harnesses were some 7% of what the page allocated, ~1 ms a frame): A ROPE STEPS IN PLACE - its ends kept in
  *  its own arrays, each sub-step's ends in one pair for every rope, and a length as a root of its squares (Math.hypot
  *  of three boxed its every answer, ten iterations of eight links a sub-step). The rope is the one it was, to within

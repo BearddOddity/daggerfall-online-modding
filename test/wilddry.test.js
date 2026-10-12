@@ -1,4 +1,4 @@
-// WILD-DRY (2026-10-12, the owner's live client: the map's first open froze 6.7 s, the zone's giants' walking ground
+// WILD-DRY (2026-10-12, a player's live client: the map's first open froze 6.7 s, the zone's giants' walking ground
 // asking every pixel of the zone whether it is dry and each answer reading the whole 129 x 129 kernel;
 // bible/07-Rendering/Performance-Priority.md WILD-DRY) - THE SAME ANSWER, READ ONLY UNTIL IT IS CERTAIN: spawnGroundDry
 // is `spawnPlateauFloor(...) > SPAWN_DRY_ELEVATION` for every pixel of every ground - the sea, a beach, a coast either

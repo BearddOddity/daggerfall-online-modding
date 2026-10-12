@@ -221,7 +221,7 @@ export const BLAST_SHAKE = 3.2;
  *  the CPU, their rigging stepped as a near one's). */
 export const NEAR_LIFE_M = 600;
 export const FAR_LIFE_EVERY = 4;
-/** NAV-FAR-AI (2026-10-12, the owner's live client walking the coast: the captains of the sea's ships were 12% of the
+/** NAV-FAR-AI (2026-10-12, a player's live client walking the coast: the captains of the sea's ships were 12% of the
  *  main thread and some 29% of what it allocated - every ship of mine, every frame, the adopted ones hundreds of km off
  *  among them): A FAR CAPTAIN KEEPS HER WATCH EVERY FAR_LIFE_EVERY FRAMES, on the time she missed (never more than
  *  FRAME_STEP_S at once, the sea's own step) - past FAR_WATCH_M of the eye, where she stands no hull to be seen
@@ -254,7 +254,7 @@ export function watchesFar(e, eye, fought) {
  *  has closed (test/peerhullrange.test.js); the ships this is for were 80-700 km off, so the frame's saving is the same. */
 export const PEER_HULL_NEAR_M = 5000;
 export const PEER_HULL_FAR_M = 5500;
-/** OWN-HULL-RANGE (2026-10-12, the owner's live client travelling the overworld: 14 hulls 9-727 km off, 90 -> 37 FPS
+/** OWN-HULL-RANGE (2026-10-12, a player's live client travelling the overworld: 14 hulls 9-727 km off, 90 -> 37 FPS
  *  while they stood - their sails baked, their particles drawn, their rigging stepped every frame): MY OWN SEA'S SHIP FAR
  *  OFF STANDS NO HULL EITHER. A ship with no owner is this tab's - the traffic, the raiders, the packets, a port's moored
  *  ships, a bounty's quarry, the legends - and every ship a peer leaves behind (releaseOwner adopts them wherever they
@@ -2003,7 +2003,8 @@ export function createNavalHost(deps) {
     seenVolleys.delete(owner);
   }
 
-  /** OWN-HULL-RANGE: the ships some ship in a fight targets (a fight's other half, hull or not). */
+  /** OWN-HULL-RANGE, NAV-FAR-AI: the ships some ship in a fight targets (a fight's other half, hull or not) - a hull
+   *  kept far off, and a captain who keeps every frame's watch. */
   const foughtIds = () => { const t = new Set(); for (const x of sea.values()) if (engagedOf(x.ship) && x.ship.target != null) t.add(x.ship.target); return t; };
   /** PEER-HULL-RANGE: a ship whose hull stands - within PEER_HULL_NEAR_M of the eye; OWN-HULL-RANGE: and one of my own
    *  sea's that something reads by her hull (hullKept), wherever she is. */
@@ -4518,7 +4519,7 @@ export function createNavalHost(deps) {
       if (s.damage.state === SHIP_STATES.sunk) { quarryGone(e); drop(e); continue; }
       const was = s.damage.state;
       if (boarding?.shipId === e.id) { const change = s.damage.step(d, clock); if (change) stateChanged(e, was, change, e.fireBy ?? null); continue; }
-      const out = keepWatch(e, d, world, watchEye, () => (fought ??= new Set([...sea.values()].filter((x) => engagedOf(x.ship)).map((x) => x.ship.target))));
+      const out = keepWatch(e, d, world, watchEye, () => (fought ??= foughtIds()));
       if (e.fromHarbour && s.errand?.kind !== 'moored') { departedOf(e.fromHarbour, where().day ?? 0).add(s.seed); e.fromHarbour = null; }   // SHIP-LIFE: sailed - not stood at her berth again today
       // AUDIT CAPTAIN'S SEA D17: a legend of the night is abroad between dusk and dawn alone - day come, she sails out of
       // the world once no fight holds her (she fought on in the sun)

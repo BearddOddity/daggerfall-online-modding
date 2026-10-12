@@ -624,7 +624,7 @@ export function ownTrip(res, home, k, world, { mpm }) {
 /** LW5b: the way of a trip with no road under it - a passage by sea. */
 const noWay = () => ({ pts: [], cum: [0], len: 0, kinds: [] });
 
-/** HOLY-DAYS (2026-10-11, a profile of the owner's live client entering the world): A TOWN'S TEMPLES IN A PILGRIM'S
+/** HOLY-DAYS (2026-10-11, a profile of a player's live client entering the world): A TOWN'S TEMPLES IN A PILGRIM'S
  *  REACH, the nearer first (then the lower map id) - the same for every pilgrim of the town and every cycle (the trip
  *  world's towns and their temples are the map's), so kept by the world and the town: made again for each pilgrim, it was
  *  a filter and a sort of the towns near a pilgrim, every pilgrim of every town the roads asked, in one frozen frame.

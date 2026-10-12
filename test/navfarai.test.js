@@ -1,4 +1,4 @@
-// NAV-FAR-AI (2026-10-12, an allocation profile of the owner's live client walking the coast: the sea's captains were
+// NAV-FAR-AI (2026-10-12, an allocation profile of a player's live client walking the coast: the sea's captains were
 // 12% of the main thread and some 29% of what it allocated, the adopted ships hundreds of km off among them;
 // bible/07-Rendering/Performance-Priority.md NAV-FAR-AI) - A FAR CAPTAIN KEEPS HER WATCH EVERY FAR_LIFE_EVERY FRAMES, on
 // the time she missed: her clock the same at the end, never more than FRAME_STEP_S at once; every frame near, in a
