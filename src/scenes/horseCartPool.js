@@ -172,6 +172,26 @@ export const PEER_TEAM_DRAW_SLACK_M = 25;
  *  how far it rises above the wagon's point and sinks below it - every kind's body, its wheels and a hitched pair
  *  inside it (the Caravan is the longest, its team at the pole's end ahead of it). Generous by design: a box too big
  *  costs a draw, one too small loses a wagon at the screen's edge. */
+/** HARNESS-REST (2026-10-11, a profile of the owner's live client in a town: 4.0% of the main thread, eleven parked
+ *  teams' harnesses stepped, laid and sent to the GPU every frame): A HARNESS WHOSE ENDS STAND STILL COMES TO REST. Once
+ *  every end has stayed within HARNESS_STILL_M of where it stood for HARNESS_REST_S, its ropes are neither stepped nor
+ *  laid nor sent again - they hang as last drawn - until an end moves. By then the damping has taken any swing (ROPE's
+ *  0.97 a step, at least 60 steps a second: under 0.5% of it is left); what stops is the step's own millimetre jitter
+ *  as the frame's length changes. Measured against where the ends stood when they came to rest, not last frame, so an
+ *  ease creeping a hair a frame adds up and wakes it. */
+export const HARNESS_REST_S = 3;
+export const HARNESS_STILL_M = 1e-4;
+/** HARNESS-REST: do `ends` (harnessEnds') stand where `at` (the same kinds, as they stood) does - every end of every
+ *  rope within HARNESS_STILL_M, at the same scale? Pure. */
+export function harnessStill(ends, at) {
+  if (!at || at.length !== ends.length) return false;
+  for (let i = 0; i < ends.length; i++) {
+    const e = ends[i], w = at[i];
+    if (e.g !== w.g) return false;
+    for (let k = 0; k < 3; k++) if (!(Math.abs(e.a[k] - w.a[k]) <= HARNESS_STILL_M && Math.abs(e.b[k] - w.b[k]) <= HARNESS_STILL_M)) return false;
+  }
+  return true;
+}
 export const PEER_TEAM_BOX_HALF_M = 10;
 export const PEER_TEAM_BOX_UP_M = 8;
 export const PEER_TEAM_BOX_DOWN_M = 2;
@@ -1171,7 +1191,11 @@ export function createHorseCartPool({
       if (!ends.length) { dropHarness(owner); continue; }
       const key = ends.map((e) => e.kind[0]).join('');
       let h = _harness.get(owner);
-      if (!h || h.key !== key) { dropHarness(owner); h = { key, ropes: ends.map((e) => newRope(e.kind)), model: null, gpu: null }; _harness.set(owner, h); }
+      if (!h || h.key !== key) { dropHarness(owner); h = { key, ropes: ends.map((e) => newRope(e.kind)), model: null, gpu: null, restAt: null, stillS: 0 }; _harness.set(owner, h); }
+      // HARNESS-REST: still since restAt for HARNESS_REST_S, and drawn - nothing to step, lay or send
+      if (harnessStill(ends, h.restAt)) h.stillS += Math.max(0, dt);
+      else { h.restAt = ends.map((e) => ({ a: [...e.a], b: [...e.b], g: e.g })); h.stillS = 0; }
+      if (h.stillS >= HARNESS_REST_S && (h.gpu || !renderer?.createMesh)) continue;
       ends.forEach((e, i) => stepRope(h.ropes[i], e.a, e.b, dt, e.g));
       if (!renderer?.createMesh) continue;
       const model = h.model ?? (h.model = tubeModel(h.ropes.length, WAGON_ARCHIVE, WAGON_TEX.harness));
