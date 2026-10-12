@@ -20,7 +20,7 @@ import { createPortalGates } from './portalGates.js'; import { PORTAL_TEXT, PORT
 import { createPartyMapSender, hasSharedCartography } from '../systems/partyMap.js';   // PARTY-MAP
 import { liveDungeonAutomapKey, getDungeonAutomap, mergePartyAutomap } from '../systems/automap.js';   // PARTY-MAP: the live dungeon's record, and a mate's rows merged into it
 import { FlatAnimator, armFlatAnim } from '../render/flatAnimation.js';   // FA1: the flats that move
-import { WORLD_FRAME } from '../render/renderer.js';   // AUDIT-EL F5
+import { WORLD_FRAME, holdBlendedBillboards } from '../render/renderer.js';   // AUDIT-EL F5; GRASS-PORTAL
 import { windmillsOn } from '../world/windmills.js';   // WM3: the Windmills pack's switch
 import { openWodWorld, wodOn, wodLightColors } from '../world/worldOfDaggerfall.js';   // WOD2: World of Daggerfall's loader, one per page
 import { wodLightPosition, wodLightProperties, isWodShrub, WOD_ROCK_SITES, rockSeatDrop } from '../world/wodLocationObjects.js'; import { wodRockUvs } from '../world/wodRockUv.js';   // WOD2: the mod's own AddLight; WOD-BUSH: its shrub, stood on the ground (ROCK-SUNK: never a rock field's boulder); FB1001-WODROCK: a stretched rock piece's faces at its pebble's texel density (on this line, so no cite below it moves)
@@ -2917,6 +2917,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       _livingTowns.set(p.y * 1000 + p.x, {
         mapId: md.mapId >>> 0, name: String(loc.name ?? ''), px: p.x, py: p.y, type: md.locationType, region: loc.regionIndex,
         people: getWorldClimateSettings(maps.getClimateIndex(p.x, p.y))?.people, blocks: Math.max(1, (ed?.width ?? 1) * (ed?.height ?? 1)),
+        w: Math.max(1, ed?.width ?? 1), h: Math.max(1, ed?.height ?? 1),   // WALL-WAY: its grid's own shape - a road party leaves it past its walls
         port: hasPort(md.mapId),
       });
     }
@@ -5890,9 +5891,10 @@ export async function bootWorld(canvas, renderer, params, status) {
             pixelBuildingKeys.add(homeKey);
             // its own place (rmbLayout.js recordAt) and the box round its models: its yard's frame and footprint
             const at = Array.isArray(placed.recordAt) ? [locLocal[0] + b.originX + placed.recordAt[0], locLocal[1] + placed.recordAt[1], locLocal[2] + b.originZ + placed.recordAt[2]] : null;
+            const bd = b.dfBlock?.rmbBlock?.fldHeader?.buildingDataList?.[placed.recordIndex] ?? null;   // YARD-LINE: whether it could hold a lot of its own
             const rects = footRectsAt(modelFeetOf(placed.modelIdNum, cpu), local);   // FB1009 HOME-FOOT: the ground its faces cover, never its box
             const f = pixelHomeFrames.get(homeKey);
-            if (!f && at) pixelHomeFrames.set(homeKey, { at, box: [...box], rects });
+            if (!f && at) pixelHomeFrames.set(homeKey, { at, box: [...box], rects, type: bd?.buildingType ?? null, faction: bd?.factionId ?? 0 });
             else if (f) { for (let i = 0; i < 3; i++) { f.box[i] = Math.min(f.box[i], box[i]); f.box[i + 3] = Math.max(f.box[i + 3], box[i + 3]); } f.rects.push(...rects); }
           }
           const homeRow = homeKey != null ? townHomes?.get(homeKey) ?? null : null;
@@ -35204,6 +35206,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     cityGuards.drawBodies(canvas, proj, view, mwv.eye, foeDt);   // MWNPC6: and the watch's, the same way
     exteriorFoes.drawBodies(canvas, proj, view, mwv.eye, foeDt);   // MWNPC5c: the foes in their bodies - what batches() offered this frame, before the billboards draw (cast-only where a body stands)
     if (deepWaters && livePersonBatches.length) dwFlagColumnFlats(livePersonBatches);   // DW-F: the foes, the corpses and the piles in a carved sea take the column's share
+    holdBlendedBillboards(livePersonBatches, lateFlats);   // GRASS-PORTAL: drawn after the grass (drawLateFlats)
     if (livePersonBatches.length) renderer.drawBillboards(livePersonBatches, camRight, bbUp);
     if (castBatches.length) renderer.recordShadowBillboards(castBatches, camRight, UP_Y);   // SHADOW-REACH: the flats the view cull rejected, for the maps alone (the wind is the frame's, set above)
     if (deepWaters) drawDeepWatersSurfaces(now);   // DW-C: the sea's surface - the mod's Transparent queue, after every opaque thing and every cut-out flat
@@ -35490,6 +35493,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     }
     };
     frameHaze();
+    drawLateFlats(camRight, bbUp);   // GRASS-PORTAL: the blended flats, over the grass behind them
     drawFalling();   // RAIN-OVER-GRASS: after the grass and the banners, before the translucent bodies and the fires
     exteriorFoes.drawVeiledBodies();   // MWNPC5c: the concealed foes' bodies, beside the peers'
     cityGuards.drawVeiledBodies();   // MWNPC6: and the watch's
@@ -35964,5 +35968,15 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     frameEnd();   // PERF1
     requestAnimationFrame(frame);
   }
+  // GRASS-PORTAL (FIELD BUGS 2026-10-12b, "Grass renders through portals"): the street's blended flats - a portal's
+  // vortex, a veiled foe, a ghost - write no depth, so the grass drawn after them painted every blade behind them over
+  // them. The frame holds them back from the street's billboards (holdBlendedBillboards) and draws them here after the
+  // grass, the banners and the haze, before what falls (RAIN-OVER-GRASS's law). One list, the host's (PERF-V8: no frame
+  // local), emptied by its draw - made before the frame first runs, below.
+  const lateFlats = [];
+  const drawLateFlats = (camRight, camUp) => {
+    if (lateFlats.length) renderer.drawBillboards(lateFlats, camRight, camUp);
+    lateFlats.length = 0;
+  };
   requestAnimationFrame(frame);
 }

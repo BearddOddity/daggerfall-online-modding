@@ -803,6 +803,7 @@ uniform float uEliteTime;  // ELITE FOES: seconds, for the embers
 uniform vec4 uGlint;  // TELL2: a wind-up's glint - rgb the blow's colour, a its strength (0 off; batch.glint)
 uniform vec4 uDissolve;  // DISSOLVE: x the share gone (0 whole, 1 gone), yzw the edge's colour (systems/dissolve.js)
 uniform vec3 uBatchTint;  // ARENA5: the batch's own wash (batch.tint), white for every flat but the arena crowd's half in a banner's colours
+uniform float uBatchDye;  // VEIN-HUE: how far the wash is the flat's colour rather than a multiply (batch.dye, 0..1; 0 for every flat but an ore's)
 uniform vec3 uTint; // time-of-day: ambient (+ the moon's half); VC4: the sun's half rides uBBSun so a cloud's shadow can take it
 uniform vec3 uBBSun;
 uniform int uPointCount;
@@ -882,7 +883,11 @@ ${LPT_FS_TEXEL}  // Spectral flats keep their 180-alpha translucency (blended pa
   vec3 lit = albedo * (uTint + uBBSun * cloudShadowAt(vBBWorld) + pointAcc + iAtt * iAtt * uIndirectColor) + emission;   // VC4
   // ARENA5: the batch's wash, multiplied in after both maps were sampled above the cut (SPRITE-GRAD's law) and once the
   // flat is lit - white leaves every other flat as it was
+  float undyed = dot(lit, vec3(0.299, 0.587, 0.114));   // VEIN-HUE: the lit flat's brightness, before its wash
   lit *= uBatchTint;
+  // VEIN-HUE (FIELD BUGS 2026-10-12b): a dyed batch's wash is its colour - the flat's brightness in the wash's hue - where
+  // a multiply keeps the picture's own hue (a brown lump times a blue wash is a brown lump)
+  if (uBatchDye > 0.0) lit = mix(lit, undyed * uBatchTint, uBatchDye);
   // ECV1: a shade is its silhouette - the lit colour pulled to black;
   // every concealed draw takes the visual's opacity over the texel's.
   // AUDIT 65 PN-3: SHADE_DARK itself (keep it a decimal - GLSL will not
@@ -1339,6 +1344,24 @@ import { TextureFile } from '../formats/textureFile.js';
 const isSpectralArchive = TextureFile.isSpectralArchive;   // single source (the formats layer owns the archive list)
 
 export const CHAR_PIXEL = 9;
+
+/** GRASS-PORTAL (FIELD BUGS 2026-10-12b): WHETHER A BILLBOARD BATCH IS DRAWN IN drawBillboards' BLENDED PHASE - concealed
+ *  (a portal's vortex, a veiled foe) or spectral, and drawn (never cast-only). Blended, it writes no depth: whatever a
+ *  later pass draws behind it paints over it. The phase's own test, and the one a host asks to hold such a batch back. */
+export const billboardBlended = (b) => !!b && !b.castOnly && !!(b.conceal || isSpectralArchive(b.archive));
+/** GRASS-PORTAL: the blended batches taken out of `batches` (in place, the rest kept in order) into `out` - emptied
+ *  first, so a frame that never reached its late draw leaves nothing for the next - to be drawn in a drawBillboards of
+ *  their own, after the passes that would otherwise paint over them (the grass). */
+export function holdBlendedBillboards(batches, out = []) {
+  out.length = 0;
+  let keep = 0;
+  for (let i = 0; i < batches.length; i++) {
+    const b = batches[i];
+    if (billboardBlended(b)) out.push(b); else batches[keep++] = b;
+  }
+  batches.length = keep;
+  return out;
+}
 
 /** The shared character-sprite render target's fixed edge (the pass
  *  clamps pw/ph to this; sprites render into a viewport sub-rect). */
@@ -2420,6 +2443,7 @@ export class Renderer {
     this.bbUElitePad = gl.getUniformLocation(this.bbProgram, 'uElitePad');   // ELITE FOES: the widened quad
     this.bbUTint = gl.getUniformLocation(this.bbProgram, 'uTint');
     this.bbUBatchTint = gl.getUniformLocation(this.bbProgram, 'uBatchTint');   // ARENA5: a batch's own wash
+    this.bbUBatchDye = gl.getUniformLocation(this.bbProgram, 'uBatchDye');   // VEIN-HUE: and how far it is the flat's colour
     this.bbUSun = gl.getUniformLocation(this.bbProgram, 'uBBSun');   // VC4
     this.bbUPointCount = gl.getUniformLocation(this.bbProgram, 'uPointCount');
     this.bbUPointLights = gl.getUniformLocation(this.bbProgram, 'uPointLights');
@@ -7669,6 +7693,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
       gl.uniform4f(this.bbUGlint, 0, 0, 0, 0);   // TELL2: no glint until a winding-up foe's batch says otherwise
       this._bbGlintOn = false;
       gl.uniform3f(this.bbUBatchTint, 1, 1, 1);   // ARENA5: every flat unwashed until a washed batch says otherwise
+      gl.uniform1f(this.bbUBatchDye, 0);   // VEIN-HUE: and undyed
       this._bbTintOn = false;
       // LPT1: every flat a flat, and none giving way, until a far picture's batch or the trees say otherwise
       gl.uniform1f((this.bbLpt ?? NO_LPT_LOCS).uMesh, 0);   // LPT1: flat mode, the handover off (a test's stub set declares neither)
@@ -7768,7 +7793,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
       const dv = b.dissolve;   // DISSOLVE: a body burning away or gathering through a portal ([share, r, g, b]); every other batch whole
       if (dv || this._bbDissolveOn) { gl.uniform4f(this.bbUDissolve, dv ? dv[0] : 0, dv ? dv[1] : 0, dv ? dv[2] : 0, dv ? dv[3] : 0); this._bbDissolveOn = !!dv; }
       const tn = b.tint;   // ARENA5: a batch's wash ([r, g, b]); every other batch white - sent when a washed batch comes or goes
-      if (tn || this._bbTintOn) { gl.uniform3f(this.bbUBatchTint, tn ? tn[0] : 1, tn ? tn[1] : 1, tn ? tn[2] : 1); this._bbTintOn = !!tn; }
+      if (tn || this._bbTintOn) { gl.uniform3f(this.bbUBatchTint, tn ? tn[0] : 1, tn ? tn[1] : 1, tn ? tn[2] : 1); gl.uniform1f(this.bbUBatchDye, tn ? b.dye ?? 0 : 0); this._bbTintOn = !!tn; }   // VEIN-HUE: its dye with it
       const lc = b.lptProto && this._lpt?.cut.has(b.lptProto) ? 1 : 0;   // LPT1: a far picture gives way to its 3D tree near the eye - sent when that changes between batches
       if (lc !== this._bbLptCutOn) { this._uploadLptCut(lc); this._bbLptCutOn = lc; }
       this._bindVao(b.vao);
@@ -7805,7 +7830,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
       if (lastGlow !== 0) { gl.uniform1f(this.bbUEliteGlow, 0); lastGlow = 0; }
       if (this._bbPadOn) { gl.uniform4f(this.bbUElitePad, 0, 0, 0, 0); this._bbPadOn = false; }
       if (this._bbDissolveOn) { gl.uniform4f(this.bbUDissolve, 0, 0, 0, 0); this._bbDissolveOn = false; }
-      if (this._bbTintOn) { gl.uniform3f(this.bbUBatchTint, 1, 1, 1); this._bbTintOn = false; }
+      if (this._bbTintOn) { gl.uniform3f(this.bbUBatchTint, 1, 1, 1); gl.uniform1f(this.bbUBatchDye, 0); this._bbTintOn = false; }
       if (this._bbColumnOn) { gl.uniform1f(bc.uColumnOn, 0); this._bbColumnOn = 0; }
       this._drawLowPolyTrees();
       lastKey = null; lastW = NaN; lastH = NaN; lastOx = NaN; lastOy = NaN; lastOz = NaN; lastSway = null;
@@ -7821,7 +7846,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     // shader reads only when uConceal says plain.
     let blended = null;
     for (const b of batches) {
-      if (b.castOnly || !(b.conceal || isSpectralArchive(b.archive))) continue;   // MWNPC5b: nor in the blended phase
+      if (!billboardBlended(b)) continue;   // MWNPC5b: nor in the blended phase (cast-only); GRASS-PORTAL: one test
       if (bbCull && !this._bbVisible(b)) { this.stats.bbCulled++; continue; }   // PERF-CROWD2: the ghosts and the concealed too
       (blended ??= []).push(b);
     }
