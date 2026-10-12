@@ -692,7 +692,7 @@ and its content, File.ReadAllLines' line law and all.
 missing and a trailing comma). The banks are read **once per page**, at the first name the game makes, and held until
 the page reloads - DFU reads NameGen once, in NameHelper's constructor. A generated name is a key: a static NPC's name
 is made again from its seed at every talk and compared with a quest Person's saved one (TalkManager.cs:3159,
-topicTree.js:561), so both must come from the same banks. In the port a language changes only on the front door, and
+topicTree.js:"QuestorData context"), so both must come from the same banks. In the port a language changes only on the front door, and
 leaving a game reloads the page, so once per page is DFU's once per run. A save or a party member made under other
 banks keeps its spellings (DFU does the same across an install); L10N5 is the fix. The French banks spell every human
 name as English does.

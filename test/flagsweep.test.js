@@ -163,7 +163,7 @@ test('FS1: the melee/arrow clauses are retired, and the tree contradicts them', 
   // alone, and the fixed-city host took the same three-pool swing
   // verbatim; replacing its encounter arm with four comment lines (so
   // no cite could move) left the swing as watch -> civilians with the
-  // shipped comment still claiming world.js:25626's order, green.
+  // shipped comment still claiming world.js:"rooted at the real"'s order, green.
   for (const [file, foeTargets] of [
     ['src/scenes/world.js', /foeTargets: \[\.\.\.\[\.\.\.exteriorFoes\.foes, \.\.\.cityGuards\.guards\]/],   // DUEL1: the pools, then my duel opponent's body
     ['src/scenes/exterior.js', /foeTargets: exteriorFoePool\(\)\.filter\(\(t\) => !t\.dead && t\.ai\)/],
@@ -204,7 +204,7 @@ test('FS1: the enchant ctx is MOUNTED by every host that owes it', () => {
   // createWorldModes, which passes `enchantCtx: false` on the premise
   // that an outer host owns the mount - so the dungeons and shops
   // entered from ?exterior inherited the hole. The predicate is "every
-  // host that can hold an enchanted item" (hostEnchant.js:1-2), not
+  // host that can hold an enchanted item" (hostEnchant.js:"THE HOST ENCHANT"), not
   // "the two that happen to mount it".
   const callers = SRC.filter((f) => f !== 'src/systems/enchantments.js'
     && /setDefaultEnchantCtx\(/.test(TEXT.get(f)));
@@ -230,7 +230,7 @@ test('FS1: the enchant ctx is MOUNTED by every host that owes it', () => {
   // it went on asserting "setDefaultEnchantCtx has exactly one caller
   // in the tree" - and "the flag now exists where the work does",
   // pointing at a flag this wave retired - after the second mount
-  // shipped. dungeonContext.js:2538 and hostEnchant.js:8 both say
+  // shipped. dungeonContext.js:"PlayerEntity.cs:396-400" and hostEnchant.js:"?dungeon host mounted" both say
   // "had"; the sentence a reader meets first must too.
   assert.equal(/setDefaultEnchantCtx has\n\s*\/\/ exactly one caller/.test(world), false,
     'the E2 header states the one-caller claim as HISTORY, not as present fact');

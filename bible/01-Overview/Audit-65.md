@@ -156,7 +156,7 @@ half the lanes' own mutation tallies could not see.
   player's slot from a stale array - the restored sky was gone by hour
   five. `WeatherManager.cs:538-542`'s else arm is not "at boot", it is
   "in case of loaded savegame", every time. One line at
-  `weatherSim.js:521`; no envelope change. The CLK4 pin stayed green
+  `weatherSim.js:"_climateWeathersValid = false;   //"`; no envelope change. The CLK4 pin stayed green
   under this bug for a whole audit because it opens with
   `resetWeatherSim()` - a restore pin that starts from a fresh module
   tests the boot load only, and the boot load was never the broken
@@ -360,7 +360,7 @@ half the lanes' own mutation tallies could not see.
   permanent `entity.skills` array while the hand-to-hand damage row four
   lines below it (AUDIT 63 F34) already read live, so a lycanthrope read
   `Hand-to-Hand 30%` on one line and a damage range computed from 60 on
-  the next. `charsheet.js:818` and `enhancedCharSheet.js:150` read
+  the next. `charsheet.js:"colour. */"` and `enhancedCharSheet.js:"career: i < 3,"` read
   `skillValue` now, which moves the enhanced skin's meter with its
   number (`enhancedMenu.js:3145-3146`) - correctly, since the attribute
   bars beside it were already live. The art-less `_drawFallback` pane
@@ -499,7 +499,7 @@ half the lanes' own mutation tallies could not see.
   purpose and is asserted bare: `PlayerMotor.cs:296-306` does not zero
   `moveDirection`, so a write there would be the divergence. The
   finding's headline fatigue-band consequence was FALSE and is not
-  repeated - `worldTick.js:788-789` is climb-first, matching
+  repeated - `worldTick.js:"tallyMovementSkill(entity, SKILLS.Running)".."}"` is climb-first, matching
   `PlayerEntity.cs:406-408`.
 - *Review round:* fixup. The "without the bob" half of the `feetAt`
   pin was vacuous - the fixture minted no bob, so both bob mutants
@@ -568,7 +568,7 @@ half the lanes' own mutation tallies could not see.
   SL-2 closes the save half only.
 - **SL-3.** `entity.pickpocketAttempted` is recorded in its own module
   header as living on the live foe and dying with the pool "as DFU's
-  does" (`player/mobileEnemyActivate.js:44-47`), and it does for the
+  does" (`player/mobileEnemyActivate.js:"The flag is per-foe"`), and it does for the
   re-minting pools - `exteriorFoes.js`'s `restoreWorld` goes through
   `spawnFoe`, and the interior pool is the same factory.
   `dungeonContext.applyWorld` patches the LIVE foes in place, so a
@@ -766,7 +766,7 @@ finding closed under the audit.
   CV-2): the enemy prefab's query radius is 0.40; the recorded 0.45
   adds `m_SkinWidth`, which Unity does not. Left standing because AUDIT
   62's record pins it; a separate finding against that record.
-- **`biography.js:206/:270` cite `BiogFile.cs` one line early** (cites)
+- **`biography.js:"(IMacroContextProvider)this"/biography.js:"for BiogFile.cs:212's"` cite `BiogFile.cs` one line early** (cites)
   - consistent drift, and the sentence between them says 'one line
   after' where the gap is three; a decision for the biography slice.
 - **`townTalk.js`'s person arm takes no collider** (activation, found

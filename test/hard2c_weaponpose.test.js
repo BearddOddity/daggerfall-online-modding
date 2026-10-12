@@ -12,7 +12,7 @@
 // bare fists. By the time it was found the two restore lines had
 // drifted six and thirteen lines apart inside their own hosts, and the
 // comment that pointed between them cited line numbers that no longer
-// existed (worldModes.js named `world.js:11921` and `dungeonContext
+// existed (worldModes.js named `world.js:"live pile (the reference's sweep)"` and `dungeonContext
 // .js:5451` for lines that live at :4418 and :5457).
 //
 // HARD2's three rules, and how this slice meets them:
@@ -55,10 +55,10 @@ const RIG = [{ sheathed: true, usingRightHand: true }, { sheathed: true, usingRi
   { sheathed: false, usingRightHand: true }, { sheathed: false, usingRightHand: false }];
 
 test('HARD2c: the WRITE differential - the old inline arithmetic, carried verbatim', () => {
-  // worldModes.js:11645 and dungeonContext.js:7975, character for
+  // worldModes.js:"A10: PlayerEnterExit's" and dungeonContext.js:"(PlayerEntity.cs:425-430 is the entity update)", character for
   // character as they stood before this slice.
   const oldCompose = (w) => ({ weaponDrawn: !w.sheathed, usingRightHand: w.usingRightHand });
-  // world.js:11658's own, which is the MERGE - `wp` is the mode host's
+  // world.js:"const interiorPools"'s own, which is the MERGE - `wp` is the mode host's
   // answer for the rig actually drawn, taken PER FIELD.
   const oldMerge = (wp, rig) => ({
     weaponDrawn: wp?.weaponDrawn ?? !rig.sheathed,
@@ -81,8 +81,8 @@ test('HARD2c: the WRITE differential - the old inline arithmetic, carried verbat
 });
 
 test('HARD2c: the RESTORE differential - all three copies were the same law', () => {
-  // world.js:12005/:12040, dungeonContext.js:8029/:8029 and
-  // worldModes.js:11643-11644 - three copies, one law, carried verbatim.
+  // world.js:"Immersive Footsteps' ModCompatibilityWarning_OnLoadSave."/world.js:"which feeds fpArm's", dungeonContext.js:"WHERE the dungeon"/dungeonContext.js:"WHERE the dungeon" and
+  // worldModes.js:"worldContext: WORLD_CONTEXT.Exterior" - three copies, one law, carried verbatim.
   const oldApply = (w, pose) => {
     if (!pose) return;
     if (pose.weaponDrawn != null) w.sheathed = !pose.weaponDrawn;

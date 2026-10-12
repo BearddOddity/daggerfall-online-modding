@@ -168,7 +168,7 @@ test('F050: every dungeon foe gets its spell list at BUILD time (EnemyEntity.cs:
 // =====================================================================
 
 test('F051: the ?dungeon fly-cam is gated on the OVERLAY, not on the imported input helper', () => {
-  // `held` at dungeon.js:54 is the input helper - a function, always
+  // `held` at dungeon.js:"RAY_DISTANCE, tooFarAwayText" is the input helper - a function, always
   // truthy - so `} else if (!held) {` was a branch that could not run:
   // with ?dungeon&fly or ?shot, WASD never moved the camera. The gate
   // was a local overlay boolean once, renamed overlayHeld at :353.
@@ -212,7 +212,7 @@ test('F218: applyWorld destroys the live foes past the snapshot (SerializableSta
   // that by construction (exteriorFoes.restoreWorld goes through
   // spawnFoe); this host patches in place, so it has to lower the latch
   // by hand - or a failed pickpocket in a dungeon could never be
-  // retried, falsifying the law mobileEnemyActivate.js:44-47 states in
+  // retried, falsifying the law mobileEnemyActivate.js:"The flag is per-foe" states in
   // its own header. A PRE-PASS over the whole live pool, because the
   // per-record loop only ever visits the indices the record carries.
   assert.match(XF, /spawnFoe\(sf\.mobileType, \[lx, sf\.y \+ yOffset, lz\]/, 'the exterior pool RE-MINTS on restore, so its latch dies with the pool');

@@ -6,8 +6,8 @@
 // darkness magery have been mintable since chargen and read by
 // nothing, and the enchantment conditions' inSunlight/inHolyPlace ctx
 // arms, which had stood open since E1 and are answered here: the two
-// readers below are wired into the enchant ctx at world.js:9047-9048
-// off the host seam that worldModes.js:1320 and dungeonContext.js:3031
+// readers below are wired into the enchant ctx at world.js:"V2c filled inSunlight/inHolyPlace"
+// off the host seam that worldModes.js:"restoreFatigue: (n)" and dungeonContext.js:"The window fires"
 // register (bible/01-Overview/Port-Ledger.md:777 strikes the pair
 // through as closed, V2c 2026-08-27).
 //
@@ -79,7 +79,7 @@ const bitfield = (career) => career?.abilityFlagsAndSpellPointsBitfield ?? 0;
 export const careerSunDamage = (career) => !!(bitfield(career) & SPECIAL_ABILITY_BITS.sunDamage);
 export const careerHolyDamage = (career) => !!(bitfield(career) & SPECIAL_ABILITY_BITS.holyDamage);
 /** SetLightMagery at bits 6-7, SetDarknessMagery at bits 8-9
- *  (specialAdvantages.js:271-282's own writes): 1 = unable, 2 =
+ *  (specialAdvantages.js:"const v = secondary === 'unableToUseMagicInDaylight'"'s own writes): 1 = unable, 2 =
  *  reduced, 0 = none. */
 export const careerLightMagery = (career) => (bitfield(career) >> 6) & 3;
 export const careerDarknessMagery = (career) => (bitfield(career) >> 8) & 3;

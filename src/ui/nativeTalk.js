@@ -41,7 +41,7 @@
 // row draws in ListBox's selectedTextColor with no shadow.
 // ET1-AUDIT F1: THE KEYBOARD IS DFU'S. This header used to say "DFU
 // has no keyboard here", and it does: DialogShortcuts.txt binds all
-// twelve of this window's buttons (systems/dialogShortcuts.js:342-347
+// twelve of this window's buttons (systems/dialogShortcuts.js:"TalkTellMeAbout: 'A',"
 // - A Tell me about, W Where is, L/P/T/J the four categories, O ask,
 // G goodbye, C copy, F1/F2/F3 the tones), and input() walks them
 // FIRST through firstHotkey, landing on press(name) like a click. The
@@ -320,7 +320,7 @@ export function talkStripSource(name, arts = { base: _art, categories: _categori
 // The two archives are DaggerfallTalkWindow's own constants (:37-38):
 // CommonFaces = TFAC00I0.RCI (mobile NPCs and common static NPCs),
 // SpecialFaces = FACES.CIF (story and special NPCs). Both are RCI
-// grids of 64x64 records in this port's reader (cifRciFile.js:33-41),
+// grids of 64x64 records in this port's reader (cifRciFile.js:"switch (filename)"),
 // which is the panel's size (:158-159) - no fit is involved.
 //
 // RECORDED DEPARTURE (async art), the same one hudEscortFaces.js
@@ -505,7 +505,7 @@ export class NativeTalkWindow {
   /** SetListboxTopics' tail (:893-905): a freshly filled list SELECTS
    *  its first row - index 1 when row 0 is the NavigationBack
    *  "previous" row, which this port's flattened lists never carry
-   *  (treeCategories drops them, townTalk.js:806) - and SelectIndex
+   *  (treeCategories drops them, townTalk.js:"host with no talk engine mounted -") - and SelectIndex
    *  (ListBox.cs:761-770) raises OnSelectItem, so the player-says
    *  label is filled before the player clicks anything.
    *
@@ -700,7 +700,7 @@ export class NativeTalkWindow {
     // sentence the player-says panel is showing. The port re-ran
     // _updateQuestion here unconditionally, and GetQuestionText is
     // ExpandRandomTextRecord - a fresh RANDOM variant of 7212/7225 per
-    // call (systems/answerPipeline.js -> talkMacros.js:374-378) - so
+    // call (systems/answerPipeline.js -> talkMacros.js:"ExpandRandomTextRecord (:3580-3587),") - so
     // the conversation recorded a different sentence from the one on
     // screen. _selectIndex IS that guarded handler.
     this._selectIndex(idx);
@@ -778,11 +778,11 @@ export class NativeTalkWindow {
    *  in SORTED index order, with an EMPTY token inserted wherever the
    *  run is broken (`if (idx - prev != 1 && prev > -1)`, :307-308) -
    *  which PlayerNotebook.AddNote turns into a line break
-   *  (notebook.js:102). The port keeps ONE conversation entry per Q or
+   *  (notebook.js:"---- notes ----"). The port keeps ONE conversation entry per Q or
    *  A, exactly one ListBox item each, so the indexes map 1:1 and the
    *  text is the entry's own UNWRAPPED text, not the drawn lines.
    *  AddNote's own `texts.Count > 0` guard (PlayerNotebook.cs:89) is
-   *  already in notebook.js:100, so the call is unconditional. */
+   *  already in notebook.js:"this.hiddenQuests = []", so the call is unconditional. */
   _close() {
     this.done = true;
     const tokens = [];
@@ -899,7 +899,7 @@ export class NativeTalkWindow {
       case 'whereIs': audio.playOneShot(SOUND.ButtonClick, 1); this._talkOption = 'whereIs'; this._reopenCategory(); return true;
       // B5-6: the four pages are live at :313-327 - tellMeAbout, then
       // people/things/work behind the whereIs gate - with three of the
-      // hooks supplied at scenes/townTalk.js:750-752 and Work's OKAY
+      // hooks supplied at scenes/townTalk.js:"if (!r.success) onCrime?.()" and Work's OKAY
       // question shipped alongside them (_askWork :293, ButtonOkay's
       // fake Work ListItem at DaggerfallTalkWindow.cs:1534-1543). Each
       // still falls back to consuming the press when its hook is absent
@@ -950,8 +950,8 @@ export class NativeTalkWindow {
   /** Pointer path (phone taps + mouse): virtual-space hit rects.
    *  AUDIT 65 UI-1: the third and fourth slots are the HOST's, not
    *  this window's. Every overlay slot dispatches
-   *  `click(vx, vy, right, middle)` - townTalk.js:1266,
-   *  worldModes.js:10510, dungeonContext.js:8377 - so the clock that
+   *  `click(vx, vy, right, middle)` - townTalk.js:"else overlay.click?.(v[0], v[1], e.button === 2, e.button === 1)",
+   *  worldModes.js:"return handled;", dungeonContext.js:"and the drain in" - so the clock that
    *  used to sit in the fourth arrived as `e.button === 1`, a boolean,
    *  and `false ?? Date.now()` kept the `false`: every second click in
    *  the topic list picked. The THIRD slot is really read - it is the

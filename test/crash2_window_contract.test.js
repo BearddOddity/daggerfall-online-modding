@@ -17,12 +17,12 @@
 //   F2  ITS ARM LIST WAS TYPED BY HAND, and wrong in both directions.
 //       It demanded `close`, which NO host has ever called on a slot
 //       (pauseDoor does not even carry it, and passed only because it
-//       was skipped), and omitted `tick`, which interior.js:405 calls
+//       was skipped), and omitted `tick`, which interior.js:"if (overlay) overlay.draw" calls
 //       unguarded every frame. The door list derived; the arms did not.
 //
 //   F3  IT ASSUMED THE POPULATION WAS `ui/*Door.js`. It is not: twelve
 //       window CLASSES are constructed straight into a slot, and
-//       townTalk.js:1227 paints every COVERED window too
+//       townTalk.js:"windows.eachPaintedBeneath" paints every COVERED window too
 //       (`eachPaintedBeneath((w) => w.draw(...))` - every covered window but under a
 //       death screen, AUDIT RISE-REST F3), so depth is in the
 //       contract as well as the top.

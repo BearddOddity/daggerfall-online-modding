@@ -44,13 +44,13 @@
 // as the computed remote target, the 750kg gates, the dungeon exit
 // rule); Use mode, the 1016 info text and the IsLightSource equip
 // branch at U25 (AUDIT 23 trimmed that list). The LETTER OF CREDIT
-// went last and whole: minted at systems/inventory.js:69
+// went last and whole: minted at systems/inventory.js:"DaggerfallInventoryWindow.AddLocalItem"
 // (DaggerfallTradeWindow.cs:1044-1048), summed by creditAmount at
-// systems/court.js:260 (ItemCollection.GetCreditAmount, ItemCollection
+// systems/court.js:"if (people)" (ItemCollection.GetCreditAmount, ItemCollection
 // .cs:108-118), spent letters-before-coins with the shortfall returned
-// by deductGold at court.js:302 (DeductGoldAmount, PlayerEntity.cs
+// by deductGold at court.js:"training, the tavern's" (DeductGoldAmount, PlayerEntity.cs
 // :1324-1354), banked at systems/banking.js:731/:749, and described by
-// the 1007 text at systems/itemInfo.js:108. Nothing was ever owed at
+// the 1007 text at systems/itemInfo.js:"if (setting === 3)".."return false;". Nothing was ever owed at
 // THIS surface anyway - DaggerfallInventoryWindow.cs has no
 // letter-of-credit arm at all.
 

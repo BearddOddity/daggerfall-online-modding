@@ -14,7 +14,7 @@
 // - so a level-up point could be spent from the keyboard and never
 // taken back, under a screen that prints '+/- assign'. StatsRollout.cs
 // :255's down-spinner is the door that was unreachable. The 'reroll'
-// half had no workaround at all: only ui/chargenArt.js:1486's mouse
+// half had no workaround at all: only ui/chargenArt.js:"if (inRect(RECTS.reroll))"'s mouse
 // rect reached this.reroll(), while the screen drew 'R reroll'.
 //
 // The branches are NOT reordered - the table ahead of the class would

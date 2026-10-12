@@ -2414,13 +2414,13 @@ beside them. Then the same shape turned up everywhere else:
 
 | host | list |
 |---|---|
-| `dungeonContext.js:6869` | the mobiles, the drops, the spells |
-| `worldModes.js:8806` | the dungeon's flats, camps, torches and peers |
-| `worldModes.js:9010` | the interior's flats and peers |
-| `worldModes.js:9016-9084` | blood, torches, drops, foes, guards - **five separate uncut calls** |
-| `exterior.js:5442`, `world.js:25295` | the spell missiles |
-| `exterior.js:5519` | the fixed city's townspeople |
-| `interior.js:387`, `dungeon.js:1112` | the flats, the camps, the torches |
+| `dungeonContext.js:"only the draw is"` | the mobiles, the drops, the spells |
+| `worldModes.js:"mountMachineryChild(r.parent, r.child, r.state.angle)"` | the dungeon's flats, camps, torches and peers |
+| `worldModes.js:"EVERY RANGED WEAPON"` | the interior's flats and peers |
+| `worldModes.js:"eyeDir(), { fromPlayer"` | blood, torches, drops, foes, guards - **five separate uncut calls** |
+| `exterior.js:"sky, which is the"`, `world.js:"state.pixelTranslation(farRing.baseX, farRing.baseY, _ringOrigin)"` | the spell missiles |
+| `exterior.js:"personBatches.push(batch)"` | the fixed city's townspeople |
+| `interior.js:"ctx.flatAnims.tick"`, `dungeon.js:"ctx.flatAnims.tick"` | the flats, the camps, the torches |
 
 Seven call sites, and an eighth waiting to be written next year. **Fixing
 them one at a time is how this bug got to be in eight places.** The test

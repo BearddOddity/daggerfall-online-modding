@@ -45,7 +45,7 @@
 // reload. Classic works that way because classic is a DOS program with
 // a fixed 320x200 screen. Neither reason survives here.
 //
-// This is ONE screen, under BOTH skins (main.js:135-260, FD1: the
+// This is ONE screen, under BOTH skins (main.js:"── THE FRONT DOOR", FD1: the
 // launcher and its settings window are deleted; the classic rail is
 // Begin, which leads into the splash and PICK03I0 exactly as before).
 // Every destination is a press away from every other, settings
@@ -868,7 +868,7 @@ function paneContinue(body) {
 // settings, because they are questions about the game you are about to
 // start and nowhere else. StartInDungeon in particular is the answer
 // to "do I begin in Privateer's Hold" - a new-game question wearing a
-// settings key's clothes (systems/settings.js:94-99).
+// settings key's clothes (systems/settings.js:"BG1: ShopQualityPresentation.").
 function paneNew(body) {
   const c = el('div', 'card');
   c.append(el('h3', null, t('menu.new.title', 'A new character')));
@@ -1300,7 +1300,7 @@ function paneLoad(body) {
     actions: [
       // NO CONFIRM ON LOAD, in either mode. It discards unsaved play,
       // which is the shape AUDIT F3/F4 made confirm - but classic's
-      // own pause window loads on one press (pauseWindow.js:347-349)
+      // own pause window loads on one press (pauseWindow.js:"exterior host, whose".."this._closeWith();")
       // and so does F11, and inventing a prompt on exactly one of the
       // port's three load doors is a divergence, not a safety net.
       { label: localizedText('loadButton', 'Load'), primary: true, disabled: !canLoad, onClick: () => { _pickedSaveKey = save.key; onAction('load'); } },   // L10N3d: the save window's own buttons (DaggerfallUnitySaveGameWindow.cs:445, :256)
@@ -1393,7 +1393,7 @@ function transferCard(count) {
 
 // ── SAVE GAME (pause only) ───────────────────────────────────────
 // U51. Classic's SAVE button closes the window and then writes
-// (pauseWindow.js:320-322, `this._closeWith(); ... this.hooks.quickSave?.()`),
+// (pauseWindow.js:"window, so it relocks".."this._closeWith();", `this._closeWith(); ... this.hooks.quickSave?.()`),
 // and this does the same for a reason that is not only parity: the
 // port answers a write with a HUD LINE, and this screen is a fixed
 // opaque div over the whole canvas, so a save that left the door open
@@ -1466,7 +1466,7 @@ function paneSave(body) {
 
 // ── EXIT (pause only) ────────────────────────────────────────────
 // U51. Classic confirms on TEXT.RSC 1069 and then posts dfuiExitGame
-// (pauseWindow.js:224-227); in a browser Application.Quit means nothing,
+// (pauseWindow.js:"if (this._saveSettings) saveSettings();   // ConfirmExitBox"); in a browser Application.Quit means nothing,
 // so the port's door out has always been the front door - the same
 // unwind chargen's cancel and the death sequence use (Ledger A).
 //
@@ -1793,7 +1793,7 @@ function write(key, next) {
 }
 
 // ── MODS ─────────────────────────────────────────────────────────
-// There is NO mod system (Ledger C, Not planned - and settings.js:170
+// There is NO mod system (Ledger C, Not planned - and settings.js:"UI4: the item info"
 // blocks four keys on exactly that ground). The section still exists,
 // because Mac's call was to set the menus up now, and because a rail
 // that quietly omits mods teaches the player they are impossible.
@@ -3781,7 +3781,7 @@ const STATS_SECTIONS = Object.freeze([
   ['effects', 'Effects'],   // BUFF-END: the spells on you, and an End on the ones that are yours to end
 ]);
 // The five NAMED social groups getReactionToPlayer reads
-// (formats/factionFile.js:23-27; talk.js seeds the array) - the enum
+// (formats/factionFile.js:"export const SOCIAL_GROUPS"; talk.js seeds the array) - the enum
 // slots past Underworld are DFU's own placeholders and stay unlisted.
 const SOCIAL_GROUP_NAMES = Object.freeze(['Commoners', 'Merchants', 'Scholars', 'Nobility', 'Underworld']);
 /** L10N4: the five groups' names as DFU keys them (Internal_Strings commoners..underworld), in the player's language. */
@@ -4295,7 +4295,7 @@ function armQuestTimer(span, key) {
 }
 
 /** The finished-quest header the notebook files:
- *  '<name> completed|ended at <date>:' (notebook.js:191-225). The name
+ *  '<name> completed|ended at <date>:' (notebook.js:"const live = new"). The name
  *  and the verdict come back out of it; a headerless overflow entry
  *  (the notebook's own kept quirk) reads as a continuation. */
 
@@ -4403,7 +4403,7 @@ function pauseQuests(body) {
   // The ARCHIVE is not split by kind, and that is not an oversight:
   // the notebook's filed header keeps only the display name, so the
   // questName main/side is gone by the time a quest is filed
-  // (notebook.js:191-225). Three sections is the shape the DATA has.
+  // (notebook.js:"const live = new"). Three sections is the shape the DATA has.
   const mains = active.filter((q) => q.main);
   const sides = active.filter((q) => !q.main);
   const section = (label, items, cls, first = false) => {
@@ -4981,7 +4981,7 @@ export function runEnhancedMenu(doc = document) {
   return new Promise((resolve) => {
     const menu = mountEnhancedMenu(host, {
       onAction: (action) => {
-        // SAV4 shipped the save manager (systems/saveSlots.js:366
+        // SAV4 shipped the save manager (systems/saveSlots.js:"export function deleteSave"
         // deleteSave), and this file deletes through it at :387 behind
         // an ask() confirm. Nothing routes 'delete' out here - every
         // onAction call site names its own verb and RAIL_ACTS (:162) is

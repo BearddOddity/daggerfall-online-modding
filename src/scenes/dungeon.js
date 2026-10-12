@@ -154,7 +154,7 @@ export async function bootDungeon(canvas, renderer, params, status) {
       // MAC1 J: this host's canvas, for the pause door's relock. The
       // context owns none of its own (dungeonContext.js:8002), so each
       // dungeon host hands its own in and the resume gesture carries
-      // the pointer back with it (ui/pauseDoor.js:143-167).
+      // the pointer back with it (ui/pauseDoor.js:"export function pauseMenuAct").
       relock: () => requestLook(canvas) });
 
   // U21: the menu's LOAD GAME. The context is built, so restore into
@@ -832,7 +832,7 @@ export async function bootDungeon(canvas, renderer, params, status) {
       hasReadySpell: ctx.spellArmed?.() ?? false,
       // PlayerActivate.cs:250-258's stated exception: a readied TOUCH
       // spell leaves doors reachable. rangeType 1 is ByTouch
-      // (spellcast.js:206 ClassicTargetIndexToTargetType).
+      // (spellcast.js:"ClassicTargetIndexToTargetType," ClassicTargetIndexToTargetType).
       touchSpell: (ctx.readiedSpell?.() ?? null)?.rangeType === 1,
       hudBlocked: activeMouseOverLargeHUD(),   // PlayerActivate.cs:230-236 - the bar's own click is not the world's
       paused: overlayHeld,                     // InputManager.cs:486-503 - a window holds the action itself

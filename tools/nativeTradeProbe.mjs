@@ -56,7 +56,7 @@ if (o.remote > 0) {
   o = JSON.parse(await page.evaluate(() => window.__shopOverlay()));
   // STAGE, THEN COMMIT. This probe asserted that ONE click took the
   // gold, and had been failing quietly ever since the basket landed
-  // (nativeTrade.js:13 - "a click STAGES an item and the MODE ACTION
+  // (nativeTrade.js:"a click STAGES an item and the MODE ACTION button" - "a click STAGES an item and the MODE ACTION
   // button commits the lot"). It read `basket:1, cost:4426,
   // canCommit:true, gold unchanged` and called the game broken. Found
   // by V4's playthrough probe, which had inherited the same wrong
@@ -66,7 +66,7 @@ if (o.remote > 0) {
   await click(226 + 15, 134 + 7);   // TRADE_RECTS.modeAction - the BUY button
   // ...and BUY raises the merchant's HAGGLE OFFER, a Yes/No box
   // ("I can sell for no less than N gold pieces") - ShowTradePopup's
-  // three bands, ported at systems/tradeModes.js:343. So a purchase is
+  // three bands, ported at systems/tradeModes.js:"export function getTradePrice".."case 'Buy':". So a purchase is
   // THREE gestures: stage, ask, agree.
   o = JSON.parse(await page.evaluate(() => window.__shopOverlay()));
   if (!(o.box?.buttons === 'YesNo')) { console.log('NO HAGGLE OFFER', JSON.stringify(o.box)); process.exit(1); }

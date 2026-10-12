@@ -36,7 +36,7 @@ import {
   cannotDeleteVampText, cannotDeleteWereText, deleteSpellPrompt,
   VAMPIRE_SPELL_TAG, LYCANTHROPY_SPELL_TAG, editBookSpell,
 } from './spellbookWindow.js';
-import { effectByKey } from '../systems/spellEffects.js';   // the classic book's own source (spellbookWindow.js:120)
+import { effectByKey } from '../systems/spellEffects.js';   // the classic book's own source (spellbookWindow.js:"computed from the")
 import { shownSpellName } from '../systems/loot.js';   // L10N3e: a stock spell's name in the player's language
 import { spellQuickslot, setSpellQuickslot, clearSpellQuickslot } from '../systems/quickslots.js';   // HOTSLOT: the book is where a spell is slotted
 import { TARGET_DESCRIPTIONS, ELEMENT_DESCRIPTIONS } from './spellIcons.js';
@@ -71,7 +71,7 @@ let deleting = null;   // AUDIT 39: DeleteButton's deleteSpellIndex - the row th
  * `spellEffects` hands back the effect RECORDS, not just their type -
  * every one carries `magnitudeBaseLow/High` with their per-level
  * step, `durationBase/Mod/PerLevel`, and `chanceBase/Mod/PerLevel`
- * (systems/effects.js:540-548 reads exactly these). The first draft
+ * (systems/effects.js:"X11b: CREATE ITEM (Mysticism 2,255)" reads exactly these). The first draft
  * printed the two NAMES and threw the rest away, which is the same
  * fault the chronicle's flattened date was: the data was already
  * there.
@@ -109,7 +109,7 @@ export function effectWords(effect) {
 }
 
 /** The two words the classic shows as TOOLTIPS on the target and
- *  element icons (spellbookWindow.js:417/420). This window draws no
+ *  element icons (spellbookWindow.js:"this.selectedIndex--;"/spellbookWindow.js:"selectPrevious() {".."  }"). This window draws no
  *  icons - it reads no ARENA2 - so it prints what those icons mean,
  *  which is strictly more than the classic tells you at a glance. */
 export function spellFrame(spell) {
