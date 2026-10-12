@@ -572,6 +572,49 @@ an absent key one, of the screenshot each; a file changed by hand seen past `rea
 write, a remove and a thrown write each leave the next read the disk's truth. Mutants: `tools/mutants/storecache.json`,
 6, all dead.
 
+## PERF-DYE — a horse's look is dyed a few pictures a frame
+
+*The owner's live client (2026-10-12), two minutes' travel across the overworld: 58 FPS on average, 122 frames over
+50 ms.*
+
+**Found.** 29 of those 122 frames were one thing: a horse look met on the road (a passing team, a parked one come into
+view) having its walk set dyed. COATS1 dyes a look off the bay's kept pictures, a CPU pass a picture
+(`horseCoats.js recolorHorse`), under a budget of one SET a frame (`horseCartPool.js ensureHorseLook`). The views are
+five pictures; the walk set is forty (`HORSE_VIEWS` x `HORSE_WALK_FRAMES`), some 45 ms on a desktop, in a single frame.
+The budget kept six looks from landing in one frame, and still let each one stop a frame on its own.
+
+**The fix.** The budget counts PICTURES: `HORSE_DYE_PICTURES` (5) a frame, among every look (`_dyeBudget`, refilled
+by the pool's `frame`). A look's pictures are dyed in order - its views, then its walk frames - and it counts how many
+of each are up (`up.views`, `up.walks`); a look is worn once every picture it draws is up, the bay's until then, as
+before. Five a frame is the views in one frame and the walk set over eight. A look let go (`dropLook`, past
+`HORSE_LOOKS_KEPT`) gives back exactly the pictures dyed so far, a set's first ones too.
+
+**Measured.** On the live client (0.1.8127, a town with eight horse looks in view, the window in front), a conditional
+breakpoint inside the walk set's branch alternating the shipped dye with this one, 20 s each, three times, every look
+let go every 2 s so both dye the same horses over and over (336 and 329 walk sets):
+
+| | a set a frame | `HORSE_DYE_PICTURES` a frame |
+|---|---|---|
+| frames over 50 ms | 89 | 0 |
+| frames over 33 ms | 132 | 3 |
+| 99th percentile | 54.1 ms | 20.9 ms |
+| worst frame | 288 ms | 50 ms |
+| median | 8.3 ms | 8.4 ms |
+| average | 97.2 FPS | 95.3 FPS |
+
+The same work, spread: the average holds under a load no road makes (every horse dyed again every two seconds), and
+the hitch is gone. Then four minutes' plain travel across the overworld, nothing forced, the two alternating every
+30 s: of the frames a walk set began in, 25 of 74 ran over 50 ms the old way (worst 104 ms) and 5 of 88 this way
+(worst 92 ms, other work in the same frame). The travel's other hitches are not the dye's (the professions' store
+reads, the ports' ships, the collector), and its average moved with the road, not the mode - the dye is some 3% of
+the frame time either way. A first cut of the probe, a breakpoint on every `ensureLook` call, cost 118 -> 51 FPS by itself and
+was thrown away.
+
+Pins: `test/perfdye.test.js` (4), over a real pool: never more than `HORSE_DYE_PICTURES` a frame, among two looks too;
+the views before the walk frames, each once, worn in the frame of the last; before the walk art, worn once the views
+are; a look let go halfway gives back exactly what was dyed. `coats1_horsecoats.test.js`' two pool pins count frames
+by `HORSE_DYE_PICTURES` (PIN MOVED). Mutants: `tools/mutants/perfdye.json`, 7, all dead.
+
 ## What is left, ranked
 
 Each with what was found and whether it moves the picture (those are the owner's).
