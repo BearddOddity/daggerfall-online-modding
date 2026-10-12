@@ -50,9 +50,12 @@ systems. Theres just so many systems that dont explain what they are and its ext
   Standing, Tithe, Edict, Tribute, Sellsword, the Works, Fealty and Pacts, Season and Tide - its numbers
   `net/townSeatLaw.js`'s own (`CLAIM_THRESHOLD` by tier, `CONTESTED_MARGIN`, `STANDING_START`, `STANDING_UNREST`,
   `UNREST_BONUS`, `TITHE_CAP`, `TRIBUTE_MARKS_PER_INFLUENCE`, `SEAT_LEGACY_SHARE`, `SEAT_PLEDGE_REGIONS_MAX`). All three
-  stand for a reader the standings refused or have not reached yet too (the next step alone waits on them). A fold is
+  stand for a reader the standings refused or have not reached yet too (the next step alone waits on them). Where the
+  step is to pledge here (`seatMayPledgeHere`), the pledge's own lever stands beside it, through the window's one door;
+  a pledge elsewhere names its seat, and a deadline says the time left (AUDIT PLAIN-UI U2). A fold is
   the board's `boardFold`: the reader's press on its line is their choice, kept across the tab's redraws - never the
-  `toggle` event, which a browser fires for an `open` the draw set as well (AUDIT PLAIN-UI C1, C4).
+  `toggle` event, which a browser fires for an `open` the draw set as well (AUDIT PLAIN-UI C1, C4); its line is a
+  finger's 44px with a ring of its own (U3).
 - **PLAIN-UI b, the Chapters.** HOW CHAPTERS WORK over the Work tab's chapter cards (`chapterGuide`, `CHAPTER_GUIDE_TITLE`
   in `src/ui/noticeWindow.js`), where the region keeps a chapter: what a chapter is and how one belongs to it, Merit,
   Strength (the week's mark, the fall back toward 50, a week with none, the Failing band's fall, the Rivalry's swing,
@@ -70,12 +73,15 @@ systems. Theres just so many systems that dont explain what they are and its ext
   carries on; what carries on - the estate to whoever takes the line, the blood and the hearth to a newborn alone, at
   birth (`BLOOD_MAX`, `HEARTH_MAX`, `ESTATE_SHARE`, `ESTATE_MAX`; AUDIT PLAIN-UI W2); heirlooms and remains
   (`systems/legacy/heirloom.js`); marriage and children (`systems/legacy/marriage.js`, `FRIEND_AT`); playing another
-  member; and the tree's marks. Its type a step larger: names 12px, marks 13px, chips 12px, the card's facts, kin and
-  words 14px, its heading 18px, the card 300px wide.
+  member; and the tree's marks. The tree carries a way to it ("New to the family? How it works", U8). Its type a step
+  larger: names 12px on up to two lines with the whole name on hover (U6), marks 13px, chips 12px, the card's facts,
+  kin and words 14px, its heading 18px; the card 268px beside the tree, as it was, so the tree keeps its plates (U7).
 - **PLAIN-UI d, the regard on the talk panel.** The enhanced talk panel (`src/ui/enhancedTalk.js`, ET1) shows a living
   resident's regard under their name: the standing in the Chronicle's own words (`STANDING_NAMES`: Friend, Known, Enemy,
   Hostile), a bar from -100 to +100 with its middle marked, and the number signed. A press on it says, in a line across
-  the panel's head, what the number is and what moves it (a finger has no hover; the `title` says the same to a mouse).
+  the panel's head, what the number is and what moves it (a finger has no hover; the `title` says the same to a mouse;
+  a "?" after the number says it can be pressed, U10). An Enemy or a Hostile resident refuses before any panel opens,
+  so the refusal itself says where they stand - "Mara turns away from you. (Enemy, -52)" (U11).
   The words are `regardBadge` (`src/systems/livingWorld/people.js`), off `src/systems/livingWorld/relations.js`'
   thresholds, the number taken toward nought as the standing reads it (AUDIT PLAIN-UI W6: a regard of 39.5 is Known
   +39, never +40). The card is the body's own door's - a body's `living.town` is the door it was minted with
@@ -115,6 +121,11 @@ which said they did before their doors had a card; `src/scenes/exterior.js`, the
   nowhere but in a resident's greeting and an enemy's refusal (AUDIT PLAIN-UI R1) - OPEN, as the classic skin's own
   call.
 - **DFU's own walkers and static NPCs** keep no regard (their reaction is DFU's faction law): no badge for them.
+- **Bigger screens** (AUDIT PLAIN-UI U1) are OPEN: the board stays 1040px wide, so at 1440p its 15px type is smaller
+  against the screen than the old 13px was at 1080p. The candidate is an Interface size row on MAP-SCALE's rule
+  (`src/ui/mapScale.js`: Auto the screen's height over 1080, 1 to 2) laid over the board, the pause window and the talk
+  panel - a new setting across windows, the owner's call. The pixel face's B, C and 2 reading as G, O and 8 (U5) and the
+  phone header's row for Close (U4) are older than PLAIN-UI and OPEN with it.
 - **Tracking a person** is OPEN - a design call, not a gap in words. What a player can do today is section 1's list:
   the reliable way to keep track of another player is a party (where they stand, on the world map); of a resident, the
   Chronicle's People page (their home town, when last seen). The candidates, for the owner's call: a Track on a People
@@ -130,8 +141,8 @@ which said they did before their doors had a card; `src/scenes/exterior.js`, the
   `test/audit657_board.test.js`'s D4 (its reader pledged in the region, so the guide's kept fold is pinned from the
   folded side) and `test/lw2_livingTown.test.js`'s talk doors (the regard beside them); their three mutant records
   (`audit657.json`, `board_ui.json`, `lw2.json`) re-aimed by content and dead again.
-- `tools/mutants/plainui.json`: 20 mutants, 20 dead (six re-aimed by content at AUDIT PLAIN-UI).
-- AUDIT PLAIN-UI (`01-Overview/Audit-Plain-UI.md`): `test/audit_plainui.test.js` (9), `tools/mutants/audit_plainui.json`
-  23 mutants, 23 dead.
+- `tools/mutants/plainui.json`: 20 mutants, 20 dead (four re-aimed by content at AUDIT PLAIN-UI).
+- AUDIT PLAIN-UI (`01-Overview/Audit-Plain-UI.md`): `test/audit_plainui.test.js` (11), `tools/mutants/audit_plainui.json`
+  31 mutants, 31 dead.
 - `tools/noticeBoardProbe.mjs` photographs the two guides unfolded (`work-guide`, `seat-guide`) beside its other shots,
   desktop and phone - every tab inside the viewport, nothing spilling sideways.

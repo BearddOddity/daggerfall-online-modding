@@ -39,6 +39,8 @@ export const FAMILY_PAGE_SECTIONS = Object.freeze([
   Object.freeze(['guide', 'How it works']),   // PLAIN-UI (bible/10-UI/Plain-Words.md): the whole of it, in words
 ]);
 export const FAMILY_STYLE_ID = 'family-pages-css';
+/** AUDIT PLAIN-UI U8: the tree's way to How it works. */
+export const FAMILY_HOWTO_WORDS = 'New to the family? How it works';
 
 /** A node's plate, in CSS pixels at zoom 1, and the slot and row it stands in. */
 export const TREE_NODE_W = 78;
@@ -114,12 +116,15 @@ export const FAMILY_CSS = `
 .px-sys .fam-face { width: 48px; height: 52px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .px-sys .fam-face canvas { image-rendering: pixelated; max-width: 100%; max-height: 100%; }
 .px-sys .fam-face .fam-glyph { font-size: 22px; color: #8b8578; }
-.px-sys .fam-nname { font-size: 12px; line-height: 1.1; color: #e2d9c4; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* AUDIT PLAIN-UI U6: a long name on two lines - one line cut four names in seven at 12px */
+.px-sys .fam-nname { font-size: 12px; line-height: 1.15; color: #e2d9c4; text-align: center; max-width: 100%; overflow: hidden; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .px-sys .fam-mark { position: absolute; top: 2px; right: 3px; font-size: 13px; color: #c08a3e; }
 .px-sys .fam-mark.dead { color: #b8b0a0; }
 .px-sys .fam-tools { position: absolute; right: 6px; top: 6px; display: flex; gap: 4px; z-index: 1; }
 .px-sys .fam-tools .act { min-width: 30px; padding: 2px 6px; }
-.px-sys .fam-card { flex: 0 0 300px; max-width: 300px; box-sizing: border-box; padding: 9px 11px 10px; border-width: 2px; border-style: solid;
+/* AUDIT PLAIN-UI U7: beside the tree the card keeps its width - at 300px the tree kept three plates at 1280 */
+.px-sys .fam-card { flex: 0 0 268px; max-width: 268px; box-sizing: border-box; padding: 9px 11px 10px; border-width: 2px; border-style: solid;
   display: flex; flex-direction: column; gap: 6px; text-align: left; overflow-y: auto; max-height: min(400px, 62vh); }
 .px-sys .fam-card .fam-top { display: grid; grid-template-columns: 60px 1fr; gap: 9px; align-items: center; }
 .px-sys .fam-card .fam-face { width: 60px; height: 64px; border-width: 2px; border-style: solid; box-sizing: border-box; }
@@ -140,6 +145,7 @@ export const FAMILY_CSS = `
 .px-sys .fam-hall { display: flex; flex-direction: column; gap: 8px; }
 .px-sys .fam-hallrow { padding: 7px 10px 8px; border-width: 2px; border-style: solid; box-sizing: border-box; text-align: left; }
 .px-sys .fam-hallrow .fam-makehome { margin-top: 6px; }
+.px-sys .fam-howto { margin: 0 0 8px; }
 .px-sys .fam-guide { margin: 0; padding: 0 0 0 22px; text-align: left; }
 .px-sys .fam-guide li { margin: 0 0 10px; font-size: 15px; line-height: 1.5; color: #e2d9c4; }
 .px-sys .fam-guide b { color: #f3cf86; font-weight: normal; }
@@ -297,11 +303,17 @@ function kinButton(el, family, p, rerender) {
 /**
  * THE FAMILY TREE PAGE: `detail` the rail's pane; `kit` the menu's makers ({ el, divider }).
  */
-export function drawTreePage(detail, rerender, { el, divider, door = (fn) => fn() } = /** @type {any} */ ({})) {
+export function drawTreePage(detail, rerender, { el, divider, door = (fn) => fn(), goto = null } = /** @type {any} */ ({})) {
   ensureFamilyStyle();
   const prov = _provider;
   const family = prov?.on?.() ? prov.family() : null;
   detail.append(divider('Family Tree'));
+  // AUDIT PLAIN-UI U8: How it works is the rail's last page and the tab opens on the tree - the tree says where it is
+  if (goto) {
+    const how = el('button', 'act fam-howto', FAMILY_HOWTO_WORDS);
+    how.onclick = () => goto('guide');
+    detail.append(how);
+  }
   if (!family) { detail.append(el('p', 'px-note', noFamilyLine(prov))); return; }
   const layout = layoutTree(family);
   const livedNow = prov.lived?.() ?? 0;
@@ -345,7 +357,9 @@ export function drawTreePage(detail, rerender, { el, divider, door = (fn) => fn(
     node.setAttribute('aria-pressed', p.id === _sel ? 'true' : 'false');   // AUDIT LEGACY II U14: the picked plate, and the one played, said
     if (p.id === family.currentId) node.setAttribute('aria-current', 'true');
     node.setAttribute('data-focus', `fam-node-${p.id}`);   // the keyboard's plate kept across a redraw
-    node.append(faceBox(el, p), el('span', 'fam-nname', p.given || '?'));
+    const named = el('span', 'fam-nname', p.given || '?');
+    named.setAttribute?.('title', fullNameOf(p.given, p.surname));   // AUDIT PLAIN-UI U6: the whole name, where two lines cut it
+    node.append(faceBox(el, p), named);
     if (p.died) node.append(el('span', 'fam-mark dead', '✝'));
     else if (p.id === family.currentId) node.append(el('span', 'fam-mark', '◆'));
     const pick = () => { _sel = p.id; _armed = null; _said = null; rerender(); };

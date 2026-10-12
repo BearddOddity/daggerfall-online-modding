@@ -803,7 +803,8 @@ export function createTownTalk({ renderer, canvas, fetchBytes, playerEntity, reg
     // LW2: a resident of the living world who counts the player an enemy has no words for them - said on the HUD's
     // middle line, as the activation's other refusals are; DFU's walkers have no memory to refuse from
     const refusal = livingTalk?.refuses?.(target.person) ?? null;
-    if (refusal) { setMidScreenText(refusal); return; }
+    // AUDIT PLAIN-UI U11: the refusal says where the resident stands - an enemy's badge was the one no panel ever opened on
+    if (refusal) { const b = livingTalk?.regard?.(target.person) ?? null; setMidScreenText(b ? `${refusal} (${b.label}, ${b.value})` : refusal); return; }
     // LW6c: a household's moment before the words - the keepsake of one of theirs the deep kept, carried home (the
     // body's town's: livingTown.js moment, the room's door): their words on the parchment, the conversation another time
     const moment = target.person?.living?.town?.moment?.(target.person) ?? null;

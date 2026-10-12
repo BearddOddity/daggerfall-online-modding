@@ -8,12 +8,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { byClass } from './chargenDom.mjs';
 import { mountNoticeBoard, chapterGuide } from '../src/ui/noticeWindow.js';
-import { seatNextStep, seatWords, SEAT_PANELS } from '../src/ui/seatTab.js';
+import { seatNextStep, seatWords, seatMayPledgeHere, SEAT_PANELS } from '../src/ui/seatTab.js';
 import { SEAT_PLEDGE_REGIONS_MAX, SEAT_LEGACY_SHARE } from '../src/net/townSeatLaw.js';
 import {
   STRENGTH_TARGET, STRENGTH_SHORT, STRENGTH_IDLE, CHAPTER_FAILING_FALL, CHAPTER_EVENT_EFFECTS, SEAT_ACCOUNT_AGE_S,
 } from '../src/net/npcChapterLaw.js';
-import { familyGuide, drawGuidePage, setFamilyProvider } from '../src/ui/familyPages.js';
+import { familyGuide, drawGuidePage, drawTreePage, setFamilyProvider, FAMILY_HOWTO_WORDS } from '../src/ui/familyPages.js';
 import { MODELS, LEGACY_MOD } from '../src/systems/legacy/family.js';
 import { REMAINS_GOLD_MAX } from '../src/systems/legacy/heirloom.js';
 import { setModSetting, modSetting } from '../src/systems/modSettings.js';
@@ -182,7 +182,7 @@ test('AUDIT PLAIN-UI U the talk badge pressed says its words and pressed again h
   assert.equal(byClass(host, 'talk-regard-words').length, 0, 'the next conversation starts with them hidden');
   view.destroy();
   host.remove();
-  assert.match(src('src/ui/enhancedStyle.js'), /\.talk-regard-words \{[^}]*max-height: 4\.4em; overflow-y: auto; \}/);
+  assert.match(src('src/ui/enhancedStyle.js'), /\.talk-regard-words \{[^}]*max-height: 4\.4em; overflow-y: auto; max-width: 72ch; \}/);
 });
 
 test('AUDIT PLAIN-UI T5 the sizes the record claims, every one pinned - the Charter\'s head, the battle, the day\'s writ count, the Family tab\'s chips and its card (mutants: each back)', () => {
@@ -190,6 +190,51 @@ test('AUDIT PLAIN-UI T5 the sizes the record claims, every one pinned - the Char
   assert.match(NOTICE_CSS, /\n\.notice-seat-battle \{ margin: 0 0 6px; font-size: 15px;/);
   assert.match(PROF_CSS, /\n\.notice-worktoday \{[^}]*font-size: 15px;/);
   assert.match(FAMILY_CSS, /\.px-sys \.fam-chip \{[^}]*font-size: 12px;/);
-  assert.match(FAMILY_CSS, /\.px-sys \.fam-card \{ flex: 0 0 300px; max-width: 300px;/);
+  assert.match(FAMILY_CSS, /\.px-sys \.fam-card \{ flex: 0 0 268px; max-width: 268px;/, 'U7: beside the tree the card keeps its width');
   assert.match(FAMILY_CSS, /\.px-sys \.fam-nname \{ font-size: 12px;/);
+});
+
+test('AUDIT PLAIN-UI U2 the next step carries its lever and its clock - the pledge button beside "Pledge your guild" (never for a guild at its regions\' most, one already pledged in the region, a rank without the power, or the Reckoning), the time left to the deadline, the seat a pledge elsewhere is for (mutants: the lever offered past the most; the seat unnamed)', async () => {
+  const mine = (o) => ({ guild: 'g1', rank: 1, seasoned: true, bound: null, pledges: [], influence: 0, ...o });
+  assert.equal(seatMayPledgeHere(ANT, week(mine())), true);
+  assert.equal(seatMayPledgeHere(ANT, week(mine({ rank: 2 }))), false, 'a Member asks');
+  assert.equal(seatMayPledgeHere(ANT, { ...week(mine()), phase: 'reckoning' }), false);
+  assert.equal(seatMayPledgeHere(ANT, week(mine({ pledges: [{ region: 21, key: 3099 }] }))), false, 'pledged in the region');
+  assert.equal(seatMayPledgeHere(ANT, week(mine({ pledges: Array.from({ length: SEAT_PLEDGE_REGIONS_MAX }, (_, i) => ({ region: 100 + i, key: i })) }))), false, 'at the most');
+  assert.equal(seatNextStep(ANT, week(mine()), { nowS: T }), 'Pledge your guild to Anticlere before Friday 18:00 UTC (in 1h 0m).');
+  assert.equal(seatNextStep(ANT, week(mine({ pledges: [{ region: 21, key: 3099 }] })), { nameOf: (k) => (k === 3099 ? 'Gothway Garden' : null) }),
+    'Your guild fights for Gothway Garden this week, and what you earn counts there.');
+  const pledged = [];
+  const book = { open: true, data: { seats: [] }, standings: async () => ({ data: week(mine()), error: null }), pledge: async (s) => { pledged.push(s.key); return { ok: true }; } };
+  const host = document.createElement('div');
+  mountNoticeBoard(host, { town: { name: 'Anticlere', mapId: 3021 }, book: notices(), nowS: () => T, seat: { seat: ANT, book } });
+  await tick();
+  byClass(host, 'notice-tab')[1].onclick();
+  await tick();
+  const lever = byClass(byClass(host, 'seat-next')[0], 'seat-next-pledge')[0];
+  assert.equal(lever.textContent, 'Pledge to Anticlere');
+  lever.onclick();
+  await tick();
+  assert.deepEqual(pledged, [3021], 'the lever pledges here, through the window\'s door');
+});
+
+test('AUDIT PLAIN-UI U3 U6 U8 U10 U11 a fold\'s line a finger\'s target with its own ring; a long name on two lines with the whole name on hover; the tree\'s way to How it works; the badge says it can be pressed; an enemy\'s refusal says where they stand (mutants: the target back; the way undrawn; the refusal bare)', () => {
+  assert.match(NOTICE_CSS, /\n\.notice-panel > summary \{ margin: -11px 0; padding: 11px 0; cursor: pointer; \}/);
+  assert.match(NOTICE_CSS, /\n\.notice-panel > summary:focus-visible \{ outline: 2px dashed #f3cf86;/);
+  assert.match(FAMILY_CSS, /\.px-sys \.fam-nname \{[^}]*-webkit-line-clamp: 2;/);
+  assert.match(src('src/ui/familyPages.js'), /named\.setAttribute\?\.\('title', fullNameOf\(p\.given, p\.surname\)\);/);
+  const goneTo = [];
+  setFamilyProvider({ on: () => true, family: () => null, lived: () => 0, switchRefusal: () => null, switchTo: () => ({ ok: true }) });
+  try {
+    const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
+    const detail = document.createElement('div');
+    drawTreePage(detail, () => {}, { el, divider: (w) => el('div', 'px-divword', w), goto: (id) => goneTo.push(id) });
+    const how = byClass(detail, 'fam-howto')[0];
+    assert.equal(how.textContent, FAMILY_HOWTO_WORDS);
+    how.onclick();
+    assert.deepEqual(goneTo, ['guide']);
+  } finally { setFamilyProvider(null); }
+  assert.match(src('src/ui/enhancedMenu.js'), /goto: \(id\) => \{ famSec = id; disarmFamilyPages\(\); render\(\); \} \};/, 'the pause window hands the tree its way');
+  assert.match(src('src/ui/enhancedStyle.js'), /\.talk-regard-value::after \{ content: ' \?';/);
+  assert.match(src('src/scenes/townTalk.js'), /if \(refusal\) \{ const b = livingTalk\?\.regard\?\.\(target\.person\) \?\? null; setMidScreenText\(b \? `\$\{refusal\} \(\$\{b\.label\}, \$\{b\.value\}\)` : refusal\); return; \}/);
 });

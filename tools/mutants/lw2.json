@@ -277,7 +277,7 @@
   {
     "name": "LW2-refusal-after-talk",
     "file": "src/scenes/townTalk.js",
-    "old": "    const refusal = livingTalk?.refuses?.(target.person) ?? null;\n    if (refusal) { setMidScreenText(refusal); return; }\n",
+    "old": "    const refusal = livingTalk?.refuses?.(target.person) ?? null;\n    // AUDIT PLAIN-UI U11: the refusal says where the resident stands - an enemy's badge was the one no panel ever opened on\n    if (refusal) { const b = livingTalk?.regard?.(target.person) ?? null; setMidScreenText(b ? `${refusal} (${b.label}, ${b.value})` : refusal); return; }\n",
     "new": "",
     "tests": [
       "test/lw2_livingTown.test.js"

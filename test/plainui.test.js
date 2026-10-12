@@ -54,8 +54,8 @@ test('PLAIN-UI the Seat tab says what a seat is and the reader\'s next step befo
   const mine = (o) => ({ guild: 'g1', rank: 2, seasoned: true, bound: 'g1', pledges: [], influence: 0, ...o });
   const here = { region: 21, key: 3021 };
   const rows = [
-    [week(null), 'To take part, join a guild or found one: the Social button beside the chat, its Guild page (a guild needs an account with a username and a password).'],   // PIN MOVED: AUDIT PLAIN-UI W12
-    [week(mine({ rank: 1 })), 'Pledge your guild to Anticlere under Your guild, below, before Friday 18:00 UTC.'],
+    [week(null), 'You need a guild to take part: open Social, beside the chat, then its Guild page to join one or found one (a guild needs an account with a username and a password).'],   // PIN MOVED: AUDIT PLAIN-UI W12, U2
+    [week(mine({ rank: 1 })), 'Pledge your guild to Anticlere before Friday 18:00 UTC.'],   // PIN MOVED: AUDIT PLAIN-UI U2 - the lever beside it
     [week(mine({ rank: 2 })), 'Ask an Officer or your Guildmaster to pledge your guild to Anticlere before Friday 18:00 UTC.'],
     [{ ...week(mine({ rank: 1 })), phase: 'reckoning' }, 'Pledges are locked until the Turning, Sunday 18:00 UTC. Your guild can pledge here in next week\'s Muster.'],
     [week(mine({ pledges: [{ region: 21, key: 3099 }] })), 'Your guild fights for another seat of this region this week, and what you earn counts there.'],

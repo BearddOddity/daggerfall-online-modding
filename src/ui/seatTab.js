@@ -25,7 +25,7 @@
 import { HALL_OF_RECORDS_SHUT } from '../systems/onlineHomes.js';   // AUDIT-SEATS: the Hall of Records' words where it cannot be read
 import { accountRefusalText } from '../net/accountClient.js';
 import {
-  seatInfoLine, seatWeekLine, seatStandingLine, seatNoStandingsLine, seatMineLines, seatTributeLine, seatMay,
+  seatInfoLine, seatWeekLine, seatSpanWords, seatStandingLine, seatNoStandingsLine, seatMineLines, seatTributeLine, seatMay,
   SEAT_PLEDGE_WORDS, SEAT_PLEDGE_REGIONS_MAX, TRIBUTE_MARKS_PER_INFLUENCE, CLAIM_THRESHOLD, CLAIM_FEE, CONTESTED_MARGIN, ACCOUNT_SEAT_WEEK_CAP, SEAT_MEMBER_WAIT_S,
   seatHolderLine, seatBattleLine, seatClaimLine, chronicleLine, SEAT_RELINQUISH_WORDS,
   seatRuleLine, seatHoldingLines, edictLine, edictMayFollow, edictForTier, royalTourneyLines, EDICTS, seatTitheCap, SEAT_LEVER_RANKS, BOUNTY_MARKS,
@@ -101,24 +101,40 @@ export const seatAbout = (seat) => `${seat.name} is a seat: one player guild at 
   + 'Each week the guilds pledged here earn influence; at the week\'s end the strongest takes an unheld Charter, or wins the right to fight its holder for it.';
 
 /**
- * PLAIN-UI: THE READER'S NEXT STEP at this seat - one sentence from where the reader stands (no guild; a guild not pledged
- * here, in the Muster or after it; a pledge elsewhere; a member not yet counted; one who earns here). Pure.
- * @param {{ name: string, region: number, key: number }} seat @param {any} data the standings' answer
+ * PLAIN-UI: whether the reader may pledge their guild HERE now - the Muster, the pledge's rank, no pledge in the region
+ * yet and room for one more region (leversNode's own pledge arm). AUDIT PLAIN-UI U2: the next step then carries the
+ * lever itself, where it stood two screens down under Your guild. Pure.
+ * @param {{ region: number }} seat @param {any} data the standings' answer
  */
-export function seatNextStep(seat, data) {
+export function seatMayPledgeHere(seat, data) {
   const mine = data?.mine ?? null;
+  const pledges = mine?.pledges ?? [];
+  return !!mine && data?.phase === 'muster' && seatMay(mine.rank, 'pledge') && !pledges.some((/** @type {any} */ p) => p.region === seat.region)
+    && pledges.length < SEAT_PLEDGE_REGIONS_MAX;
+}
+
+/**
+ * PLAIN-UI: THE READER'S NEXT STEP at this seat - one sentence from where the reader stands (no guild; a guild not pledged
+ * here, in the Muster or after it; a pledge elsewhere; a member not yet counted; one who earns here). AUDIT PLAIN-UI U2:
+ * the seat a pledge elsewhere is for, by `nameOf`, and the time left to a deadline by `nowS`, where given. Pure.
+ * @param {{ name: string, region: number, key: number }} seat @param {any} data the standings' answer
+ * @param {{ nameOf?: (key: number) => (string|null), nowS?: number }} [o]
+ */
+export function seatNextStep(seat, data, { nameOf = () => null, nowS = NaN } = {}) {
+  const mine = data?.mine ?? null;
+  const left = (/** @type {unknown} */ at) => (Number.isFinite(at) && Number.isFinite(nowS) ? ` (in ${seatSpanWords(Number(at) - nowS)})` : '');
   // AUDIT PLAIN-UI W12: a guest's guild is refused ('guilds-need-account') - the step says what a guild needs
-  if (!mine) return 'To take part, join a guild or found one: the Social button beside the chat, its Guild page (a guild needs an account with a username and a password).';
+  if (!mine) return 'You need a guild to take part: open Social, beside the chat, then its Guild page to join one or found one (a guild needs an account with a username and a password).';
   const here = (mine.pledges ?? []).find((/** @type {any} */ p) => p.region === seat.region) ?? null;
   if (!here) {
-    if (data?.phase !== 'muster') return 'Pledges are locked until the Turning, Sunday 18:00 UTC. Your guild can pledge here in next week\'s Muster.';
+    if (data?.phase !== 'muster') return `Pledges are locked until the Turning, Sunday 18:00 UTC${left(data?.turningAt)}. Your guild can pledge here in next week's Muster.`;
     // AUDIT PLAIN-UI W5: a guild at its regions' most has no pledge button here (leversNode) - its next step says so
     if ((mine.pledges ?? []).length >= SEAT_PLEDGE_REGIONS_MAX) return `Your guild has pledged in ${SEAT_PLEDGE_REGIONS_MAX} regions this week, the most it may: one must be taken down before it can pledge here.`;
     return seatMay(mine.rank, 'pledge')
-      ? `Pledge your guild to ${seat.name} under Your guild, below, before Friday 18:00 UTC.`
-      : `Ask an Officer or your Guildmaster to pledge your guild to ${seat.name} before Friday 18:00 UTC.`;
+      ? `Pledge your guild to ${seat.name} before Friday 18:00 UTC${left(data?.reckoningAt)}.`
+      : `Ask an Officer or your Guildmaster to pledge your guild to ${seat.name} before Friday 18:00 UTC${left(data?.reckoningAt)}.`;
   }
-  if (here.key !== seat.key) return 'Your guild fights for another seat of this region this week, and what you earn counts there.';
+  if (here.key !== seat.key) return `Your guild fights for ${nameOf(here.key) ?? 'another seat of this region'} this week, and what you earn counts there.`;
   if (!mine.seasoned) return `You count for your guild once you have been in it ${SEAT_MEMBER_WAIT_S / 86400} days.`;
   if (mine.bound && mine.bound !== mine.guild) return 'Your account fights for another guild this week, and what you earn counts there.';
   return here.held
@@ -529,7 +545,16 @@ export function createSeatTab(host, ui) {
       const explain = () => {
         const about = panel(SEAT_PANELS.about, 'seat-aboutpanel');
         about.append(el('p', 'seat-about', seatAbout(seat)));
-        if (data) about.append(el('p', 'seat-next', seatNextStep(seat, data)));
+        if (data) {
+          const next = el('p', 'seat-next', seatNextStep(seat, data, { nameOf, nowS: ui.nowS() }));
+          // AUDIT PLAIN-UI U2: the step's own lever beside it - the pledge, where Your guild's stood two screens down
+          if (seatMayPledgeHere(seat, data)) {
+            const b = button('seat-next-pledge', SEAT_PLEDGE_WORDS.pledge(seat), () => act(() => book.pledge(seat)));
+            b.disabled = ui.busy();
+            next.append(b);
+          }
+          about.append(next);
+        }
         const guide = boardFold(el, 'notice-panel seat-guide board-guide', SEAT_PANELS.guide, guideOpen ?? seatGuideOpen(seat, data), (o) => { guideOpen = o; });
         const steps = el('ol');
         for (const [name, words] of seatGuide(seat)) { const li = el('li'); li.append(el('b', null, `${name}. `), words); steps.append(li); }

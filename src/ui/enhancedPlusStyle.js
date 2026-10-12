@@ -1146,8 +1146,10 @@ export const NOTICE_CSS = `/* ── NOTICE1: THE NOTICE BOARD ── */
   background: rgba(12,10,8,0.8); border: 1px solid rgba(192,138,62,0.32); }
 .notice-panel > h3, .notice-panel > summary { margin: 0 0 8px; font-family: inherit; font-size: 14px; font-weight: normal; letter-spacing: 0.14em;
   text-transform: uppercase; color: #f3cf86; }
-.notice-panel > summary { margin: 0; cursor: pointer; }
-.notice-panel[open] > summary { margin-bottom: 8px; }
+/* AUDIT PLAIN-UI U3: a fold's line a finger's target (44px with its padding, drawn where it stood) and a ring of its own */
+.notice-panel > summary { margin: -11px 0; padding: 11px 0; cursor: pointer; }
+.notice-panel[open] > summary { margin-bottom: -3px; }
+.notice-panel > summary:focus-visible { outline: 2px dashed #f3cf86; outline-offset: 2px; }
 .notice-panel p { margin: 0 0 6px; }
 .notice-panel p:last-child { margin-bottom: 0; }
 .notice-read { position: relative; max-width: 640px; margin: 0 auto; padding: 22px 20px 18px; color: #2a1f12;
@@ -1207,6 +1209,7 @@ export const NOTICE_CSS = `/* ── NOTICE1: THE NOTICE BOARD ── */
    guide, each word in brass over its meaning. The chapters' guide and words on the Work tab wear the same (board-) */
 .seat-about { margin: 0 0 8px; }
 .seat-next { margin: 0; padding: 6px 10px; color: #f3ead8; background: rgba(243,207,134,0.1); border-left: 2px solid #f3cf86; }
+.seat-next .seat-next-pledge { display: block; margin-top: 8px; }
 .board-guide ol { margin: 0; padding: 0 0 0 22px; }
 .board-guide li { margin: 0 0 8px; }
 .board-guide li:last-child { margin-bottom: 0; }

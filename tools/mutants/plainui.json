@@ -65,8 +65,8 @@
   {
     "name": "PLAINUI-about-panel-undrawn",
     "file": "src/ui/seatTab.js",
-    "old": "        if (data) about.append(el('p', 'seat-next', seatNextStep(seat, data)));",
-    "new": "",
+    "old": "          const next = el('p', 'seat-next', seatNextStep(seat, data, { nameOf, nowS: ui.nowS() }));",
+    "new": "          const next = el('p', 'seat-next', '');",
     "tests": [
       "test/plainui.test.js"
     ]
