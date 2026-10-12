@@ -470,9 +470,15 @@ frame, so an ease creeping a hair a frame adds up and wakes it. Three seconds is
 0.97 at 60 steps a second at least, so under 0.5% of a swing is left. A floating-origin shift, a horse led off, a wagon
 driven: each moves an end and wakes it. Nothing a player sees but the jitter gone.
 
-**Measured.** Not by A/B: the client's bundle is not open to a live edit (Electron's V8 refuses
-`Debugger.setScriptSource`). The cost it removes is the profile's: 0.42 ms of a 13.1 ms frame where every harness held
-is a parked team's - ~3% of the frame, ~76 -> 79 FPS - and nothing where every team is on the move.
+**Measured.** In the owner's running client, a LOWER BOUND by A/B: the bundle is not open to a live edit (Electron's
+V8 refuses `Debugger.setScriptSource`, and its `dagger://` chunks pass no CDP `Fetch`), but the pool's harness map is
+public (`harness`), so each harness's `ropes.forEach` (the tube laid again) and the renderer's `updateMeshVertices` (the
+send) were wrapped as own properties: on B a harness under this law (0.1 mm, 3 s) was neither laid nor sent, on A as
+shipped; the Verlet step ran on both (~0.09 ms a frame in the profile, out of reach). Six rounds of each, 10 s,
+interleaved ABBA, standing by the town's parked teams: 10 harnesses, all 10 at rest on B; the laying and sending 0.26 ms
+a frame on A and none on B; 86.6 -> 89.8 FPS mean (medians 88.0 -> 89.8), 11.6 -> 11.1 ms a frame - inside the
+rounds' noise (B ahead in four pairs of six). With the step the branch also stops, ~0.35 ms of an ~11.5 ms frame: ~3%
+where the teams stand, nothing where every team is on the move.
 
 Pins: `test/harnessrest.test.js` (3), over a real pool's real driven harness. Mutants: `tools/mutants/harnessrest.json`,
 7, all dead.
