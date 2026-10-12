@@ -539,7 +539,7 @@ export function comeSailAwayCarrier(deps) {
 }
 
 /** UpdateBoatCargoMod's two lines (3820-3858), by the cargo's mod: past half "a bigger boat", under whole "draws a little
- *  lower", whole nothing. FB1012b ETHER-STRAND (bible/01-Overview/Field-Bugs-2026-10-12b.md): one home for the words, so a
+ *  lower", whole nothing. FB1012c ETHER-STRAND (bible/01-Overview/Field-Bugs-2026-10-12c.md): one home for the words, so a
  *  host that covers the helm's mid-screen line - the Etheric crossing's own words, 7 s over its 3 - can say them again. */
 export const cargoWords = (mod) => (mod < 0.5 ? "You're going to need a bigger boat" : mod < 1 ? 'The boat draws a little lower than usual' : null);
 

@@ -136,12 +136,12 @@ lands, never at the Succession's choice - B1) and the estate are undone if that 
 bears them again (A2); a member whose character id no save holds (their saves deleted) is born again from their
 person rather than loaded (A2/B1). Until the heir lands, the page that chose acts for no one (A1) - and the page BEARING
 them offers the Succession to nobody: it is the fall's answer, and a save writes only the person who is the character in
-the world (FB1012b HEIR-CLONE, `01-Overview/Field-Bugs-2026-10-12b.md`: online the birth waits on the realm with the
+the world (FB1012c HEIR-CLONE, `01-Overview/Field-Bugs-2026-10-12c.md`: online the birth waits on the realm with the
 world running, the waiting fall's window rose over the newborn, and a press wrote the newborn over their sibling). The
 heir is born in a PLACE: the family's seat - the first town its founder stands in, or the town or the home of the
-house's own (a farm, a manor - FB1012b SEAT-HOME) the player moved it to (FAMILY-SEAT, section 11) - else the nearest
+house's own (a farm, a manor - FB1012c SEAT-HOME) the player moved it to (FAMILY-SEAT, section 11) - else the nearest
 town to where the parent fell (B11's root, a coordinate pair that is no place, gone). A birth answered from the Online
-page starts there too, never at the classic start (FB1012b BIRTH-START).
+page starts there too, never at the classic start (FB1012c BIRTH-START).
 
 ## 5. INHERITANCE - the blood and the hearth
 
@@ -512,7 +512,7 @@ than standing still.
   the house fares, then **Play as <name>**, **Talk** (the town's own conversation, their head in the window) and
   **Goodbye** (Escape). Play as is the Family tab's switch - saved where they stand first (in a house of the line, the
   one played is parked there and stays standing in it); a member never played is BORN in the town they were met in, one
-  played loads their own save (met at a home of the house's own off a town's map - a farm - born there: FB1012b
+  played loads their own save (met at a home of the house's own off a town's map - a farm - born there: FB1012c
   SEAT-HOME). It is refused on the card, with its reason, mid-fight, while the Succession waits
   (AUDIT LEGACY III F13/W7: "online" was dropped from this list - the Online bullet below has it open), and for a retired elder ("has passed the mantle on, and keeps the house now").
 - **Struck down.** One of the line killed by the one played (the town's one-hit civilian, LW7) dies IN THE RECORD -
@@ -626,7 +626,7 @@ world, locked to its own family.
     seat to a town your currently in"): the seat noted at the first town - a road crossed, a journey's way - moves, two
     presses as a switch is, to the town the one played stands in (its streets or a building of it, never a dungeon
     under it; never while a Succession waits): `Make <town> the family seat` (`scenes/legacyHost.js` familySeatHere,
-    moveFamilySeat). FB1012b SEAT-HOME (`01-Overview/Field-Bugs-2026-10-12b.md`; "the house (admittedly a tiny hovel on
+    moveFamilySeat). FB1012c SEAT-HOME (`01-Overview/Field-Bugs-2026-10-12c.md`; "the house (admittedly a tiny hovel on
     a farm) purchased and made the seat of the house ... was not where the heir ended up spawning"): or to a place where
     the house holds a home of its own - a farm, a manor (`placeHere`, by the place's map id against the line's houses). The heirs are born there, the fallen laid to rest there, the house's news told there, and a house
     with no home lives there; the house keeps its name. A moved seat carries when (`seat.at`, the wall clock - after the
@@ -673,7 +673,7 @@ world, locked to its own family.
 | LEGACY-SHEET | the house on the character sheet: the model, the generation, an Enduring house's age, toll and elder's word (section 11) | built |
 | LEGACY-NAME | a house founded nameless named at its seat; a seat's house said once; the news's doubled surname (section 8) | built |
 | FAMILY-SEAT | the seat moved from the House page to the town the one played stands in; the later move stands in every merge, and the house's name with it (section 11; `01-Overview/Field-Bugs-2026-10-07b.md`, `01-Overview/Audit-FB1007b.md`) | built, audited |
-| FB1012b | HEIR-CLONE (the page bearing an heir offers no Succession; a save writes only the one in the world), SEAT-HOME (the seat moved to a home of the house's own - a farm), BIRTH-START (the Online page's birth in its seat); UNION-CHILDREN planned (sections 4, 9, 10b, 11; `01-Overview/Field-Bugs-2026-10-12b.md`) | built |
+| FB1012c | HEIR-CLONE (the page bearing an heir offers no Succession; a save writes only the one in the world), SEAT-HOME (the seat moved to a home of the house's own - a farm), BIRTH-START (the Online page's birth in its seat); UNION-CHILDREN planned (sections 4, 9, 10b, 11; `01-Overview/Field-Bugs-2026-10-12c.md`) | built |
 | LEGACY-CHOICE | the popup online: Enduring, Bloodline or no lineage at chargen, kept on the character; online a house founded at a birth alone - a character loaded with no house plays without one (section 6) | built |
 | AGELESS-CURSE | the cursed pay no toll: a vampire, a werewolf or a wereboar in an Enduring house rises from every death with no years taken, the span spent or not; cured, the toll again (section 6) | built |
 | LEGACY-HOME | the bloodline in the world: the family home, the seat's townsfolk, their day, Play as by talking (section 10b) | built |

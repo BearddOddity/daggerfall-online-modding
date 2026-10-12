@@ -1,4 +1,4 @@
-// FB1012b ALLY-RACE (bible/01-Overview/Field-Bugs-2026-10-12b.md; the owner, 2026-10-12: "companions when morrowind
+// FB1012c ALLY-RACE (bible/01-Overview/Field-Bugs-2026-10-12c.md; the owner, 2026-10-12: "companions when morrowind
 // attached switches character race"). A companion's Morrowind body drew its race, face, head, hair and clothes off the
 // STAND - characters/foeBodies.js foeSeed's species and where it stood (its number and feet, a dungeon's marker) - and the
 // companion layer (scenes/crewAshore.js) stands a fresh body at every door, dungeon, fast travel, load and sweep: the same
@@ -67,7 +67,7 @@ async function throughDoors(party, doors, { layer = null } = {}) {
   return { stands, layer: ly };
 }
 
-test('FB1012b ALLY-RACE the crew\'s hand ashore is ONE PERSON: through eight doors and a load his body is his own race, sex, face, head and clothes - the stand\'s law drew him three races - two hands two people, and the room sees the man I see (mutants: the stamp gone; the person ignored by the seed; the key unread; the stamp read only off a revenant)', async () => {
+test('FB1012c ALLY-RACE the crew\'s hand ashore is ONE PERSON: through eight doors and a load his body is his own race, sex, face, head and clothes - the stand\'s law drew him three races - two hands two people, and the room sees the man I see (mutants: the stamp gone; the person ignored by the seed; the key unread; the stamp read only off a revenant)', async () => {
   S._resetCompanionSlotsForTests();
   const party = createCompanions();
   party.take(7, { name: 'Aldric', role: 'Bosun', mobile: MOBILE_TYPES.Warrior, gender: 'female' }, 0);
@@ -116,7 +116,7 @@ function freshFeud() {
 }
 const me = { isPlayer: true, name: 'Ayla Stormwind', characterId: 'char-allyrace', level: 8, health: 100, maxHealth: 100 };
 
-test('FB1012b ALLY-RACE a revenant is the person it was born as: the body that did the deed keeps its race, every return, the oath and the sworn one through every door and load are that one person; a save keeps it, an older record its id\'s (mutants: the birth off the id; the stamp without it; the save dropping it; the record\'s person unread; the sworn member without it)', async () => {
+test('FB1012c ALLY-RACE a revenant is the person it was born as: the body that did the deed keeps its race, every return, the oath and the sworn one through every door and load are that one person; a save keeps it, an older record its id\'s (mutants: the birth off the id; the stamp without it; the save dropping it; the record\'s person unread; the sworn member without it)', async () => {
   freshFeud(); RC.setRetinuePlayer(me);
   const pool = createExteriorFoes(poolRig());
   const foe = await pool.spawnFoe(MOBILE_TYPES.Warrior, [3, 0, 4], { gender: 'female', feetGiven: true });
@@ -158,7 +158,7 @@ test('FB1012b ALLY-RACE a revenant is the person it was born as: the body that d
   assert.equal(N.revenantPerson({ id: older.id, person: 7 }), 7, 'and a kept one is the kept one');
 });
 
-test('FB1012b ALLY-RACE THE ONE SEAM AND THE FOUR HOSTS: every companion body is stood by the layer, which stamps its person and is the only writer of one; the street (world.js), a building (worldModes.js\'s pool, the one factory) and a dungeon (dungeonContext.js\'s loose stand) stand through it; exterior.js stands none, and its revenants\' returns take their stamp through its pool as every foe host\'s do', () => {
+test('FB1012c ALLY-RACE THE ONE SEAM AND THE FOUR HOSTS: every companion body is stood by the layer, which stamps its person and is the only writer of one; the street (world.js), a building (worldModes.js\'s pool, the one factory) and a dungeon (dungeonContext.js\'s loose stand) stand through it; exterior.js stands none, and its revenants\' returns take their stamp through its pool as every foe host\'s do', () => {
   const ashore = rd('src/scenes/crewAshore.js');
   assert.match(ashore, /rec\.companion = k;\n\s*rec\.person = companionPerson\(c\);/, 'the layer stamps his person as it names him');
   // the sweep: no other module writes a person onto a record

@@ -44,7 +44,7 @@ export const TRAIL_MAX = 64;
 export const TRAIL_JUMP_M = 8;
 
 export const companionKeyOf = (c) => c.key ?? `${c.boat}:${c.name}`;
-/** FB1012b ALLY-RACE (bible/01-Overview/Field-Bugs-2026-10-12b.md): A COMPANION IS ONE PERSON - the seed his body's
+/** FB1012c ALLY-RACE (bible/01-Overview/Field-Bugs-2026-10-12c.md): A COMPANION IS ONE PERSON - the seed his body's
  *  race, face, head, hair and clothes are drawn by (characters/foeBodies.js ownPerson, which foeSeed reads before the
  *  stand's own): a member's own where the party keeps one (a sworn revenant's - its record's, revenantCompanions.js
  *  memberOf), else his party key's - his boat and his name, his for life (shipCrew.js handName) - so every door, every
@@ -191,7 +191,7 @@ export function createCrewAshore(deps) {
         if (!rec) return;
         if (was !== epoch || !party.isAshore(c.boat, c.name) || deps.party() !== party) { place.remove(rec); return; }   // the place changed under the stand, or he went back
         rec.companion = k;
-        rec.person = companionPerson(c);   // FB1012b ALLY-RACE: his own person in every place - never the stand's draw
+        rec.person = companionPerson(c);   // FB1012c ALLY-RACE: his own person in every place - never the stand's draw
         rec.shipmate = true;
         if (rec.entity) {
           rec.entity.name = /** @type {any} */ (c).title ?? c.name;   // REVENANT-COMPANION: a sworn one's own name

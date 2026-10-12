@@ -89,7 +89,7 @@ let _armed = null;    // 'switch:<id>' | 'mantle' - a press that asks again befo
 let _homeSaid = null; // the House page's word on a home marked (AUDIT LEGACY II U7)
 let _seatSaid = null; // FAMILY-SEAT: the House page's word on the seat (armed: what the second press will do)
 /** AUDIT FB1007b S5: where the seat's move is not offered, the House page says where it is - the host's refusal says the
- *  same (scenes/legacyHost.js LEGACY_TEXT.seatNowhere). FB1012b SEAT-HOME: a home of the house's own (a farm) as well. */
+ *  same (scenes/legacyHost.js LEGACY_TEXT.seatNowhere). FB1012c SEAT-HOME: a home of the house's own (a farm) as well. */
 export const SEAT_HINT = 'Stand in another town - its streets or one of its buildings - or at a home of the house\'s own, to make it the family\'s seat.';
 /** A fresh visit: nothing pressed, the tree centred, no word left over. */
 export function resetFamilyPages() { _sel = null; _zoom = 1; _pan = null; _said = null; _armed = null; _homeSaid = null; _seatSaid = null; }

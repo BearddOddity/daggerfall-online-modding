@@ -485,7 +485,7 @@ const dungeonEnemyArm = (mode, rolls = null) => {
     (t) => seen.say.push(t), (w) => seen.mounted.push(w),
     class { constructor(rows) { this.rows = rows; } },
     doorDistanceOf, [],   // AUDIT TACT C7: the arm asks for a door behind the foe - none here
-    null);   // FB1012b ALLY-YIELDS: and the ladder's winner behind him (`behind: _pick`) - none here
+    null);   // FB1012c ALLY-YIELDS: and the ladder's winner behind him (`behind: _pick`) - none here
   return { arm, seen, foe };
 };
 

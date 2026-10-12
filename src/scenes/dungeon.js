@@ -289,7 +289,7 @@ export async function bootDungeon(canvas, renderer, params, status) {
       reach, getInteractionMode(), playerEntity, {
         nearerThan,
         doorBehind: doorDistanceOf(eye, dir, targets, ctx.collider),   // AUDIT TACT C7: a peaceful guard is no door
-        behind: _pick,   // FB1012b ALLY-YIELDS: the ladder's winner - this host stands no companion, and asks as the others do
+        behind: _pick,   // FB1012c ALLY-YIELDS: the ladder's winner - this host stands no companion, and asks as the others do
         hud: (t) => ctx.hudSay?.(t),
         modal: (t) => ctx.hudBox?.(String(t).split('\n')),
         makeEnemiesHostile: () => ctx.makeAreaHostile?.(),

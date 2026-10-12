@@ -49,7 +49,7 @@ function mix(h) {
  *  @param {any} f */
 export function foeSeed(f) {
   if (f._mwSeedWire != null) return f._mwSeedWire;
-  const own = ownPerson(f);   // FB1012b ALLY-RACE: a person of their own is drawn as themselves, never as this stand
+  const own = ownPerson(f);   // FB1012c ALLY-RACE: a person of their own is drawn as themselves, never as this stand
   if (own != null) return own;
   if (f._mwSeed != null) return f._mwSeed;
   const at = f.marker ?? null;
@@ -62,7 +62,7 @@ export function foeSeed(f) {
   }
   return (f._mwSeed = h);
 }
-/** FB1012b ALLY-RACE (bible/01-Overview/Field-Bugs-2026-10-12b.md; the owner: "companions when morrowind attached switches
+/** FB1012c ALLY-RACE (bible/01-Overview/Field-Bugs-2026-10-12c.md; the owner: "companions when morrowind attached switches
  *  character race"): A PERSON OF THEIR OWN. foeSeed's stand law - its species and where it stood, or its number and
  *  feet - drew a companion afresh at every stand: every door, dungeon, fast travel, load and sweep stood him in a new
  *  body of the Bay's (a Breton hand a Nord through the next door, a Wood Elf through the one after). One whose person is

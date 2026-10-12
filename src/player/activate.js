@@ -298,7 +298,7 @@ export function liveFoeTargets(foes, keyPrefix, { idOf = null } = {}) {
       distance: RAY_DISTANCE,
       reach: MOBILE_NPC_ACTIVATION_DISTANCE,
       ...(f.ai && !(f.puppet ? f._pupMine : f.ai.isHostile) && f.companion == null ? { peaceful: true } : {}),   // TACT3d: passes a door click (peacefulFoePass); AUDIT TACT C1/C5: hostile to ME (a puppet on me), never my companion
-      ...(isCompanion(f) ? { ally: true } : {}),   // FB1012b ALLY-YIELDS: he yields to what answers behind him (peacefulFoePass marks his hit, raceWinner reads it)
+      ...(isCompanion(f) ? { ally: true } : {}),   // FB1012c ALLY-YIELDS: he yields to what answers behind him (peacefulFoePass marks his hit, raceWinner reads it)
     });
   }
   return targets;
@@ -313,11 +313,11 @@ export function doorDistanceOf(eye, dir, targets, collider) {
 
 /** TACT3d: the plaque's half of mobileEnemyActivate's `yieldsToDoor` - a foe hit on a PEACEFUL foe (liveFoeTargets'
  *  `peaceful`) with a door, or the ladder's other winner, within the door's reach behind it is no hit, so the plaque
- *  names what the press opens. FB1012b ALLY-YIELDS: and the one seam every plaque's foe passes through, so a hit on a
+ *  names what the press opens. FB1012c ALLY-YIELDS: and the one seam every plaque's foe passes through, so a hit on a
  *  COMPANION (liveFoeTargets' `ally`) leaves it marked - the race (activationRace.js raceWinner) passes him by for what
  *  answers behind him, as the press's `allyYields` does, in every mode. */
 export function peacefulFoePass(foeHit, targets, doorBehind, mode = null) {
-  if (foeHit && targets.find((t) => t.key === foeHit.key)?.ally === true) return { ...foeHit, ally: true };   // FB1012b ALLY-YIELDS
+  if (foeHit && targets.find((t) => t.key === foeHit.key)?.ally === true) return { ...foeHit, ally: true };   // FB1012c ALLY-YIELDS
   if (!foeHit || mode === 'steal' || !(Number.isFinite(doorBehind) && doorBehind <= DOOR_ACTIVATION_DISTANCE)) return foeHit;   // AUDIT TACT C5: a pickpocket is asked of him
   return targets.find((t) => t.key === foeHit.key)?.peaceful ? null : foeHit;
 }
@@ -457,7 +457,7 @@ export function firmFirst(entrants, nearest) {
 }
 
 /**
- * FB1012b ALLY-YIELDS (Discord bug-reports, 2026-10-12, "Companion Inventory prioritized over looting, taking helm, and
+ * FB1012c ALLY-YIELDS (Discord bug-reports, 2026-10-12, "Companion Inventory prioritized over looting, taking helm, and
  * other context options": "you need to get them to move before you can loot an item since it keeps opening their
  * inventory instead"). A COMPANION - the companion layer's body (scenes/crewAshore.js `companion`: a crew hand ashore, a
  * sworn revenant) or another player's (`peer:`) - is a foe the ray strikes like any other, so one standing at the
@@ -475,10 +475,10 @@ export function firmFirst(entrants, nearest) {
  * foe's hit marked `ally` by `peacefulFoePass` off `liveFoeTargets`), so it names what the press takes.
  */
 export const isCompanion = (f) => !!f && f.companion != null;
-/** FB1012b ALLY-YIELDS: a pick the press would ACT on from here - firm (PR-WAGON1: a pick that yields is never a
+/** FB1012c ALLY-YIELDS: a pick the press would ACT on from here - firm (PR-WAGON1: a pick that yields is never a
  *  rival), and inside its own reach (MC-2: past it, its handler only refuses). A pick with no reach answers nothing. */
 export const answersPress = (p) => !!p && !yieldsRay(p) && p.distance <= p.reach;
-/** FB1012b ALLY-YIELDS: a companion under the ray passes the press to what answers behind him. */
+/** FB1012c ALLY-YIELDS: a companion under the ray passes the press to what answers behind him. */
 export const allyYields = (foe, behind) => isCompanion(foe) && answersPress(behind);
 
 /** The ray's nearest hit - DFU's one raycast, as the port spells it (the
