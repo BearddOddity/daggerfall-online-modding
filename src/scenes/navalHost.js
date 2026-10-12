@@ -234,6 +234,25 @@ export const FAR_LIFE_EVERY = 4;
  *  has closed (test/peerhullrange.test.js); the ships this is for were 80-700 km off, so the frame's saving is the same. */
 export const PEER_HULL_NEAR_M = 5000;
 export const PEER_HULL_FAR_M = 5500;
+/** OWN-HULL-RANGE (2026-10-12, the owner's live client travelling the overworld: 14 hulls 9-727 km off, 90 -> 37 FPS
+ *  while they stood - their sails baked, their particles drawn, their rigging stepped every frame): MY OWN SEA'S SHIP FAR
+ *  OFF STANDS NO HULL EITHER. A ship with no owner is this tab's - the traffic, the raiders, the packets, a port's moored
+ *  ships, a bounty's quarry, the legends - and every ship a peer leaves behind (releaseOwner adopts them wherever they
+ *  lie, so PEER-HULL-RANGE's 80-700 km came back as mine). Her record sails, fights, burns and sinks as ever (the
+ *  captains, the director and the damage read her record, never her hull); her hull waits past the same edges - but
+ *  for what still reads her BY her hull wherever she is (`hullKept`). */
+/**
+ * OWN-HULL-RANGE: WHETHER ONE OF MY OWN SEA'S SHIPS KEEPS HER HULL, however far: bodies on her deck, the boarding I am
+ * in, a prize not yet settled (`claimPrize` moves her deck by her hull), a fight - hers (`mode` engage or board,
+ * afloat) or one that targets her (`fought`, the targets of every ship in one): a shot lands only on a hull
+ * (`targets`) and a galley rams only one (`checkShipRams`), so a fight between hull-less ships would never end.
+ * @param {any} e a sea entry @param {{ fought: Set<string>, boardingId?: string|null }} at
+ */
+export function hullKept(e, { fought, boardingId = null }) {
+  const s = e.ship;
+  return !!e.deck?.length || (boardingId != null && boardingId === e.id) || (!!e.prize && !e.prize.fate)
+    || (s.damage.state === SHIP_STATES.afloat && (s.mode === 'engage' || s.mode === 'board')) || fought.has(e.id);
+}
 /**
  * AUDIT NAV1 (the presentation, #14) - THE SEA AT A GLANCE (one card for the ship within 6 degrees of the look was all
  * the sea said, and a pirate turning on me said nothing). A TAG over each ship within NAVAL_TAG_RANGE of the eye and
@@ -1964,15 +1983,22 @@ export function createNavalHost(deps) {
     seenVolleys.delete(owner);
   }
 
-  /** PEER-HULL-RANGE: a ship whose hull stands - mine always, another's within PEER_HULL_NEAR_M of the eye. */
-  const peerHullNear = (e, eye) => !e.owner || !eye || dist2d(e.ship.pos, eye) <= PEER_HULL_NEAR_M;
-  /** PEER-HULL-RANGE: another's ship past PEER_HULL_FAR_M of the eye gives her hull back to the pool - never one I
-   *  board, nor one with bodies on her deck - and buildOne stands it again as she comes within PEER_HULL_NEAR_M. */
+  /** OWN-HULL-RANGE: the ships some ship in a fight targets (a fight's other half, hull or not). */
+  const foughtIds = () => { const t = new Set(); for (const x of sea.values()) if (engagedOf(x.ship) && x.ship.target != null) t.add(x.ship.target); return t; };
+  /** PEER-HULL-RANGE: a ship whose hull stands - within PEER_HULL_NEAR_M of the eye; OWN-HULL-RANGE: and one of my own
+   *  sea's that something reads by her hull (hullKept), wherever she is. */
+  const peerHullNear = (e, eye, fought) => !eye || dist2d(e.ship.pos, eye) <= PEER_HULL_NEAR_M
+    || (!e.owner && hullKept(e, { fought, boardingId: boarding?.shipId ?? null }));
+  /** PEER-HULL-RANGE: a ship past PEER_HULL_FAR_M of the eye gives her hull back to the pool - never one I board, nor
+   *  one with bodies on her deck; OWN-HULL-RANGE: mine too, but for what hullKept keeps - and buildOne stands it again as
+   *  she comes within PEER_HULL_NEAR_M. */
   function shedFarHulls(eye) {
     if (!eye) return;
+    let fought = null;
     for (const e of sea.values()) {
-      if (!e.owner || !e.boat || e.deck?.length || boarding?.shipId === e.id) continue;
+      if (!e.boat || e.deck?.length || boarding?.shipId === e.id) continue;
       if (dist2d(e.ship.pos, eye) <= PEER_HULL_FAR_M) continue;
+      if (!e.owner && hullKept(e, { fought: (fought ??= foughtIds()), boardingId: boarding?.shipId ?? null })) continue;   // OWN-HULL-RANGE
       deps.pool.remove(e.boat);
       e.boat = null;
       // AUDIT PEER-HULL-RANGE: what her record remembered of that hull goes with it (poseShip's canvas by height, the
@@ -1989,8 +2015,9 @@ export function createNavalHost(deps) {
   function buildOne() {
     if (!deps.pool?.ready?.()) return;
     const eye = deps.look?.()?.origin ?? deps.feet();
+    let fought = null;
     for (const e of sea.values()) {
-      if (e.boat || !peerHullNear(e, eye)) continue;   // PEER-HULL-RANGE
+      if (e.boat || !peerHullNear(e, eye, (fought ??= foughtIds()))) continue;   // PEER-HULL-RANGE, OWN-HULL-RANGE
       try {
         e.boat = deps.pool.spawnSeaNow(new Boat(e.ship.hull, e.ship.variant));
         if (e.boat) {
