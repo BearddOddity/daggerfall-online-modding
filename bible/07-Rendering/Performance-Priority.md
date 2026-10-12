@@ -9,7 +9,8 @@ and the merchants'), PERF-INST (the shadow pass's memory of a model's copies), P
 pixels), PERF-FACE (a lantern's six faces copied for one mover) and PERF-NAMES (the crowd's names laid out at every
 move). Then what is left, ranked - the levers that do move
 the picture are the owner's. Later the same day: PERF-TEAMS (another player's team, cut by its distance and the view)
-and PERF-WAGON (the rest of the carts, wagons and tents, and the fixed city's host).
+and PERF-WAGON (the rest of the carts, wagons and tents, and the fixed city's host); the next day HARNESS-REST (a
+standing team's harness neither stepped nor sent), its section after PERF-WAGON's.
 
 AUDITED the same day (the owner: "Lets do an audit on this"): five cold lanes over a frozen snapshot, every finding
 fixed, pinned and mutated or recorded - `01-Overview/Audit-Perf-Priority.md`. What the audit changed is written into
@@ -457,6 +458,39 @@ synthetic map's bands - and the four hosts' wiring. Mutants: `tools/mutants/perf
 `lw12.json`'s LW12-wire-draw at the hideouts' line that now hands the test. Pins moved (PIN MOVED): `hcc_hosts` (both
 hosts' tents-and-wagons lines), `lw10_wagons` (the host's teams line, the pool's presentation), `lw12_outlaws` (the
 hideouts' line). Every existing record within three lines of a changed line was run again: 25, all dead.
+
+## HARNESS-REST — a standing team's harness comes to rest
+
+*The owner (2026-10-11): "agora ataca os arreios das carroças" - the next cost in a profile of their live client (a
+town at night, 1080p, RX 6700 XT).*
+
+**Found.** 4.0% of the main thread (598 ms of 15,014; again 512 of 14,152 the same evening, 0.42 ms a frame at 76
+FPS): `horseCartPool.js:"function stepHarness(dt) {"` steps every harness within PERF-TEAMS' reach every frame - its
+ropes' Verlet step, the tube laid again, the vertices sent (`renderer.updateMeshVertices`, which measures the mesh's
+sphere, each sub-mesh's over the index list - both windings, eight times the vertices - and compares the bake). PERF-WAGON
+culls the draw, not this. The live client held 11 to 14 harnesses, every one a parked team's (two or four traces), and
+read over CDP across 60 frames not one end had moved; the ropes drifted ~6 mm, the step's own jitter as the frame's
+length changes (the sag's balance moves with dt), nothing a 22 mm strap shows.
+
+**The fix.** A harness whose ends have stood within `HARNESS_STILL_M` (0.1 mm) of where they stood for `HARNESS_REST_S`
+(3 s) is neither stepped, laid nor sent - it hangs as last drawn - until an end moves, and that frame it steps again
+(`harnessStill`, over each end and its scale). Measured from where the ends stood when they came to rest, never from last
+frame, so an ease creeping a hair a frame adds up and wakes it. Three seconds is past any swing: ROPE damps a step by
+0.97 at 60 steps a second at least, so under 0.5% of a swing is left. A floating-origin shift, a horse led off, a wagon
+driven: each moves an end and wakes it. Nothing a player sees but the jitter gone.
+
+**Measured.** In the owner's running client, a LOWER BOUND by A/B: the bundle is not open to a live edit (Electron's
+V8 refuses `Debugger.setScriptSource`, and its `dagger://` chunks pass no CDP `Fetch`), but the pool's harness map is
+public (`harness`), so each harness's `ropes.forEach` (the tube laid again) and the renderer's `updateMeshVertices` (the
+send) were wrapped as own properties: on B a harness under this law (0.1 mm, 3 s) was neither laid nor sent, on A as
+shipped; the Verlet step ran on both (~0.09 ms a frame in the profile, out of reach). Six rounds of each, 10 s,
+interleaved ABBA, standing by the town's parked teams: 10 harnesses, all 10 at rest on B; the laying and sending 0.26 ms
+a frame on A and none on B; 86.6 -> 89.8 FPS mean (medians 88.0 -> 89.8), 11.6 -> 11.1 ms a frame - inside the
+rounds' noise (B ahead in four pairs of six). With the step the branch also stops, ~0.35 ms of an ~11.5 ms frame: ~3%
+where the teams stand, nothing where every team is on the move.
+
+Pins: `test/harnessrest.test.js` (3), over a real pool's real driven harness. Mutants: `tools/mutants/harnessrest.json`,
+7, all dead.
 
 ## PEER-HULL-RANGE — another's ship far off stands no hull here
 
