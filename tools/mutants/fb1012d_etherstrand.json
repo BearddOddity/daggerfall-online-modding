@@ -38,8 +38,8 @@
   {
     "name": "ETHER-STRAND-the-helms-word-unsaid",
     "file": "src/systems/comeSailAway.js",
-    "old": "export const cargoWords = (mod) => (mod < 0.5 ? \"You're going to need a bigger boat\"",
-    "new": "export const cargoWords = (mod) => (mod < 0 ? \"You're going to need a bigger boat\"",
+    "old": "export const cargoModWords = (mod) => (mod < 0.5 ? \"You're going to need a bigger boat\"",
+    "new": "export const cargoModWords = (mod) => (mod < 0 ? \"You're going to need a bigger boat\"",
     "tests": [
       "test/fb1012d_etherstrand.test.js"
     ]
@@ -74,7 +74,7 @@
   {
     "name": "ETHER-STRAND-the-words-two-homes",
     "file": "src/systems/comeSailAway.js",
-    "old": "      const words = cargoWords(state.boatCargoMod);",
+    "old": "      const words = cargoModWords(state.boatCargoMod);",
     "new": "      const words = state.boatCargoMod < 0.5 ? \"You're going to need a bigger boat\" : null;",
     "tests": [
       "test/fb1012d_etherstrand.test.js",
