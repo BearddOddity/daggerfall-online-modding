@@ -24,6 +24,10 @@ player's ship far off stands no hull on my client. It does not move the picture 
 fog on every lane (AUDIT PEER-HULL-RANGE moved its edges there and gave a hull built again her record's dress). Its
 section is after PERF-WAGON.
 
+STORE-CACHE (2026-10-11, the owner: "faz uma verificacao no meu jogo aberto ... o que mais esta custando o FPS") is the
+next profile of the live desktop client: a storage read was a file read, and the game reads storage every frame. It
+does not move the picture. Its section is after PEER-HULL-RANGE.
+
 ## How the pass was run
 
 NOT IN THE REAL GAME. The frame probe (`tools/frameProbe.mjs`, PERF-NEXT's recipe) needs the freeware ARENA2, and its
@@ -494,6 +498,46 @@ Pins: `test/peerhullrange.test.js` (+2): every lane's fog closed at the near edg
 ship under way given back and built again, each in her record's dress. Mutants (+6): the first cut's edge, each of the
 three remembered things kept, her fires left hung, whole in a frame.
 
+## STORE-CACHE — the desktop store answers a read from memory
+
+*The owner's own client (2026-10-11): the installed app at 1920x1080 on a Radeon RX 6700 XT, online in a town at night
+with five players about. A 15 s CPU profile through the shell's debugging port (`--remote-debugging-port`, CDP
+`Profiler`), 86 FPS over it, script 13.7 ms a frame on the HUD.*
+
+**Found.** 18.5% of the main thread (2,772 ms of 15,014) was `localStorage.getItem` - in the desktop app the DA2 store
+(`app/lib/fileStorage.cjs`), which answered every read with a `readFileSync` (and an `encodeURIComponent` and a
+`path.join` for the file's name): 68 us a read on this machine, where the browser's localStorage answers from memory.
+The game's readers are written for the browser's:
+
+- 2,405 ms: the professions' book keys its counting set by `profBook.js:"const slot = () =>"`, the account half of it
+  the signed-in session (`accountClient.js` `storedSession`, `dagger.account.session`), so every `counting` - every
+  harvest node near the player, every frame, from the marks, the target's scan and the pump - read the session's file.
+  GATHER-SPEED cached the set and not its key.
+- 166 ms the remains waypoint (`dfjs.wild.remainsWp`, every frame), 86 ms the claims' watch, 80 ms the weapon rig's
+  glyphs and aura, ~40 ms the rest.
+
+**The fix.** The store keeps a pref's or a slot file's text as last read or written (`read`, by key) and reads its file
+again after `readTtlMs` (1,000 ms) - a key asked every frame is one file read a second. A write keeps what it wrote; a
+write that throws and a remove forget the key, so the next read is the disk's. The enumeration sweep's `rescan` empties
+it, so a save copied into the open Saves folder reads as itself the moment the sweep lists it, as before. The
+screenshot is never kept. The game's readers are untouched: one change at the seam answers every reader there is and
+every one to come, and the browser build has no file to read.
+
+**Measured.** The store over the owner's own Prefs, the session read 20,000 times: 67.9 us a read on main, 0.095 us on
+the branch (`node` 22; the shell's asar-patched `fs` is slower still). And in the owner's running client, A/B: the
+bridge object is frozen, so the page's own wrapper (`appStorage.js`'s, which every reader holds and which looks its
+`getItem` up at each call) was found through CDP `Runtime.queryObjects` and answered, on B, from a cache under this
+law (1 s, forgotten on its own writes) with one bridge crossing kept a read (`key(0)`), so B costs what the branch
+does; on A, as shipped. Six rounds of A and B, 10 s each, interleaved ABBA, standing still in a town at night:
+58-64 reads a frame on both arms, 1.83 ms a frame in them on A and 0.04 on B; 85.7 -> 109.9 FPS mean (the medians
+92.5 -> 114.2), 12.0 -> 9.2 ms a frame, and B ahead in every pair. The p99 does not move (both ~19-21 ms: the frame's
+hitches are elsewhere).
+
+Pins: `test/storecache.test.js` (3) - a frame's 300 reads of a key are one disk read, of a key the store wrote none, of
+an absent key one, of the screenshot each; a file changed by hand seen past `readTtlMs` and at once after a rescan; a
+write, a remove and a thrown write each leave the next read the disk's truth. Mutants: `tools/mutants/storecache.json`,
+6, all dead.
+
 ## What is left, ranked
 
 Each with what was found and whether it moves the picture (those are the owner's).
@@ -542,6 +586,18 @@ Each with what was found and whether it moves the picture (those are the owner's
 9. **The cart's pass's landmarks** (PERF-WAGON) - the Sigil Broker's cage, the Oblivion Gate's stone, the rite's
    circle, a bounty farm, the quays and the LeFay monument are each drawn whole wherever they stand streamed. One each:
    a box apiece and the street's test would save a few draws a frame. Nothing a player sees.
+
+**From the owner's profile** (STORE-CACHE's, above; the boats' 7% there is PEER-HULL-RANGE's, merged after that build).
+10. **The harness** - 4.0% of the main thread: `horseCartPool.js:"function stepHarness(dt) {"` steps every owner's
+    ropes - every player's hitched wagon in the room, however far - refills the tube and sends it to the GPU, every
+    frame; `renderer.updateMeshVertices` then walks the vertices three times over (the mesh's sphere, each sub-mesh's,
+    the bake's comparison). PERF-WAGON culls its draw, not this. A distance past which a peer's harness is not stepped
+    (the team's own cut, PERF-TEAMS) would take most of it. Nothing a player sees inside the cut.
+11. **The hover pick** - 3.3%: the exterior's tooltip ray is cast every frame over every target list (corpses, piles,
+    torches, wagons, carts, camps). Asked only when the eye moved, or every other frame, it would halve. Moves the
+    tooltip's answer by a frame.
+12. **The professions' scan** - 2.6% once STORE-CACHE took its reads: the marks, the target's scan and the pump each
+    walk the harvest nodes near the player every frame. Nothing a player sees.
 
 **The GPU** (unchanged from PERF-NEXT): the cloud march, Steady shadows' every-frame lantern faces, an automatic quality
 governor - each the owner's.
