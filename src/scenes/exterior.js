@@ -1465,7 +1465,6 @@ export async function bootExterior(canvas, renderer, params, status) {
     lookPitch: () => cam.pitch, lookYaw: () => cam.yaw, groundHeightAt: (x, z) => collider.heightAt(x, z),
     enhancedRiding: () => (rrRidingOn() ? { terrainFollowing: rrRidingSetting('followTerrainEnabled') === true, softenFollow: rrRidingSetting('followTerrainSoftenFactor') ?? 8 } : null),
     horseCart: () => hccRuntimeOn(),   // HCC: TrailingWagonTransportWindow's gate and route (declared below; read at open)
-    cartRefusal: () => upkeep.brokenWhy(),   // WAGONS4: the classic window's Cart row, a broken wagon dark (declared below; read at open)
   });
   preloadCharSheetArt({ renderer, fetchBytes, palette });   // U8a: INFO00I0 warms at boot
   warmLevelUpWindow();   // LV1's audit: the level-up window opens because the GAME decided, so its chunk warms at boot rather than inside a pause nobody asked for
@@ -1767,7 +1766,7 @@ export async function bootExterior(canvas, renderer, params, status) {
       get: () => player.transportMode, set: (m) => mountRig.setMode(m),
       hasCart: () => hasCart(playerEntity.items ?? []), hasHorse: () => hasHorse(playerEntity.items ?? []), isOnShip: () => false,
     },
-    teamShort: () => wagonTeamShort(playerEntity.items ?? []) ?? upkeep.brokenWhy(),   // WAGONS3: a pair's wagon takes its pair; WAGONS4: and a broken one goes nowhere
+    teamShort: () => wagonTeamShort(playerEntity.items ?? []),   // WAGONS3: a pair's wagon takes its pair
     player: { position: hccPlayerCentre, forward: hccForward, movement: () => ({ position: hccPlayerCentre(), forward: hccForward() }) },
     gps: { worldX: () => _anchorNative(player.pos).x, worldZ: () => _anchorNative(player.pos).z, scenePosition: hccPlayerCentre, currentMapPixel: () => _locPixel },
     streaming: { isReady: () => true, isInit: () => false, mapPixelX: () => _locPixel.x, mapPixelY: () => _locPixel.y, ratio: () => 1 / GLOBAL_SCALE },
@@ -5365,7 +5364,6 @@ export async function bootExterior(canvas, renderer, params, status) {
           wagonGoes: mode === TRANSPORT_MODES.Cart || !!hccRuntimeOn()?.view?.()?.teamFollowing,
         });
         saddleHost.motion(gamePaused() ? 0 : dt, metres, galloping);   // STEED-UI: the saddle panel's pace and gait
-        if (mode === TRANSPORT_MODES.Cart && !hccRuntimeOn() && upkeep.brokenWhy()) mountRig.setMode(TRANSPORT_MODES.Foot);   // AUDIT WAGONS4: world.js's twin - the classic cart broken under its driver
       }
       // PlayerHeightChanger's sink reads `OnExteriorWater == Swimming`
       // alone (:127, :294, :326, :550) - WaterWalking splashes but

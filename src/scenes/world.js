@@ -7743,7 +7743,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     lookPitch: () => cam.pitch, lookYaw: () => cam.yaw, groundHeightAt: (x, z) => heightAt(x, z),
     enhancedRiding: () => (rrRidingOn() ? { terrainFollowing: rrRidingSetting('followTerrainEnabled') === true, softenFollow: rrRidingSetting('followTerrainSoftenFactor') ?? 8 } : null),
     horseCart: () => hccRuntimeOn(),   // HCC: TrailingWagonTransportWindow's gate and route (declared below; read at open)
-    cartRefusal: () => upkeep.brokenWhy(),   // WAGONS4: the classic window's Cart row, a broken wagon dark (declared below; read at open)
   });
   // RR2: the seams EnhancedRiding's component reads off the scene - in a town (PlayerGPS.IsPlayerInTown(true)), the transport mode
   setRrHostSeams({ inTown: () => _isPlayerInTownStrict(), transportMode: () => player.transportMode, riding: () => player.riding });
@@ -8489,7 +8488,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       hasCart: () => hasTransport(TRANSPORT_SMALL_CART), hasHorse: () => hasTransport(TRANSPORT_HORSE),
       isOnShip: () => isOnShip(playerEntity, playerEntity.boardShipPosition ?? null, playerTravelPixel()),
     },
-    teamShort: () => wagonTeamShort(playerEntity.items ?? []) ?? upkeep.brokenWhy(),   // WAGONS3: a pair's wagon takes its pair; WAGONS4: and a broken one goes nowhere - refused at every door a short team is
+    teamShort: () => wagonTeamShort(playerEntity.items ?? []),   // WAGONS3: a pair's wagon takes its pair
     player: { position: hccPlayerCentre, forward: hccForward, movement: () => ({ position: hccPlayerCentre(), forward: hccForward() }) },
     gps: {
       worldX: () => state.worldCoords(player.pos).x, worldZ: () => state.worldCoords(player.pos).z,
@@ -17552,7 +17551,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       // Yard sell both (MERCHANT-YARDS; DFU's General Store did), so the
       // calculator's transport modifier is real.
       hasHorse: () => hasTransport(TRANSPORT_HORSE),
-      hasCart: () => hasTransport(TRANSPORT_SMALL_CART) && !upkeep.brokenWhy(),   // WAGONS4: a broken wagon is no journey's transport
+      hasCart: () => hasTransport(TRANSPORT_SMALL_CART),
       // `DaggerfallBankManager.OwnsShip || GuildManager.FreeShipTravel()`
       // (DaggerfallTravelPopUp.cs:219), read at OnPush like the two
       // above. FreeShipTravel is base-false everywhere and overridden
@@ -33519,9 +33518,6 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
             wagonGoes: mode === TRANSPORT_MODES.Cart || !!hccRuntimeOn()?.view?.()?.teamFollowing,
           });
           saddleHost.motion(gamePaused() ? 0 : dt, metres, galloping);   // STEED-UI: the saddle panel's pace and gait
-          // AUDIT WAGONS4: the classic cart broken down under its driver (Horse Cart and Cargo off) - afoot beside it, its line
-          // said as it broke; the mod's own reconcileTeam parks its team and stands its driver down
-          if (mode === TRANSPORT_MODES.Cart && !hccRuntimeOn() && upkeep.brokenWhy()) setTransportModeHere(TRANSPORT_MODES.Foot);
         }
         // PlayerHeightChanger reads `OnExteriorWater == Swimming` and
         // only that (:127, :294, :326, :550) - WaterWalking never sinks
