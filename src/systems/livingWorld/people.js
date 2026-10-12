@@ -109,11 +109,13 @@ export const STANDING_NAMES = Object.freeze({ friend: 'Friend', neutral: 'Known'
  */
 export function regardBadge(card) {
   if (!card || !Number.isFinite(card.regard)) return null;
-  const r = Math.round(card.regard);
+  // AUDIT PLAIN-UI W6: toward nought, as the standing reads it - a regard of 39.5 (a half day's easing) read "Known +40"
+  // beside "A friend from +40", and Courtship stayed hidden (marriage.js reads the regard unrounded)
+  const r = Math.trunc(card.regard) || 0;
   const standing = /** @type {keyof typeof STANDING_NAMES} */ (Object.hasOwn(STANDING_NAMES, card.standing) ? card.standing : regardStanding(r));
   return {
     standing, label: STANDING_NAMES[standing], value: `${r > 0 ? '+' : ''}${r}`, share: (r + REGARD_MAX) / (2 * REGARD_MAX),
     words: `How they regard you: ${r > 0 ? '+' : ''}${r}, from -${REGARD_MAX} to +${REGARD_MAX}. A friend from +${FRIEND_AT}; an enemy from ${ENEMY_AT}, who will not speak to you; hostile from ${HOSTILE_AT}. `
-      + 'Talking once a day, a polite word and fighting at their side raise it; a blunt word, a crime they see and a blow lower it. It fades toward nothing on days you are apart.',
+      + 'Talking once a day, a polite word and fighting at their side raise it; a blunt word, a crime they see, a blow and - worst - one of their own struck down lower it. It fades toward nothing on days you are apart.',
   };
 }

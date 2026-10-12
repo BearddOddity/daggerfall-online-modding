@@ -3514,6 +3514,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     caught: (p) => livingIndoors?.caught(p) ?? null,
     toned: (p, tone) => livingIndoors?.town()?.toned(p, tone) ?? null,
     moment: (p) => livingIndoors?.town()?.moment?.(p) ?? null,   // LW6c: a household at home handed a keepsake
+    regardCard: (p) => livingIndoors?.town()?.regardCard?.(p) ?? null,   // AUDIT PLAIN-UI C2: the talk panel's regard, indoors too
   };
   const livingTownOfMap = (mapId) => {
     for (const p of built.values()) if (p.population instanceof LivingTown && (p.population.o.town.mapId >>> 0) === (mapId >>> 0)) return p.population;
@@ -3571,6 +3572,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   // the person's town on the road: the roads' layer answers a refusal and notes a word (townTalk's `livingTalk` door)
   const _livingRoadsDoor = { refuses: (p) => livingRoads?.refuses(p) ?? null, talked: (p) => livingRoads?.talked(p) ?? null, caught: (p) => livingRoadCaught(p), roadside: true };
   _livingRoadsDoor.toned = (p, tone) => livingRoads?.toned(p, tone) ?? null;   // LW7: a word's tone on the road too
+  _livingRoadsDoor.regardCard = (p) => livingRoads?.regardCard(p) ?? null;   // AUDIT PLAIN-UI C2: the talk panel's regard on the road and below (a diver's door)
   /** @type {ReturnType<typeof createLivingRoads> | null} */
   let livingRoads = null;
   // LW11 (bible/06-Systems/Living-World-II.md): THE CARAVAN'S DOOR - the counter, the deeds and their reports, the hold-up

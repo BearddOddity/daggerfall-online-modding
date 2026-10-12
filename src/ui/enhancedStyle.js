@@ -2849,7 +2849,7 @@ html.plus-pad-prompts-visible .px-over > .px-stage:not(.px-acctstage):not(.px-ti
 .talk-regard { display: flex; align-items: center; gap: 8px; font: inherit; font-size: 14px; letter-spacing: 0.06em; cursor: pointer;
   background: none; border: 0; padding: 2px 0; min-height: 24px; text-align: left; }
 .talk-regard:focus-visible { outline: 1px dashed currentColor; outline-offset: 2px; }
-.talk-regard-words { grid-column: 1 / -1; margin: 0; font-size: 14px; line-height: 1.45; color: #c9bfa3; }
+.talk-regard-words { grid-column: 1 / -1; margin: 0; font-size: 14px; line-height: 1.45; color: #c9bfa3; max-height: 4.4em; overflow-y: auto; }   /* AUDIT PLAIN-UI C5: a short screen keeps its conversation */
 .talk-regard-name { text-transform: uppercase; }
 .talk-regard-bar { position: relative; width: 96px; height: 6px; flex: 0 0 auto; background: rgba(0,0,0,0.55);
   box-shadow: inset 0 0 0 1px rgba(125,116,96,0.55); }

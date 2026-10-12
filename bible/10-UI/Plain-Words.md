@@ -18,12 +18,12 @@ systems. Theres just so many systems that dont explain what they are and its ext
   explanation, "How the seat war works", stood FOLDED under the Charter, the week, the battle, the standings, your guild,
   the holder's orders and the works - below the first screen at 1280x800, so a reader met "Muster", "Reckoning",
   "Turning", "Right of Siege", "defence", "Standing", "Tithe", "Edict" and "influence" before anything said what one was,
-  and most of those words were said nowhere on the tab at all. `11-Multiplayer/Guilds-Made-Plain.md` section 1 held this
+  and most of those words were defined nowhere on the tab at all (the guide and the lines used them; AUDIT PLAIN-UI R1). `11-Multiplayer/Guilds-Made-Plain.md` section 1 held this
   tab "already plain"; the player's word is the record that it was not.
 - **The Chapters** (the Work tab's cards, `src/ui/noticeWindow.js` `chapterCard`): every line 12px; no word on what a
   chapter is or how one joins, what Merit and Strength are and how they move, the bands' thresholds, the chairs (ranks 8
-  and 9), the Season's events or a patron. The tenure, the cap and the one-chapter-a-week rule were said only when they
-  refused the reader.
+  and 9), the Season's events or a patron. The tenure and the one-chapter-a-week rule were said only when they refused
+  the reader (the cap stood in the Merit line's "150 of 600"; AUDIT PLAIN-UI R1).
 - **The Family tab** (`src/ui/familyPages.js`): the tree's names 11px, the card's chips 10px, its facts 12px. Nothing on
   it explained Arkay's toll, the Elder, the Succession, what an heir inherits, the heirloom and the remains, marriage and
   children, or the tree's own marks. The tutorial's two sentences (`src/systems/tutorialCatalogue.js` `legacy`) fire once,
@@ -35,7 +35,7 @@ systems. Theres just so many systems that dont explain what they are and its ext
   its map mark (quest people in the same town only - `src/systems/topicTree.js`); the quest tracker, marks and compass
   (a quest's place, once it is on the map); the escort faces; the Chronicle's People page (home town and days since last
   seen - never where they are now: residents walk a day's plan, `src/systems/livingWorld/dayPlan.js`); a party's members
-  on the world map (`src/ui/partyMapMarks.js`, their town's pixel); the friends list (online or last online, no place);
+  on the world map (`src/ui/partyMapMarks.js`, each at the map pixel they stand in now); the friends list (online or last online, no place);
   the chat roster and name tags (no place); hand-set waypoints.
 
 ## 2. What changed
@@ -43,24 +43,32 @@ systems. Theres just so many systems that dont explain what they are and its ext
 - **PLAIN-UI a, the Seat tab.** Under the Charter, before any number, three panels: WHAT THIS IS - the seat in two
   sentences (`seatAbout`) and THE READER'S NEXT STEP from where they stand (`seatNextStep`: no guild - where to join or
   found one; a guild not pledged here - pledge it, or ask an Officer or the Guildmaster, or wait for the next Muster;
-  pledged elsewhere; not yet counted; an account bound to another guild; the holder; one who earns); HOW THE SEAT WAR
-  WORKS, moved up from the foot, OPEN for a reader whose guild has no pledge in the region and folded for one whose has
-  (`seatGuideOpen`), a fold or unfold kept across the tab's redraws; and WORDS ON THIS BOARD (`seatWords`), folded: every
-  name the tab uses beside its meaning - Charter, Influence, Muster/Reckoning/Turning, Pledge, Defence, Right of Siege,
-  Tourney, Standing, Tithe, Edict, Tribute, Sellsword, Season and Tide - its numbers `net/townSeatLaw.js`'s own
-  (`CLAIM_THRESHOLD` by tier, `CONTESTED_MARGIN`, `STANDING_START`, `STANDING_UNREST`, `UNREST_BONUS`, `TITHE_CAP`,
-  `TRIBUTE_MARKS_PER_INFLUENCE`).
+  pledged elsewhere; a guild at its regions' most; not yet counted; an account bound to another guild; the holder; one
+  who earns); HOW THE SEAT WAR WORKS, moved up from the foot, OPEN for a reader whose guild has no pledge in the region
+  and folded for one whose has (`seatGuideOpen`); and WORDS ON THIS BOARD (`seatWords`), folded: every name the tab
+  uses beside its meaning - Charter, Influence, Muster/Reckoning/Turning, Pledge, Defence, Right of Siege, Tourney,
+  Standing, Tithe, Edict, Tribute, Sellsword, the Works, Fealty and Pacts, Season and Tide - its numbers
+  `net/townSeatLaw.js`'s own (`CLAIM_THRESHOLD` by tier, `CONTESTED_MARGIN`, `STANDING_START`, `STANDING_UNREST`,
+  `UNREST_BONUS`, `TITHE_CAP`, `TRIBUTE_MARKS_PER_INFLUENCE`, `SEAT_LEGACY_SHARE`, `SEAT_PLEDGE_REGIONS_MAX`). All three
+  stand for a reader the standings refused or have not reached yet too (the next step alone waits on them). A fold is
+  the board's `boardFold`: the reader's press on its line is their choice, kept across the tab's redraws - never the
+  `toggle` event, which a browser fires for an `open` the draw set as well (AUDIT PLAIN-UI C1, C4).
 - **PLAIN-UI b, the Chapters.** HOW CHAPTERS WORK over the Work tab's chapter cards (`chapterGuide`, `CHAPTER_GUIDE_TITLE`
   in `src/ui/noticeWindow.js`), where the region keeps a chapter: what a chapter is and how one belongs to it, Merit,
-  Strength, the bands, the chairs, the Season and the patron - every number `net/npcChapterLaw.js`'s (`MERIT_WRIT`,
-  `MERIT_RECEIPT`, `MERIT_TENURE_S`, `MERIT_CAP_WEEK`, `STRENGTH_START`, `STRENGTH_STEP_MAX`, `STRENGTH_IDLE`,
-  `CHAPTER_BANDS`, `SEAT_RANK`, `CHAPTER_SEATS`, `SEAT_TENURE_S`, `SEAT_MERIT_WEEKS`, `CHAPTER_EVENTS`,
-  `CHAPTER_PATRON_MIN`, `CHAPTER_PATRON_BAND`). Open for a reader who earns Merit in none of the region's chapters,
-  folded for one who does. The cards are behind `CHAPTERS_OPEN` (`dev`), and so is the guide: it stands where they do.
+  Strength (the week's mark, the fall back toward 50, a week with none, the Failing band's fall, the Rivalry's swing,
+  the Season's end), the bands, the chairs, the Season and the patron - every number `net/npcChapterLaw.js`'s
+  (`MERIT_WRIT`, `MERIT_RECEIPT`, `MERIT_TENURE_S`, `MERIT_CAP_WEEK`, `STRENGTH_START`, `STRENGTH_MIN`, `STRENGTH_MAX`,
+  `STRENGTH_TARGET`, `STRENGTH_STEP_MAX`, `STRENGTH_SHORT`, `STRENGTH_IDLE`, `CHAPTER_FAILING_FALL`,
+  `CHAPTER_FAILING_MEETS`, `CHAPTER_EVENT_EFFECTS`, `CHAPTER_BANDS`, `SEAT_RANK`, `CHAPTER_SEATS`, `SEAT_TENURE_S`,
+  `SEAT_ACCOUNT_AGE_S`, `SEAT_MERIT_WEEKS`, `CHAPTER_EVENTS`, `CHAPTER_PATRON_MIN`, `CHAPTER_PATRON_BAND`). Open for a
+  reader with no Merit yet in any of the region's chapters, folded for one with some - the service sends a Merit row for
+  every membership, none earned and a week's wait included (`server-account/src/npcMerit.js` `meritAsks`; AUDIT
+  PLAIN-UI T3). The cards are behind `CHAPTERS_OPEN` (`dev`), and so is the guide: it stands where they do.
 - **PLAIN-UI c, the Family tab.** A fourth page on its rail, HOW IT WORKS (`FAMILY_PAGE_SECTIONS` `guide`,
   `drawGuidePage`, drawn by `src/ui/enhancedMenu.js` `pauseFamily`): `familyGuide(model, tollShare)` - the house; death in
   the house's own model (both, before one is founded), its toll the Features tile's (`legacySettings().tollShare`); who
-  carries on; what an heir inherits (`BLOOD_MAX`, `HEARTH_MAX`, `ESTATE_SHARE`, `ESTATE_MAX`); heirlooms and remains
+  carries on; what carries on - the estate to whoever takes the line, the blood and the hearth to a newborn alone, at
+  birth (`BLOOD_MAX`, `HEARTH_MAX`, `ESTATE_SHARE`, `ESTATE_MAX`; AUDIT PLAIN-UI W2); heirlooms and remains
   (`systems/legacy/heirloom.js`); marriage and children (`systems/legacy/marriage.js`, `FRIEND_AT`); playing another
   member; and the tree's marks. Its type a step larger: names 12px, marks 13px, chips 12px, the card's facts, kin and
   words 14px, its heading 18px, the card 300px wide.
@@ -68,8 +76,12 @@ systems. Theres just so many systems that dont explain what they are and its ext
   resident's regard under their name: the standing in the Chronicle's own words (`STANDING_NAMES`: Friend, Known, Enemy,
   Hostile), a bar from -100 to +100 with its middle marked, and the number signed. A press on it says, in a line across
   the panel's head, what the number is and what moves it (a finger has no hover; the `title` says the same to a mouse).
-  The words are `regardBadge` (`src/systems/livingWorld/people.js`), off `src/systems/livingWorld/relations.js`' thresholds; the card is the
-  body's own town's (`LivingTown.regardCard`, the day `refuses()` reads); the host words it
+  The words are `regardBadge` (`src/systems/livingWorld/people.js`), off `src/systems/livingWorld/relations.js`'
+  thresholds, the number taken toward nought as the standing reads it (AUDIT PLAIN-UI W6: a regard of 39.5 is Known
+  +39, never +40). The card is the body's own door's - a body's `living.town` is the door it was minted with
+  (`src/world/travellerSprites.js`): the street's `LivingTown.regardCard`, a resident at home `_livingIndoorsDoor`'s,
+  a road's or a diver's `_livingRoadsDoor`'s (`src/scenes/livingRoads.js` `regardCard`, a company's word its head's),
+  each on the day its `refuses()` reads (AUDIT PLAIN-UI C2: the street's alone shipped first). The host words it
   (`src/scenes/world.js` `livingTalk.regard`) and `src/scenes/townTalk.js` hands it to the panel as a hook for the
   resident the conversation is with (`_toneTarget`) and nobody else - so the panel keeps ET1's law of importing no
   conversation law.
@@ -77,11 +89,12 @@ systems. Theres just so many systems that dont explain what they are and its ext
   15px, the Charter's head 17px, the phase strip 13px, the standings and the battle 15px, the Chronicle 14px, the
   chapters' lines and the Merit line 14px (12), the day's writ count 15px.
 
-THE FOUR HOSTS (Home.md, 17e) for the regard hook: `src/scenes/world.js` WIRED (its `livingTalk`); the interiors
-(`src/scenes/worldModes.js`) and the dungeon (`src/scenes/dungeonContext.js`) talk through world.js's one `townTalk`, so
-a resident met there carries the badge by the same hook (a static NPC is no resident: none); `src/scenes/exterior.js`, the
-single-town bench, builds its own `townTalk` with no `livingTalk` - it runs no living world, so no one there has a regard
-to show.
+THE FOUR HOSTS (Home.md, 17e) for the regard hook: `src/scenes/world.js` WIRED (its `livingTalk`, and the indoor and
+road doors' cards); the interiors (`src/scenes/worldModes.js`) and the dungeon (`src/scenes/dungeonContext.js`) build no
+`townTalk` of their own and talk through world.js's one, so a resident met at home or a diver met below carries the
+badge through their own door's card (a static NPC is no resident: none) - AUDIT PLAIN-UI C2 corrected this paragraph,
+which said they did before their doors had a card; `src/scenes/exterior.js`, the single-town bench, builds its own
+`townTalk` with no `livingTalk` - it runs no living world, so no one there has a regard to show.
 
 ## 3. The laws
 
@@ -97,11 +110,13 @@ to show.
 ## 4. Not done, and why
 
 - **The classic talk face** draws DFU's TALK01I0 on DFU's rects (THE NATIVE-WINDOW RULE, Home.md): there is no rect to
-  cite for a regard, so the badge is the enhanced panel's alone. On the classic skin the Chronicle's People page is
-  where regard is read.
+  cite for a regard, so the badge is the enhanced panel's alone. The People page is the enhanced Chronicle's too
+  (on the classic skin the Chronicle door opens DFU's journal and history), so on the classic skin regard is shown
+  nowhere but in a resident's greeting and an enemy's refusal (AUDIT PLAIN-UI R1) - OPEN, as the classic skin's own
+  call.
 - **DFU's own walkers and static NPCs** keep no regard (their reaction is DFU's faction law): no badge for them.
 - **Tracking a person** is OPEN - a design call, not a gap in words. What a player can do today is section 1's list:
-  the reliable way to keep track of another player is a party (their town on the world map); of a resident, the
+  the reliable way to keep track of another player is a party (where they stand, on the world map); of a resident, the
   Chronicle's People page (their home town, when last seen). The candidates, for the owner's call: a Track on a People
   card that marks the resident's home on their town's map, and their building for the hour where their town is loaded
   (the day's plan already places them); and a friend's town on the friends list (a privacy choice the friend would make).
@@ -115,6 +130,8 @@ to show.
   `test/audit657_board.test.js`'s D4 (its reader pledged in the region, so the guide's kept fold is pinned from the
   folded side) and `test/lw2_livingTown.test.js`'s talk doors (the regard beside them); their three mutant records
   (`audit657.json`, `board_ui.json`, `lw2.json`) re-aimed by content and dead again.
-- `tools/mutants/plainui.json`: 20 mutants, 20 dead.
+- `tools/mutants/plainui.json`: 20 mutants, 20 dead (six re-aimed by content at AUDIT PLAIN-UI).
+- AUDIT PLAIN-UI (`01-Overview/Audit-Plain-UI.md`): `test/audit_plainui.test.js` (9), `tools/mutants/audit_plainui.json`
+  23 mutants, 23 dead.
 - `tools/noticeBoardProbe.mjs` photographs the two guides unfolded (`work-guide`, `seat-guide`) beside its other shots,
   desktop and phone - every tab inside the viewport, nothing spilling sideways.

@@ -29,7 +29,7 @@ import { houseWord } from '../systems/legacy/houseName.js';   // LEGACY-NAME: a 
 import { facePose } from '../systems/legacy/facePose.js';   // AUDIT LEGACY III P17: a person's portrait, asked one way
 import { optionPath } from './settingsMap.js';   // ORG2
 // PLAIN-UI: How it works says the law's own numbers
-import { HEIRLOOM_DAMAGE_PER_GEN, HEIRLOOM_ARMOR_PER_GEN, HEIRLOOM_GEN_MAX, REMAINS_GOLD_SHARE, BLESSING_POINTS, BLESSING_SKILL_MAX } from '../systems/legacy/heirloom.js';
+import { HEIRLOOM_DAMAGE_PER_GEN, HEIRLOOM_ARMOR_PER_GEN, HEIRLOOM_GEN_MAX, REMAINS_GOLD_SHARE, REMAINS_GOLD_MAX, BLESSING_POINTS, BLESSING_SKILL_MAX } from '../systems/legacy/heirloom.js';
 import { AFFECTION_MAX, CHILD_DAYS, CHILD_CHANCE, CHILDREN_MAX } from '../systems/legacy/marriage.js';
 import { FRIEND_AT } from '../systems/livingWorld/relations.js';
 import { legacySettings } from '../systems/legacy/settings.js';
@@ -564,17 +564,20 @@ export const noFamilyLine = (prov) => (!prov ? 'Your family is kept in the world
  */
 export function familyGuide(model, tollShare) {
   const pct = (/** @type {number} */ f) => `${Math.round(f * 100)}%`;
-  const enduring = `In an Enduring house a death is not the end, but it costs years: Arkay's toll takes ${pct(tollShare)} of your race's lifespan each time. From ${pct(ELDER_SHARE)} of the span you are an Elder; once the span is spent, your next death is final.`;
+  const enduring = `In an Enduring house a death is not the end, but it costs years: Arkay's toll takes ${pct(tollShare)} of your race's lifespan each time (a vampire or a werebeast pays none). From ${pct(ELDER_SHARE)} of the span you are an Elder; once the span is spent, your next death is final.`;
   const bloodline = 'In a Bloodline house every death is final.';
   const death = model === MODELS.bloodline ? bloodline : model === MODELS.enduring ? enduring : `${enduring} ${bloodline} Which a house is, is chosen once, when its founder is made.`;
   return [
-    ['Your house', 'You belong to a family: a house with a surname, a seat town and a tree. Every member has a face, an age, stats and skills, and any living member of the blood can be played.'],
+    ['Your house', 'You belong to a family: a house with a surname, a seat town and a tree. Every member has a face, an age, stats and skills, and any grown, living member of the blood can be played.'],
     ['Death', death],
-    ['Who carries on', 'At a final death you choose who carries the line: any living member of the blood, or a newborn heir of the fallen where one is born (the tree marks a member who will leave one: Has an heir). Heirs are born in the family\'s seat. With nobody left, the line ends and goes to the Hall of Ancestors.'],
-    ['What an heir inherits', `The blood: up to +${BLOOD_MAX} on each stat, from a parent's own. The hearth: up to +${HEARTH_MAX} on each primary and major skill. The estate: ${ESTATE_SHARE === 0.25 ? 'a quarter' : pct(ESTATE_SHARE)} of the gold the fallen carried, at most ${ESTATE_MAX.toLocaleString('en-US')}.`],
-    ['Heirlooms and remains', `A final death may leave an heirloom - the best weapon or armour the fallen wore - lying where they fell with their remains and ${REMAINS_GOLD_SHARE === 0.1 ? 'a tenth' : pct(REMAINS_GOLD_SHARE)} of their purse. The next of the line is given a quest to bring them home. An heirloom grows with each generation that carries it (+${HEIRLOOM_DAMAGE_PER_GEN}% damage or +${HEIRLOOM_ARMOR_PER_GEN} armour, up to ${HEIRLOOM_GEN_MAX} generations), and laying the remains to rest gives +${BLESSING_POINTS} to the fallen's best skill (at most +${BLESSING_SKILL_MAX} on one skill).`],
-    ['Marriage and children', `With the Living World on: make a friend of someone (a regard of +${FRIEND_AT}), then court them under Tell me about, once a day. At ${AFFECTION_MAX} affection you may propose, and you are wed at the temple of their town. While you both live, every ${CHILD_DAYS} days brings a ${CHILD_CHANCE === 0.25 ? 'one in four' : pct(CHILD_CHANCE)} chance of a child, up to ${CHILDREN_MAX}.`],
-    ['Playing another', 'Press anyone on the Family Tree to read their card. A living member of the blood can be played from it (Play as); an Enduring Elder can Pass the mantle and retire. Members who live in the world can be met there, and played from the meeting.'],
+    // AUDIT PLAIN-UI W2/W3/W10: the blood and the hearth are a newborn's, at birth (addChild); a child, a retired elder
+    // carry nothing on (successors, switchRefusal); the Has an heir chip is a Bloodline house's; a mantle passed may
+    // always take a newborn
+    ['Who carries on', 'At a final death you choose who carries the line: any grown, living member of the blood who has not retired, or a newborn heir of the fallen where one is born (in a Bloodline house the tree marks a member who will leave one: Has an heir; an Elder who passes the mantle may always choose a newborn). Heirs are born in the family\'s seat. With nobody left, the line ends and goes to the Hall of Ancestors.'],
+    ['What carries on', `Whoever carries the line on receives the estate: ${ESTATE_SHARE === 0.25 ? 'a quarter' : pct(ESTATE_SHARE)} of the gold the fallen carried, at most ${ESTATE_MAX.toLocaleString('en-US')}. A newborn is also born with the blood (up to +${BLOOD_MAX} on each stat, from the better parent's) and the hearth (up to +${HEARTH_MAX} on each of a parent's primary and major skills).`],
+    ['Heirlooms and remains', `A final death may leave an heirloom - the best weapon or armour the fallen wore - lying where they fell with their remains and ${REMAINS_GOLD_SHARE === 0.1 ? 'a tenth' : pct(REMAINS_GOLD_SHARE)} of their purse (at most ${REMAINS_GOLD_MAX.toLocaleString('en-US')}). The next of the line is given a quest to bring them home. An heirloom grows a step each time it is laid to rest beside the remains of the one who carried it (+${HEIRLOOM_DAMAGE_PER_GEN}% damage or +${HEIRLOOM_ARMOR_PER_GEN} armour a step, up to ${HEIRLOOM_GEN_MAX}), and laying the remains to rest gives +${BLESSING_POINTS} to the fallen's best skill (at most +${BLESSING_SKILL_MAX} on one skill).`],
+    ['Marriage and children', `With the Living World on: make a friend of someone (a regard of +${FRIEND_AT}), then court them under Tell me about, once a day. At ${AFFECTION_MAX} affection you may propose, and you are wed at the temple of their town. While you both live, every ${CHILD_DAYS} days you play as the married one brings a ${CHILD_CHANCE === 0.25 ? 'one in four' : pct(CHILD_CHANCE)} chance of a child, up to ${CHILDREN_MAX}. A child is played only once the line passes to them.`],
+    ['Playing another', 'Press anyone on the Family Tree to read their card. A grown, living member of the blood can be played from it (Play as) - never in a fight, nor while a Succession waits; an Enduring Elder can Pass the mantle and retire. With the Living World and Family In World on, the house lives in the world: meet one of them there to play them.'],
     ['The tree', 'A plate is a person: ◆ marks the one you play, ✝ and a grey face the dead. A dotted line joins a wedded couple; a solid line runs from parents to their children. Drag to move, the wheel or + and − to zoom.'],
   ];
 }
@@ -585,7 +588,7 @@ export function drawGuidePage(detail, rerender, { el, divider } = /** @type {any
   const prov = _provider;
   const family = prov?.on?.() ? prov.family() : null;
   detail.append(divider('How it works'));
-  if (!prov?.on?.()) detail.append(el('p', 'px-note', noFamilyLine(prov)));
+  if (!family) detail.append(el('p', 'px-note', noFamilyLine(prov)));   // AUDIT PLAIN-UI C6: Legacy on and no house (none chosen, or online) said too
   let toll = 0.06;
   try { toll = legacySettings().tollShare; } catch { /* the settings unread: the Standard toll */ }
   const ol = el('ol', 'fam-guide');

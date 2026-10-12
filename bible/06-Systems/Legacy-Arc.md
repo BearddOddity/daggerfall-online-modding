@@ -601,7 +601,8 @@ world, locked to its own family.
 
 - **The Family tab** of the pause window (Mac: "implement it into the pause menu as a new tab"; KB1 action
   `LegacyFamily`, the keypad's slash), drawn while Project Legacy is on, on either skin (the pause window is the
-  enhanced one; Ledger A row (9)) - `ui/familyPages.js`, three pages on the rail:
+  enhanced one; Ledger A row (9)) - `ui/familyPages.js`, four pages on the rail (the fourth, **How it works** - the
+  family's whole law in words - PLAIN-UI's, 2026-10-12, at this page's foot):
   - **The tree**: generations as rows, couples joined - every spouse a member has had beside them, the earlier on the
     left, each marriage's children hung beneath it (AUDIT LEGACY III A14/U4) - and stacked under its card by the pane's
     width, never the window's (U3); the dead and the one played marked on
@@ -687,4 +688,4 @@ LEGACY7W-partner-dead-or-lineless survives on main as well - not this change's, 
 
 ## PLAIN-UI - How it works (2026-10-12)
 
-The Family tab's fourth page, HOW IT WORKS (`src/ui/familyPages.js` `familyGuide`, `drawGuidePage`): the house, death in the house's own model and its toll, who carries on, what an heir inherits, heirlooms and remains, marriage and children, playing another, and the tree's marks - every number the law's own - and the tab's type a step larger. A player: "Same issues with the project legacy system." The record: `10-UI/Plain-Words.md`.
+The Family tab's fourth page, HOW IT WORKS (`src/ui/familyPages.js` `familyGuide`, `drawGuidePage`): the house, death in the house's own model and its toll, who carries on, what carries on (the estate to whoever takes the line; the blood and the hearth a newborn's, at birth), heirlooms and remains, marriage and children, playing another, and the tree's marks - every number the law's own - and the tab's type a step larger. AUDIT PLAIN-UI (`01-Overview/Audit-Plain-UI.md`) set its words against `family.js`, `heirloom.js`, `marriage.js` and `scenes/legacyHost.js`. A player: "Same issues with the project legacy system." The record: `10-UI/Plain-Words.md`.

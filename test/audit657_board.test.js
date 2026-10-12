@@ -175,8 +175,8 @@ test('AUDIT 657 D4 the Seat guide kept open across the window\'s redraws, as the
   await tick();
   const guide = byClass(host, 'seat-guide')[0];
   assert.equal(guide.open, false, 'folded until opened');
+  guide.children[0].onclick();   // PIN MOVED (AUDIT PLAIN-UI C1): the reader's press on the line records it - never a toggle
   guide.open = true;
-  guide.dispatch('toggle', {});
   v.repaint();
   assert.equal(byClass(host, 'seat-guide')[0].open, true, 'kept open across the redraw');
   v.unmount();

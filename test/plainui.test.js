@@ -54,7 +54,7 @@ test('PLAIN-UI the Seat tab says what a seat is and the reader\'s next step befo
   const mine = (o) => ({ guild: 'g1', rank: 2, seasoned: true, bound: 'g1', pledges: [], influence: 0, ...o });
   const here = { region: 21, key: 3021 };
   const rows = [
-    [week(null), 'To take part, join a guild or found one: the Social button beside the chat, its Guild page.'],
+    [week(null), 'To take part, join a guild or found one: the Social button beside the chat, its Guild page (a guild needs an account with a username and a password).'],   // PIN MOVED: AUDIT PLAIN-UI W12
     [week(mine({ rank: 1 })), 'Pledge your guild to Anticlere under Your guild, below, before Friday 18:00 UTC.'],
     [week(mine({ rank: 2 })), 'Ask an Officer or your Guildmaster to pledge your guild to Anticlere before Friday 18:00 UTC.'],
     [{ ...week(mine({ rank: 1 })), phase: 'reckoning' }, 'Pledges are locked until the Turning, Sunday 18:00 UTC. Your guild can pledge here in next week\'s Muster.'],
@@ -87,8 +87,9 @@ test('PLAIN-UI the Seat tab\'s guide stands open for a reader whose guild is not
   const guide = () => byClass(host, 'seat-guide')[0];
   assert.equal(guide().open, true);
   assert.equal(guide().querySelectorAll('li').length, seatGuide(ANT).length);
+  // the reader's press on its line (AUDIT PLAIN-UI C1: the press, never the toggle a draw's own open fires too)
+  guide().children[0].onclick();
   guide().open = false;
-  for (const f of guide().listeners.toggle ?? []) f({});
   byClass(host, 'notice-tab')[0].onclick();
   await tick();
   byClass(host, 'notice-tab')[1].onclick();
@@ -99,7 +100,7 @@ test('PLAIN-UI the Seat tab\'s guide stands open for a reader whose guild is not
 
 test('PLAIN-UI Words on this board: every name the Seat tab uses, in a word list, each number the law\'s own - a crown\'s line and Tithe its own (mutants: the claim\'s line a palace\'s at a crown; Unrest\'s bonus; the Tribute\'s rate)', async () => {
   const words = seatWords(ANT);
-  assert.deepEqual(words.map(([w]) => w), ['Charter', 'Influence', 'Muster, Reckoning, Turning', 'Pledge', 'Defence', 'Right of Siege', 'Tourney', 'Standing', 'Tithe', 'Edict', 'Tribute', 'Sellsword', 'Season and Tide']);
+  assert.deepEqual(words.map(([w]) => w), ['Charter', 'Influence', 'Muster, Reckoning, Turning', 'Pledge', 'Defence', 'Right of Siege', 'Tourney', 'Standing', 'Tithe', 'Edict', 'Tribute', 'Sellsword', 'The Works', 'Fealty and Pacts', 'Season and Tide']);   // AUDIT PLAIN-UI T6: the Works and crown politics too
   const said = (seat, w) => seatWords(seat).find(([k]) => k === w)[1];
   assert.match(said(ANT, 'Right of Siege'), new RegExp(`at least ${n(CLAIM_THRESHOLD.palace)} influence`));
   assert.match(said({ tier: 'crown' }, 'Right of Siege'), new RegExp(`at least ${n(CLAIM_THRESHOLD.crown)} influence`));
@@ -133,8 +134,8 @@ test('PLAIN-UI How chapters work stands over the chapters\' cards - open for a r
   const guide = chapterGuide();
   assert.deepEqual(guide.map(([w]) => w), ['What a chapter is', 'Merit', 'Strength', 'Band', 'The chairs', 'Season', 'Patron']);
   const said = (w) => guide.find(([k]) => k === w)[1];
-  assert.match(said('Merit'), new RegExp(`${n(MERIT_WRIT)} for filling your own chapter writ.* a share of ${n(MERIT_RECEIPT)} for each .*at most ${n(MERIT_CAP_WEEK)} an account a week`));
-  assert.match(said('Strength'), new RegExp(`from ${STRENGTH_START}\\. .*up to ${STRENGTH_STEP_MAX} a week; a week with no Merit at all lowers it ${STRENGTH_IDLE}\\.`));
+  assert.match(said('Merit'), new RegExp(`${n(MERIT_WRIT)} for filling your own chapter writ.* a share of ${n(MERIT_RECEIPT)} for each .*at most ${n(MERIT_CAP_WEEK)} an account a week in each chapter`));
+  assert.match(said('Strength'), new RegExp(`from ${STRENGTH_START}\\. .*up to ${STRENGTH_STEP_MAX}\\. .*a week with no Merit at all costs ${STRENGTH_IDLE};`));   // PIN MOVED: AUDIT PLAIN-UI W1
   assert.match(said('Band'), /^Strength's name: Failing under 20, Steady from 20, Thriving from 70, Ascendant from 90\. /);
   assert.match(said('The chairs'), new RegExp(`^Rank 9 \\(the Master\\) and rank 8 \\(3 council chairs\\) .*the last ${SEAT_MERIT_WEEKS} weeks`));
   assert.match(said('Season'), new RegExp(`one event: ${CHAPTER_EVENTS.slice(0, -1).map((e) => e.name).join(', ')} or ${CHAPTER_EVENTS.at(-1).name}\\.`));
@@ -148,8 +149,11 @@ test('PLAIN-UI How chapters work stands over the chapters\' cards - open for a r
   assert.equal(fold().querySelectorAll('li').length, guide.length);
   const cork = fold().parentNode;
   assert.ok(cork.children.indexOf(fold()) < cork.children.indexOf(byClass(host, 'notice-chapter-card')[0]), 'over the cards');
+  // AUDIT PLAIN-UI T3: the service sends a row for every membership (npcMerit.js meritAsks) - none earned yet is no Merit
+  host = await workTab({ chapters, merit: [{ faction: FIGHTERS, merit: 0, max: 600, elsewhere: false, from: T + 86400 }] });
+  assert.equal(fold().open, true, 'a member not yet earning: open');
   host = await workTab({ chapters, merit: [{ faction: FIGHTERS, merit: 100, max: 600, elsewhere: false, from: null }] });
-  assert.equal(fold().open, false, 'a member earning here: folded');
+  assert.equal(fold().open, false, 'a member with Merit here: folded');
   host = await workTab({});
   assert.equal(fold(), null, 'no chapter here, no guide');
 });
@@ -158,14 +162,15 @@ test('PLAIN-UI the Family tab\'s How it works - the house\'s own model (both bef
   assert.deepEqual(FAMILY_PAGE_SECTIONS.at(-1), ['guide', 'How it works']);
   assert.match(src('src/ui/enhancedMenu.js'), /\{ tree: drawTreePage, house: drawHousePage, hall: drawHallPage, guide: drawGuidePage \}\)\[famSec\]\(detail, render, kit\);/);
   const death = (model, toll) => familyGuide(model, toll).find(([k]) => k === 'Death')[1];
-  assert.match(death(MODELS.enduring, 0.06), /^In an Enduring house a death is not the end, but it costs years: Arkay's toll takes 6% of your race's lifespan each time\. From 75% of the span you are an Elder;/);
+  assert.match(death(MODELS.enduring, 0.06), /^In an Enduring house a death is not the end, but it costs years: Arkay's toll takes 6% of your race's lifespan each time \(a vampire or a werebeast pays none\)\. From 75% of the span you are an Elder;/);
   assert.match(death(MODELS.enduring, 0.1), /takes 10% of your race's lifespan/);
   assert.equal(death(MODELS.bloodline, 0.06), 'In a Bloodline house every death is final.');
   assert.match(death(null, 0.04), /takes 4% .* In a Bloodline house every death is final\. Which a house is, is chosen once, when its founder is made\.$/);
   const said = (w) => familyGuide(MODELS.enduring, 0.06).find(([k]) => k === w)[1];
-  assert.match(said('What an heir inherits'), new RegExp(`up to \\+${BLOOD_MAX} on each stat.* up to \\+${HEARTH_MAX} on each primary and major skill.* a quarter of the gold the fallen carried, at most ${n(ESTATE_MAX)}\\.`));
+  // PIN MOVED (AUDIT PLAIN-UI W2): the estate is whoever carries on; the blood and the hearth a newborn's
+  assert.match(said('What carries on'), new RegExp(`^Whoever carries the line on receives the estate: a quarter of the gold the fallen carried, at most ${n(ESTATE_MAX)}\\. A newborn is also born with the blood \\(up to \\+${BLOOD_MAX} on each stat, from the better parent's\\) and the hearth \\(up to \\+${HEARTH_MAX} on each of a parent's primary and major skills\\)\\.$`));
   assert.match(said('Heirlooms and remains'), new RegExp(`\\+${HEIRLOOM_DAMAGE_PER_GEN}% damage.* gives \\+${BLESSING_POINTS} to the fallen's best skill`));
-  assert.match(said('Marriage and children'), new RegExp(`a regard of \\+${FRIEND_AT}\\).* every ${CHILD_DAYS} days brings a one in four chance of a child, up to ${CHILDREN_MAX}\\.`));
+  assert.match(said('Marriage and children'), new RegExp(`a regard of \\+${FRIEND_AT}\\).* every ${CHILD_DAYS} days you play as the married one brings a one in four chance of a child, up to ${CHILDREN_MAX}\\.`));   // PIN MOVED: AUDIT PLAIN-UI W11
   // drawn: the page's steps, the model played
   setFamilyProvider({ on: () => true, family: () => ({ model: MODELS.bloodline, people: [] }), lived: () => 0, switchRefusal: () => null, switchTo: () => ({ ok: true }) });
   const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
