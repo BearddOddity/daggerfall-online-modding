@@ -66,7 +66,8 @@ systems. Theres just so many systems that dont explain what they are and its ext
   `SEAT_ACCOUNT_AGE_S`, `SEAT_MERIT_WEEKS`, `CHAPTER_EVENTS`, `CHAPTER_PATRON_MIN`, `CHAPTER_PATRON_BAND`). Open for a
   reader with no Merit yet in any of the region's chapters, folded for one with some - the service sends a Merit row for
   every membership, none earned and a week's wait included (`server-account/src/npcMerit.js` `meritAsks`; AUDIT
-  PLAIN-UI T3). The cards are behind `CHAPTERS_OPEN` (`dev`), and so is the guide: it stands where they do.
+  PLAIN-UI T3). The guide stands where the cards do - on every board since CHAPTERS-ON (2026-10-12, `server-account/wrangler.toml`
+  `CHAPTERS_OPEN = "on"`; `01-Overview/Field-Bugs-2026-10-12.md`), which met this arc at its merge.
 - **PLAIN-UI c, the Family tab.** A fourth page on its rail, HOW IT WORKS (`FAMILY_PAGE_SECTIONS` `guide`,
   `drawGuidePage`, drawn by `src/ui/enhancedMenu.js` `pauseFamily`): `familyGuide(model, tollShare)` - the house; death in
   the house's own model (both, before one is founded), its toll the Features tile's (`legacySettings().tollShare`); who
@@ -124,8 +125,10 @@ which said they did before their doors had a card; `src/scenes/exterior.js`, the
 - **Bigger screens** (AUDIT PLAIN-UI U1) are OPEN: the board stays 1040px wide, so at 1440p its 15px type is smaller
   against the screen than the old 13px was at 1080p. The candidate is an Interface size row on MAP-SCALE's rule
   (`src/ui/mapScale.js`: Auto the screen's height over 1080, 1 to 2) laid over the board, the pause window and the talk
-  panel - a new setting across windows, the owner's call. The pixel face's B, C and 2 reading as G, O and 8 (U5) and the
-  phone header's row for Close (U4) are older than PLAIN-UI and OPEN with it.
+  panel - a new setting across windows, the owner's call. The pixel face's B, C and 2 reading as G, O and 8 (U5) - a player
+  may write every enhanced word in a plain face since TEXT-FONT (`src/ui/textFont.js`: Sans, Monospace, Dyslexic or
+  their own), which met this arc at its merge; the pixel face's own glyphs stay OPEN - and the phone header's row for
+  Close (U4) are older than PLAIN-UI and OPEN with it.
 - **Tracking a person** is OPEN - a design call, not a gap in words. What a player can do today is section 1's list:
   the reliable way to keep track of another player is a party (where they stand, on the world map); of a resident, the
   Chronicle's People page (their home town, when last seen). The candidates, for the owner's call: a Track on a People
