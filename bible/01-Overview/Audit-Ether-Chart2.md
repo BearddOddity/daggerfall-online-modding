@@ -1,6 +1,6 @@
-# AUDIT ETHER-CHART2 (2026-10-12) - the chart of the Etheric Sea, audited
+# AUDIT ETHER-CHART2 (2026-10-12) - the chart of the Eltheric Ocean, audited
 
-The owner, of ETHER-CHART2 (`03-World/Etheric-Sea.md` ETHER-CHART2: the chart's words in the enhanced face, a shape
+The owner, of ETHER-CHART2 (`03-World/Eltheric-Ocean.md` ETHER-CHART2: the chart's words in the enhanced face, a shape
 for each kind's mark, the depths as waters, the haunts washed and named, the ship ringed and pointed to, the isle named,
 the key - 3b2fcf551, merged with main in 0ef7d2cf9, PR #847): **"Audit and ensure absolute perfection and detail"**.
 This page is the findings, each with its verdict. What the audit changed is written into the record's section as it now
@@ -79,7 +79,7 @@ patching each one.
 | D10 | LOW | The module's comments: "`paintChart` the one function that draws", the words' order, a band box "null where it gave way" | FIXED |
 | D11 | LOW | 6.7 was the mean name by name (6.689; letter by letter 6.642), the sample unnamed, and no probe re-ran it | FIXED: the sample and both means in the record; `tools/etherChartProbe.mjs` measures them |
 | D12 | LOW | The PR's "auditcaptsea 67" was 67 passed and one skipped of 68 | FIXED |
-| D13 | LOW | The Port-Ledger's ETHERIC SEA row lists no ETHER-CHART2; the four hosts unsaid | DECLINED for the row: it records the sea's departure, which the chart's presentation does not move, and no section C row concerns the chart. FIXED for the hosts: the section says no host is touched |
+| D13 | LOW | The Port-Ledger's ELTHERIC OCEAN row lists no ETHER-CHART2; the four hosts unsaid | DECLINED for the row: it records the sea's departure, which the chart's presentation does not move, and no section C row concerns the chart. FIXED for the hosts: the section says no host is touched |
 | D14 | INFO | FONT1: is the chart the held map's kind (its ink a recorded exception)? | KEPT, said: the chart is chrome in the naval sheet, which wears the pixel trio, not lettering on an inked sheet; a clause in the section says so |
 | D15 | INFO | Testing.md's auditcaptsea row said 327 mutants; the list holds 331 (5 equivalent) - before this change | FIXED: the row says 331 |
 | - | - | Contrast | SOUND: every word 6.9:1 or more on its halo or plate; every mark 3:1 or more on every band's water (a ruin's red on the Shallows, 3.48:1, the least), each in an ink outline |

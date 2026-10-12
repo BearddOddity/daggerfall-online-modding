@@ -1,7 +1,7 @@
 // AUDIT CAPTAIN'S SEA (2026-10-11, the owner: "Lets do a comprehensive audit, enaure this is insanely detailed and
 // perfection. No exceptions") - the pre-merge audit of the naval update (#781: CAPT-CREW, CAPT-LOG, CAPT-PAY, CAPT-MARQUE,
-// CAPT-WATERS, CAPT-BOARD, CAPT-TRADE, CAPT-CHARTS, SPYGLASS and the Etheric Sea's ETHER-* slices): nine lenses, each
-// finding verified by a probe and pinned here, executed wherever a seam can be stood up. Ids: C the crew, G the Etheric
+// CAPT-WATERS, CAPT-BOARD, CAPT-TRADE, CAPT-CHARTS, SPYGLASS and the Eltheric Ocean's ETHER-* slices): nine lenses, each
+// finding verified by a probe and pinned here, executed wherever a seam can be stood up. Ids: C the crew, G the Eltheric
 // ground, X the crossing and the chart, D traffic, law and legends, L the ledger, the save and online, H the docs' and the
 // tests' honesty, S the spyglass, P the isles' places in the world, B the board, the exchange and the charts.
 // bible/01-Overview/Audit-Captains-Sea.md; tools/mutants/auditcaptsea.json.
@@ -426,7 +426,7 @@ test('AUDIT CAPTAIN\'S SEA S24: an unknown hull\'s hurts are no more read than h
   destroyNavalHud();
 });
 
-// ── G: the Etheric ground ───────────────────────────────────────────────────────────────────────────────────────────
+// ── G: the Eltheric ground ───────────────────────────────────────────────────────────────────────────────────────────
 
 test('AUDIT CAPTAIN\'S SEA G1/G10: the law answers its sea ETHER_MARGIN round the box - the far ring\'s whole reach from a ship in the box (its radius, its rebuild\'s drift, a normal\'s neighbour, the cliffs\' fade): built at the Veil over a world of land, the ring is all sea (four pixels drew the Bay\'s clamped row 0 as a ridge on the way home) (mutants: the margin)', async () => {
   const E = await import('../src/world/ethericSea.js');
@@ -464,14 +464,14 @@ test('AUDIT CAPTAIN\'S SEA G2/P7: THE SWITCH SPLIT - the sea stands in every gam
   const core = w.slice(w.indexOf('  async function _teleportToPixel('));
   const land = core.indexOf('    const unstreamed = _streamedLanding(px, py);\n    if (unstreamed) { px = unstreamed.px; py = unstreamed.py; localPos = null; resolveArrival = null; }');
   assert.ok(land > core.indexOf('climbFeel.reset();') && land < core.indexOf('if (modEvent == null && !resolveArrival) csaPreJump();') && land < core.indexOf('state.init(px, py)'), 'after the resets, before the helm and the build');
-  assert.match(w, /if \(_unstreamedLanding\) \{\n\s+townTalk\.say\(_unstreamedLanding === 'ether' \? 'The Etheric Sea is closed in this game/);
+  assert.match(w, /if \(_unstreamedLanding\) \{\n\s+townTalk\.say\(_unstreamedLanding === 'ether' \? `\$\{ETHER_SEA_TITLE\} is closed in this game/);   // PIN MOVED (ELTHERIC): the sea's name its one home's
   const { crossingTarget } = await import('../src/systems/naval/etherCrossing.js');
   const { HOME_WATERS } = await import('../src/world/ethericSea.js');
   assert.deepEqual(crossingTarget('home', { px: 8000, py: -5000 }), { px: HOME_WATERS.px, py: HOME_WATERS.py }, 'never a way out in the sea itself');
   assert.deepEqual(crossingTarget('home', { px: 150, py: 300 }), { px: 150, py: 300 });
 });
 
-test('AUDIT CAPTAIN\'S SEA G3: the landforms\' lands past the Bay\'s table answer the Etheric Sea\'s own climates - an isle\'s hills never move with the Bay\'s corner pixel (999, 0), and wear its own climate\'s land (mutants: the law\'s arm, the node\'s climate)', async () => {
+test('AUDIT CAPTAIN\'S SEA G3: the landforms\' lands past the Bay\'s table answer the Eltheric Ocean\'s own climates - an isle\'s hills never move with the Bay\'s corner pixel (999, 0), and wear its own climate\'s land (mutants: the law\'s arm, the node\'s climate)', async () => {
   const { hillsAt, landformClimates } = await import('../src/world/landforms.js');
   const { veilhaven, isleOfCell } = await import('../src/world/ethericSea.js');
   const { CLIMATES } = await import('../src/formats/mapsTables.js');
@@ -1011,7 +1011,7 @@ test('AUDIT CAPTAIN\'S SEA C10: a wear that is no number reads none - the sea\'s
   assert.equal(c.morale, MORALE_START - 1, 'twice the wear: half the clock');
 });
 
-// ── D: the Etheric Sea's traffic and its strands ─────────────────────────────────────────────────────────────────────
+// ── D: the Eltheric Ocean's traffic and its strands ─────────────────────────────────────────────────────────────────────
 
 const REACHES = { band: 'reaches', bandName: 'the Reaches', depth: 20, legend: null };
 /** A boat of mine at a wild isle's strand past the Veil: the world's sites and gather stood in for. */
@@ -1025,7 +1025,7 @@ async function strandSea(o = {}) {
   return { s, w, site, casks };
 }
 
-test('AUDIT CAPTAIN\'S SEA D1: a strand\'s casks float once - out of its reach and back while they float, none floats again (each return floated three more till the first was hauled: the Etheric goods without end) (mutants: the floating check\'s stood gate)', async () => {
+test('AUDIT CAPTAIN\'S SEA D1: a strand\'s casks float once - out of its reach and back while they float, none floats again (each return floated three more till the first was hauled: the Eltheric goods without end) (mutants: the floating check\'s stood gate)', async () => {
   const { s, w, site, casks } = await strandSea();
   s.run(1.2);
   assert.equal(casks().length, 3);
@@ -1069,14 +1069,14 @@ test('AUDIT CAPTAIN\'S SEA D2: a strand\'s haul floats alongside the boat that p
   assert.ok(s.log.given.some(([n, b]) => n === 1 && b === null), 'into his pack');
 });
 
-test('AUDIT CAPTAIN\'S SEA D3: an Etheric prize\'s papers answer to no crown - burned, they wash no notoriety of mine in the Bay (the nearest Bay capital\'s waters were read for a ship of the Etheric Sea) (mutants: the Veil\'s gate)', async () => {
+test('AUDIT CAPTAIN\'S SEA D3: an Eltheric prize\'s papers answer to no crown - burned, they wash no notoriety of mine in the Bay (the nearest Bay capital\'s waters were read for a ship of the Eltheric Ocean) (mutants: the Veil\'s gate)', async () => {
   const { GRAPPLE_S } = await import('../src/systems/naval/navalBoarding.js');
   const s = await sea({ hull: 2, where: { ether: REACHES } });
   const id = s.host.spawnShip('merchantGalleon', { range: 26.8, bearing: Math.PI / 2, yaw: 0 });
   const e = s.host._sea.get(id);
   e.ship.pos = [26.8, 0, 0];
   s.host.frame(0.1);
-  assert.equal(e.ether, 'reaches', 'a ship of the Etheric Sea');
+  assert.equal(e.ether, 'reaches', 'a ship of the Eltheric Ocean');
   s.host.notoriety.add('Wayrest', 40);
   s.host.notoriety.add('Sentinel', 40);
   s.host.notoriety.add('Daggerfall', 40);

@@ -1,5 +1,5 @@
 // AUDIT ETHER-CHART2 (2026-10-12, the owner: "Audit and ensure absolute perfection and detail";
-// bible/01-Overview/Audit-Ether-Chart2.md) - the chart of the Etheric Sea read by cold lanes on frozen snapshots and
+// bible/01-Overview/Audit-Ether-Chart2.md) - the chart of the Eltheric Ocean read by cold lanes on frozen snapshots and
 // rendered in Chromium (tools/etherChartProbe.mjs). These pins hold what the audit fixed that the chart's own suite
 // (test/etherchart2.test.js, its moved pins) does not: the window's room, the world's edge, the scale in the key, the
 // face that lands late, the room watched, the card. tools/mutants/audit_etherchart2.json.
@@ -358,7 +358,8 @@ test('AUDIT ETHER-CHART2 T7/T10: the card\'s title a name opening a line, its fi
   assert.equal(m.pick.title, M.capFirst(low.name));
   assert.notEqual(m.pick.title, low.name);
   assert.match(src, /for \(const b of \[zoomOut, zoomIn, shipBtn\]\) \{ b\.style\.flex = '0 0 auto'; b\.style\.minWidth = '44px'; \}/);
-  assert.match(src, /canvas\.setAttribute\('role', 'img'\);\n\s+canvas\.setAttribute\('aria-label', 'A chart of the Etheric Sea: your ship, the isles you have charted, the depths, the Veil and the legends\\' haunts'\);/);
+  // PIN MOVED (ELTHERIC, test/eltheric.test.js): the sea's name is its one home's (world/ethericSea.js ETHER_SEA_NAME)
+  assert.match(src, /canvas\.setAttribute\('role', 'img'\);\n\s+canvas\.setAttribute\('aria-label', `A chart of \$\{ETHER_SEA_NAME\}: your ship, the isles you have charted, the depths, the Veil and the legends' haunts`\);/);
   assert.match(src, /c\.width = c\.height = Math\.round\(18 \* dpr0\);/);
 });
 

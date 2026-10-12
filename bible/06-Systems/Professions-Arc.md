@@ -427,6 +427,11 @@ else Foraging's Fish (1605). A **trophy** is the species' own Deep Waters templa
   the pixel's climate and region as the client derived them, and the service keeps them as a witnessed row. A pixel
   **confirmed** by 3 accounts yields its whole table; an **unconfirmed** pixel yields tiers 1-2 only - its veins 1-3
   since UNWITNESSED-ORE, below - (so a lie about a pixel nobody else has walked buys little); a **disputed** pixel (two witnesses agreeing on another answer) keeps its confirmed table until a moderator settles it (SEAT0 3.2).
+- **The ground** (ETHER-NODES, 2026-10-12, the owner: "We also need to implement gathering nodes within the area";
+  `03-World/Eltheric-Ocean.md`): a map pixel is the Bay's 1000 x 500 or the Eltheric Ocean's box past the Veil
+  (`pixelOk`) - its isles stand the day's nodes by their climates, its water the schools, and an id there is read four
+  digits east and a sign north (`herb:8009:-5194:...`), in its one spelling. The law knew the Bay alone: an isle's
+  harvest was refused `bad-node`, its witnesses `bad-pixels`.
 - **How many** - per wilderness map pixel per day, never inside a location's rect:
 
 | Climate | Trees | Herb patches | Veins | Boulders (quarry) |

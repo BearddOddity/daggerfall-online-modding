@@ -1,6 +1,6 @@
 // @ts-check
 // ETHER-CHART (2026-10-11, the owner: "A brand new open sea map that allows you to traverse to the etheric sea";
-// bible/03-World/Etheric-Sea.md ETHER-CHART) - THE CHART OF THE ETHERIC SEA: the map a captain keeps past the Veil, the
+// bible/03-World/Eltheric-Ocean.md ETHER-CHART) - THE CHART OF THE ELTHERIC OCEAN: the map a captain keeps past the Veil, the
 // travel map's door's answer there (scenes/world.js toggleTravelMap) - the Bay's travel map has no sea past the Veil to
 // show, and no road to travel by. Drawn on a canvas in the naval windows' sheet (ui/navalPlunderWindow.js's style, the
 // door's slot - ui/navalPlunderDoor.js), off the world's word (scenes/etherHost.js chart): the ISLES CHARTED - a port's
@@ -10,10 +10,10 @@
 // dragging (a finger, the mouse's first button) or the arrows; zoom by the wheel (about the pointer, a notch a step),
 // a pinch (about the fingers), + and - or the window's own buttons (about the chart's middle); C or Ship back to the
 // ship; a pointer on an isle - or a tap - says what it is and how far, and which way, from the ship. The key that opened
-// it (the travel map's or the map's, by binding) closes it. Nothing on it is pressed: the Etheric Sea is sailed. AUDIT
+// it (the travel map's or the map's, by binding) closes it. Nothing on it is pressed: the Eltheric Ocean is sailed. AUDIT
 // CAPTAIN'S SEA X6/X7/X8/X12/X13/X14/X17/X18.
 //
-// ETHER-CHART2 (2026-10-12, the owner: "I want to improve the [Etheric] sea map, its icons, the highlight areas, etc and
+// ETHER-CHART2 (2026-10-12, the owner: "I want to improve the [Eltheric] sea map, its icons, the highlight areas, etc and
 // improve readability") - THE CHART READ AT A GLANCE. Its words are the enhanced face (FONT1's law - every enhanced
 // surface in the pixel face; the chart named "Cormorant Garamond", which no request loads, so every name on it was
 // Georgia), painted after every mark (an isle's mark painted after a name crossed it out) - each name under a hard halo,
@@ -39,7 +39,7 @@ import { injectEnhancedStyle, injectEnhancedFonts } from './enhancedStyle.js';
 import { injectNavalKit } from './navalHud.js';
 import { injectNavalWindowStyle } from './navalPlunderWindow.js';
 import { PIXEL_STACK } from './pixelifyFive.js';
-import { isleByKey, BANDS, VEIL_X, LEAGUE_PX, KIND_WORDS, ETHER_BOX, compassPoint, veilhaven } from '../world/ethericSea.js';
+import { isleByKey, BANDS, VEIL_X, LEAGUE_PX, KIND_WORDS, ETHER_BOX, compassPoint, veilhaven, ETHER_SEA_NAME } from '../world/ethericSea.js';
 import { hauntOf, legendById, HAUNT_PX } from '../systems/naval/etherShips.js';
 
 /** The zooms: screen pixels a map pixel (819.2 m). */
@@ -313,7 +313,7 @@ export function chartModel(word, v, w, h, { measure = null, pick = null } = {}) 
   return {
     isles, bands, veil: veil <= w ? veil : null, ruler, ship, haunts, depths, edge: [bx0, by0, bx1, by1], grid, scale,
     pick: card,
-    title: 'A chart of the Etheric Sea',   // the haunts' `r` the square's half side (X13)
+    title: `A chart of ${ETHER_SEA_NAME}`,   // the haunts' `r` the square's half side (X13)
     sub: `${st.charted ?? 0} ${st.charted === 1 ? 'isle' : 'isles'} charted - deepest ${st.deepest ?? 0} leagues past the Veil - ${st.crossings ?? 0} ${st.crossings === 1 ? 'crossing' : 'crossings'}${st.legends ? ` - ${st.legends} ${st.legends === 1 ? 'legend' : 'legends'} ended` : ''}`,
   };
 }
@@ -527,7 +527,8 @@ export function paintScale(g, scale, h) {
 /** AUDIT ETHER-CHART2 U1: THE CHART WINDOW'S SHEET - the window as tall as the screen allows and the chart in the room it
  *  leaves (a fixed 64vh put the key and the zoom under the fold on a phone held sideways), the ruler over it, the note
  *  one line (a name said on a narrow screen wrapped it to two, and the chart slid), the key and the tools, the hint set
- *  down where the height is short. */
+ *  down where the height is short. ELTHERIC: on a narrow screen the title wraps - "A chart of the Eltheric Ocean" was
+ *  cut on a phone held upright (tools/etherChartProbe.mjs); it never changes while the window stands, so nothing slides. */
 export const ETHER_CHART_STYLE_ID = 'dfchart-style';
 export const ETHER_CHART_CSS = `
 .dfchart-win { width: min(96vw, 1100px); max-width: 96vw; height: min(92vh, 900px); }
@@ -542,6 +543,9 @@ export const ETHER_CHART_CSS = `
 .dfchart-key > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .dfchart-tools { display: flex; gap: 8px; justify-content: flex-end; flex: 0 0 auto; }
 .dfchart-hint { flex: 0 0 auto; }
+@media (max-width: 560px) {
+  .dfchart-win .dfnaval-wintitle h2 { white-space: normal; text-overflow: clip; }
+}
 @media (max-height: 520px) {
   .dfchart-hint { display: none; }
   .dfchart-win .dfnaval-winhead { padding-top: 8px; padding-bottom: 8px; }
@@ -578,7 +582,7 @@ export function mountEtherChartWindow(host, deps) {
   const exit = (reason = 'close') => deps.onExit?.(reason);
   const shell = el('div', 'dfnaval-shell');
   shell.setAttribute('role', 'dialog');
-  shell.setAttribute('aria-label', 'A chart of the Etheric Sea');
+  shell.setAttribute('aria-label', `A chart of ${ETHER_SEA_NAME}`);
   const win = el('div', 'dfnaval-win dfchart-win');
   shell.append(win);
   const head = el('header', 'dfnaval-winhead');
@@ -599,7 +603,7 @@ export function mountEtherChartWindow(host, deps) {
   ruler.setAttribute('aria-hidden', 'true');
   const canvas = /** @type {HTMLCanvasElement} */ (el('canvas', 'dfchart-map'));
   canvas.setAttribute('role', 'img');
-  canvas.setAttribute('aria-label', 'A chart of the Etheric Sea: your ship, the isles you have charted, the depths, the Veil and the legends\' haunts');
+  canvas.setAttribute('aria-label', `A chart of ${ETHER_SEA_NAME}: your ship, the isles you have charted, the depths, the Veil and the legends' haunts`);
   const stage = el('div', 'dfchart-stage');
   stage.append(canvas);
   const chart = el('div', 'dfchart-chart');

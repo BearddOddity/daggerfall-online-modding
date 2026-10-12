@@ -1,10 +1,15 @@
-# The Etheric Sea - past the Veil (ETHER-SEA, ETHER-PLACES, ETHER-PORTS, ETHER-SHIPS, ETHER-LEGENDS, ETHER-CROSSING, ETHER-CHART, ETHER-LIGHT, 2026-10-11; ETHER-CHART2, 2026-10-12)
+# The Eltheric Ocean - past the Veil (ETHER-SEA, ETHER-PLACES, ETHER-PORTS, ETHER-SHIPS, ETHER-LEGENDS, ETHER-CROSSING, ETHER-CHART, ETHER-LIGHT, 2026-10-11; ETHER-CHART2, ELTHERIC, ETHER-DEEP, ETHER-NODES, 2026-10-12)
 
 The owner, 2026-10-11: *"A brand new open sea map that allows you to traverse to the etheric sea. Sail far enough and
 you are prompted to travel into the open sea. The etheric sea is a infinite procedural oceanscape with procedural
 islands with towns, dungeons, exotic resources, deadly legendary ships, and whatever more you can add to give meaning
 to the etheric sea. This is all yours."* The Iliac Bay's own sea - its crews, its captain's standing, its spyglass, its
 contracts, its exchange - is `03-World/Captains-Sea.md`; this page is the sea past the Veil.
+
+The owner, 2026-10-12: *"Apparently the ocean is suppose to be eltheric not etheric. Additionally, the area below water
+is very shallow and has no depth. We also need to implement gathering nodes within the area"* - three slices: its name
+(ELTHERIC - it was "the Etheric Sea"), its depth (ETHER-DEEP) and the professions' nodes on its isles and in its water
+(ETHER-NODES). The owner's words above keep their own spelling.
 
 The pre-merge audit (AUDIT CAPTAIN'S SEA, the owner: "Lets do a comprehensive audit, enaure this is insanely detailed
 and perfection. No exceptions") is `01-Overview/Audit-Captains-Sea.md`: its fixes stand in the sections below, each
@@ -14,7 +19,7 @@ under its finding's id.
 Where the game has a law it is used: the ground is grown by DFU's own terrain kernel from the two bytes a pixel it
 always reads (WOODS.WLD's height, CLIMATE.PAK's climate - answered here instead of read), the isles' towns and ruins
 are the game's own places cloned (MAPS.BSA's rows, as the spawned dungeons clone theirs), a hold is still the DFU loot
-tables' roll, gold is gold. The departure is Port-Ledger section A's ETHERIC SEA row.
+tables' roll, gold is gold. The departure is Port-Ledger section A's ELTHERIC OCEAN row.
 
 **THE SHAPE.** Sail far out on the open Abecean and the game asks whether to sail on into the open sea. Three days on,
 the ship comes out off Veilhaven, the first port past the Veil - and from there the sea runs west for more than a
@@ -22,14 +27,16 @@ thousand leagues:
 
 - **AN ENDLESS SEA, AND ITS DEPTHS** (ETHER-SEA): a box of the Bay's own pixel grid, 8,064 by 4,992 pixels (6,606 km
   by 4,089 km), far north of the continent; the deeper west of the Veil, the deadlier and the richer - the Shallows,
-  the Reaches, the Deep Aether, the Abyss.
+  the Reaches, the Deep Aether, the Abyss. Under its water, the Ocean's plain (ETHER-DEEP): a seabed two hundred metres
+  down off every coast, carved and swum as the Bay's is.
 - **ISLES** (ETHER-SEA, ETHER-PLACES, ETHER-PORTS): a lattice of isles grown off one hash, each a PORT (a town and a
-  freeport's quay), a RUIN (a dungeon), a WILD isle (an Etheric good on its strand) or a bare ROCK, named, in its own
-  climate, on every client the same.
+  freeport's quay), a RUIN (a dungeon), a WILD isle (an Eltheric good on its strand) or a bare ROCK, named, in its own
+  climate, on every client the same - and the day's trees, herb patches, veins and boulders on its land and the schools
+  in its water, gathered as the Bay's are (ETHER-NODES).
 - **ITS SHIPS AND ITS LEGENDS** (ETHER-SHIPS, ETHER-LEGENDS): corsairs and the isles' traders under the sea's own names,
   no crown's navy and no crown's law - and six legendary ships, each with her own haunt, her own terror and her own
   purse, who come back from the deep a month after they are sunk.
-- **A REASON TO CROSS** (CAPT-TRADE's Etheric goods, the strands, the legends' purses, the charts): ether-amber,
+- **A REASON TO CROSS** (CAPT-TRADE's Eltheric goods, the strands, the legends' purses, the charts): ether-amber,
   starglass and voidsilk made on the isles and wanted in every port of the Bay; the Bay's goods wanted on the isles.
 - **A CHART OF ITS OWN** (ETHER-CHART): the travel map's door past the Veil opens the captain's chart of the isles
   charted, the depths, the Veil and the legends' haunts heard of.
@@ -40,13 +47,16 @@ thousand leagues:
 |---|---|---|
 | ETHER-SEA | THE SEA'S LAW: its box, the Veil, the depths and their bands; the isles' lattice, kinds, sizes, climates and names; the ground the kernel grows there, composed over the world's reader (the host's and the worker's), streamed, on the far ring | `world/ethericSea.js`, `world/streamingWorld.js` (`frames`), `world/terrainGenWorker.js`, `world/terrainGenClient.js`, `render/farRing.js` (`climatePast`, `pastOwn`), `world/landforms.js` (the climate past the table), `scenes/shared.js` (`etherSeaOn`, `etherCrossOutOn`), `scenes/world.js` (the composition, the region's name, the Overworld's water) |
 | ETHER-PLACES | THE ISLES' PLACES: a port's town and a ruin's dungeon cloned off the game's own rows onto the isle's centre pixel under their own id, name and index; a ruin of the deep elite | `world/etherPlaces.js`, `scenes/world.js` (`_locationToBuild`, `etherPlaceAt`, the templates, the online wake) |
-| ETHER-PORTS | A FREEPORT: a port isle is a port to the deeds, the harbour book (its quays), the naval host's waters, the exchange (the Etheric goods made there) and its own harbourmaster's tab - the legends' rumours and a chart of its waters | `scenes/world.js` (`etherPortAt`, `etherPortNear`, `etherPortOf`, the port seams), `scenes/etherHost.js` (`office`, `chartOffer`, `buyChart`), `ui/navalYardWindow.js` (`etherOfficeText`) |
+| ETHER-PORTS | A FREEPORT: a port isle is a port to the deeds, the harbour book (its quays), the naval host's waters, the exchange (the Eltheric goods made there) and its own harbourmaster's tab - the legends' rumours and a chart of its waters | `scenes/world.js` (`etherPortAt`, `etherPortNear`, `etherPortOf`, the port seams), `scenes/etherHost.js` (`office`, `chartOffer`, `buyChart`), `ui/navalYardWindow.js` (`etherOfficeText`) |
 | ETHER-SHIPS | ITS TRAFFIC AND ITS LAW: corsairs and traders by the band, under the sea's names and the Isles' colours; no navy, no relief, no crown's law; corsairs' papers; the strands' casks | `systems/naval/etherShips.js`, `systems/naval/navalDirector.js` (`ctx.ether`), `scenes/navalHost.js` (`launch`, `chargeEther`, `etherCtx`, `pickStrand`), `scenes/etherHost.js` (`sites`, `gather`, `papers`), `systems/naval/shipKnowledge.js` (`coloursWords`) |
 | ETHER-LEGENDS | SIX LEGENDARY SHIPS: their classes, haunts, terrors, purses; launched in their haunts, risen again a month after their end; the rumours | `systems/naval/etherShips.js`, `systems/naval/navalShips.js` (the six classes, `LEGEND_LEVEL`), `systems/naval/navalDirector.js` (`legendSpawn`), `scenes/navalHost.js` (`legendMend`, `reachOf`), `scenes/etherHost.js` (`legendHere`, `legendEnded`, `rumours`) |
 | ETHER-CROSSING | THE CROSSING: asked at a helm on the open Abecean and in the Veil, once each time the ship comes into those waters; the voyage carries the captain, the ship, her crew and her hold | `systems/naval/etherCrossing.js`, `scenes/world.js` (`etherCrossStep`, `etherCross`, `crossLandPx`) |
-| ETHER-CHART | THE CHART OF THE ETHERIC SEA: the travel map's door past the Veil | `ui/etherChartWindow.js`, `ui/navalPlunderDoor.js` (its slot), `scenes/etherHost.js` (`chart`), `scenes/world.js` (`openEtherChart`) |
+| ETHER-CHART | THE CHART OF THE ELTHERIC OCEAN: the travel map's door past the Veil | `ui/etherChartWindow.js`, `ui/navalPlunderDoor.js` (its slot), `scenes/etherHost.js` (`chart`), `scenes/world.js` (`openEtherChart`) |
 | ETHER-CHART2 | THE CHART READ AT A GLANCE: its words in the enhanced face and drawn last; a shape for each kind's mark; the depths as waters, a grid and a scale; the haunts washed and named in view; the ship ringed and pointed to; the isle named ringed, its bearing and its card; a key | `ui/etherChartWindow.js` (`chartModel`, `paintChart`, `scaleBar`, `labelBoxes`, `edgePointer`) |
 | ETHER-LIGHT | THE LIGHT PAST THE VEIL: cold and violet on land, sea and hulls | `world/ethericSea.js` (`etherLight`), `scenes/world.js` (the frame's lights) |
+| ELTHERIC | THE SEA'S NAME: the Eltheric Ocean, one word's home for every word a player reads of it | `world/ethericSea.js` (`ETHER_WORD`, `ETHER_SEA_NAME`, `ETHER_SEA_TITLE`), `world/etherPlaces.js` (`ETHER_REGION_NAME`), `ui/etherChartWindow.js`, `ui/navalYardWindow.js`, `scenes/etherHost.js`, `scenes/world.js`, `systems/naval/captainLedger.js`, `systems/naval/etherCrossing.js` |
+| ETHER-DEEP | ITS DEPTH: Iliac Puddle No More's bake over the sea's own frame - its floor carved, swum and walked as the Bay's; the pits held to the Bay | `world/etherWatersBake.js`, `world/deepWatersBake.js` (the frame, the flood, the raw reader's own bytes), `world/deepWaterTileData.js` (the frame's clamps), `world/deepWatersClient.js`, `world/deepWatersWorker.js`, `scenes/deepWatersHost.js` (the one gate, the frame's climates), `scenes/oceanHolesHost.js` (the hold), `scenes/world.js` (the places' rects, the near promote) |
+| ETHER-NODES | ITS NODES: the nodes' law knows the sea's ground - an isle's node, a haul and a pixel's witnesses taken by the service as the Bay's | `net/nodeLaw.js` (`pixelOk`, the ids' spelling) - both ends |
 | (the ledger) | WHAT A CAPTAIN KEEPS OF IT: the isles charted, the legends ended and heard of, the strands gathered, the way out, the crossings - in the Captain save | `systems/naval/captainLedger.js` (`ether`, `chartIsle`, `endLegend`, `gathered`, `setCrossedFrom`, `crossed`, `hearLegend`), `scenes/etherHost.js` |
 
 THE FOUR HOSTS (Home.md; AUDIT CAPTAIN'S SEA H12 - the slices named none): the sea, its ships, the crossing, the chart
@@ -109,7 +119,7 @@ pixel's byte as its south-east corner): the town whole on dry ground and its sho
 the harbour book sounds a harbour there within ETHER_HARBOUR_REACH (900 m - `shipLife.js findHarbour`'s `reach`; AUDIT
 CAPTAIN'S SEA H1/P2: an isle of two kilometres had its shore past the 420 m every Bay harbour is sounded within, and no
 port past the Veil had a quay - a sample of 160 ports has every one its harbour now). A wild isle bears one of the
-Etheric goods (`ETHER_GOODS`, the exchange's three - pinned equal). No isle stands in the box's edge cells, nor in any
+Eltheric goods (`ETHER_GOODS`, the exchange's three - pinned equal). No isle stands in the box's edge cells, nor in any
 cell east of Veilhaven's: the Veil's still water, the landfall's way clear. **VEILHAVEN** (`veilhaven`, VEILHAVEN_CELL
 (800, 249), four cells west of the Veil on the box's middle row, its centre pixel VEILHAVEN_AT (4, 5) in it - (8068,
 -5185), where the crossing has always made its landfall beside it) is always a port: radius 1, peak 12, Subtropical. The
@@ -148,7 +158,7 @@ and the open sea's as water (`tvWater`, `tvSceneOf` - G5: every isle read water 
 Betony's politic (ETHER_REGION 19 and 128): its people's names, its prices, its law and the far places its quests send
 a captain to are Betony's - the Bay's westernmost isle with places of its own (the Bay's "Islands in the Western Iliac
 Bay", region 12, hold none: a quest's far place there would be nowhere). The loading screen and the Overworld's line
-say "the Etheric Sea". The world's events that walk a province (Raiding Parties) find none past the Veil (G7: Betony's
+say "the Eltheric Ocean". The world's events that walk a province (Raiding Parties) find none past the Veil (G7: Betony's
 raids were announced to a captain at sea), and World of Daggerfall's pick never scans the sea's pixels (G8).
 
 **THE SWITCH** (`etherSeaOn`, `etherCrossOutOn` - AUDIT CAPTAIN'S SEA G2/P7, THE SWITCH SPLIT): the SEA stands in every
@@ -171,7 +181,7 @@ the game's own places (the spawned dungeons' law, `world/spawnedDungeons.js`), w
 - **its location index**: its own negative (-(1000 + the cell's number)) - the questors' pool keys on it (two places
   sharing a spawn's -1 kept the first one's pool) and the layout pins' location key stays apart from every real one.
 - **its name**: the isle's; its region ETHER_REGION's index, politic and name - its region's own, Betony's (AUDIT
-  CAPTAIN'S SEA P8: "the Etheric Isles" named no region, and a guild's local job threw on its first tick; the quests
+  CAPTAIN'S SEA P8: "the Eltheric Isles" named no region, and a guild's local job threw on its first tick; the quests
   find an isle's place in the index it stands in); its climate the isle's (`getWorldClimateSettings`); its longitude and
   latitude its pixel's (MapsFile's own law round-trips any integer pixel); its exterior's map id and its record's header
   id its own (P12).
@@ -190,7 +200,7 @@ and the "villages and cities of 6 - 16" the list read was always empty, Veilhave
 main-story place nor one with a dungeon under it, never a spawn nor an isle's own; ruins - dungeons with blocks and an
 exterior, one block where any is. Each list in map-id order; an isle's pick off its own hash (`etherTemplateOf`).
 
-**THE BUILD** (`scenes/world.js`): `_locationToBuild` answers an Etheric pixel from `etherPlaceAt` alone - the place
+**THE BUILD** (`scenes/world.js`): `_locationToBuild` answers an Eltheric pixel from `etherPlaceAt` alone - the place
 the isle's centre stands, stood in the location index once (a building's door, a quest's local site and a save's
 records read it there), or nothing. The Overworld's far reads never clone a spawn past the Veil (`tvLocationAt` -
 spawnedMapId's law is the Bay's and throws there). Saved inside a ruin, offline the load rebuilds the pixel and the
@@ -211,8 +221,8 @@ QUAYS' law). No crown's: the harbour office's crown's tab stands none there, and
 (`etherHost.office`, `ui/navalYardWindow.js etherOfficeText`) is the tab instead - the port's waters, every legend's
 rumour as the quay's talk (each legend then on the captain's chart - `hearLegend`), and a chart of its waters for sale:
 every isle within CHART_BUY_PX (40) charted, at CHART_BUY_PRICE 150 gold and 75 a band deeper. THE EXCHANGE is
-CAPT-TRADE's own: an Etheric port makes the three Etheric goods (cheap, a day's stock of 30) and wants every good of
-the Bay at EXOTIC_K - and every port of the Bay wants the Etheric goods at EXOTIC_K. A crown's favours (the yard's
+CAPT-TRADE's own: an Eltheric port makes the three Eltheric goods (cheap, a day's stock of 30) and wants every good of
+the Bay at EXOTIC_K - and every port of the Bay wants the Eltheric goods at EXOTIC_K. A crown's favours (the yard's
 discount, the hands') are none past the Veil (`waters` answers no crown there). A freeport's quay moors the isles'
 traders - never a Bay crown's navy (D4).
 
@@ -310,7 +320,7 @@ asked (she comes out in crossing waters, and is not asked out again at once). Co
 is carried across (`_etherCrossing`, as a party's arrival holds it). A voyage that cannot be made brings ship and
 captain back where they set out, at her helm, the way out as it was (CROSS_FAILED - X9: her helm was let go).
 
-## ETHER-CHART - the chart of the Etheric Sea
+## ETHER-CHART - the chart of the Eltheric Ocean
 
 Past the Veil the travel map's door (`toggleTravelMap`) opens the captain's chart (`ui/etherChartWindow.js`, the naval
 windows' door's third slot) - the Bay's travel map has no sea there to show, and nothing on the chart is travelled to.
@@ -338,7 +348,7 @@ where his tab is shown (X11). The helm's plate says "The Veil" in the Veil itsel
 
 ## ETHER-CHART2 - the chart read at a glance
 
-The owner, 2026-10-12: *"I want to improve the [Etheric] sea map, its icons, the highlight areas, etc and improve
+The owner, 2026-10-12: *"I want to improve the [Eltheric] sea map, its icons, the highlight areas, etc and improve
 readability."* Read in Chromium before the change (`ui/etherChartWindow.js` mounted alone, a captain's word of a hundred
 isles charted and three legends heard of, at every zoom and a phone's width - the window needs no game data), the chart
 had six faults, and each is fixed where it starts. Its audit (`01-Overview/Audit-Ether-Chart2.md`, the owner: "Audit and
@@ -422,6 +432,87 @@ the brass's). The sky's dome is the world's own: a fog or a dome graded apart me
 (AUDIT SD III V8's finding), and the lights touch neither. Nothing is made while nothing leans (the light handed in
 handed back, sdBrassLight's law).
 
+## ELTHERIC - the sea's name
+
+The sea past the Veil is **the Eltheric Ocean** (2026-10-12, the owner: "Apparently the ocean is suppose to be eltheric
+not etheric"). It is the lore's ocean west of Tamriel and the name the world had already given the waters west of the
+Bay (`world/tamrielGeography.js` SEAS, the intro map's; `test/tamriel.test.js` "the Bay opens west to the Eltheric") -
+one ocean, one name, the noun the owner's own. It was "the Etheric Sea", spelt in fourteen literals across eight modules;
+the word has one home now, `ethericSea.js:"export const ETHER_WORD = 'Eltheric';"`, and every word a player reads of the
+sea is made of it: the chart's title and its two labels, the harbourmaster's lede, the legend's end, the crossing's
+question and its landfall, the log's lines and trades, the isles' region's words and the unstreamed landing.
+`test/eltheric.test.js` holds the word, the names, the map's ocean the same, each reader made of it, and a scan of the
+source - no code spells the old name, and the new one is spelt in its home and the map's table alone. The chart's title,
+three letters longer, was cut on a phone held upright (`tools/etherChartProbe.mjs`): on a narrow screen it wraps now
+(`ETHER_CHART_CSS`), and the probe's five sizes pass.
+
+NOT RENAMED, by intent: the code's own names - the ETHER-* slices (their records are history), `world/ethericSea.js`
+and every `ether*` identifier, the ledger's `ether` trade key and the Captain save's `ether` record (a rename there is a
+migration with nothing to gain), the band "the Deep Aether", and the owner's quoted words. This page was
+`03-World/Etheric-Sea.md`; every link to it moved with it.
+
+## ETHER-DEEP - the sea's depth
+
+THE CAUSE. Under the water past the Veil the ground was the kernel's clamp at OceanElevation - the sea a stride deep,
+its floor the drawn ground (the owner: "the area below water is very shallow and has no depth"). Iliac Puddle No More,
+which carves the Bay's seabed (`03-World/Deep-Waters.md`), knows one map - IsValidMapPixel's 1000 x 500 - and every
+query it asks clamps to it: an Eltheric pixel's tile data (`_global`, `_climateAtPixel`) and every bake query read the
+Bay's corner pixel. ETHER-HOLD (below, and `01-Overview/Field-Bugs-2026-10-12.md`) had found that clamp the hard way -
+a floor carved against the corner and a swim that read no water over it - and held the carve off the box altogether.
+
+THE LAW. A bake answers a FRAME of pixels (`deepWatersBake.js:"export const BAY_FRAME = Object.freeze({ x0: 0, y0: 0, w: MAP_W, h: MAP_H });"`):
+its planes indexed and its cells counted from the frame's corner, its tile data clamped to it - the Bay's frame is the
+mod's map to the float (a pixel less 0 is the pixel; every DW pin and mutant stands). The Eltheric Ocean's box is a
+bake's own frame (`etherWatersBake.js:"export class EtherWatersBake extends DeepWatersBake {"`), built by the same rules
+from the same composed ground the world streams: the bound's classes, the coarse candidates and fine masks off the
+pixel's own samples, the 8-connected flood that keeps a pond out (`floodSteps`, the map's flood over any frame), the
+octile distance planes. Only how much of it is built differs: forty million pixels are asked as they are read and kept
+(ETHER_KEEP_MAX a plane, the far ones let go past ETHER_KEEP_RADIUS), and the flood runs an isle's CELL at a time -
+every cell's ring of pixels is open sea by the bound (an isle's land bytes lie a pixel and more inside its cell, and
+the kernel carries none of them out to the ring), so the rings are one sea that reaches the box's edge and a cell's own
+flood is the box's (pinned over three whole rows of the box, and against the flood of the nine cells round four cells
+where a pond is kept out). An isle's place blends its pixel's ground as a classic location's - 132 of 1,499 places'
+pixels sampled hold water - so the bake samples its pixel with its template's rect: the host reads every template's
+rect once (`etherPlaceRects`, read as a clone reads its blocks) and the place's own pick (`etherTemplateOf`) names it.
+
+THE WORLD'S BAKES are the Bay's and the Eltheric's side by side (`DeepWatersBakes`: a query answered by the bake whose
+frame holds its pixel; a worker's exported rows carry the Eltheric's sea bits and classes, so this thread floods nothing
+the worker did). The worker composes the sea over its own reader as the terrain worker does; the host's one `promote`
+is the gate for every arm (`deepWatersHost.js:"function promote(pixel) {"`: a pixel in a frame, the Bay's or the
+Eltheric's) - the world's near promote asks it rather than holding the box itself - and the climates it hands a build
+are clamped to the pixel's own frame. The raw WOODS.WLD's fast read is the raw file's alone: a composed reader inherited
+its bytes, and read through them an Eltheric pixel was the Bay's clamped edge (`readLargeWindow`).
+
+WHAT IT GIVES: the open sea is the Ocean's plain under the player's Water Depth (`deepBathymetry.js`: the Ocean's 210 m
+off its coasts, the relief over it; measured through the pixel builder at the open Veil, a floor more than 150 m down,
+the drawn floor the bathymetry's within the mesh's step), shallowing to every isle's shore; the cap hides a pure ocean
+pixel's ground; the surface stands; the swim's column reads carved water. Every Deep Waters system that works off a
+floor - the decorations, the fish, the foes, the loot, the remains - works past the Veil with it.
+
+HELD: THE PITS. There's a Hole in the Bottom of the Ocean cuts its pits into Iliac Puddle No More's floors, and a pit's
+drowned dungeon is named by its pixel's id's low twenty bits (`oceanHoles.js` GetAbyssMapId) - the Bay's 1000 x 500
+alone keeps those apart. A pixel off the Bay's map is refused before the hash is asked
+(`oceanHolesHost.js:"if (!isValidMapPixel(st.mapX, st.mapY)) { markTerrainProcessed(st, v, 'rejected:off-the-map'); return; }"`):
+no pit past the Veil until it has an abyss of its own.
+
+## ETHER-NODES - the professions' nodes
+
+THE CAUSE. The isles stood the day's nodes already - the gathering host stands every built pixel's by its climate and
+region, and the sea answers both (an isle's climate is the professions' own; its region Betony's) - and the open water
+the schools. But the nodes' law, both ends' (`net/nodeLaw.js`), knew the Bay's 1000 x 500 alone: an isle's node id
+(`herb:8009:-5194:...` - four digits east, a sign north) and a haul's were refused by the service (`bad-node`: "There is
+nothing here to gather."), and every ask after an isle pixel's witnesses was refused whole (`bad-pixels`), five seconds
+apart for as long as the captain stood there.
+
+THE LAW. The nodes' ground is the Bay's map and the Eltheric's box
+(`nodeLaw.js:"export const pixelOk = (x, y) => Number.isSafeInteger(x) && Number.isSafeInteger(y)"`, the box's
+`inEther` one home), and a node's and a haul's ids are read in their one spelling with four digits and a sign. Nothing
+else moves: the day's counts by climate, the tiers, the witnessed world (an isle pixel is unconfirmed until three
+week-old accounts agree, worth its kind's least till then), the regions' materials (an isle's herbs are Betony's), a
+Levy in Betony's seat. The service reads the same law: it takes an isle's harvest and answers its pixels' witnesses -
+no migration (its keys are text). `test/ether_nodes.test.js` holds the ground, the spelling, and the service end to end
+over the real database.
+
 ## The ledger's record
 
 The Captain save (CAPTAIN_SAVE_VENDOR, still v1 - a record without it reads as none) keeps `ether`: the isles charted
@@ -429,7 +520,7 @@ The Captain save (CAPTAIN_SAVE_VENDOR, still v1 - a record without it reads as n
 days, the newest ETHER_HARVEST_KEEP 128), the way out (never one in the sea - X2), the crossings, the legends heard of.
 Restored field by field, a junk entry dropped and the rest kept. Its days are the world's online and the character's
 clock offline: Copy to offline and Bring online move them by the days between the clocks (`offlineCopy.js` - AUDIT
-CAPTAIN'S SEA L4: a copy taken offline found a legend sunk for months). The log says "Etheric isles charted", "Deepest Etheric waters - N leagues past
+CAPTAIN'S SEA L4: a copy taken offline found a legend sunk for months). The log says "Eltheric isles charted", "Deepest Eltheric waters - N leagues past
 the Veil", "Legends ended"; its trades count 'ether' and 'legend' ships.
 
 ## Recorded departures and readings
@@ -439,17 +530,16 @@ the Veil", "Legends ended"; its trades count 'ether' and 'legend' ships.
   than a thousand leagues west of the Veil, some ten hours of real time at the helm's top speed.
   Past it nothing streams (the world's edge). The wire's pose bound, not taste, set its north.
 - **The region is Betony's** for every system that asks one (quests, law, prices, names); only the place words say
-  "the Etheric Sea". A quest given on an isle may send a captain back across the Veil.
+  "the Eltheric Ocean". A quest given on an isle may send a captain back across the Veil.
 - **A place's name may repeat** across the sea (sixteen thousand roots): two places of one name share an automap and a
   building's discovery. At fifty places charted, about one captain in twenty meets it (G11/P11 - measured; "one in
   fifty" was not).
 - **The light, not the sky.** The dome, the clouds and the fog are the world's own past the Veil; a grade of the sky's
   four passes (as the brass's) is a later slice's.
-- **No Deep Waters bathymetry of its own.** The sea's floor is the kernel's water; Deep Waters' promotions are the Bay's.
-  TAMRIEL2 held the near promote alone, and the pump's deferred builds still carved the sea's floor: a player went over
-  the side, stood on a seabed under the drawn surface and could neither swim nor float back to the ship (ETHER-HOLD,
-  from play, 2026-10-11). The host's one `promote` now answers nothing for a pixel past the Bay's 1000 x 500, so every
-  arm is held (`deepWatersHost.js:"function promote(pixel) {"`; test/ethersea_dwhold.test.js).
+- **Deep Waters by its own bake; the pits the Bay's.** ETHER-HOLD (from play, 2026-10-11: a player over the side
+  stood on a floor carved against the Bay's clamped corner, and could neither swim nor float back) held the carve off
+  the box; ETHER-DEEP (above) carves it by its own frame, and a host told nothing of the sea still holds it
+  (test/ethersea_dwhold.test.js). Ocean Holes' pits stay the Bay's.
 - **Online**, the crossing is each player's own; a party is not carried across together, and a player aboard another's
   ship holds the crossing back.
 
@@ -476,7 +566,7 @@ crossing's pause), `test/seasonsIliacBay.test.js` (the crossing a travel), `test
 more), `test/fb0929h_deedport.test.js` (the port test past the Veil - an isle's port is a port for the deed),
 `test/fb0929h_spawnplate.test.js` and `test/spawneddungeons.test.js` (the build past the Veil),
 `test/sd2d_castout.test.js` (an isle's ruin wakes at its own door). `test/fixtures/time1_census.json` names the new
-clock readers: the Etheric host's day on the event clock, the crossing's arrival on the sky
+clock readers: the Eltheric host's day on the event clock, the crossing's arrival on the sky
 (`bible/06-Systems/Online-Time-Arc.md` 5.2). Mutants `tools/mutants/ethersea.json`,
 `tools/mutants/etherplaces.json`, `tools/mutants/ethership.json`, `tools/mutants/ethercross.json`.
 
@@ -513,6 +603,23 @@ of a cut name, a lone haunt name over her own square, the ports' marks alone and
 lists all die. `tools/etherChartProbe.mjs` measures in Chromium what node cannot: the mean letter, the window fitting at
 five sizes, the late face, a full captain's repaint.
 
+ELTHERIC, ETHER-DEEP, ETHER-NODES: `test/eltheric.test.js` (4) - the word and its readers, the source scanned, the
+chart's title wrapped; `test/ether_deep.test.js` (9) - the raw reader's bytes its own, the cells' rings over three rows,
+the cell's flood the nine cells', the frame and the routing, the planes bounded, the places' rects, the open sea carved
+through the pixel builder to the Ocean's plain, the client and the worker, the host's every arm; `test/ether_nodes.test.js`
+(3) - the ground, the spelling, the service. `test/oh_host.test.js` holds the pits' hold. Mutants
+`tools/mutants/eltheric.json` (7), `tools/mutants/ether_deep.json` (23), `tools/mutants/ether_nodes.json` (6) - all
+die (three ETHER-DEEP records survived the first pins - a carved query and a misrouted row probed where the box's
+clamped edge answers the same, the host's word to its client never reached - and the pins were made to see them). PIN MOVED: every pin
+of the sea's words (`test/ethersea.test.js`, `test/ethercross.test.js`, `test/audit_etherchart2.test.js`,
+`test/auditcaptsea.test.js`), `test/tamriel2.test.js` (the near promote's gate the host's),
+`test/ethersea_dwhold.test.js` (a host told nothing of the sea), and `tools/mutants/dwa.json`'s two border seeds (the
+flood's names the frame's).
+
 **Not verified here:** the look and feel in a real browser (the isles on the horizon, the light - the chart was read in
 Chromium at ETHER-CHART2, mounted alone), a crossing end to end in a running world (its jump, the ship brought round,
-the stream past the Veil), a town's buildings and a ruin's halls entered on an isle, and online play past the Veil.
+the stream past the Veil), a town's buildings and a ruin's halls entered on an isle, and online play past the Veil -
+ETHER-DEEP's seabed seen and swum in a running world (its pins build real Eltheric pixels through the mod's own
+builder; the renderer and the swim's motor are the Bay's, unchanged), the places' rects read off the player's MAPS.BSA
+and BLOCKS.BSA (no archive here: their pick is pinned, their reading is `setLocationTiles`'s), and ETHER-NODES' harvest
+from a live client against the deployed service (pinned over the service's own code and migrations).

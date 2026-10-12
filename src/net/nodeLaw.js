@@ -36,6 +36,7 @@ import {
   PEARL, SLAUGHTERFISH_SCALES, SCHOOL_FISH, FISH_CHANCE,   // PROF8
 } from './professionLaw.js';
 import { kingdomOf, FREE_LANDS, MARCH_REGIONS, isMarch } from './kingdomLaw.js';   // SEAT0 4.3's map, one home (PROF2)
+import { inEther } from '../world/ethericSea.js';   // ETHER-NODES: the Eltheric Ocean's box, one home (pure: formats/ alone)
 
 /** The one salt every client stands a day's nodes with. Changing it moves every node in the world. */
 export const NODE_SALT = 0x5e3d;
@@ -131,8 +132,12 @@ export const dayMonth = (day) => dayDate(day).month;
 
 // ─── A NODE'S ID ─────────────────────────────────────────────────────
 
-/** Whether (x, y) is a map pixel. */
-export const pixelOk = (x, y) => Number.isSafeInteger(x) && Number.isSafeInteger(y) && x >= 0 && y >= 0 && x < MAX_MAP_PIXEL_X && y < MAX_MAP_PIXEL_Y;
+/** Whether (x, y) is a pixel of the world's ground: the Bay's map, or ETHER-NODES (2026-10-12, the owner: "We also need
+ *  to implement gathering nodes within the area") the Eltheric Ocean's box (world/ethericSea.js inEther) - its isles
+ *  stood the day's nodes and its open water the schools, and the law knew the Bay's 1000 x 500 alone: every id there
+ *  was refused (`bad-node`), and every ask after its pixels' witnesses (`bad-pixels`). */
+export const pixelOk = (x, y) => Number.isSafeInteger(x) && Number.isSafeInteger(y)
+  && ((x >= 0 && y >= 0 && x < MAX_MAP_PIXEL_X && y < MAX_MAP_PIXEL_Y) || inEther(x, y));
 /** Whether `r` is a region index. */
 export const regionOk = (r) => Number.isSafeInteger(r) && r >= 0 && r < REGION_NAMES.length;
 /** A node's id: `herb:412:188:20724:2` - its kind, its pixel, its UTC day and its slot. A dungeon's vein names its
@@ -145,7 +150,7 @@ export const dveinKey = ({ dungeon, day, slot }) => `dvein:${dungeon}:${day}:${s
  *  none of it but the day. */
 export const bodyKey = ({ day, id }) => `body:${day}:${id}`;
 export const BODY_ID_RE = /^[0-9a-f]{12}$/;
-const NODE_KEY_RE = /^(tree|herb|vein|boulder):(\d{1,3}):(\d{1,3}):(\d{1,6}):(\d{1,2})$/;
+const NODE_KEY_RE = /^(tree|herb|vein|boulder):(-?\d{1,4}):(-?\d{1,4}):(\d{1,6}):(\d{1,2})$/;   // ETHER-NODES: the Eltheric's x to 8127 and its y north of the map's 0
 const DVEIN_KEY_RE = /^dvein:(\d{1,7}):(\d{1,6}):(\d{1,2})$/;
 const BODY_KEY_RE = /^body:(\d{1,6}):([0-9a-f]{12})$/;
 /** PROF8: a haul's id - `haul:<x>:<y>:<day>:<id>`, the map pixel the net was cast from, its UTC day and twelve hex
@@ -153,7 +158,7 @@ const BODY_KEY_RE = /^body:(\d{1,6}):([0-9a-f]{12})$/;
  *  pixel is the client's word, read for its ground (the sea's finds are a confirmed pixel's) and its day - the hour's
  *  writes the bound (CAP-OFF: the day's forty hauls are gone). */
 export const haulKey = ({ x, y, day, id }) => `haul:${x}:${y}:${day}:${id}`;
-const HAUL_KEY_RE = /^haul:(\d{1,3}):(\d{1,3}):(\d{1,6}):([0-9a-f]{12})$/;
+const HAUL_KEY_RE = /^haul:(-?\d{1,4}):(-?\d{1,4}):(\d{1,6}):([0-9a-f]{12})$/;   // ETHER-NODES: as a node's
 /** A dungeon's identity, DFU's own: `MapTableData.MapId & 0xfffff` (formats/mapsFile.js). */
 export const DUNGEON_ID_MAX = 0xfffff;
 export const dungeonOk = (id) => Number.isSafeInteger(id) && id >= 0 && id <= DUNGEON_ID_MAX;
