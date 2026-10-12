@@ -5177,6 +5177,14 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     this._close2D();   // PERF-2D: the baseline back, before anything that needs it
     const s = this.stats;
     s.draws = 0; s.programBinds = 0; s.vaoBinds = 0; s.texBinds = 0; s.bbCulled = 0;   // PERF-CROWD2
+    // FIELD BUGS 2026-10-12e BATCH-SHUT: a body batch no pass flushed is let go at the frame's start - its pictures are one
+    // frame's loss. Left open, every later pass's begin joined it and its flush only stepped the depth down: no
+    // Morrowind body drew again until a reload
+    const sb = this._spriteBatch;
+    if (sb?.open) {
+      sb.open = false; sb.depth = 0; sb.items.length = 0;
+      if (!this._spriteBatchLeft) { this._spriteBatchLeft = true; console.warn('[mw] a character batch was left open - shut at the frame\'s start'); }
+    }
     // VC4: the cloud shadow deck is a FRAME's, not the renderer's - a host
     // that wants one sets it after this (the exterior hosts do, per
     // pixel); an interior or a dungeon, which never does, gets none, and
