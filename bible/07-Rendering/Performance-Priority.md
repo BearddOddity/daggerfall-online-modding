@@ -519,9 +519,14 @@ screenshot is never kept. The game's readers are untouched: one change at the se
 every one to come, and the browser build has no file to read.
 
 **Measured.** The store over the owner's own Prefs, the session read 20,000 times: 67.9 us a read on main, 0.095 us on
-the branch (`node` 22; the shell's asar-patched `fs` is slower still). The frame's share is the profile's - the 18.5%
-above, ~2 ms of a frame's ~10 ms of script at 86 FPS. Not measured: the installed client on this branch; its build is
-the owner's next update.
+the branch (`node` 22; the shell's asar-patched `fs` is slower still). And in the owner's running client, A/B: the
+bridge object is frozen, so the page's own wrapper (`appStorage.js`'s, which every reader holds and which looks its
+`getItem` up at each call) was found through CDP `Runtime.queryObjects` and answered, on B, from a cache under this
+law (1 s, forgotten on its own writes) with one bridge crossing kept a read (`key(0)`), so B costs what the branch
+does; on A, as shipped. Six rounds of A and B, 10 s each, interleaved ABBA, standing still in a town at night:
+58-64 reads a frame on both arms, 1.83 ms a frame in them on A and 0.04 on B; 85.7 -> 109.9 FPS mean (the medians
+92.5 -> 114.2), 12.0 -> 9.2 ms a frame, and B ahead in every pair. The p99 does not move (both ~19-21 ms: the frame's
+hitches are elsewhere).
 
 Pins: `test/storecache.test.js` (3) - a frame's 300 reads of a key are one disk read, of a key the store wrote none, of
 an absent key one, of the screenshot each; a file changed by hand seen past `readTtlMs` and at once after a rescan; a
