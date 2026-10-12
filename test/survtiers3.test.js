@@ -8,7 +8,7 @@ import { SURVIVAL_RULES, SURVIVAL_STORED, SURVIVAL_OFF } from '../src/systems/su
 import { SURVIVAL_PREF } from '../src/systems/survival/switch.js';
 import {
   newSurvival, survivalOf, survivalMinute, runSurvivalMinutes, pauseSurvival, survivalStatMods, hungerMinutes,
-  awakeHours, drinkWater, settleLoan, ALIGN_GRACE_MINUTES, SURVIVAL_TEXT, NEED, WELL_FED_MINUTES,
+  awakeHours, drinkWater, settleLoan, ALIGN_GRACE_MINUTES, SURVIVAL_TEXT, NEED, WELL_FED_MINUTES, STAGE_REPEAT_MINUTES,
 } from '../src/systems/survival/needs.js';
 import { survivalHudChips, survivalStatusLines, STATUS_TEXT } from '../src/systems/survival/status.js';
 import { REST_KIND, REST_TEXT_SURVIVAL } from '../src/systems/survival/rest.js';
@@ -214,8 +214,12 @@ test('the third pass: a stage line is said when the need WORSENS, never on the w
   assert.equal(e.survival.notes.thirst, 'thirsty');
   const stageLines = (l) => said(l).filter((t) => [SURVIVAL_TEXT.thirsty, SURVIVAL_TEXT.parched, SURVIVAL_TEXT.dehydrated].includes(t));
   assert.deepEqual(stageLines(log), [], 'a drink from Dehydrated does not say "You are getting thirsty" (the loan\'s repaid line may speak: the red lifted)');
-  // ...and getting worse again is said
+  // ...and getting worse again is said - AUDIT C&C N6 (PIN MOVED): once the line heard at minute 1 is half an hour old
+  // (STAGE_REPEAT_MINUTES); within it, it is not said again (a body at a boundary heard it at every step across)
   e.survival.thirst = 100; survivalMinute(e, 3, INDOORS, minuteDeps(e, log, CASUAL));
+  assert.deepEqual(stageLines(log), [], 'Dehydrated again two minutes on: heard lately');
+  e.survival.thirst = 70; survivalMinute(e, 4, INDOORS, minuteDeps(e, log, CASUAL));
+  e.survival.thirst = 100; survivalMinute(e, 1 + STAGE_REPEAT_MINUTES, INDOORS, minuteDeps(e, log, CASUAL));
   assert.deepEqual(stageLines(log), [SURVIVAL_TEXT.dehydrated], 'Dehydrated again is news');
   // the temperature: deadly to comfortable says nothing; then the heat, the other side, is said
   e = body(); log = [];

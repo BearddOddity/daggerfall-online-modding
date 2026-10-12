@@ -119,6 +119,13 @@ export const ROAD_MINUTES = 60;
 /** The sleep-debt stage a tier's rough night cannot pay below (difficulty.js `roughSleepFloor`), as hours of debt. */
 const SLEEP_FLOOR_AT = Object.freeze({ tired: NEED.SLEEP_TIRED, drowsy: NEED.SLEEP_DROWSY, exhausted: NEED.SLEEP_EXHAUSTED });
 export const NOTE_EVERY_MINUTES = 5;
+/** AUDIT C&C N6: a stage line (or a recovery's) heard within this many minutes of the character's clock is not said
+ *  again - half an hour, two and a half minutes of play. A body at a fire's edge, stepping in and out of its reach,
+ *  worsened its stage on every step out and heard the line each time: twenty lines an hour in a Hard snow, eleven of
+ *  them "Your teeth are chattering uncontrollably!". The mod paces every line it says (txtIntervals); this is the
+ *  port's pace for the lines it says once. */
+export const STAGE_REPEAT_MINUTES = 30;
+const heardLately = (s, key, now) => Number.isFinite(s.notes[key]) && now >= s.notes[key] && now - s.notes[key] < STAGE_REPEAT_MINUTES;
 
 export const SURVIVAL_TEXT = Object.freeze({
   peckish: 'Your stomach rumbles...',
@@ -391,7 +398,7 @@ const RECOVERY = Object.freeze({
   temp: Object.freeze({ from: Object.freeze({ scorching: 'cooling', freezing: 'warming', deadly: 'warming' }), atDry: false }),
   wet: Object.freeze({ from: Object.freeze({ soaked: 'dried', drenched: 'dried' }), atDry: true }),
 });
-function recoveryNote(s, family, stage, say) {
+function recoveryNote(s, family, stage, say, now) {
   const r = RECOVERY[family];
   if (!r) return;
   const key = `${family}:red`;
@@ -399,16 +406,21 @@ function recoveryNote(s, family, stage, say) {
   const from = s.notes[key];
   if (!from || (r.atDry && stage)) return;
   delete s.notes[key];
+  const heard = `${family}@${r.from[from]}`;   // AUDIT C&C N6: a recovery heard lately is not said again
+  if (heardLately(s, heard, now)) return;
+  s.notes[heard] = now;
   say?.(SURVIVAL_TEXT[r.from[from]]);
 }
-function stageNote(s, family, stage, say, text, replay) {
+function stageNote(s, family, stage, say, text, replay, now) {
   if (replay) return;
   const was = s.notes[family];
-  recoveryNote(s, family, stage, say);   // WARM-SAID: the way out of the red, said once
+  recoveryNote(s, family, stage, say, now);   // WARM-SAID: the way out of the red, said once
   if (!stage) { delete s.notes[family]; return; }
   if (stage === was) return;
-  const sev = STAGE_SEVERITY[family], now = sev[stage] ?? 0, before = was ? sev[was] ?? 0 : 0;
-  if (Math.sign(now) !== Math.sign(before) || Math.abs(now) > Math.abs(before)) say?.(text);
+  const sev = STAGE_SEVERITY[family], at = sev[stage] ?? 0, before = was ? sev[was] ?? 0 : 0;
+  // AUDIT C&C N6: and not again while the stage's line was heard lately (STAGE_REPEAT_MINUTES)
+  const heard = `${family}@${stage}`;
+  if ((Math.sign(at) !== Math.sign(before) || Math.abs(at) > Math.abs(before)) && !heardLately(s, heard, now)) { s.notes[heard] = now; say?.(text); }
   s.notes[family] = stage;
 }
 
@@ -488,7 +500,7 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
     s.wet = Math.max(0, s.wet - dry);
   }
   const wetNow = wetStage(s.wet);
-  stageNote(s, 'wet', wetNow === 'dry' ? null : wetNow, say, SURVIVAL_TEXT[wetNow], replay);
+  stageNote(s, 'wet', wetNow === 'dry' ? null : wetNow, say, SURVIVAL_TEXT[wetNow], replay, now);
 
   // HUNGER: the marker stands; the tallies move.
   const hunger = hungerMinutes(s, now);
@@ -502,7 +514,7 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
     if (sack) { eatRations(entity, sack, now, say); }
   }
   const hungerAfter = vampire ? 'fed' : hungerStage(hungerMinutes(s, now));
-  stageNote(s, 'hunger', hungerAfter === 'fed' ? null : hungerAfter, say, SURVIVAL_TEXT[hungerAfter], replay);
+  stageNote(s, 'hunger', hungerAfter === 'fed' ? null : hungerAfter, say, SURVIVAL_TEXT[hungerAfter], replay, now);
   if (hungerAfter === 'starving' && !resting) tire(DRAIN.starving, 'hunger');
 
   // THIRST: the heat drives it; a skin in the pack answers it.
@@ -512,7 +524,7 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
     s.thirst = Math.min(NEED.THIRST_MAX, s.thirst + rate);
     if (autoDrink && s.thirst >= NEED.THIRSTY) drinkWater(entity, now, say);   // AUDIT SURV E: at the stage, so the chip never blinks with a skin in the pack
     const thirstNow = thirstStage(s.thirst);
-    stageNote(s, 'thirst', thirstNow === 'fine' ? null : thirstNow, say, SURVIVAL_TEXT[thirstNow], replay);
+    stageNote(s, 'thirst', thirstNow === 'fine' ? null : thirstNow, say, SURVIVAL_TEXT[thirstNow], replay, now);
     thirstRed = thirstNow === 'parched' || thirstNow === 'dehydrated';
     if (!resting) {
       if (thirstNow === 'parched') tire(DRAIN.parched, 'thirst');
@@ -577,7 +589,7 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
       s.sleepDebt = Math.min(NEED.SLEEP_DEBT_MAX, s.sleepDebt + 1 / 60);
     }
     const sleepNow = sleepStage(s.sleepDebt);
-    stageNote(s, 'sleep', sleepNow === 'rested' ? null : sleepNow, say, SURVIVAL_TEXT[sleepNow], replay);
+    stageNote(s, 'sleep', sleepNow === 'rested' ? null : sleepNow, say, SURVIVAL_TEXT[sleepNow], replay, now);
     sleepRed = sleepNow === 'exhausted';
     if (sleepNow === 'exhausted' && !resting && !wakingHeld(s, now)) tire(DRAIN.exhausted, 'sleep');   // REST6: held while the salts last
   }
@@ -612,9 +624,8 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
   }
   // AUDIT SURV A/E: the strip's own words (temperature.js temperatureWord), one note a word said once - an escalation
   // speaks at once and a held reading never repeats (a cold afternoon said three lines every five minutes)
-  const tw = temperatureWord(temp.felt);
-  const word = tw === 'scorching' ? 'scorching' : tw === 'hot' ? 'hot' : tw === 'warm' ? 'warm' : tw === 'deadly cold' ? 'deadly' : tw === 'freezing' ? 'freezing' : tw === 'cold' ? 'cold' : null;
-  stageNote(s, 'temp', word && !(env.insideDungeon && word === 'warm') ? word : null, say, SURVIVAL_TEXT[word], replay);
+  const word = tempStage(temp.felt);
+  stageNote(s, 'temp', word && !(env.insideDungeon && word === 'warm') ? word : null, say, SURVIVAL_TEXT[word], replay, now);
 
   // BARE SKIN: naked in the cold, bare feet, the sun on uncovered skin.
   // AUDIT SURV E: never asleep or sat resting (the bedroll and the fire), once every ten minutes, never the last five points;
@@ -896,6 +907,35 @@ export function alignSurvival(entity, now, lastSeen = null) {
 /** AUDIT SURV-BOONS C3: the notes a record keeps across a load or a fresh start - the boons it carries, said already
  *  (save.js drops the notes; a well-kept body said every boon again at every load and every online join). */
 export const boonNotes = (s) => Object.fromEntries((Array.isArray(s?.boons) ? s.boons : []).filter((id) => SAID_BOONS.includes(id)).map((id) => [`boon:${id}`, 'on']));
+/** The temperature's stage, the strip's own word for it (temperature.js temperatureWord) - null where it is none. */
+const TEMP_STAGE = Object.freeze({ scorching: 'scorching', hot: 'hot', warm: 'warm', 'deadly cold': 'deadly', freezing: 'freezing', cold: 'cold' });
+export const tempStage = (felt) => TEMP_STAGE[temperatureWord(felt)] ?? null;
+/**
+ * AUDIT C&C N6: THE NOTES A LOAD KEEPS - the boons (boonNotes), and every stage the record stands at, said already: the
+ * save drops the notes (their minutes are a session's), and a body Hungry, Thirsty, Tired, Damp and Cold heard all five
+ * again in the first minute after every load. Each family's stage is read off the record at its last paid minute, as
+ * the minute law read it - the hunger off the marker, the thirst, the debt, the wet, the felt reading - and a red one
+ * keeps its way out to be said (WARM-SAID's '<family>:red').
+ */
+export function savedNotes(s) {
+  const notes = boonNotes(s);
+  if (!s || typeof s !== 'object') return notes;
+  const at = Number.isFinite(s.lastMinute) ? s.lastMinute : null;
+  const stages = {
+    hunger: at == null || !Number.isFinite(s.lastAte) ? null : hungerStage(hungerMinutes(s, at)),
+    thirst: Number.isFinite(s.thirst) ? thirstStage(s.thirst) : null,
+    sleep: Number.isFinite(s.sleepDebt) ? sleepStage(s.sleepDebt) : null,
+    wet: Number.isFinite(s.wet) ? wetStage(s.wet) : null,
+    temp: Number.isFinite(s.felt) ? tempStage(s.felt) : null,
+  };
+  const QUIET = { hunger: 'fed', thirst: 'fine', sleep: 'rested', wet: 'dry' };
+  for (const [family, stage] of Object.entries(stages)) {
+    if (!stage || stage === QUIET[family]) continue;
+    notes[family] = stage;
+    if (RECOVERY[family]?.from[stage]) notes[`${family}:red`] = stage;
+  }
+  return notes;
+}
 
 /** Stage words for the HUD and the status page. */
 export function survivalSummary(entity, now, temp = null) {

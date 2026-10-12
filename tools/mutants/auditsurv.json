@@ -67,8 +67,8 @@
   {
     "name": "AUDITSURV-the-temperature-note-has-its-own-bands",
     "file": "src/systems/survival/needs.js",
-    "old": "  const word = tw === 'scorching' ? 'scorching' : tw === 'hot' ? 'hot' : tw === 'warm' ? 'warm' : tw === 'deadly cold' ? 'deadly' : tw === 'freezing' ? 'freezing' : tw === 'cold' ? 'cold' : null;",
-    "new": "  const word = temp.felt > 50 ? 'burning' : temp.felt > 30 ? 'scorching' : temp.felt > 20 ? 'hot' : temp.felt > 10 ? 'warm' : temp.felt < -50 ? 'deadly' : temp.felt < -30 ? 'freezing' : temp.felt < -20 ? 'cold' : null;",
+    "old": "export const tempStage = (felt) => TEMP_STAGE[temperatureWord(felt)] ?? null;",
+    "new": "export const tempStage = (felt) => (felt > 50 ? 'burning' : felt > 30 ? 'scorching' : felt > 20 ? 'hot' : felt > 10 ? 'warm' : felt < -50 ? 'deadly' : felt < -30 ? 'freezing' : felt < -20 ? 'cold' : null);",
     "tests": [
       "test/auditsurv.test.js"
     ]
@@ -232,7 +232,7 @@
   {
     "name": "AUDITSURV-a-restored-save-drops-the-record",
     "file": "src/systems/save.js",
-    "old": "  entity.survival = snap.survival && typeof snap.survival === 'object' ? { ...snap.survival, notes: boonNotes(snap.survival) } : null;",
+    "old": "  entity.survival = snap.survival && typeof snap.survival === 'object' ? { ...snap.survival, notes: savedNotes(snap.survival) } : null;",
     "new": "  entity.survival = null;",
     "tests": [
       "test/auditsurv.test.js"

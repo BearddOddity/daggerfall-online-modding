@@ -159,8 +159,8 @@
   {
     "name": "SURVTIERS3-every-stage-change-speaks",
     "file": "src/systems/survival/needs.js",
-    "old": "  if (Math.sign(now) !== Math.sign(before) || Math.abs(now) > Math.abs(before)) say?.(text);",
-    "new": "  say?.(text);",
+    "old": "  if ((Math.sign(at) !== Math.sign(before) || Math.abs(at) > Math.abs(before)) && !heardLately(s, heard, now)) { s.notes[heard] = now; say?.(text); }",
+    "new": "  if (!heardLately(s, heard, now)) { s.notes[heard] = now; say?.(text); }",
     "tests": [
       "test/survtiers3.test.js"
     ]

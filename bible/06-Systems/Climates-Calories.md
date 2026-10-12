@@ -2430,6 +2430,20 @@ re-aimed by content.
   clamp now (`statMods.js` `clampFatigue`), in all five. The pins' own
   fixtures that drained a body with no stats - a pool of nought - were
   given the body a producer mints.
+- **N6 - a line said at every step across a stage, and five after every
+  load.** A stage line is said when the need worsens (AUDIT SURV-TIERS,
+  the third pass), so a body at a boundary heard it at each step across:
+  a minted character in a Hard winter's snow, stepping in and out of a
+  fire's reach every two minutes for an hour, heard twenty-one lines,
+  eleven of them "Your teeth are chattering uncontrollably!". The mod
+  paces every line it says (its five-minute `txtIntervals`); the port's
+  pace for the lines it says once is `STAGE_REPEAT_MINUTES`: a stage line
+  or a recovery's heard within the half hour is not said again - seven
+  lines in that hour. And the save drops the notes, so a body Hungry,
+  Thirsty, Tired, Damp and Cold heard all five again in the first minute
+  after every load: the load keeps every stage the record stands at as
+  said (`savedNotes`, beside the boons), and a red one its way out to be
+  said.
 
 ### Found and fixed - the boons in a fight between players (H5)
 

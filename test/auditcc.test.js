@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { SURVIVAL_RULES } from '../src/systems/survival/difficulty.js';
-import { newSurvival, survivalMinute, runSurvivalMinutes, markOutCold, hungerStage, hungerMinutes, sleepStage, ROAD_MINUTES, feltCtx } from '../src/systems/survival/needs.js';
+import { newSurvival, survivalMinute, runSurvivalMinutes, markOutCold, hungerStage, hungerMinutes, sleepStage, ROAD_MINUTES, STAGE_REPEAT_MINUTES, SURVIVAL_TEXT, feltCtx } from '../src/systems/survival/needs.js';
+import { snapshotPlayer, restorePlayer } from '../src/systems/save.js';
 import { CLIMATE_TEMP, CLIMATE_NAMES, CHEST_WARMTH, COVERING_CHEST, MONTH_TEMP, naturalTemperature, feltTemperature, temperatureBreakdown, clothingWarmth, sunlit } from '../src/systems/survival/temperature.js';
 import { createPlayerTicker } from '../src/scenes/shared.js';
 import { createArrestFlow, RELEASE_MINUTES } from '../src/scenes/arrestFlow.js';
@@ -372,4 +373,57 @@ test('AUDIT C&C N5: A DRAIN LANDS INSIDE THE POOL - DaggerfallEntity.SetFatigue 
     const src = read(file), i = src.indexOf(sink);
     assert.ok(i > 0 && /\n\s*(?:playerEntity|entity)\.fatigue = clampFatigue\((?:playerEntity|entity), \((?:playerEntity|entity)\.fatigue \?\? 0\) - n\);/.test(src.slice(i, i + 400)), `${file}: the one clamp`);
   }
+});
+
+test('AUDIT C&C N6: A LINE HEARD LATELY IS NOT SAID AGAIN, AND A LOAD SAYS NOTHING THE BODY WAS TOLD - a Hard winter\'s snow at 19:00, stepping in and out of a fire\'s reach every two minutes for an hour, said twenty-one lines (eleven of them "Your teeth are chattering uncontrollably!") and says seven; and a body Hungry, Thirsty, Tired, Damp and Cold, saved and loaded, heard all five again in the first minute after', () => {
+  setPref(SURVIVAL_PREF, 'hard');
+  const from = dateToClassicMinutes({ year: 405, month: 0, day: 3, hour: 19, minute: 0 });
+  setWorldMinutes(from);
+  const e = mintPlayer(); e.survival = { ...newSurvival(from), lastMinute: from }; e.lastGameMinutes = from;
+  let fire = false;
+  const street = streetReader(e, CLIMATES.Woodlands, () => 'snow');
+  const lines = [];
+  const ticker = createPlayerTicker(e, { survivalEnv: () => ({ ...street(), byFire: fire }), say: (l) => lines.push(l) });
+  ticker.tick(1 / CLASSIC_MINUTES_PER_SECOND);
+  assert.deepEqual(lines, ['The cold is seeping into your bones...', 'Your bare feet are freezing.'], 'the first minute in the snow');
+  lines.length = 0;
+  for (let m = 0; m < 60; m++) { fire = Math.floor(m / 2) % 2 === 0; ticker.tick(1 / CLASSIC_MINUTES_PER_SECOND); }
+  const heard = {};
+  for (const l of lines) heard[l] = (heard[l] ?? 0) + 1;
+  assert.deepEqual(heard, { 'You are warming up.': 1, 'Your bare feet are freezing.': 2, 'You are a bit wet.': 1, 'Your teeth are chattering uncontrollably!': 2, 'You are quite wet.': 1 });
+  assert.equal(STAGE_REPEAT_MINUTES, 30);
+  // the load: the stages the record stands at are said already (needs.js savedNotes) - a worse one is news
+  const at = from + 3 * 1440;
+  setWorldMinutes(at);
+  const b = body(at);
+  Object.assign(b, { isPlayer: true, lastGameMinutes: at });
+  Object.assign(b.survival, { lastMinute: at, lastAte: at - 800, thirst: 60, sleepDebt: 5, wet: 10, awakeSince: at - 20 * 60, felt: -15 });
+  const said = [];
+  const env = () => ({ climateIndex: CLIMATES.Woodlands, month: 0, hour: 12, weather: 'cloudy' });
+  const first = createPlayerTicker(b, { survivalEnv: env, say: (l) => said.push(l) });
+  first.tick(1 / CLASSIC_MINUTES_PER_SECOND);
+  const STAGES = ['damp', 'hungry', 'thirsty', 'tired', 'cold'].map((k) => SURVIVAL_TEXT[k]);
+  const stageLines = () => said.filter((l) => STAGES.includes(l) || l === SURVIVAL_TEXT.parched);
+  assert.deepEqual(stageLines(), STAGES, 'the five, said once (the bare skin\'s and the bare feet\'s are paced lines of their own, the mod\'s)');
+  const snap = JSON.parse(JSON.stringify(snapshotPlayer(b, { classicMinutes: Math.floor(worldMinutes()) })));
+  const back = { ...body(at), isPlayer: true };
+  restorePlayer(back, snap);
+  back.lastGameMinutes = b.lastGameMinutes;
+  said.length = 0;
+  const second = createPlayerTicker(back, { survivalEnv: env, say: (l) => said.push(l) });
+  second.tick(1 / CLASSIC_MINUTES_PER_SECOND);
+  assert.deepEqual(stageLines(), [], 'the first minute after the load says no stage it said before');
+  back.survival.thirst = 79.9;
+  second.tick(1 / CLASSIC_MINUTES_PER_SECOND);
+  assert.deepEqual(stageLines(), [SURVIVAL_TEXT.parched], 'a worse stage is news');
+  // and a red one keeps its way out: saved Freezing, the body warmed after the load is told so, once
+  const r = body(at);
+  Object.assign(r, { isPlayer: true, lastGameMinutes: at });
+  Object.assign(r.survival, { lastMinute: at, felt: -45 });
+  const red = { ...body(at), isPlayer: true };
+  restorePlayer(red, JSON.parse(JSON.stringify(snapshotPlayer(r, { classicMinutes: at }))));
+  red.lastGameMinutes = at;
+  said.length = 0;
+  createPlayerTicker(red, { survivalEnv: () => ({ climateIndex: CLIMATES.Woodlands, month: 6, hour: 12, weather: 'sunny', insideBuilding: true }), say: (l) => said.push(l) }).tick(1 / CLASSIC_MINUTES_PER_SECOND);
+  assert.deepEqual(said.filter((l) => l === SURVIVAL_TEXT.warming), [SURVIVAL_TEXT.warming]);
 });
