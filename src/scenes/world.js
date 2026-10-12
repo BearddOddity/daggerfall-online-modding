@@ -33745,6 +33745,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
             getInteractionMode(), playerEntity, {
               nearerThan,
               doorBehind: _race.doorDistance,   // TACT3d: a peaceful guard is no door (the race below, read when the arm runs)
+              behind: _race.next,   // FB1012b ALLY-YIELDS: what the press takes past him - my companion yields to it where it answers
               hud: (t) => townTalk.say(t),
               modal: (t) => townTalk.showOverlay(new ActionTextBox(String(t).split('\n'))),
               makeEnemiesHostile: _makeEnemiesHostile,
@@ -33788,7 +33789,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
             gate: _gatePick,   // WB2
             broker: _brokerPick,   // SET7
             boat: _csaBoatPick,   // CSA-D
-            doorDistance: modes.exteriorActivationDistance(cam.pos, useFwd),
+            door: modes.exteriorActivationHit(cam.pos, useFwd),   // FB1012b ALLY-YIELDS: the door set's pick, its reach with it (`doorDistance` is its distance)
             personDistances: _talkPersons().map((p) => rayPersonDistance(cam.pos, useFwd, p.pos)),
           });
           const _lootPick = _race.loot, _dropPick = _race.drop;
