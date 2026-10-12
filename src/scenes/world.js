@@ -295,7 +295,7 @@ import { huntKind, createBodyStamps, bodiesHere, trackerMarks } from './huntHost
 import { fishKind } from './fishHost.js';   // PROF8: Fishing's casts and schools - a kind in it
 import { utcDayOfMs } from '../net/nodeLaw.js';   // PROF8: a haul's UTC day
 import { registerPlayerKillListener } from '../systems/playerKills.js';   // PROF7: the player's own kill stamps a body
-import { setProfessionsPages } from '../ui/profPages.js';   // PROF1: the Professions and Stores pages on the character sheet's rail
+import { setProfessionsPages, forgeOffered, focusStoresStation, WORKBENCH_COLD_LINE } from '../ui/profPages.js';   // PROF1: the Professions and Stores pages on the character sheet's rail; CARP-YARD: the joinery's bench opens it
 import { createSaddleHost } from './saddleHost.js';   // STEED-UI: the saddle panel - the horse and the wagon on screen (Enhanced Plus)
 import { setHoldingsProvider, stableProviderFor } from '../ui/holdingsPages.js';   // HOLDINGS: the Stable and the Fleet pages on the pause menu's Holdings tab
 import { fleetBook, fleetShip, titleDeed, knowShip, retitle, setShipPort, forgetShip, fleetSaveSlot, FLEET_SAVE_VENDOR } from '../systems/fleet.js';   // HOLDINGS: the Fleet's ledger and its book of titles
@@ -309,8 +309,8 @@ import { createShipyardHost } from './shipyardHost.js';   // SHIPYARDS: the ship
 import { createWardenShows } from './wagonWardenShow.js';   // WARDEN1: the town watch's throw, played
 import { createWagonWarden, wardenTownIn } from './wagonWardenHost.js';   // WARDEN1: the town watch - my wagon's stamp, the cell's words, the offline clock; AUDIT WARDEN1 D3: the town under a point, one pure home
 import { WARDEN_VENDOR, isWardenTown } from '../systems/wagonWarden.js';   // WARDEN1: the stamp's save slot, and the towns a watch keeps
-import { townGroundOf, yardSitesOn, carveYards, MONUMENT_KEEP_M, yardMeasuresOf, placedModelBox } from '../world/merchantYardSites.js';   // MERCHANT-YARDS: where they stand off the town's layout, and the people's navgrid carved round them
-import { isYardTown, yardKeeper, YARD_KIND_ORDER } from '../systems/merchantYards.js';   // MERCHANT-YARDS: the towns that stand them, who keeps them, the town's people
+import { townGroundOf, yardSitesOn, craftYardSitesOn, carveYards, MONUMENT_KEEP_M, yardMeasuresOf, placedModelBox } from '../world/merchantYardSites.js';   // MERCHANT-YARDS: where they stand off the town's layout, and the people's navgrid carved round them
+import { isYardTown, yardKeeper, ALL_YARD_KINDS, YARD_BENCH } from '../systems/merchantYards.js';   // MERCHANT-YARDS: the towns that stand them, who keeps them, the town's people
 import { isPortTown, portTownByData, portKeeper, portPlaceName, PORT_SITE_ORDER } from '../systems/portPlaces.js';   // SHIPYARDS: the port towns, their keepers and their places' names
 import { townSeaOf, seaBearing, seaField, portSitesOn, portPlaceRows, sceneToLocationXZ } from '../world/portSites.js';   // SHIPYARDS: where a port town's shipyard and lighthouse stand - its seaward ground
 import { SHIPYARD as SHIPYARD_LAYOUT } from '../world/shipyardModel.js';   // SHIPYARDS: the crew hall's table, for the talk directory's row
@@ -1995,7 +1995,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   // one latch holds every craft and brew (profBook.js _craftBusy), so a station's own word named another's work: the
   // book's refusal says the hands are busy (accountClient.js 'prof-busy')
   const craftStation = (profession) => (profession === 'carpentry'
-    ? { here: () => modes?.workbenchHere?.() ?? null, a: 'a workbench', who: 'furnisher', noun: 'workbench', kept: BENCH_KEPT_TEXT, xp: professionName('carpentry') }   // CRAFT3: each discipline's craft's track - Building's
+    ? { here: () => workbenchHere(), a: 'a workbench', who: 'furnisher', noun: 'workbench', kept: BENCH_KEPT_TEXT, xp: professionName('carpentry') }   // CRAFT3: each discipline's craft's track - Building's
     : profession === 'outfitting'
       ? { here: () => modes?.loomHere?.() ?? null, a: 'a loom', who: 'tailor', noun: 'loom', kept: LOOM_KEPT_TEXT, xp: 'Outfitting' }
       : profession === 'masonry'   // PROF11: the mason's bench - a General Store's or a home's
@@ -4005,7 +4005,8 @@ export async function bootWorld(canvas, renderer, params, status) {
     return false;
   };
   /** MERCHANT-YARDS + SHIPYARDS: A TOWN'S PLACES - its yards placed on its ground as they always were (townGroundOf, then
-   *  yardSitesOn - yardSitesOf's own two steps), and a port town's shipyard and lighthouse on what they left (portSitesOn
+   *  yardSitesOn - yardSitesOf's own two steps; CARP-YARD: the joinery last, on what the port left - craftYardSitesOn),
+   *  and a port town's shipyard and lighthouse on what they left (portSitesOn
    *  off the sea: the town's own shoreline cells, else the sea's bearing off the map pixels round it - seaPixel), each
    *  keyed by the town and its kind, with its keepers (systems/portPlaces.js portKeeper - the shipyard's crewmaster beside
    *  its shipmaster), its name and the town's people. One memo a town, keyed by its measures and whether it is a port;
@@ -4040,11 +4041,12 @@ export async function bootWorld(canvas, renderer, params, status) {
           const bearing = seaBearing(lp.x, lp.y, seaPixel);   // AUDIT SHIPYARDS U2: and the town's own water against it is no sea
           ports = portSitesOn(g, seaField(g.width, g.height, townSeaOf(yl, bearing), bearing));
         }
+        if (g && yardTown) sites.push(...craftYardSitesOn(g));   // CARP-YARD: the joinery on what the yards and the port left - none of theirs moves
         memo = { sig, sites, ports };
         _yardMemo.delete(mapId);
         _yardMemo.set(mapId, memo);
         while (_yardMemo.size > 8) _yardMemo.delete(_yardMemo.keys().next().value);
-        if (yardTown && memo.sites.length < YARD_KIND_ORDER.length) console.log(`[yards] ${dfLocation.name}: no room for ${YARD_KIND_ORDER.filter((k) => !memo.sites.some((t) => t.kind === k)).join(' or ')}`);
+        if (yardTown && memo.sites.length < ALL_YARD_KINDS.length) console.log(`[yards] ${dfLocation.name}: no room for ${ALL_YARD_KINDS.filter((k) => !memo.sites.some((t) => t.kind === k)).join(' or ')}`);
         if (port && memo.ports.length < PORT_SITE_ORDER.length) console.log(`[port] ${dfLocation.name}: no room for its ${PORT_SITE_ORDER.filter((k) => !memo.ports.some((t) => t.kind === k)).join(' or its ')}`);
       }
       const shipmaster = portKeeper(mapId, 'shipyard', regionIndex), crewmaster = portKeeper(mapId, 'crewhall', regionIndex), lightkeeper = portKeeper(mapId, 'lighthouse', regionIndex);
@@ -8423,6 +8425,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** PROF9 (bible/06-Systems/Professions-Arc.md 3.3): whether the player stands as a Field Cook - online, the professions
    *  the account's, Cooking's choice at 50 - so a night at their own Campfire spends no fuel (survival/camp.js spendCampNight). */
   const fieldCookNow = () => profBook?.state?.open === true && profBook.track('cooking')?.specs?.[50] === 'field-cook';
+  /** CARP-YARD (bible/03-World/Merchant-Yards.md CARP-YARD): THE WORKBENCH THE PLAYER STANDS AT for Carpentry - in the
+   *  street a joinery's (scenes/merchantYardsHost.js workbenchNear: its bench within the yard's reach - YARD_BENCH, the
+   *  carpenter's, at the furnisher's own fee), in a building the mode machine's (worldModes workbenchHere: a Furniture
+   *  Store's, a home's, a hall's, a caravan's) - or null. */
+  function workbenchHere() {
+    if (_mode() !== 'exterior') return modes?.workbenchHere?.() ?? null;
+    return merchantYards?.workbenchNear?.(walkMode && playerSpawned ? player.feetAt() : null) ? YARD_BENCH : null;
+  }
   /** PROF9 (professionLaw COOK_FIRE): THE FIRE THE PLAYER STANDS AT for Cooking - on the street and in the wilderness any
    *  lit camp or the world's own brazier within C&C's reach of its flame (camps.js fireNear, the world's fire in every
    *  tier); in a building or a dungeon the mode machine's own (worldModes cookFireHere) - or null. */
@@ -12648,7 +12658,7 @@ export async function bootWorld(canvas, renderer, params, status) {
           const st = craftStation(recipeById(recipe)?.profession);
           const f = st.here();
           if (!f) return { ok: false, text: `You are not at ${st.a}.` };
-          if (f.fee > 0 && totalGoldAmount(playerEntity) < f.fee) return { ok: false, text: `The ${st.who} asks ${f.fee} gold for the use of the ${st.noun}.` };
+          if (f.fee > 0 && totalGoldAmount(playerEntity) < f.fee) return { ok: false, text: `The ${f.who ?? st.who} asks ${f.fee} gold for the use of the ${st.noun}.` };   // CARP-YARD: the joinery's carpenter
           // AUDIT 30 C4: the fee rides the kept craft and is paid as its pieces are minted (profMintCraft) - by this press's
           // answer, or a settle's later; A4: the workbench's kept word its own
           // SEAT2b part two (Seats-Arc 7.5): the town the station stands in, where my guild holds it and its crafting halls
@@ -12662,7 +12672,7 @@ export async function bootWorld(canvas, renderer, params, status) {
           const paid = f.fee > 0 && !r.elsewhere;
           const rec = recipeById(recipe);
           const made = rec?.kind === 'siege' ? storedText(rec.name, Number(r.data.count) || 1) : craftedText(mintPieces(r.data));   // SEAT2b part two: a Ram Kit is the Stores'
-          return { ok: true, text: `${chain ? `${chain} ` : ''}${made} (+${r.data.xp} ${st.xp} XP)${paid ? `, and paid the ${st.who} ${f.fee} gold` : ''}.` };
+          return { ok: true, text: `${chain ? `${chain} ` : ''}${made} (+${r.data.xp} ${st.xp} XP)${paid ? `, and paid the ${f.who ?? st.who} ${f.fee} gold` : ''}.` };
         },
         stock: async (material, qty, counter = stockOf(material)?.counter) => {
           const r = await profBook.stock(material, qty);
@@ -12672,7 +12682,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         },
         heatBand: () => heatBand({ strength: liveStat(playerEntity, 'strength'), agility: liveStat(playerEntity, 'agility') }),
         // PROF4 (bible/06-Systems/Professions-Arc.md 25): THE WORKBENCH the player stands at, and the plane's band
-        workbench: () => modes?.workbenchHere?.() ?? null,
+        workbench: () => workbenchHere(),   // CARP-YARD: and a joinery's in the street
         planeBand: () => planeBand({ agility: liveStat(playerEntity, 'agility'), willpower: liveStat(playerEntity, 'willpower') }),
         purse: () => totalGoldAmount(playerEntity),   // AUDIT 30 U13: a station's fee the purse cannot meet is not offered
         // PROF7 (bible/06-Systems/Professions-Arc.md 29): THE LOOM the player stands at, the stitch's band, and the clothing
@@ -12830,9 +12840,9 @@ export async function bootWorld(canvas, renderer, params, status) {
           const work = smeltRecipe(recipe);
           const bench = work?.station === 'workbench', loom = work?.station === 'loom', mason = work?.station === 'mason';
           const alch = work?.station === 'alchemy';   // PROF12: a Transmuter's transmutation, at the alchemy station
-          const f = (alch ? modes?.alchemyHere?.() : mason ? modes?.masonHere?.() : loom ? modes?.loomHere?.() : bench ? modes?.workbenchHere?.() : modes?.forgeHere?.()) ?? null;
+          const f = (alch ? modes?.alchemyHere?.() : mason ? modes?.masonHere?.() : loom ? modes?.loomHere?.() : bench ? workbenchHere() : modes?.forgeHere?.()) ?? null;
           if (!f) return { ok: false, text: alch ? 'You are not at an alchemy station.' : mason ? 'You are not at a mason\'s bench.' : loom ? 'You are not at a loom.' : bench ? 'You are not at a workbench.' : 'You are not at a forge.' };
-          const who = alch ? 'alchemist' : mason ? 'mason' : loom ? 'tailor' : bench ? 'furnisher' : 'smith';
+          const who = alch ? 'alchemist' : mason ? 'mason' : loom ? 'tailor' : bench ? (f.who ?? 'furnisher') : 'smith';   // CARP-YARD: the joinery's carpenter
           if (f.fee > 0 && totalGoldAmount(playerEntity) < f.fee) return { ok: false, text: `The ${who} asks ${f.fee} gold for the use of the ${alch ? 'station' : mason ? 'mason\'s bench' : loom ? 'loom' : bench ? 'workbench' : 'forge'}.` };
           const r = await profBook.smelt(recipe, count, { clean });
           if (!r?.ok) return { ok: false, text: `${accountRefusalText(r?.error)}${movedFirstText(r)}` };
@@ -26077,7 +26087,18 @@ export async function bootWorld(canvas, renderer, params, status) {
     open: (site, mode, name) => modes?.openYardTrade?.(site.kind, site.regionIndex, mode, name, site.mapId) ?? false,   // STEED1: the town's own horses
     say: (text) => townTalk.say(text), midText: (text) => setMidScreenText(text),
     mend: () => mendAtYard(),   // WAGONS4: the Wagon Yard's wright
+    bench: () => openYardBench(),   // CARP-YARD: the joinery's workbench
   });
+  /** CARP-YARD (bible/03-World/Merchant-Yards.md CARP-YARD): THE JOINERY'S WORKBENCH PRESSED - the Stores page, landed on
+   *  the workbench's section, as a home's workbench opens it (worldModes useDecorStation: the page's own gate,
+   *  forgeOffered); where the page is not (offline, the switch shut) the bench says so, as a home's does. Answers true
+   *  (the press handled). */
+  function openYardBench() {
+    if (!forgeOffered()) { townTalk.say(WORKBENCH_COLD_LINE); return true; }
+    focusStoresStation('workbench');
+    hudCtx.togglePause({ at: 'stores' });
+    return true;
+  }
   /** WAGONS4 (bible/06-Systems/Wagon-Upkeep.md): THE WAGON YARD'S MEND - the wagon driven made whole for the wright's
    *  price (systems/wagonUpkeep.js mendPrice), MEND_FETCH more when it is not drawn up at the yard (Horse Cart and
    *  Cargo's wagon standing out of the counter's reach - the reach its load is taken at, horseCart.js

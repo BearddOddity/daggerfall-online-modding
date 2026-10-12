@@ -932,6 +932,18 @@ export function portGlyph(g, x, y, kind, color) {
 }
 export function yardGlyph(g, x, y, kind, color) {
   if (kind === 'shipyard' || kind === 'lighthouse' || kind === 'docks') { portGlyph(g, x, y, kind, color); return; }   // SHIPYARDS-FOUND: a port's three
+  if (kind === 'carpenter') {   // CARP-YARD: the joinery's board's hand saw - its blade tapering to the toe, its teeth, its handle
+    const R = TV_YARD_R;
+    g.beginPath();
+    g.moveTo(x - R + 2.5, y - 2); g.lineTo(x + R, y - 2); g.lineTo(x + R, y + 0.6); g.lineTo(x - R + 2.5, y + 2.4); g.closePath();
+    const fill = g.fillStyle;
+    g.fillStyle = color; g.lineWidth = 1; g.strokeStyle = '#000'; g.fill(); g.stroke();
+    g.beginPath(); g.rect(x - R - 0.5, y - 3, 3, 6.2); g.fill(); g.stroke();   // the handle
+    g.fillStyle = '#000';
+    for (let k = 0; k < 4; k++) g.fillRect(x - R + 3.2 + k * 1.6, y + 1.9 - k * 0.45, 0.8, 0.8);   // the teeth
+    g.fillStyle = fill;
+    return;
+  }
   if (kind === 'transport') {
     wheelPath(g, x, y, TV_YARD_R);
     g.lineWidth = 3; g.strokeStyle = '#000'; g.stroke();
@@ -1053,10 +1065,11 @@ export function gatherGlyph(g, x, y, prof, color) {
   g.beginPath(); g.moveTo(x, y - 7); g.lineTo(x + 5, y); g.lineTo(x, y + 7); g.lineTo(x - 5, y); g.closePath(); g.fill(); g.stroke();   // GATHER-OW's diamond, for a work with no glyph
 }
 /** YARDS-FOUND: a yard mark's own kind - its kind's second word (`yard stable`, `yard transport`; SHIPYARDS-FOUND: `yard
- *  shipyard`, `yard lighthouse`, `yard docks`), the Stable's where it names none the glyph knows. */
+ *  shipyard`, `yard lighthouse`, `yard docks`; CARP-YARD: `yard carpenter`), the Stable's where it names none the glyph
+ *  knows. */
 export const yardMarkKind = (m) => {
   const k = String(m?.kind ?? '').split(' ')[1] ?? '';
-  return k === 'transport' || k === 'shipyard' || k === 'lighthouse' || k === 'docks' ? k : 'stable';
+  return k === 'transport' || k === 'carpenter' || k === 'shipyard' || k === 'lighthouse' || k === 'docks' ? k : 'stable';   // CARP-YARD: the joinery's
 };
 /** OWS1: a mark at sea, by its kind. */
 export const isShipKind = (m) => /\bship\b/.test(m.kind ?? '');
