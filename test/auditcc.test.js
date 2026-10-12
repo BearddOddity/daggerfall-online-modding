@@ -14,7 +14,7 @@ import { playerEntity as PLAYER_LITERAL } from '../src/characters/playerEntity.j
 import { createCharacter } from '../src/systems/chargen.js';
 import { assignStartingEquipment } from '../src/systems/startingGear.js';
 import { SKILLS } from '../src/systems/skills.js';
-import { maxFatigue } from '../src/systems/statMods.js';
+import { maxFatigue, clampFatigue } from '../src/systems/statMods.js';
 import { survivalFeed, feltNow } from '../src/systems/survival/env.js';
 import { SURVIVAL_PREF } from '../src/systems/survival/switch.js';
 import { setPref, _resetForTests } from '../src/systems/uiPrefs.js';
@@ -358,4 +358,18 @@ test('AUDIT C&C B11: THE ENHANCED MENU\'S ATTRIBUTES PAGE NAMES THE BOONS THAT R
   assert.match(fn, /const boons = boonStatRows\(playerEntity\);\n\s*if \(!boons\.length\) return;\n\s*detail\.append\(pxDivider\('Boons'\)\);/, 'the section only when a boon stands, after the eight meters');
   assert.match(fn, /r\.append\(el\('span', 'k', k\), el\('span', 'v', v\)\);/, 'each boon its name and what it gives');
   assert.ok(fn.indexOf('meterRow(') < fn.indexOf('boonStatRows('), 'the meters first');
+});
+
+test('AUDIT C&C N5: A DRAIN LANDS INSIDE THE POOL - DaggerfallEntity.SetFatigue clamps every write to [0, MaxFatigue], and the hosts\' drains clamped at nought alone: a pool a lapsed boon or a Fortify\'s end leaves over its ceiling (8,320 over 6,400) stayed over it through every drain (8,310); the one clamp (statMods.js clampFatigue) in the ticker\'s sinks and the four hosts\' own', () => {
+  const e = { stats: { ...STATS }, raceId: RACES.Breton, items: [], activeEffects: [], health: 40, maxHealth: 40, fatigue: 8320 };
+  const ticker = createPlayerTicker(e);
+  ticker.sinks.drainFatigue(10);
+  assert.equal(e.fatigue, 6400, 'the ceiling (50 + 50) x 64 - the drain lands in the pool');
+  ticker.sinks.drainFatigue(10);
+  assert.equal(e.fatigue, 6390, 'and drains from there');
+  assert.equal(clampFatigue(e, -5), 0);
+  for (const [file, sink] of [['src/scenes/world.js', 'const drainExteriorFatigue = (n) => {'], ['src/scenes/exterior.js', 'const drainExteriorFatigue = (n) => {'], ['src/scenes/worldModes.js', 'const drainInteriorFatigue = (n) => {'], ['src/scenes/dungeonContext.js', 'function drainFatigue(n) {'], ['src/scenes/shared.js', 'drainFatigue: (n, a = null) => {']]) {
+    const src = read(file), i = src.indexOf(sink);
+    assert.ok(i > 0 && /\n\s*(?:playerEntity|entity)\.fatigue = clampFatigue\((?:playerEntity|entity), \((?:playerEntity|entity)\.fatigue \?\? 0\) - n\);/.test(src.slice(i, i + 400)), `${file}: the one clamp`);
+  }
 });

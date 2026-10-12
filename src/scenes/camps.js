@@ -38,7 +38,7 @@ import { ListPickerWindow } from '../ui/listPicker.js';
 import { survivalOn } from '../systems/survival/switch.js';   // AUDIT SURV-TIERS: Off keeps what stands and uses none of it (shown, below); SURV-OFFSIGHT: it sees another's (seen)
 import {
   TENT_MODEL, FIRE_FLAT, FIRE_LIGHT_RANGE, CAMP_REACH, CAMP_KIND, CAMP_TEXT, CAMPS_PER_OWNER,
-  placeCampItem, packCamp, stokeFire, fireLit, campExpired, tentPos, nearestFire, campInfoText, campMenu, campSpot, campDecision,
+  placeCampItem, packCamp, stokeFire, canStoke, fireLit, campExpired, tentPos, nearestFire, campInfoText, campMenu, campSpot, campDecision,
   cookables, cookFood, hasSkillet, campWire, mergeOwnerCamps, BY_FIRE_REACH, FIRE_MINUTES, spendCampNight,
   strikeCamp,   // FIELD BUGS 2026-10-04d CAMP-CAP: a placing at the cap strikes the oldest
   validDeck, deckYaw, TENT_BEHIND,
@@ -576,11 +576,12 @@ export function createCamps({
       // AUDIT SURV-TIERS (the third pass): THE REST IS THE FIRE'S, AND SO IS ITS REACH. The menu opens from a tent's
       // far side, up to seven metres from its fire, and the rest it opened was priced where the player stood - bare
       // ground: Hard's gate refused a lit camp's own sleeper ("It is too cold to sleep here"), or the night was the
-      // rough one, stiff morning and all. It is offered where it is a camp's rest, and a cold tent of your own is
-      // stoked for it (SURV3: "a rest will").
+      // rough one, stiff morning and all. It is offered where it is a camp's rest, and a cold camp of your own is
+      // stoked for it (SURV3: "a rest will") - AUDIT C&C I1: whatever its menu would stoke, a Campfire with fuel too,
+      // and said only when it lit
       const feet = camera?.()?.feet;
       if (!feet || !within(c.rec.pos, feet, BY_FIRE_REACH)) { say(CAMP_TEXT.restCloser); return; }
-      if (mine(c) && c.rec.kind === CAMP_KIND.Tent && !fireLit(c.rec, now())) { stokeFire(c.rec, now()); remount(c); say(CAMP_TEXT.stoked); onChanged?.(); }
+      if (canStoke(c.rec, now(), mine(c)) && stokeFire(c.rec, now())) { remount(c); say(c.rec.kind === CAMP_KIND.Fire ? CAMP_TEXT.relit : CAMP_TEXT.stoked); onChanged?.(); }
       openRest?.(c.rec);
       return;
     }

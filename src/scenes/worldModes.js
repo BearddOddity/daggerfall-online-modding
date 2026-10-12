@@ -98,7 +98,7 @@ import { survivalOn } from '../systems/survival/switch.js';
 import { markOutCold } from '../systems/survival/needs.js';   // AUDIT C&C N2: the collapse's hour a night on the ground
 import { makeOpenBookHook } from '../ui/bookDoor.js';   // BS1: the shelf pick opens the reader; EB1: through the reader's one door
 import { populateBookshelf, bookshelfAccess, bookshelfTitles, isBookshelfBuilding } from '../systems/bookshelf.js';   // BS1
-import { maxFatigue, liveStat } from '../systems/statMods.js';   // AUDIT 23 (C5); U40: strength for MaxEncumbrance
+import { maxFatigue, liveStat, clampFatigue } from '../systems/statMods.js';   // AUDIT 23 (C5); U40: strength for MaxEncumbrance; AUDIT C&C N5: SetFatigue's clamp
 import { entityMaxEncumbrance } from '../combat/formulas.js';   // U40: the letter-of-credit gate
 import { nearestLights, capFadePairs } from '../world/cityLights.js';   // LA-AUDIT A5: the dungeon's cap fades
 import { withPlayerLights } from './magicCandle.js';   // X11/T1: the lights the PLAYER carries ride every host's light array
@@ -1237,7 +1237,7 @@ export function createWorldModes(host) {
   }
   const drainInteriorFatigue = (n) => {
     if (n <= 0) return;
-    playerEntity.fatigue = Math.max(0, (playerEntity.fatigue ?? 0) - n);
+    playerEntity.fatigue = clampFatigue(playerEntity, (playerEntity.fatigue ?? 0) - n);   // AUDIT C&C N5: SetFatigue's clamp, the ceiling too
     if (playerEntity.fatigue <= 0 && playerEntity.health > 0) onExhaustedInterior();
   };
   const presentInteriorDeath = () => {

@@ -209,3 +209,42 @@ test('AUDIT C&C I11: AN EMPTY SKIN IS NAMED EMPTY WHEREVER IT IS MINTED - the pr
   h.camps.activate(friend, 'grab');
   assert.deepEqual({ lists: h.overlays.length - shown, said: h.said }, { lists: 0, said: [CAMP_TEXT.seeEmbers] });
 });
+
+test('AUDIT C&C I1: A REST AT YOUR OWN COLD CAMP LIGHTS IT FIRST, AS ITS MENU WOULD - your burnt-down Campfire with fuel is relit for the rest (it stayed cold, and the night was the rough one beside it), and a camp the menu would not stoke - a worn-through tent - is not said stoked (it said "You stoke the fire." over a cold fire); through the real pool, offline', async () => {
+  setWorldMinutes(20000);
+  const h = campHost();
+  const fire = createSurvivalItem(TEMPLATE.Campfire);
+  h.entity.items.push(fire);
+  assert.equal(h.camps.placeItem(fire, h.entity.items), true);
+  await settle();
+  h.state.feet = [0, 1, PLACE_AHEAD - 1];
+  const key = h.camps.targets().find((t) => t.key.startsWith('camp:')).key;
+  const rec = h.camps.camps.find((c) => key.endsWith(c.rec.id))?.rec ?? h.camps.camps[0].rec;
+  setWorldMinutes(20000 + FIRE_MINUTES + 5);
+  h.camps.tick(0.1);
+  assert.deepEqual(h.camps.hoverName(key).actions.map((a) => a.id), ['rest', 'stoke', 'pack'], 'burnt down, its fuel left');
+  h.said.length = 0;
+  h.camps.activate(key, 'grab', 'rest');
+  assert.deepEqual(h.said, [CAMP_TEXT.relit, 'REST'], 'relit, then the rest - a camp\'s, by its fire');
+  assert.equal(rec.litUntil, 20000 + FIRE_MINUTES + 5 + FIRE_MINUTES, 'lit for the night');
+  h.said.length = 0;
+  h.camps.activate(key, 'grab', 'rest');
+  assert.deepEqual([h.said, rec.litUntil], [['REST'], 20000 + FIRE_MINUTES + 5 + FIRE_MINUTES], 'a lit one is rested at as it stands');
+  // a worn-through tent: no Stoke on its list, and its rest is said as no stoking
+  setWorldMinutes(30000);
+  const t = campHost();
+  const gear = createSurvivalItem(TEMPLATE.CampingEquipment);
+  t.entity.items.push(gear);
+  assert.equal(t.camps.placeItem(gear, t.entity.items), true);
+  await settle();
+  t.state.feet = [0, 1, PLACE_AHEAD - 1];
+  const tkey = t.camps.targets().find((x) => x.key.startsWith('camp:')).key;
+  const tent = t.camps.camps[0].rec;
+  tent.wear = 0;
+  setWorldMinutes(30000 + FIRE_MINUTES + 5);
+  t.camps.tick(0.1);
+  t.said.length = 0;
+  t.camps.activate(tkey, 'grab', 'rest');
+  assert.deepEqual(t.said, ['REST'], 'nothing said stoked');
+  assert.equal(tent.litUntil <= 30000 + FIRE_MINUTES + 5, true, 'and nothing lit');
+});

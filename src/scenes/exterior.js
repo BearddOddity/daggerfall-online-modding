@@ -153,7 +153,7 @@ import { ActionTextBox } from '../ui/actionText.js';   // AUDIT 23 (C5): the col
 import { toggleStatusReadout } from '../ui/statusBox.js';   // STATUS-LIVE: the Status readout, one composer for all four hosts
 import { statusReadoutTakesAction } from '../systems/statusReadout.js';   // STATUS-LIVE: ...and the yield this host's own key ladder owes, which never reaches routeAction
 import { liveStat } from '../systems/statMods.js';
-import { maxFatigue } from '../systems/statMods.js';   // AUDIT 23 (C5)
+import { maxFatigue, clampFatigue } from '../systems/statMods.js';   // AUDIT 23 (C5); AUDIT C&C N5: SetFatigue's clamp
 import { FootstepMachine, pickFootstepSet } from '../systems/footsteps.js';   // FS-slice
 import { immersiveFootsteps } from '../systems/immersiveFootsteps.js';
 import { betterAmbience, classicFootstepAllowed } from '../systems/betterAmbience.js';   // BA1: Better Ambience - the shake, the dungeon's fog and light, the reverb, the indoor rain, its own stride   // IF1: Immersive Footsteps owns the stride and the three landing sounds once its clips are in (DisableVanillaFootsteps)
@@ -1335,7 +1335,7 @@ export async function bootExterior(canvas, renderer, params, status) {
   // C14: the swing's own fatigue drain rides the same collapse law.
   const drainExteriorFatigue = (n) => {
     if (n <= 0) return;
-    playerEntity.fatigue = Math.max(0, (playerEntity.fatigue ?? 0) - n);
+    playerEntity.fatigue = clampFatigue(playerEntity, (playerEntity.fatigue ?? 0) - n);   // AUDIT C&C N5: SetFatigue's clamp, the ceiling too
     surfacePlayer();
     if (playerEntity.fatigue <= 0 && playerEntity.health > 0) onExhaustedExterior();
   };

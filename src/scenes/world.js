@@ -181,7 +181,7 @@ import { ActionTextBox } from '../ui/actionText.js';   // AUDIT 23 (C5)
 import { isTombstoneModel, searchKey, searchCooldownLeft, markSearched, SEARCHED_TEXT, rollSearchOutcome, pickSearchUndead, rollSearchElite, searchMessage, mintSearchFind, setSearchClock, SEARCH_FOES_PER_PLAYER, SEARCH_FOE_SPACING } from '../systems/searchables.js';   // SEARCH1: a graveyard's headstones
 import { toggleStatusReadout } from '../ui/statusBox.js';   // STATUS-LIVE: the Status readout, one composer for all four hosts
 import { statusReadoutTakesAction } from '../systems/statusReadout.js';   // STATUS-LIVE: ...and the yield this host's own key ladder owes, which never reaches routeAction
-import { maxFatigue, FATIGUE_MULTIPLIER, liveStat, STAT_KEYS_ORDER } from '../systems/statMods.js';   // AUDIT 23 (C5); AUDIT SOC B5: the party pose's fatigue in the digits a sheet shows
+import { maxFatigue, FATIGUE_MULTIPLIER, liveStat, STAT_KEYS_ORDER, clampFatigue } from '../systems/statMods.js';   // AUDIT 23 (C5); AUDIT SOC B5: the party pose's fatigue in the digits a sheet shows
 // V5: resting above ground. RestWindow and RestSession have been
 // finished since U7; what was missing was a host outside the dungeon
 // that opens one, and CanRest's whole town half.
@@ -7453,7 +7453,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   }
   const drainExteriorFatigue = (n) => {
     if (n <= 0) return;
-    playerEntity.fatigue = Math.max(0, (playerEntity.fatigue ?? 0) - n);
+    playerEntity.fatigue = clampFatigue(playerEntity, (playerEntity.fatigue ?? 0) - n);   // AUDIT C&C N5: SetFatigue's clamp, the ceiling too
     surfacePlayer();
     if (playerEntity.fatigue <= 0 && playerEntity.health > 0) onExhaustedExterior();
   };

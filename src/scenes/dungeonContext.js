@@ -191,7 +191,7 @@ import { isEquipped } from '../systems/equip.js';   // DR1: FilterLocalItems' `!
 import { totalGoldAmount } from '../systems/court.js';   // DR1: the trade screen's gold strip - AUDIT 58: PlayerEntity.GetGoldAmount (:1313-1316), coins PLUS letters
 import { isAzurasStarEquipped, registerFoeDoor } from '../systems/artifactEffects.js';   // V3: the Star's kill capture; AUDIT PSCALE1 DOORS-2: Namira's reflection through this pool's door
 import { applySpell, hasActiveEffect, isEntityWaterWalking, entityIsParalyzed, maxFatigue, applyEnemyMotorEffectFlags, concealmentFlags, concealFlagsOfBits, isSoulTrapEffect, spellSways } from '../systems/effects.js';   // A5: the enemy Levitate arm, the foe-target concealment closure + EntityConcealmentBehaviour's visual
-import { liveStat, killIfAnyLiveStatZero } from '../systems/statMods.js';
+import { liveStat, killIfAnyLiveStatZero, clampFatigue } from '../systems/statMods.js';   // AUDIT C&C N5: SetFatigue's clamp
 import { breathStep } from '../systems/breath.js';
 import { onMonsterHit, SPIDER_TOUCH_SPELL_INDEX } from '../systems/diseases.js';
 import { inflictPoison } from '../systems/poisons.js';
@@ -3147,7 +3147,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
   let _restFromBed = false;   // CSA-J (the audit): the rest press is a bed's - BedActivation's gate has no GiveOffer rung (RoleplayRealism.cs:487-525)
   function drainFatigue(n) {
     if (n <= 0) return;
-    playerEntity.fatigue = Math.max(0, (playerEntity.fatigue ?? 0) - n);
+    playerEntity.fatigue = clampFatigue(playerEntity, (playerEntity.fatigue ?? 0) - n);   // AUDIT C&C N5: SetFatigue's clamp, the ceiling too
     surfacePlayer();
     if (playerEntity.fatigue <= 0 && playerEntity.health > 0 && !exhaustedShowing()) onExhausted();
   }

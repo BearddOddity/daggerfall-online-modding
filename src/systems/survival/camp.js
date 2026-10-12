@@ -319,6 +319,12 @@ export function campInfoText(camp, now, mine) {
   if (camp.jar) return mine ? CAMP_TEXT.seeOwnJar : CAMP_TEXT.seeJar;   // AUDIT REST III B5: an Ember Jar's is no Campfire, here as on its hover
   return mine ? CAMP_TEXT.seeOwnFire : CAMP_TEXT.seeFire;
 }
+/** THE STOKE, one condition (AUDIT C&C I1): your own cold tent with wear left, or your own cold Campfire with fuel left -
+ *  never an Ember Jar's. The menu's Stoke and Relight rows are offered on it, and a rest at your own camp meets it first
+ *  (scenes/camps.js act): the rest stoked a tent alone - a burnt-down Campfire stayed cold under its sleeper, who had the
+ *  rough night beside it - and said "You stoke the fire." over a worn-through tent's cold one. */
+export const canStoke = (camp, now, mine) => !!camp && !!mine && !camp.jar && !fireLit(camp, now) && (camp.wear | 0) > 0
+  && (camp.kind === CAMP_KIND.Tent || camp.kind === CAMP_KIND.Fire);
 /** The menu's rows: rest at any camp, cook at a lit one; stoke a cold tent; REST2: relight your own cold Campfire while
  *  it has fuel; pack your tent, or pick your Campfire up. The keys are the plaque's action ids (REST2: the loot plaque's
  *  rows). */
@@ -327,8 +333,9 @@ export function campMenu(camp, now, mine, { online = false } = {}) {
   // AUDIT C&C I11: a cold fire offers no Cook - it offered one, and the cooking list only refused ("The fire has burned
   // down to embers."); its Stoke or Relight is the row that lights it
   if (fireLit(camp, now)) rows.push({ key: 'cook', text: CAMP_TEXT.menuCook });
-  if (camp.kind === CAMP_KIND.Tent && mine && !fireLit(camp, now) && (camp.wear | 0) > 0) rows.push({ key: 'stoke', text: CAMP_TEXT.menuStoke });   // AUDIT REST III A2: my own - a friend's tent stoked here is stoked on my screen alone (its owner publishes it, camps.js act), and the owner's next frame (2 s) puts it out under the rest it promised
-  if (camp.kind === CAMP_KIND.Fire && mine && !camp.jar && !fireLit(camp, now) && (camp.wear | 0) > 0) rows.push({ key: 'stoke', text: CAMP_TEXT.menuRelight });
+  // AUDIT REST III A2: my own - a friend's tent stoked here is stoked on my screen alone (its owner publishes it, camps.js
+  // act), and the owner's next frame (2 s) puts it out under the rest it promised
+  if (canStoke(camp, now, mine)) rows.push({ key: 'stoke', text: camp.kind === CAMP_KIND.Tent ? CAMP_TEXT.menuStoke : CAMP_TEXT.menuRelight });
   if (mine && !camp.jar && (camp.kind === CAMP_KIND.Tent || !!camp.fuel)) rows.push({ key: 'pack', text: camp.kind === CAMP_KIND.Tent ? CAMP_TEXT.menuPack : CAMP_TEXT.menuPickUp });   // AUDIT REST-PARTY B5: never an old save's kit fire (no fuel of its own: AUDIT REST F12 - it burns away as it always did; picked up, it was a second Campfire from nothing)
   // AUDIT REST II H12: online a cold camp is no rest point (restAct asks a LIT fire), so its Rest row only refused, with
   // the wrong words ("Find a fire or a bed to rest."): it goes, and the fire's own act - Relight, Stoke - leads, the row

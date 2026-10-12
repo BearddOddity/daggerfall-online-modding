@@ -2344,10 +2344,31 @@ through the real arrest flow - with the moved pins in `tempui` (E2),
   had nothing to do at it, and a grab opened an empty list: it says what
   it is, as Info does.
 
+- **I1 - a rest at your own burnt-down Campfire was the rough one beside
+  it.** A rest at your own camp stokes its fire first (SURV3's "a rest
+  will"), and the rest stoked a tent alone: a cold Campfire with fuel
+  stayed cold under its sleeper, and a worn-through tent, which nothing
+  can stoke, was said stoked ("You stoke the fire.") over its cold fire.
+  The stoke has one condition now (`camp.js` `canStoke`: your own cold
+  tent with wear left, or your own cold Campfire with fuel, never an
+  Ember Jar's), which the menu offers its Stoke and Relight rows on and
+  the rest meets first - said only when it lit.
+
 Pinned by `test/auditcc_items.test.js` (the real producers, the real camp
 pool), with the camp lists in `auditrest2_camps`, `auditrest3`,
 `rest2_campfire`, `rest6_consumables` and `surv3_camps` and the kit in
 `surv2_items` re-aimed by content.
+
+### Found and fixed - the needs
+
+- **N5 - a drain left the pool over its ceiling.** DFU's `SetFatigue`
+  clamps every fatigue write to `[0, MaxFatigue]`; the five player drain
+  sinks (the ticker's and the four hosts' own) clamped at nought alone, so
+  a pool a lapsed boon or a Fortify's end had left over its new ceiling
+  (8,320 over 7,680, measured) stayed over it through every drain. One
+  clamp now (`statMods.js` `clampFatigue`), in all five. The pins' own
+  fixtures that drained a body with no stats - a pool of nought - were
+  given the body a producer mints.
 
 ### Found and fixed - the boons in a fight between players (H5)
 
