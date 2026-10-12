@@ -1,4 +1,4 @@
-# The Balance arc - the place sets the threat, one rule for every striker (BAL1-BAL8)
+# The Balance arc - the place sets the threat, one rule for every striker (BAL1-BAL9)
 
 > Design page, written from the measurement before the code (2026-10-10). The slices ship in one pull request, in this
 > order, each verifiable without the next. Where this page and a shipped slice disagree, the slice's own record
@@ -282,8 +282,11 @@ thirteen. The simulation leaves out the formulas' tail (an elite, the mentor, a 
 | BAL4 | the offline defaults | three switches and the death's cost |
 | BAL5 | the blow paid back (section 11, 2026-10-11) | one law at the door, one cap, one flavour retired |
 | BAL6 | the curses (section 12, 2026-10-12) | the beast's advantages, its heal, its claws; the vampire's hood |
+| BAL6-CLAWS | the claws' silver taken back (section 12, 2026-10-12) | one law reverted: both cores' gates as before BAL6 |
+| BAL6-GAUNTLETS | the gauntlets are the claws' metal (section 12, 2026-10-12) | one law, read by both cores and the stats card |
 | BAL7 | the loot that wins alone (section 13, 2026-10-12) | one flavour retired, one cap, two powers halved |
 | BAL8 | the PvP referee, one rule for every striker (section 14, 2026-10-12) | one ceiling at the referee, one door's facing |
+| BAL9 | Destruction's channels (section 15, 2026-10-12) | a spell's foe noted, the school's climb its potency, the ladder's arcana |
 
 ## 10. What shipped
 
@@ -462,22 +465,46 @@ THE LAWS.
   own day) has passed since the last change that healed (`lastMorphHeal`, a curse clock's marker: `save.js`
   clampMarkersAheadOf brings it back to a save's clock), whichever way it goes and whatever forced it. The Ring frees the
   change, never the heal. A curse from before BAL6 has no stamp: its next change heals.
-- **The beast's claws strike as silver** (asked: "Beast claws count as silver"). `characters/weapons.js`
-  strikeMaterialOf - a weapon's metal, the beast's claws' silver (BEAST_CLAW_MATERIAL), or none - is what both cores'
-  material gates read (`combat/pcaao.js`, `combat/formulas.js`): under the overhaul's soft rule a Mithril foe takes the
-  claws at x0.4 (three tiers); with it off, DFU's refusal and its line, as a silver blade meets. An ordinary fist - a
-  monk's, a vampire's - stays DFU's, ungated.
+- **The beast's claws meet no metal - DFU's** (BAL6-CLAWS, 2026-10-12; the owner: *"revert the material nerf on
+  werewolf"*). BAL6 had the claws strike as silver (asked: "Beast claws count as silver"): a Mithril foe took them at
+  x0.4 under the overhaul's soft rule, and refused them with DFU's line without it. The owner took that back the same
+  day. Both cores' material gates ask a weapon alone again (`combat/pcaao.js`, `combat/formulas.js`, as before BAL6;
+  `characters/weapons.js` strikeMaterialOf and BEAST_CLAW_MATERIAL are gone), so the claws are the bare hand:
+  hand-to-hand and ungated, as a monk's and a vampire's fists are. Measurement 3 stands as it was measured.
+- **The gauntlets are the claws' metal - its damage** (BAL6-GAUNTLETS, 2026-10-12; the owner: *"based on your
+  equipped gauntlets it would affect your attacks as a wereboar/werewolf. Like scaling without being overpowered"*;
+  asked: "Metal's damage bonus"). MorphSelf empties the hands, never the gauntlets, and the pack is refused to the
+  beast, so it fights in what it wore. `combat/clawMetal.js` clawMetalDamage: in beast form, plate gauntlets
+  (`systems/armorMaterials.js` plateMetal - DFU mints plate as `0x0200` plus the metal) add their metal's
+  GetWeaponMaterialModifier to every claw hit: the points DFU's core adds to a blade of it, Elven +1 to Daedric +6,
+  never below the bare claws (Iron's -1 is not taken). Leather and chain have no metal, nor gloves whose class reads as
+  leather (Roleplay & Realism's Brigandine Gloves, AUDIT CLAWS B1), nor a broken pair (B3); the piece is what the equip
+  rules seat in the Gloves slot (B4). Damage alone: no to-hit, no gate, no silver's double, no condition band. Both
+  cores add it where a weapon's material modifier stands (`combat/pcaao.js` pcaaoHandToHandAttackDamage, after the
+  strength term and before the floor; `combat/formulas.js` handToHandAttackDamage, before the enemy-type term), inside
+  a backstab's treble. The refereed lanes' stand-in carries it (`combat/duelCombat.js`, A1), and the stats card models
+  it (`combat/combatStats.js`), though the card is not open to a beast - it is the pack's flip side. A man's fist takes
+  none, nor a monk's or a vampire's.
 - **The hood shields, it does not make it night** (asked: "Hood only shields"). `systems/vampirism.js` vampireStatMod:
   bare in the street's sun -20, hooded there 0, out of the sun (a roof, underground, a cell, the night) DFU's +20, hood
   or not - Mac's "Should be buffed in interiors" and "shielding against the sun" both kept.
 
+THE GAUNTLETS, MEASURED (BAL6-GAUNTLETS; 40,000 seeded swings a cell through both cores, section 2's builds, the real
+curse and change). Three shapes were put to the owner. The metal's damage alone scales evenly: at level 20 with the
+overhaul, Elven +6%, Mithril +17%, Ebony +22% and Daedric +34% a swing, against an Orc Warlord, a Lich and an Ancient
+Lich alike (level 12, Daedric +36%; DFU's core +26-28%). A blade's metal whole, its to-hit with it, reached +41%, +71%
+and +84% at Daedric on the three - and in DFU's core, whose to-hit takes the metal x10, up to x25 a bare beast's on an
+Ancient Lich. Half of both reached +22%, +34% and +39%. The owner chose the damage alone.
+
 WHAT MOVES. A lycanthrope in human form strikes and takes as the character it is (19.5 -> 6.8 a second at level 12,
-35.6 -> 19.9 at level 20; a duel's 30.1 -> 18.2); the beast is unchanged but for a metal-hided foe (a level-12 beast on a
-Lich ~12.5 -> ~5.0 a swing, on an Ancient Lich ~10.6 -> ~4.3; with the soft rule off, nothing); two healing changes a
-day are one, and the Ring's endless ones are one. A hooded vampire in the street by day is +0 where it was +20 (its
-+30 skills alone: about x1.10-1.17 a mortal's damage). THE FOUR HOSTS: none is touched - each law is the curse's or the
-blow's, read wherever the curse runs its round and the blow is struck (`scenes/world.js`, `scenes/worldModes.js`,
-`scenes/dungeonContext.js` and `scenes/exterior.js` all strike through the same two cores and run the same round).
+35.6 -> 19.9 at level 20; a duel's 30.1 -> 18.2); the bare-clawed beast is unchanged, a metal-hided foe included
+(BAL6-CLAWS), and a beast in plate gauntlets strikes its metal's points harder a hit (BAL6-GAUNTLETS: Daedric about a
+third more a swing). Two healing changes a day are one, and the Ring's endless ones are one. A hooded vampire in the
+street by day is +0 where it was +20 (its +30 skills alone: about x1.10-1.17 a mortal's damage). THE FOUR HOSTS: none
+is touched - each law is the curse's or the blow's, read wherever the curse runs its round and the blow is struck
+(`scenes/world.js`, `scenes/worldModes.js`, `scenes/dungeonContext.js` and `scenes/exterior.js` all strike through the
+same two cores and run the same round; world.js's refereed lanes strike through `combat/duelCombat.js`'s sheet, which
+carries the claws' metal since AUDIT CLAWS A1).
 
 RECORDED, NOT CHANGED:
 
@@ -485,16 +512,108 @@ RECORDED, NOT CHANGED:
   x1.67-2.07 (Mac's VAMP-SUN). The other lever offered - the +20 the night's alone, 0 sheltered by day - was not chosen.
 - **The vampire's clan spells** stay at DFU's flat 5 spell points (MinimumCastingCost; asked: "Leave at 5"), Ice Storm
   and Wildfire among them. A refereed fight bounds every cast whatever it cost (INT10, and section 14's ceiling).
-- **A vampire's and a monk's fists** stay ungated: DFU's rule, and the beast's claws were the measured outlier.
+- **Every fist** - a vampire's, a monk's and, since BAL6-CLAWS, the beast's - stays ungated: DFU's rule.
+- **The referees' fist bounds** (BAL6-GAUNTLETS, read again by AUDIT CLAWS). Both clip a claim, never refuse it. The
+  duel, the siege, the Royal Tourney, a siege work and the wild zone roll on the stand-in of `combat/duelCombat.js`,
+  whose sheet holds every stat and skill at 100: there the siege's bound (`net/siegeRef.js` siegeBlowMax: the bare
+  hand's 21 at skill 100 and the bonuses at their caps, x2) holds a beast in Daedric gauntlets with every bonus at its
+  cap - 55 of its 56 before the critical and 110 of 112 after under the overhaul, 52 in DFU's core. The arena strikes
+  through the real entity, and its cap (`net/arenaLaw.js`: a bare hand's 41 at the softcap's 200, ARENA_MOD_MAX's 20,
+  x2) already clips a level-30 beast's top critical, the beast's +30 Critical Strike taking the overhaul's multiplier
+  past x2 (x2.3 at 130): a Khajiit hand-to-hand expert's bare critical 127 (5 clipped), in Daedric 140 (18). Both are
+  the relay's, and neither moved here.
 - **The silver-to-hit of a beast in a refereed fight**: every referee rolls a striker's claim against the striker's own
   stand-in, so the beast's defence never counts there - reading it would make the beast stronger in PvP, not weaker.
 - **The wereboar** is the werewolf in another skin (the same advantages, claws and change), as in DFU.
 
-Pinned: `test/bal6_curses.test.js` (4) by execution - the advantages through liveStat and skillValue in both forms, at
+Pinned: `test/bal6_curses.test.js` (6) by execution - the advantages through liveStat and skillValue in both forms, at
 the change's instant and after a round, a pre-BAL6 save's word rewritten; the heal's day, the Ring's change without it,
-the stamp clamped on a load; 2,000 seeded beast swings at a Lich's Mithril (x0.4), at silver (whole), a man's fist
-ungated, DFU's refusal through both cores; vampireStatMod in the street and under a roof, bare and hooded.
-`tools/mutants/bal6.json` (16).
+the stamp clamped on a load; BAL6-CLAWS: 2,000 seeded beast swings at a Lich's Mithril whole, as at no metal, with
+the soft rule on and off and nothing said, a man's fist the same, and DFU's core seed for seed; BAL6-GAUNTLETS:
+plateMetal over every armour material, the claws' metal through the curse, CreateArmor's gauntlets, the equip table and
+the change (Elven +1 to Daedric +6; iron, leather, chain, bare claws, human form, the change back and a man nothing),
++6 a hit in both cores at one roll, before the overhaul's floor and inside a backstab's treble, 2,000 seeded swings in
+each core landing the same blows (DFU's exactly 6 heavier each, at an Orc Warlord), and the stats card's model in both
+cores - its span, its part, its hit chance at every reference foe, its floor; vampireStatMod in the street and under a
+roof, bare and hooded. `tools/mutants/bal6.json` (26, all dead: BAL6-CLAWS retired the five claw records and aimed
+four at the restored gates - the claws as silver in either core, the claws refused with DFU's line under the overhaul
+with its soft rule off, every fist gated; BAL6-GAUNTLETS aimed eleven - every fist's, iron's -1 taken, leather or chain
+a metal, a metal past Daedric, the wrong slot, either core without it, the metal as to-hit in either core, the card
+without it, and mintCondition's plate offset, which `test/audit23_systems.test.js` pins). AUDIT CLAWS's own, below.
+
+### AUDIT CLAWS (2026-10-12, the owner: "Audit this") - BAL6-CLAWS and BAL6-GAUNTLETS read again before they merge
+
+Three independent lanes, each a cold read of the pull request (#841) against a frozen snapshot of its head, with
+repros: every place a claw blow is struck, refereed, predicted or shown, and the beast-form flag's life; every gauntlet
+the game can put on and what it is made of; and what the change says and pins (every number recomputed, its pins
+mutated past their 26 records - 47 more, and 5). CI's own run found one more. Every finding was reproduced before it
+was fixed. FOUND, each fixed and pinned (`test/auditclaws.test.js` 4; `test/bal6_curses.test.js`'s pins strengthened,
+still 6; `tools/mutants/auditclaws.json` 22 of 22 dead, `bal6.json` 26 of 26):
+
+- **HIGH - A1: the gauntlets never reached a refereed blow.** The duel, the siege, the Royal Tourney, a siege work and
+  the wild zone (and its PvP halls) strike through a stand-in of the striker's sheet (`scenes/world.js` duelStrikeOut
+  and its kin; `combat/duelCombat.js` duelAttackerOf, duelStub), which carried no beast form and no equip table: a
+  beast in Daedric gauntlets claimed exactly what a bare-clawed one did there, while the arena (the host's own blow)
+  and every fight with a foe carried the metal. FIXED: the sheet carries the law's word (`cm`, read off the striker's
+  own entity), the stub carries it as `clawMetal`, and the law reads it - never the gauntlets themselves, because the
+  striker rolls against a stand-in of its own sheet, which would wear them as the defender's armour. The client's
+  alone: since INT8 the sheet never goes on the wire (a strike carries its rolled `d`), and the referees' bounds hold
+  the claim (RECORDED above).
+- **MEDIUM - A2: a load kept the last game's beast form.** `systems/save.js` restorePlayer writes a save onto the same
+  entity, and it rebuilt the curse's marker but not `isInBeastForm`, its mirror. A man's save loaded over a transformed
+  werewolf kept it (the curse's round returns at once with no curse), so his fist took the gauntlets' +6 and the
+  street's politeness gate and the tells read a beast; a transformed save on a fresh page waited a round for it, the
+  claws without their metal until then. FIXED: set from the curse it restores, beside the marker.
+- **MEDIUM - B1: Roleplay & Realism's Brigandine Gloves counted as plate.** The mod (on by default) seats its gloves
+  (template 524) in the Gloves slot at any metal; their class reads them as leather (ItemGloves.cs: "This fools the DFU
+  code into treating this item as leather for forbidden checks"), and so do the forbidden-armour test, Better Ambience
+  and Immersive Footsteps. The law read the raw material: a career barred from plate wore Daedric brigandine for
+  Daedric claws - about half the Gloves-slot pieces random loot draws, and the Master Armorer sells them. FIXED: the
+  class's material (`systems/rriItems.js` rriNativeMaterialValue, the port's one reader of it).
+- **LOW - B3: a broken pair kept its metal.** Survival's rust writes a worn piece's condition straight down and leaves
+  it on, and a classic import keeps a worn 0-condition piece worn. FIXED: a broken piece (`equip.js` isBrokenItem) is
+  no metal.
+- **LOW - B4: the law read whatever sat in the slot.** A load seats each item at its saved slot and trusts it: a
+  cuirass saved at the Gloves slot, or the mod's gloves left there with the mod off, read as gauntlets. FIXED: only a
+  piece the equip rules seat in the Gloves slot (`equip.js` getEquipSlot).
+- **LOW - B2: "the plate offset's one home" was not.** Three readers of the same member still wrote `m - 0x0200`
+  themselves: a plate piece's value (`itemTemplates.js` itemBaseValue), weight (`inventory.js` unitWeightInKg) and
+  armour value (`armorMaterials.js` materialArmorValue). FIXED: all read `plateMetal`, identical for every input (an
+  index past Daedric reads each table's own fallback, as it did), each still pinned by the suites that pinned it
+  (`audit18_systems_items`, `shopstock`; `audit18_combat` and four more). The docstring names FormulaHelper's
+  RandomArmorMaterial, not ItemBuilder's.
+- **LOW - C2 to C8: pins that could not fail.** DFU's "the same blows land" sat at a Lich's 3% floor, where +6 to hit
+  lands nothing more (now at an Orc Warlord: 854 of 2,000 land); the order the pages give - after Strength, before the
+  overhaul's floor - and a backstab trebling the metal were unpinned in both cores and on the card; so were the card's
+  hit chance with the metal, and DFU's silence for the claws at Mithril; and the gauntlets were a hand-built literal,
+  not CreateArmor's (`combat/enemyEquipment.js` armorOfMaterial). FIXED, each with the mutant that survived it, now
+  dead (nine records).
+- **LOW - A4: the stats card's line could not be seen.** The card is the pack's flip side, and the pack is refused to
+  a beast: the patch notes promised a "Gauntlets" line no player could open. FIXED: the label is taken back
+  (`ui/statsCard.js` as it was); the card still models the cores for whatever entity it is handed, and the pages say
+  what a player can see.
+- **LOW - CI: the account Worker bundles the law.** The account service reaches `combat/formulas.js`, so
+  `combat/clawMetal.js` joined its bundle without joining its deploy's path filter (`test/accountdeploy.test.js` walks
+  the graph): a change to it alone would never have deployed the service. FIXED
+  (`.github/workflows/account-deploy.yml`). The change's own fast runs could not see it - a Worker's import walk
+  imports nothing of the file and names it nowhere - so the suite's eight import-graph walks ran with them after.
+- **LOW - C9: pages and comments.** "Past skill 100 the siege's bound already clipped any fist" was false (the refereed
+  stand-in holds every skill at 100); "the same points a blade of it adds" holds in DFU's core, not under the
+  overhaul's condition bands; the fifth departure's parenthetical and the overhaul page's part table; the test file's
+  header; `playerWeapon.js` strikingWeapon's comment. FIXED.
+
+RECORDED, NOT FIXED (each another arc's, or the relay's):
+
+- **The arena's fist cap clips a beast's top critical** (A5) - above, under the referees' fist bounds.
+- **The plate encoding is still written beside its home**: `combat/enemyEquipment.js` ARMOR_MATERIAL (Leather, Chain,
+  PLATE_BASE), `net/recipeLaw.js` ARMOR_LEATHER/CHAIN/PLATE (read by `net/temperLaw.js` and `systems/smithItems.js`),
+  `systems/itemLaw.js`'s literal list of the thirteen, `ui/paperDoll.js`'s dye index (a second GetArmorDyeColor beside
+  `systems/itemDye.js` armorDyeColor), and `systems/itemInfo.js`'s name index (`& 0xff`, which names a quest's
+  materialless Gauntlets "Iron" while they are priced and armoured as leather).
+- **`systems/physicalItems.js` itemLook reads `nativeMaterialValue`**, which no producer writes: a leather and a Daedric
+  pair share one look key in the world's item pool.
+- **The claws' metal is not scaled by the gauntlets' condition**: the overhaul's bands scale a weapon's whole blow,
+  and the claws' blow is the beast's own. Only a broken pair is nothing (B3).
 
 ## 13. BAL7 - the loot that wins alone (2026-10-12)
 
@@ -595,3 +714,169 @@ window slides at 5 s to the millisecond, casts and a blow sharing it, INT10's th
 fighter without the field); one referee for the three lanes and the arena's two doors by source.
 `tools/mutants/bal8.json` (7). PIN MOVED: `tools/mutants/pvpref.json`'s five clipping records, re-aimed by content; the
 relay's version pins (`world197`).
+
+## 15. BAL9 - Destruction's channels (2026-10-12)
+
+The owner, 2026-10-12: *"I think destruction needs a buff. A lot of players saying its lack luster. I want to also
+introduce some new magic/mage perks to the rarity loot pool since weve done a lot of needing but still dont make it
+overpowered"*. BAL6 had recapped the mage work (CAST-SPEED and CAST-RECOVER, STACK-CAP, INT10, SPELL-COST-PAST) as
+answers to field reports - each a cost, a tempo or a ceiling, none a spell's damage - and left the caster unmeasured.
+
+THE MEASUREMENT (online; the real `calculateCastCost`, `applySpell` and its saving throw, 20,000 seeded casts a cell; a
+foe's attributes at 50 and its tolerances normal, as section 2's; its health the combat overhaul's row at its middle,
+BAL3's place on it). Stated builds: a level-12 Mage (INT 75, WIL 60, Destruction 60, 150 magicka at x2.0 INT) and a
+level-20 one (INT 85, WIL 65, Destruction 85, 170). Two spells off the spell maker: a Flame Bolt (Damage Health 10-20 +
+1-2 a level, single target at range) and a lean bolt (1 + 4 a level) - DFU prices a point a level at 28 gold and a base
+point at 20, so the player who reads the cost builds the second.
+
+| build, spell | magicka a cast | landed a cast (none) | Orc Warlord kills a full pool: a town / a Crypt / a Dragon's Den | Ancient Lich: a town / a Den |
+| --- | --- | --- | --- | --- |
+| L12, Destruction 60, Flame Bolt | 61 | 17.8 (36%) | 0.42 / 0.31 / 0.21 | 0.28 / 0.14 |
+| L12, Destruction 60, lean bolt | 24 | 26.7 (36%) | 1.62 / 1.19 / 0.81 | 1.08 / 0.54 |
+| L20, Destruction 85, Flame Bolt | 30 | 24.3 (36%) | 1.34 / 0.98 / 0.67 | 0.89 / 0.44 |
+| L20, Destruction 85, lean bolt | 12 | 44.2 (36%) | 6.07 / 4.47 / 3.04 | 4.04 / 2.02 |
+| L20, Destruction 100, Flame Bolt | 12 | 24.3 (36%) | 3.34 / 2.46 / 1.67 | 2.22 / 1.11 |
+
+What it found, ranked by what it moves:
+
+1. **A Destruction spell's damage has one channel: its caster's level.** DFU's GetMagnitude rolls `base + plus *
+   floor(level / per)`, and the school's skill prices the spell and moves nothing else - a level-12 Knight with
+   Destruction 20 and a level-12 Mage with 90 land the same fireball. In DFU's 0-100 that is the skill's whole reward
+   and a steep one (`(110 - skill)`: a spell at 100 costs a fifth of its price at 60). Past 100 it stops (2).
+2. **Online, the school past 100 bought its price and raised the foes.** SPELL-COST-PAST prices the points past 100 at
+   `100 / skill` - rightly: they priced spells under nothing - and the same mastery is in the foes' edge (`combatEdge`
+   reads the six schools among the fighting skills). Destruction alone mastered, the Flame Bolt, a Crypt:
+
+   | raw (effective) | 100 (100) | 125 (108) | 150 (117) | 175 (127) | 200 (140) |
+   | --- | --- | --- | --- | --- | --- |
+   | the price | x1 | x0.83 | x0.83 | x0.75 | x0.58 |
+   | a Crypt's foes' health | x1.36 | x1.44 | x1.53 | x1.63 | x1.77 |
+   | magicka a kill | x1 | x0.88 | x0.94 | x0.90 | x0.76 |
+
+   Five tiers of the softcap's cost ladder for a quarter off a kill, and a step backward at 150. A weapon's climb reads
+   in its formulas (the hit at x1.5, a crit's chance, multiplier and aim); a school's read in nothing but its price.
+3. **A spell never answered its foe.** Past 100 a mastered skill learns by the foe it fights (SOFTCAP1: a foe tough
+   for the skill counts up to x1.5), and only `calculateAttackDamage` ever noted one. A fireball at an Ancient Lich
+   counted as a light cast in an empty room (UNCHALLENGED_MAGIC_WEIGHT, a quarter) - the mastery box's "Past 100 a
+   skill only learns from tough foes" was never a spell's.
+4. **The ladder paid a blade and priced a caster.** A weapon's loot reaches its blow (damage 5-40%, a sear, slayer's
+   30%, the leech, the techniques, the Legendary powers on the blow); a caster's reaches the price (focus, the Loop, the
+   Conduit, Stendarr's Mercy - half off at most) and the tempo (castSpeed), and no line, gem, set piece or power ever
+   reached a spell's damage or its magicka between rests. BAL7's kit killed 47 Ancient Liches in a row; a caster's best
+   kit halved its price.
+5. **DFU's saving throw lands a third of casts as nothing.** At Willpower 50 a foe saves at 55; a roll more than 20
+   under it is a whole save, within 20 a share - 36% of casts land nothing, and a cast lands 54% of its roll. DFU's own
+   (FormulaHelper.SavingThrow), for every caster, and left (below).
+
+Checked and found sound, so not changed: the overhaul's health rows move monsters both ways (an Orc Warlord x1.86, a
+Lich x1.10, a Vampire x0.96 over DFU's) - the mod's tuning, for every striker; BAL3's place costs a caster magicka where
+it costs a blade swings and the blows taken during them; STACK-CAP's renewal of a damage over time is the owner's
+("Refresh, never stack").
+
+THE LAWS.
+
+- **BAL9a, A SPELL ANSWERS ITS FOE.** My spell that reaches a foe - not my ally, not a peer's strike spell on my foe -
+  notes it as the fight's (`scenes/hostMagic.js` applySpellToFoe), and a foe's spell that reaches me notes its caster
+  (applySpellToPlayer): the blow's two directions (`combat/formulas.js`). Past 100 a school's next uses for six seconds
+  learn by that foe. The quarter stays a spell's floor (`systems/skillSoftcap.js` overcapTallyWeight:
+  `max(UNCHALLENGED_MAGIC_WEIGHT, challengeQuality)`), so a cast at a weak foe never teaches less than a cast at a wall,
+  and nothing trains slower than it did.
+- **BAL9b, THE SCHOOL PAST 100 IS ITS POTENCY** (CLIMB-PAST's law, for the school whose formula stops paying at 100).
+  Online, each effective point of Destruction's CLIMB past 100 lands its damage-health effects - Damage Health and
+  Continuous Damage Health, the instant and every round - 1% harder: x1.4 at 200 (`systems/spellPower.js`
+  schoolPotency, read by `systems/effects.js` casterDamageScaled with the blow's own rounding and floor of one; a spell
+  the throw turned whole stays nothing). The climb is `skillSoftcap.js` climbedSkill - the one read the foes' edge
+  takes, so the climb that raises them is the climb that pays; a worn Destruction line already pays in price (the live
+  value SPELL-COST-PAST reads) and strikes no harder, and mentoring reads none, as the edge does. Offline DFU's price
+  term stands (to nothing at 110 - the field report's For Mac), and so does its damage. Never at a player, a peer's
+  stand-in or a foe's cast (`ownSpellAt`): a refereed fight's stand-in is a player (`combat/duelCombat.js` duelStub), so
+  the duel, the siege, the Wild Zone and the arena are BAL8's to the point.
+- **BAL9c, THE LADDER'S ARCANA.** Two lines, after `castSpeed` and before `technique`, so the numbers' pass draws as it
+  did (the last pass moved, as CAST-SPEED's did: a jewel's proc pick lands in four kinds where it landed in two, a
+  blade's in five where four) - `potency`, jewellery and weapons, prefix, 3-6 / 6-10 / 10-15, "+N% spell damage": a
+  damage spell's landing at a foe, everything I wear summed, at most `POTENCY_CAP` 30 (focus's and castSpeed's); and
+  `wellspring`, jewellery, suffix, 2-4 / 4-7 / 7-10, "N% magicka on a kill": the caster's leech, at most
+  `WELLSPRING_CAP` 10 (LEECH_CAP's; Soul Siphon's 15 the Legendary's own beside it). And three Legendaries, a table of
+  their own after the wardrobe's six (`ARCANE_LEGENDARIES` - the thirty, the six and the Broker stand), found among the
+  casters (LOOT6), each LOOT3's shape and its power on the record:
+
+  | record | on | lines | enchantment | power |
+  | --- | --- | --- | --- | --- |
+  | The Eye of Magnus | Amulet, Cloth Amulet | +15 Intelligence, +25 Destruction, +40% Magic resistance | Extra Spell Points, during summer | Magnus's Gaze: my Destruction spells meet a saving throw 15 lower - after its immunity, so a foe immune stays immune (`spellcast.js` savingChance's `pierce`) |
+  | The Ring of Artaeum | Ring | +12 Willpower, +25 Mysticism, +40% Fire resistance | Extra Spell Points, during the half moon | Wellspring of Artaeum: 1% of my magicka back each magic round, 2% under half - Hist-Sap's shape; never offline to a career that cannot regenerate it (rest's own gate, REST-MANA1) |
+  | Shalidor's Brand | Broadsword, Saber, Longsword | +24% damage, +12 Intelligence, +22 Destruction | Cast When Strikes: Wizard's Fire | Arcane Surge: while I wield it, my Destruction spells strike 25% harder while my magicka stands above three quarters |
+
+  All the loot adds to a spell's landing, lines and powers together, is at most `SPELL_POWER_MOST` 50 (SPELL_CUT_MOST's
+  50 for the price). Every one is MY entity's at a foe: never at a player (the loot arc's law 5), never a peer's, nothing
+  with the ladder off. The item law is at 3 (`systems/itemLaw.js` ITEM_LAW_VERSION) and the account service that judges
+  by it at `acct121`, so an honest piece minted after the site deploys is never read as a forgery (AUDIT TECH1's "the law
+  moves the service"); `spellPower.js` joins the account Worker's deploy filter.
+
+WHAT MOVES.
+
+The climb, Destruction alone mastered, the Flame Bolt, a Crypt (the measurement's table, with the potency):
+
+| raw (effective) | 100 (100) | 125 (108) | 150 (117) | 175 (127) | 200 (140) |
+| --- | --- | --- | --- | --- | --- |
+| a cast lands | x1 | x1.08 | x1.17 | x1.27 | x1.40 |
+| magicka a kill, before | x1 | x0.88 | x0.94 | x0.90 | x0.76 |
+| magicka a kill, BAL9b | x1 | x0.81 | x0.80 | x0.71 | x0.54 |
+
+Every point of the climb pays now, and no step goes backward; at 200 a kill costs about half its magicka at 100 where
+the foes it raised stand at x1.30 - the climb keeps pace with the threat it makes, and outruns it by a little, as a
+weapon's does. Below 100 nothing moves: DFU's price is the skill's reward there.
+
+The ladder, a level-20 Mage (Destruction 85, 170 magicka) and the Flame Bolt against an Ancient Lich in a Dragon's Den
+(310 health), through the real price, landing and throw (20,000 seeded casts a row):
+
+| what is worn | magicka a cast | landed a cast (none) | kills a full pool |
+| --- | --- | --- | --- |
+| nothing | 30 | 24.3 (36%) | 0.45 |
+| focus at its cap (30) - the most a line did before | 21 | 24.3 (36%) | 0.64 |
+| potency at its cap (30) | 30 | 31.6 (36%) | 0.58 |
+| a +25 Destruction line alone (its price, before BAL9 as now) | 10 | 24.3 (36%) | 1.33 |
+| the Eye of Magnus alone (that line and Magnus's Gaze) | 10 | 31.1 (20%) | 1.70 |
+| the best caster kit before BAL9 (a +25 Destruction line, focus 20, the Archmage's Loop) | 7 | 24.3 (36%) | 1.90 |
+| the same slots after (the Eye for the line, potency 30 for focus 10) | 8 | 40.4 (20%) | 2.77 |
+| every cap (potency 30 and Arcane Surge, the Eye, focus 10 and the Loop) | 7 | 46.8 (20%) | 3.67 |
+
+A caster's best kit lands half again its kills a pool in the same slots, and at every cap about twice its damage a
+cast: inside the ceilings every line keeps (30 a kind, 50 for the loot's spell power, the throw's own floor of 5),
+against BAL7's melee kit that stood 31 Ancient Liches in a row.
+
+Not moved: a refereed fight (the duel, the siege, the Wild Zone and the arena - INT10's 60 a cast and BAL8's 180 in 5 s
+stand, and no power or line reaches a player's stand-in); a foe's spells; every other school; DFU's saving throw.
+
+RECORDED, NOT CHANGED:
+
+- **DFU's saving throw.** The third of casts that land nothing is DFU's, for every caster - the player's spells and
+  every foe's at the player. A school's skill that pierced it would reach every foe of level 14 and over at 100
+  (`enemyEntity.js` skillsLevel: 5L + 30) and land the foes' spells at the player a third harder; a pierce for the
+  player's alone is a departure from BAL2's one rule. Magnus's Gaze is the loot's, the player's alone. The owner's call.
+- **The school below 100** is DFU's: the price is the skill's reward, and a steep one.
+- **The other schools past 100** buy their price alone, as before - a heal's potency would reach the referee's heal
+  ceiling (INT10's 40) and the measured guards; a call of its own.
+- **A Cast When Strikes spell** a weapon of mine casts on a foe is my spell: the school's potency and the loot's reach
+  it as any of mine. A peer's strike spell on my foe lands at its stand-in (STRIKE-SHARED) and takes none.
+- **The pool between rests** stays DFU's but for the loot: wellspring and Soul Siphon on a kill, the Ring's round, the
+  Welkynd Stone, a Meditation Candle.
+
+Pinned: `test/bal9_destruction.test.js` (6) by execution - through the real cast engine's two landing doors (the
+Lich's tier 135 noted, a cast at 120 weighing 1.125, a rat's never under the quarter, an ally's and a peer's strike
+spell nothing, a foe's spell on me its caster); through the real applySpell on a chargen'd mage mastered online and off
+(x1, x1.17, x1.4; a damage over time's round; nothing offline, at a player's stand-in, from a peer's or a foe's cast, on a
+spell saved whole, from a worn Destruction line, while mentoring); the lines' shape, picks and law; potency's 30 and the
+loot's 50 and Arcane Surge's line through the damage door; wellspring's 10, the Ring's 1% and 2% and its career gate
+offline and online; Magnus's Gaze 15 off the throw after its immunity, by execution at a roll of 30 (a whole save at 55,
+half a hit at 40); the arcane three lawful, found among casters, in their pools. `tools/mutants/bal9.json` (24, all
+dead). PIN MOVED, each by content: `castspeed` (castSpeed is followed by the two; its pick at a jewel's second of four
+and a blade's fourth of five), `loot4_procs`' and `lr1_lootrarity`'s proc lists, `tech1_roster`'s last pool kind and its
+law-service map (law 3, acct121), `int1_itemlaw`'s law, `lr1_lootrarity`'s and `loot3_legendaries`' Test Room (the
+arcane three, last), `fb1010_truecurse`'s room order, `thunderlock`'s longsword records (Shalidor's Brand),
+`serpentset`'s seed-2 broadsword (the same draw lands on potency, value 8), `dropsaudit`'s round line (its caster), and
+the account service's version pins (acct121). Mutants re-aimed by content: `dropsaudit.json`'s rounds-unscaled,
+`loot15.json`'s two wardrobe records, `tech1.json`'s law; the account version's five records.
+
+THE FOUR HOSTS. None is touched by name: `scenes/hostMagic.js` is the one cast engine `scenes/exterior.js`,
+`scenes/world.js`, `scenes/worldModes.js` and `scenes/dungeonContext.js` all cast and land through, and
+`systems/effects.js` the one spell door.

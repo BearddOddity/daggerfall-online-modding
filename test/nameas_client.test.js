@@ -44,7 +44,7 @@ function fakeFetch(script) {
 const SESSION = { id: 'acct-aaaaaaaaaaaa', name: 'Lattymoy', kind: 'linked', sessionId: 's1', secret: 'sec-one' };
 const ACCOUNT = { id: 'acct-aaaaaaaaaaaa', name: 'Lattymoy', kind: 'linked', handle: 'Lattymoy', nameAs: 'account' };
 
-test('NAME-AS the minter: the stored session keeps the ACCOUNT\'s name - the profile mark\'s - while the host is handed the name the room reads, with the choice and why a chosen character\'s name stood aside; a service before acct121 is adopted as it always was (mutants: the store given the room\'s name; the host given the account\'s; the reason dropped)', async () => {
+test('NAME-AS the minter: the stored session keeps the ACCOUNT\'s name - the profile mark\'s - while the host is handed the name the room reads, with the choice and why a chosen character\'s name stood aside; a service before acct122 is adopted as it always was (mutants: the store given the room\'s name; the host given the account\'s; the reason dropped)', async () => {
   const st = fakeStorage(SESSION);
   const { fetch } = fakeFetch({ '/v1/auth/token': { body: { token: 'v1.a.b', name: 'Mithriil', accountName: 'Lattymoy', nameAs: 'character', kind: 'linked', title: null, glyphs: [], expiresAt: 1 } } });
   const seen = [];
@@ -57,7 +57,7 @@ test('NAME-AS the minter: the stored session keeps the ACCOUNT\'s name - the pro
   const seen2 = [];
   await accountTokenMinter({ fetch: f2.fetch, storage: st2, onIssued: (w) => seen2.push(w) })();
   assert.deepEqual([seen2[0].nameWhy, seen2[0].nameWord], ['refused', 'cum']);
-  // a service from before acct121: `name` was the account's, and it is adopted as before
+  // a service from before acct122: `name` was the account's, and it is adopted as before
   const st3 = fakeStorage({ ...SESSION, name: 'Old Guest' });
   const f3 = fakeFetch({ '/v1/auth/token': { body: { token: 'v1.a.b', name: 'Lattymoy', kind: 'linked', title: null, glyphs: [], expiresAt: 1 } } });
   const seen3 = [];

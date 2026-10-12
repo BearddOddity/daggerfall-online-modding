@@ -44,7 +44,7 @@ async function realmArmsOf({ db }, playerId, id) {
   const wa = row && row.arms_top != null ? [row.arms_top, row.arms_bow === 1 ? 1 : 0] : null;
   return armsIssuable(wa) ? wa : null;
 }
-// NAME-AS (acct121): AND ITS OWN NAME - a fifth answer the fold reads in the same statement (realm.js realmMintFacts
+// NAME-AS (acct122): AND ITS OWN NAME - a fifth answer the fold reads in the same statement (realm.js realmMintFacts
 // `name`), held here to its own read beside the four.
 async function realmOwnName({ db }, playerId, id) {
   if (typeof id !== 'string' || !REALM_ID_RE.test(id)) return null;

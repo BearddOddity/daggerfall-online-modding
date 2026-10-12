@@ -1247,7 +1247,7 @@ export function accountTokenMinter({ fetch, storage, onIssued = null, character 
           ...('house' in answer.data ? { house: answer.data.house && typeof answer.data.house === 'object' ? answer.data.house : null } : {}),
           // NAME-AS: `name` above is the ROOM's - my character's where I chose it - and these say the account's own, the
           // choice, and why a chosen character's name stood aside (`nameWhy`, `nameWord`); each absent from a service
-          // before acct121, whose `name` was the account's
+          // before acct122, whose `name` was the account's
           ...(typeof answer.data.accountName === 'string' && answer.data.accountName ? { accountName: answer.data.accountName } : {}),
           ...(answer.data.nameAs === 'account' || answer.data.nameAs === 'character' ? { nameAs: answer.data.nameAs } : {}),
           ...(typeof answer.data.nameWhy === 'string' && answer.data.nameWhy ? { nameWhy: answer.data.nameWhy, ...(typeof answer.data.nameWord === 'string' ? { nameWord: answer.data.nameWord } : {}) } : {}) };

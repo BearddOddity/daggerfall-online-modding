@@ -5437,7 +5437,7 @@ among them.
   handle; the form refusing before any request and never refusing the sign-in; `tools/mutants/handleemail.json` (6,
   all killed).
 
-## NAME-AS - the name the room reads: the account's, or the character's (2026-10-12, acct121)
+## NAME-AS - the name the room reads: the account's, or the character's (2026-10-12, acct122)
 
 Mac: "I want to add an option to the profile menu where players can toggle to use their account name or character
 name for ingame use".
@@ -5472,7 +5472,7 @@ signs it.
 - **The device keeps two names** (`src/net/accountClient.js` accountTokenMinter, adoptIdentity): the stored session is
   the account's picture - the profile mark's name - so it adopts `accountName`; the live sessions take `name`, the
   room's: NAME-ADOPT's law one field further (my own roster row, my chat lines and the `@name` that pings me are the
-  room's name). A service before acct121 answers `name` alone, adopted as it always was.
+  room's name). A service before acct122 answers `name` alone, adopted as it always was.
 - **Said once** (`src/scenes/world.js` adoptIssued, accountClient.js nameWhyText): "Your character's name cannot be
   shown online: <the reason>. Others see you as <the name the room reads>." - once, in the chat, until the reason
   changes or goes; every room mints, and the line is the player's, not a room's.
@@ -5513,14 +5513,16 @@ signs it.
   commission are addressed by username. Migrations 0009, 0010 and 0013 wrote "a name over a head is the account's" and
   "a character's name is never shown to another player" as law; 0111 records it as a choice, the account's by default.
 - **No relay change.** `n` was always "the display name" (identityToken.js), and claimsValid ties it to nothing but
-  the wire's own law, so the relay draws whatever the mint signs. `RELAY_VERSION` stays world197. acct121.
+  the wire's own law, so the relay draws whatever the mint signs. `RELAY_VERSION` stays world197. acct122 - acct121 on its branch,
+  renumbered past BAL9 at the merge (`05-Combat/Balance-Arc.md` section 15 took acct121 the same day).
 - **Pinned**: `test/nameas_service.test.js` (6) - the law; the route; the mint over a real realm character; the
   fallbacks through the real mint; a letter by account; a note's account. `test/nameas_client.test.js` (7) - the
   minter's two names; the reason in words; the stamp; the flow; the card; the host by source; a friend's letter's
   wire. `test/mail1.test.js`'s friend-letter pin re-aimed and driven end to end over the real service - the letter
   reaches the friend's account and not the account whose username is the row's word. `test/scale4f.test.js`'s oracle
   carries the fifth answer; `test/accountworker.test.js`'s schema pin the column. `tools/mutants/nameas.json` - 39,
-  all dead. Re-aimed: ACCOUNT_VERSION's pins at acct121 (PIN MOVED); CHAT1's and AUDIT DROPS F's online-frame order,
+  all dead. Re-aimed: ACCOUNT_VERSION's pins at acct122 (PIN MOVED; BAL9c's service-behind-the-law record re-aimed
+  with them, its mutant still below law 3's floor); CHAT1's and AUDIT DROPS F's online-frame order,
   for the frame's call; SHADOW-FANG's skin pin on the mint's adoption (the account's name beside the answer it keeps
   whole); and by content, the records whose lines NAME-AS rewrote - ACC1b-14 (the mint signs the worn
   name), MAIL-shape-after-rate and TAB-to-not-kept (a friend's account beside the name), NAME-ADOPT-2 and -6, and
