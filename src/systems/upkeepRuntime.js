@@ -15,8 +15,7 @@
 // moving), how far it rolled (its odometer's metres since the last frame), on a road or not, the wagon's load, and
 // whether the wagon went with it (driven, or its team following). The motor asks `rideScale(mode)` for its ride's pace
 // and transport.js's gallop gate asks `gallopGate`, its walk `rideWalks` (HORSE-WALK); the HUD asks `bar()`; the Stable
-// card `model()` and `act()`; the
-// Enhanced Plus saddle panel (ui/enhancedSaddle.js) `saddle(mode)` and `act()`.
+// card `model()` and `act()`; the Enhanced Plus saddle panel (ui/enhancedSaddle.js) `saddle(mode)` and `act()`.
 //
 // A horse's breath is kept here, by its seed (no field: a gallop's breath is not a thing to save), and comes back whole
 // over any span of the clock skipped (steedCare.js SKIP_MINUTES - a rest, a wait, a journey, a load).
