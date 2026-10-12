@@ -15527,7 +15527,7 @@ whenever it mounts before the card, which made the probe's Escape check a race.
   serpent1_auditclient (the serpents slain are a plaque). Re-aimed: inspect1.json INS-gear-out-of-order (the row carries
   its part).
 
-## HOLD-SOLO (2026-10-07, FIELD BUGS 2026-10-07b, nObOdy on the Discord: "Lock privateer's hold. The first dungeon is a tutorial area") - the tutorial dungeon is every character's own
+## HOLD-SOLO (2026-10-07, FIELD BUGS 2026-10-07b, nObOdy on the Discord: "Lock privateer's hold. The first dungeon is a tutorial area") - the tutorial dungeon is every character's own (REVERTED 2026-10-12: HOLD-SHARED, below)
 
 "New players loading in in front of 50 players in a dead dungeon with no enemies ruins the magic. ... I couldnt even get
 gear or experience for my character cause i had to zoom past dead enemies and already open doors to get out and i sure
@@ -15555,8 +15555,60 @@ the presence session hears no welcome (H4); and a staff `/tp` to a player there 
 Of every location in the world, the start cell holds one: Daggerfall's Privateer's Hold (map id 187853213, pixel
 109/158; MAPS.BSA read through the port's own reader).
 
-- **Pinned**: `test/fb1007b_holdsolo.test.js` (9; one gated on ARENA2); `tools/mutants/fb1007b.json` (its
-  FB1007B-HOLD / START-CELL / PH1 records and the audit's H records). Record: `01-Overview/Field-Bugs-2026-10-07b.md`.
+- **Pinned** (until the revert): `test/fb1007b_holdsolo.test.js` (9; one gated on ARENA2) - DELETED by HOLD-SHARED;
+  `tools/mutants/fb1007b.json` (its FB1007B-HOLD / START-CELL / PH1 records and the audit's H records). Record:
+  `01-Overview/Field-Bugs-2026-10-07b.md`.
+
+## HOLD-SHARED (2026-10-12, asked: "I want to revert the change we made to privateers hold making it instanced") - Privateer's Hold is a shared world room again
+
+HOLD-SOLO and AUDIT FB1007b's H1-H5, above, reverted. Online, Privateer's Hold keys its world room by its map id, as
+every dungeon does - `dungeon:m187853213` (`net/online.js` roomKeyFor): the others' bodies, the room's memory (WORLD1),
+its simulation (WORLD2), its acts (WORLD3), its loot (WORLD4) and a trade from anyone there, as before 2026-10-07.
+
+- `scenes/worldModes.js` roomIdentity marks no dungeon `solo`; `scenes/world.js`'s key block asks `private` alone.
+- Gone with it: the page's own memory of the Hold (H2: `keepSoloMemory` / `restoreSoloMemory`, its load reset), the
+  staff `/tp` refusal there (H3), the hub link's clock for a presence session with no room (H4 - that session keys the
+  Hold's room again and hears its own welcome), the Local tab's, a page held out's, the party card's and the Online
+  pane's words that the Hold is the player's alone (H5: `net/chat.js` SOLO_LOCAL_TEXT, `ui/partyPanel.js` withMe's
+  tutorial clause), and the Playing Online page's "Your starting cave is yours alone" (`systems/tutorialCatalogue.js`).
+- `systems/startDungeon.js` keeps isStartCell and isStartDungeon - PH1's in-place respawn and TUT1 read them, and they
+  read the configured start cell as ever; isTutorialHold and SHIPPED_START_CELL (H1) are gone.
+- The relay is untouched: HOLD-SOLO never moved it, and every client joins the Hold's room again.
+- Four hosts: `scenes/world.js` and `scenes/worldModes.js` reverted; `scenes/exterior.js` and
+  `scenes/dungeonContext.js` never keyed a room for the Hold (TUT1's start-cave tutorial in `dungeonContext.js` is
+  untouched).
+
+- **Pinned**: `test/holdshared.test.js` (5) - the start cell, the identity and the key block, the staff teleport and the
+  Local line executed from their source, withMe, the Online pane and the Playing Online page; `tools/mutants/holdshared.json`
+  (4, each a piece of HOLD-SOLO back, dead). Re-aimed: fb1007b.json's START-CELL and PH1 records (to holdshared; the
+  13 HOLD and H records retired, 46 left), sdonline.json SD-ONLINE-the-identity-blind and auditparty8.json
+  AP-hud-place-by-words by content. PIN MOVED: tier1_dungeontiers (the transition's line), sdonline (the identity).
+
+## HOLD-ONCE (2026-10-12, asked: "Let's make it where players outside of privateers hold cannot re enter") - online, Privateer's Hold is entered once
+
+A character begins in Privateer's Hold and, online, walks out of it for good. `scenes/worldModes.js` tryEnterDungeon -
+the one funnel every dungeon entry takes (the door, startInDungeon's Recall, quest transfer, cemetery and Hollow arms,
+the abyss, the undercroft, the arena floor) - refuses the Hold online before its gate (no hub's word, no build) and
+says so: "You cannot go back into Privateer's Hold." (`systems/startDungeon.js` HOLD_ONCE_TEXT).
+
+- The Hold is known by its map id - `systems/startDungeon.js` isPrivateersHold, `world/dungeonTextures.js`
+  PRIVATEERS_HOLD_MAP_ID (187853213, DaggerfallDungeon.IsMainStoryDungeon's first; MAIN_STORY_DUNGEON_IDS reads the
+  same constant) - never the configured start cell, a setting that would otherwise open the real Hold.
+- What still enters: the new game's start (`scenes/world.js`, the classic start's `startInDungeon({ holdOpen: true })`),
+  a save made inside the Hold (the load's `fromLoad`), and a staff `/tp` to a player there (prepareStaffDestination's
+  `holdOpen`). PH1's death respawn inside the Hold stands the player in place and enters nothing.
+- What is refused: the Hold's door from outside, a Recall to an anchor set inside (it lands at the Hold's pixel
+  outside, DFU's "The way underground is closed. Repositioning player." arm), and a quest's `transfer pc inside` there
+  (the exterior fallback, as for any site with no entrance).
+- Offline, the Hold's door is DFU's. The relay is untouched: the Hold keeps its shared room (HOLD-SHARED, above), and
+  every player in it is one who has not yet walked out.
+- Four hosts: `scenes/worldModes.js` holds the gate, and both town hosts build it; `scenes/world.js` marks its two
+  ways in; `scenes/exterior.js` hands no `dungeonOnline` (offline, DFU's); `scenes/dungeonContext.js` enters no dungeon.
+
+- **Pinned**: `test/holdonce.test.js` (3) - isPrivateersHold against a moved start cell; tryEnterDungeon executed from
+  its source, online and off, every arm; the ways in by source. `tools/mutants/holdonce.json` (11, all dead). PIN MOVED
+  (`holdOpen` beside `fromLoad`): mapkeep, castle1, classicstart, dungeonentry, audit68_worldmodes (the Hold's refusal
+  before the gate), fixc_firstStart (the new game's start), staffTeleport (the staff landing).
 
 ## CARDS5 (2026-10-08, Mac: "Do 3 4 and 5") - the relay deals
 
