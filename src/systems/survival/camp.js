@@ -8,11 +8,15 @@
 //
 // TWO KINDS. A TENT is Camping Equipment pitched: a model, a fire in
 // front of it, and a wear counter (the gear's uses left) that comes
-// back with the gear when it is packed. A FIRE is one light off a
-// Campfire Kit: the same fire without the tent, and when it burns
-// down it is gone - the kit's use is spent at the placing, not the
-// packing. A tent's fire can be stoked (a rest stokes it); a kit's
-// cannot.
+// back with the gear when it is packed. A FIRE is a Campfire set down
+// (REST2): the same fire without the tent, placed free, its fuel spent
+// by the nights its owner sleeps at it (spendCampNight); burnt down it
+// stands cold, relit while it has fuel or picked back up with what is
+// left. A tent's fire can be stoked (a rest stokes it). AUDIT C&C I10:
+// this said a fire was one light off a kit, spent at the placing, gone
+// when it burnt down and never stoked - SURV3's kit, which REST2
+// replaced; only a fire with no fuel of its own (an Ember Jar's, an old
+// save's kit fire) goes with its embers (campExpired).
 //
 // WHERE. Not in a building (the mod's "You cannot set up camp in
 // here"), not in a town (its "It is illegal to camp in town" - and
@@ -34,8 +38,8 @@
 // stand. `validCampRecord` is the door every one of them comes in by.
 import { wrapAngle } from '../../world/mat4.js';
 import { POSE_BOUND, POSE_Y_BOUND } from '../../net/wire.js';
-import { TEMPLATE, foodOf, foodStage, isFood } from './food.js';
-import { createSurvivalItem, dressFood, isCampingEquipment, isCampfireKit, isSkillet, SURVIVAL_USE_TEXT } from './items.js';
+import { TEMPLATE, foodOf, foodStage, isFood, dressFood } from './food.js';   // AUDIT C&C I5: the dress law's home
+import { createSurvivalItem, isCampingEquipment, isCampfireKit, isSkillet, SURVIVAL_USE_TEXT } from './items.js';
 import { isEmberJar, EMBER_JAR_MINUTES, REST_ITEM_TEXT } from '../restItems.js';   // REST6: the Ember Jar's one-night fire
 
 /** The mod's tent (Camping.DeployTent: CreateDaggerfallMeshGameObject(41606)). */
@@ -80,11 +84,8 @@ export const CAMP_TEXT = Object.freeze({
   // (a player reported camping kits that "don't work", and a refusal
   // with no words is indistinguishable from a broken item).
   noSpot: 'You cannot find anywhere to make camp.',
-  // AUDIT SURV-TIERS: with the arc Off a player's own camp could be
-  // neither seen nor used (scenes/camps.js `seen`, `shown`), so none is
-  // stood - and the refusal names the one thing that would change it,
-  // CAMP-SILENT's law.
-  arcOff: 'Turn Climates & Calories on to make camp.',
+  // AUDIT C&C I10: `arcOff` ("Turn Climates & Calories on to make camp.") is deleted - nothing said it once ENDLESS
+  // PROVISIONS made a camp every tier's (scenes/camps.js placeItem runs the camp law's own checks with the arc Off)
   pitched: 'You pitch your tent and light a fire.',
   lit: 'You light a campfire.',
   packed: 'You pack up your camp.',
@@ -318,10 +319,14 @@ export function campInfoText(camp, now, mine) {
   if (camp.jar) return mine ? CAMP_TEXT.seeOwnJar : CAMP_TEXT.seeJar;   // AUDIT REST III B5: an Ember Jar's is no Campfire, here as on its hover
   return mine ? CAMP_TEXT.seeOwnFire : CAMP_TEXT.seeFire;
 }
-/** The menu's rows: rest and cook at any camp; stoke a cold tent; REST2: relight your own cold Campfire while it has
- *  fuel; pack your tent, or pick your Campfire up. The keys are the plaque's action ids (REST2: the loot plaque's rows). */
+/** The menu's rows: rest at any camp, cook at a lit one; stoke a cold tent; REST2: relight your own cold Campfire while
+ *  it has fuel; pack your tent, or pick your Campfire up. The keys are the plaque's action ids (REST2: the loot plaque's
+ *  rows). */
 export function campMenu(camp, now, mine, { online = false } = {}) {
-  const rows = [{ key: 'rest', text: CAMP_TEXT.menuRest }, { key: 'cook', text: CAMP_TEXT.menuCook }];
+  const rows = [{ key: 'rest', text: CAMP_TEXT.menuRest }];
+  // AUDIT C&C I11: a cold fire offers no Cook - it offered one, and the cooking list only refused ("The fire has burned
+  // down to embers."); its Stoke or Relight is the row that lights it
+  if (fireLit(camp, now)) rows.push({ key: 'cook', text: CAMP_TEXT.menuCook });
   if (camp.kind === CAMP_KIND.Tent && mine && !fireLit(camp, now) && (camp.wear | 0) > 0) rows.push({ key: 'stoke', text: CAMP_TEXT.menuStoke });   // AUDIT REST III A2: my own - a friend's tent stoked here is stoked on my screen alone (its owner publishes it, camps.js act), and the owner's next frame (2 s) puts it out under the rest it promised
   if (camp.kind === CAMP_KIND.Fire && mine && !camp.jar && !fireLit(camp, now) && (camp.wear | 0) > 0) rows.push({ key: 'stoke', text: CAMP_TEXT.menuRelight });
   if (mine && !camp.jar && (camp.kind === CAMP_KIND.Tent || !!camp.fuel)) rows.push({ key: 'pack', text: camp.kind === CAMP_KIND.Tent ? CAMP_TEXT.menuPack : CAMP_TEXT.menuPickUp });   // AUDIT REST-PARTY B5: never an old save's kit fire (no fuel of its own: AUDIT REST F12 - it burns away as it always did; picked up, it was a second Campfire from nothing)

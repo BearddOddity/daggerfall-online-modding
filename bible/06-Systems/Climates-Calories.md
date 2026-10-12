@@ -172,12 +172,13 @@ no stat goes under five.
 
 The mod's templates as the port's custom rows above DFU's 288
 (`registerCustomTemplates`), every reader through `templateByIndex`:
-Camping Equipment (50 uses), Rations (250 minutes, stackable), Apple
+Camping Equipment (50 uses), Rations (240 minutes, stackable), Apple
 and Orange (60, and ten off the thirst), Bread (180), Raw Fish (90,
 raw), Cooked Fish (200), Meat (240), Raw Meat (100, raw), the Waterskin
 (two kilos of water that weigh what they are; a drink is a tenth of a
 kilo, a twentieth of the skin), the
-Skillet, and the port's own Campfire Kit (five fires). A food spoils by
+Skillet, and the port's own Campfire (REST2's eight nights of fuel, of
+SURV2's five-fire kit). A food spoils by
 stage on a heat-driven day count against its keeping (bread 95, raw
 fish 50); past stale it wears the mod's own picture through DFU's
 item-level world-texture override, served from a vendor-only archive
@@ -185,14 +186,16 @@ the pipeline stands in for. Eating: a meal must find at least its own
 worth of hunger, banks four hours ahead, and raw or spoiled food risks
 the stomach on a failed luck roll (stomach rot; mouldy and worse, swamp
 rot or yellow fever - never the plague). The general store shelves
-provisions after the horse and cart; a new character sets out with two
-sacks of rations, a full skin, worn camping gear and a fire kit with
-two lights left. An animal's corpse carries raw meat by its kind (a rat
+provisions after the horse and cart; a new character sets out with the
+mod's own start - two sacks of rations, a full skin, its Formal cloak
+(hood up) and Shoes at a quarter of their condition, worn camping gear -
+and the port's full Campfire (AUDIT C&C I7; this said a fire kit with
+two lights left, and no cloak or shoes). An animal's corpse carries raw meat by its kind (a rat
 one, a bear six to ten and luck, half of it turning), the slaughterfish
 raw fish, and a humanoid a meal on a high roll. All of it behind the
 one switch (`survival/switch.js`, the `mod-climates-calories` feature
-row) - on in both Casual (the default) and Hard, gone in Off
-(SURV-TIERS).
+row) - on in Boons, Casual (the default) and Hard, gone in Off
+(SURV-TIERS, SURV-BOONS).
 
 ### The camps (SURV3)
 
@@ -200,8 +203,9 @@ Two placeables off the pack, decided by `survival/camp.js` and stood
 by `scenes/camps.js` (the dropped torches' shape, one pool per host).
 Camping Equipment pitches a TENT: the mod's model 41606 behind a fire,
 the gear leaving the pack with its uses as the camp's wear and coming
-back with it when packed. A Campfire Kit lights a FIRE alone: one use
-off the kit, the last one taking the kit with it. Both go
+back with it when packed. A Campfire sets a FIRE down alone (REST2, of
+SURV3's kit, whose every light spent a use): its fuel is the nights its
+owner sleeps at it. Both go
 two-and-a-half metres ahead of the feet on the ground a probe finds,
 and nowhere indoors, in a town (the mod's "illegal to camp" line), with
 enemies near (DFU's resting AreEnemiesNearby), in water, or - for a
@@ -209,8 +213,11 @@ tent - underground (Mac: "campfires in dungeons/outside"). Four camps
 an owner. The fire is TEXTURE.210 record 1 on the lights archive's
 twelve frames a second with a point light over it, and it burns eight
 world-clock hours from the lighting; a tent's fire can be stoked (a
-rest will), a kit's cannot, and a kit's camp is swept when its fire
-dies while a cold tent stands. Within four metres of a lit fire you
+rest will) and a Campfire relit while it has fuel; burnt down, both
+stand cold, and only a fire with no fuel of its own - an Ember Jar's,
+an old save's kit fire - is swept with its embers (REST2; AUDIT C&C I10:
+this said a kit's fire was never stoked and always swept). A cold camp
+offers no Cook (AUDIT C&C I11). Within four metres of a lit fire you
 are BY it - the needs law's warmth and drying, and SURV4's sleep.
 
 ### The world's own fires (HEARTH1)
@@ -966,9 +973,11 @@ SURV-TIERS closed the ways it had been one:
   rest. What Off SEES is another player's camp - the flame, its light, the
   tent, and (the third pass) the ray's stop, its name and a look - and
   never its own (`seen`; SURV-OFFSIGHT, at the end of this page); a click
-  on it opens nothing. A camp kit used with the arc Off is refused in
+  on it opens nothing. A camp kit used with the arc Off was refused in
   words - "Turn Climates & Calories on to make camp." (CAMP-SILENT's law:
-  a refusal the player cannot see is a bug report nobody can act on).
+  a refusal the player cannot see is a bug report nobody can act on) -
+  until ENDLESS PROVISIONS made a camp every tier's; AUDIT C&C I10
+  deleted the words with the gate.
 - **Its minutes are nobody's needs.** Hunger and wakefulness are
   timestamps, so a player back from five days Off was Starving in the first
   minute (and in Hard had lost ten from every attribute). The world tick
@@ -1364,7 +1373,9 @@ in either tier.
 > not off.. theres no reason to have it in off, really only being able to
 > see other people's campfires makes sense"*.
 
-**The kit stays Casual's and Hard's.** Mac's first change - *"C&C
+**The kit stays Casual's and Hard's** - and Boons', once SURV-BOONS made
+the fourth tier: the kit is every tier's with the arc on, and since AUDIT
+C&C I7 the mod's own start. Mac's first change - *"C&C
 characters regardless of mode should start with supplies"* - had been read
 as every tier, Off's included, and shipped that way (SURV-KIT, `23ee51b8`).
 It is reverted whole (`4dffc8ef`), but for six line cites in the kit's
@@ -2288,3 +2299,46 @@ collapse fired from inside a live minute in both lanes, the prison
 through the real arrest flow - with the moved pins in `tempui` (E2),
 `surv7_feed`, `surv1_model`, `audit68_dungeonctx`, `auditlived1b`,
 `csa_close` and `roadb_push_doors` re-aimed by content.
+
+### Found and fixed - the items
+
+- **I5 - food that spoiled in the pack kept its fresh name and picture.**
+  The dress law (the stage's name and, past stale, the mod's own picture)
+  lived in `items.js`, which `food.js` cannot import, so it ran where a
+  food was minted spoiled, a corpse's meat turned or a dish was cooked -
+  never where the minute law rots the pack (`rotFoodDay` -> `rotRoll` ->
+  `rotOnce`): Bread, Raw Fish and an Apple three desert days old were
+  Putrid and still read "Bread", "Raw Fish" and "Apple" in their fresh
+  pictures, and a putrid food's card said it nourished. `dressFood` lives
+  in `food.js` now and every stage change runs it - the mod's `RotFood`,
+  which names a food as it turns it: Stale, Smelly and Soft keep the fresh
+  picture, Mouldy wears the mod's record 0 and Rotten and Putrid record 1,
+  and a putrid food's card says it cannot be forced down. PROF9's dishes
+  rotting in the pack are named by their stage too, as PROF9 said.
+- **I7 - "the mod's own start" left out its clothes.** The mod's
+  `NewCharEffects` hands a new character a Formal cloak, hood up, and
+  Shoes, each at a quarter of its condition. `startingProvisions(entity)`
+  mints them of the character's own wardrobe (men's 155 and 147, women's
+  192 and 186, the default Blue), in the pack between the skin and the
+  camping gear, in every tier with the arc on, on the wizard's mint and on
+  the fallback alike. The mod's shipwreck arm (a start in Privateer's
+  Hold: the Shoes alone, the gear at 3, Drenched, two lines) is not taken:
+  the kit is minted at chargen, which is not told where the character will
+  stand - a declared departure (Port-Ledger A).
+- **I10 - words nothing says.** `CAMP_TEXT.arcOff` ("Turn Climates &
+  Calories on to make camp.") is deleted with the gate ENDLESS PROVISIONS
+  removed; `camp.js`'s and `scenes/camps.js`'s comments describe REST2's
+  Campfire rather than SURV3's kit; the vendored README declares every
+  column the port's rows change. This page's SURV2, SURV3, SURV-TIERS and
+  SURV-OFFSIGHT lines are rewritten to the law.
+- **I11 - the shelf's empty skin was named full, and a cold camp offered a
+  Cook that only refused.** A skin minted empty is "Empty Waterskin" now,
+  by the law a drink and a fill name it by, and a cold camp's list has no
+  Cook (its Stoke or Relight lights it). Online a friend's cold camp then
+  had nothing to do at it, and a grab opened an empty list: it says what
+  it is, as Info does.
+
+Pinned by `test/auditcc_items.test.js` (the real producers, the real camp
+pool), with the camp lists in `auditrest2_camps`, `auditrest3`,
+`rest2_campfire`, `rest6_consumables` and `surv3_camps` and the kit in
+`surv2_items` re-aimed by content.

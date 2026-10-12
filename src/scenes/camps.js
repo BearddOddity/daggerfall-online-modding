@@ -13,8 +13,10 @@
 // Grab and Steal open the menu (a list picker: rest, cook, stoke, pack).
 //
 // THE CLOCK is the world's minute (worldMinutes): a fire dies at its
-// minute whether the player lived through it or slept, and a kit's
-// fire that dies is swept. THE GROUND is the host's: snapshot/restore
+// minute whether the player lived through it or slept, and burnt down
+// it stands cold (REST2) - only a fire with no fuel of its own, an Ember
+// Jar's or an old save's kit fire, is swept with its embers (camp.js
+// campExpired; AUDIT C&C I10: this said every kit fire). THE GROUND is the host's: snapshot/restore
 // in the host's own frame (the save envelope and the scene cache, in
 // natives outdoors), collectPixel with the streaming host's sweep,
 // offsetAll with the floating origin, destroyAll on a transition.
@@ -363,7 +365,7 @@ export function createCamps({
   const restPointAt = (pos) => (fireNear(pos) ? { kind: 'camp', where: 'fire' }
     : bedrollNear(pos) ? { kind: 'rough', where: 'bedroll', channelSeconds: BEDROLL_CHANNEL_SECONDS } : null);
 
-  /** The burn: a fire dies at its minute; a kit's camp goes with it. */
+  /** The burn: a fire dies at its minute and stands cold; one with no fuel of its own goes with its embers (campExpired). */
   function tick(dt) {
     const t = now();
     tendWhileResting(t);
@@ -379,8 +381,10 @@ export function createCamps({
   /**
    * SURV3's word, kept at last (AUDIT SURV-TIERS, the third pass): "a tent's fire can be stoked (a rest will)" - and
    * nothing did, so a tent pitched at dusk went cold under its sleeper at four and they woke Deadly cold beside it.
-   * A camp's rest at your own tent tends its fire: it burns through the night and its full span past the waking. A
-   * kit's fire cannot be stoked, as ever, and with the arc Off nothing is tended (nothing of it is used).
+   * A camp's rest at your own tent tends its fire: it burns through the night and its full span past the waking - and
+   * at your own Campfire while it has fuel (AUDIT REST-PARTY B2), in every tier (ENDLESS PROVISIONS). An Ember Jar's
+   * fire is never tended: it has no fuel to burn (AUDIT C&C I10: this said a kit's fire, and nothing tended with the arc
+   * Off).
    */
   function tendWhileResting(t) {
     if (!entity?.isResting || entity.restKind !== REST_KIND.Camp) return;   // ENDLESS PROVISIONS: a camp used in every tier is tended in every tier
@@ -559,6 +563,9 @@ export function createCamps({
   }
   function openMenu(c) {
     const rows = campMenu(c.rec, now(), mine(c), { online: sharedClockOn() });
+    // AUDIT C&C I11: a camp with nothing to do at it - online a friend's cold one, since its one row, a Cook that only
+    // refused, went - says what it is, as Info does, rather than opening an empty list
+    if (!rows.length) { say(campInfoText(c.rec, now(), mine(c))); return null; }
     const win = new ListPickerWindow({ items: rows.map((r) => r.text), onPick: (i) => act(c, rows[i]?.key) });
     if (showOverlay) showOverlay(win); else act(c, rows[0]?.key);
     return win;
