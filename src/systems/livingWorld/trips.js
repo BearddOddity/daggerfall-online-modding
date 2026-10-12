@@ -304,6 +304,48 @@ export function laneAt(way, s, side) {
 /** A town's half-width on the ground (native), for the trim at each end of a way: its blocks' side, halved, and a margin. @param {LwTown} town */
 export const townTrim = (town) => (Math.ceil(Math.sqrt(Math.max(1, town.blocks | 0))) * NATIVE_BLOCK) / 2 + NATIVE_BLOCK / 2;
 
+/**
+ * WALL-WAY (FIELD BUGS 2026-10-12b, "Caravan I'm supposed to be guarding walk through the city walls"): HOW FAR ALONG `way`
+ * IT LEAVES `town`'s GROUND - its RMB grid's box (`w` blocks east, `h` north, centred on the way's end in its pixel) grown
+ * by half a block, measured from the way's first point (`fromEnd`: from its last). townTrim was a radius, and a town's
+ * walls stand on its grid's square edge: a way leaving on a diagonal set its party down inside the walls (an 8 x 8 city:
+ * 18432 along a 45-degree way is 13033 each way, its walls at 16384), and a long town's on its long axis. Along an axis a
+ * square town's is townTrim's own. A town with no shape (`w`, `h` unknown) is townTrim's.
+ * @param {LwTown} town @param {Way} way @param {boolean} [fromEnd]
+ */
+export function townExit(town, way, fromEnd = false) {
+  const w = town?.w ?? 0, h = town?.h ?? 0;
+  const pts = way?.pts ?? [];
+  if (!(w > 0 && h > 0) || pts.length < 2) return townTrim(town);
+  const ex = (w * NATIVE_BLOCK) / 2 + NATIVE_BLOCK / 2, ez = (h * NATIVE_BLOCK) / 2 + NATIVE_BLOCK / 2;
+  const at = (i) => pts[fromEnd ? pts.length - 1 - i : i];
+  const [cx, cz] = at(0);
+  let run = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = at(i - 1), b = at(i);
+    const dx = b[0] - a[0], dz = b[1] - a[1], seg = Math.hypot(dx, dz);
+    if (Math.abs(b[0] - cx) > ex || Math.abs(b[1] - cz) > ez) {   // it leaves on this leg: where it crosses the box's edge
+      let t = 1;
+      if (dx) t = Math.min(t, ((dx > 0 ? ex : -ex) - (a[0] - cx)) / dx);
+      if (dz) t = Math.min(t, ((dz > 0 ? ez : -ez) - (a[1] - cz)) / dz);
+      return run + Math.max(0, t) * seg;
+    }
+    run += seg;
+  }
+  return run;
+}
+/**
+ * WALL-WAY: THE TRIMS AT EACH END of a road party's `way` from `home` to `to` (null: a way that ends in the wild) - each
+ * where the way leaves its town's ground (townExit). Only where the two would meet are they held to 0.4 of the way each,
+ * as every trim was (a walk left between two towns whose grounds all but touch).
+ * @param {LwTown} home @param {LwTown | null} to @param {Way} way @returns {[number, number]}
+ */
+export function wayTrims(home, to, way) {
+  const t0 = townExit(home, way), t1 = to ? townExit(to, way, true) : 0;
+  if (t0 + t1 < way.len) return [t0, t1];
+  return [Math.min(t0, way.len * 0.4), to ? Math.min(t1, way.len * 0.4) : 0];
+}
+
 /** A traveller's cycle holding `day`: its number, its first day and its length (days). @param {Resident} res @param {number} day @param {number} scale */
 export function cycleOf(res, day, scale) {
   const len = Math.max(2, Math.round((rowOf(CYCLE_DAYS, ROAD_CYCLE_DAYS, res.job) ?? 8) * scale));
@@ -377,7 +419,7 @@ export function marketTrip(res, home, k, world, { start, len, pace, rng }) {
     if (plan === undefined) return undefined;
     if (!plan || !(plan.pixels?.length >= 2)) continue;
     const way = wayOf(plan, world.dryAt);
-    const trim0 = Math.min(townTrim(home), way.len * 0.4), trim1 = Math.min(townTrim(to), way.len * 0.4);
+    const [trim0, trim1] = wayTrims(home, to, way);   // WALL-WAY: past each town's walls
     const walk = Math.max(0, way.len - trim0 - trim1) / pace;
     const outT0 = day * DAY_MIN + leave;
     const outT1 = whenWalked(outT0, walk);
@@ -417,7 +459,7 @@ export function wildTrip(res, home, k, world, { start, len, pace, rng }) {
     /** @type {Way} */
     const way = { pts: [[hx, hz], [wx, wz]], cum: [0, d], len: d, kinds: ['open'] };
     if (world.dryAt) way.dry = world.dryAt;
-    const trim0 = Math.min(townTrim(home), d * 0.4), trim1 = 0;
+    const [trim0, trim1] = wayTrims(home, null, way);   // WALL-WAY: past the town's walls
     const walk = Math.max(0, d - trim0) / pace;
     const estDays = 3;
     if (estDays > len - 1) return null;
@@ -560,7 +602,7 @@ export function ownTrip(res, home, k, world, { mpm }) {
     if (plan === undefined) return undefined;
     if (!plan || !(plan.pixels?.length >= 2)) continue;
     const way = innsAlong(wayOf(plan, world.dryAt), plan, world, home, to);   // LW9: the inns on its road
-    const trim0 = Math.min(townTrim(home), way.len * 0.4), trim1 = Math.min(townTrim(/** @type {LwTown} */ (to)), way.len * 0.4);
+    const [trim0, trim1] = wayTrims(home, /** @type {LwTown} */ (to), way);   // WALL-WAY: past each town's walls
     const walk = Math.max(0, way.len - trim0 - trim1) / pace;   // minutes of daylight walking, each way
     const estDays = 2 * Math.ceil(walk / ((WALK_TO_H - WALK_FROM_H) * 60)) + stay + 1;
     if (estDays > len - 1) continue;
@@ -607,7 +649,7 @@ export function holyTrip(res, home, k, world, { start, len, pace }) {
   if (!plan || !(plan.pixels?.length >= 2)) return null;
   const to = /** @type {LwTown} */ (holy.town);
   const way = innsAlong(wayOf(plan, world.dryAt), plan, world, home, to);
-  const trim0 = Math.min(townTrim(home), way.len * 0.4), trim1 = Math.min(townTrim(to), way.len * 0.4);
+  const [trim0, trim1] = wayTrims(home, to, way);   // WALL-WAY: past each town's walls
   const walk = Math.max(0, way.len - trim0 - trim1) / pace;
   const by = holy.day * DAY_MIN + HOLY_IN_H * 60;
   let outDay = holy.day - Math.ceil(walk / ((WALK_TO_H - WALK_FROM_H) * 60));
@@ -695,7 +737,7 @@ export function diveTrip(res, home, k, world, { start, len, pace, rng }) {
     if (plan === undefined) return undefined;
     if (!plan || !(plan.pixels?.length >= 2)) continue;
     const way = wayOf(plan, world.dryAt);
-    const trim0 = Math.min(townTrim(home), way.len * 0.4), trim1 = Math.min(townTrim(to), way.len * 0.4);
+    const [trim0, trim1] = wayTrims(home, to, way);   // WALL-WAY: past each town's walls
     const walk = Math.max(0, way.len - trim0 - trim1) / pace;
     const estDays = 2 * Math.ceil(walk / ((WALK_TO_H - WALK_FROM_H) * 60)) + Math.ceil(inside / DAY_MIN) + 1;
     if (estDays > len - 1) continue;

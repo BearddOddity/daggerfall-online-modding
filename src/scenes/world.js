@@ -250,7 +250,7 @@ import { windfallResponse } from '../systems/windfall.js';   // WINDFALL1: a flo
 import { createWindAudio, windSoundOn } from '../systems/windAudio.js';   // WIND3: the wind, heard
 import { placeFoeFreely, PLACE_FOE_DEFAULTS } from '../systems/quest/sceneMount.js';   // B1: CreateFoe's raycast ring
 import { PLAYED_STEP_MAX_SECONDS } from '../systems/quest/clock.js';   // WORLD7: the quest clocks' played step online
-import { mintQuestFoeWave, placeFoeEnv, entityOccupancy, questFoeGender, reviveQuestBehaviour, heldSpots, holdSpotWhile, questBoxHoldsFoes, questShareTag, partnerStandsQuestFoes, questBehaviourFor, adoptsOrphanQuestFoe, isPrivateQuestFoe, KeptKillLedger, creditKeptKills, questPrivateTag, partyQuestFoe } from './questFoeHost.js';   // B1   // AUDIT 63r F24: SerializableEnemy.cs:206-217's quest-link arm, the one home both hosts use
+import { mintQuestFoeWave, placeFoeEnv, entityOccupancy, questFoeGender, reviveQuestBehaviour, heldSpots, holdSpotWhile, questBoxHoldsFoes, questShareTag, partnerStandsQuestFoes, questBehaviourFor, adoptsOrphanQuestFoe, isPrivateQuestFoe, KeptKillLedger, creditKeptKills, questPrivateTag, partyQuestFoe, partyOnlyQuestShare } from './questFoeHost.js';   // B1   // AUDIT 63r F24: SerializableEnemy.cs:206-217's quest-link arm, the one home both hosts use
 import { ENEMY_BASICS } from '../characters/enemyBasics.js';   // MERGE: FinalizeFoe's Flying lift reads the behaviour flag
 import { markFoeReach } from '../systems/foeReach.js';   // WATER-FOES: a foe in the water reaches no one aboard
 import { intermittentEnemySpawn, setEnemyAlert, areEnemiesNearby, foeHostile, foeAlerted } from '../systems/encounters.js';   // OW6: foeHostile, the one hostility gate   // CAMP-ROLL: REST5's quietNights moved with the carried night's sequence (scenes/shared.js restCampNight)
@@ -509,7 +509,8 @@ import { createCharSheetWindow, charSheetDoorReady, warmLevelUpWindow } from '..
 import { announceLevelUp, levelOwed } from '../ui/levelNotice.js';   // LV2: the level-up notification, and the skin fork over whether the window opens itself   // U52: the sheet's ONE seam, and the skin fork in front of it
 import { preloadQuestJournalArt } from '../ui/questJournal.js';   // U43: the LogBook and NoteBook doors
 import { createChronicleWindow } from '../ui/chronicleDoor.js';   // PX24d: the chronicle's one door
-import { openPixelDial } from '../ui/pixelDial.js';   // PX15: the Tab compass rose
+import { openPixelDial, setDialOpenHook } from '../ui/pixelDial.js';   // PX15: the Tab compass rose
+import { setClassicDialSource, refreshClassicDial } from '../ui/dialClassicArt.js';   // DIAL-CLASSIC: the dial's doors in Daggerfall's own art
 import { overlayOpen } from '../ui/enhancedOverlays.js';   // AUDIT DEEP2 A3: the Tab dial (and every enhanced overlay) over the travel view
 import { preloadBookArt } from '../ui/bookReader.js'; import { makeOpenBookHook } from '../ui/bookDoor.js';   // B1; EB1: the reader's ONE door
 import { DeathScreen } from '../ui/deathScreen.js';   // AUDIT 21 hosts F6: dying above ground
@@ -2917,6 +2918,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       _livingTowns.set(p.y * 1000 + p.x, {
         mapId: md.mapId >>> 0, name: String(loc.name ?? ''), px: p.x, py: p.y, type: md.locationType, region: loc.regionIndex,
         people: getWorldClimateSettings(maps.getClimateIndex(p.x, p.y))?.people, blocks: Math.max(1, (ed?.width ?? 1) * (ed?.height ?? 1)),
+        w: Math.max(1, ed?.width ?? 1), h: Math.max(1, ed?.height ?? 1),   // WALL-WAY: its grid's own shape - a road party leaves it past its walls
         port: hasPort(md.mapId),
       });
     }
@@ -5892,9 +5894,10 @@ export async function bootWorld(canvas, renderer, params, status) {
             pixelBuildingKeys.add(homeKey);
             // its own place (rmbLayout.js recordAt) and the box round its models: its yard's frame and footprint
             const at = Array.isArray(placed.recordAt) ? [locLocal[0] + b.originX + placed.recordAt[0], locLocal[1] + placed.recordAt[1], locLocal[2] + b.originZ + placed.recordAt[2]] : null;
+            const bd = b.dfBlock?.rmbBlock?.fldHeader?.buildingDataList?.[placed.recordIndex] ?? null;   // YARD-LINE: whether it could hold a lot of its own
             const rects = footRectsAt(modelFeetOf(placed.modelIdNum, cpu), local);   // FB1009 HOME-FOOT: the ground its faces cover, never its box
             const f = pixelHomeFrames.get(homeKey);
-            if (!f && at) pixelHomeFrames.set(homeKey, { at, box: [...box], rects });
+            if (!f && at) pixelHomeFrames.set(homeKey, { at, box: [...box], rects, type: bd?.buildingType ?? null, faction: bd?.factionId ?? 0 });
             else if (f) { for (let i = 0; i < 3; i++) { f.box[i] = Math.min(f.box[i], box[i]); f.box[i + 3] = Math.max(f.box[i + 3], box[i + 3]); } f.rects.push(...rects); }
           }
           const homeRow = homeKey != null ? townHomes?.get(homeKey) ?? null : null;
@@ -7761,6 +7764,11 @@ export async function bootWorld(canvas, renderer, params, status) {
   let hudArt = null;
   loadHud({ fetchBytes, ImgFile, palette, renderer }).then((a) => { hudArt = a; })
     .catch((e) => console.error('[hud]', e));
+  // DIAL-CLASSIC (ui/dialClassicArt.js): the Tab dial's doors read off this game's data - the face the player wears and
+  // the HUD bar's star, sack and scroll - each time the dial rises (once a face), and once now, so the first rise wears them
+  setClassicDialSource({ fetchBytes, palette, entity: () => playerEntity });
+  setDialOpenHook(() => refreshClassicDial());
+  refreshClassicDial();
   // FE1: the escort faces panel's session mount. Init CLEARS - DFU's
   // OnNewGame and OnStartLoad handlers both do (HUDEscortingNPCFaces
   // .cs:306-316) - and a load refills through restoreSessionState's
@@ -21860,6 +21868,9 @@ export async function bootWorld(canvas, renderer, params, status) {
     // killing it counted for nothing; unlinked, each copy fights its own.
     // DESYNC-ZERO: every quest foe stands for EVERYONE in the place - a stranger beside a party saw it swing at the air.
     // Who COUNTS its kill is onPuppetDied's law (its owner's party), never who sees it.
+    // QUEST-OWNER (2026-10-12, Mac: "Yes quest monsters always owner and its party"): every pool is handed this seam
+    // through partyOnlyQuestShare (questFoeHost.js), which narrows this door and peerMayHit to the owner's party - a
+    // stranger stands no quest foe, strikes none and is hunted by none, outdoors, in a building and underground.
     accepts: () => true,
     // AUDIT DISC28 QS-J: THE PARTY ALONE - two laws that are not DISC28-J's. A foe a member HANDS me as its heir (the
     // owner's heirOf names the nearest party peer, whatever that peer's copy) is taken on membership, the pre-J law:
@@ -22018,7 +22029,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // a member stands a party peer's, a peer's blow and a quest foe's hunt reach only the party (a quest's own allies
     // take no blow), and my copy of the quest counts the injury and the kill it sees on a partner's foe
     exteriorFoes.setOnRaids((from, rk, at) => raidPeerWord(from, rk, at));   // RAID2: a peer's word on the raids it fought, past the pool's room test
-    exteriorFoes.setQuestShare(questShareSeam);   // QUEST-PARTY: the party's law, one home (questShareSeam)
+    exteriorFoes.setQuestShare(partyOnlyQuestShare(questShareSeam));   // QUEST-PARTY: the party's law, one home (questShareSeam); QUEST-OWNER: a quest's foe its owner's party's alone, out here too
     exteriorFoes.setOnPortals((from, r) => { const p = online?.peers?.get(from); portalGates.applyOwner(from, r, p?.shown ? onlineToScene(p.shown) : null); });   // PORTAL1: a peer's portal - believed only near the peer's own feet (AUDIT PORTAL1 O1), kept to its own time
     exteriorFoes.setOnDuel((from, r, at) => { const rec = r === null ? null : validRingRecord(r); if (rec) _duelRings.set(from, { rec, at }); else _duelRings.delete(from); }, () => _duelRings.clear());   // DUEL1: a peer's ring, for the wall
     online.onPark = (room, e) => { wagonWarden?.keptWord(room, e); hcc.applyKept(room, e, campToScene, performance.now()); };   // HCC-PARK: a cell's word about a parked team (mine or a halo's cell), its owner here or not; WARDEN1: a throw it had not said played from where the team stood, before the pool moves it to the landing
@@ -29811,7 +29822,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       toWire: (feet) => [feet[0], feet[1] - state.compensation[1], feet[2]],
       toScene: (p) => [p[0], p[1] + state.compensation[1], p[2]],
     } : null),
-    foesQuestShare: () => questShareSeam,   // QUEST-PARTY phase 3b: the party's law for the building's quest foes
+    foesQuestShare: () => partyOnlyQuestShare(questShareSeam),   // QUEST-PARTY phase 3b: the party's law for the building's quest foes; QUEST-OWNER: its owner's party's alone, in a building and underground
     onFoeHit: (hit, fate) => hitSend(hit, fate),   // WORLD2: a blow on a puppet goes to the host; AUDIT FOES FOE2: through the pending set, so a refused blow heals; LOOT-DUP: with the frame's own fate
     // WORLD3: a door moved goes to the room (the session refuses it outside a world room); the peers in my room at
     // their scene feet, for the foes to see and a puppet's shaft to fly at; whose blow a puppet's is
@@ -32559,7 +32570,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   function travelViewRoute() {
     if (!tvTripLive() || tvTrip.natives.length < 2) return [];
     const pts = [player.feetAt()];
-    const me = state.worldCoords(player.pos);
+    const me = state.worldCoords(pts[0]);   // TV-SMOOTH: the drawn feet, never the stepped pos - the line's first leg leaves where the ring and the body are drawn
     const n = tvTrip.natives;
     const from = travelOptions.route?.i ?? 0;   // the legs behind the traveller are walked: the line starts at them
     const start = Math.min(n.length - 1, from + 1);
@@ -35203,6 +35214,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     cityGuards.drawBodies(canvas, proj, view, mwv.eye, foeDt);   // MWNPC6: and the watch's, the same way
     exteriorFoes.drawBodies(canvas, proj, view, mwv.eye, foeDt);   // MWNPC5c: the foes in their bodies - what batches() offered this frame, before the billboards draw (cast-only where a body stands)
     if (deepWaters && livePersonBatches.length) dwFlagColumnFlats(livePersonBatches);   // DW-F: the foes, the corpses and the piles in a carved sea take the column's share
+    renderer.holdBlended(livePersonBatches);   // GRASS-PORTAL (FIELD BUGS 2026-10-12b): the blended flats write no depth - drawn after the grass (drawHeld)
     if (livePersonBatches.length) renderer.drawBillboards(livePersonBatches, camRight, bbUp);
     if (castBatches.length) renderer.recordShadowBillboards(castBatches, camRight, UP_Y);   // SHADOW-REACH: the flats the view cull rejected, for the maps alone (the wind is the frame's, set above)
     if (deepWaters) drawDeepWatersSurfaces(now);   // DW-C: the sea's surface - the mod's Transparent queue, after every opaque thing and every cut-out flat
@@ -35489,6 +35501,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     }
     };
     frameHaze();
+    renderer.drawHeld(camRight, bbUp);   // GRASS-PORTAL: the street's blended flats, over the grass behind them
     drawFalling();   // RAIN-OVER-GRASS: after the grass and the banners, before the translucent bodies and the fires
     exteriorFoes.drawVeiledBodies();   // MWNPC5c: the concealed foes' bodies, beside the peers'
     cityGuards.drawVeiledBodies();   // MWNPC6: and the watch's
