@@ -165,6 +165,9 @@ export const YARD_RETRY_MAX_MS = 300_000;
 export const yardRetryMs = (n) => Math.min(YARD_RETRY_MAX_MS, YARD_RETRY_MS * 2 ** Math.max(0, n - 1));
 /** How often the yards are brought in line with the town, seconds. */
 export const YARD_SYNC_S = 0.5;
+/** YARD-MERGE: how many yards' models are merged in one frame (decorRoom.js DECOR_MERGE_SETTLE_MS) - a town streaming in
+ *  stands every yard at once, and its merges are spread a frame each. */
+export const YARD_MERGES_A_FRAME = 1;
 /** What the decorator says of a piece off the lot, in the house, or on another building's ground. */
 export const YARD_OFF_LOT = 'Outside your lot - keep it within the marked edge.';
 export const YARD_IN_HOUSE = 'That is inside your house - place it in the yard around it.';
@@ -466,6 +469,8 @@ export function createHomeYards(deps) {
   /** @type {Map<string, {pool: any, px: number, py: number, mapId: number, bk: number, t: number[], sig: string, src: any[] | null, srcSig: string, kept: boolean, lot: any, frame: any, entry: any, trees: Map<string, any>, treeSet: any}>} */
   const yards = new Map();
   const yardFigs = [];   // MWNPC18 (AUDIT MWNPC16-18 D4): figures()'s one list
+  let mergesLeft = 0;   // YARD-MERGE: this frame's merges still to make (draw refills it)
+  const merge = { take: () => (mergesLeft > 0 ? (mergesLeft--, true) : false), now };
   let syncIn = 0;
   /** @type {any} the owner's own yard the decorator stands in, or null */
   let cur = null;
@@ -536,6 +541,7 @@ export function createHomeYards(deps) {
       // YARD-LIGHT: a lamp lights as the town's (yardLampOf) - the room's machinery mounts it when its picture stands, moves
       // it with a recentre (restand) and takes it down with the piece; `lamps` reads them in the order the pieces stand
       lampOf: yardLampOf,
+      merge,   // YARD-MERGE: a yard's models one mesh once it settles, a frame's budget at a time
       flatAnims: () => entryOf(y)?.flatAnims ?? null,   // DECOR-OUTDOOR: a street's animal or flame moves as its town's own (the pixel's animator, ticked with it)
       prepareModel: (gpu) => climateOf(y, gpu),   // DECOR-OUTDOOR: its town's climate
       // DECOR-OUTDOOR: a tree or a plant in its town's season - the climate's own, drawn as its pixel draws its nature;
@@ -812,6 +818,7 @@ export function createHomeYards(deps) {
       let n = 0;
       const eye = deps.eye?.() ?? null;
       const cull = deps.cull ?? null;   // PERF-YARD: the host's view test, a piece's box at a time (decorRoom.js draw)
+      mergesLeft = YARD_MERGES_A_FRAME;   // YARD-MERGE: the frame's budget
       for (const y of yards.values()) {
         if (!nearEye(y, eye)) continue;   // YARD-RANGE: the player's distance for a stranger's, YARD_DRAW_M for one's own
         _eye = y === cur?.yard ? null : eye;   // YARD-RANGE: never the yard being placed in
