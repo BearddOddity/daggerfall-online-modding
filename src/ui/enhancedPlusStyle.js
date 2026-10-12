@@ -247,6 +247,10 @@ body .dfchat-form .dfchat-close { min-width: 32px; padding: 4px 8px; }
    lines of a list (the listRow role) with the icon in a small sunk socket, and the column's heading is the pixel
    face, not the display serif it fell back to. */
 .trade-shell .packtabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin: 4px 0 12px; }
+@media (max-width: 560px) {   /* MENU-ORDER: a phone's four pages two by two, their words wrapping, never four rows over the list */
+  .trade-shell .packtabs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+  .trade-shell .packtab { min-height: 34px; white-space: normal; line-height: 1.2; }
+}
 .trade-shell .packtab { min-height: 38px; padding: 6px 8px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
   color: #e6dec6; text-shadow: 1px 1px 0 #050608, 2px 2px 0 rgba(0,0,0,0.45); border-bottom-width: 2px; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis; }
@@ -1595,7 +1599,7 @@ export const PROF_CSS = `/* ── PROF1: THE PROFESSIONS ── */
 .prof-search { flex: 1 1 auto; min-width: 0; }
 .prof-qty { width: 5.5em; }
 .prof-families { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 8px; }
-.prof-family { font: inherit; font-size: 11px; padding: 3px 8px; color: #b9ab93; background: rgba(10,8,6,0.55); border: 1px solid rgba(192,138,62,0.25); cursor: pointer; }
+.prof-family { font: inherit; font-size: 12px; padding: 4px 9px; color: #b9ab93; background: rgba(10,8,6,0.55); border: 1px solid rgba(192,138,62,0.25); cursor: pointer; }
 .prof-family.on { color: #f3cf86; border-color: var(--brass, #c08a3e); }
 .prof-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 6px; }
 .prof-mat { display: grid; grid-template-columns: 1fr auto; gap: 2px 6px; padding: 6px 8px; text-align: left; font: inherit; font-size: 12px;

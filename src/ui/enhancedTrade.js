@@ -92,6 +92,19 @@ const MODE_LABEL = Object.freeze({
 const TAB_LABEL = Object.freeze({
   weapons: 'Weapons & Armor', magic: 'Magic Items', clothing: 'Clothing & Misc', ingredients: 'Ingredients',
 });
+/** MENU-ORDER (2026-10-12): the counter's title says the mode whole - a counter that buys magic alone says so, where
+ *  the button's verb is plain "Sell". */
+export const TRADE_TITLE = Object.freeze({ ...MODE_LABEL, SellMagic: 'Sell magic items' });
+/** MENU-ORDER: the player's own column, named as the shop's is ("On the shelf"). */
+export const TRADE_OWN_HEAD = 'Your pack';
+/** MENU-ORDER: the footer's two figures, each under its own name - what the lot costs (or brings, selling) and the
+ *  purse - where one span read "Cost: 0   Gold: 1840" and the spaces collapsed. */
+export const TRADE_COST_WORD = Object.freeze({ Buy: 'To pay', Sell: 'You get', SellMagic: 'You get', Repair: 'To pay', Identify: 'To pay' });
+export const TRADE_GOLD_WORD = 'Your gold';
+/** MENU-ORDER: a figure as the footer says it. */
+export const tradeGoldText = (n) => `${Math.max(0, Math.round(Number(n) || 0)).toLocaleString('en-US')} gold`;
+/** MENU-ORDER: how many things a column lists, said under its name. */
+export const tradeCountText = (n) => `${n} item${n === 1 ? '' : 's'}`;
 
 let host = null;
 let deps = {};      // the hooks bag, nativeTrade.js's own shape
@@ -799,9 +812,6 @@ function itemRow(item, from) {
   // A single click reads the item (the tooltip strip below the lists);
   // a double click - or the footer's primary button, reaching for
   // this same pending selection - is what actually moves it.
-  // A single click reads the item (the tooltip strip below the lists);
-  // a double click - or the footer's primary button, reaching for
-  // this same pending selection - is what actually moves it.
   //
   // Wired as a manually-timed "second click on the same item" check
   // (see lastRowClick's own comment above) rather than the native
@@ -825,6 +835,13 @@ function itemRow(item, from) {
 
 function localCol() {
   const col = el('section', 'packcol');
+  const items = localList();
+  // MENU-ORDER: the player's column named over its tabs, as the shop's is - the two columns read as a pair
+  const head = el('div', 'remotehead trade-ownhead');
+  const who = el('div', 'remotewho');
+  who.append(el('h3', null, TRADE_OWN_HEAD), el('p', 'meta', tradeCountText(items.length)));
+  head.append(who);
+  col.append(head);
   const tabsEl = el('div', 'packtabs');
   for (const t of TABS) {
     const b = el('button', `packtab${t === tab ? ' on' : ''}`, TAB_LABEL[t]);
@@ -833,7 +850,6 @@ function localCol() {
   }
   col.append(tabsEl);
   const list = el('div', 'remotelist');
-  const items = localList();
   if (!items.length) list.append(el('p', 'packempty', 'Nothing here answers to that page.'));
   for (const it of items) list.append(itemRow(it, 'local'));
   col.append(list);
@@ -853,7 +869,7 @@ function remoteCol() {
   const who = el('div', 'remotewho');
   who.append(el('h3', null, remoteHeading()));
   const items = remoteList();
-  who.append(el('p', 'meta', `${items.length} item${items.length === 1 ? '' : 's'}`));
+  who.append(el('p', 'meta', tradeCountText(items.length)));
   head.append(who);
   col.append(head);
   const list = el('div', 'remotelist');
@@ -905,9 +921,13 @@ function detailStrip() {
 function footer() {
   const bar = el('div', 'remoteacts trade-footer');
   const { cost: c, modeActionEnabled } = cost();
-  bar.append(el('span', 'meta trade-cost', `Cost: ${c}   Gold: ${deps.gold?.() ?? 0}`));
+  // MENU-ORDER: two figures, each under its name, where one span ran them together
+  const figs = el('span', 'meta trade-cost');
+  const fig = (word, value) => { const f = el('span', 'trade-fig'); f.append(el('small', null, word), el('b', null, value)); return f; };
+  figs.append(fig(TRADE_COST_WORD[mode] ?? TRADE_COST_WORD.Buy, tradeGoldText(c)), fig(TRADE_GOLD_WORD, tradeGoldText(deps.gold?.() ?? 0)));
+  bar.append(figs);
   if (inBuy() && !deps.stealRefusal?.()) {   // AUDIT MERCHANT-YARDS Y1: no Steal at a counter whose keeper never looks away
-    const steal = el('button', 'act', 'Steal');
+    const steal = el('button', 'act trade-steal', 'Steal');   // MENU-ORDER: a crime, edged in blood and set apart from the sale
     steal.disabled = !(stealCost() > 0);
     steal.onclick = doSteal;
     bar.append(steal);
@@ -973,7 +993,7 @@ function render() {
 
   const head = el('header', 'sb-top');
   const who = el('div', 'sb-who');
-  who.append(el('h2', null, `${deps.shopName ?? 'Shop'} — ${MODE_LABEL[mode] ?? mode}`));
+  who.append(el('h2', null, `${deps.shopName ?? 'Shop'} — ${TRADE_TITLE[mode] ?? mode}`));   // MENU-ORDER: the mode whole
   head.append(el('span', 'sb-spacer'), who);
   const closeBtn = el('button', 'act', 'Close');
   closeBtn.onclick = close;

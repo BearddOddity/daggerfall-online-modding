@@ -3726,6 +3726,14 @@ ${paceControlsCss('tview')}
   border-top: 2px solid rgba(125,116,96,0.35); background: rgba(10,12,17,0.4); }
 .trade-shell .trade-cost { flex: 1 1 auto; color: var(--brass); font-size: 13px;
   font-variant-numeric: tabular-nums; align-self: center; }
+/* MENU-ORDER (2026-10-12): the footer's two figures, each under its own name; the theft set apart from the sale */
+.trade-shell .trade-cost { display: flex; flex-wrap: wrap; gap: 4px 26px; }
+.trade-shell .trade-fig { display: flex; flex-direction: column; gap: 1px; }
+.trade-shell .trade-fig small { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+.trade-shell .trade-fig b { font-weight: 400; font-size: 16px; color: #efe8d6; }
+.trade-shell .trade-fig:first-child b { color: rgb(243,239,44); }
+.trade-shell .trade-steal { margin-right: 18px; }
+.trade-shell .trade-ownhead { margin-bottom: 8px; }
 .trade-shell .itemrow.on { background: rgba(125,116,96,0.16); box-shadow: inset 2px 0 0 var(--brass); }
 .trade-shell .itemrow.ghost { opacity: 0.5; }
 .trade-shell .itemrow.picked { background: rgba(125,116,96,0.22); box-shadow: inset 2px 0 0 var(--brass); }
@@ -3740,7 +3748,7 @@ ${paceControlsCss('tview')}
 .trade-shell .trade-detail .tile { flex: 0 0 auto; }
 .trade-shell .trade-detail { min-height: 78px; box-sizing: border-box; }   /* TRADE-STEADY: the strip's room kept, filled or not */
 .trade-shell .trade-detail-empty { justify-content: center; }
-.trade-shell .trade-detail-empty .meta { margin: 0; font-size: 12px; color: #7d745f; letter-spacing: 0.04em; }
+.trade-shell .trade-detail-empty .meta { margin: 0; font-size: 13px; color: var(--dim); letter-spacing: 0.04em; }   /* MENU-ORDER: FONT3's dim, where #7d745f had escaped it */
 .trade-shell .trade-detail-info { flex: 1 1 auto; min-width: 0; }
 .trade-shell .trade-detail-info h4 { margin: 0 0 4px; font-size: 14px; font-weight: 400;
   color: #e8e0c8; }
