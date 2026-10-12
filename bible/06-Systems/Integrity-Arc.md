@@ -289,7 +289,9 @@ route's ids. Mutant records `tools/mutants/int_audit.json`; the arc's own record
   (Realm-Arc phase 2) stand as planned. HACKED-GOLD (Progress) narrowed it: a letter of credit never rides a peer's word,
   a peer's price is held under the law's ceiling and a worn offer lands what can be worn - a COIN PILE still does (65,535
   a pile, 64 a word: a forger's up to ~4.2 million a word, the receiver's budget's), as it is how an honest player takes
-  the coin another machine rolled. Closing it is each player's own roll of that coin - Mac's call
+  the coin another machine rolled. Asked whether to close it (each player's own roll of that coin), the session: "I
+  dont wanna mess with honest players" - it stays. So `enforce`, as built, would hold an honest player who took a
+  forger's coin: the coin on a peer's word wants charging to its giver, or a witness, first
   (`01-Overview/Field-Bugs-2026-10-12f.md`, For Mac).
 - **Customs** brings an offline character's items in whole (RESTORE, "Keep all"); its first judgement charges what they
   add past its level's allowance to the budget, which holds nothing until staff turn it on.
@@ -668,9 +670,12 @@ the clock, and the legacy record held to its own law.
   pile's count past one DFU `int` are law findings (`itemLaw.js` GOLD_INT_MAX, `judge.js` purseWord) - the absurd holds
   from day one, the measure no longer saturates; the law's version 3, `ACCOUNT_VERSION` acct121 (TECH1's rule). The
   review (INT6): `realm-gains` (who went past the bucket, largest first) and `realm-trades` (whom a character traded
-  with, and what each gave). `test/hackedgold.test.js` (10); `tools/mutants/hackedgold.json` (32, all dead). Left for
-  Mac, on the page: the budget's `enforce` (and what a measured week leaves behind - no debt, a rollback that cannot
-  reach it), coins on a peer's word, a hall's decor asking no hold, a boat's records on a peer's word.
+  with, and what each gave). `test/hackedgold.test.js` (10); `tools/mutants/hackedgold.json` (32, all dead). Read again
+  against the session's "I dont wanna mess with honest players": an honest player feels it at one place alone - online
+  a letter goes into no room's container or body, and one already lying there is dropped (no one can tell it from a
+  forged one) - asked, and kept. Coins on a peer's word: asked, they stay. Left for Mac, on the page: the budget's
+  `enforce` (what a measured week leaves behind - no debt, a rollback that cannot reach it - and, the coins staying, an
+  honest taker of a forger's coin held by it), a hall's decor asking no hold, a boat's records on a peer's word.
 - **CRAFT-HOLD (2026-10-11, the exploit audit; its review the same day): the hold follows the piece.** `realm.js`
   craftHoldOf - a HOLD (never `record-unjudged`) of the account's realm character a crafted piece's maker record names
   (`products.char_id`, or the offline character a customs character came in as, `origin_id`) - asked by the list, the

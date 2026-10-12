@@ -52,6 +52,15 @@ settles from the giver's record.
   (an owned house's cupboards, a ship's chest), the wagon and the ground take it; offline every place does, as DFU's.
   The enhanced pack's two gates (the stow and the drag's ghost) ask the same law - a loot session never opens the pack
   there (MAC-M2 B), so they stand where a container would be reached the day one does.
+- **What it costs an honest player, asked and answered.** The session: "I dont wanna mess with honest players". Every
+  part of this record was read again against it, and this is the one place an honest player can feel: online a letter
+  goes into no room's container or body (the classic pack says so; the enhanced pack's loot window only ever took), and
+  a letter already lying in a room's container when this lands is dropped from it. No one can tell that letter from a
+  forged one: the ledger keeps no row of a piece its holder let go (INT4 `item_uids`), the relay's memory of a room is
+  its host's word with no depositor in it, and a record's `t` is a client's. It was any player's to take already, and
+  the room forgets it in thirty days. Asked - block new letters (this record), leave them alone (a forger's letter, up to
+  GOLD-INT's two billion, reaches the honest), or a letter the service holds while it lies in a chest (days; it saves no
+  letter already there) - the answer: block new ones.
 
 ## PRICE-CAP: a peer's price is held under the law's ceiling
 
@@ -132,11 +141,16 @@ days (the bodies' branch shared with the gains), TECH1's law version and AUDIT W
     inflated checkpoint is the clean one, and a rollback is refused past any move the service made since
     (`service-moved`). What staff can do today: `gains` to find them, `hold` to freeze them, `trades <id>` to find
     whom they paid. A measure-aware clean point is a design change of INT6's; asked, not built.
-- **Coins on a peer's word.** A coin pile still rides one (at most 65,535 a pile, 64 a word): it is how an honest
-  player takes the coin another player's machine rolled - a body its foe's owner grants, a chest another player opened
-  first. Closing it means each player's own roll of that coin (as a shared quest's gold already is), which multiplies a
-  party's gold; leaving it, a forger hands out up to ~4.2 million a container word, charged to the receiver's budget.
-  Which?
+  - **Enforced as built, it holds the honest.** The budget charges the record that shows the gain, and a coin pile
+    still rides a peer's word (below): an honest player who takes a forger's coin from a seeded chest is the one past
+    the bucket. The session's rule ("I dont wanna mess with honest players") wants the coin on a peer's word charged to
+    its giver, or witnessed, before `enforce` is on; asked, not built.
+- **Coins on a peer's word - answered: they stay.** A coin pile still rides one (at most 65,535 a pile, 64 a word): it
+  is how an honest player takes the coin another player's machine rolled - a body its foe's owner grants, a chest
+  another player opened first. Closing it means each player's own roll of that coin (as a shared quest's gold already
+  is), which multiplies a party's gold; leaving it, a forger hands out up to ~4.2 million a container word, charged to
+  the receiver's budget. The session: "I dont wanna mess with honest players" - an honest party's looting stays as it
+  is.
 - **Small, found on the way, left open**: a guild hall's decor asks no hold (`decor.js`, a sink to the realm; half of
   what was paid goes to the guild's treasury when the piece is taken out - about 200 gold a piece); a boat's deed or
   parts on a peer's word (a deed handed on is a second boat - AUDIT REALM2 T1 closed the trade alone).
