@@ -2209,9 +2209,9 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  temporal dead zone, which `?.` cannot save (bootorder.js's BOOT-TDZ2
    *  gate catches exactly this). Until the ticker stands this answers
    *  NaN, and the pure law's own guards make every call a no-op: nothing
-   *  expires on a clock that has not started, and the start pixel's
-   *  first sight is simply recorded the next time it streams in - or the
-   *  moment the player enters it, which is what onDungeonSpawned is for. */
+   *  expires on a clock that has not started. SPAWN-REBIRTH: a spawn's
+   *  long clock starts the moment a player enters it, which is what
+   *  onDungeonSpawned is for - never when its pixel streams in. */
   let _spawnClock = () => NaN;
   /** TTL1: is the player standing in the spawn on this pixel RIGHT NOW?
    *  The creator's rule says "when there is no player in it" of both
@@ -2240,13 +2240,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   // OW6L (2026-09-29, the player: "Everything needs that persistence between players in the overworld"): THE CELL'S
   // OVERWORLD LEDGER (net/overworldLaw.js, kept by the relay's cell room; net/online.js sendOverworld / onOverworld).
   // What I spend - a band fought or escaped (TV7), a raider come alongside or outsailed (OWS3) - and a spawned
-  // dungeon's clocks - its first sight here, its first clear (TTL1) - are said to the cell I stand in, which keeps them
+  // dungeon's clocks - its first entry here, its first clear (TTL1, SPAWN-REBIRTH) - are said to the cell I stand in, which keeps them
   // and says them to every player there, and to one who walks in later in its welcome: a band someone fought is gone
   // for everyone for its life, not only for those whose frames heard it (TV7b's word reached three pixels, that minute);
   // and every player's spawned dungeons run out on the SAME clocks - the earliest sight and the earliest clear anyone
   // had (the spawn ledger's merge), where each client's own clocks let two players disagree for days whether one stood.
   // A word the cell did not take (the gate shut, a socket down, a dungeon's room rather than a cell) is said again.
-  // Declared ahead of the spawn roll below, whose first sight says its row during the boot's own builds (BOOT-TDZ).
+  // Declared ahead of the spawn roll below, whose first sight said its row during the boot's own builds (BOOT-TDZ; SPAWN-REBIRTH: a
+  // first entry says it now, and a save loaded straight into a spawn enters it during the boot).
   const OW_SAY_MS = 1000;   // how often what is owed is said (the session's own bucket is OW_HZ_MAX a second)
   const OW_SAY_KEEP_MS = 10 * 60 * 1000;   // a row owed past this is let go (my ledger keeps it; the cell's behind-answer heals)
   const OW_SAY_MAX = 64;   // and never more owed than this, the oldest let go
@@ -2254,7 +2255,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   let _owSaidAt = -Infinity;
   /** OW6L: a band or a raider spent here - owed to the cell. */
   function owSaySpent(id) { _owSay.sp.delete(id); _owSay.sp.set(id, performance.now()); owSayBound(_owSay.sp); }
-  /** OW6L: a spawned dungeon's row (its first sight, its clear) - owed to the cell as my ledger has it now. */
+  /** OW6L: a spawned dungeon's row (its first entry, its clear) - owed to the cell as my ledger has it now. */
   function owSayRow(key) { if (!_spawnLedger.wireRow(key)) return; _owSay.dg.delete(key); _owSay.dg.set(key, performance.now()); owSayBound(_owSay.dg); }
   function owSayBound(m) { while (m.size > OW_SAY_MAX) m.delete(m.keys().next().value); }
   /** OW6L: what is owed, said (a second apart at most) - what the cell took no longer owed; a spent id of a life gone, and
@@ -2284,15 +2285,18 @@ export async function bootWorld(canvas, renderer, params, status) {
     }
     if (msg?.k !== 'dg') return;
     let moved = false;
-    for (const [px, py, seen, cleared] of msg.rows) moved = _spawnLedger.merge(`${px},${py}`, seen, cleared) || moved;
+    const now = _spawnClock();   // SPAWN-REBIRTH: a heard row of a life that is over is none, and gives way to a later life's
+    for (const [px, py, seen, cleared] of msg.rows) moved = _spawnLedger.merge(`${px},${py}`, seen, cleared, now) || moved;
     if (moved) tvDng.at = null;   // the Overworld's dungeons read again: a spawn now gone leaves its list
   }
-  /** OW6L: a spawn's first sight here - its long clock started, and the cell told (a sight already in my ledger - my own,
-   *  or the cell's merged in - starts nothing and says nothing). */
+  /** OW6L: a spawn's first entry here - its long clock started, and the cell told (an entry already in my ledger - my own,
+   *  or the cell's merged in - starts nothing and says nothing). SPAWN-REBIRTH: the one door that starts it - entering
+   *  (onDungeonSpawned), never a pixel streaming in - and a row of a life that is over is none (the ledger's `has`). */
   function _spawnSeen(key) {
     if (locationIndex.get(key)?.superTier) return;   // SD2b: never a Hollow's - its life is the hub's record, not a spawn's clocks
-    const fresh = !_spawnLedger.wireRow(key);
-    _spawnLedger.note(key, _spawnClock());
+    const now = _spawnClock();
+    const fresh = !_spawnLedger.has(key, now);
+    _spawnLedger.note(key, now);
     if (fresh) owSayRow(key);
   }
   const _spawnUnroaded = new Set();   // SPAWN-ROADS: spawned keys decided before the road network landed
@@ -2381,6 +2385,8 @@ export async function bootWorld(canvas, renderer, params, status) {
       // rides the save), so the pixel stays empty. It was forgotten here, and the roll is a pure hash of the pixel: the
       // very next ask - the build's own, a moment after buildPixel's probe had asked - stood the same dungeon again on a
       // fresh seven days. "Spawned Dungeons should expire/removed" (TTL1, the creator's rule relayed by Mac)
+      // SPAWN-REBIRTH: gone until it stands again - REBIRTH_TTL_DAYS after it died the row is of a life that is over,
+      // `expired` answers false, and the same dungeon stands here with no clock running until a player enters it
       if (_spawnLedger.expired(key, _spawnClock()) && !_insideSpawn(key)) {
         _locIndexGen += 1;   // AUDIT OW4 D5
         locationIndex.delete(key);
@@ -2391,7 +2397,8 @@ export async function bootWorld(canvas, renderer, params, status) {
       _locIndexGen += 1;   // AUDIT OW4 D5
       locationIndex.set(key, loc);
       if (!net) _spawnUnroaded.add(key);   // SPAWN-ROADS: decided without the network - the sweep asks again
-      _spawnSeen(key);   // TTL1: first sight starts the seven-day clock (OW6L: and the cell hears it)
+      // SPAWN-REBIRTH: standing it starts NO clock - the seven days start when a player enters it (onDungeonSpawned).
+      // A first sight here started them for every spawn within the terrain distance of a road walked, entered or not
       return loc;
     } catch (e) { console.warn('[spawned dungeons]', px, py, e?.message ?? e); return null; }
   };
@@ -2450,7 +2457,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const tvSpawnGone = (x, y) => { const key = `${x},${y}`; return _spawnLedger.expired(key, _spawnClock()) && !_insideSpawn(key) && built.get(key)?.location == null; };
   /** AUDIT OW4 D4: WHAT spawnedDungeonAt WOULD STAND on a pixel it has not built - its own gates (the sea, a path across
    *  the pixel, the clocks; the roll and the page are asked by the caller) and its clone, with none of its writes (the
-   *  index, the ledger's first sight, the roads' provisional keys): a far found spawn is marked, never built. */
+   *  index, the roads' provisional keys): a far found spawn is marked, never built. */
   function tvSpawnAt(px, py) {
     if (maps.getClimateIndex(px, py) === CLIMATES.Ocean || !_spawnGround(px, py) || tvSpawnGone(px, py)) return null;
     const roads = terrainGen.roads();
@@ -29897,7 +29904,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // dungeon. `onDungeonSpawned` only fires for a synthesized one, so
     // the note is unconditional; `onDungeonCleared` fires for ANY
     // dungeon, so _noteSpawnCleared checks the pixel first.
-    onDungeonSpawned: () => { const p = playerTravelPixel(); _spawnSeen(`${p.x},${p.y}`); },   // OW6L: the one first-sight door
+    onDungeonSpawned: () => { const p = playerTravelPixel(); _spawnSeen(`${p.x},${p.y}`); },   // OW6L: the one first-entry door (SPAWN-REBIRTH: the long clock starts here alone)
     onDungeonCleared: _noteSpawnCleared,
     spawnLedger: () => _spawnLedger,   // TTL1: so a save made INSIDE a dungeon carries the clocks too
     legacyWillRise: () => legacyHost?.willRise() ?? false,   // AUDIT LEGACY B5: Project Legacy will raise this death - Privateer's Hold's start-marker arm takes it offline too
