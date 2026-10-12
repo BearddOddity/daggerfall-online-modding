@@ -4119,6 +4119,11 @@ colour and the sheet's ink; the fallback's order. `tools/mutants/proffound1.json
 `tools/mutants/em34.json` EM7-2 (the plus-one's drift, now byteOfType's). Not seen in a real town (no ARENA2 here).
 Ledger A (PROF-FOUND).
 
+CARP-YARD (the same day, Mac: "Let's also redesign their buildings like we did with stables, etc"): Carpentry also has
+an open-air place of its own, the JOINERY - a third yard beside each city's and town's Stable and Wagon Yard. Its
+workbench is a station at the furnisher's fee (`03-World/Merchant-Yards.md` CARP-YARD). The Furniture Store and its
+bench stand as they were.
+
 ## Appendix A - a day of a gatherer
 
 Ilsa, a Journeyman herbalist and Apprentice miner in Anticlere (a march), sets out at seven (ANY-HOUR: the wilderness keeps no hours now - seven is her habit). The board's Work tab has a
