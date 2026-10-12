@@ -676,7 +676,6 @@ export class QuestMachine {
    *  the corpus fires at startup all over - operated on nothing. */
   startQuestImmediate(quest) {
     quest.start();
-    revealNearSites(quest);   // FIELD BUGS 2026-10-12e QUEST-TOWN
     adoptLinkedDungeonSize(quest, this);   // AUDIT DELVE E5: where the medium size is either side, the size its markers know
     this.deps.addQuestTopics?.(quest);
     // QUEST-UID1 (2026-09-24, found tracing "two letters from the queen"): `quests.Add(quest.UID, quest)` (:725) is a
@@ -687,6 +686,7 @@ export class QuestMachine {
     if (this.quests.has(quest.uid)) throw new Error('An item with the same key has already been added.');
     this.quests.set(quest.uid, quest);
     this.deps.onQuestStarted?.(quest);
+    revealNearSites(quest);   // FIELD BUGS 2026-10-12e QUEST-TOWN: its town on the map, once the quest is the machine's
     if (this.lastNPCClicked != null) {
       this.assignQuestResourceBehaviour(this.lastNPCClickedHost ?? null, this.lastNPCClicked);
     }
