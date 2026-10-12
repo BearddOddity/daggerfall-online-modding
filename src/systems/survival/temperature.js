@@ -27,10 +27,15 @@ export const FLAG_FIRE = 8;
 export const FLAG_FROST = 16;
 
 /** The climate's own temperature. Desert2 is the Dak'fron interior, the
- *  hottest; Mountain the coldest; Ocean is a beach (the classic maps put
- *  a few pixels of it under a player's feet at the coast). */
+ *  hottest; Mountain the coldest. AUDIT C&C (2026-10-12, E4): OCEAN IS THE
+ *  SEA, AT NOUGHT - a declared departure (Port-Ledger A). The mod's +20 was
+ *  a beach (a classic player met a few pixels of it at the coast); the port
+ *  sails the whole Bay over it (the one water law, ui/overworldModel.js
+ *  isWaterPixel: every Ocean pixel is sea), and +20 made a winter crossing
+ *  comfortable and a summer one hot. The sea is the season, the hour and
+ *  the weather alone. */
 export const CLIMATE_TEMP = Object.freeze({
-  [CLIMATES.Ocean]: 20, [CLIMATES.Desert]: 40, [CLIMATES.Desert2]: 50, [CLIMATES.Mountain]: -40,
+  [CLIMATES.Ocean]: 0, [CLIMATES.Desert]: 40, [CLIMATES.Desert2]: 50, [CLIMATES.Mountain]: -40,
   [CLIMATES.Rainforest]: 20, [CLIMATES.Swamp]: 10, [CLIMATES.Subtropical]: 30,
   [CLIMATES.MountainWoods]: -30, [CLIMATES.Woodlands]: -10, [CLIMATES.HauntedWoodlands]: -20,
 });
@@ -394,7 +399,7 @@ export function temperatureWord(felt) {
 
 /** TEMP-UI (2026-10-12): the climates as the temperature's breakdown names them. */
 export const CLIMATE_NAMES = Object.freeze({
-  [CLIMATES.Ocean]: 'Coast', [CLIMATES.Desert]: 'Desert', [CLIMATES.Desert2]: 'Deep desert', [CLIMATES.Mountain]: 'Mountains',
+  [CLIMATES.Ocean]: 'Sea', [CLIMATES.Desert]: 'Desert', [CLIMATES.Desert2]: 'Deep desert', [CLIMATES.Mountain]: 'Mountains',
   [CLIMATES.Rainforest]: 'Rainforest', [CLIMATES.Swamp]: 'Swamp', [CLIMATES.Subtropical]: 'Subtropics',
   [CLIMATES.MountainWoods]: 'Mountain woods', [CLIMATES.Woodlands]: 'Woodlands', [CLIMATES.HauntedWoodlands]: 'Haunted woods',
 });

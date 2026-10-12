@@ -1907,22 +1907,15 @@ producers before it was fixed.
   Draught's bank said, and the "three tiers" sentences in the code said as
   four (RETIRING A FLAG DELETES THE SENTENCE).
 
-### Open, for the owner
+### Decided (AUDIT C&C, below)
 
-- **Boons reaches other players (B1).** The tier is each player's online,
-  on MODS-ONLINE-3's reading that a tier decides only what MY body pays.
-  Boons breaks that reading: its +5s ride the duel's and the siege's live
-  stats (`combat/duelCombat.js`), and Thriving's luck rolls a world room's
-  shared loot (`hostCombat.js` `rollCorpseLoot`). Two answers, both one
-  line: keep the tier the player's and say so (the rows' notes), or leave
-  the attribute points out online and keep the hearth. Not decided here.
-- **An older build erases a stored Boons (B12)**: a build from before
-  Boons reads `'boons'` as no tier and its next save drops it. Inherent to
-  a new stored value; a player who runs an old desktop build will need to
-  pick Boons again.
-- **The enhanced menu's own Stats page (B11)** shows a raised attribute as
-  a plain number - the Stats side of the pack and the classic sheet say
-  why; that page does not.
+- **Boons reaches other players (B1)**: kept the player's - its +5s ride
+  the duel's and the siege's live stats and Thriving's luck a room's loot,
+  as every live buff does. AUDIT C&C says why.
+- **An older build erases a stored Boons (B12)**: inherent to a new stored
+  value; a player who runs an old desktop build picks Boons again.
+- **The enhanced menu's own Stats page (B11)**: its Attributes page names
+  the boons under the meters now.
 
 ## TEMP-UI - THE TEMPERATURE, SHOWN (2026-10-12)
 
@@ -2086,20 +2079,53 @@ warm reading in a cold world (a Legendary's heat degrees cool it; a fire
 resistance cannot) - dead. Twenty records re-aimed by content (the harm
 lines, the clothes, the load, the page, the phone's rule).
 
-### Open, for the owner
+### Decided (AUDIT C&C, below)
 
-- **E4 - the sea is a beach.** `CLIMATE_TEMP[Ocean]` is +20 on every
-  pixel of every voyage, the Etheric Sea's open water too: a winter
-  crossing reads warm and a summer one hot. Two answers - the coast's
-  climate made milder (ROOF-SHELTER's "milder of"), or the sea at nought
-  (season, hour and weather alone). A tuning call, not made here.
-- **E5 - a jump is felt in one frozen environment.** The ticker reads the
-  host's environment once a tick, so a fast travel's whole span is felt at
-  the arrival's climate and the departure's hour. Advancing the hour per
-  replayed minute is right offline and wrong online (where the sky stands
-  while the character's clock moves - LIVED1), so it waits for its own
-  slice.
+- **E4 - the sea was a beach**: the sea is at nought.
+- **E5 - a jump was felt in one frozen environment**: offline its minutes
+  are felt at their own hour and month.
 - **E10 - the hour is a staircase** (a desert's 40 degrees at 16:00): by the
   mod's design; the plate shows it as it is.
 - `COVERING_CHEST` shades armour under Challenger Straps (warmth 1) but not
   under a surcoat - worth reading against the mod's IL.
+
+## AUDIT C&C - THE DECISIONS MADE, AND THE WHOLE ARC AUDITED (2026-10-12)
+
+> The owner, on the open questions above: *"Make the best decisions. DO a
+> comprehensive audit on everything ensuring perfection"*.
+
+### The decisions
+
+- **E4 - THE SEA IS AT NOUGHT.** `CLIMATE_TEMP[Ocean]` was the mod's +20,
+  a beach: a classic player met a few Ocean pixels at the coast. The port
+  sails the whole Bay over them (its one water law, `ui/overworldModel.js`
+  `isWaterPixel`, calls every Ocean pixel sea), and +20 made a winter
+  crossing comfortable and a summer one hot. The sea is the season, the
+  hour and the weather alone now: a winter crossing at noon -20, a summer
+  one +20, a winter storm's small hours -55 (the woods' -65). The
+  breakdown names it "Sea". A declared departure (Port-Ledger A). Of the
+  two answers the second: the coast made milder would need a neighbour's
+  climate in a reader that stands on one pixel.
+- **E5 - A JUMP'S MINUTES ARE FELT AT THEIR OWN HOUR.** The host reads the
+  air once a frame, so a fast travel or a rest was felt whole at the hour
+  it was read in - three days set out at a mountain midnight froze every
+  minute, set out at noon never met a night. `runSurvivalMinutes` now
+  feels each replayed minute at its own hour and month where the sky IS
+  the clock (`skyFollows`, handed by `worldTick.js` as `!_sharedClock`:
+  offline). Online the sky is the world's and stands while the character's
+  clock moves (LIVED1), so the host's hour holds there. The minute stood in
+  is always the host's own, and a one-minute step is that minute. The
+  climate is still the arrival's: the route is the travel's, not the
+  needs'.
+- **B1 - BOONS ONLINE: KEPT.** Every live buff rides the duel's sheet
+  (`combat/duelCombat.js` `duelAttackerOf` reads `liveStat`) and a room's
+  loot - a Fortify Strength gives far more than a boon's +5 - and the tier
+  is every player's to choose and every boon is earned by keeping the
+  body. Leaving the points out online would have made Boons online the
+  hearth alone.
+- **B11 - THE ATTRIBUTES PAGE SAYS WHY.** The enhanced menu's Stats
+  Attributes page names the boons under its meters
+  (`ui/temperatureCard.js` `boonStatRows`, the pack's own).
+- **B12** stays inherent, and Casual stays the default.
+
+Pinned by `test/auditcc.test.js`.

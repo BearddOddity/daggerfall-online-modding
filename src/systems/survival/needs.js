@@ -46,7 +46,7 @@ import { STAT_KEYS_ORDER, maxFatigue, liveStat, FATIGUE_MULTIPLIER } from '../st
 import { HARD_RULES } from './difficulty.js';
 /** SURV4: speed and agility down by this while stiff (survival/rest.js's STIFF_PENALTY, restated here so rest.js may import this module). */
 const STIFF_PENALTY = 5;
-import { MINUTES_PER_DAY } from '../gameDate.js';
+import { MINUTES_PER_DAY, dateFromClassicMinutes } from '../gameDate.js';
 
 /** RATIONS-HUNGRY: the hunger stages a sack of rations in the pack is eaten at by itself (Starving alone until
  *  2026-10-03). Peckish is not one - a sack is a full meal, and Peckish is a rumble, not a need. */
@@ -754,6 +754,12 @@ export function runSurvivalMinutes(entity, from, to, env, deps) {
   // - and a blackout night drank from the skin while its drinker was out cold. The replay's lines are gathered, each
   // said once when the walk reaches the minute the player stands in; the stage lines wait for that minute
   // (stageNote), which says the net change.
+  // AUDIT C&C (2026-10-12, E5): A JUMP'S MINUTES ARE FELT AT THEIR OWN HOUR. The host reads the air once a frame, so a
+  // fast travel or a night's rest was felt whole at the hour it was read in - three days set out at a mountain midnight
+  // froze at -60 every minute, set out at noon never met a night. Where the sky is this clock (`skyFollows`: offline,
+  // worldTick.js) a replayed minute is felt at its own hour and month; online the sky is the world's and stands while
+  // the character's clock moves (LIVED1), so the host's hour holds. The minute stood in is always the host's own.
+  const sky = deps.skyFollows && end - start > 1 ? { ...env } : null;
   const sinks = deps.sinks ?? {};
   const heard = [];
   const walk = { ...deps, replay: true, sinks: { ...sinks, say: (t) => { if (!heard.includes(t)) heard.push(t); } } };
@@ -764,7 +770,8 @@ export function runSurvivalMinutes(entity, from, to, env, deps) {
     // the one that may kill. A one-minute step is no jump: it is that minute.
     walk.landing = !walk.replay && end - start > 1;
     if (!walk.replay) { walk.sinks = sinks; const say = sinks.say ?? deps.say; for (const t of heard) say?.(t); }
-    temp = survivalMinute(entity, m, env, walk);
+    if (sky && walk.replay) { sky.hour = (((m % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY) / 60; sky.month = dateFromClassicMinutes(m).month; }
+    temp = survivalMinute(entity, m, sky && walk.replay ? sky : env, walk);
   }
   if (end > (s.lastMinute ?? -Infinity)) s.lastMinute = end;
   return temp;
