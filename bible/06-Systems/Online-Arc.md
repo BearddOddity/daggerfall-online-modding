@@ -15495,7 +15495,7 @@ whenever it mounts before the card, which made the probe's Escape check a race.
   serpent1_auditclient (the serpents slain are a plaque). Re-aimed: inspect1.json INS-gear-out-of-order (the row carries
   its part).
 
-## HOLD-SOLO (2026-10-07, FIELD BUGS 2026-10-07b, nObOdy on the Discord: "Lock privateer's hold. The first dungeon is a tutorial area") - the tutorial dungeon is every character's own
+## HOLD-SOLO (2026-10-07, FIELD BUGS 2026-10-07b, nObOdy on the Discord: "Lock privateer's hold. The first dungeon is a tutorial area") - the tutorial dungeon is every character's own (REVERTED 2026-10-12: HOLD-SHARED, below)
 
 "New players loading in in front of 50 players in a dead dungeon with no enemies ruins the magic. ... I couldnt even get
 gear or experience for my character cause i had to zoom past dead enemies and already open doors to get out and i sure
@@ -15523,8 +15523,34 @@ the presence session hears no welcome (H4); and a staff `/tp` to a player there 
 Of every location in the world, the start cell holds one: Daggerfall's Privateer's Hold (map id 187853213, pixel
 109/158; MAPS.BSA read through the port's own reader).
 
-- **Pinned**: `test/fb1007b_holdsolo.test.js` (9; one gated on ARENA2); `tools/mutants/fb1007b.json` (its
-  FB1007B-HOLD / START-CELL / PH1 records and the audit's H records). Record: `01-Overview/Field-Bugs-2026-10-07b.md`.
+- **Pinned** (until the revert): `test/fb1007b_holdsolo.test.js` (9; one gated on ARENA2) - DELETED by HOLD-SHARED;
+  `tools/mutants/fb1007b.json` (its FB1007B-HOLD / START-CELL / PH1 records and the audit's H records). Record:
+  `01-Overview/Field-Bugs-2026-10-07b.md`.
+
+## HOLD-SHARED (2026-10-12, asked: "I want to revert the change we made to privateers hold making it instanced") - Privateer's Hold is a shared world room again
+
+HOLD-SOLO and AUDIT FB1007b's H1-H5, above, reverted. Online, Privateer's Hold keys its world room by its map id, as
+every dungeon does - `dungeon:m187853213` (`net/online.js` roomKeyFor): the others' bodies, the room's memory (WORLD1),
+its simulation (WORLD2), its acts (WORLD3), its loot (WORLD4) and a trade from anyone there, as before 2026-10-07.
+
+- `scenes/worldModes.js` roomIdentity marks no dungeon `solo`; `scenes/world.js`'s key block asks `private` alone.
+- Gone with it: the page's own memory of the Hold (H2: `keepSoloMemory` / `restoreSoloMemory`, its load reset), the
+  staff `/tp` refusal there (H3), the hub link's clock for a presence session with no room (H4 - that session keys the
+  Hold's room again and hears its own welcome), the Local tab's, a page held out's, the party card's and the Online
+  pane's words that the Hold is the player's alone (H5: `net/chat.js` SOLO_LOCAL_TEXT, `ui/partyPanel.js` withMe's
+  tutorial clause), and the Playing Online page's "Your starting cave is yours alone" (`systems/tutorialCatalogue.js`).
+- `systems/startDungeon.js` keeps isStartCell and isStartDungeon - PH1's in-place respawn and TUT1 read them, and they
+  read the configured start cell as ever; isTutorialHold and SHIPPED_START_CELL (H1) are gone.
+- The relay is untouched: HOLD-SOLO never moved it, and every client joins the Hold's room again.
+- Four hosts: `scenes/world.js` and `scenes/worldModes.js` reverted; `scenes/exterior.js` and
+  `scenes/dungeonContext.js` never keyed a room for the Hold (TUT1's start-cave tutorial in `dungeonContext.js` is
+  untouched).
+
+- **Pinned**: `test/holdshared.test.js` (5) - the start cell, the identity and the key block, the staff teleport and the
+  Local line executed from their source, withMe, the Online pane and the Playing Online page; `tools/mutants/holdshared.json`
+  (4, each a piece of HOLD-SOLO back, dead). Re-aimed: fb1007b.json's START-CELL and PH1 records (to holdshared; the
+  13 HOLD and H records retired, 46 left), sdonline.json SD-ONLINE-the-identity-blind and auditparty8.json
+  AP-hud-place-by-words by content. PIN MOVED: tier1_dungeontiers (the transition's line), sdonline (the identity).
 
 ## CARDS5 (2026-10-08, Mac: "Do 3 4 and 5") - the relay deals
 
