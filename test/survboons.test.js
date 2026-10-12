@@ -8,6 +8,7 @@ import {
   NEED, BOON, BOON_IDS, SAID_BOONS, HEARTH_FATIGUE, WELL_RESTED_PER_SLEEP_MINUTE, WELL_RESTED_MAX_MINUTES, SURVIVAL_TEXT,
   newSurvival, survivalMinute, runSurvivalMinutes, survivalBoons, survivalStatMods, paySleep, pauseSurvival, alignSurvival, boonNotes, drinkWater,
 } from '../src/systems/survival/needs.js';
+import { sunlit } from '../src/systems/survival/temperature.js';   // AUDIT C&C R2: the sun the hosts read
 import { HUD_BOON_WORDS, STATUS_TEXT, survivalHudChips, survivalStatusLines, temperatureReadout, boonEffect, restedLeft } from '../src/systems/survival/status.js';
 import { restCost } from '../src/systems/survival/rest.js';
 import { survivalFeed, survivalGateOn } from '../src/systems/survival/env.js';
@@ -128,14 +129,21 @@ test('SURV-BOONS: NOTHING IS EVER TAKEN - the worst day (starving, dehydrated, e
   assert.deepEqual(entry(e), {}, 'no attribute taken - and none earned: every need is unmet');
   assert.deepEqual(e.survival.boons, []);
   assert.equal('borrowed' in e.survival, false, 'nothing lent');
-  let minutes = 0;
+  let minutes = 0, sunned = 0;
+  // AUDIT C&C R2: and under the sun the hosts read (temperature.js sunlit) - the sweep stood every body in the shade, so
+  // the sun on bare skin's wound could lose its tier's gate under it; and Casual, which wounds nothing either, beside it
   for (const climateIndex of Object.values(CLIMATES)) for (const month of [0, 6]) for (const hour of [2, 14]) for (const weather of ['sunny', 'rain', 'snow', 'thunder']) {
+    const env = { climateIndex, month, hour, weather, inSunlight: sunlit({ hour, weather }) };
     const b = body({ survival: { ...newSurvival(0), lastAte: -5000, thirst: 140, sleepDebt: 20, wet: 250 } });
-    const l = run(b, 1, 30, { climateIndex, month, hour, weather }, BOONS, []);
+    const l = run(b, 1, 30, env, BOONS, []);
     minutes += 30;
+    if (env.inSunlight) sunned++;
     assert.deepEqual(drains(l), [], `${climateIndex}/${month}/${hour}/${weather}`);
+    const c = body({ survival: { ...newSurvival(0), lastAte: -5000, thirst: 140, sleepDebt: 20, wet: 250 } });
+    assert.deepEqual(run(c, 1, 30, env, CASUAL, []).filter((x) => x[0] === 'hurt'), [], `casual wounds nothing: ${climateIndex}/${month}/${hour}/${weather}`);
   }
   assert.equal(minutes, Object.values(CLIMATES).length * 16 * 30);
+  assert.equal(sunned, Object.values(CLIMATES).length * 2, 'the sunny afternoons stood in the sun');
   assert.deepEqual(restCost('rough', BOONS), { recovery: 1, encounters: 1, stiffHours: 0 }, 'the rest window is DFU\'s whole hour, one ask, no morning');
   const raw = createSurvivalItem(TEMPLATE.RawFish);
   assert.equal(eatLaw(raw, { lastAte: 0, now: 5000, luck: 10, rolls: () => 0.99, rules: BOONS }).sick, null, 'no sickness roll');

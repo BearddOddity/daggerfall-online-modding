@@ -2527,6 +2527,14 @@ Pinned by `test/auditcc_ui.test.js`, with `auditsurv`,
   neither drains an attribute. A declared departure (Port-Ledger A): the
   mod's meal clock runs on under the beast, and the port's stands, as a
   vampire's does - the body comes back from the hunt as hungry as it went.
+- **R2 - the sun's wound had no pin on its tier.** Boons' NOTHING IS
+  EVER TAKEN sweep stood every body in the shade, so the sun on bare
+  skin could have wounded in every tier under it: the sweep stands its
+  sunny afternoons in the sun the hosts read now, and runs Casual beside
+  Boons. And two mutants of a jump's walk that no pin fails are decided
+  equivalent and recorded so (R18): the hour's double modulo (no clock
+  mints a negative minute) and the feed's `?? sinks` (an object or
+  absent).
 - **N8 - a floor that could never bind.** The thirst's rate held a factor
   of a half for the cold over a factor never under one; the record called
   the mod's thirst rising in the freezing a bug the port had fixed, and
