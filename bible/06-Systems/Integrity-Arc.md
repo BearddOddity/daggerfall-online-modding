@@ -138,7 +138,9 @@ so a checkpoint that loses its race writes no verdict either:
 
 The answer says the hold (`tradeHeld`) and, when the law holds it, the first piece it found (`tradeHeldWhy`: its code
 and template); the client's session keeps it and tells the player as it moves, naming the piece (`systems/realmSaves.js`
-onTradeHeld, `systems/itemIds.js` tradeHeldNotice). The cutover (decision 3): the first judgement's baseline is the
+onTradeHeld, `systems/itemIds.js` tradeHeldNotice) - and a trade refused over its own hold says that notice, the piece
+named; a law hold standing past STRIKES_FOR_REVIEW with nothing found answers `tradeHeldWhy: { code: 'review' }`, said as
+staff's (RING-HOLD, `01-Overview/Field-Bugs-2026-10-12.md`: it read "something" once the Ring was gone). The cutover (decision 3): the first judgement's baseline is the
 record the realm ALREADY HELD for the character, read once from R2 - never the save the first judged checkpoint brings,
 which is charged for what it adds like any other (the audit: the first judged save could hold anything, and was the
 baseline); a new character's baseline is a newborn's purse, a customs character's its level's allowance. A wealth past
