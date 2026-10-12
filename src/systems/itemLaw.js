@@ -90,9 +90,10 @@ import './naval/treasureCharts.js';   // CAPT-CHARTS: the treasure chart
 
 /** The law's version - a finding names the law that found it, so a law loosened later can be asked again. TECH1 moved it
  *  to 2: a weapon's technique line (systems/lootRarity.js AFFIX_KINDS.technique) is lawful from it on, so a finding a law
- *  of 1 made against one is a finding to ask again. HACKED-GOLD moved it to 3: a letter of credit's worth and a coin
- *  pile's count past one count (GOLD_INT_MAX, below) are findings from it on. */
-export const ITEM_LAW_VERSION = 3;
+ *  of 1 made against one is a finding to ask again. BAL9c moved it to 3: the caster's potency and wellspring lines and
+ *  the arcane three (lootRarity.js ARCANE_LEGENDARIES) are lawful from it on. HACKED-GOLD moved it to 4: a letter of
+ *  credit's worth and a coin pile's count past one count (GOLD_INT_MAX, below) are findings from it on. */
+export const ITEM_LAW_VERSION = 4;
 
 const T = ENCHANTMENT_TYPES;
 const TYPE_KEY = Object.freeze(Object.fromEntries(Object.entries(T).map(([k, v]) => [v, k])));

@@ -90,9 +90,9 @@ save's record, its save tree's unsigned 32 bits - `formats/saveTreeFile.js` getU
 `purseWord`. The port's producers keep under it - the bank's amount field is nine digits
 (DaggerfallBankingWindow.cs:188-190), an estate is `| 0`, the realm's own credits at most a hundred million - so a count
 past it is no honest one: a law finding, which holds the trade from day one (INT3), where the budget, measuring, held
-nothing. A bank account is left as it was: its type in DFU's record was not read here. The law's version moved to 3 (a
-finding names its law), `ACCOUNT_VERSION` acct121 with it (TECH1's rule: a law names the first service that carries
-it). The honest sweep (`test/int1_itemlaw.test.js`) still finds nothing.
+nothing. A bank account is left as it was: its type in DFU's record was not read here. The law's version moved to 4 (a
+finding names its law), `ACCOUNT_VERSION` acct122 with it (TECH1's rule: a law names the first service that carries
+it) - 3 and acct121 on its branch, renumbered past BAL9 (which took them for its caster's lines) at the merge. The honest sweep (`test/int1_itemlaw.test.js`) still finds nothing.
 
 ## The review: realm-gains and realm-trades
 
@@ -124,7 +124,7 @@ survived: the building's pin used the field's nine trillion, which GOLD-INT now 
 law is asked, so it pinned nothing; it carries a letter the law takes). PIN MOVED: SS3's, PORTAL1's and AUDIT SS's
 source pins and their seven records (`unbound` to `peerHanded` at the sites, re-aimed by content, all dead); WORLD4's,
 WORLD8's and AUDIT WORLD4's; WORLD6b-iii(c)'s body count; CORPSE-GOLD's lifted scope; the law version's (INT1, TECH1);
-the account version's (acct121, its six records re-aimed, all dead). Six more records re-aimed by content, all dead:
+the account version's (acct122, its six records re-aimed, all dead; at the merge past BAL9 they and BAL9's own two version records were re-aimed again, all dead). Six more records re-aimed by content, all dead:
 INT1's gold under the wire's bound and AUDIT INT's purse and dropped-piece records (the law's new lines), INT14's tool
 days (the bodies' branch shared with the gains), TECH1's law version and AUDIT WATCH1's watch body (the new pile count).
 

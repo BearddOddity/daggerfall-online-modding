@@ -668,7 +668,7 @@ the clock, and the legacy record held to its own law.
   `worthCeiling` (INT1's own measure; the honest sweep's 46,919 pieces under it but Come Sail Away's deeds, which keep
   their hull's price). WORN-ONLY: a worn offer lands what can be worn. GOLD-INT: a purse, a letter's worth and a coin
   pile's count past one DFU `int` are law findings (`itemLaw.js` GOLD_INT_MAX, `judge.js` purseWord) - the absurd holds
-  from day one, the measure no longer saturates; the law's version 3, `ACCOUNT_VERSION` acct121 (TECH1's rule). The
+  from day one, the measure no longer saturates; the law's version 4, `ACCOUNT_VERSION` acct122 (TECH1's rule; 3 and acct121 on its branch, renumbered past BAL9 at the merge). The
   review (INT6): `realm-gains` (who went past the bucket, largest first) and `realm-trades` (whom a character traded
   with, and what each gave). `test/hackedgold.test.js` (10); `tools/mutants/hackedgold.json` (32, all dead). Read again
   against the session's "I dont wanna mess with honest players": an honest player feels it at one place alone - online
