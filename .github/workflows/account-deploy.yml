@@ -841,6 +841,51 @@ jobs:
           echo "::error::the account service never reported $want - the deploy did not take"
           exit 1
 
+      # D1-NEAR (bible/11-Multiplayer/Scale-Arc.md): WHERE THE WORKER
+      # ANSWERS FROM, AND WHAT A STATEMENT COSTS IT THERE, SAID ON EVERY
+      # DEPLOY. SCALE1 left the Worker to Smart Placement on the word that
+      # it would run beside its database, and nothing ever looked: it ran in
+      # Sydney, a Pacific from the primary, and every statement paid the
+      # crossing. Cloudflare says where on each answer (`cf-placement`), and
+      # one statement's cost is a public one-statement read on the primary
+      # (/v1/seats/sieges/live) less an answer that asks the database
+      # nothing (/v1/health), the medians of five each - a few ms beside
+      # the primary, 150 and more across an ocean. A REPORT and never a
+      # gate: the header is Cloudflare's to rename, and a runner's network
+      # is noisy.
+      - name: Report where the account Worker runs
+        run: |
+          set -uo pipefail
+          worker="${{ steps.deploy.outputs.base }}"
+          seen=""; health=(); read1=()
+          for i in 1 2 3 4 5; do
+            got=$(curl -sS --max-time 10 -o /dev/null -D - -w 'took: %{time_total}\n' "$worker/v1/health" 2>/dev/null) || got=""
+            got=$(printf '%s\n' "$got" | tr -d '\r')
+            at=$(printf '%s\n' "$got" | sed -n 's/^cf-placement:[[:space:]]*//Ip')
+            at=${at%%$'\n'*}
+            seen="$seen ${at:-none}"
+            health+=("$(printf '%s\n' "$got" | sed -n 's/^took: //p')")
+            one=$(curl -sS --max-time 10 -o /dev/null -w '%{time_total}' "$worker/v1/seats/sieges/live" 2>/dev/null) || one=""
+            read1+=("$one")
+          done
+          # the middle of the answers that came, in ms - none, none
+          mid() { printf '%s\n' "$@" | grep -E '^[0-9]+(\.[0-9]+)?$' | sort -n | awk '{ v[NR] = $1 } END { if (NR) printf "%d", v[int((NR + 1) / 2)] * 1000 + 0.5 }'; }
+          h=$(mid "${health[@]}") || h=""
+          s=$(mid "${read1[@]}") || s=""
+          if [ -n "$h" ] && [ -n "$s" ]; then
+            cost="one statement on the primary costs it ~$(( s > h ? s - h : 0 )) ms (medians of five: /v1/seats/sieges/live ${s} ms, /v1/health ${h} ms)"
+          else
+            cost="one statement's cost unmeasured - the reads did not answer"
+          fi
+          echo "cf-placement over five answers:$seen; $cost"
+          {
+            echo "### Where the account Worker runs"
+            echo ""
+            echo "\`cf-placement\` over five answers to /v1/health:$seen (wrangler.toml [placement] names the region; bible/11-Multiplayer/Scale-Arc.md D1-NEAR)"
+            echo ""
+            echo "From there, $cost - a few ms beside the primary, 150 and more across an ocean."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       # ═══ AUDIT PRE-MERGE 0929 T-CI: THE SMOKE AGREES AS A PLAYER DOES ══
       #
       # TERMS1 (acct20) refuses a guest row or a name without the Terms

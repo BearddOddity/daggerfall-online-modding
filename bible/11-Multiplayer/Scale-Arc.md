@@ -71,6 +71,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE5d | Event rooms (the gate's court, the Abyss realm, the arena) as copies around one fight; crowded cells | Yes | **Built** (2026-10-11, this branch; world192) - a crowded place overflows into layers; a gate's court into copies around its one fight (the realm, a siege and the arena are capped below a room by their own laws) |
 | SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | **Built** (2026-10-11, this branch; acct112) - measured first: written less at the source, not moved - Renown coalesced, the session touched hourly, the metrics by table; a token bound to a key considered |
 | SLIM-FRAME | The second wire's place in its own units: a pose's height to the centimetre in every room, a dungeon's, a town's and a building's x and z with it, a cell's x and z whole world units - the relay's fan says the room | Yes, once | **Built** (2026-10-11, this branch; relay world194, one drop at the merge) |
+| D1-NEAR | The account Worker beside its database's primary, by name (`[placement] region`): Smart Placement ran it in Sydney, a Pacific from the primary, and every statement of every route paid the crossing; every deploy says where it answers from | No | **Built** (2026-10-12, this branch - no migration, no version, no drop) |
 | SCALE6 | Abuse and backups: Turnstile on guest creation, /64 IPv6 rate keys, bans, report and ignore, `ALLOWED_ORIGIN`, R2 snapshots, a hub export | Some | Alongside |
 
 **Relay deploy policy (SCALE):** relay changes are batched into as few deploys as possible, each in a window announced beforehand. A deploy drops every player, and until SCALE2 every reconnect is a D1 write storm.
@@ -91,7 +92,9 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | `double2` | The status |
 | `double3` | The D1 statements the request ran |
 
-No player is named, and a metric never costs a request. The module's header carries the query. Smart Placement runs the Worker near its database.
+No player is named, and a metric never costs a request. The module's header carries the query. Smart Placement was
+to run the Worker near its database; nothing measured it, and it ran the Worker in Sydney, a Pacific from the primary -
+D1-NEAR (below) names the place instead.
 
 **Indexes.** `0043_scale_indexes.sql` holds twelve indexes, each found by the planner and pinned by it (`test/scale1.test.js` C). `node_harvests` has been rebuilt four times to widen its CHECK, so a fifth rebuild must recreate `idx_node_harvests_day`.
 
@@ -635,8 +638,9 @@ N^2/2 join frames. `_message` is past V8's optimizing ceiling (PERF-RELAY1), so 
   its config a minute by the `db` object a request handed in. A deployed service counts every request through a Proxy
   made for that request (`countedDb`), so it kept nothing past its own request, and every realm checkpoint read
   `realm_config` again. It is keyed by DB_ROOT now, as STORM-SHED's seat rows are.
-- **Unmeasured.** The account Worker runs under Smart Placement, beside its primary (SCALE1). Whether a replica takes
-  the mint's reads from there, or the nearest instance is the primary itself, is Cloudflare's to say. The service's
+- **Unmeasured.** The account Worker ran under Smart Placement, which SCALE1 took to be beside its primary (D1-NEAR
+  measured it in Sydney, the primary in western North America, and places it beside the primary by name). Whether a
+  replica takes the mint's reads from there, or the nearest instance is the primary itself, is Cloudflare's to say. The service's
   metrics will show whether a deploy's wave still overloads the primary. Correctness does not depend on it: a
   `first-primary` session reads what the primary would.
 
@@ -731,7 +735,7 @@ least, so `COPY=1` copies each frame as it is sent (AUDIT SCALE5a D6), and both 
   client can make two sends a second per socket. It is a referee's arm (PVPDUNGEONS), left for a slice with its law in
   hand.
 - **The traveller fan and a place room's look-change join** still copy the index. Neither is the hub's.
-- **Whether a replica serves the mint** under Smart Placement: unmeasured, above.
+- **Whether a replica serves the mint** beside the primary (D1-NEAR's placement): unmeasured, above.
 
 ### Pins
 
@@ -1237,8 +1241,8 @@ say how new a replica must be.
 - It lives in memory, so a new page starts at the primary.
 
 **What it moves.** By the service survey's model, about 55-62% of the reads a playing tab asks leave the primary once
-replicas serve. SCALE4f's `double7` will say whether they do. Under Smart Placement the Worker runs beside the primary,
-and whether D1 then serves a session from a replica is the open question SCALE4d named.
+replicas serve. SCALE4f's `double7` will say whether they do. With the Worker beside the primary (D1-NEAR - Smart
+Placement had run it in Sydney), whether D1 then serves a session from a replica is the open question SCALE4d named.
 
 **Pins.**
 - `test/scale4g.test.js` (4):
@@ -1876,6 +1880,82 @@ room's place whole, the room unread, the relay's fan unkeyed, the steps coarse. 
 the height whole (`"y":-1412` for -1412.25 - the bug, pinned); it reads the centimetre now, and its batch pins name the
 room. `SCALE5b-place-unrounded`, the three relay-fan records and the two `NETSMOOTH-1` records (to `wire.js`) re-aimed by
 content. The relay's version pins moved to world194.
+
+## D1-NEAR: built (2026-10-12, this branch - no migration, no version, no drop)
+
+From play: *"I notice a lot of UI elements that utilize the server (like searching players, the guild menu, etc) take
+an insane amount of time to load."*
+
+**The cause.** SCALE1 set `[placement] mode = "smart"` on the word that Cloudflare would run the account Worker near
+its database, and SCALE4d and SCALE4g reasoned from it. Nothing measured it. Every answer says where it ran
+(`cf-placement`), and on 2026-10-12 99 answers in 100 said `remote-SYD`: Smart Placement ran the Worker in Sydney. The
+primary is not there. Measured read-only from one client entering at Newark (EWR), against two public routes and one
+sign-in door:
+
+| | Worker in Sydney (`remote-SYD`) | Worker at Newark (`local-EWR`, Smart Placement's 1% baseline) |
+|---|---|---|
+| `/v1/health` - no statement | p50 278 ms (n=393), min 262 | p50 67 ms, p10 59 (n=6) |
+| `/v1/seats/sieges/live` - one statement, on the primary | p50 457 ms (n=394); over 1,195 more, min 411, p50 442 | p50 199 ms, p10 148 (n=5) |
+| so one statement costs | ~150-180 ms | ~90-130 ms |
+| `POST /v1/auth/token` with no credential - the sign-in line asked (ADMIT-LINE's `AdmitGate`), no statement | p50 428 ms, min 417 (n=60), beside health's 269 and 261 | - |
+
+A statement costs ~150-180 ms from Sydney and ~90-130 from Newark: the primary is ~70 ms from Newark and ~140-150 from
+Sydney, which is California - the difference between the two, some 60-75 ms, is Los Angeles' or San Jose's, and
+Seattle, Phoenix and everything east of them or in Oceania fit one side and not the other. The sign-in line's Durable
+Object costs the Worker the same ~155 ms from Sydney, so it stands in western North America too.
+
+**What it cost.** A route's wait was its statements, one after another, times the crossing - before any load:
+- the Guild tab's look (`/v1/guilds/mine`), fifteen: the session, the tombstone, the member, the succession, the
+  guild, the roster, the hall, the vault's count, the invitations, the ledger, the Marks, the Marks ledger, the holds,
+  the deeds (`server-account/src/guilds.js` viewOf) - some 2.5-3 s;
+- a seat board, nineteen to thirty-five (Field-Bugs-2026-10-11h D1-LOAD): 3-6 s;
+- a token's mint, the sign-in line's ask and its own statements - and every socket's hello waits on one (`online.js`
+  `_mint`), so the chat's player list and the friends list, which come over the hub link, waited on the crossing too;
+- the seats' Turning, several hundred reads: a minute and more, past its client's 15-second wait - what SEAT-LEASE met.
+  D1-LOAD's floor ("a one-row read took 0.6 to 6.6 seconds where a route that asks the database nothing took 0.2") is
+  this: a few statements and the trip.
+
+Smart Placement chooses among places the Worker has already run, by the request durations it sees there; it never asks
+where the primary is, and the read replicas SCALE4d turned on answer some reads near any edge.
+
+**The law.** `server-account/wrangler.toml` `[placement] region = "aws:us-west-1"`: Cloudflare runs the Worker in its
+data centre nearest that cloud region, Northern California - beside the primary, which of California's two it stands
+in, a few ms apart. A player pays one trip to California - some 70 ms from the east of North America, 140-150 from
+Sydney or London - and every statement after it is a neighbour's, a few ms. By the arithmetic (to be read off the
+metrics once it deploys - SCALE1's `double1`, the wall time by route), the Guild tab's look goes from some 3 s to a few
+tenths. Nothing in the service's law moved: no migration, no route, no ACCOUNT_VERSION.
+- **Not `smart`**: the measurement above.
+- **Not left at the edge** (no placement): every statement would pay the player's own distance to California - better
+  than Sydney in the east of North America, no better in Oceania or Europe.
+- **The primary does not move on its own.** D1 placed it when the database was created (a location hint is taken only
+  then), so this line moves only with the database.
+- **What it does not reach.** Cloudflare's placement covers the fetch handler; the clock's `scheduled()` (SCALE4b) runs
+  where Cloudflare runs crons. Its jobs are small settlers; the one long chain is the weekly Turning's settle, under its
+  lease (SEAT-LEASE).
+
+**Said on every deploy.** `account-deploy.yml` "Report where the account Worker runs": after the health check, what
+five answers' `cf-placement` said, and what one statement costs the Worker where it runs - this record's own measure,
+the median of five one-statement reads on the primary (`/v1/seats/sieges/live`) less the median of five health
+answers - into the run's summary. A few ms is beside the primary; 150 and more is across an ocean. A report, never a
+gate: the header is Cloudflare's to rename, and a runner's network is noisy. SCALE1's word stood because nothing ever
+said where the Worker ran, nor what a statement cost it there; every deploy says both now.
+
+**Pinned.** `test/d1near.test.js` (2): the toml's one `[placement]` table holds `region` alone, the region this record
+names, and no page of the bible repeats SCALE1's unmeasured word on Smart Placement; the deploy's report step, run by
+bash as the runner runs it (`-eo pipefail`) over a fake curl, writes five answers' placements into the summary - an
+HTTP/2 header in lower case and an HTTP/1.1 one capitalised alike, an answer without it `none` - and the statement's
+cost off the medians, an outlier in each five passed over, all asked of the deploy's own base after its health check;
+a curl that reaches nothing still ends the step green, the cost said unmeasured. `tools/mutants/d1near.json` (9, all
+dead): SCALE1's smart placement back, the Worker placed in Sydney, the table dropped, the summary unwritten, the header
+read case-sensitively, an answer without the header unsaid, the cost not less the health, the slowest answer taken for
+the middle, SCALE1's sentence back on this page.
+
+**Left.**
+- **The round trips themselves.** Beside the primary a statement is a few ms, so the Guild tab's fifteen are tens of
+  ms. Folding viewOf's reads into one batch (GATHER-SPEED's shape) would make them one trip; it is the guilds' law,
+  and the next step only if the metrics still show the tab.
+- **Where the clock runs** (above): its own metrics points say it (`cron:<job>`, the D1 wait by job - `node
+  tools/d1Load.mjs`).
 
 ## THE PLAN PAST 2,000 (2026-10-10)
 

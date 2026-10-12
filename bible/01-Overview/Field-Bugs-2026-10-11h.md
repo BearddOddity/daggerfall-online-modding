@@ -88,7 +88,9 @@ version pins moved); `seat1c.json` and `season1.json`'s records on the route's s
 
 FOUND. After SEAT-LEASE the seat routes answered, but slowly: a one-row read took 0.6 to 6.6 seconds where a route that
 asks the database nothing took 0.2, in a once-a-minute rhythm that stood with the seats switched off too - so not the
-seats. A seat board is some 19 statements one after another at a quiet seat (a session, the witnesses, the pledges, the
+seats. (D1-NEAR, 2026-10-12, `11-Multiplayer/Scale-Arc.md`: the floor was the Worker's place, not the database's load -
+Smart Placement ran it in Sydney, a Pacific from the primary, so every statement paid ~150-180 ms before any wait of
+D1's own; the Worker runs beside the primary now.) A seat board is some 19 statements one after another at a quiet seat (a session, the witnesses, the pledges, the
 holder, the Legacy, the reader's guild, its pledges and politics, the battles, the Chronicle), more at a held and
 contested one, so a second's wait a statement is half a minute a board. Read from the code: the 1,508 distinct statements
 the Worker-backed suite runs, each through `EXPLAIN QUERY PLAN` on the migrated schema, show no full scan of a growing
