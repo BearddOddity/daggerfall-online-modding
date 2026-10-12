@@ -18,6 +18,7 @@
 import { EQUIP_SLOTS } from '../../characters/paperdoll.js';
 import { CLIMATES } from '../../formats/mapsFile.js';
 import { RACES } from '../races.js';
+import { MONTH_NAMES } from '../gameDate.js';   // TEMP-UI: the breakdown names the month (an import-free leaf)
 
 /** spellcast.js's EFFECT_FLAGS.Fire and .Frost (DFCareer.EffectFlags),
  *  restated so this leaf imports no combat module: spellcast sits on the
@@ -152,6 +153,36 @@ export function hourTemperature(hour, climateIndex) {
   return -20 * m;   // 20:00 - 03:59
 }
 
+/** TEMP-UI (2026-10-12): the hour's band by NAME - the bands hourTemperature reads, said for the breakdown ('day' its
+ *  zero, 'evening' and 'dawn' its -10 x the night multiplier, 'night' its -20 x; test/tempui.test.js holds the two to
+ *  one another over every minute of the day). */
+export function hourBand(hour) {
+  const h = ((Math.floor(hour ?? 12)) % 24 + 24) % 24;
+  if (h >= 8 && h <= 15) return 'day';
+  if (h >= 16 && h <= 19) return 'evening';
+  if (h >= 4 && h <= 7) return 'dawn';
+  return 'night';
+}
+/**
+ * TEMP-UI: THE NATURAL TEMPERATURE'S PARTS - the climate, the season, the hour, the weather and the roof - which sum to
+ * naturalTemperature(env) EXACTLY, by construction: the roof's share is what the law's answer is past the climate and
+ * the season wherever it is not the street's own sum. So the roof law stays naturalTemperature's alone (ROOF-SHELTER)
+ * and this only says what it did.
+ */
+export function naturalParts(env = {}) {
+  const { climateIndex, month, hour, weather } = env;
+  const climate = CLIMATE_TEMP[climateIndex] ?? 0;
+  const season = MONTH_TEMP[((month ?? 0) % 12 + 12) % 12] ?? 0;
+  // no case for the ground: underground the law's answer is the climate and the season alone, so where an hour or a
+  // sky would have moved the street's sum, the remainder below is nought and no hour, sky or roof is said (AUDIT
+  // TEMP-UI: a flag for it was a second statement of the law, and a mutant proved it changed nothing)
+  const day = hourTemperature(hour, climateIndex);
+  const sky = WEATHER_TEMP[weather] ?? 0;
+  const natural = naturalTemperature(env);
+  if (natural === climate + season + day + sky) return { climate, season, hour: day, weather: sky, roof: 0, natural };
+  return { climate, season, hour: 0, weather: 0, roof: natural - climate - season, natural };
+}
+
 /** How wet a minute in this weather makes you, outdoors. */
 export function weatherWetGain(weather, { cloak = false, hood = false, insideBuilding = false, insideDungeon = false } = {}) {
   if (insideBuilding || insideDungeon) return 0;
@@ -259,7 +290,10 @@ export function clothingWarmth(worn, { wet = 0, natural = 0, inSunlight = false,
     const v = CLOAK_WARMTH[c.variant ?? 0] ?? CLOAK_WARMTH[0];
     warmth += FORMAL_CLOAKS.has(c.templateIndex) ? 3 * v : CASUAL_CLOAKS.has(c.templateIndex) ? v : 0;
   }
-  if (natural > CLOTHES_BREATHE_ABOVE) warmth = Math.trunc(warmth / 2);   // CLOTHES-BREATHE: half in the heat, the dry reading with it
+  // CLOTHES-BREATHE: half in the heat, the dry reading with it - AUDIT TEMP-UI E7: eased in a degree at a time from the
+  // line, never past half, so a warmer world never reads cooler (it fell from half at once, and a world of 12 read
+  // seventeen degrees cooler than one of 10 in a warm outfit)
+  if (natural > CLOTHES_BREATHE_ABOVE) warmth = Math.max(Math.trunc(warmth / 2), warmth - (natural - CLOTHES_BREATHE_ABOVE));
   const pure = warmth;
   warmth = Math.max(0, warmth - Math.min(wet, WET_MAX));
   if (natural > 30 && inSunlight && hood) warmth = Math.max(0, warmth - HOOD_SHADE);   // AUDIT SURV D: never below nothing, as the law says
@@ -307,24 +341,40 @@ export function feltTemperature(env = {}, worn = null, ctx = {}) {
   const natural = naturalTemperature(env);
   const wet = Math.min(Math.max(0, ctx.wet ?? 0), WET_MAX);
   let natTemp = resistTemperature(natural, ctx);
+  const natResisted = natTemp;   // TEMP-UI: the air resisted, before the ground's correction (the breakdown's two rows)
   if (env.insideDungeon) natTemp = dungeonTemperature(natTemp);
-  const clothes = clothingWarmth(worn, { wet, natural, inSunlight: !!env.inSunlight, gear: ctx.gearWarmth });
-  const armour = armorWarmth(worn, { natural, wet, inSunlight: !!env.inSunlight });
+  // AUDIT TEMP-UI E3: THE AIR THE BODY STANDS IN - underground the dungeon's, not the surface's. The clothes breathed and
+  // the armour's metal heated or chilled by the sky over the dungeon, so a desert dungeon's air of -20 read the starting
+  // kit halved for the surface's heat ("cold") where every other dungeon read it whole ("comfortable"); and the food
+  // spoiled by the surface's heat (needs.js reads `air` for the rot).
+  const air = env.insideDungeon ? dungeonTemperature(natural) : natural;
+  const clothes = clothingWarmth(worn, { wet, natural: air, inSunlight: !!env.inSunlight, gear: ctx.gearWarmth });
+  const armour = armorWarmth(worn, { natural: air, wet, inSunlight: !!env.inSunlight });
   const race = RACE_TEMP[ctx.raceId] ?? 0;
   const water = Math.trunc(wet / 20);
   const fire = env.byFire ? 15 : 0;
-  const own = resistTemperature(race + clothes.warmth + armour.warmth + fire - water, ctx) + NAKED_OFFSET;
+  // AUDIT TEMP-UI E1: THE BODY'S OWN WARMTH IS NOT RESISTED. It was resisted as heat, so a Resist Fire made a blizzard
+  // colder by every degree the clothes and the campfire gave (-62 to -112 at fifty), and a Resist Frost a desert hotter
+  // - the mechanism AUDIT LOOT II A2 found for a Legendary's degrees and mended for those alone. A resistance turns the
+  // WORLD's cold or heat toward nothing (natTemp, above); what the body carries is its own. A declared departure
+  // (Port-Ledger A): the mod resists both.
+  const own = race + clothes.warmth + armour.warmth + fire - water + NAKED_OFFSET;
   let felt = natTemp + own;
-  if (felt > 9 && ctx.hasWater && !ctx.vampire) felt = Math.max(felt - WATER_COOLS, 0);
+  const unwatered = felt;   // TEMP-UI: before the drink to hand
+  if (felt > 9 && ctx.hasWater && !ctx.vampire) felt = Math.max(felt - WATER_COOLS, 9);   // AUDIT TEMP-UI E8: never under where the cooling starts - a reading of 10 fell to 0 and 19 to 9, a warmer day reading cooler
+  const watered = felt;   // TEMP-UI: before a Legendary garment's degrees
   // LOOT15 (bible/06-Systems/Loot-II-Arc.md section 7): a Legendary garment's degrees - the cold felt so much less, or the
   // heat - toward comfortable and never past it, each on its own side alone (AUDIT LOOT II A2)
   const coldLess = Math.max(0, Number(ctx.coldDegrees) || 0), heatLess = Math.max(0, Number(ctx.heatDegrees) || 0);
   if (felt < 0) felt = Math.min(felt + coldLess, 0);
   else if (felt > 0) felt = Math.max(felt - heatLess, 0);
   return {
-    natural, natTemp, own, felt, abs: Math.abs(felt),
+    natural, natTemp, own, felt, abs: Math.abs(felt), air,
     clothes: clothes.warmth, clothesDry: clothes.pure, armour: armour.warmth, metal: armour.heat, race, water, fire,
     cloak: cloakState(worn).cloak, hood: clothes.hood, wet,
+    // TEMP-UI: the rest of the sum, so a breakdown adds up to `felt` exactly (temperatureBreakdown): the resistances on
+    // the air, the ground's correction, the bare skin, the drink to hand, a garment's degrees
+    worldResist: natResisted - natural, dungeon: natTemp - natResisted, naked: NAKED_OFFSET, waterCools: watered - unwatered, degrees: felt - watered,
     wetGain: weatherWetGain(env.weather, { cloak: cloakState(worn).cloak, hood: clothes.hood, insideBuilding: env.insideBuilding, insideDungeon: env.insideDungeon })
         * (1 - Math.min(GEAR_DRY_MOST, Math.max(0, Number(ctx.gearDry) || 0)) / 100)   // LOOT14: weatherproofing turns the weather's soaking aside
       + environmentWet(env),
@@ -341,3 +391,53 @@ export function temperatureWord(felt) {
   if (felt >= -50) return 'freezing';
   return 'deadly cold';
 }
+
+/** TEMP-UI (2026-10-12): the climates as the temperature's breakdown names them. */
+export const CLIMATE_NAMES = Object.freeze({
+  [CLIMATES.Ocean]: 'Coast', [CLIMATES.Desert]: 'Desert', [CLIMATES.Desert2]: 'Deep desert', [CLIMATES.Mountain]: 'Mountains',
+  [CLIMATES.Rainforest]: 'Rainforest', [CLIMATES.Swamp]: 'Swamp', [CLIMATES.Subtropical]: 'Subtropics',
+  [CLIMATES.MountainWoods]: 'Mountain woods', [CLIMATES.Woodlands]: 'Woodlands', [CLIMATES.HauntedWoodlands]: 'Haunted woods',
+});
+/** TEMP-UI: the weathers, as the breakdown names them (WEATHER_TEMP's keys). */
+export const WEATHER_NAMES = Object.freeze({
+  sunny: 'Clear sky', cloudy: 'Cloudy', overcast: 'Overcast', fog: 'Fog', rain: 'Rain', thunder: 'Thunderstorm', snow: 'Snow', sandstorm: 'Sandstorm',
+});
+/** TEMP-UI: the hour's bands, as the breakdown names them (hourBand). */
+export const HOUR_NAMES = Object.freeze({ day: 'Daytime', evening: 'Evening', dawn: 'Dawn', night: 'Night' });
+
+/**
+ * TEMP-UI (2026-10-12, the owner: "add a temperature widget to the UI including allowing players to see their personal
+ * temperature in their inventory"): WHAT MAKES THE FELT TEMPERATURE, AS ROWS THAT ADD UP TO IT. `env` is the one the
+ * reading was taken in and `temp` feltTemperature's answer for it. Each row is { key, label, value, note? }: the
+ * climate always, then every part that moved the number - the season, the hour, the weather, a roof, the ground, the
+ * resistances (on the air - AUDIT TEMP-UI E1: the body's own warmth is not resisted), the race, the clothing (with what it would be dry,
+ * where the wet ate some), the armour (and its metal in the sun or the cold), a fire, wet clothes, bare skin, a drink to
+ * hand, a Legendary garment's degrees. The values sum to `temp.felt` to the degree (test/tempui.test.js sweeps it).
+ */
+export function temperatureBreakdown(env = {}, temp = null) {
+  if (!temp) return [];
+  const p = naturalParts(env);
+  const out = [{ key: 'climate', label: CLIMATE_NAMES[env.climateIndex] ?? 'The land', value: p.climate }];
+  const add = (key, label, value, note = null) => { if (value) out.push(note ? { key, label, value, note } : { key, label, value }); };
+  add('season', MONTH_NAMES[((env.month ?? 0) % 12 + 12) % 12] ?? 'The season', p.season);
+  add('hour', HOUR_NAMES[hourBand(env.hour)], p.hour);
+  add('weather', WEATHER_NAMES[env.weather] ?? 'The weather', p.weather);
+  add('roof', 'Shelter', p.roof);
+  add('ground', 'Underground', temp.dungeon);
+  add('resist', 'Resistances', temp.worldResist);
+  add('race', 'Your race', temp.race);
+  add('clothes', 'Clothing', temp.clothes, temp.clothesDry > temp.clothes && temp.wet > 0 ? `${signedDegrees(temp.clothesDry)} dry` : null);
+  add('armour', 'Armour', temp.armour, temp.metal > 0 ? 'hot metal' : temp.metal < 0 ? 'cold metal' : null);   // `metal` is the heat the law laid on: the sun's, uncovered, or the cold's
+  add('fire', 'A fire', temp.fire);
+  add('wet', 'Wet through', -temp.water);
+  add('skin', 'Bare skin', temp.naked);
+  add('drink', 'Water to hand', temp.waterCools);
+  add('garment', 'Enchanted garment', temp.degrees);
+  return out;
+}
+/** TEMP-UI: a reading as the HUD and the pack print it - signed, rounded, with its degree sign: "-14\u00b0", "+3\u00b0", "0\u00b0". */
+export function signedDegrees(n) {
+  const v = Math.round(Number(n) || 0);
+  return `${v > 0 ? '+' : v < 0 ? '-' : ''}${Math.abs(v)}\u00b0`;
+}
+

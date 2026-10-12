@@ -406,8 +406,8 @@ export const TUTORIALS = Object.freeze([
   page({
     id: 'survival', group: 'livelihood', title: 'Hunger and Cold', trigger: 'When you first get hungry, cold or tired.',
     body: [
-      'You need food, water, warmth and sleep. Icons next to your bars show what you are short on.',
-      'Survival can be Off, Casual (the default) or Hard. On Hard, needs can hurt you and make you sick. Change it in Settings > Features.',
+      'You need food, water, warmth and sleep. Icons next to your bars show what you are short on, and on Boons what you have earned.',
+      'Survival can be Off, Boons, Casual (the default) or Hard. On Boons, needs met give bonuses; on Hard, needs can hurt you and make you sick. Change it in Settings > Features.',
     ],
   }),
 

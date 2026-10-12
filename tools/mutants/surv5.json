@@ -83,8 +83,8 @@
   {
     "name": "SURV5-the-vampire-is-told-of-hunger",
     "file": "src/systems/survival/status.js",
-    "old": "  if (vampire) return [STATUS_TEXT.vampire];",
-    "new": "",
+    "old": "  if (vampire) lines.push(STATUS_TEXT.vampire);\n  else {",
+    "new": "  if (vampire) lines.push(STATUS_TEXT.vampire);\n  {",
     "tests": [
       "test/surv5_ui.test.js"
     ]

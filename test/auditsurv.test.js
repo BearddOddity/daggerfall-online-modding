@@ -230,7 +230,7 @@ test('AUDIT SURV C: what the player is told - a vampire\'s strip has no hunger o
   assert.equal(isSurvivalItem(skin), true);
   assert.match(ENHANCED_CSS, /\.hud-stat:empty\s*\{\s*display:\s*none;?\s*\}/, 'no gap for an empty widget (UI3: the needs are its tiles)');
   const hud = read('src/ui/enhancedHud.js');
-  assert.match(hud, /survivalHudChips\(vitals, Math\.floor\(ownMinutes\(\)\), \{ vampire: !!liveVampirism\(vitals\), endurance: liveStat\(vitals, 'endurance'\) \}\)/);   // LIVED1: the needs read the character's own clock
+  assert.match(hud, /survivalHudChips\(vitals, Math\.floor\(ownMinutes\(\)\), \{ vampire: !!liveVampirism\(vitals\), endurance: liveStat\(vitals, 'endurance'\), rewarding: !!survivalRules\(\)\?\.boons \}\)/);   // PIN MOVED (AUDIT SURV-BOONS C14): and the live tier   // LIVED1: the needs read the character's own clock
   // Mac (review): "Hide wear for non wearables. Same for use for non-usables"
   const wearer = { equip: null, activeEffects: [] };
   assert.equal(localPrimaryAct(skin, wearer), null, 'no slot takes a waterskin: no Wear');

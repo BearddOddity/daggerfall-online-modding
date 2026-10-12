@@ -149,6 +149,22 @@ export const STATUS_GLYPHS = Object.freeze({
     '..kbbaaaaaaakak.', '..kbbaaaaaaakak.', '..kbbaaaaaaakak.', '..kbbaaaaaaaaak.',
     '..kcccccccckkkk.', '..kbbaaaaaak....', '..kbbaaaaaak....', '..kkkkkkkkkk....',
   ] }),
+  // TEMP-UI: a thermometer - the HUD's temperature plate while the reading is comfortable (the sun and the snowflake
+  // stand for the two ways out of it)
+  thermo: Object.freeze({ pal: { g: '#cfd4dc', w: '#eef2f6', r: '#e0584a', h: '#ffb0a0', t: '#a8b0bc' }, rows: [
+    '......kkkk......', '......kggk......', '.....kkwwkk.....', '.....kgwwgkk....',
+    '.....kgwwgtk....', '.....kgwwgkk....', '.....kgrrgtk....', '.....kgrrgkk....',
+    '.....kgrrgtk....', '.....kgrrgkk....', '....kkrrrrkk....', '....krhrrrrk....',
+    '....krrrrrrk....', '....kkrrrrkk....', '.....kkrrkk.....', '......kkkk......',
+  ] }),
+  // AUDIT SURV-BOONS C7: a flame, no logs - the Hearth boon (a lit fire beside a waking player), told apart from REST1's
+  // Rested campfire, which can stand beside it online
+  hearth: Object.freeze({ pal: { o: '#ff7a2a', y: '#ffc84a', w: '#fff6c8' }, rows: [
+    '................', '......kkk.......', '.....kkok.......', '.....kookk......',
+    '....kkoookkkk...', '....kooookkokk..', '...kkoooookookk.', '...kooooyoooook.',
+    '..kkoooyyyooook.', '..koooyyyyyoook.', '..kooyyywyyyook.', '..kooyywwwyyook.',
+    '..kkoyywwwyyokk.', '...kkoyyyyyokk..', '....kkoooookk...', '.....kkkkkkk....',
+  ] }),
   // SURV-BOONS: a four-point sparkle in gold - Thriving, the boon of a body kept fed, watered and rested at once
   thriving: Object.freeze({ pal: { a: '#ffd24a', b: '#fff6c8', c: '#c8902a' }, rows: [
     '................', '................', '......kkkk......', '......kaak......',

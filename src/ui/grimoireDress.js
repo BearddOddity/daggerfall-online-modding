@@ -1336,7 +1336,7 @@ ${G} .wplaque, ${G} .wplaque-stats { background: ${v('page')} 0 0 / 355px auto r
 ${G} .sf-head h3 { color: ${T.red} !important; text-shadow: none !important; }
 ${G} .sf-head p, ${G} .sf-chips-k, ${G} .sf-err { color: ${T.ink} !important; text-shadow: none !important; opacity: 1 !important; }
 ${G} .sf-foot { color: ${T.inkSoft} !important; text-shadow: none !important; opacity: 1 !important; }
-${G} .statflip-btn, ${G} .wornac-total { background: ${v('page')} 0 0 / 355px auto repeat, rgba(227,201,149,0.96) !important; color: ${T.ink} !important;
+${G} .statflip-btn, ${G} .wornac-total, ${G} .worntemp-total { background: ${v('page')} 0 0 / 355px auto repeat, rgba(227,201,149,0.96) !important; color: ${T.ink} !important;
   text-shadow: none !important; opacity: 1 !important; border: 2px solid ${T.outline} !important; border-radius: 0 !important;
   box-shadow: inset 0 0 0 1px rgba(255,240,205,0.35), 2px 2px 0 rgba(0,0,0,0.45) !important; }
 ${G} .statflip-btn { padding: 2px 10px !important; }
@@ -1352,8 +1352,8 @@ ${G} .pack-shell .statflip .sf-page { max-width: 100% !important; min-width: 0 !
 ${G} .pack-shell .statflip .sf-tiles { grid-template-columns: repeat(auto-fit, minmax(min(100%, 84px), 1fr)) !important; }
 ${G} .pack-shell .statflip .sf-tile { min-width: 0 !important; overflow-wrap: break-word; }
 ${G} .statflip-btn:hover, ${G} .statflip-btn:focus-visible { color: ${T.red} !important; }
-${G} .wornac-total .k { color: ${T.inkSoft} !important; text-shadow: none !important; opacity: 1 !important; }
-${G} .wornac-total .v { color: ${T.red} !important; text-shadow: none !important; opacity: 1 !important; }
+${G} .wornac-total .k, ${G} .worntemp-total .k { color: ${T.inkSoft} !important; text-shadow: none !important; opacity: 1 !important; }
+${G} .wornac-total .v, ${G} .worntemp-total .v { color: ${T.red} !important; text-shadow: none !important; opacity: 1 !important; }
 /* ...and written on it in ink (Dudey, of the quick loot: "no one can read that" - the HUD's pale outlined letters were
    left on the paper): every word dark and flat, the lit row in red, a tier's colour deepened to read on paper */
 ${G} :is(.wplaque, .wplaque-stats), ${G} :is(.wplaque, .wplaque-stats) * { color: ${T.ink} !important; text-shadow: none !important; -webkit-text-stroke: 0 !important; }

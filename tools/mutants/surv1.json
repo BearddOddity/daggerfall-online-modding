@@ -38,8 +38,8 @@
   {
     "name": "SURV1-the-drink-cools-a-vampire",
     "file": "src/systems/survival/temperature.js",
-    "old": "  if (felt > 9 && ctx.hasWater && !ctx.vampire) felt = Math.max(felt - WATER_COOLS, 0);",
-    "new": "  if (felt > 9 && ctx.hasWater) felt = Math.max(felt - WATER_COOLS, 0);",
+    "old": "  if (felt > 9 && ctx.hasWater && !ctx.vampire) felt = Math.max(felt - WATER_COOLS, 9);",
+    "new": "  if (felt > 9 && ctx.hasWater) felt = Math.max(felt - WATER_COOLS, 9);",
     "tests": [
       "test/surv1_model.test.js"
     ]

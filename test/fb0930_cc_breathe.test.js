@@ -31,12 +31,26 @@ test('CLOTHES-BREATHE: the report - the starting kit in a desert inn at noon cou
 
 test('CLOTHES-BREATHE: the rule - above ten the clothes count half, truncated; at ten and in the cold whole; a cloak halves with the rest; the wet eats what is left and the hood shades after; armour is its own (mutants: the heat never halves; the threshold at ten; the half rounds up; the cold halves too; the wet before the half; the dry reading unhalved; armour breathes too)', () => {
   assert.equal(CLOTHES_BREATHE_ABOVE, 10);
-  assert.equal(clothingWarmth(kit(), { natural: 11 }).warmth, 7, 'eleven: half of fifteen, truncated');
+  // PIN MOVED (AUDIT TEMP-UI E7): the half EASES IN, a degree of warmth a degree past ten, until it is the half - it fell
+  // to half at once, so a warmer world read cooler (a warm outfit: world 10 felt 43, world 12 felt 26)
+  assert.equal(clothingWarmth(kit(), { natural: 11 }).warmth, 14, 'eleven: fifteen less a degree');
+  assert.equal(clothingWarmth(kit(), { natural: 18 }).warmth, 7, 'eighteen: the half (seven), where fifteen less eight reaches it');
+  assert.equal(clothingWarmth(kit(), { natural: 25 }).warmth, 7, 'past it: half of fifteen, truncated');
   assert.equal(clothingWarmth(kit(), { natural: 10 }).warmth, 15, 'ten: whole');
   assert.equal(clothingWarmth(kit(), { natural: 0 }).warmth, 15, 'comfortable: whole');
   assert.equal(clothingWarmth(kit(), { natural: -40 }).warmth, 15, 'the cold: whole');
   assert.equal(clothingWarmth(kit(), { natural: -11 }).warmth, 15, 'a mild cold: whole');
-  assert.deepEqual(clothingWarmth(cloaked(), { natural: 20 }), { warmth: 18, pure: 18, hood: true }, 'the cloak halves with the rest: 37 -> 18');
+  assert.deepEqual(clothingWarmth(cloaked(), { natural: 20 }), { warmth: 27, pure: 27, hood: true }, 'the cloak eases with the rest: 37 less ten');   // PIN MOVED (E7)
+  assert.deepEqual(clothingWarmth(cloaked(), { natural: 30 }), { warmth: 18, pure: 18, hood: true }, '...and halves with it, well into the heat: 37 -> 18');
+  // and so a warmer world never reads cooler: the felt reading never falls as the world warms, for any outfit
+  for (const w of [kit(), cloaked()]) {
+    let last = -Infinity;
+    for (let natural = -60; natural <= 80; natural++) {
+      const felt = natural + clothingWarmth(w, { natural }).warmth;
+      assert.ok(felt >= last, `world ${natural}: felt ${felt} under ${last}`);
+      last = felt;
+    }
+  }
   assert.equal(clothingWarmth(kit(), { natural: 20, wet: 4 }).warmth, 3, 'the half first (7), then the wet (4)');
   assert.equal(clothingWarmth(kit(), { natural: 20, wet: 4 }).pure, 7, 'the dry reading is the half');
   assert.equal(clothingWarmth(cloaked(), { natural: 40, inSunlight: true }).warmth, 8, 'the hood shades the half: 18 - 10');

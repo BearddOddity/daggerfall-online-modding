@@ -100,6 +100,7 @@ import {
 } from '../systems/equip.js';
 import { armourBadge, armourPlaque, compareBlock, lineCompareBlock, wearComparison } from './armourCard.js';   // AC-COMPARE: the doll's numbers on the map, the overall figure, the card's comparison
 import { statFlip } from './statsCard.js';   // STATS-CARD: the paperdoll's flip side, its Stats button
+import { temperaturePlaque, temperatureCompareBlock } from './temperatureCard.js';   // TEMP-UI: the felt temperature on the figure and on a wearable's card
 import {
   itemWeight, isEnchanted, totalWeight, addItem, goldStack,
   goldPiecesOf, GOLD_PIECE_WEIGHT_KG,   // E4: the counter and its per-coin weight
@@ -2043,6 +2044,10 @@ function equippedList() {
   const plaque = armourPlaque(deps.entity);
   plaque.style.gridArea = '1 / 2';
   map.append(plaque);
+  // TEMP-UI: AND THE FELT TEMPERATURE beside it - the same cell's other corner, while Climates & Calories is on
+  // (ui/temperatureCard.js: live, so a cloak put on under this window shows its warmth at once)
+  const temp = temperaturePlaque(deps.entity);
+  if (temp) { temp.style.gridArea = '1 / 2'; map.append(temp); }
   wrap.append(statFlip(map, deps.entity, deps.usingRightHand));   // STATS-CARD: the worn map is the card's front; a Stats button turns it over
   const byLabel = new Map();
   for (const row of worn.rows) {
@@ -3157,6 +3162,7 @@ function infoCard(picked, side, ready = render, { body = false } = {}) {
     const wear = wearComparison(deps.entity, picked);   // AUDIT LOOT II B6: one comparison for both blocks
     const cmp = compareBlock(deps.entity, picked, (it) => itemLongName(it, { getQuest: deps.getQuest ?? null }), wear); if (cmp) into.append(cmp);
     const lc = lineCompareBlock(deps.entity, picked, wear); if (lc) into.append(lc);   // LOOT18: and its lines against theirs
+    const tc = temperatureCompareBlock(deps.entity, picked, wear); if (tc) into.append(tc);   // TEMP-UI: and the felt temperature it would leave (or, worn, taking it off would)
   }
   return { c, line, big };
 }

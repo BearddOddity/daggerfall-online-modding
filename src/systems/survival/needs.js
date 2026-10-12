@@ -42,7 +42,7 @@
 // loan: a tier without boons carries neither.
 import { feltTemperature, temperatureWord, wardrobeCtx } from './temperature.js';
 import { drinkFrom, findDrink, waterskinName, DRINK_RELIEF, TEMPLATE, isFood, foodStage, FOOD_STAGE, rotFoodDay, rotWeight, ROT_DAY_MINUTES } from './food.js';
-import { STAT_KEYS_ORDER, maxFatigue, liveStat } from '../statMods.js';
+import { STAT_KEYS_ORDER, maxFatigue, liveStat, FATIGUE_MULTIPLIER } from '../statMods.js';
 import { HARD_RULES } from './difficulty.js';
 /** SURV4: speed and agility down by this while stiff (survival/rest.js's STIFF_PENALTY, restated here so rest.js may import this module). */
 const STIFF_PENALTY = 5;
@@ -93,8 +93,12 @@ export const BOON = Object.freeze({
   thriving: Object.freeze({ luck: 5 }),
 });
 export const BOON_IDS = Object.freeze(['fed', 'quenched', 'rested', 'thriving', 'hearth']);
-/** SURV-BOONS: the hearth - fatigue units (one classic point) a waking minute beside a lit fire gives back. */
-export const HEARTH_FATIGUE = 64;
+/** AUDIT SURV-BOONS C4: the boons a line is said for as they are earned - not the hearth, which every brazier in a street
+ *  or a tavern raised on the way past (eleven lines an hour beside a row of them, at a full pool): its tile says it. */
+export const SAID_BOONS = Object.freeze(['fed', 'quenched', 'rested', 'thriving']);
+/** SURV-BOONS: the hearth - fatigue units a waking minute beside a lit fire gives back: one classic point (statMods.js
+ *  FATIGUE_MULTIPLIER, AUDIT SURV-BOONS B10 - the one export, not a second 64). */
+export const HEARTH_FATIGUE = FATIGUE_MULTIPLIER;
 /** SURV-BOONS: Well rested - minutes banked a minute asleep in a bed or by a fire (an eight-hour night banks twelve
  *  hours), and the most a body holds. The rest window's rough sleep banks none: the bed and the fire are the go-to rest. */
 export const WELL_RESTED_PER_SLEEP_MINUTE = 1.5;
@@ -158,9 +162,16 @@ export const SURVIVAL_TEXT = Object.freeze({
     quenched: 'Your thirst is quenched.',
     rested: 'You feel well rested.',
     thriving: 'You are in fine form.',
-    hearth: 'The fire\u2019s warmth restores you.',
   }),
 });
+
+/** The felt temperature's context for a body: the host's (`base` - race, resistances, the curses: env.js survivalCtx),
+ *  the record's wetness, a drink to hand, and the wardrobe's warmth, weatherproofing and degrees (`mods`, the entity's
+ *  folded channels by default - LOOT14/LOOT15). TEMP-UI: ONE CONSTRUCTION SEAM - the minute law and the pack's live
+ *  reading (env.js feltNow) build it here, so the reading the pack shows is the one the next minute charges. */
+export function feltCtx(entity, s, base = null, mods = entity?._mods) {
+  return { ...(base ?? {}), wet: s?.wet ?? 0, hasWater: !!findDrink(entity?.items ?? []), ...wardrobeCtx(base, mods) };
+}
 
 /** A fresh record at `now`: just fed, watered, dry and awake. */
 export function newSurvival(now = 0) {
@@ -171,6 +182,11 @@ export function survivalOf(entity, now = 0) {
   if (!entity.survival || typeof entity.survival !== 'object') entity.survival = newSurvival(now);
   const s = entity.survival;
   s.notes ??= {};
+  // AUDIT TEMP-UI E12: a counter that is no number (a record from an older build, a hand edit) is the fresh record's -
+  // a missing `wet` made every felt reading NaN for the session, and the guards on it hid the chip without a word
+  if (![s.lastAte, s.thirst, s.wet, s.sleepDebt, s.awakeSince, s.exposure, s.fed, s.drunk, s.rotMinutes, s.rotDays].every(Number.isFinite)) {
+    for (const [k, v] of Object.entries(newSurvival(now))) if (typeof v === 'number' && !Number.isFinite(s[k])) s[k] = v;
+  }
   return s;
 }
 
@@ -245,7 +261,7 @@ export function survivalBoons(s, now, { vampire = false, hearth = false } = {}) 
   if (!vampire) {
     if (hungerStage(hungerMinutes(s, now)) === 'fed') out.push('fed');
     if (thirstStage(s.thirst ?? 0) === 'fine') out.push('quenched');
-    if (s.wellRested > 0) out.push('rested');
+    if (s.wellRested > 0 && sleepStage(s.sleepDebt ?? 0) === 'rested') out.push('rested');   // AUDIT SURV-BOONS A1: a bank beside an unpaid debt is no rest - a short night from Exhausted woke Well rested (and Thriving) under an Exhausted chip
     if (out.length === 3) out.push('thriving');
   }
   if (hearth) out.push('hearth');
@@ -404,11 +420,11 @@ function stageNote(s, family, stage, say, text, replay) {
  */
 export function survivalMinute(entity, now, env = {}, deps = {}) {
   const s = survivalOf(entity, now);
-  const { worn = null, sinks = {}, rolls = Math.random, autoDrink = true, autoEat = true, replay = false } = deps;
+  const { worn = null, sinks = {}, rolls = Math.random, autoDrink = true, autoEat = true, replay = false, landing = false } = deps;   // AUDIT TEMP-UI E6: `landing`, the minute a jump lands in
   const rules = deps.rules ?? HARD_RULES;   // AUDIT SURV-TIERS: null is no rules too - survivalRules() answers null for Off
   const say = sinks.say ?? deps.say ?? null;
   const items = entity.items ?? [];
-  const ctx = { ...(deps.ctx ?? {}), wet: s.wet, hasWater: !!findDrink(items), ...wardrobeCtx(deps.ctx, entity._mods) };   // LOOT14/LOOT15: the wardrobe's warmth, weatherproofing and degrees
+  const ctx = feltCtx(entity, s, deps.ctx);   // LOOT14/LOOT15: the wardrobe's warmth, weatherproofing and degrees
   const temp = feltTemperature(env, worn, ctx);
   const resting = !!env.resting;
   const sleeping = env.sleeping ?? null;
@@ -426,7 +442,7 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
   const repays = !!rules.stamina.repaid;
   let budget = null;
   const tire = (n, need) => {
-    if (!(n > 0)) return;
+    if (!(n > 0) || floorShare >= 1) return;   // AUDIT SURV-BOONS A4/D1: a floor of the whole pool takes NOTHING - read against a pool that had just shrunk (Well fed lapsing, a Fortify's end), the budget drained the fatigue above the new ceiling
     let d = n;
     if (floorShare > 0) {
       budget ??= Math.max(0, (entity.fatigue ?? 0) - Math.floor(maxFatigue(entity) * floorShare));
@@ -541,7 +557,7 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
     // dehydration is the stamina above and nothing more.
     if (rules.health && s.thirst >= NEED.THIRST_HARM && !sleeping && !resting && now % HARM_EVERY_MINUTES === 0) {
       const bite = Math.max(1, Math.trunc((s.thirst - NEED.THIRST_HARM + 10) / 10));
-      if (!replay) sinks.hurt?.(bite);
+      if (!replay && !landing) sinks.hurt?.(bite);
       else if ((entity.health ?? 0) > HEALTH_FLOOR) sinks.hurt?.(Math.min(bite, (entity.health ?? 0) - HEALTH_FLOOR));
     }
   }
@@ -585,7 +601,7 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
     // trip's heat as waking minutes: dead on arrival, in Hard, since SURV1.
     if (rules.health && abs > NEED.DAMAGE_AT && !sleeping && harmTick) {
       const bite = Math.max(1, Math.trunc((abs - 40) / 10));
-      if (!replay) sinks.hurt?.(bite);
+      if (!replay && !landing) sinks.hurt?.(bite);
       else if ((entity.health ?? 0) > HEALTH_FLOOR) sinks.hurt?.(Math.min(bite, (entity.health ?? 0) - HEALTH_FLOOR));
     }
   }
@@ -632,7 +648,7 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
   }
 
   // ROT: the day counter turns with the heat; each day rolls every food.
-  s.rotMinutes += rotWeight(temp.natural);
+  s.rotMinutes += rotWeight(temp.air);   // AUDIT TEMP-UI E3: the air the food is carried in - a dungeon's, underground
   if (s.rotMinutes >= ROT_DAY_MINUTES) {
     s.rotMinutes -= ROT_DAY_MINUTES;
     s.rotDays += 1;
@@ -666,13 +682,15 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
   if (rules.boons) {
     if (s.wellRested > 0 && !sleeping) s.wellRested = Math.max(0, s.wellRested - 1);
     if (!(s.wellRested > 0) && 'wellRested' in s) delete s.wellRested;
-    const hearth = !!env.byFire && !resting && !sleeping;
+    const hearth = !!env.byFire && !resting && !sleeping && !replay;   // AUDIT SURV-BOONS A3: a jump's replayed minutes are no waking minutes by a fire - three hours' training beside a brazier cost nothing
     if (hearth) {
       const give = Math.min(HEARTH_FATIGUE, Math.max(0, maxFatigue(entity) - (entity.fatigue ?? 0)));
       if (give > 0) sinks.restoreFatigue?.(give);
     }
     s.boons = survivalBoons(s, now, { vampire, hearth });
-    for (const id of BOON_IDS) { if (s.boons.includes(id)) note(s, `boon:${id}`, now, say, SURVIVAL_TEXT.boon[id], { once: true }); else clearNote(s, `boon:${id}`); }
+    // AUDIT SURV-BOONS C1/A5: and said as the minute the player stands in has them - a jump's replayed minutes said boons
+    // gained and lost inside it, beside the chips that said they were gone
+    if (!replay) for (const id of SAID_BOONS) { if (s.boons.includes(id)) note(s, `boon:${id}`, now, say, SURVIVAL_TEXT.boon[id], { once: true }); else clearNote(s, `boon:${id}`); }
   }
 
   // AUDIT SURV-TIERS: the drink's bands on the LIVE endurance - the mod's LiveEndurance, the one the tavern, the HUD
@@ -741,6 +759,10 @@ export function runSurvivalMinutes(entity, from, to, env, deps) {
   const walk = { ...deps, replay: true, sinks: { ...sinks, say: (t) => { if (!heard.includes(t)) heard.push(t); } } };
   for (let m = start + 1; m <= end; m++) {
     walk.replay = m < end;
+    // AUDIT TEMP-UI E6: AND THE MINUTE A JUMP LANDS IN WOUNDS TO THE FLOOR TOO - "without the arrival being a coin flip"
+    // (SURV-THIRST1) was false: a landing on a harm tick (one minute in ten) killed outright. The next minute lived is
+    // the one that may kill. A one-minute step is no jump: it is that minute.
+    walk.landing = !walk.replay && end - start > 1;
     if (!walk.replay) { walk.sinks = sinks; const say = sinks.say ?? deps.say; for (const t of heard) say?.(t); }
     temp = survivalMinute(entity, m, env, walk);
   }
@@ -777,6 +799,8 @@ export function pauseSurvival(entity, from, to) {
   if (Number.isFinite(s.lastAte)) s.lastAte += span;
   if (Number.isFinite(s.awakeSince)) s.awakeSince += span;
   s.lastMinute = Math.floor(to);
+  // AUDIT SURV-BOONS A9/B9: and Off carries no boon - a tier that does not reward keeps neither the bank nor the grant
+  if ('boons' in s || 'wellRested' in s) { delete s.boons; delete s.wellRested; for (const id of BOON_IDS) delete s.notes?.[`boon:${id}`]; }
   // AUDIT SURV-TIERS (the third pass): ...BUT THE WORLD'S OWN DECAYS RUN. What is paused is the NEEDS - the two
   // timestamps that are hunger and wakefulness, and the thirst that stands. A drink wears off and a soaking dries in
   // any game, and they had been frozen with the needs: twenty hours Off in a dry inn came back Very drunk and
@@ -809,11 +833,15 @@ export function alignSurvival(entity, now, lastSeen = null) {
   const s = survivalOf(entity, now);
   const gap = lastSeen == null ? Infinity : now - lastSeen;
   if (gap > ALIGN_GRACE_MINUTES || (s.lastAte ?? now) > now || (s.awakeSince ?? now) > now) {
-    Object.assign(s, { lastAte: now - 10, thirst: 0, wet: 0, sleepDebt: 0, awakeSince: now, exposure: 0, drunk: 0, fed: 0, lastMinute: now, notes: {} });
+    Object.assign(s, { lastAte: now - 10, thirst: 0, wet: 0, sleepDebt: 0, awakeSince: now, exposure: 0, drunk: 0, fed: 0, lastMinute: now, notes: boonNotes(s) });   // AUDIT SURV-BOONS C3: the boons already said stay said
     return true;
   }
   return false;
 }
+
+/** AUDIT SURV-BOONS C3: the notes a record keeps across a load or a fresh start - the boons it carries, said already
+ *  (save.js drops the notes; a well-kept body said every boon again at every load and every online join). */
+export const boonNotes = (s) => Object.fromEntries((Array.isArray(s?.boons) ? s.boons : []).filter((id) => SAID_BOONS.includes(id)).map((id) => [`boon:${id}`, 'on']));
 
 /** Stage words for the HUD and the status page. */
 export function survivalSummary(entity, now, temp = null) {

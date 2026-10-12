@@ -73,7 +73,10 @@ import { statusTiles, afflictionRows, statusGlyphSrc, statRoom, statSide, statPl
 import { sigilRuneTileSrc } from './sigilRune.js';   // UI3: a set power's tile is its set's rune
 import { techniqueGlyphTileSrc } from './techniqueGlyph.js';   // TECH-CARD: a technique's tile is its own glyph, the card block's
 import { liveVampirism } from '../systems/racialLive.js';   // AUDIT SURV C: no hunger or sleep chip on a vampire
-import { survivalOn } from '../systems/survival/switch.js';
+import { survivalOn, survivalRules } from '../systems/survival/switch.js';   // AUDIT SURV-BOONS C14: and the live tier's rules
+import { temperatureReadout } from '../systems/survival/status.js';   // TEMP-UI: the temperature plate's reading
+import { feltNow } from '../systems/survival/env.js';   // TEMP-UI: live, where the body stands this frame
+
 import { ownMinutes, sharedClockOn } from '../systems/worldTick.js';   // LIVED1: the needs' strip reads the character's own clock   // REST1: and the Rested tile is online's
 import { nightRealMinutesLeft } from '../systems/restAct.js';   // REST1: the night interval's minutes left
 import { compassScroll, breathShortThreshold, compassMarkerLerp, DETECT_MARKER_RGB } from './hud.js';
@@ -582,6 +585,29 @@ function build(doc) {
     return m;
   });
   compass.append(strip, el('i', 'hud-needle'));
+  // TEMP-UI (2026-10-12, the owner: "add a temperature widget to the UI"): THE TEMPERATURE PLATE, at the compass's right
+  // end - where the eye already goes for where you are, and the one place at the top that stands clear of the quest card
+  // (92px down the right edge), the status widget (the left edge) and the foe's bar (under the compass's middle). Its
+  // glyph says the way the reading runs (a snowflake, the sun, a thermometer for comfortable), then the number, the
+  // word, and a scale from deadly cold to scorching with the comfortable band in its middle and a mark where you stand.
+  // It reads the felt temperature LIVE (survival/env.js feltNow: the minute law's own sum where the body stands this
+  // frame - AUDIT TEMP-UI E9: the record's `felt` waits a game minute, so a door read the street's for five seconds) and
+  // wears the level the strip's chip gives that reading (survival/status.js temperatureReadout): amber felt, red
+  // costing - RED MEANS IT COSTS. Only while Climates & Calories is on and its part (`survivalTempHud`, the row's
+  // drawer) is; a phone keeps the glyph and the number, and so does a screen where the whole plate would run off its
+  // right edge (a large HUD scale - tools/tempUiProbe.mjs).
+  const temp = el('div', 'hud-temp');
+  const tempGlyph = el('img', 'hud-tempglyph');
+  tempGlyph.alt = '';
+  tempGlyph.draggable = false;
+  const tempNum = el('span', 'hud-tempnum');
+  const tempWord = el('span', 'hud-tempword');
+  const tempScale = el('span', 'hud-tempscale');
+  const tempMark = el('i', 'hud-tempmark');
+  tempScale.append(tempMark);
+  temp.append(tempGlyph, tempNum, tempWord, tempScale);
+  temp.style.display = 'none';
+  compass.append(temp);
   top.append(compass);
 
   const foe = el('div', 'hud-foe');
@@ -881,6 +907,7 @@ function build(doc) {
 
   doc.body.append(root);
   return { root, bottom, compass, marks, detectMarks: [], partyMarks: [], shipMarks: [], nodeMarks: [], boatMarks: [], gateMark: null, serpentMark: null, sdMark: null, questMark: null, wayOutMark: null, foe, foeName, foeFill, foeGhost, foeChunks, foeBladeFull, foePoise, foePoiseFill, foePoiseWord, magicka, health, fatigue,
+    temp: { el: temp, glyph: tempGlyph, num: tempNum, word: tempWord, mark: tempMark },   // TEMP-UI: the temperature plate
     stat, quickCap: cap, quickDiamond: diamond, top,   // UI3: the status widget, the caption it stands on, the diamond it may stand beside and the top block over it (its band is measured from them)
     renown, renownBox, renownFill, renownGhost, renownNum,
     breath, breathFill, grip, gripFill, gripLabel, readied, reticle, cross, centreWord, cornerWord,
@@ -1230,7 +1257,53 @@ export function drawEnhancedHud(vitals, heading01, dt = 0, opts = {}) {
 
   // UI3: THE STATUS WIDGET - the spells, the set powers, the poisons and diseases and the needs, a square tile each
   drawStatus(vitals, opts);
+  drawTemp(vitals);   // TEMP-UI: the temperature plate
 }
+
+/** TEMP-UI: the temperature plate's part on the Climates & Calories row (systems/features.js) - shown unless switched off. */
+export const TEMP_HUD_PREF = 'survivalTempHud';
+/** TEMP-UI: the glyph for the way a reading runs (ui/hudStatus.js STATUS_GLYPHS). */
+const TEMP_GLYPHS = Object.freeze({ cold: 'cold', hot: 'hot', mild: 'thermo' });
+/** TEMP-UI - ONE FRAME OF THE TEMPERATURE PLATE: written only when what it says changes (the reading moves once a game
+ *  minute; the frame is sixty a second). */
+function drawTemp(vitals) {
+  const on = survivalOn() && getPref(TEMP_HUD_PREF) !== false;
+  const live = on ? feltNow(vitals) : null;
+  const r = on ? temperatureReadout(vitals, live ? live.felt : undefined, { rewarding: !!survivalRules()?.boons }) : null;
+  const k = r ? `${r.text}|${r.label}|${r.level}|${r.side}|${r.at.toFixed(3)}` : '';
+  const t = parts.temp;
+  if (last.temp !== k) {
+    last.temp = k;
+    if (!r) { t.el.style.display = 'none'; return; }
+    t.el.style.display = '';
+    t.el.dataset.side = r.side;
+    t.el.dataset.level = r.level;
+    t.glyph.src = statusGlyphSrc(TEMP_GLYPHS[r.side]) ?? '';
+    t.num.textContent = r.text;
+    t.word.textContent = r.label;
+    t.mark.style.left = `${(r.at * 100).toFixed(1)}%`;
+    last.tempFit = -1;   // a new word is a new width: measured again
+  }
+  if (r) fitTemp(t);
+}
+/** TEMP-UI: the room right of the compass, now and then - the whole plate where it fits short of the screen's edge, the
+ *  glyph and the number (`compact`) where it does not; the whole plate's width is remembered from when it last stood,
+ *  so the compact one knows when there is room again. */
+function fitTemp(t) {
+  const vp = `${globalThis.innerWidth}x${last.scale ?? 1}`;
+  if (last.tempVp !== vp) { last.tempVp = vp; last.tempFit = -1; }
+  last.tempFit = ((last.tempFit ?? -1) + 1) % STAT_MEASURE_EVERY;
+  if (last.tempFit !== 0 || typeof t.el.getBoundingClientRect !== 'function') return;
+  const edge = (globalThis.innerWidth ?? Infinity) - TEMP_EDGE;
+  const compact = t.el.classList.contains('compact');
+  const r = t.el.getBoundingClientRect();
+  if (!compact) {
+    last.tempFullW = r.width;
+    if (r.right > edge) t.el.classList.add('compact');
+  } else if (r.left + (last.tempFullW ?? Infinity) <= edge) t.el.classList.remove('compact');
+}
+/** TEMP-UI: the air the plate keeps from the screen's right edge. */
+const TEMP_EDGE = 8;
 
 /** UI3: frames between two measures of the widget's band - a layout read is not free, and a band moves only when the
  *  chat, the escorts or the quickslot block do. */
@@ -1260,8 +1333,8 @@ function drawStatus(vitals, opts) {
   const powers = setPowerChips(vitals);   // SET5: the set powers (the host's - setHudSetChips)
   powers.push(...techniqueChips(vitals));   // TECH1: and the weapon's technique beside them (the host's - setHudTechniqueChips)
   // SURV5: the needs - one a felt need (survival/status.js), none while every need is met, and none with the switch off
-  const needs = survivalOn() ? survivalHudChips(vitals, Math.floor(ownMinutes()), { vampire: !!liveVampirism(vitals), endurance: liveStat(vitals, 'endurance') }) : [];   // AUDIT SURV C: the vampire's strip, the page's drunk bands
-  if (needs.length) noteFirstUse('survival');   // TUT1: the first felt need
+  const needs = survivalOn() ? survivalHudChips(vitals, Math.floor(ownMinutes()), { vampire: !!liveVampirism(vitals), endurance: liveStat(vitals, 'endurance'), rewarding: !!survivalRules()?.boons }) : [];   // AUDIT SURV C: the vampire's strip, the page's drunk bands; AUDIT SURV-BOONS C14: the live tier's, so a turn shows at once
+  if (needs.some((c) => c.level !== 'boon')) noteFirstUse('survival');   // TUT1: the first felt need - AUDIT SURV-BOONS C2: a boon is none (a fresh Boons character is fed and watered, and met the page in its first minute)
   const rested = sharedClockOn() ? { minutes: nightRealMinutesLeft(vitals, ownMinutes()) } : null;   // REST1: the night interval, online
   const all = statusTiles({ spells, powers, afflictions: afflictionRows(vitals), needs, rested });
   const zone = zoneTile();

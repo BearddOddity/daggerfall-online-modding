@@ -337,11 +337,13 @@
   {
     "name": "LOOT15-the-minute-drops-the-host",
     "file": "src/systems/survival/needs.js",
-    "old": "...wardrobeCtx(deps.ctx, entity._mods) };",
-    "new": "...wardrobeCtx(null, entity._mods) };",
+    "old": "...wardrobeCtx(base, mods) };",
+    "new": "...wardrobeCtx(null, mods) };",
     "tests": [
       "test/loot15_garments.test.js"
-    ]
+    ],
+    "equivalent": true,
+    "why": "EQUIVALENT (found by AUDIT SURV-BOONS lens D, and surviving on the commit before it too): wardrobeCtx reads its `mods` alone and never its first argument (AUDIT LOOT II A2 took the host's resistances out of it), so handing it null changes nothing"
   },
   {
     "name": "LOOT15-fall-cap-off",

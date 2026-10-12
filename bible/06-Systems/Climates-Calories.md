@@ -36,7 +36,18 @@ the manifest, the mod's item templates and sixteen of its item icons.
 > taken, and a body kept fed, watered and rested earns attribute bonuses
 > (plus the hearth's stamina beside a lit fire). The design, the table and
 > the pins are in **SURV-BOONS** at the end of this page; the default
-> stays Casual.
+> stays Casual. **AUDIT SURV-BOONS** (five cold lenses, the same day)
+> corrected it in nine places - the record is after it.
+
+> **TEMP-UI (2026-10-12): THE TEMPERATURE, SHOWN.** A plate at the
+> compass's right end (the felt temperature, its word, a scale from
+> deadly cold to scorching), the felt temperature on the enhanced pack's
+> figure, a wearable's card saying what it would do to it, the Stats
+> side's breakdown of every part, and the number on the Status page.
+> **AUDIT TEMP-UI** fixed the law under the number in seven places
+> (resistance, the swim, the dungeon's air, the clothes' cliff, the
+> drink's drop, the landing, the shown weather) - both at the end of
+> this page.
 
 > **HUNT-OUT (2026-10-04, "I want to remove the text based hunting
 > minigame entirely"): THE TEXT HUNT IS REMOVED.** SURV6's wilderness
@@ -79,6 +90,9 @@ carry, and everything static.
 | SURV7 | the feed: the four hosts say where the player stands and the minute law runs in every mode; the rest gate on DFU's seam; the needs aligned at a load and an arrival; fast travel charged; the records | `survival/env.js` (the feed, the gate); `scenes/shared.js` createPlayerTicker's `survivalEnv`; the four hosts' readers; `save.js`'s load arm; `worldTick.js` tickPlayerMinutes' `survival` |
 | SURV-TIERS | Off, Casual (the default) and Hard on the one key: the tiers as data, every charging law reading its tier's rules, Off stored as the old switch's own `false`; AUDIT SURV-TIERS: the loan, a rest is a rest, the house's order, Off keeping the camps and the place, four laws Hard shares | `survival/difficulty.js` (the table, the stored values), `survival/switch.js` (`survivalTier`, `survivalRules`), the laws (`needs.js`, `rest.js`, `food.js`, `tavernMenu.js`, `temperature.js`; `hunting.js` until HUNT-OUT DELETED it), the compositions (`env.js`, `scenes/shared.js`, `scenes/hunting.js` until HUNT-OUT, `scenes/camps.js`, `useItem.js`, both tavern windows), `encounters.js` (the asks), `uiPrefs.js` (the load), the four hosts' `restKind`, the Features row |
 | SURV-BOONS | Boons, the fourth tier: nothing taken, a need met earns a boon - Well fed, Quenched, Well rested (banked by a bed or a fire), Thriving, the hearth; green tiles on the strip, no red need | `survival/difficulty.js` (the tier), `survival/needs.js` (`BOON`, `survivalBoons`, the bank in `paySleep`, the minute law's grant), `survival/status.js` (the chips and lines), `ui/hudStatus.js` (the buff tiles, the Thriving glyph), the Features row |
+| AUDIT SURV-BOONS | the over-ceiling pool, Well rested beside a debt, Casual's loan kept, the hearth in a jump, the boons said once at a landing and a load, the tutorial, the drink's chip first, the sheet's Boons rows, the live tier on the strip | `survival/needs.js`, `difficulty.js`, `status.js`, `save.js`, `ui/enhancedHud.js`, `ui/hudStatus.js` (the Hearth's flame), `ui/temperatureCard.js`, `ui/statsCard.js`, `tutorialCatalogue.js`, `ui/credits.js` |
+| TEMP-UI | the temperature shown: the HUD plate, the pack's plaque, the card's comparison, the Stats side's breakdown, the Status page's number | `survival/temperature.js` (`naturalParts`, `temperatureBreakdown`, `signedDegrees`, the sum's parts on `feltTemperature`), `survival/env.js` (`feltNow`, the feed kept), `survival/needs.js` (`feltCtx`), `survival/status.js` (`temperatureReadout`), `ui/enhancedHud.js`, `ui/temperatureCard.js`, `ui/armourCard.js` (`modsForSlots`, the wear's `worn`), `ui/statsCard.js`, the sheets |
+| AUDIT TEMP-UI | the body's warmth unresisted, the swim soaks, the dungeon's air, the clothes eased, the drink's floor, the landing floored, the shown weather, a NaN record mended | `survival/temperature.js`, `env.js`, `needs.js`, `scenes/dungeonContext.js`, `scenes/world.js` |
 | SURV-OFFSIGHT | Off sees another player's camp - the flame, its light, the tent - and uses none of it; its own stay out of sight | `scenes/camps.js` (`seen`, the doors of sight, beside `shown`, the doors of use) |
 
 ### The temperature (SURV1)
@@ -86,23 +100,31 @@ carry, and everything static.
 `feltTemperature(env, worn, ctx)`: the natural temperature is the
 climate's own (Desert 40, Desert2 50, Subtropical 30, Rainforest 20,
 Swamp 10, Woodlands -10, Haunted -20, Mountain Woods -30, Mountain
--40) plus the month's swing (-20 in Morning Star, +20 in Mid Year),
-the hour's (evening and dawn -10, the small hours -20, times 3-4 in
-the deserts and 2 in the mountains) and the weather's (overcast -8,
-fog -5, rain and snow -10, a storm -15, the sandstorm +5); indoors
-half the climate and season with no sky or hour, underground no hour
-or sky and then the dungeon correction (toward -20, so a felt of
--20..+5 for the naturals the world reaches). Resistance is
-degrees toward zero: race flags (25/50, -25/-50), spell resistances as
-degrees, a vampire 25 of frost, a were-beast in its form 100/80.
+-40) plus the month's swing (-20 in Morning Star, +10 in Midyear, +20
+in Sun's Height), the hour's (evening and dawn -10, the small hours
+-20, times 3-4 in the deserts and 2 in the mountains) and the
+weather's (overcast -8, fog -5, rain and snow -10, a storm -15, the
+sandstorm +5); indoors the milder of the street's own reading and the
+roofed half of the climate and season (ROOF-SHELTER, below - so a desert
+night's street at -40 reads +10 under a roof: the milder by size, not by
+sign); underground no hour or sky and then the dungeon correction
+(toward -20, so the air of a dungeon is -20..+5 for the naturals the
+world reaches - AUDIT TEMP-UI E3: and the clothes, the armour's metal and
+the food read that air, not the surface's). Resistance is degrees toward
+zero: race flags (25/50, -25/-50), spell resistances as degrees, a
+vampire 25 of frost, a were-beast in its form 100/80 - on the WORLD's
+reading alone (AUDIT TEMP-UI E1: the body's own warmth is not resisted).
 Clothing warms by piece (1-12), the cloaks by variant (a formal cloak
-three times a casual one), less the wetness one for one, never below
-nothing; a hood shades ten in strong sun. Armour warms a little and its
-metal heats in sun (unless a cloak or a robe covers it) or chills in
-cold. The felt temperature is the resisted world plus the resisted body
-(race, clothes, armour, a fire's 15, less a twentieth of the wetness,
-less the naked offset 5), and a drink in the pack takes ten off a hot
-reading.
+three times a casual one), eased toward half above a natural ten
+(CLOTHES-BREATHE, AUDIT TEMP-UI E7), less the wetness one for one, never
+below nothing; a hood shades ten in strong sun. Armour warms a little -
+the wet eats that too - and its metal heats in sun (unless a cloak or a
+robe covers it) or chills in cold. The felt temperature is the resisted
+world plus the body (race, clothes, armour, a fire's 15, less a
+twentieth of the wetness) plus the naked offset (-5, every body), and a
+drink in the pack takes ten off a reading over nine, never below nine
+(AUDIT TEMP-UI E8). TEMP-UI (at the end of this page) shows every one
+of those parts.
 
 ### The needs (SURV1)
 
@@ -1686,7 +1708,9 @@ Hungry now, since the sack - which never spoils - goes first.
 **One key, four answers.** The Features bar reads `Off | Boons | Casual |
 Hard`; Boons is stored by name (`'boons'`), the load keeps it as it keeps
 the others (`isStoredTier` reads the table), the default stays Casual, and
-like every tier it is the player's online - a boon is MY body's.
+like every tier it is the player's online - a boon is MY body's (but see
+the open question in AUDIT SURV-BOONS: it reaches other players through
+PvP and the loot luck).
 
 ### The design: what a need met earns
 
@@ -1699,22 +1723,26 @@ and as law in `survival/needs.js`:
    and its spoiling, the water, the camps, the tavern's menus and every word
    are the world's, as in the other tiers - a Boons player stands in one
    world with a Hard one, and the strip still says Peckish and Cold.
-2. **Nothing is ever taken.** The needs may take none of the stamina pool
-   (`stamina.floor` 1: the share they may not take is all of it), no loan is
-   kept (`repaid` false - there is nothing to repay), and every other cost is
-   Casual's `false`: no attribute, health, condition, disease, gate,
-   blackout or wasted meal, the rest window DFU's whole hour with one ask and
-   no stiff morning. The drink's swing stays, as in every tier: it is chosen
-   at a bar.
+2. **Nothing is ever taken.** The needs take none of the stamina pool
+   (`stamina.floor` 1: the share they may not take is all of it, and
+   `needs.js` `tire` charges nothing at all under it - not even the fatigue
+   above a pool that has just shrunk), and every other cost is Casual's
+   `false`: no attribute, health, condition, disease, gate or blackout, the
+   rest window DFU's whole hour with one ask and no stiff morning. `repaid`
+   is TRUE: Boons lends nothing, but a loan Casual made is repaid as its
+   need is met, as Casual promised. The drink's swing stays, as in every
+   tier: it is chosen at a bar. Casual's two house refusals stay too - the
+   barkeep stops before a blackout and the kitchen will not sell a meal to a
+   stomach too full for it - because they guard the coin.
 3. **A body kept earns** (`boons: true`; `needs.js` `BOON`, `survivalBoons`):
 
    | Boon | While | Gives |
    |---|---|---|
-   | Well fed | the hunger at its first stage - under Peckish's four hours (a better meal banks more: cooked over raw, fresh over stale) | +5 strength, +5 endurance - a bigger stamina pool, Valheim's food |
-   | Quenched | the thirst at its first stage - under Thirsty (a skin with water in it keeps it) | +5 agility, +5 speed |
-   | Well rested | a bank of minutes, `wellRested`: one and a half a minute asleep in a bed or by a fire, to twelve hours; spent a waking minute at a time. The rest window's rough sleep banks none - the bed and the fire are the go-to rest, Mac's SURV brief | +5 intelligence, +5 willpower - Valheim's Rested |
-   | Thriving | all three at once | +5 luck |
-   | Hearth | a waking minute within a lit fire's reach (a camp's or the world's - HEARTH1) | a point of stamina back a minute, up to the pool (a rest by the fire is already the camp's whole rest, so it gives nothing on top) |
+   | Well fed | the hunger at its first stage - under Peckish's four hours (a better meal banks more: cooked fish 110 minutes more than raw) | +5 Strength, +5 Endurance - a bigger stamina pool, Valheim's food |
+   | Quenched | the thirst at its first stage - under Thirsty (a skin with water in it keeps it) | +5 Agility, +5 Speed |
+   | Well rested | a bank of minutes, `wellRested`: one and a half a minute asleep in a bed or by a fire (a Sleeping Draught makes the rest window a bed's, and it banks), to twelve hours, spent a waking minute at a time (a loiter is waking) - and earned only while the sleep debt is paid (under Tired) | +5 Intelligence, +5 Willpower - Valheim's Rested |
+   | Thriving | all three at once | +5 Luck |
+   | Hearth | a minute lived awake and unresting within a lit fire's reach (a camp's or the world's - HEARTH1); not a rest, a loiter or a jump's replayed minutes | a point of stamina back a minute (`FATIGUE_MULTIPLIER`), up to the pool |
 
    The points ride the needs' one `survival` entry - the door the drains
    leave by - so they read everywhere a stat is read (`statMods.js`
@@ -1723,13 +1751,17 @@ and as law in `survival/needs.js`:
    earns none of their boons; the hearth is anyone's.
 4. **No red.** RED MEANS IT COSTS, and nothing in Boons costs, so a need's
    chip goes no further than amber there; the drink alone stays red, as it
-   costs in every tier. The boons are the strip's GREEN tiles (`level:
-   'boon'`, a `buff` tile): the need's own glyph for the need it rewards, the
-   campfire for the hearth, a gold sparkle for Thriving (`ui/hudStatus.js`
-   `STATUS_GLYPHS.thriving`), Well rested's hours left at its foot. The
-   status page says each in a line read off `BOON` - "Well fed: +5 strength,
-   +5 endurance." - and each is said once as it is earned, and again only
-   after it lapsed.
+   costs in every tier, and stands before the boons so a full band never
+   folds it away first. The boons are the strip's GREEN tiles (`level:
+   'boon'`, a `buff` tile): the need's own glyph for the need it rewards, a
+   flame for the Hearth (its own - REST1's Rested is the campfire), a gold
+   sparkle for Thriving (`ui/hudStatus.js` `STATUS_GLYPHS`), Well rested's
+   whole hours left at its foot. The status page says each in a line read off
+   `BOON` - "Well fed: +5 Strength, +5 Endurance." - and says "You are not
+   tired." where Casual says "well rested" and no bank stands; the Stats side
+   lists them (its Boons section). Each attribute boon is said once as it is
+   earned and again only after it lapsed; the Hearth has no line - its tile
+   says it.
 
 Fading is the only price of not tending: a Boons player who never eats is
 the classic game's body, never less.
@@ -1739,66 +1771,335 @@ the classic game's body, never less.
 - **The table** (`difficulty.js`): Boons is its own literal - every field
   written out, not Casual spread - so a later change to Casual's prices can
   never move Boons by accident; one field, `boons`, is new on all three
-  (Boons `true`, Casual and Hard `false`), and the shape pin holds the three
-  to one set of fields.
+  (Boons `true`, Casual and Hard `false`). The shape pin holds the three to
+  one set of fields, and a literal pin holds Boons to every value.
 - **The record keeps two fields, and only in Boons**, like Casual's loan:
   `wellRested` (the bank) and `boons` (the ids the last minute granted, in
   the strip's order). The minute law drops both - and the lines that said
-  them - the first minute of any other tier, so Casual's and Hard's records
-  are what they were, and a return to Boons says each boon again.
+  them - the first minute of Casual or Hard, and Off's pause drops them as it
+  passes; Casual's and Hard's records are what they were, and a return to
+  Boons says each boon again.
 - **The bank is paid where sleep is paid** (`paySleep`): the minute law's
   night and REST-SLEEP1's short rest (`restAct.js` `sleepShortRest`, the
-  online night) both come through it, so neither can bank and the other not.
+  short rest inside the online night interval) both come through it, so
+  neither can bank and the other not.
 - **The grant is the minute law's**, last before the entry is written: the
   bank spent, the hearth's stamina given, `s.boons` written by
   `survivalBoons`, and `survivalStatMods` adds `BOON`'s points for each id -
   only in a tier whose `boons` says so, so a stale grant pays nothing.
   What the strip says is what the body has: both read the same `s.boons`.
-- **The strip and the page read the record** (`status.js`): a record that
-  carries `boons` is a rewarding tier's - no red there - and the four hosts'
-  status chain needs no change. No host changed: every host's minute runs
-  through the one `survivalFeed` and every rest through the one
-  `createRestDeps`, so the tier reaches all four (`world.js`, `exterior.js`,
-  `worldModes.js`, `dungeonContext.js`) through those two doors.
+- **The strip and the page read the record, and the tier where they know
+  it** (`status.js`): a record that carries `boons` is a rewarding tier's,
+  and the HUD hands the live tier in (`rewarding`), so a turn of the switch
+  shows at once rather than a game minute later.
+- **No host changed for the tier**: every host's minute runs through the
+  one `survivalFeed` and every rest through the one `createRestDeps`, so the
+  tier reaches all four (`world.js`, `exterior.js`, `worldModes.js`,
+  `dungeonContext.js`) through those two doors. (AUDIT TEMP-UI changed two
+  hosts' survival readers for the temperature's sake - its section.)
 
 ### The pins
 
-`test/survboons.test.js`, 10 tests: the fourth tier on the one key (the
-bar's segment, the stored name, the switch, the feed's rules, no gate, the
-player's online, Casual still the default); NOTHING IS EVER TAKEN (the worst
-day in wet plate on 1% rust rolls - no drain, wound, attribute or condition
-- and every climate, both ends of the year and the day, four weathers, from a
-body with every need red; the rough rest, the meal's roll and the house's
-pour too); Well fed and Quenched at their stages' edges, and a cooked meal
-longer than a raw one; Well rested banked by a bed and a camp, through the
-minute law and the short rest, never by the rest window or another tier,
-capped, spent awake, gone when spent; Thriving's luck coming and going with
-the third; the hearth (up to the pool, not at rest, not away from a fire,
-not in Casual or Hard); the vampire; only Boons rewards (a turn from Boons
-drops the bank, the grant and the points; a return says the boons again);
-a jump's boons said once as it lands; and the strip and the page (the green
-tiles, their glyphs and foot, no red need but the drink, Hard's red kept,
-the lines read off `BOON`). The pre-tier pins moved where the vocabulary
-did: `test/survtiers.test.js` reads four segments and holds Boons to the
-same shape; `test/ui3_status.test.js` counts fourteen glyphs; FT15's
-ceiling rose by the row's growth, 81 characters.
+`test/survboons.test.js`, 14 tests, every number a literal (A PIN MUST
+FAIL - a pin that read `BOON` or `HEARTH_FATIGUE` back survived their
+mutation): the fourth tier on the one key and the table to the value;
+NOTHING IS EVER TAKEN (the worst day in wet plate on 1% rust rolls, every
+climate in January and July at two in the morning and two in the
+afternoon, sunny, raining, snowing and in a storm, from a body with every
+need red; the rough rest, the meal's roll, the house's two refusals); THE
+OVER-CEILING POOL; Well fed and Quenched at both edges of both, and a
+cooked meal 110 minutes longer than a raw one; Well rested banked 90 an
+hour by a bed and a camp, through the minute law and the short rest, never
+by a rough rest or another tier, capped at 720, spent awake and in a
+loiter, gone when spent, and earned only with the debt paid; Thriving's
+luck coming and going; the hearth (1640 from 1000 in ten minutes, up to the
+pool, silent, not at rest, in a loiter, away from a fire, in a jump's
+replay, or in Casual or Hard); the vampire; only Boons rewards (a turn,
+a bank with no grant, Off; a lapse and a return said again); Casual's loan
+repaid; a jump says what it lands with; a load says nothing new (a real
+save round trip); and the strip and the page in words. The pre-tier pins
+moved where the vocabulary did: `test/survtiers.test.js` reads four
+segments and holds Boons to the same shape; `test/ui3_status.test.js`
+counts the glyphs; FT15's ceiling rose by each growth of the row.
 
-Mutants: `tools/mutants/survboons.json`, 38 records - every Boons rule
-broken one at a time (a floor of half and of nothing, bare feet, the
-attributes, the rust, the sickness, the halved rough hour, the gate, the
-blackout), Boons earning nothing and Casual or Hard earning, the tier
-dropped from the table or the bar, misstored, the bank (rough sleep, any
-tier, its rate, its ceiling, never spent, spent asleep), each boon's edge,
-Thriving of two, a vampire's, a stale grant paying, a turn keeping the
-bank or the lines, the hearth (at rest, without a fire, past the pool), the
-lines every minute, the red, the chip's level, the foot, the page, the tile
-and the glyph - all 38 dead. The edit moved eight records in other lists,
-re-aimed by content and run again: `survtiers.json`'s four rough-rest and
-sleep-floor records (now anchored with Casual's own comment on the next
-line, since Boons writes the same values), `needtier.json`'s two and
-`ui3.json`'s one on the tile line, and `restsleep1.json`'s on `paySleep`'s
-close - 8 dead.
+Mutants: `tools/mutants/survboons.json`, 75 records - every field of the
+table one at a time (the bare-feet record split from the floor's, as AUDIT
+SURV-BOONS D4 asked), the tier, its stored name and its segment, the floor
+over a shrunk pool, the bank (rough sleep, any tier, its rate, its ceiling,
+never spent, spent asleep), each boon's edge, Well rested beside a debt,
+Thriving of two, a vampire's, a stale grant, a turn keeping the bank or
+the lines or a bank with no grant, Off keeping them, the hearth (at rest,
+without a fire, in a replay, past the pool, a half), the lines (every
+minute, in the replay, never cleared, in words), BOON's numbers, the load
+and the fresh start forgetting the lines, the red, the drink's chip, the
+chip's level, the foot (gone, rounded, on every boon), the page (silent,
+the tier read late, "well rested" without a bank, the plural, the case,
+the hearth's words, its glyph), the tile and the glyph, the tutorial's
+trigger and words, and the sheet's rows in another tier - all 75 dead.
 
 **Not driven in the container:** no ARENA2, so the game was not played on
-Boons; the tiles were checked through the pure `statusTiles` and the
-chips, not drawn in a browser.
+Boons; the boon tiles were driven through the real `drawEnhancedHud` on a
+fake document, not photographed (the temperature plate beside them was -
+TEMP-UI).
+
+## AUDIT SURV-BOONS (2026-10-12)
+
+> The owner: *"I want to ensure it's perfection and highly detailed. ...
+> Audit everything we have also"*.
+
+Five cold lenses, each in a git worktree of its own (a snapshot, so no
+fix landed under a reader - DO NOT FIX WHILE THE VERIFIER IS READING): the
+law (A), every consumer of the tier and the record across the tree (B),
+what the player sees and hears (C), the records and the pins (D), and the
+temperature law and the arc's open defects (E - its own section, AUDIT
+TEMP-UI). Every finding was reproduced by a script against the real
+producers before it was fixed.
+
+### Found and fixed
+
+- **The floor drained above a shrunk pool (A4, B3, D1).** Well fed's +10
+  to the pool filled by a fire, then Peckish shrank it - and a red need
+  drained the fatigue above the new ceiling, in the tier that takes
+  nothing. `tire` now charges nothing at all under a floor of the whole
+  pool.
+- **Well rested beside an Exhausted chip (A1, B4, C5).** The grant read the
+  bank alone; a short night from Exhausted woke Well rested and Thriving.
+  It needs the debt paid (under Tired) now; the page says "You are not
+  tired." in Boons where no bank stands.
+- **Casual's loan thrown away (A2, B2).** Boons lent nothing and so repaid
+  nothing: a turn from Casual dropped stamina Casual had promised back.
+  `repaid` is true; with the floor, Boons lends nothing new.
+- **The hearth paid every replayed minute (A3, B13).** Three hours'
+  training beside a brazier cost nothing. The hearth is a minute lived.
+- **A jump announced boons it no longer had (A5, B5, C1)**, and the
+  committed pin had held the wrong lines. The boon lines wait for the
+  minute the player stands in.
+- **Every load said every boon again (C3).** The save drops the notes; the
+  load and WORLD5's fresh start now seed the boons the record carries as
+  said (`needs.js` `boonNotes`).
+- **The first-need tutorial fired on a fresh Boons character (A6, B6,
+  C2)**, and its page named three tiers. A boon is no felt need now; the
+  page and the credits name Boons (57 words, under TUT1's sixty).
+- **The Hearth's line on every brazier passed (C4)** - eleven an hour in a
+  lit street at a full pool. It has no line; its tile and its page line
+  say it.
+- **The drink's red chip folded away first (B7, C6)**: it stands before the
+  boons now.
+- **The Hearth and REST1's Rested wore one campfire (C7)**: the Hearth has
+  its own flame.
+- **The words (C8-C12)**: the Features note no longer says travel wears a
+  Boons body down or that nothing at all is taken (the drink's swing
+  stays), and says Well rested's bed or fire; the credits name Boons;
+  "1 hour", not "1 hours"; "+5 Strength", as the sheet says it; a vampire's
+  page says its wet, its temperature and its hearth after its one line.
+- **The sheet (B11, C13)**: the Stats side's Boons section names each boon
+  and what it gives - the raised attributes explained where they show.
+- **The tier read late (C14)**: the HUD hands the live tier to the strip and
+  the plate.
+- **Off kept the bank and the grant (A9, B9, D9)**: Off's pause drops them.
+- **One export (B10)**: the hearth's point is `FATIGUE_MULTIPLIER`, not a
+  second 64.
+- **The pins (D2-D8)**: the table pinned to the value, the numbers as
+  literals, both edges of each boon, the lapse and the return, the loiter,
+  the foot on every boon and at 61 minutes, the words - and the 38 mutants
+  became 75, every one dead.
+- **The records (D10, D11, D13)**: the sweep said exactly as it runs, the
+  Draught's bank said, and the "three tiers" sentences in the code said as
+  four (RETIRING A FLAG DELETES THE SENTENCE).
+
+### Open, for the owner
+
+- **Boons reaches other players (B1).** The tier is each player's online,
+  on MODS-ONLINE-3's reading that a tier decides only what MY body pays.
+  Boons breaks that reading: its +5s ride the duel's and the siege's live
+  stats (`combat/duelCombat.js`), and Thriving's luck rolls a world room's
+  shared loot (`hostCombat.js` `rollCorpseLoot`). Two answers, both one
+  line: keep the tier the player's and say so (the rows' notes), or leave
+  the attribute points out online and keep the hearth. Not decided here.
+- **An older build erases a stored Boons (B12)**: a build from before
+  Boons reads `'boons'` as no tier and its next save drops it. Inherent to
+  a new stored value; a player who runs an old desktop build will need to
+  pick Boons again.
+- **The enhanced menu's own Stats page (B11)** shows a raised attribute as
+  a plain number - the Stats side of the pack and the classic sheet say
+  why; that page does not.
+
+## TEMP-UI - THE TEMPERATURE, SHOWN (2026-10-12)
+
+> The owner: *"We also need to add a tempurature widget to the UI
+> including allowing players to see their personal tempurature in their
+> inventory"*.
+
+### What the player sees
+
+- **The HUD plate** (`ui/enhancedHud.js`, the enhanced skin): at the
+  compass's right end, on its middle - where the eye already goes for where
+  you are, clear of the quest card (92 px down the right edge), the status
+  widget (the left edge) and the foe's bar (under the compass's middle). A
+  glyph for the way the reading runs (a snowflake, the sun, a new
+  thermometer for comfortable), the number ("-14°"), its word, and a scale
+  from deadly cold to scorching (-60 to +60, the bands in their own
+  colours, the comfortable band bone in the middle) with a mark where you
+  stand. It wears the level the strip's temperature chip gives the same
+  reading: amber felt, red costing (RED MEANS IT COSTS - beside a lit fire
+  in Casual, and anywhere in Boons, nothing red). A phone keeps the glyph
+  and the number; so does any screen where the whole plate would run off
+  its right edge (a large HUD scale: measured now and then, and whole again
+  when there is room). A chip of the kit (`enhancedFrame.js` `chip`), so
+  Enhanced Plus and the DFO Grimoire dress each paint it. A part on the
+  Climates & Calories row (`survivalTempHud`, "Temperature on the HUD",
+  on by default, each player's own online) hides it.
+- **The pack** (`ui/temperatureCard.js`, the enhanced pack; the classic
+  window is DFU's own - THE NATIVE-WINDOW RULE):
+  - the **plaque** on the figure, top right of its column where the Armour
+    plaque stands top left - "Felt" over the reading, coloured by the way it
+    runs and framed by its level, its title the whole sum, line by line;
+  - the **card's comparison** under a wearable's stats - the reading now
+    and as wearing it would leave it ("Wearing it: -62° Deadly cold →
+    -50° Freezing", +12°), or, for a piece already worn, as taking it off
+    would ("Without it"), green where it brings the reading toward the
+    comfortable band and red where away (a cloak off in the desert noon is
+    green); nothing for a wear that moves it under a degree (a ring, a
+    sword, a loaf);
+  - the **Stats side's Temperature section** - every part of the sum, a row
+    each, adding up to the number.
+- **The Status page** (both skins): the number under the word - "Felt
+  temperature: -14 (comfortable from -10 to +10)." - in plain characters,
+  which the classic's faces carry (no degree sign).
+
+### The breakdown, and why it adds up
+
+`temperature.js` `temperatureBreakdown(env, temp)`: the land (the climate,
+named - `CLIMATE_NAMES`), the season (the month's name), the hour's band
+(`hourBand` - day, evening, dawn, night - held to `hourTemperature` over
+every minute of every climate), the weather (`WEATHER_NAMES`), a roof, the
+ground's correction, the resistances (on the air), the race, the clothing
+(and what it would be dry, where the wet ate some), the armour (and "hot
+metal" or "cold metal"), a fire, wet through, bare skin, a drink to hand
+and an enchanted garment's degrees - each only where it moved the number,
+the land always. The rows sum to `felt` to the degree, BY CONSTRUCTION:
+`feltTemperature` returns every part of its sum (`worldResist`,
+`dungeon`, `naked`, `waterCools`, `degrees`, with the ones it already
+returned), and `naturalParts` derives the roof's share from
+`naturalTemperature`'s own answer rather than restating the roof law
+(ROOF-SHELTER stays one law). A test sweeps the sum over every climate
+and weather, both ends of the day and the year, indoors, out and
+underground, five outfits and five bodies.
+
+### The reading is live
+
+The record's `felt` is the last game minute's (five real seconds), and the
+pack is often a paused window. So the feed keeps, per entity and weakly
+(never on the entity - nothing of it rides a save or the wire), the
+environment and the body's context it built (`env.js` `lastSurvivalFeed`),
+and `feltNow(entity, { worn, mods })` sums the minute law's own reading
+there: `feltTemperature` over `needs.js` `feltCtx` - ONE CONSTRUCTION SEAM,
+which the minute law builds its context through too, so the reading the
+pack shows is the one the next minute charges (pinned: the minute after a
+cloak goes on writes what the pack showed). The HUD plate reads it live as
+well, so a door changes the number the frame it is walked through. A
+wear's reading takes the wear's table (`armourCard.js` `wearComparison`'s
+`worn`) and its wardrobe through `modsForSlots`, the fold the armour's
+points already used.
+
+### The pins
+
+`test/tempui.test.js`, 16 tests: the natural parts sum to the law (over
+twenty thousand environments) and the hour's band is the law's; the
+breakdown sums to `felt` (over ten thousand readings) and its rows are
+named; `signedDegrees`; the plate's level is the chip's for every reading
+from -120 to +120, by a fire and in a rewarding tier; the Status page's
+number in plain characters; the live reading is the minute law's; the HUD
+plate driven (hidden Off, with its part off, and before a reading; the
+number, word, side, level, glyph and mark; written only on a change; live
+through a door; the compact step and back); the part on the row; the pack
+driven (the plaque and its title, the card's comparison worn and not, in
+the blizzard and the desert noon, a ring and a loaf saying nothing, Off);
+the Stats side's section; and AUDIT TEMP-UI's own. Mutants:
+`tools/mutants/tempui.json`, 48 records, all dead (a forty-ninth - the
+ground's own flag in `naturalParts` - was equivalent, and the flag was
+deleted as a second statement of the law).
+
+`tools/tempUiProbe.mjs` draws the real plate in Chromium beside the quest
+card, a foe's bar and the status widget, at a desktop, two laptops, HUD
+scales 1.5 and 2, and a phone both ways up, in Enhanced Plus and in the
+Grimoire dress, at freezing, comfortable and scorching: 1092 checks, all
+passed (on the screen, off the compass's right end on its middle, meeting
+nothing, its words, its glyph, its mark on its scale; whole on a desktop
+at its own scale, compact where it must be).
+
+## AUDIT TEMP-UI - THE LAW UNDER THE NUMBER (2026-10-12)
+
+A number shows every step the words hid, so lens E read the temperature
+law before the plate shipped. Fixed, each pinned against the case that
+found it:
+
+- **E1 - resistance pointed the wrong way.** The body's own warmth (the
+  clothes, the armour, the fire, the race) was resisted as heat: Resist
+  Fire made a blizzard colder by every degree it gave (-62 to -112 at fifty
+  beside a fire), and Resist Frost a desert hotter. A resistance turns the
+  WORLD's cold or heat toward nothing now; the body's own sum is its own.
+  A declared departure (Port-Ledger A): the mod resists both.
+- **E2 - a swim soaked nobody.** The law soaks on `submerged`, every host
+  said `swimming`, and the dungeon's was a hard-coded false. The feed
+  reads a swimmer as submerged (a host that says otherwise is believed),
+  and the dungeon hands its own swim.
+- **E3 - underground read the surface.** The clothes breathed, the
+  armour's metal heated and the food spoiled by the sky over the dungeon:
+  a desert dungeon read the starting kit "cold" where every other read it
+  "comfortable". They read the dungeon's air now (`feltTemperature`'s
+  `air`).
+- **E6 - the landing minute killed one jump in ten.** SURV-THIRST1 said a
+  journey lands at death's door "without the arrival being a coin flip",
+  and a landing on a harm tick (Hard) killed outright. The minute a jump
+  lands in floors as its replayed minutes do (`walk.landing`); the next
+  minute lived may kill. The pin that had held `< 5` - the landing's own
+  bite - holds the floor.
+- **E7 - the clothes' cliff.** Above a natural ten the clothes fell to half
+  at once, so a world two degrees warmer read seventeen cooler. The half
+  eases in a degree at a time (never past half): no warmer world reads
+  cooler (pinned over -60..80 for two outfits). A declared departure, with
+  CLOTHES-BREATHE's.
+- **E8 - the drink's drop.** A drink to hand took ten off any reading over
+  nine down to nothing: 10 read 0 and 19 read 9. It cools to nine at the
+  coolest now. A declared departure.
+- **E11 - the Sun Baby's clear sky** soaked a body in the sim's rain; the
+  needs feel the weather the land wears.
+- **E12 - a record with a counter that was no number** read NaN for the
+  session and hid the chip; `survivalOf` mends it from the fresh record.
+- **E9, E13**: the plate reads live (above); the SURV1 temperature
+  paragraph's drift is corrected in place (Midyear, the roof, the dungeon's
+  air, the resistance, the wet on armour, the naked offset, the drink).
+
+**The run that closed it**, stated as its rule so it can be run again:
+every record in the survival lists (`surv1`-`surv7`, `surv_thirst1`,
+`auditsurv`, `hearth1`, `survtiers`, `survtiers3`, `fb0930_cc_*`, `loot14`,
+`loot15`, `deathloop1`, `restsleep1`, `needtier`, `ui3`,
+`fb0930_hoodsaid`, `vamphood`, `auditloot2`) and every record in any other
+list whose target lies within six lines of a line this change made: 654
+records - 649 dead, 4 recorded equivalents (two of them recorded here:
+CLOTHES-BREATHE's threshold, continuous since E7, and LOOT15's host
+argument, which `wardrobeCtx` never reads), and one survivor answered:
+AUDIT LOOT II A2's "the degrees on the resistance" had been told from the
+right law only through the resisted body E1 removed, and is now told by a
+warm reading in a cold world (a Legendary's heat degrees cool it; a fire
+resistance cannot) - dead. Twenty records re-aimed by content (the harm
+lines, the clothes, the load, the page, the phone's rule).
+
+### Open, for the owner
+
+- **E4 - the sea is a beach.** `CLIMATE_TEMP[Ocean]` is +20 on every
+  pixel of every voyage, the Etheric Sea's open water too: a winter
+  crossing reads warm and a summer one hot. Two answers - the coast's
+  climate made milder (ROOF-SHELTER's "milder of"), or the sea at nought
+  (season, hour and weather alone). A tuning call, not made here.
+- **E5 - a jump is felt in one frozen environment.** The ticker reads the
+  host's environment once a tick, so a fast travel's whole span is felt at
+  the arrival's climate and the departure's hour. Advancing the hour per
+  replayed minute is right offline and wrong online (where the sky stands
+  while the character's clock moves - LIVED1), so it waits for its own
+  slice.
+- **E10 - the hour is a staircase** (a desert's 40 degrees at 16:00): by the
+  mod's design; the plate shows it as it is.
+- `COVERING_CHEST` shades armour under Challenger Straps (warmth 1) but not
+  under a surcoat - worth reading against the mod's IL.

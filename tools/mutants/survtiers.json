@@ -499,8 +499,8 @@
   {
     "name": "SURVTIERS-the-half-hour-falls-to-night",
     "file": "src/systems/survival/temperature.js",
-    "old": "  const h = ((Math.floor(hour ?? 12)) % 24 + 24) % 24;",
-    "new": "  const h = ((hour ?? 12) % 24 + 24) % 24;",
+    "old": "  const h = ((Math.floor(hour ?? 12)) % 24 + 24) % 24;\n  const m = NIGHT_MULT[climateIndex] ?? 1;",
+    "new": "  const h = ((hour ?? 12) % 24 + 24) % 24;\n  const m = NIGHT_MULT[climateIndex] ?? 1;",
     "tests": [
       "test/survtiers.test.js"
     ]
@@ -784,7 +784,7 @@
   {
     "name": "SURVTIERS-a-jump-can-kill-with-the-heat",
     "file": "src/systems/survival/needs.js",
-    "old": "const bite = Math.max(1, Math.trunc((abs - 40) / 10));\n      if (!replay) sinks.hurt?.(bite);\n      else if ((entity.health ?? 0) > HEALTH_FLOOR) sinks.hurt?.(Math.min(bite, (entity.health ?? 0) - HEALTH_FLOOR));",
+    "old": "const bite = Math.max(1, Math.trunc((abs - 40) / 10));\n      if (!replay && !landing) sinks.hurt?.(bite);\n      else if ((entity.health ?? 0) > HEALTH_FLOOR) sinks.hurt?.(Math.min(bite, (entity.health ?? 0) - HEALTH_FLOOR));",
     "new": "const bite = Math.max(1, Math.trunc((abs - 40) / 10));\n      sinks.hurt?.(bite);",
     "tests": [
       "test/survtiers.test.js"

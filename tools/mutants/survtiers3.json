@@ -289,8 +289,8 @@
   {
     "name": "SURVTIERS3-the-page-says-deadly-cold-by-the-fire",
     "file": "src/systems/survival/status.js",
-    "old": "lines.push(warmedBy(s, word) ? STATUS_TEXT.warmedByFire : STATUS_TEXT.temp(word));",
-    "new": "lines.push(STATUS_TEXT.temp(word));",
+    "old": "lines.push(warmedBy(s, word) ? STATUS_TEXT.warmedByFire : STATUS_TEXT.temp(word), ",
+    "new": "lines.push(STATUS_TEXT.temp(word), ",
     "tests": [
       "test/survtiers3.test.js"
     ]

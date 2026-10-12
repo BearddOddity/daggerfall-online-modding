@@ -104,14 +104,18 @@ test('SURV5: the strip and the page - one chip a felt need, nothing while every 
     ['hunger:Hungry:warn', 'thirst:Parched:danger', 'sleep:Tired:warn', 'wet:Wet:warn', 'temp:Freezing:danger', 'stiff:Stiff:warn', 'drunk:Very drunk:danger']);
   assert.equal(HUD_NEED_WORDS.hunger.starving[1], 'danger');
   assert.deepEqual(survivalStatusLines(e, 800, { endurance: 50 }), [
-    STATUS_TEXT.hunger.hungry, STATUS_TEXT.thirst.parched, STATUS_TEXT.sleep.tired, STATUS_TEXT.wet.wet, 'You feel freezing.', STATUS_TEXT.stiff, STATUS_TEXT.veryDrunk,
+    STATUS_TEXT.hunger.hungry, STATUS_TEXT.thirst.parched, STATUS_TEXT.sleep.tired, STATUS_TEXT.wet.wet, 'You feel freezing.',
+    'Felt temperature: -35 (comfortable from -10 to +10).',   // PIN MOVED (TEMP-UI): the number under the word
+    STATUS_TEXT.stiff, STATUS_TEXT.veryDrunk,
   ]);
   assert.equal(STATUS_TEXT.hunger.hungry, 'You could do with a decent meal.', 'the mod\'s own line');
   e.survival.drunk = 30; assert.equal(survivalStatusLines(e, 800, { endurance: 50 }).at(-1), STATUS_TEXT.drunk, 'past half the endurance: drunk');
   e.survival.drunk = 20; assert.equal(survivalStatusLines(e, 800, { endurance: 50 }).some((l) => /drunk/.test(l)), false);
-  assert.deepEqual(survivalStatusLines(e, 800, { vampire: true }), [STATUS_TEXT.vampire]);
+  // PIN MOVED (AUDIT SURV-BOONS C12): the vampire's one line in the needs' place, then the body's own - the wet and the
+  // temperature the strip shows a vampire too (the drink at 20 is under the band)
+  assert.deepEqual(survivalStatusLines(e, 800, { vampire: true }), [STATUS_TEXT.vampire, STATUS_TEXT.wet.wet, 'You feel freezing.', 'Felt temperature: -35 (comfortable from -10 to +10).', STATUS_TEXT.stiff]);
   const fed = { survival: { ...newSurvival(0), lastAte: 1000 - 30, felt: 0 } };
-  assert.deepEqual(survivalStatusLines(fed, 1000), [STATUS_TEXT.invigorated, STATUS_TEXT.thirst.fine, STATUS_TEXT.sleep.rested, 'You are comfortable.']);
+  assert.deepEqual(survivalStatusLines(fed, 1000), [STATUS_TEXT.invigorated, STATUS_TEXT.thirst.fine, STATUS_TEXT.sleep.rested, 'You are comfortable.', 'Felt temperature: 0 (comfortable from -10 to +10).']);   // PIN MOVED (TEMP-UI)
   assert.deepEqual(survivalStatusRows(fed, 1000)[0], { text: STATUS_TEXT.invigorated, center: true });
   // the felt reading rides the record from the minute law, so the strip needs no env
   const p = { stats: { strength: 50, intelligence: 50, willpower: 50, agility: 50, endurance: 50, personality: 50, speed: 50, luck: 50 }, items: [], activeEffects: [], health: 50, fatigue: 3000, raceId: 1 };
@@ -199,7 +203,7 @@ test('SURV5: by source - the four hosts chain the third box, the enhanced HUD ca
   assert.match(read('src/ui/statusBox.js'), /if \(survival\) rows\.push\('', \.\.\.survivalStatusRows\(entity, survival\.minutes, survival\)\);/);
   const hud = read('src/ui/enhancedHud.js');
   // UI3: the needs are the status widget's tiles - a felt need amber, one that costs red
-  assert.match(hud, /const needs = survivalOn\(\) \? survivalHudChips\(vitals, Math\.floor\(ownMinutes\(\)\), \{ vampire: !!liveVampirism\(vitals\), endurance: liveStat\(vitals, 'endurance'\) \}\) : \[\];/);
+  assert.match(hud, /const needs = survivalOn\(\) \? survivalHudChips\(vitals, Math\.floor\(ownMinutes\(\)\), \{ vampire: !!liveVampirism\(vitals\), endurance: liveStat\(vitals, 'endurance'\), rewarding: !!survivalRules\(\)\?\.boons \}\) : \[\];/);   // PIN MOVED (AUDIT SURV-BOONS C14): and the live tier
   assert.match(hud, /const all = statusTiles\(\{ spells, powers, afflictions: afflictionRows\(vitals\), needs, rested \}\);/);   // REST1: and the Rested tile
   assert.match(read('src/ui/enhancedStyle.js'), /\.hst-cell\.danger \{/);
   const wm = read('src/scenes/worldModes.js');

@@ -255,7 +255,7 @@
   {
     "name": "LOOT14-the-minute-never-dressed",
     "file": "src/systems/survival/needs.js",
-    "old": ", ...wardrobeCtx(deps.ctx, entity._mods) };",
+    "old": ", ...wardrobeCtx(base, mods) };",
     "new": " };",
     "tests": [
       "test/loot14_wardrobe.test.js"

@@ -2317,6 +2317,18 @@ export const ARMOUR_CSS = `
   border: 2px solid rgba(192,138,62,0.8); box-shadow: 0 0 0 1px #050608; text-shadow: 1px 1px 0 #050608; }
 .pack-shell .wornac-total .k { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #a89f88; }
 .pack-shell .wornac-total .v { font-size: 16px; line-height: 1; color: #f3cf86; font-variant-numeric: tabular-nums; }
+/* TEMP-UI: THE FELT TEMPERATURE, the Armour plaque's twin in the cell's other corner (ui/temperatureCard.js) - its
+   number in the way the reading runs (bone comfortable, ice cold, amber hot) and its frame in the strip's levels
+   (amber felt, red costing), as the HUD's plate */
+.pack-shell .wornmap .worntemp-total { position: absolute; right: 4px; top: 4px; z-index: 2; display: flex; flex-direction: column;
+  align-items: center; gap: 1px; padding: 2px 5px 3px; white-space: nowrap; background: rgba(5,6,8,0.8);
+  border: 2px solid rgba(192,138,62,0.8); box-shadow: 0 0 0 1px #050608; text-shadow: 1px 1px 0 #050608; }
+.pack-shell .worntemp-total[data-level="warn"] { border-color: #f3cf86; }
+.pack-shell .worntemp-total[data-level="danger"] { border-color: #ff9a7a; }
+.pack-shell .worntemp-total .k { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #a89f88; }
+.pack-shell .worntemp-total .v { font-size: 16px; line-height: 1; color: #efe6cf; font-variant-numeric: tabular-nums; }
+.pack-shell .worntemp-total[data-side="cold"] .v { color: #9ec3ff; }
+.pack-shell .worntemp-total[data-side="hot"] .v { color: #ffc35a; }
 .card .cmp { margin: 8px 0 0; padding-top: 6px; border-top: 2px solid rgba(5,6,8,0.45); box-shadow: inset 0 1px 0 rgba(163,152,128,0.16); }
 .card .cmp .cmp-head, .pack-shell .card .cmp p.cmp-head { margin: 0 0 4px; font-size: 11px; letter-spacing: 0.1em;
   text-transform: uppercase; text-align: center; color: #a89f88; }

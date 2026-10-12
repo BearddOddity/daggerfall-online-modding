@@ -4,9 +4,11 @@
 // Hard" and "I want this to be a smart and thorough difficulty design. No
 // band aids") - THE TIERS, AS DATA.
 //
-// ONE KEY, THREE ANSWERS. The survival pref (survival/switch.js) was a
-// boolean; it is a tier now: OFF (the classic game), CASUAL (the default)
-// and HARD (the arc as SURV1-7 built it). Every law that can charge the
+// ONE KEY, FOUR ANSWERS. The survival pref (survival/switch.js) was a
+// boolean; it is a tier now: OFF (the classic game), BOONS (SURV-BOONS,
+// 2026-10-12: the rewards-only tier - its rules are at the end of this
+// note), CASUAL (the default) and HARD (the arc as SURV1-7 built it).
+// SURV-TIERS made the first three. Every law that can charge the
 // player reads its tier's RULES from this table, handed in by the host's
 // composition - env.js survivalFeed (the minute law), scenes/shared.js
 // createRestDeps (the rest, and the encounter asks it stamps on the
@@ -14,8 +16,6 @@
 // windows and systems/useItem.js. A law handed no
 // rules (undefined or null) runs HARD, the arc at full strength, so every
 // pin written before the tiers still pins Hard.
-// (SURV-BOONS, 2026-10-12: FOUR ANSWERS - BOONS, the rewards-only tier,
-// stands between Off and Casual; its rules are at the end of this note.)
 //
 // CASUAL IS NOT HARD WITH THE NUMBERS TURNED DOWN. It is five rules, and
 // the table below is those rules written out:
@@ -73,18 +73,25 @@
 //   1. SAME WORLD, as above - the counters, the stages, the food, the
 //      camps and the words are the world's, so a Boons player stands in
 //      one world with a Hard one.
-//   2. NOTHING IS EVER TAKEN. The needs may take none of the stamina pool
-//      (`stamina.floor` 1 - the share they may not take is all of it), and
-//      no attribute, health, condition, disease, coin or hour - Casual's
-//      `false` on every other cost. The drink's swing stays, as in every
-//      tier: it is chosen at a bar.
+//   2. NOTHING IS EVER TAKEN. The needs take none of the stamina pool
+//      (`stamina.floor` 1 - the share they may not take is all of it, and
+//      needs.js `tire` charges nothing at all under it), and no attribute,
+//      health, condition, disease, coin or hour - Casual's `false` on every
+//      other cost. `repaid` is TRUE: Boons lends nothing, but a loan Casual
+//      made is repaid as its need is met, as Casual promised (AUDIT
+//      SURV-BOONS B2 - turning to Boons had thrown it away). The drink's
+//      swing stays, as in every tier: it is chosen at a bar. Casual's two
+//      house refusals stay too - the barkeep stops before a blackout, the
+//      kitchen will not waste a meal - because they guard the coin.
 //   3. A BODY KEPT EARNS. `boons` (needs.js BOON, survivalBoons): Well fed
 //      (strength and endurance), Quenched (agility and speed), Well rested
-//      (intelligence and willpower - banked only by a night in a bed or by
-//      a fire, never the rest window) and, all three at once, Thriving
-//      (luck); and a lit fire beside a waking player refills their stamina
-//      (Hearth). Like Valheim's food and its Rested: the bonus is the
-//      reason to tend, and its fading is the only price of not tending.
+//      (intelligence and willpower - banked only by sleep in a bed or by a
+//      fire, which a Sleeping Draught makes of the rest window too, and
+//      earned only while the sleep debt is paid) and, all three at once,
+//      Thriving (luck); and a lit fire beside a waking, unresting player
+//      refills their stamina (Hearth). Like Valheim's food and its Rested:
+//      the bonus is the reason to tend, and its fading is the only price of
+//      not tending.
 //   4. NO RED. A need's chip goes no further than amber in Boons (status.js
 //      survivalHudChips) - RED MEANS IT COSTS, and nothing here costs. The
 //      boons are the strip's green tiles.
@@ -124,11 +131,12 @@ const deepFreeze = (o) => {
  *  DIFFER on it - the world's numbers (the stages, the drain rates, the
  *  sleep a bed pays) live with their laws in needs.js and rest.js. */
 export const SURVIVAL_RULES = deepFreeze({
-  // SURV-BOONS: Casual's every `false`, a floor that is the whole pool, and the boons. hotFrom / coldFrom are Casual's
-  // red words: with nothing charged they decide nothing, and they stay a real band rather than a sentinel.
+  // SURV-BOONS: Casual's every `false`, a floor that is the whole pool (nothing charged - needs.js tire), Casual's loan
+  // repaid, and the boons. hotFrom / coldFrom are Casual's red words: with nothing charged they decide nothing but
+  // whether a carried loan's temperature share is met, and they stay a real band rather than a sentinel.
   boons: {
     id: 'boons',
-    stamina: { floor: 1, hotFrom: 51, coldFrom: -31, bareFeet: false, duringRest: false, repaid: false, fireWarms: true },
+    stamina: { floor: 1, hotFrom: 51, coldFrom: -31, bareFeet: false, duringRest: false, repaid: true, fireWarms: true },
     attributes: false,
     health: false,
     rust: false,

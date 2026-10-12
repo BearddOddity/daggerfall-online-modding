@@ -153,7 +153,7 @@ test('SURV7: by source - the four hosts feed their env (the roof, the floor, the
   // one thing in that line the room now answers for itself.
   assert.match(modes, /survivalEnv: \(\) => \(mode === 'interior' && host\.survivalEnv \? \{ \.\.\.host\.survivalEnv\(\), insideBuilding: true, insideDungeon: false, inSunlight: false, swimming: false, byFire: interiorCamps\.byFire\(player\.pos\) \} : null\),/, 'interior: the roof, and its own fire');
   assert.match(modes, /survivalEnv: \(\) => host\.survivalEnv\?\.\(\) \?\? null,/, 'the dungeon gets the outer reader');
-  assert.match(dc, /insideBuilding: false, insideDungeon: true, inSunlight: false, swimming: false, transport: false,/, 'dungeon: the floor');
+  assert.match(dc, /insideBuilding: false, insideDungeon: true, inSunlight: false, swimming: !!_activity\.swimming, transport: false,/, 'dungeon: the floor, and its own water');   // PIN MOVED (AUDIT TEMP-UI E2): the dungeon's swim was a hard-coded false
   assert.match(dc, /byFire: !!\(_fpFeet && camps\.byFire\(_fpFeet\)\),/, 'dungeon: its own fire');
   assert.match(dc, /survival: survivalFeed\(playerEntity, survivalEnvNow\(\), \{ say: \(msg\) => hudText\.add\(msg\) \}\),/, 'dungeon: its own tick feeds');
   assert.match(dc, /installSurvivalGate\(registerPreventRestCondition, \(\) => playerEntity, survivalEnvNow\);/, 'dungeon: its own gate');

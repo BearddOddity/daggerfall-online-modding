@@ -74,11 +74,17 @@ export const tenth = (x) => Math.round(x * 10) / 10;
  *  wearer read through (its career, its stats, its Renown's sets), the table its own - so the sum lands on the
  *  stand-in and the wearer's own `_mods` is never written. */
 function foldedPoints(entity, slots) {
+  return modsForSlots(entity, slots).armorParts;
+}
+/** The entity's folded channels (systems/entityMods.js computeEntityMods) as they WOULD stand over another slot table -
+ *  a stand-in wearing `slots`, the entity untouched. TEMP-UI: ONE CONSTRUCTION SEAM - the armour's points above and the
+ *  wardrobe's warmth (ui/temperatureCard.js) read a wear that has not happened through this one fold. */
+export function modsForSlots(entity, slots) {
   const eq = createEquipTable();
   slots.forEach((it, i) => { eq.slots[i] = it ?? null; });
   const standIn = Object.create(entity);
   standIn.equip = eq;
-  return computeEntityMods(standIn).armorParts;
+  return computeEntityMods(standIn);
 }
 
 /**
@@ -140,6 +146,7 @@ export function wearComparison(entity, item) {
   const tableNow = struckBodyPartTable();
   return {
     slot, replaces, parts, damage, hands,
+    worn: slotsThen,   // TEMP-UI: the table the wear would leave - the card's temperature reads it (ui/temperatureCard.js)
     overall: parts.length ? { before: overallArmour(before, tableNow), after: overallArmour(after, tableNow) } : null,
   };
 }

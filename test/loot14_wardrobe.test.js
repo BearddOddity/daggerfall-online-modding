@@ -165,8 +165,10 @@ test('LOOT14: the readers, through the real fold - DRESS1\'s standing (the gear\
   const bare = clothingWarmth(worn, { natural: -20 });
   const geared = clothingWarmth(worn, { natural: -20, gear: m.warmth });
   assert.equal(geared.warmth - bare.warmth, 6, 'the lining counts in the cold');
-  const hot = clothingWarmth(worn, { natural: CLOTHES_BREATHE_ABOVE + 5, gear: 6 });
-  const hotBare = clothingWarmth(worn, { natural: CLOTHES_BREATHE_ABOVE + 5 });
+  // PIN MOVED (AUDIT TEMP-UI E7): well into the heat, where the cloth has eased all the way to its half (at +5 it now
+  // gives up five degrees, not half)
+  const hot = clothingWarmth(worn, { natural: CLOTHES_BREATHE_ABOVE + 40, gear: 6 });
+  const hotBare = clothingWarmth(worn, { natural: CLOTHES_BREATHE_ABOVE + 40 });
   assert.equal(hot.warmth - hotBare.warmth, 3, 'and is halved in the heat, as the cloth is');
   // the weather's soaking: a cloak and 30% off; a river is a river
   const ctx = wardrobeCtx({}, e._mods);

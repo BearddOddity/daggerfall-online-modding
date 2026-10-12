@@ -3169,6 +3169,28 @@ ${paceControlsCss('tview')}
 .hud-point.hud-cardinal { font-size: 15px; color: #d8cfae; }
 .hud-needle { position: absolute; left: 50%; bottom: -2px; width: 2px; height: 8px;
   transform: translateX(-50%); background: var(--brass); }
+/* TEMP-UI: THE TEMPERATURE PLATE (ui/enhancedHud.js), hung off the compass's right end on the compass's own middle, so
+   it rides the HUD's scale and moves with the compass. A chip of the kit (enhancedFrame.js FRAME_ROLES.chip): the
+   glyph, the number, the word, and a scale from deadly cold to scorching in the bands' own colours - the deadly cold,
+   the freezing, the cold, the comfortable band (bone, in the middle), the warm, the hot, the scorching - over
+   TEMP_SCALE's -60..+60 (each band a sixth of 120 but the ends), the mark where you stand. Its frame wears the strip's
+   levels: amber felt, red costing (the status tiles' own --hst pairs). */
+.hud-temp { position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; gap: 6px; padding: 2px 8px 2px 4px; white-space: nowrap;
+  background: rgba(10,12,17,0.75); border: 2px solid; border-color: #c2b79a #3a352a #3a352a #c2b79a; box-shadow: 0 0 0 1px #050608; }
+.hud-temp[data-level="warn"] { border-color: #f3cf86 #7a5424 #7a5424 #f3cf86; }
+.hud-temp[data-level="danger"] { border-color: #ff9a7a #b53a2e #b53a2e #ff9a7a; }
+.hud-tempglyph { display: block; width: 16px; height: 16px; image-rendering: pixelated; }
+.hud-tempnum { min-width: 4ch; font-size: 14px; line-height: 1; text-align: right; color: #efe6cf; font-variant-numeric: tabular-nums; }
+.hud-tempword { font-size: 11px; line-height: 1; letter-spacing: 0.1em; text-transform: uppercase; color: #d8cfae; }
+.hud-temp[data-side="cold"] .hud-tempword { color: #9ec3ff; }
+.hud-temp[data-side="hot"] .hud-tempword { color: #ffc35a; }
+.hud-temp[data-level="danger"] .hud-tempword { color: #ff9a7a; }
+.hud-tempscale { position: relative; width: 60px; height: 6px; border: 1px solid #050608;
+  background: linear-gradient(90deg, #3a5fb0 0 8.333%, #5d8fe0 8.333% 25%, #9ec3ff 25% 41.667%, #d8cfae 41.667% 58.333%,
+    #ffd27a 58.333% 75%, #ffb02a 75% 91.667%, #e0584a 91.667% 100%); }
+.hud-temp.compact .hud-tempword, .hud-temp.compact .hud-tempscale { display: none; }   /* no room for the whole plate: the glyph and the number */
+.hud-tempmark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: #fff8e8; box-shadow: 0 0 0 1px #050608; }
 
 /* THE TARGET. Hidden until you strike something, and it fades. */
 .hud-foe { display: none; flex-direction: column; align-items: center; gap: 4px; }
@@ -3588,6 +3610,8 @@ ${paceControlsCss('tview')}
 
 @media (max-width: 860px) {
   .hud-top { top: 10px; }
+  .hud-temp { left: calc(100% + 6px); gap: 4px; padding: 2px 5px 2px 3px; }   /* TEMP-UI: a phone keeps the glyph and the number */
+  .hud-temp .hud-tempword, .hud-temp .hud-tempscale { display: none; }
   .hud-bottom { bottom: 12px; gap: 8px; }
   .hud-bars { gap: 10px; }
   .hud-vital .hud-track { width: 26vw; }
@@ -4675,7 +4699,7 @@ ${paceControlsCss('tview')}
   .pack-shell .pack-id .dolltoggle { display: inline-block; }
   .pack-shell .pack-dock .packcats .packtabs { display: flex; flex-wrap: nowrap; overflow-x: auto; }
   .pack-shell .pack-dock .packtab { flex: 0 0 auto; }
-  .pack-shell:not(.showdoll) .wornmap-doll, .pack-shell:not(.showdoll) .wornmap .wornac-total { display: none; }
+  .pack-shell:not(.showdoll) .wornmap-doll, .pack-shell:not(.showdoll) .wornmap .wornac-total, .pack-shell:not(.showdoll) .wornmap .worntemp-total { display: none; }   /* TEMP-UI: the felt temperature goes with the doll it stands on */
   .pack-shell:not(.showdoll) .charcol .wornmap { grid-template-columns: minmax(0, 1fr) 0 minmax(0, 1fr); column-gap: 6px; }
 }
 /* PACK-PHONE: A PHONE ON ITS SIDE IS TWO COLUMNS, the region beside

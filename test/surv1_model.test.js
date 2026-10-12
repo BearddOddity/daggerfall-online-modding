@@ -92,7 +92,9 @@ test('SURV1: clothing warms by piece and cloak, wetness eats it one for one and 
   // CLOTHES-BREATHE (FIELD BUGS 2026-09-30, PIN MOVED): 37 - 10 -> 18 - 10 and 37 -> 18 - above a natural ten the clothes
   // count half their warmth, and the hood shades the half (test/fb0930_cc_breathe.test.js)
   assert.equal(clothingWarmth(w, { natural: 40, inSunlight: true }).warmth, Math.trunc(37 / 2) - 10, 'the hood shades in strong sun');
-  assert.equal(clothingWarmth(w, { natural: 20, inSunlight: true }).warmth, Math.trunc(37 / 2), 'but not in mild sun');
+  // PIN MOVED (AUDIT TEMP-UI E7): the halving eases in a degree at a time from ten - at twenty the outfit has given up ten
+  // of its 37, not half at once (a warmer world read cooler across the line)
+  assert.equal(clothingWarmth(w, { natural: 20, inSunlight: true }).warmth, 37 - (20 - 10), 'but not in mild sun');
   assert.equal(clothingWarmth(worn({})).warmth, 0, 'naked');
   assert.equal(clothingWarmth(worn({ [S.ChestClothes]: item(141) })).warmth, 1, 'straps are barely clothes');
   assert.equal(clothingWarmth(worn({ [S.Feet]: armor(108, 0) })).warmth, 0, 'armour boots are the armour\'s to count');
@@ -466,7 +468,13 @@ test('SURV-THIRST1 AUDIT: a clock JUMP wounds to the floor and does not kill on 
     assert.ok(jump(hours, NEED.DEHYDRATED) > 0, `a ${hours}h jump already dehydrated must not be fatal either`);
   }
   // it HURTS, though - arriving at death's door is the whole point
-  assert.ok(jump(12, 0) < 5, 'and it really does wound - the floor is not a free pass');
+  // PIN MOVED (AUDIT TEMP-UI E6): this read `< 5`, which held only because the twelve-hour jump lands on a harm tick
+  // (720) and the landing minute then bit past the floor - the coin flip the record says the arrival is not: one landing
+  // in ten killed outright. The landing minute floors too; it is the next minute lived that may kill.
+  assert.equal(jump(12, 0), 5, 'and it really does wound - to the floor, death\'s door, and no further');
+  for (const hours of [6, 12, 24]) for (const extra of [0, 1, 3, 7, 9]) {
+    assert.ok(jump(hours + extra / 60, NEED.DEHYDRATED) >= 5, `no landing minute kills (${hours}h + ${extra}m: the harm tick at the landing or not)`);
+  }
   // and the walk is bounded: a longer jump costs no more, because the
   // replayed minutes stop at the floor whatever their number
   assert.equal(jump(24, 0), jump(12, 0), 'a longer jump cannot cost more than the floor allows');
@@ -480,5 +488,6 @@ test('SURV-THIRST1 AUDIT: the replay flag is the WALK’s, and only the last min
     'the walk marks every minute but the last as a replay, from one object (AUDIT SURV-TIERS, the third pass: its lines gathered)');
   // a bare survivalMinute - the live per-minute call every host makes -
   // is NOT a replay, or nothing would ever die of thirst
-  assert.match(src, /autoEat = true, replay = false \} = deps;\n\s+const rules = deps\.rules \?\? HARD_RULES;/, 'a caller that says nothing is live (and, SURV-TIERS, runs Hard - AUDIT SURV-TIERS: a null too)');
+  assert.match(src, /autoEat = true, replay = false, landing = false \} = deps;[^\n]*\n\s+const rules = deps\.rules \?\? HARD_RULES;/, 'a caller that says nothing is live (and, SURV-TIERS, runs Hard - AUDIT SURV-TIERS: a null too)');   // PIN MOVED (AUDIT TEMP-UI E6): and not a landing
+  assert.match(src, /walk\.replay = m < end;\n(?:\s*\/\/[^\n]*\n)*\s*walk\.landing = !walk\.replay && end - start > 1;/, 'AUDIT TEMP-UI E6: the minute a JUMP lands in is a landing - floored, as its replayed minutes are; a one-minute step is that minute, live');
 });

@@ -7398,7 +7398,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     const m = _mode();
     const feet = walkMode && playerSpawned ? player.pos : cam.pos;
     const wm = skyMinutes();   // TIME1: the air's month and hour are the sky's
-    const weather = currentWeather();
+    const weather = shownWeather();   // AUDIT TEMP-UI E11: the weather the land wears - the Sun Baby's clear day too (SUNBABY1); the sim's rain soaked a body under a clear sky
     const lyc = liveLycanthropy(playerEntity);
     return {
       climateIndex: maps.getClimateIndex(playerTravelPixel().x, playerTravelPixel().y),
