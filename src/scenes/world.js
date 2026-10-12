@@ -26628,15 +26628,15 @@ export async function bootWorld(canvas, renderer, params, status) {
   const motherlodeMarks = () => {
     _lodeMarks.length = 0;
     if (!motherlodeBook || profBook?.state.open !== true || _mode() !== 'exterior') return _lodeMarks;
-    for (const l of motherlodeBook.standingAll(_lodesUp)) {
-      const tr = state.pixelTranslation(l.x, l.y, _lodeTr), m = _lodePool[_lodeMarks.length] ??= { profession: 'mining', at: [0, 0, 0], d: 0, reach: 1 };
+    for (const l of motherlodeBook.markedAll(_lodesUp)) {   // LODE-MARK (FIELD BUGS 2026-10-12e): from its warning on, in its own colour
+      const tr = state.pixelTranslation(l.x, l.y, _lodeTr), m = _lodePool[_lodeMarks.length] ??= { profession: 'motherlode', at: [0, 0, 0], d: 0, reach: 1 };
       m.at[0] = tr[0] + TERRAIN_SIZE / 2; m.at[1] = tr[1]; m.at[2] = tr[2] + TERRAIN_SIZE / 2; _lodeMarks.push(m);
     }
     return _lodeMarks;
   };
   const professionMarks = (feet = enchantFeet()) => {
     const near = nodeMarksAt(feet), far = motherlodeMarks();
-    return nodeCompassPoints(far.length ? [...(near ?? []), ...far] : near, trackerAnimals());   // PROF2b: the far Motherlodes beside the near nodes
+    return nodeCompassPoints(far.length ? [...far, ...(near ?? [])] : near, trackerAnimals());   // PROF2b: the far Motherlodes beside the near nodes - LODE-MARK: drawn over them
   };
   const nodeGlowPass = createNodeGlowPass(renderer);   // NODE-MARKS: kindled node by node, built at idle; never in a building (nodeMarksAt) nor under the travel view (the hook's own gate)
   /** COMPASS-PARTY (2026-09-27, Discord - Ashley: "being able to see where party members are on compass? - just lil
