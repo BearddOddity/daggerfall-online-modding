@@ -64,6 +64,7 @@ export function createSaddleHost({ upkeep, runtime, items, wagonKg, wagonLimit, 
     return {
       mode, name: rt?.hasHorseName ? rt.horseName : '', wagonName: w ? wagonWord(w) : '',
       speed, galloping: mode === 'Horse' && galloping,
+      walks: mode === 'Horse' && !!upkeep.rideWalks?.(mode),   // HORSE-WALK: the ride's own pace a walk - the law's word, the motor's
       horse: base.horse, wagon: cart ? base.wagon : null, oats: base.oats, apples: base.apples, kits: base.kits,
       load: cart && limit > 0 ? { kg: wagonKg(), limit } : null,
       near: true, wagonNear: r.wagonNear,
