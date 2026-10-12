@@ -119,6 +119,16 @@ gallop to shift into would hold its rider to it. A cart rolls on its own base. A
 town Roleplay & Realism keeps from galloping, walk with Run held; autorun's latched run gallops whenever the breath
 allows.
 
+**IN A TOWN IT WALKS** (AUDIT HORSE-WALK, 2026-10-12). Roleplay & Realism ships Galloping In Towns off
+(`systems/modSettings.js`), so in a town the mod's CanRun says no and the horse walks with Run held: 5.1 m/s at Speed
+50, where its rider runs 8.1 on foot and DFU's ride was 10.8. Out of town Run gallops it, and the mod's Galloping In
+Towns gallops it in a town too. Kept as the two laws stand, the owner's walk under the mod's town, with no pace
+invented between them: the one there is, DFU's ride, is the pace every picture draws as a gallop, in the town the mod
+keeps a gallop out of. The Horses tutorial says so ("outside towns": the stable that sells a horse stands in a town, so
+a first ride starts in one), pinned through the mod's own CanRun line, lifted from `systems/rrInstall.js` and run
+(`test/horsewalk.test.js`, IN A TOWN). A cart rolls on DFU's cart base, 7.6 m/s at Speed 50: above the walk and under
+the gallop, as it always stood under DFU's ride.
+
 **ON THE ROAD THE RIDE KEEPS ITS PACE** (AUDIT HORSE-WALK, 2026-10-12, the owner: "Ensure the overworld speed isnt
 affected"). The Overworld moves the real body under the travel clock (`06-Systems/Travel-View.md`), so its ground speed
 is the motor's pace times the clock - and a walk would have halved a horse's (TV0's ~650 m/s at x60 to ~300), slowed a
@@ -151,7 +161,8 @@ What reads the gait:
 - **The saddle panel** says Walking (`ui/enhancedSaddle.js` saddleGait - the very word the motor reads, `transport.js`
   rideWalks, through `scenes/saddleHost.js`), Galloping on the run, Trotting at DFU's ride (horse care off).
 - **The head's bob** is DFU's Horse style at the walk, by its velocity; the gallop's is Running's (HeadBobber's order).
-- **The words**: the Features row, and the Horses tutorial ("Your horse walks; hold {Run} to gallop").
+- **The words**: the Features row, and the Horses tutorial ("Your horse walks; hold {Run} to gallop outside towns" -
+  IN A TOWN IT WALKS, above).
 
 Unchanged: the Overworld's and a journey's pace (above), the breath's law (under a rider at its own pace, now the walk,
 half back), the gallop's gate and pace, fast travel's times (DFU's TravelTimeCalculator), a following or waiting horse.
@@ -214,6 +225,6 @@ upkeep its odometer's metres, the HUD its bar and the Stable page its acts. `sce
 (`transport.js` dismountOnTransition) - and are named, not wired.
 
 Pinned: `test/steed1_horsecare.test.js`; mutants `tools/mutants/steed1.json`, and HORSE-LIVES's and UPKEEP-ONLINE's
-`tools/mutants/wagonmend.json`. THE WALK: `test/horsewalk.test.js`; mutants `tools/mutants/horsewalk.json` (40, all
+`tools/mutants/wagonmend.json`. THE WALK: `test/horsewalk.test.js`; mutants `tools/mutants/horsewalk.json` (42, all
 dead). The saddle panel and the page's polish:
 `test/steedui_saddle.test.js`; mutants `tools/mutants/steedui.json`.
