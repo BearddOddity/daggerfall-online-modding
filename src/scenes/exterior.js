@@ -5492,6 +5492,7 @@ export async function bootExterior(canvas, renderer, params, status) {
           exteriorFoePool(), collider, reach, getInteractionMode(), playerEntity, {
             nearerThan,
             doorBehind: _race.doorDistance,   // TACT3d / AUDIT TACT C7: a peaceful guard is no door, in this host too
+            behind: _race.next,   // FB1012d ALLY-YIELDS: what the press takes past a companion - this host stands none, and asks as world.js does
             hud: (t) => townTalk.say(t),
             modal: (t) => townTalk.showOverlay(new ActionTextBox(String(t).split('\n'))),
             makeEnemiesHostile: _makeEnemiesHostile,
@@ -5519,7 +5520,7 @@ export async function bootExterior(canvas, renderer, params, status) {
           horseCart: _hccPick,   // HCC
           camp: _campPick,   // SURV3
           water: _springPick,   // SURV3
-          doorDistance: modes.exteriorActivationDistance(cam.pos, useFwd),
+          door: modes.exteriorActivationHit(cam.pos, useFwd),   // FB1012d ALLY-YIELDS: the door set's pick, its reach with it (`doorDistance` is its distance)
           personDistances: _livePersons.map((p) => rayPersonDistance(cam.pos, useFwd, p.pos)),
         });
         const _lootPick = _race.loot, _dropPick = _race.drop;

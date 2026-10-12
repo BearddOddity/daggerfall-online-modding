@@ -546,7 +546,12 @@ INVISLOOK's late-pass mutants re-aimed by content.
   look is (composeLook) - and under it a shirt, legs and shoes from its
   gender's wardrobe in common dyes, each only where no piece of its own
   stands (boots on the feet: no shoes). The look is kept on the foe while
-  it wears the same, so a foe is one build for its life. Its actor: the
+  it wears the same, so a foe is one build for its life. (AMENDED BY FB1012d
+  ALLY-RACE, `01-Overview/Field-Bugs-2026-10-12d.md`: a person of their
+  own is drawn off THEIR seed, not the stand's - a companion the layer
+  stood, by its stamp; a revenant, by its record's, minted off the body it
+  was born in - so a companion is one person through every door and load.)
+  Its actor: the
   motor's feet and yaw (the player's own convention, forward sin/cos),
   moving, and running only in pursuit (the give-up timer both motors keep);
   its weapon out; a swing per new attack count (the stream's `_atkA`, its
