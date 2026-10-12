@@ -373,8 +373,8 @@
   {
     "name": "SURVTIERS3-the-blackout-has-no-morning",
     "file": "src/systems/survival/tavernMenu.js",
-    "old": "  return { minutes: wake - now, text: TAVERN_MENU_TEXT.woke };",
-    "new": "  return { minutes: wake - now };",
+    "old": "export const blackoutWaking = (sky) => (Math.trunc((((sky % 1440) + 1440) % 1440) / 60) === BLACKOUT_WAKE_HOUR ? TAVERN_MENU_TEXT.woke : TAVERN_MENU_TEXT.wokeNoDawn);",
+    "new": "export const blackoutWaking = () => undefined;",
     "tests": [
       "test/survtiers3.test.js"
     ]

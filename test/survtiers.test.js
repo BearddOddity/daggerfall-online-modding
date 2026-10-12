@@ -544,13 +544,15 @@ test('SURV-TIERS: the tavern - the house asks after the gold and before the coin
   assert.deepEqual(tavernOrder(s(), 0, drink(35)), { ok: true }, 'no rules is Hard');
   assert.deepEqual(tavernOrder(s(), 0, drink(35), { endurance: 50, rules: null }), { ok: true }, 'null is no rules too');
   assert.deepEqual(tavernOrder(s(), 0, drink(35), { endurance: 50, rules: CASUAL }), tavernPour(s(), 35, { endurance: 50, rules: CASUAL }), 'a drink is the pour\'s question');
-  // AUDIT SURV-TIERS: the meal - tavernEat's own test (the hunger under the meal's worth) asked before the coin
+  // AUDIT SURV-TIERS: the meal - tavernEat's own test (the hunger under the meal's worth) asked before the coin.
+  // PIN MOVED (AUDIT C&C I3): at the meal's END, its half hour passed first as TavernFood passes it - 170 now and the
+  // half hour is a meal's worth of 200
   const meal = { kind: 'food', worth: 200, price: 5 };
   const ateAgo = (hunger) => ({ ...newSurvival(0), lastAte: 1000 - hunger });
-  assert.deepEqual(tavernOrder(ateAgo(199), 1000, meal, { rules: CASUAL }), { ok: false, text: TAVERN_MENU_TEXT.fullForMeal }, 'Casual will not sell a meal to a stomach too full for it');
-  assert.deepEqual(tavernOrder(ateAgo(200), 1000, meal, { rules: CASUAL }), { ok: true }, 'a meal\'s worth of hunger buys it');
-  assert.equal(tavernEat(ateAgo(200), 1000, 200).ok, true, '...and the law eats exactly what the order sells');
-  assert.equal(tavernEat(ateAgo(199), 1000, 200).ok, false);
+  assert.deepEqual(tavernOrder(ateAgo(169), 1000, meal, { rules: CASUAL }), { ok: false, text: TAVERN_MENU_TEXT.fullForMeal }, 'Casual will not sell a meal to a stomach too full for it');
+  assert.deepEqual(tavernOrder(ateAgo(170), 1000, meal, { rules: CASUAL }), { ok: true }, 'a meal\'s worth of hunger buys it');
+  assert.equal(tavernEat(ateAgo(170), 1000, 200).ok, true, '...and the law eats exactly what the order sells');
+  assert.equal(tavernEat(ateAgo(169), 1000, 200).ok, false);
   assert.deepEqual(tavernOrder(ateAgo(0), 1000, meal, { rules: HARD }), { ok: true }, 'Hard sells it and wastes it (the mod\'s quirk, kept)');
   assert.deepEqual(tavernOrder(ateAgo(0), 1000, meal, { rules: null }), { ok: true }, 'and null rules are Hard\'s, for the meal too');
   assert.deepEqual(tavernOrder(ateAgo(0), 1000, { kind: 'header' }, { rules: CASUAL }), { ok: true }, 'a row that is neither asks nothing');

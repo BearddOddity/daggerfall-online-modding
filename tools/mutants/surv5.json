@@ -29,7 +29,7 @@
   {
     "name": "SURV5-a-full-stomach-eats-again",
     "file": "src/systems/survival/tavernMenu.js",
-    "old": "  if (hunger < worth) return { ok: false, text: TAVERN_MENU_TEXT.tooFull, minutes: MEAL_MINUTES };",
+    "old": "  if (hunger < worth) { s.lastAte = end; return { ok: false, text: TAVERN_MENU_TEXT.tooFull, minutes: MEAL_MINUTES }; }",
     "new": "",
     "tests": [
       "test/surv5_ui.test.js"
@@ -38,7 +38,7 @@
   {
     "name": "SURV5-a-long-hunger-banks-the-whole-gap",
     "file": "src/systems/survival/tavernMenu.js",
-    "old": "  if (hunger > worth + NEED.PECKISH_AT) s.lastAte = now - NEED.PECKISH_AT;",
+    "old": "  if (hunger > worth + NEED.PECKISH_AT) s.lastAte = end - NEED.PECKISH_AT;",
     "new": "",
     "tests": [
       "test/surv5_ui.test.js"
@@ -56,8 +56,8 @@
   {
     "name": "SURV5-a-wine-is-a-soft-drink",
     "file": "src/systems/survival/tavernMenu.js",
-    "old": "  if (/wine|port/.test(n)) return 'wine';",
-    "new": "  if (/wine|port/.test(n)) return 'soft';",
+    "old": "  mid: list(0, 0, 10, 12, 15, 20, 30),",
+    "new": "  mid: list(0, 0, 10, 12, 15, 0, 30),",
     "tests": [
       "test/surv5_ui.test.js"
     ]

@@ -359,30 +359,44 @@ gear's uses, the skillet's word.
 ### The tavern (SURV5)
 
 Climates & Calories replaced DFU's eleven-line food-and-drink list
-with regional menus (read off the DLL: six keys - n, ne, se, s, b, o -
-picked by region with a climate fallback, three price tiers a key, a
-breakfast list, separate Food and Drinks buttons). The port keys the
-same dishes by CLIMATE (`survival/tavernMenu.js` MENU_KEY_BY_CLIMATE -
-the mod's region switch is not recoverable whole from the IL), tiers
-by the tavern's quality (under 6 low, under 13 mid, else high), serves
-breakfast from six to ten inclusive, refuses food before six in the
-mod's two words (at five "Sorry, breakfast starts at dawn.", earlier
-"Sorry, the kitchen is closed for the night.") while the drinks pour, and folds food and drink into the ONE picker DFU's Food
-button opens, a header between (TVRN00I0 has four buttons and no
-room for the mod's fifth). A meal takes half an hour and banks its
-worth against the hunger marker on the mod's own law (too full under
-the worth - "The rest goes to waste.", charged; four hours back past
-worth + 240; the worth banked). A drink takes a quarter hour, quenches
-the thirst whole (TAVERN-DRINK, FIELD BUGS 2026-09-30 - the mod's forty,
-a departure), and counts by its kind - milk, tea, juice and coffee
-nothing, an ale ten, a wine twenty, a spirit thirty-five - against the
-endurance: past half "You are getting drunk...", past ten under it
-"You are very drunk...", past it the BLACKOUT: the night passes to six
-(the interior's ticker; online the clock stands, WORLD5), the counter
-falls to a quarter of the endurance, and the morning is a rough one
-(SURV4's stiffness). The counter sobers one a ten minutes and drains
-the stats the mod's way (SURV1). With the mod off the Food button is
-DFU's own chain, unchanged.
+with regional menus (`TavernWindow.cs`: six keys - n, ne, se, s, b, o -
+three price tiers, a breakfast list, separate Food and Drinks buttons).
+The port serves the mod's own structure (AUDIT C&C I8 - SURV5 read the
+1.7.1 IL and keyed every menu by climate, a breakfast list a key): the
+key is `regionMenuDay`'s - the REGION first, by its name
+(`survival/tavernMenu.js` MENU_KEY_BY_REGION), and the climate where
+the region names none (the deserts and the subtropics the South's, the
+rainforest and the swamp the SouthEast's, the woods and the mountains
+the North's, the Ocean the default); the tier is the tavern's quality
+(under 5 low, under 13 mid, else high); breakfast, six to ten
+inclusive, is the tier's own list in every key; the day's list is the
+key's at the tier (Balfiera and the Orcs eat the NorthEast's, but for
+Balfiera's high table and the Orcs' mid one); and the kitchen refuses
+food before six in the mod's two words (at five "Sorry, breakfast
+starts at dawn.", earlier "Sorry, the kitchen is closed for the
+night.") while the drinks pour. Food and drink fold into the ONE picker
+DFU's Food button opens, a header between (TVRN00I0 has four buttons
+and no room for the mod's fifth). A meal takes half an hour, and its
+worth - 240 minutes for every meal, TavernFood's own - banks against
+the hunger at the meal's END on the mod's law (AUDIT C&C I3: too full
+under the worth - "The rest goes to waste.", charged, and the eater
+leaves fed; four hours back past worth + 240; the worth banked). A
+drink takes a quarter hour, quenches the thirst whole (TAVERN-DRINK,
+FIELD BUGS 2026-09-30 - the mod's forty, a departure), and counts its
+alcohol by its place in its list (`Drinks_OnItemPicked`'s arrays - the
+first two or three of each list nothing, the last up to forty) against
+the endurance: under half a drink with alcohol fortifies (its alcohol
+in fatigue points and magicka) and a soft one refreshes (five fatigue -
+AUDIT C&C I6); past half "You are getting drunk...", past ten under it
+"You are very drunk...", past it the BLACKOUT: the night passes to the
+SKY's six (AUDIT C&C I4; online the world's, which the character's
+minutes never move), the waking says dawn only under a dawn sky, the
+counter falls to a quarter of the endurance, and the morning is a rough
+one (SURV4's stiffness). On Harvest's End and New Life a drink sixth or
+later in its list and over ten gold is free (the world's calendar). The
+counter sobers one a ten minutes and drains the stats the mod's way
+(SURV1). With the mod off the Food button is DFU's own chain,
+unchanged.
 
 ### The hunt (SURV6) - RETIRED
 
@@ -948,7 +962,7 @@ sources and the tavern's menus are all there.
 | Wet armour | rusts, a point on a 5% minute | never |
 | Food | raw, stale or worse risks a disease on a failed luck roll | no roll - Hard's lucky branch, every time; spoiled still feeds less, putrid still will not go down |
 | The rest window | half DFU's hour; two encounter asks a minute; stiff four hours (-5 speed and agility); the debt never paid below tired; too cold or too hot refuses the sleep | DFU's whole hour; one ask; no morning; the debt paid down to nothing at 0.5 an hour (a bed or a fire pays 1.5); never refused, never charged |
-| The tavern | past the endurance you black out: the night passes and the morning is a rough one; a meal on a stomach too full for it is charged, takes its half hour and goes to waste (the mod's quirk) | the barkeep will not pour the drink that would carry the counter past the endurance, and the kitchen will not sell a meal to a stomach too full for it - both asked after the gold and before the coin changes hands; a soft drink always pours |
+| The tavern | past the endurance you black out: the night passes and the morning is a rough one; a meal on a stomach too full for it is charged, takes its half hour and goes to waste (the mod's quirk) - and the eater leaves fed (AUDIT C&C I3: the hunger is the meal's end's) | the barkeep will not pour the drink that would carry the counter past the endurance, and the kitchen will not sell a meal to a stomach too full for it at the meal's end (AUDIT C&C I3) - both asked after the gold and before the coin changes hands; a soft drink always pours |
 | The stamina floor | none: the needs can empty the pool, and the collapse is the cost (AUDIT-DEATH1) | half the pool |
 | What a need took | kept - the pool refills only as it always did | lent - repaid the minute that need is met, up to the pool; whatever else refills the pool settles it |
 
@@ -1675,7 +1689,9 @@ and said nothing on the way out. Six changes, each a declared departure (Port-Le
   every skin full.
 - **MENU-CLIMATE** (`tavernMenu.js` `MENU_KEY_BY_CLIMATE`): the menus keyed by the CLIMATES enum's names - the table was
   written 224-233 over climates that run 223-232, so every climate served the menu of the one before it (Sentinel's
-  desert served the bay's bananas; the mountains the desert's camel milk). A port bug, not the mod's.
+  desert served the bay's bananas; the mountains the desert's camel milk). A port bug, not the mod's. [AUDIT C&C I8:
+  the climate table is the mod's own fallback now, behind the region (`regionMenuDay`) - the Ocean the default, the
+  mountains the North's.]
 - **ROOF-SHELTER** (`temperature.js` `naturalTemperature`): inside a building the natural temperature is the milder of
   the street's own now and the roofed half - a roof never makes it hotter or colder than the street (a desert inn at
   23:00 read 35 while its street read 5).
@@ -2358,6 +2374,51 @@ Pinned by `test/auditcc_items.test.js` (the real producers, the real camp
 pool), with the camp lists in `auditrest2_camps`, `auditrest3`,
 `rest2_campfire`, `rest6_consumables` and `surv3_camps` and the kit in
 `surv2_items` re-aimed by content.
+
+### Found and fixed - the tavern
+
+- **I3 - a "too full" meal fed nothing.** TavernFood passes the half
+  hour FIRST and then judges the hunger; the port judged it at the
+  order and its too-full arm wrote nothing, so in Hard a meal 239
+  minutes after the last was charged its 22 gold and half an hour and
+  left the eater Peckish (at 269), and Casual's and Boons' kitchen
+  refused meals the mod serves whole. The hunger is the meal's end's now
+  (`tavernMenu.js` `mealHunger`): that meal is served whole and leaves
+  the eater fed; a meal truly too full is charged and wasted, as the
+  mod's quirk is, and the eater leaves fed; the kitchen's refusal asks
+  the same moment (under 210).
+- **I4 - online the blackout's night ran on the character's clock.** It
+  ran to six on the character's own clock and always said "at dawn":
+  under a noon sky the night was 30, 1,425 or 420 minutes by the
+  character's hour. It runs to the SKY's next six now (the windows hand
+  the law the world's minute after the drink; offline the one clock, as
+  ever), and the waking says dawn only under a dawn sky ("You wake on
+  the tavern floor, stiff and sore." otherwise).
+- **I6 - "The drink fortifies you." did nothing.** Every drink under half
+  the endurance said it, milk included. TavernDrink's last two arms: a
+  drink with alcohol fortifies - its alcohol in fatigue points and in
+  magicka - and a soft one refreshes ("The drink refreshes you.", five
+  fatigue), each up to its pool, after the quarter hour
+  (`tavernRefresh`).
+- **I8 - the menus were the mod's dishes in a structure the mod does not
+  have.** Decided: the mod's own (`TavernWindow.cs`) - the region first
+  and its climate fallback, breakfast by the tier, the day's list by key
+  and tier, quality under 5 and 13, every meal worth 240, a drink's
+  alcohol by its place in its list (Nereid Wine 40, Moonshine 25, a low
+  table's Ale 12), and the holidays' free drinks. The port's own stay on
+  top: the one picker, the house's refusals, the water, the online half.
+  Not ported, declared (Port-Ledger A): DoDrinks' "I think you've had
+  enough." (it refuses every drink, and the port's house pours a soft
+  one always - SURV-TIERS); ShitFaced's luck roll, purse and waking
+  place (the port's blackout is its own law); and the two rows the mod
+  charges other than its menu writes (Balfiera's Royal Breakfast Plate,
+  written 10 and charged 20; the Orcs' mid Mulled Wine, written 18 and
+  charged 8) - the port charges what the menu says.
+
+Pinned by `test/auditcc_tavern.test.js` (both windows, the real clocks),
+with `surv5_ui`, `survtiers`, `survtiers3`, `survboons`,
+`fb0930_cc_drink`, `fb0930_cc_innwater` and `fb0930_cc_menuclimate`
+re-aimed by content.
 
 ### Found and fixed - the needs
 

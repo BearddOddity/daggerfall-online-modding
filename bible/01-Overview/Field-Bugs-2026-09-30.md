@@ -180,7 +180,8 @@ the red, the Casual loan owed through three. No source of the mod's (the bundle 
 - **MENU-CLIMATE** - the port's own fault: `MENU_KEY_BY_CLIMATE` was written 224-233 over climates that run 223 (Ocean)
   to 232 (Haunted Woodlands), so every climate served the menu of the one before it - Sentinel's desert the bay's
   bananas, the mountains the desert's camel milk, the Ocean the default. Keyed by the enum's names now, each the menu its
-  number was written for. `test/fb0930_cc_menuclimate.test.js` (2).
+  number was written for. `test/fb0930_cc_menuclimate.test.js` (2). [AUDIT C&C I8 (2026-10-12): the table is the mod's
+  own climate fallback now, behind the region (`regionMenuDay`) - the Ocean the default, the mountains the North's.]
 - **ROOF-SHELTER**: inside a building the natural temperature is the milder of the street's own now and the roofed half
   (a tie the roof's) - a roof never makes it hotter or colder than the street. The desert inn at 23:00 reads 5, at noon
   27 (warm); a mountain inn keeps its roof's -30 against a street of -60. Underground unchanged.

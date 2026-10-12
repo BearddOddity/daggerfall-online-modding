@@ -546,7 +546,7 @@
   {
     "name": "SURVTIERS-the-kitchen-sells-casual-a-waste",
     "file": "src/systems/survival/tavernMenu.js",
-    "old": "  if (row?.kind === 'food' && !(rules ?? HARD_RULES).wastedMeal && now - (s?.lastAte ?? now) < (row.worth ?? 0)) return",
+    "old": "  if (row?.kind === 'food' && !(rules ?? HARD_RULES).wastedMeal && mealHunger(s, now) < (row.worth ?? 0)) return",
     "new": "  if (false) return",
     "tests": [
       "test/survtiers.test.js"
@@ -555,8 +555,8 @@
   {
     "name": "SURVTIERS-the-kitchen-refuses-at-the-worth",
     "file": "src/systems/survival/tavernMenu.js",
-    "old": "now - (s?.lastAte ?? now) < (row.worth ?? 0)) return",
-    "new": "now - (s?.lastAte ?? now) <= (row.worth ?? 0)) return",
+    "old": "mealHunger(s, now) < (row.worth ?? 0)) return",
+    "new": "mealHunger(s, now) <= (row.worth ?? 0)) return",
     "tests": [
       "test/survtiers.test.js"
     ]
