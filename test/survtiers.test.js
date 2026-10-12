@@ -42,9 +42,9 @@ import { withDom } from './invdrag.mjs';
 // Something that introduces mechanics, leaves some out and is overall
 // not a punished experience for players", then "Off, Casual, Hard" and
 // "I want this to be a smart and thorough difficulty design. No band
-// aids". The survival switch is three tiers on one key, and every law
-// that charges the player reads its tier's rules (survival/
-// difficulty.js). These pins hold the design, not the numbers alone:
+// aids". The survival switch is tiers on one key (three that day; SURV-BOONS
+// made four), and every law that charges the player reads its tier's rules
+// (survival/difficulty.js). These pins hold the design, not the numbers alone:
 // Hard is the arc as it stood; Casual is the same world with five rules
 // on what it costs - stamina only, red stages only, borrowed down to half
 // the pool at most and repaid when the need is met, nothing refused,
@@ -102,7 +102,7 @@ afterEach(() => { _resetForTests(); setWorldMinutes(0); clearPreventRestConditio
 /** The first meal on the menu both windows show at TAVERN_NOW (23:00, the tier's list - quality 10). */
 const TAVERN_MEAL = tavernMenu({ climateIndex: 232, quality: 10, hour: 23 }).rows.findIndex((r) => r.kind === 'food');
 
-test('SURV-TIERS: one key, three tiers - the row, the table and the shelf agree; Casual is the default and every tier, Off included, is the player\'s online', () => {
+test('SURV-TIERS: one key, four tiers - the row, the table and the shelf agree; Casual is the default and every tier, Off included, is the player\'s online', () => {
   const row = FEATURES.find((f) => f.id === 'mod-climates-calories');
   const c = row.control;
   assert.equal(c.key, SURVIVAL_PREF);

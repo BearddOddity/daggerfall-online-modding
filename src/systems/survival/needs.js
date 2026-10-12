@@ -182,7 +182,7 @@ export const SURVIVAL_TEXT = Object.freeze({
  *  folded channels by default - LOOT14/LOOT15). TEMP-UI: ONE CONSTRUCTION SEAM - the minute law and the pack's live
  *  reading (env.js feltNow) build it here, so the reading the pack shows is the one the next minute charges. */
 export function feltCtx(entity, s, base = null, mods = entity?._mods) {
-  return { ...(base ?? {}), wet: s?.wet ?? 0, hasWater: !!findDrink(entity?.items ?? []), ...wardrobeCtx(base, mods) };
+  return { ...(base ?? {}), wet: s?.wet ?? 0, hasWater: !!findDrink(entity?.items ?? []), ...wardrobeCtx(mods) };
 }
 /** AUDIT SURV-TIERS (the second pass): whether a lit fire answers the cold - in a tier whose `fireWarms` says so (Casual,
  *  Boons), beside a fire, on a reading under nought. AUDIT C&C S9: ONE LAW - the minute law writes it on the record
@@ -291,7 +291,7 @@ export function survivalStatMods(s, temp, now, { endurance = 50, rules = HARD_RU
   if ((rules ?? HARD_RULES).attributes) {   // AUDIT SURV-TIERS: null is no rules too, as in every other law
     // AUDIT SURV-TIERS (the third pass): a VAMPIRE has no need for food, drink or sleep (the minute law calls them
     // fed and freezes the thirst and the debt; the page says so) - and these read the frozen markers, so a Hard
-    // vampire lost two from every attribute a day to a hunger it cannot have, down to twenty. Since SURV1.
+    // vampire lost two from every attribute but luck a day to a hunger it cannot have, down to twenty. Since SURV1.
     const starve = vampire || beast ? 0 : starvingDays(hungerMinutes(s, now));   // AUDIT C&C N4: the beast is fed, as the mod's
     if (starve > 0) sub(ALL, Math.min(20, starve * 2));
     if (temp && temp.abs > NEED.EXPOSURE_AT) sub(ALL, Math.trunc(Math.min(s.exposure, temp.abs - NEED.EXPOSURE_AT) / 4));
@@ -610,6 +610,9 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
   }
 
   // TEMPERATURE: the body pays for the heat and the cold.
+  // AUDIT C&C T9 - THE ROOF'S CHARGE, a declared departure (Port-Ledger A): under a roof too. The mod's "inside or
+  // camping" arm charges no temperature at all; the port's roof softens the reading (temperature.js
+  // naturalTemperature, ROOF-SHELTER) rather than ending it, so a red reading indoors costs what its tier charges.
   // SURV-TIERS: from the tier's band (Hard: twenty either way; Casual: the red words only), and it wounds only in a
   // tier that wounds. AUDIT SURV-TIERS: and a rest away from a fire pays it only in a tier whose `duringRest` says so
   // (Hard, whose gate refuses the worst of it). Casual has no gate, so a Casual rest in a blizzard charged the band

@@ -41,7 +41,7 @@ const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const STATS = Object.freeze({ strength: 50, intelligence: 50, willpower: 50, agility: 50, endurance: 50, personality: 50, speed: 50, luck: 50 });
 const player = (extra = {}) => ({ isPlayer: true, career: {}, skills: new Array(35).fill(30), level: 5, stats: { ...STATS }, raceId: RACES.Breton, items: [], activeEffects: [], health: 40, maxHealth: 40, fatigue: 6400, equip: createEquipTable(), ...extra });
 const garment = (templateIndex, extra = {}) => mintCondition({ group: templateIndex >= 182 ? 'WomensClothing' : 'MensClothing', templateIndex, name: 'garment', flags: 0, variant: 0, ...extra });
-const plate = (templateIndex = 104) => mintCondition({ group: 'Armor', templateIndex, material: 0x0200, name: 'Plate', flags: 0, variant: 0 });
+const plate = (templateIndex = 102) => mintCondition({ group: 'Armor', templateIndex, material: 0x0200, name: 'Plate', flags: 0, variant: 0 });   // AUDIT C&C T10: the cuirass by default, each piece the template its slot holds
 const BLIZZARD = Object.freeze({ climateIndex: CLIMATES.Mountain, month: 0, hour: 2, weather: 'snow' });
 const DESERT_NOON = Object.freeze({ climateIndex: CLIMATES.Desert2, month: 6, hour: 12, weather: 'sunny', inSunlight: true });
 const WEATHERS = Object.keys(WEATHER_TEMP);
@@ -85,7 +85,7 @@ test('TEMP-UI: the breakdown adds up to the felt temperature, to the degree - ov
     naked: [],
     starting: [[EQUIP_SLOTS.ChestClothes, shirt], [EQUIP_SLOTS.LegsClothes, pants], [EQUIP_SLOTS.Feet, shoes]],
     cloaked: [[EQUIP_SLOTS.ChestClothes, shirt], [EQUIP_SLOTS.LegsClothes, pants], [EQUIP_SLOTS.Cloak1, cloak]],
-    plate: [[EQUIP_SLOTS.ChestArmor, plate()], [EQUIP_SLOTS.LegsArmor, plate(105)]],
+    plate: [[EQUIP_SLOTS.ChestArmor, plate()], [EQUIP_SLOTS.LegsArmor, plate(104)]],
   };
   const ctxs = [
     { raceId: RACES.Breton },
@@ -372,7 +372,7 @@ test('AUDIT TEMP-UI E1: the body\'s own warmth is not resisted - a Resist Fire n
   const winter = { climateIndex: CLIMATES.Woodlands, month: 0, hour: 12, weather: 'sunny', byFire: true };
   const warm = feltTemperature(winter, worn, { raceId: RACES.Breton });
   assert.ok(warm.natTemp < 0 && warm.felt > 0, `a cold world (${warm.natTemp}), a warm body (${warm.felt})`);
-  const robe = { raceId: RACES.Breton, ...wardrobeCtx({ raceId: RACES.Breton }, { heatDegrees: 9 }) };   // the wardrobe's fold, as the minute law reads it
+  const robe = { raceId: RACES.Breton, ...wardrobeCtx({ heatDegrees: 9 }) };   // the wardrobe's fold, as the minute law reads it
   assert.equal(feltTemperature(winter, worn, robe).felt, Math.max(warm.felt - 9, 0), 'the heat\'s degrees off the warm reading');
   assert.equal(feltTemperature(winter, worn, { raceId: RACES.Breton, fireResist: 9 }).felt, warm.felt, 'where a fire resistance moves nothing');
 });

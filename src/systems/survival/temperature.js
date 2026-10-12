@@ -4,17 +4,21 @@
 // Calories 1.7.1 (the shipped DLL read off its IL - there is no source
 // in the bundle; the reading is in Systems-Arc SURV) and rebuilt to the
 // port's shape: pure functions over an environment record, the worn
-// items and a small context, no static state, one number out.
+// items and a small context, no static state, one number out. (AUDIT
+// C&C, 2026-10-12: the mod's source is public - github.com/Ralzar81/
+// Climates-Calories, every revision to 1.7.0 - and the law was read
+// against it; Climates-Calories.md says where the port departs.)
 //
 // The shape is C&C's, because it is a good one: the world has a NATURAL
-// temperature (climate + month + hour + weather), the character has an
-// OWN temperature (race + clothes + armour - wetness), each resisted by
-// the character's frost or fire resistance, and the sum is what the
-// body feels. Zero is comfortable; the scale is degrees of DISCOMFORT
-// rather than Celsius - +20 is a warm day in a tunic, -40 is a mountain
-// night in the rain. The numbers were retuned where the IL showed a
-// cliff (a naked Argonian doubling its heat loss above 30, a dungeon
-// always below -20 in a desert); the tables' spirit is kept.
+// temperature (climate + month + hour + weather), resisted by the
+// character's frost or fire resistance, the character has an OWN
+// temperature (race + clothes + armour - wetness), never resisted (AUDIT
+// TEMP-UI E1), and the sum is what the body feels. Zero is comfortable;
+// the scale is degrees of DISCOMFORT rather than Celsius - +20 is a warm
+// day in a tunic, -40 is a mountain night in the rain. The numbers were
+// retuned where the IL showed a cliff (a naked Argonian doubling its heat
+// loss above 30, a dungeon always below -20 in a desert); the tables'
+// spirit is kept.
 import { EQUIP_SLOTS } from '../../characters/paperdoll.js';
 import { CLIMATES } from '../../formats/mapsFile.js';
 import { RACES } from '../races.js';
@@ -28,12 +32,15 @@ export const FLAG_FROST = 16;
 
 /** The climate's own temperature. Desert2 is the Dak'fron interior, the
  *  hottest; Mountain the coldest. AUDIT C&C (2026-10-12, E4): OCEAN IS THE
- *  SEA, AT NOUGHT - a declared departure (Port-Ledger A). The mod's +20 was
- *  a beach (a classic player met a few pixels of it at the coast); the port
- *  sails the whole Bay over it (the one water law, ui/overworldModel.js
- *  isWaterPixel: every Ocean pixel is sea), and +20 made a winter crossing
- *  comfortable and a summer one hot. The sea is the season, the hour and
- *  the weather alone. */
+ *  SEA, AT NOUGHT. SURV1's +20 was a beach (a classic player met a few
+ *  pixels of it at the coast); the port sails the whole Bay over it (the
+ *  one water law, ui/overworldModel.js isWaterPixel: every Ocean pixel is
+ *  sea), and +20 made a winter crossing comfortable and a summer one hot.
+ *  The sea is the season, the hour and the weather alone - the mod's own
+ *  answer too: its published Climate() has no Ocean case and answers its
+ *  default 0 in every revision to 1.7.0, so the +20 came with SURV1's
+ *  reading of the 1.7.1 DLL (Port-Ledger A, the AUDIT C&C row: a reading
+ *  corrected). */
 export const CLIMATE_TEMP = Object.freeze({
   [CLIMATES.Ocean]: 0, [CLIMATES.Desert]: 40, [CLIMATES.Desert2]: 50, [CLIMATES.Mountain]: -40,
   [CLIMATES.Rainforest]: 20, [CLIMATES.Swamp]: 10, [CLIMATES.Subtropical]: 30,
@@ -61,8 +68,10 @@ export const RACE_TEMP = Object.freeze({
   [RACES.Breton]: 5, [RACES.Redguard]: -5, [RACES.Nord]: 5, [RACES.DarkElf]: -5,
   [RACES.HighElf]: 0, [RACES.WoodElf]: 0, [RACES.Khajiit]: -5, [RACES.Argonian]: -10,
 });
-/** The naked offset: nothing on at a comfortable natural temperature is
- *  still a little cold. */
+/** The body's heat loss (the mod's `offSet`): every body sheds it, dressed
+ *  or not, so a comfortable natural temperature reads a little cold
+ *  before the clothes (AUDIT C&C T8: the breakdown's "Heat loss" - it said
+ *  "Bare skin" on a body dressed head to foot). */
 export const NAKED_OFFSET = -5;
 /** A drink in the pack takes the edge off the heat (the felt line only). */
 export const WATER_COOLS = 10;
@@ -89,6 +98,10 @@ export const LEGS_WARMTH = Object.freeze({
   151: 10, 152: 10, 153: 4, 156: 2, 162: 1, 174: 4, 175: 8,
   190: 10, 193: 2, 199: 1, 211: 4, 212: 8, 213: 4,
 });
+/** Shoes 2, tall boots and boots 4, sandals nothing. AUDIT C&C T9 - THE BOOTS, a declared departure (Port-Ledger A):
+ *  the mod's Boots arm (Climates.cs Clothes) warms 4 at the first of their three variants alone and nothing at the
+ *  others (its leather 6 is overwritten by that test); the port's boots warm at every variant - a boot is a boot
+ *  whatever it looks like. */
 export const FEET_WARMTH = Object.freeze({ 147: 2, 148: 4, 149: 4, 150: 0, 186: 2, 187: 4, 188: 4, 189: 0 });
 /** Cloaks: the casual cloak's warmth by variant, and the formal cloak is
  *  three times it. Variants 1, 2 and 5 are drawn with the hood UP. */
@@ -124,8 +137,8 @@ export const armorMaterialClass = (material) => {
 };
 
 /** The natural temperature: what the world is, before anyone stands in
- *  it. Indoors the weather does not reach you and the hour matters less;
- *  underground there is no hour at all.
+ *  it. Indoors the street's own reaches you softened to the roof's size;
+ *  underground there is no hour or sky at all.
  *  FIELD BUGS 2026-09-30 (ROOF-SHELTER; #bug-reports, "Climates & Calories
  *  Bugs": "Whether you are appropriately clothed for your region, indoors,
  *  etc. your temperature gets to either "Scorching" or "Freezing" ... and
@@ -133,12 +146,17 @@ export const armorMaterialClass = (material) => {
  *  read half the climate and the season and never the hour, so a desert
  *  inn at eleven at night read 30 while the street outside it read 0 -
  *  in from the sand, the starting kit felt Hot all night, and the chip
- *  never lifted. Inside a building the natural temperature is the MILDER
+ *  never lifted. Inside a building the natural temperature was the MILDER
  *  (the smaller in size) of the street's own now - climate, season, hour
- *  and weather, as outdoors - and the roofed half; a tie is the roof's. A
- *  roof never makes it hotter or colder than the street, and a mountain
- *  inn keeps its roof. A declared departure (Port-Ledger A): SURV1 read
- *  the mod's indoor temperature as the roofed half alone. */
+ *  and weather, as outdoors - and the roofed half. AUDIT C&C T4: that
+ *  picked across nought (a Dak'fron inn read the roof's +30 in the rain
+ *  and -28 when overcast), so it is the street's own reading softened to
+ *  the roofed half's size now - never across nought, never harsher than
+ *  the street, and a mountain inn keeps its roof. A declared departure
+ *  (Port-Ledger A): SURV1 read the mod's indoor temperature as the roofed
+ *  half alone, and the mod's published source (AUDIT C&C T9) reads the
+ *  climate, the season and the hour indoors, no weather and no halving -
+ *  and its minute law charges no temperature indoors at all. */
 export function naturalTemperature({ climateIndex, month, hour, weather, insideBuilding = false, insideDungeon = false } = {}) {
   const climate = CLIMATE_TEMP[climateIndex] ?? 0;
   const season = MONTH_TEMP[((month ?? 0) % 12 + 12) % 12] ?? 0;
@@ -222,18 +240,20 @@ export const GEAR_DRY_MOST = 75;
 /** LOOT14/LOOT15: what the loot ladder's fold put on the wearer (`entity._mods` - empty with the ladder off), as the
  *  felt temperature's context reads it: a garment's warmth and weatherproofing, and a Legendary's degrees - the cold's
  *  and the heat's, which feltTemperature takes off the felt number alone. AUDIT LOOT II A2: they were laid on the host's
- *  frost and fire resistance, and the own warmth (the clothes', the armour's, the race's) is resisted as heat - so the
- *  Wayfarer's Robes cut the outfit's warmth by their 20 and made a cold night colder (-28 to -40 on a temperate one).
- *  The host's resistances (`ctx`) stand as they are. */
-export function wardrobeCtx(ctx, mods) {
+ *  frost and fire resistance, and the own warmth (the clothes', the armour's, the race's) was then resisted as heat - so
+ *  the Wayfarer's Robes cut the outfit's warmth by their 20 and made a cold night colder (-28 to -40 on a temperate
+ *  one). The host's resistances stand as they are, beside these (AUDIT C&C: so the host's context, which this never
+ *  read, is no argument). */
+export function wardrobeCtx(mods) {
   if (!mods) return {};
   return {
     gearWarmth: Number(mods.warmth) || 0, gearDry: Number(mods.dry) || 0,
     coldDegrees: Number(mods.coldDegrees) || 0, heatDegrees: Number(mods.heatDegrees) || 0,
   };
 }
-/** The environment's wetness: under water you are soaked at once,
- *  wading soaks the legs. */
+/** The environment's wetness: a head under the water is soaked at once,
+ *  and a swim on the surface - the mod's wading (ClimateCalories.cs: the
+ *  motor's OnExteriorWater Swimming) - soaks fifty a minute. */
 export const environmentWet = ({ submerged = false, wading = false } = {}) =>
   (submerged ? WET_SUBMERGED : 0) + (wading ? WET_WADING : 0);
 
@@ -241,10 +261,10 @@ export const environmentWet = ({ submerged = false, wading = false } = {}) =>
  *  carries, from the race template's flags (resist 25, immune 50, low
  *  tolerance -25, critical weakness -50), the spell resistances the
  *  effect manager holds (their chance, as degrees), and the curses (a
- *  vampire feels no frost; a were-beast in its form feels almost
- *  nothing). A cold temperature is raised toward zero by frost
- *  resistance, a hot one lowered toward zero by fire resistance, and
- *  neither crosses it. */
+ *  vampire 25 of the frost; a lycanthrope 10 of either out of its form,
+ *  and in it 100 of the cold and 80 of the heat). A cold temperature is
+ *  raised toward zero by frost resistance, a hot one lowered toward zero
+ *  by fire resistance, and neither crosses it. */
 export function resistTemperature(temp, ctx = {}) {
   if (temp === 0) return 0;
   const cold = temp < 0;
@@ -297,10 +317,12 @@ export function hoodUp(item) {
  *  casual pants are fifteen degrees, and a desert inn at noon read Hot in
  *  them. Above this natural temperature - the warm word's own line
  *  (temperatureWord), where the drying and the sun on bare skin read heat
- *  (needs.js) - the clothes count at half their warmth, truncated, before
- *  the wet eats what is left. The cold is unchanged; armour is unchanged,
- *  its metal's heat in the sun its own rule (armorWarmth). A declared
- *  departure (Port-Ledger A): the mod's clothes warm alike in any heat. */
+ *  (needs.js) - the clothes give up a degree for each degree past it,
+ *  down to half their warmth, truncated, and no further (AUDIT TEMP-UI E7:
+ *  they fell to half at once), before the wet eats what is left. The cold
+ *  is unchanged; armour is unchanged, its metal's heat in the sun its own
+ *  rule (armorWarmth). A declared departure (Port-Ledger A): the mod's
+ *  clothes warm alike in any heat. */
 export const CLOTHES_BREATHE_ABOVE = 10;
 /** Clothing warmth: chest, legs, feet and the cloaks, less the wetness,
  *  never below nothing; a hood in strong sun cools the head. */
@@ -405,7 +427,7 @@ export function feltTemperature(env = {}, worn = null, ctx = {}) {
     clothes: clothes.warmth, clothesDry: clothes.pure, armour: armour.warmth, metal: armour.heat, race, water, fire,
     cloak: cloakState(worn).cloak, hood: clothes.hood, wet,
     // TEMP-UI: the rest of the sum, so a breakdown adds up to `felt` exactly (temperatureBreakdown): the resistances on
-    // the air, the ground's correction, the bare skin, the drink to hand, a garment's degrees
+    // the air, the ground's correction, the heat loss, the drink to hand, a garment's degrees
     worldResist: natTemp - air, dungeon: air - natural, naked: NAKED_OFFSET, waterCools: watered - unwatered, degrees: felt - watered,
     wetGain: weatherWetGain(env.weather, { cloak: cloakState(worn).cloak, hood: clothes.hood, insideBuilding: env.insideBuilding, insideDungeon: env.insideDungeon, sheltered: !!env.sheltered })
         * (1 - Math.min(GEAR_DRY_MOST, Math.max(0, Number(ctx.gearDry) || 0)) / 100)   // LOOT14: weatherproofing turns the weather's soaking aside

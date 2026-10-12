@@ -35,9 +35,12 @@ import { equipItem } from '../src/systems/equip.js';
 //
 // The owner: "Make the best decisions. DO a comprehensive audit on everything ensuring perfection". The open questions
 // AUDIT SURV-BOONS and AUDIT TEMP-UI left (bible/06-Systems/Climates-Calories.md, AUDIT C&C) decided - E4 the sea at
-// nought, E5 a jump felt at its own hours offline - and six cold lenses over the whole arc (the law, the temperature and
-// the four hosts, every surface, the save and the wire, the records, everything the arc touches), every finding
-// reproduced before it was fixed. The numbers are LITERALS (A PIN MUST FAIL).
+// nought, E5 a jump felt at its own hours offline - and six cold lenses over the whole arc, read against the mod's
+// published source: the needs law and the tiers (N), the temperature law (T), the items, food, camps, fires and the
+// tavern (I), the four hosts, the save and the wire (H), what the player sees (S), and the records and the pins (R).
+// Every finding was reproduced before it was fixed. This file pins the decisions, the temperature law, a jump, the
+// collapse, the prison and the needs; auditcc_items, auditcc_tavern, auditcc_ui and auditcc_pvp pin the rest (and
+// tempui's E2 pin the swim that wades). The numbers are LITERALS (A PIN MUST FAIL).
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const CASUAL = SURVIVAL_RULES.casual;
@@ -86,7 +89,7 @@ const hourOf = (m) => (((m % 1440) + 1440) % 1440) / 60;
 /** The env a host hands at classic minute `m` (world.js survivalEnvNow: the sky's month and fractional hour). */
 const skyAt = (base, m) => ({ ...base, hour: hourOf(m), month: dateFromClassicMinutes(m).month });
 
-test('AUDIT C&C E4: THE SEA IS AT NOUGHT - Ocean, every pixel of which the port\'s one water law calls sea, is the season, the hour and the weather alone (the mod\'s +20 beach made a winter crossing comfortable and a summer one hot); the breakdown says Sea', () => {
+test('AUDIT C&C E4: THE SEA IS AT NOUGHT - Ocean, every pixel of which the port\'s one water law calls sea, is the season, the hour and the weather alone (SURV1\'s +20 beach made a winter crossing comfortable and a summer one hot; the mod\'s published Climate() answers the sea 0); the breakdown says Sea', () => {
   assert.equal(CLIMATE_TEMP[CLIMATES.Ocean], 0);
   assert.equal(CLIMATE_NAMES[CLIMATES.Ocean], 'Sea');
   // a winter crossing at noon is Morning Star's -20 alone; a summer one Sun's Height's +20, warm and no hotter

@@ -5,8 +5,9 @@
 // Clothing only ever added warmth: the chest, the legs, the feet and the cloaks summed and went on the body at full
 // weight whatever the weather, so nothing a player wore lowered a hot reading and the lightest outfit in the desert was
 // charged its every point - the starting kit's short shirt and casual pants are fifteen degrees in a desert inn at noon,
-// Hot. In the heat (a natural temperature above ten) clothing counts at HALF its warmth, truncated; the cold is unchanged,
-// and armour is unchanged (its metal's heat in the sun is its own rule).
+// Hot. In the heat (a natural temperature above ten) clothing eases toward HALF its warmth, truncated - a degree less a
+// degree past ten, never past the half (AUDIT TEMP-UI E7: it fell to the half at once); the cold is unchanged, and armour
+// is unchanged (its metal's heat in the sun is its own rule).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -29,7 +30,7 @@ test('CLOTHES-BREATHE: the report - the starting kit in a desert inn at noon cou
   assert.deepEqual([road.natural, road.clothes, road.felt], [40, 7, 37], 'the Alik\'r road at noon in Rain\'s Hand: 45 before');
 });
 
-test('CLOTHES-BREATHE: the rule - above ten the clothes count half, truncated; at ten and in the cold whole; a cloak halves with the rest; the wet eats what is left and the hood shades after; armour is its own (mutants: the heat never halves; the threshold at ten; the half rounds up; the cold halves too; the wet before the half; the dry reading unhalved; armour breathes too)', () => {
+test('CLOTHES-BREATHE: the rule - above ten the clothes ease toward half, truncated, a degree a degree; at ten and in the cold whole; a cloak eases with the rest; the hood shades the half and the wet eats what is left; armour is its own (mutants: the heat never halves; the half rounds up; the cold halves too; the wet before the half; the dry reading unhalved; armour breathes too; the threshold at ten, equivalent since E7)', () => {
   assert.equal(CLOTHES_BREATHE_ABOVE, 10);
   // PIN MOVED (AUDIT TEMP-UI E7): the half EASES IN, a degree of warmth a degree past ten, until it is the half - it fell
   // to half at once, so a warmer world read cooler (a warm outfit: world 10 felt 43, world 12 felt 26)
@@ -55,7 +56,7 @@ test('CLOTHES-BREATHE: the rule - above ten the clothes count half, truncated; a
   assert.equal(clothingWarmth(kit(), { natural: 20, wet: 4 }).pure, 7, 'the dry reading is the half');
   assert.equal(clothingWarmth(cloaked(), { natural: 40, inSunlight: true }).warmth, 8, 'the hood shades the half: 18 - 10');
   const leather = new Array(27).fill(null);
-  leather[S.ChestArmor] = { group: 'Armor', templateIndex: 102, material: 0 }; leather[S.LegsArmor] = { group: 'Armor', templateIndex: 103, material: 0 };
+  leather[S.ChestArmor] = { group: 'Armor', templateIndex: 102, material: 0 }; leather[S.LegsArmor] = { group: 'Armor', templateIndex: 104, material: 0 };   // AUDIT C&C T10: the greaves (103 is the gauntlets)
   assert.equal(armorWarmth(leather, { natural: 40 }).warmth, armorWarmth(leather, { natural: 0 }).warmth, 'leather warms the same in the heat');
   assert.equal(armorWarmth(leather, { natural: 40 }).warmth, 5, 'its chest 3 and legs 2, whole');
 });
