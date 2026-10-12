@@ -241,12 +241,12 @@
   {
     "name": "AUDITSURV-the-chargen-kit-carries-no-provisions",
     "file": "src/systems/startingGear.js",
-    "old": "for (const it of startingProvisions()) { addItem(entity.items, it); added.push(it); }",
+    "old": "for (const it of startingProvisions(entity)) { addItem(entity.items, it); added.push(it); }",
     "new": "{ }",
     "tests": [
       "test/auditsurv.test.js"
     ],
-    "note": "PIN MOVED (AUDIT REST-PARTY): REST2's online-Campfire `else` follows this line, so dropping the whole line no longer parsed; the loop alone is emptied."
+    "note": "PIN MOVED (AUDIT REST-PARTY): REST2's online-Campfire `else` follows this line, so dropping the whole line no longer parsed; the loop alone is emptied. AUDIT C&C I7: re-aimed by content - the kit's producer is handed the character (its wardrobe for the start's shoes and cloak)."
   },
   {
     "name": "AUDITSURV-bare-feet-cost-blood-every-minute",

@@ -640,11 +640,11 @@
     "name": "ENDLESS-off-refuses-a-camp-again",
     "file": "src/scenes/camps.js",
     "old": "    // ENDLESS PROVISIONS: no arc gate - a camp is stood in every tier (`seen`, above); the camp law's own checks below\n",
-    "new": "    if (!survivalOn()) { say(CAMP_TEXT.arcOff); return false; }\n",
+    "new": "    if (!survivalOn()) { say('Turn Climates & Calories on to make camp.'); return false; }\n",
     "tests": [
       "test/auditsurv.test.js"
     ],
-    "note": "REST6 (PIN MOVED): re-aimed by content."
+    "note": "REST6 (PIN MOVED): re-aimed by content. AUDIT C&C I10: the refusal's constant (CAMP_TEXT.arcOff) is deleted - the mutant says its words as a literal."
   },
   {
     "name": "SURVTIERS-fireNear-is-the-tiers-again",
