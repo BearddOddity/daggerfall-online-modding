@@ -541,6 +541,41 @@ Each with what was found and whether it moves the picture (those are the owner's
 **The GPU** (unchanged from PERF-NEXT): the cloud march, Steady shadows' every-frame lantern faces, an automatic quality
 governor - each the owner's.
 
+## HOLY-DAYS — the pilgrims' holy day, the same answer for less
+
+*The owner (2026-10-11): "eu sei que quando o jogo carrega normalmente da uma travada, tem alguma forma de voce medir
+isso?" - the installed client's load captured from its first second through the debugging port (CDP Tracing, the
+page's CPU profile, every frame's length and the long animation frames).*
+
+**Found.** Entering the world froze it for ~20 s in two frames - 14.5 s, then 5.1 s - every millisecond the main
+thread's script, none the GPU's: 8.1 s the wild zone's halls (`wildDungeons.js wildHallPicks`, asked by the nearest
+dungeon's list - WILD-FREE, its own change), 5.7 s and 4.9 s the Living World planning its roads' day the first time a
+town asked (`livingTown.js _roadsOf` -> the host's `tripsOf`). Of the roads' time, ~3.6 s and ~3.0 s were the pilgrims:
+`trips.js holyTrip` built its town's temples again for every pilgrim (the towns near filtered by their ring and
+`templeTown`, then sorted by distance), and `companies.js holyDayOf` asked `getHolidayId` of every day of the cycle at
+every temple - a day of the year summed from the minutes and the 53 rows walked each time. The capture's own tracing
+and sampling slowed the client; the shares are the profile's.
+
+**The fix.** The same answers, asked less. `holidays.js holidayOn` reads the two tables once into the holiday row on
+each day of the year (one row a day: no two rows share one), and `holidayKeptIn` is GetHolidayId's own test of a row
+(every region's, or the region's ID - its index plus one); `holyDayOf` sums the day once a day, passes a day that is no
+holiday or every region's (LW13's law, on a line of its own) without asking a temple, and takes the first temple in its
+order that keeps the row - `getHolidayId`'s answer, as before. `trips.js templesNear`
+keeps each town's temples by its trip world (the world's towns and their temples are the map's; `townsNear` was kept
+already). The Living World's trips are every client's alike, so nothing may move: every answer is the old one.
+
+**Measured.** In node 22 over the suite's synthetic map (`test/lwRoads.mjs` synthMap, 144 towns their regions spread
+over 62, `townsNear` kept as the host keeps it), every town's trips for 90 days, cold, five runs: the same 88,279 trips
+and 1,836 holy-day pilgrimages to the byte on both (a digest of every trip's id, kind, goal, times and holy day);
+`holyTrip` 766 ms -> 29 ms of the run, the whole 877 -> 733 ms best. In the client the pilgrims' share of the two frozen
+frames, ~6.6 s, goes; the rest of the roads' day (the other travellers' plans, the weighted picks) stands. Not measured:
+the installed client on this branch.
+
+Pins: `test/holydays.test.js` (3) - `holidayOn` and `holidayKeptIn` against `getHolidayId` on every day of the year in
+every region; `holyDayOf` against the old law restated, over 4,000 drawn cycles and temple lists; `templesNear` the old
+filter and sort, asked of the world once a town. Mutants: `tools/mutants/holydays.json`, 6, all dead; `lw13.json`'s
+LW13-holy-region re-aimed at the line that passes every region's day.
+
 ## For the owner
 
 - **The A/B this branch owes**: on a machine with the data, `ARENA2_PATH=... node tools/frameProbe.mjs knight night`
