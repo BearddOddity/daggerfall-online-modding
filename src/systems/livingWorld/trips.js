@@ -624,6 +624,26 @@ export function ownTrip(res, home, k, world, { mpm }) {
 /** LW5b: the way of a trip with no road under it - a passage by sea. */
 const noWay = () => ({ pts: [], cum: [0], len: 0, kinds: [] });
 
+/** HOLY-DAYS (2026-10-11, a profile of the owner's live client entering the world): A TOWN'S TEMPLES IN A PILGRIM'S
+ *  REACH, the nearer first (then the lower map id) - the same for every pilgrim of the town and every cycle (the trip
+ *  world's towns and their temples are the map's), so kept by the world and the town: made again for each pilgrim, it was
+ *  a filter and a sort of the towns near a pilgrim, every pilgrim of every town the roads asked, in one frozen frame.
+ *  @param {LwTown} home @param {TripWorld} world @returns {LwTown[]} */
+const _templesNear = new WeakMap();
+export function templesNear(home, world) {
+  let byHome = _templesNear.get(world);
+  if (!byHome) _templesNear.set(world, (byHome = new Map()));
+  const kept = byHome.get(home.mapId);
+  if (kept) return kept;
+  const [rMin, rMax] = TRIP_RANGE_PX.pilgrim;
+  const dist = (t) => Math.hypot((t.px ?? 0) - (home.px ?? 0), (t.py ?? 0) - (home.py ?? 0));
+  const temples = world.townsNear(home.px ?? 0, home.py ?? 0, rMax)
+    .filter((t) => t.mapId !== home.mapId && Math.max(Math.abs((t.px ?? 0) - (home.px ?? 0)), Math.abs((t.py ?? 0) - (home.py ?? 0))) >= rMin && !!world.templeTown?.(t))
+    .sort((a, b) => dist(a) - dist(b) || a.mapId - b.mapId);
+  byHome.set(home.mapId, temples);
+  return temples;
+}
+
 /** LW13: a pilgrim's holy day is reached by this hour of its morning (in for the day's rites). */
 export const HOLY_IN_H = 10;
 /**
@@ -637,12 +657,7 @@ export const HOLY_IN_H = 10;
  */
 export function holyTrip(res, home, k, world, { start, len, pace }) {
   if (!holyDraw(res, k)) return null;
-  const [rMin, rMax] = TRIP_RANGE_PX.pilgrim;
-  const dist = (t) => Math.hypot((t.px ?? 0) - (home.px ?? 0), (t.py ?? 0) - (home.py ?? 0));
-  const temples = world.townsNear(home.px ?? 0, home.py ?? 0, rMax)
-    .filter((t) => t.mapId !== home.mapId && Math.max(Math.abs((t.px ?? 0) - (home.px ?? 0)), Math.abs((t.py ?? 0) - (home.py ?? 0))) >= rMin && !!world.templeTown?.(t))
-    .sort((a, b) => dist(a) - dist(b) || a.mapId - b.mapId);
-  const holy = holyDayOf(temples, start, len);
+  const holy = holyDayOf(templesNear(home, world), start, len);
   if (!holy) return null;
   const plan = world.routeOf(home, holy.town);
   if (plan === undefined) return undefined;
