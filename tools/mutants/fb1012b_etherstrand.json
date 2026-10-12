@@ -38,8 +38,8 @@
   {
     "name": "ETHER-STRAND-the-helms-word-unsaid",
     "file": "src/systems/comeSailAway.js",
-    "old": "      if (state.boatCargoMod < 0.5) deps.midScreenText(\"You're going to need a bigger boat\", 3);",
-    "new": "      if (state.boatCargoMod < 0) deps.midScreenText(\"You're going to need a bigger boat\", 3);",
+    "old": "export const cargoWords = (mod) => (mod < 0.5 ? \"You're going to need a bigger boat\"",
+    "new": "export const cargoWords = (mod) => (mod < 0 ? \"You're going to need a bigger boat\"",
     "tests": [
       "test/fb1012b_etherstrand.test.js"
     ]
@@ -60,6 +60,25 @@
     "new": "return etherSea && inEther(p.x, p.y) === hers;",
     "tests": [
       "test/fb1012b_etherstrand.test.js"
+    ]
+  },
+  {
+    "name": "ETHER-STRAND-the-crossing-covers-the-load",
+    "file": "src/scenes/world.js",
+    "old": "      if (heavy) townTalk.say(heavy, 7);",
+    "new": "      void heavy;",
+    "tests": [
+      "test/fb1012b_etherstrand.test.js"
+    ]
+  },
+  {
+    "name": "ETHER-STRAND-the-words-two-homes",
+    "file": "src/systems/comeSailAway.js",
+    "old": "      const words = cargoWords(state.boatCargoMod);",
+    "new": "      const words = state.boatCargoMod < 0.5 ? \"You're going to need a bigger boat\" : null;",
+    "tests": [
+      "test/fb1012b_etherstrand.test.js",
+      "test/csa_sailing.test.js"
     ]
   }
 ]

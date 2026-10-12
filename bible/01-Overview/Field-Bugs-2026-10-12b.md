@@ -10,13 +10,13 @@ owner's call.
 | 1 | "'The First Printing' quest not progressing" - "I got to the part where you confront the thief, but talking to him won't do anything ... He is not changing locations as he should" | Mordastyr Moorford is the quest's `Person _thief_`, placed at a generated home the first time it is entered and never again (DFU's Person.Tick); no task listens to him. The thief fought is `Foe _thiefFoe_`, placed by the hour at the quest's house, store or inn | not a defect - DFU's quest as written (DECOY-THIEF); answered for the player |
 | 2 | "Companion Inventory prioritized over looting, taking helm, and other context options" - "you need to get them to move before you can loot an item since it keeps opening their inventory instead" | a companion at the player's heel is a foe the one ray strikes like any other: nearer than the body, the pile, the boat's helm or the door behind him, he was the hit, and his hit opens his pack | fixed (ALLY-YIELDS) |
 | 3 | "magic item with only cast on use effect cannot be salvaged" - "it doesn't show up at all in the reforge menu for salvaging" | the "Blazing Holy Dagger of Fireballs" is DFU's own magic (a MAGIC.DEF row on a Holy Dagger), which LOOT9's law prices at no shards - the guilds sell it every day; the Salvage page dropped it silently | the law stands; the page and the card say why (SALVAGE-CLASSIC) |
-| 4 | ETHER-ROW |
+| 4 | "Unable to sail any ship after leaving a fleet ship in the Etheric Ocean and returning to Iliac Bay" - "my ship refused to move in any direction regardless of sail length ... All other ships including rowboats were now non-functional. I could command the helm, but movement was disabled"; on the Carrack, brought back across, every ship sailed again | not reproduced: no state ties a ship's side of the Veil to the helm, and the reported sequence sails in the Bay. One law reads exactly as told - the captain's own load weighed against each hull's hold (only the Carrack's carries most) - and its word was covered by the crossing's | the helm unchanged; the load's word said beneath the crossing's (ETHER-STRAND); questions to the reporter |
 | 5 | "Odd family tree behavior" - the two heirs one name and class, two birthdays, the nightblade gone; "Only one of us could actually see the heirs"; the heir born "near Privateer's Hold", not at the farm's hovel made the seat | online the page bearing the heir offered the waiting Succession again, and the birth's first save wrote the newborn over the other child; each house raises its own children of a two-player union (Legacy-Arc section 9); a seat moved only to a town, and the Online page's birth booted the classic start | fixed (HEIR-CLONE, SEAT-HOME, BIRTH-START); the union's children not changed - the owner's call, planned (UNION-CHILDREN) |
 | 6 | "companions when morrowind attached switches character race" (the owner) | a companion's Morrowind body drew its race, face, head, hair and clothes off the STAND - its species, its pool number and where it stood - and the companion layer stands a new body at every door, dungeon, fast travel, load and sweep; a revenant drew its own afresh at every return, so the one that knelt rose from its portal another race | fixed (ALLY-RACE) |
 
 ## DECOY-THIEF: the man in the house is not the thief to fight (1)
 
-`vendor/dfu-quests/Quests/A0C00Y12.txt`; `src/quest/person.js` tick, placeAtHome; `src/scenes/worldModes.js` the quest
+`vendor/dfu-quests/Quests/A0C00Y12.txt`; `src/systems/quest/person.js` tick, placeAtHome; `src/scenes/worldModes.js` the quest
 stand's click.
 
 FOUND. "The First Printing" is A0C00Y12. "Mordastyr Moorford" is its `Person _thief_ face 97 faction
@@ -140,7 +140,52 @@ Pinned by `test/fb1012b_salvageclassic.test.js` (4), every fixture the real prod
 `createRegularMagicItem` over DFU's MAGIC.DEF rows, a guild shelf, an Item Maker piece, a Superior, ladder pieces);
 `tools/mutants/fb1012b_salvageclassic.json` (11, all dead).
 
-ETHER-SECTION
+## ETHER-STRAND: no lock crosses the Veil; the load's word is said beneath the crossing's (4)
+
+`src/systems/comeSailAway.js` cargoWords, UpdateBoatCargoMod, cargoLoad; `src/scenes/world.js` the crossing's words;
+`src/scenes/fleetHost.js` the Veil's refusal.
+
+FOUND - NOT REPRODUCED. Nothing ties a ship's side of the Veil to Come Sail Away's motor: `comeSailAway.js` reads no
+Etheric state, and no seam the world host hands the helm (the sea's way scale, brake, warp, drift and gale, the refit,
+the cargo, the terrain, the input) carries anything across a crossing. The crossing's own flags cannot be the lock - its
+question is asked only while the motor sails (`world.js:"    if (!etherSea || _etherCrossing || !csaRuntime?.isSailing?.()) return;"`),
+and the reporter met it at the helm of a rowboat that would not move, so the helm was live and no disembark or pause
+stood. The Fleet's refusal (`fleetHost.js:"      : apart ? 'She lies on the far side of the Veil - sail her across yourself.'"`)
+touches Summon and Send-away alone, and is the design's. The reported sequence, run through the real runtime, the real
+sea and Fleet hosts and world.js's own `veilApart` (the Carrack out, her helm left past the Veil, a walk, a Large Boat
+sailed home): in the Bay she makes way under sail, at her oars and to her rudder, a rowboat rows, and a save in that
+state loads and sails.
+
+One law reads exactly as told: the mod's cargo. The captain's own load - the body, the pack and its gold, and the wagon
+(Cargo.CartCarriedWeight, on by default) - is weighed against every hull's hold
+(`comeSailAway.js:"    state.boatCargoMod = mathfClamp(f(2 - f(num / threshold)), 0, 1);"`) - the hold is Cargo.CargoThreshold
+(500 kg) times the hull's own Cargo modifier, and a hull lies dead at twice its hold; the Carrack's missing modifier is
+the galley's under the responsive helm (`comeSailAway.js:"const hold = !(boat.modifierCargoThreshold > 0) && responsive() ? CARGO_HOLD_MISSING : boat.modifierCargoThreshold;"`).
+Pinned at 2,100 kg: the rowboat, the Large Boat and the Small Ship lie dead, the Carrack makes way.
+At zero a ship neither moves nor turns, but her sails still set and her helm still answers - "I could command the helm,
+but movement was disabled ... regardless of sail length", and the Carrack the one that sailed. Its word is said once a
+helm is taken, three seconds mid-screen ("You're going to need a bigger boat") - and on the boat that came home it was
+covered: the crossing's own words take the same mid-screen line for seven seconds right after StartSailing has said it.
+
+FIXED - the silence. The two lines have one home (`comeSailAway.js:"export const cargoWords = (mod) =>"`), and the
+crossing says her load's word beneath its own, on the HUD line, as long
+(`world.js:"      const heavy = cargoWords(csaRuntime.state.boatCargoMod);"`). The helm's law is unchanged; a ship left
+past the Veil is still sailed back by her captain.
+
+THE FOUR HOSTS. scenes/world.js holds the sea, the crossing and the Fleet's seam: wired (the crossing's line).
+scenes/exterior.js FLAGGED (no sea), scenes/worldModes.js FLAGGED (no Veil, no helm under a roof),
+scenes/dungeonContext.js FLAGGED (a dungeon's boats never meet the Veil).
+
+ASKED OF THE REPORTER: whether "You're going to need a bigger boat", "The boat draws a little lower than usual" or
+"Unable to raise sail. Boat is obstructed." showed at a helm; their carried weight, gold and wagon load; the hulls tried
+(a Small Ship or a Large Galley among them?); Ship handling Responsive or Classic; whether a reload or a door changed it;
+and whether, between the rowboat and the Carrack's crossing home, anything went into her hold, to a counter or the bank.
+
+Pinned by `test/fb1012b_etherstrand.test.js` (4): the reported sequence through the real runtime and hosts; the design's
+refusal kept, and a save in that state loading and sailing; the cargo reading (at 2,100 kg the rowboat, the Large Boat
+and the Small Ship lie dead and say so, the Carrack makes way); the words' one home and the crossing's line beneath its
+own. `tools/mutants/fb1012b_etherstrand.json` (9, all dead). Re-aimed by content: `csa_sailing.json`
+CSA-D-cargo-bigger-boat-half (the words' new home).
 
 ## HEIR-CLONE: the page bearing an heir offers no Succession, and a save writes only the one in the world (5)
 
