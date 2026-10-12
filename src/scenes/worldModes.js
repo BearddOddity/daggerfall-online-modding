@@ -10704,10 +10704,10 @@ export function createWorldModes(host) {
     renderer.setIndirectLight(NO_INDIRECT_POS, 0, NO_INDIRECT_COLOR);
     renderer.setFog('exp', 0.001, 0, 0, new Float32Array([0, 0, 0]));
     // RW1 (render/realWindows.js): THE VIEW OUT - the street through this building's glass, drawn by the exterior host
-    // (host.outsideView: its lights, its pixels, this building left out) into a target of its own, before this frame's
+    // (host.outsideView: its lights, its pixels; PANE-CLIP keeps the room's side of the glass out) into a target of its own, before this frame's
     // lamps and its beginFrame; a bracket, so the room's light just set is put back as it was; cropped to the glass the
     // last frame met, kept while the camera is still
-    const _rwView = viewOutFrame(viewOut, { renderer, mode: realWindowsMode(), proj, view, now: performance.now(), scene: host.outsideView?.(exteriorDoor?.matrix ?? null) ?? null });
+    const _rwView = viewOutFrame(viewOut, { renderer, mode: realWindowsMode(), proj, view, now: performance.now(), scene: host.outsideView?.() ?? null });
     // AUDIT 26 F001: DaggerfallInterior lays out EVERY interior mesh
     // with WindowStyle.Disabled - individual models (:473), the
     // combined static batch (:517) and action doors (:1270) - and

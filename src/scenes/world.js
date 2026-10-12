@@ -77,7 +77,7 @@ import { waterBedDepths } from '../world/waterBed.js';   // WATER-NEXT 2: the be
 import { createRipples, createRippleStir, RIPPLE_SPAN, RIPPLE_CELLS, BOAT_STIR, BOAT_WAKE_SPEED } from '../world/waterRipples.js';   // WATER-NEXT 4: the rings and wakes
 import { waterCorners, WATER_DRAW_MASK_TABLE } from '../world/waterCorners.js';   // GRASS-WET1: the one table that says which of a tile's corners stand in water - the DRAW's, because a blade in a puddle is a picture, not a physics
 import { windowEmissionRGB } from '../render/windowEmission.js';
-import { realWindowsMode, VIEW_RINGS, VIEW_CLIP_PAD, clockFogColor } from '../render/realWindows.js';   // RW1: the rooms behind the glass, and the street a building's glass looks out on
+import { realWindowsMode, VIEW_RINGS, clockFogColor } from '../render/realWindows.js';   // RW1: the rooms behind the glass, and the street a building's glass looks out on
 import { CITY_LIGHT_COLOR, CITY_LIGHT_RANGE, LIGHTS_ARCHIVE, collectCityLights, nearestLights, capFadeColors, capFadePairs, fillLanternPool, rangesFor } from '../world/cityLights.js';
 import { isHearthFlat, HEARTH_NEAR } from '../systems/survival/hearth.js';   // HEARTH1: which of those lanterns is a fire you could cook on, and how far one can matter
 import { withPlayerLights } from './magicCandle.js';   // X11/T1: the lights the PLAYER carries
@@ -29528,27 +29528,9 @@ export async function bootWorld(canvas, renderer, params, status) {
   // RW1 (render/realWindows.js): THE STREET THROUGH A BUILDING'S GLASS - what the interior's view out draws (the mode
   // machine asks, renderer.outsideViewFrame runs it): the clock's light over the exterior the last street frame kept,
   // and the pixels' merged statics, odd models, ground and flats out to VIEW_RINGS, culled to the glass's own frustum.
-  // The building the player stands in is left out by its box (`clip`: the model the door's matrix stands, every door
-  // of a building carrying the building's own matrix) - from inside, its shell would stand between the pane and the street.
-  let _rwClipDoor = null, _rwClip = null;
-  const outsideViewClip = (doorMatrix) => {
-    if (doorMatrix === _rwClipDoor) return _rwClip;
-    _rwClipDoor = doorMatrix; _rwClip = null;
-    if (!doorMatrix) return null;
-    let best = -1;
-    for (const p of built.values()) {
-      const t = state.pixelTranslation(p.px, p.py);
-      for (const m of p.models) {
-        const l = m.local, b = m._box;
-        if (!l || !b || Math.abs(l[12] + t[0] - doorMatrix[12]) > 0.01 || Math.abs(l[13] + t[1] - doorMatrix[13]) > 0.01 || Math.abs(l[14] + t[2] - doorMatrix[14]) > 0.01) continue;
-        const vol = (b[3] - b[0]) * (b[4] - b[1]) * (b[5] - b[2]);
-        if (vol <= best) continue;
-        best = vol;
-        _rwClip = [b[0] + t[0] - VIEW_CLIP_PAD, b[1] + t[1] - VIEW_CLIP_PAD, b[2] + t[2] - VIEW_CLIP_PAD, b[3] + t[0] + VIEW_CLIP_PAD, b[4] + t[1] + VIEW_CLIP_PAD, b[5] + t[2] + VIEW_CLIP_PAD];
-      }
-    }
-    return _rwClip;
-  };
+  // The building the player stands in is drawn with the rest: its walls seen from inside are back faces, and what stands
+  // on the room's side of a pane the renderer leaves out (PANE-CLIP, FIELD BUGS 2026-10-12e - its model's box left out
+  // its own other wing and a neighbour's wall against it, "Wall missing through window").
   /** RW1 (AUDIT): the town's lanterns as the street frame lights them - its pool refilled, the nearest the installed set
    *  takes - for a street looked out on after dark (the kept frame's were the hour the player went in). */
   const outsideLanterns = (r) => {
@@ -29605,8 +29587,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // every cut-out flat: the view out drew the bed under it dry
     if (deepWaters) drawDeepWatersSurfaces(performance.now(), ground);
   };
-  const outsideView = (doorMatrix) => ({
-    clip: outsideViewClip(doorMatrix),
+  const outsideView = () => ({
     setup: (r) => {   // the clock's light: an hour spent indoors is an hour later outside
       const clockMinute = minuteNow();
       const keptFog = r._fogColor, keptSun = r._sunScale;   // RW1 (AUDIT): the air the street was kept in, at the light it was kept at
