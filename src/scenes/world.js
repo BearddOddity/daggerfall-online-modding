@@ -9,7 +9,8 @@
 import { DecisionBoxWindow } from '../ui/decisionBox.js';   // REST-WARN2: the Plus decision box
 import { isGothwayGarden, gothwayNorthSpots } from '../systems/gothwayBoards.js';
 import { wildGiantsAt, WILD_GIANT_STAND_M, WILD_GIANT_RESPAWN_MS } from '../systems/wildGiants.js';   // ZONE-GIANTS   // GOTHWAY-BOARDS: at the north entrance
-import { NAV_CELL } from '../world/cityNavigation.js';   // GOTHWAY-NORTH: the walk grid's cell
+import { NAV_CELL } from '../world/cityNavigation.js';
+import { pixelKeyText } from '../world/pixelKeys.js';   // PIXEL-KEYS: a built pixel's key text made once   // GOTHWAY-NORTH: the walk grid's cell
 import { BULLETIN_BOARD_MODEL_ID } from '../world/rmbLayout.js';   // GOTHWAY-BOARDS: the board's own model
 import { restAilmentLines } from '../systems/restWarning.js';   // REST-WARN
 import { walkModeOn, bindWalkMode } from '../player/walkMode.js';   // PADWALK: walk mode, one button on and off
@@ -295,7 +296,7 @@ import { huntKind, createBodyStamps, bodiesHere, trackerMarks } from './huntHost
 import { fishKind } from './fishHost.js';   // PROF8: Fishing's casts and schools - a kind in it
 import { utcDayOfMs } from '../net/nodeLaw.js';   // PROF8: a haul's UTC day
 import { registerPlayerKillListener } from '../systems/playerKills.js';   // PROF7: the player's own kill stamps a body
-import { setProfessionsPages } from '../ui/profPages.js';   // PROF1: the Professions and Stores pages on the character sheet's rail
+import { setProfessionsPages, forgeOffered, focusStoresStation, WORKBENCH_COLD_LINE } from '../ui/profPages.js';   // PROF1: the Professions and Stores pages on the character sheet's rail; CARP-YARD: the joinery's bench opens it
 import { createSaddleHost } from './saddleHost.js';   // STEED-UI: the saddle panel - the horse and the wagon on screen (Enhanced Plus)
 import { setHoldingsProvider, stableProviderFor } from '../ui/holdingsPages.js';   // HOLDINGS: the Stable and the Fleet pages on the pause menu's Holdings tab
 import { fleetBook, fleetShip, titleDeed, knowShip, retitle, setShipPort, forgetShip, fleetSaveSlot, FLEET_SAVE_VENDOR } from '../systems/fleet.js';   // HOLDINGS: the Fleet's ledger and its book of titles
@@ -309,8 +310,8 @@ import { createShipyardHost } from './shipyardHost.js';   // SHIPYARDS: the ship
 import { createWardenShows } from './wagonWardenShow.js';   // WARDEN1: the town watch's throw, played
 import { createWagonWarden, wardenTownIn } from './wagonWardenHost.js';   // WARDEN1: the town watch - my wagon's stamp, the cell's words, the offline clock; AUDIT WARDEN1 D3: the town under a point, one pure home
 import { WARDEN_VENDOR, isWardenTown } from '../systems/wagonWarden.js';   // WARDEN1: the stamp's save slot, and the towns a watch keeps
-import { townGroundOf, yardSitesOn, carveYards, MONUMENT_KEEP_M, yardMeasuresOf, placedModelBox } from '../world/merchantYardSites.js';   // MERCHANT-YARDS: where they stand off the town's layout, and the people's navgrid carved round them
-import { isYardTown, yardKeeper, YARD_KIND_ORDER } from '../systems/merchantYards.js';   // MERCHANT-YARDS: the towns that stand them, who keeps them, the town's people
+import { townGroundOf, yardSitesOn, craftYardSitesOn, carveYards, MONUMENT_KEEP_M, yardMeasuresOf, placedModelBox } from '../world/merchantYardSites.js';   // MERCHANT-YARDS: where they stand off the town's layout, and the people's navgrid carved round them
+import { isYardTown, yardKeeper, ALL_YARD_KINDS, YARD_BENCH } from '../systems/merchantYards.js';   // MERCHANT-YARDS: the towns that stand them, who keeps them, the town's people
 import { isPortTown, portTownByData, portKeeper, portPlaceName, PORT_SITE_ORDER } from '../systems/portPlaces.js';   // SHIPYARDS: the port towns, their keepers and their places' names
 import { townSeaOf, seaBearing, seaField, portSitesOn, portPlaceRows, sceneToLocationXZ } from '../world/portSites.js';   // SHIPYARDS: where a port town's shipyard and lighthouse stand - its seaward ground
 import { SHIPYARD as SHIPYARD_LAYOUT } from '../world/shipyardModel.js';   // SHIPYARDS: the crew hall's table, for the talk directory's row
@@ -808,7 +809,7 @@ import { ChatLog, CHAT_REJOIN_MS } from '../net/chat.js';   // CHAT1: the tabs a
 import { LANG_OLD_RELAY_TEXT, NO_LANG_TEXT, langJoinedText } from '../net/chat.js';   // CHAT-LANG: the Language tab's words
 import { CHAT_LANGS, chatLangRoom } from '../net/wire.js';   // CHAT-LANG: the language channels
 import { LANG_LINES, unknownLangText } from '../net/chatCommands.js';   // CHAT-LANG: /lang's list and refusal
-import { oocText, localLineHeard, nextRegionRoom, regionJoinedText, CHAN_OLD_RELAY_TEXT, ROLL_OLD_RELAY_TEXT, EMOTE_OLD_RELAY_TEXT, GUILD_OLD_RELAY_TEXT, NO_GUILD_TEXT, SOLO_LOCAL_TEXT, partyNoteTab } from '../net/chat.js';   // CHAT-CHAN: the channels' own laws (a second chat import: CHAT1's pin holds the first as it stands)
+import { oocText, localLineHeard, nextRegionRoom, regionJoinedText, CHAN_OLD_RELAY_TEXT, ROLL_OLD_RELAY_TEXT, EMOTE_OLD_RELAY_TEXT, GUILD_OLD_RELAY_TEXT, NO_GUILD_TEXT, partyNoteTab } from '../net/chat.js';   // CHAT-CHAN: the channels' own laws (a second chat import: CHAT1's pin holds the first as it stands)
 import { parseChatLine, HELP_LINES, CHAT_GREETING_TEXT, unknownCommandText, emptyCommandText, hostMisuseText, badRollText, expandShortcodes, EMOTE_LINES, foundText, FIND_OFFLINE_TEXT, FIND_RELAY_TEXT } from '../net/chatCommands.js';   // CHAT-CHAN: what a typed line IS; DICE1: and a roll; EMOTE1: an action, a gesture, a shortcode
 import { partyRosterSource, localRosterSource, guildRosterSource } from '../net/roster.js';   // CHAT-CHAN: the Party and Local tabs' composed lists
 import { partyCompassPoints } from '../ui/partyMapMarks.js';   // COMPASS-PARTY: the party's points on the compass
@@ -1995,7 +1996,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   // one latch holds every craft and brew (profBook.js _craftBusy), so a station's own word named another's work: the
   // book's refusal says the hands are busy (accountClient.js 'prof-busy')
   const craftStation = (profession) => (profession === 'carpentry'
-    ? { here: () => modes?.workbenchHere?.() ?? null, a: 'a workbench', who: 'furnisher', noun: 'workbench', kept: BENCH_KEPT_TEXT, xp: professionName('carpentry') }   // CRAFT3: each discipline's craft's track - Building's
+    ? { here: () => workbenchHere(), a: 'a workbench', who: 'furnisher', noun: 'workbench', kept: BENCH_KEPT_TEXT, xp: professionName('carpentry') }   // CRAFT3: each discipline's craft's track - Building's
     : profession === 'outfitting'
       ? { here: () => modes?.loomHere?.() ?? null, a: 'a loom', who: 'tailor', noun: 'loom', kept: LOOM_KEPT_TEXT, xp: 'Outfitting' }
       : profession === 'masonry'   // PROF11: the mason's bench - a General Store's or a home's
@@ -4005,7 +4006,8 @@ export async function bootWorld(canvas, renderer, params, status) {
     return false;
   };
   /** MERCHANT-YARDS + SHIPYARDS: A TOWN'S PLACES - its yards placed on its ground as they always were (townGroundOf, then
-   *  yardSitesOn - yardSitesOf's own two steps), and a port town's shipyard and lighthouse on what they left (portSitesOn
+   *  yardSitesOn - yardSitesOf's own two steps; CARP-YARD: the joinery last, on what the port left - craftYardSitesOn),
+   *  and a port town's shipyard and lighthouse on what they left (portSitesOn
    *  off the sea: the town's own shoreline cells, else the sea's bearing off the map pixels round it - seaPixel), each
    *  keyed by the town and its kind, with its keepers (systems/portPlaces.js portKeeper - the shipyard's crewmaster beside
    *  its shipmaster), its name and the town's people. One memo a town, keyed by its measures and whether it is a port;
@@ -4040,11 +4042,12 @@ export async function bootWorld(canvas, renderer, params, status) {
           const bearing = seaBearing(lp.x, lp.y, seaPixel);   // AUDIT SHIPYARDS U2: and the town's own water against it is no sea
           ports = portSitesOn(g, seaField(g.width, g.height, townSeaOf(yl, bearing), bearing));
         }
+        if (g && yardTown) sites.push(...craftYardSitesOn(g));   // CARP-YARD: the joinery on what the yards and the port left - none of theirs moves
         memo = { sig, sites, ports };
         _yardMemo.delete(mapId);
         _yardMemo.set(mapId, memo);
         while (_yardMemo.size > 8) _yardMemo.delete(_yardMemo.keys().next().value);
-        if (yardTown && memo.sites.length < YARD_KIND_ORDER.length) console.log(`[yards] ${dfLocation.name}: no room for ${YARD_KIND_ORDER.filter((k) => !memo.sites.some((t) => t.kind === k)).join(' or ')}`);
+        if (yardTown && memo.sites.length < ALL_YARD_KINDS.length) console.log(`[yards] ${dfLocation.name}: no room for ${ALL_YARD_KINDS.filter((k) => !memo.sites.some((t) => t.kind === k)).join(' or ')}`);
         if (port && memo.ports.length < PORT_SITE_ORDER.length) console.log(`[port] ${dfLocation.name}: no room for its ${PORT_SITE_ORDER.filter((k) => !memo.ports.some((t) => t.kind === k)).join(' or its ')}`);
       }
       const shipmaster = portKeeper(mapId, 'shipyard', regionIndex), crewmaster = portKeeper(mapId, 'crewhall', regionIndex), lightkeeper = portKeeper(mapId, 'lighthouse', regionIndex);
@@ -8423,6 +8426,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   /** PROF9 (bible/06-Systems/Professions-Arc.md 3.3): whether the player stands as a Field Cook - online, the professions
    *  the account's, Cooking's choice at 50 - so a night at their own Campfire spends no fuel (survival/camp.js spendCampNight). */
   const fieldCookNow = () => profBook?.state?.open === true && profBook.track('cooking')?.specs?.[50] === 'field-cook';
+  /** CARP-YARD (bible/03-World/Merchant-Yards.md CARP-YARD): THE WORKBENCH THE PLAYER STANDS AT for Carpentry - in the
+   *  street a joinery's (scenes/merchantYardsHost.js workbenchNear: its bench within the yard's reach - YARD_BENCH, the
+   *  carpenter's, at the furnisher's own fee), in a building the mode machine's (worldModes workbenchHere: a Furniture
+   *  Store's, a home's, a hall's, a caravan's) - or null. */
+  function workbenchHere() {
+    if (_mode() !== 'exterior') return modes?.workbenchHere?.() ?? null;
+    return merchantYards?.workbenchNear?.(walkMode && playerSpawned ? player.feetAt() : null) ? YARD_BENCH : null;
+  }
   /** PROF9 (professionLaw COOK_FIRE): THE FIRE THE PLAYER STANDS AT for Cooking - on the street and in the wilderness any
    *  lit camp or the world's own brazier within C&C's reach of its flame (camps.js fireNear, the world's fire in every
    *  tier); in a building or a dungeon the mode machine's own (worldModes cookFireHere) - or null. */
@@ -8678,7 +8689,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   };
   const csaPixelAt = (x, z) => {
     const c = state.compensation;
-    return built.get(`${state.mapOrigin.x + Math.floor((x - c[0]) / TERRAIN_SIZE)},${state.mapOrigin.y - Math.floor((z - c[2]) / TERRAIN_SIZE)}`) ?? null;
+    return built.get(pixelKeyText(state.mapOrigin.x + Math.floor((x - c[0]) / TERRAIN_SIZE), state.mapOrigin.y - Math.floor((z - c[2]) / TERRAIN_SIZE))) ?? null;   // PIXEL-KEYS: the sea's soundings ask it hundreds of times a frame
   };
   /** A MeshCollider's mesh in its object's frame: the bundle's, a classic model's, or Unity's own Plane or Cube. */
   const csaColliderMesh = (c) => {
@@ -12648,7 +12659,7 @@ export async function bootWorld(canvas, renderer, params, status) {
           const st = craftStation(recipeById(recipe)?.profession);
           const f = st.here();
           if (!f) return { ok: false, text: `You are not at ${st.a}.` };
-          if (f.fee > 0 && totalGoldAmount(playerEntity) < f.fee) return { ok: false, text: `The ${st.who} asks ${f.fee} gold for the use of the ${st.noun}.` };
+          if (f.fee > 0 && totalGoldAmount(playerEntity) < f.fee) return { ok: false, text: `The ${f.who ?? st.who} asks ${f.fee} gold for the use of the ${st.noun}.` };   // CARP-YARD: the joinery's carpenter
           // AUDIT 30 C4: the fee rides the kept craft and is paid as its pieces are minted (profMintCraft) - by this press's
           // answer, or a settle's later; A4: the workbench's kept word its own
           // SEAT2b part two (Seats-Arc 7.5): the town the station stands in, where my guild holds it and its crafting halls
@@ -12662,7 +12673,7 @@ export async function bootWorld(canvas, renderer, params, status) {
           const paid = f.fee > 0 && !r.elsewhere;
           const rec = recipeById(recipe);
           const made = rec?.kind === 'siege' ? storedText(rec.name, Number(r.data.count) || 1) : craftedText(mintPieces(r.data));   // SEAT2b part two: a Ram Kit is the Stores'
-          return { ok: true, text: `${chain ? `${chain} ` : ''}${made} (+${r.data.xp} ${st.xp} XP)${paid ? `, and paid the ${st.who} ${f.fee} gold` : ''}.` };
+          return { ok: true, text: `${chain ? `${chain} ` : ''}${made} (+${r.data.xp} ${st.xp} XP)${paid ? `, and paid the ${f.who ?? st.who} ${f.fee} gold` : ''}.` };
         },
         stock: async (material, qty, counter = stockOf(material)?.counter) => {
           const r = await profBook.stock(material, qty);
@@ -12672,7 +12683,7 @@ export async function bootWorld(canvas, renderer, params, status) {
         },
         heatBand: () => heatBand({ strength: liveStat(playerEntity, 'strength'), agility: liveStat(playerEntity, 'agility') }),
         // PROF4 (bible/06-Systems/Professions-Arc.md 25): THE WORKBENCH the player stands at, and the plane's band
-        workbench: () => modes?.workbenchHere?.() ?? null,
+        workbench: () => workbenchHere(),   // CARP-YARD: and a joinery's in the street
         planeBand: () => planeBand({ agility: liveStat(playerEntity, 'agility'), willpower: liveStat(playerEntity, 'willpower') }),
         purse: () => totalGoldAmount(playerEntity),   // AUDIT 30 U13: a station's fee the purse cannot meet is not offered
         // PROF7 (bible/06-Systems/Professions-Arc.md 29): THE LOOM the player stands at, the stitch's band, and the clothing
@@ -12830,9 +12841,9 @@ export async function bootWorld(canvas, renderer, params, status) {
           const work = smeltRecipe(recipe);
           const bench = work?.station === 'workbench', loom = work?.station === 'loom', mason = work?.station === 'mason';
           const alch = work?.station === 'alchemy';   // PROF12: a Transmuter's transmutation, at the alchemy station
-          const f = (alch ? modes?.alchemyHere?.() : mason ? modes?.masonHere?.() : loom ? modes?.loomHere?.() : bench ? modes?.workbenchHere?.() : modes?.forgeHere?.()) ?? null;
+          const f = (alch ? modes?.alchemyHere?.() : mason ? modes?.masonHere?.() : loom ? modes?.loomHere?.() : bench ? workbenchHere() : modes?.forgeHere?.()) ?? null;
           if (!f) return { ok: false, text: alch ? 'You are not at an alchemy station.' : mason ? 'You are not at a mason\'s bench.' : loom ? 'You are not at a loom.' : bench ? 'You are not at a workbench.' : 'You are not at a forge.' };
-          const who = alch ? 'alchemist' : mason ? 'mason' : loom ? 'tailor' : bench ? 'furnisher' : 'smith';
+          const who = alch ? 'alchemist' : mason ? 'mason' : loom ? 'tailor' : bench ? (f.who ?? 'furnisher') : 'smith';   // CARP-YARD: the joinery's carpenter
           if (f.fee > 0 && totalGoldAmount(playerEntity) < f.fee) return { ok: false, text: `The ${who} asks ${f.fee} gold for the use of the ${alch ? 'station' : mason ? 'mason\'s bench' : loom ? 'loom' : bench ? 'workbench' : 'forge'}.` };
           const r = await profBook.smelt(recipe, count, { clean });
           if (!r?.ok) return { ok: false, text: `${accountRefusalText(r?.error)}${movedFirstText(r)}` };
@@ -16822,7 +16833,6 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  its lists, the view itself, the spawns it was told of. They sat in applyPose past `if (!pose) return;`, so a save
    *  without a pose (an older envelope) loaded with the last run's chases still running, its rudder held, its "?"s. */
   function overworldLoadReset() {
-    _soloMemory = null;   // AUDIT FB1007b H2: nor the tutorial dungeon's memory - the loaded character's time is the save's
     tvRaid.chase.clear(); tvRaid.spent.clear(); tvRaid.list = []; tvRaid.at = -Infinity; tvRaid.peer.clear(); tvRaid.spentAt.length = 0;   // OWS3: no chase across a load; OW6: nor what the peers said, nor what I was saying
     csaJourneyHelm.held.clear(); csaJourneyHelm.row = false; tvSea.means = null; tvSea.phase = null; tvSea.boat = null; tvSea.wasLive = false;   // AUDIT OWS A1: nor a crossing's hand on the helm - a load into a dungeon's boat kept its rudder held
     tvPlates = { at: null, list: [] };   // AUDIT DEEP T2-4: the loaded character's discoveries - never the plates the last one knew
@@ -21272,21 +21282,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     else { _worldSaid = said; _worldSaidAt = now; _worldSaidKey = key; }
     return ok;
   };
-  // AUDIT FB1007b H2: THE TUTORIAL DUNGEON'S OWN MEMORY. No room remembers a solo dungeon (HOLD-SOLO), so every entry
-  // built it whole - its dead risen, the containers emptied full again, rolled anew at the player's level: the LOOT-REGEN
-  // report's "all the guys I killed before have loot again", and the one online dungeon outside WORLD8's hour. Its memory
-  // is kept here as a room keeps one (the place's own record, stamped on the relay's clock), taken at the door out and
-  // laid back at the next door in. A load is its own time and forgets it, as a reload of the page does.
-  let _soloMemory = null;   // { mapId, shared }
-  const keepSoloMemory = () => {
-    const id = onlineOn ? modes?.roomIdentity?.() : null;
-    if (_loading) _soloMemory = null;
-    else if (id?.solo) _soloMemory = { mapId: id.mapId, shared: modes?.placeSharedWorld() };
-  };
-  const restoreSoloMemory = () => {
-    const id = onlineOn ? modes?.roomIdentity?.() : null;
-    if (!_loading && id?.solo && _soloMemory?.mapId === id.mapId) modes?.restorePlaceSharedWorld(_soloMemory.shared);
-  };
   // WORLD2: ONE SIMULATION PER ROOM. While I host a world room the dungeon's layout foes are mine to step and I
   // stream every changed one FOES_MS apart (every one FOES_FULL_MS apart, so a dropped delta heals); while another
   // hosts, my layout foes are puppets that follow the stream and my blows on them go to the host as hits.
@@ -21580,9 +21575,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     const mode = modes?.mode ?? 'exterior';
     const identity = modes?.roomIdentity?.();
     if (identity?.kind === 'arena') return { error: 'battle' };
-    // AUDIT FB1007b H3: the tutorial dungeon is each character's own (HOLD-SOLO) - staff sent there landed in their own
-    // empty copy, told they stood at the player's exact position
-    if (identity?.solo) return { error: 'unavailable' };
     // WAGONS2 (FINAL AUDIT): a caravan's room is no building a door of the street walks into (staff sent there were told
     // the instance could not be entered) - staff land behind its rear door, outside, where its owner steps out
     const caravanRoom = mode === 'interior' ? modes?.caravanRoom ?? null : null;
@@ -21648,7 +21640,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     let entered = d.kind === 'exterior';
     if (d.kind === 'interior') entered = await modes?.restoreInterior?.({ door: d.door, ...(d.layout != null ? { layout: d.layout } : {}), ...(d.privateRoom ? { privateRoom: d.privateRoom } : {}), ...(d.sailingCabin ? { sailingCabin: d.sailingCabin, cabinOwner: d.cabinOwner } : {}) }, null, { strictDoor: true });
     else if (d.kind === 'dungeon') {
-      entered = await modes?.startInDungeon?.({ locationKey: d.locationKey ?? null });
+      entered = await modes?.startInDungeon?.({ locationKey: d.locationKey ?? null, holdOpen: true });   // HOLD-ONCE: staff may land by a player in Privateer's Hold
       entered = entered && (modes?.dungeonLocation?.mapTableData?.mapId >>> 0) === d.mapId;
     } else if (d.kind === 'gate') entered = await modes?.enterGateArena?.(d.gate);
     else if (d.kind === 'abyss') {
@@ -22340,11 +22332,6 @@ export async function bootWorld(canvas, renderer, params, status) {
         link.onStaffTeleport = (m) => client.receive(m);
       }
       if (tab.room === SOCIAL_ROOM) link.onGate = (g) => gateLink?.word(g);   // WB3b: the hub's word of a kill, and a fighter's receipt outside the court
-      // AUDIT FB1007b H4: the hub's welcome carries the relay's clock too (AUDIT SOC B7) - heard as the presence session's
-      // is. In the tutorial dungeon that session keys no room (HOLD-SOLO) and its welcome never came: a session loaded or
-      // born there ran on this machine's clock until the player walked out - the time away paid late, over the time in
-      // the Hold, and every trusted reading (a banishment's term, a receipt's life, the timers) blank
-      if (tab.room === SOCIAL_ROOM) link.onClock = (offsetMs) => online?.onClock?.(offsetMs);
       if (tab.room === SOCIAL_ROOM) link.onSerpent = (w) => serpentLink?.word(w);   // SERPENT1: the hub's word of a sea serpent's kill, Bay-wide, and the day's at my hello
       if (tab.room === SOCIAL_ROOM) link.onRite = (w) => riteHost?.onBroken(w);   // WB12d: the hub's word of a broken rite, and at my hello
       if (tab.room === SOCIAL_ROOM) link.onSd = (w) => sdHost?.heard(w);   // SD2b: the hub's record of the Super dungeon - at my hello and at every move
@@ -26077,7 +26064,18 @@ export async function bootWorld(canvas, renderer, params, status) {
     open: (site, mode, name) => modes?.openYardTrade?.(site.kind, site.regionIndex, mode, name, site.mapId) ?? false,   // STEED1: the town's own horses
     say: (text) => townTalk.say(text), midText: (text) => setMidScreenText(text),
     mend: () => mendAtYard(),   // WAGONS4: the Wagon Yard's wright
+    bench: () => openYardBench(),   // CARP-YARD: the joinery's workbench
   });
+  /** CARP-YARD (bible/03-World/Merchant-Yards.md CARP-YARD): THE JOINERY'S WORKBENCH PRESSED - the Stores page, landed on
+   *  the workbench's section, as a home's workbench opens it (worldModes useDecorStation: the page's own gate,
+   *  forgeOffered); where the page is not (offline, the switch shut) the bench says so, as a home's does. Answers true
+   *  (the press handled). */
+  function openYardBench() {
+    if (!forgeOffered()) { townTalk.say(WORKBENCH_COLD_LINE); return true; }
+    focusStoresStation('workbench');
+    hudCtx.togglePause({ at: 'stores' });
+    return true;
+  }
   /** WAGONS4 (bible/06-Systems/Wagon-Upkeep.md): THE WAGON YARD'S MEND - the wagon driven made whole for the wright's
    *  price (systems/wagonUpkeep.js mendPrice), MEND_FETCH more when it is not drawn up at the yard (Horse Cart and
    *  Cargo's wagon standing out of the counter's reach - the reach its load is taken at, horseCart.js
@@ -28394,11 +28392,8 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  from before the channels, no party), else the socket it rides (connecting, reconnecting, refused: the session's
    *  own line, labelled with the tab - AUDIT CHAT B5). The Region tab before its first region reads the World link's,
    *  whose welcome is what it waits on. */
-  /** AUDIT FB1007b H5: online, in a place no one shares - the tutorial dungeon (HOLD-SOLO): connected, and alone. */
-  const soloHere = () => !!online && !!modes?.roomIdentity?.()?.solo;
   const chatStatus = (tabId) => {
     const tab = chatLog?.tab(tabId);
-    if (tabId === 'local' && soloHere()) return SOLO_LOCAL_TEXT;   // AUDIT FB1007b H5
     if ((tabId === 'party' || tabId === 'region') && chanOld()) return CHAN_OLD_RELAY_TEXT;
     if (tabId === 'party' && !social?.party) return NO_PARTY_TEXT;
     if (tabId === 'guild' && guildOld()) return GUILD_OLD_RELAY_TEXT;   // GUILD1c
@@ -28422,7 +28417,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (tabId === 'lang' && !chatLog.tab('lang')?.room) return why(langOld() ? LANG_OLD_RELAY_TEXT : NO_LANG_TEXT);   // CHAT-LANG: no channel yet
     // EMOTE1: an action only down a session whose relay carries one - an older one would say the words bare
     const s = tabId === 'local' ? online : tabId === 'party' || tabId === 'guild' ? socialLink() : chatLinks.get(tabId);
-    if (tabId === 'local' && soloHere()) return why(SOLO_LOCAL_TEXT);   // AUDIT FB1007b H5: said, never kept in the field in silence
     if (me && s?.status === 'open' && !s.emoteOk) return why(EMOTE_OLD_RELAY_TEXT);
     if (tabId === 'local') return online?.sendChat(text, { me }) ?? false;
     if (tabId === 'party') {
@@ -28443,7 +28437,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     const why = (line) => { chatLog.push(tabId, { text: line, system: true }); return false; };
     if ((tabId === 'party' || tabId === 'region') && chanOld()) return why(CHAN_OLD_RELAY_TEXT);
     if (tabId === 'guild' && guildOld()) return why(GUILD_OLD_RELAY_TEXT);   // GUILD1c
-    if (tabId === 'local' && soloHere()) return why(SOLO_LOCAL_TEXT);   // AUDIT FB1007b H5
     if (tabId === 'lang' && !chatLog.tab('lang')?.room) return why(langOld() ? LANG_OLD_RELAY_TEXT : NO_LANG_TEXT);   // CHAT-LANG
     const s = tabId === 'local' ? online : tabId === 'party' || tabId === 'guild' ? socialLink() : chatLinks.get(tabId);
     if (s?.status === 'open' && !s.rollOk) return why(ROLL_OLD_RELAY_TEXT);
@@ -28820,7 +28813,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (!online && !mail) return null;
     const readers = pageReaders();
     const why = readers.length ? null
-      : soloHere() ? PAGE_NO_READERS_TEXT   // AUDIT FB1007b H5: in the Hold, connected and alone - never "not connected"
       : (!online || online.status !== 'open') ? `${NOT_CONNECTED_TEXT}.`
         : (!online.pageOk ? PAGE_UNSUPPORTED_TEXT : PAGE_NO_READERS_TEXT);
     return { readers, why, show: showPage, letter: mail ? letterPage : null };
@@ -29162,10 +29154,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     else {
       const ident = modes?.roomIdentity?.();
       const loc = _questLoc();   // the location under the player: an interior's room is named by it
-      // HOLD-SOLO (FIELD BUGS 2026-10-07b, nObOdy: "Lock privateer's hold. The first dungeon is a tutorial area"): the
-      // tutorial dungeon keys no room - no one stands in it but its own character, its foes and doors are its save's,
-      // and nobody hands a fresh character what it did not earn; the street outside is the shared world again
-      key = ident?.private ? privateRoomHere(ident) : ident?.solo ? null : roomKeyFor({
+      key = ident?.private ? privateRoomHere(ident) : roomKeyFor({
         host: 'world', mode,
         mapId: ident?.kind === 'dungeon' ? (ident.mapId ?? null) : (loc?.mapTableData?.mapId ?? null),
         regionIndex: ident?.kind === 'dungeon' ? ident.regionIndex : (loc?.regionIndex ?? -1),
@@ -29855,10 +29844,10 @@ export async function bootWorld(canvas, renderer, params, status) {
     wildHallEpoch: () => { const h = wildHallHere(); return h ? (_wdunEpoch.get(h.key) ?? 0) : 0; },   // PVPDUNGEONS: its reset's epoch
     wildNoBank: () => { if (!wildHere()) return false; townTalk.say('There are no banks in the mountains.'); return true; },
     wildNoHouse: () => { if (!wildHere()) return false; townTalk.say('No house is for sale in the Wrothgarian Mountains.'); return true; },   // PVPDUNGEONS   // PVPDUNGEONS: no banks, so no houses either
-    onDungeonLeave: () => { if (_wdunInside) wdunLeft(false); const n = handOverRoomFoes(); if (n) console.info(`[foes] handed ${n} quest foe(s) at the dungeon's door`); keepSoloMemory(); gatherHost?.leaveDungeon(); worldPublish(performance.now(), true); },   // WORLD1: the room's memory goes out while the dungeon still stands; QUEST-PARTY phase 3c: my shared quest's foes to the party who stay
+    onDungeonLeave: () => { if (_wdunInside) wdunLeft(false); const n = handOverRoomFoes(); if (n) console.info(`[foes] handed ${n} quest foe(s) at the dungeon's door`); gatherHost?.leaveDungeon(); worldPublish(performance.now(), true); },   // WORLD1: the room's memory goes out while the dungeon still stands; QUEST-PARTY phase 3c: my shared quest's foes to the party who stay
     // OH-D: the four DFU events There's a Hole in the Bottom of the Ocean subscribes to (its Install), raised by the doors
     onSetDungeon: (ctx) => ohAbyss?.onDungeonSet(ohDungeonOf(ctx)),   // DaggerfallDungeon.OnSetDungeon
-    onTransitionDungeonInterior: (ctx) => { navalStow(); ohAbyss?.onDungeonEntered(ohDungeonOf(ctx)); csaOnTransition(); dungeonTierSay(); navalTransition(); restoreSoloMemory(); },   // PlayerEnterExit.OnTransitionDungeonInterior (CSA-C: Come Sail Away's OnTransition after OceanHoles' - the mods' load order); TIER1: the tier said, online
+    onTransitionDungeonInterior: (ctx) => { navalStow(); ohAbyss?.onDungeonEntered(ohDungeonOf(ctx)); csaOnTransition(); dungeonTierSay(); navalTransition(); },   // PlayerEnterExit.OnTransitionDungeonInterior (CSA-C: Come Sail Away's OnTransition after OceanHoles' - the mods' load order); TIER1: the tier said, online
     onFailedTransition: () => { ohAbyss?.onTransitionFailed(); },   // PlayerEnterExit.OnFailedTransition
     onTransitionDungeonExterior: () => { navalStow(); ohAbyss?.onDungeonExited(); csaOnTransition(); navalTransition(); },   // PlayerEnterExit.OnTransitionDungeonExterior (and Come Sail Away's)
     onEnemySpawn: (rec) => { const d = ohDungeonOf(modes?.dungeonCtx); if (d) ohAbyss?.onEnemySpawned(d, d.foeView(rec)); },   // OH-E: GameManager.OnEnemySpawn
@@ -30596,7 +30585,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     await worldQuickLoad({ ...bootLoadPick, snap });
   } else if (params.has('classic') && getBool('Startup', 'StartInDungeon') && startLoc.hasDungeon) {
     status('entering the dungeon');
-    const entered = await modes.startInDungeon();
+    const entered = await modes.startInDungeon({ holdOpen: true });   // HOLD-ONCE: the new game's start is the one way into Privateer's Hold online
     if (!entered) console.warn('[world] no dungeon entrance at the start cell; starting outside');
     // FIX-C: the dungeon stand IS the spawn. Nothing in worldModes writes
     // this flag, so the exterior gate above the motor was still armed the
