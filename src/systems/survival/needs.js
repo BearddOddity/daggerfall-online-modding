@@ -478,7 +478,7 @@ export function survivalMinute(entity, now, env = {}, deps = {}) {
   // WET: rain and water raise it; warmth dries it, a fire dries it fast.
   s.wet = Math.min(NEED.WET_MAX, s.wet + temp.wetGain);
   if (temp.wetGain <= 0) {
-    let dry = temp.natTemp > 10 ? Math.trunc(temp.natTemp / 10) : 1;
+    let dry = temp.air > 10 ? Math.trunc(temp.air / 10) : 1;   // AUDIT C&C T1: the air dries the clothes - a Resist Fire made a Soaked shirt at an Alik'r noon take six times as long
     if (env.byFire || env.insideBuilding) dry += 2;
     s.wet = Math.max(0, s.wet - dry);
   }

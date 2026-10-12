@@ -2086,8 +2086,8 @@ lines, the clothes, the load, the page, the phone's rule).
   are felt at their own hour and month.
 - **E10 - the hour is a staircase** (a desert's 40 degrees at 16:00): by the
   mod's design; the plate shows it as it is.
-- **A strap shaded the armour and a gown did not** (`COVERING_CHEST`): the
-  mod's own list, read off its source (AUDIT C&C T1).
+- **A strap shaded the armour** (`COVERING_CHEST`): what the doll draws over
+  the cuirass covers it - the robes and a cloak (AUDIT C&C T1).
 
 ## AUDIT C&C - THE DECISIONS MADE, AND THE WHOLE ARC AUDITED (2026-10-12)
 
@@ -2127,17 +2127,76 @@ lines, the clothes, the load, the page, the phone's rule).
   Attributes page names the boons under its meters
   (`ui/temperatureCard.js` `boonStatRows`, the pack's own).
 - **B12** stays inherent, and Casual stays the default.
-- **T1 - A GOWN COVERS THE ARMOUR, A STRAP DOES NOT.** The question was
-  read against the mod's own source, which is public
+- **T1 - WHAT THE DOLL DRAWS OVER THE CUIRASS COVERS IT.** The question
+  was read against the mod's own source, which is public
   (github.com/Ralzar81/Climates-Calories, every revision to 1.7.0):
   `ArmorCovered` keeps the sun off a cuirass under any cloak, the plain
   robes, the priest's and the priestess's robes, and the three long gowns
   - the evening gown, the day gown and the casual dress. SURV1's reading
-  of the IL had the Anticlere Surcoat and the Challenger Straps where the
-  three gowns stand, so a strap shaded the metal and a gown did not.
-  `COVERING_CHEST` is the mod's list now - a reading corrected, not a
-  departure. A surcoat stays out, as the mod has it and as DFU draws it:
-  under the cuirass (its drawOrder 40 to the cuirass's 50; the robes' 80
-  draw over it).
+  of the IL had the Anticlere Surcoat and the Challenger Straps beside the
+  robes, so a strap shaded the metal. `COVERING_CHEST` is now what DFU's
+  own doll draws OVER the cuirass: the four robes (drawOrder 80 to the
+  cuirass's 50) and, in `armorWarmth`, a cloak (90) - SURV1's own words,
+  "unless a cloak or a robe covers it". The gowns, the surcoats and the
+  straps are drawn under it (40), so the metal the player sees in the sun
+  is the metal the sun heats. Leaving out the mod's three gowns is a
+  declared departure (Port-Ledger A); the pin derives the set from the
+  templates' draw orders.
 
-Pinned by `test/auditcc.test.js`.
+### The audit - six cold lenses
+
+Six lenses, each in a git worktree of its own at one snapshot (so no fix
+landed under a reader - DO NOT FIX WHILE THE VERIFIER IS READING): the
+needs law and the tiers (N), the temperature law (T), the items, food,
+camps, fires and the tavern (I), the four hosts, the save and the wire
+(H), what the player sees (S), and the records and the pins (R). The
+mod's own source is public (github.com/Ralzar81/Climates-Calories, every
+revision from 2020 to 1.7.0; the port read 1.7.1's DLL), so the lenses
+read the law against it where the page claims the mod's. Every finding
+was reproduced by a script against the real producers before it was
+fixed; four lenses found the jump's sky independently.
+
+### Found and fixed - the temperature law
+
+- **T1 - underground the resistances turned the wrong air.** They were
+  laid on the surface's reading before the dungeon's correction: a Resist
+  Fire pushed a Dak'fron hall from 5 to -20 (a naked Argonian, -15 bare,
+  read -35 Freezing with fifty), a Resist Frost did nothing in a mountain
+  hall while its row still showed, and the clothes dried by the resisted
+  reading (a Soaked shirt at an Alik'r noon six times slower with Resist
+  Fire). The resistances turn the air the body stands in toward nought
+  now (`feltTemperature`'s `air`), and the air dries the clothes. A
+  declared departure (Port-Ledger A): the mod resists before the
+  dungeon's correction.
+- **T2 - rain and snow soaked each other's amounts.** The mod's
+  `Weather()` (every revision): rain three a minute bare, one through a
+  cloak, none under its hood; snow one bare and none under any cloak.
+  SURV1's reading had the rows swapped: a cloak kept every drop of rain
+  off with its hood down, and snow soaked a bare body three times as fast
+  as rain. The mod's now - a reading corrected.
+- **T4 - a warmer street read colder indoors.** ROOF-SHELTER's "the
+  milder by size" picked across nought: a Dak'fron inn at half past
+  midnight in Midyear read the roof's +30 in the rain (the street -30) and
+  -28 when it was overcast (the street -28) - a 58-degree swing on two
+  degrees of street; 150,592 of two million street pairs read colder
+  inside for a warmer street. Inside is the street's own reading softened
+  to the roof's size now - never across nought, never past the street.
+- **T5 - a hood's shade was a ten-degree step.** It came off whole at a
+  natural 31, after the wet: a hooded outfit read nine degrees cooler for
+  a world one degree warmer, against E7's "no warmer world reads cooler",
+  and the clothing row's dry note named a warmth the law never gave. It
+  eases in a degree a degree past thirty and is taken before the wet now;
+  swept over every chest garment under every hooded cloak.
+- **T7 - the felt reading went fractional.** A weatherproof garment
+  (LOOT14) turns part of a minute's soaking aside, and the law read the
+  counter's fraction: "-10" printed over the word "cold", a red Freezing
+  that charged nothing, Stats rows that did not add up to their total.
+  The law reads whole wetness; the counter keeps the fraction.
+- **T8 - "Bare skin -5" on a body dressed head to foot.** The offset is
+  every body's (the mod's own `offSet`); the row is "Heat loss" now.
+- **T11 - the cold metal chilled a degree past the mod's.** The mod's own
+  rounding, `(metalTemp + 1) / 2`, toward nought - a reading corrected.
+
+Pinned by `test/auditcc.test.js`, with the moved pins in
+`surv1_model`, `fb0930_cc_roof` and `fb0930_cc_said` re-aimed to the law
+by content.

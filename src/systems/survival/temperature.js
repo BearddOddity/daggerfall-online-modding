@@ -49,8 +49,12 @@ export const NIGHT_MULT = Object.freeze({ [CLIMATES.Desert]: 3, [CLIMATES.Desert
 export const WEATHER_TEMP = Object.freeze({
   sunny: 0, cloudy: 0, overcast: -8, fog: -5, rain: -10, thunder: -15, snow: -10, sandstorm: 5,
 });
+/** AUDIT C&C T2 (2026-10-12): rain and snow are the mod's own (Climates.cs Weather(), every published revision) - rain
+ *  soaks three a minute bare, one under a cloak and none under its hood; snow one bare and none under any cloak. SURV1's
+ *  reading of the IL had the two rows swapped: a cloak kept every drop of rain off, hood down, and snow soaked a bare
+ *  body three times as fast as rain. Fog's is the port's own (the mod's Weather() has no fog). */
 export const WEATHER_WET = Object.freeze({
-  rain: [1, 0, 0], thunder: [5, 2, 1], snow: [3, 1, 0], fog: [1, 0, 0],
+  rain: [3, 1, 0], thunder: [5, 2, 1], snow: [1, 0, 0], fog: [1, 0, 0],
 });
 /** The race's own warmth: Nords and Bretons carry some, Argonians none. */
 export const RACE_TEMP = Object.freeze({
@@ -93,13 +97,14 @@ export const CASUAL_CLOAKS = Object.freeze(new Set([154, 191]));
 export const FORMAL_CLOAKS = Object.freeze(new Set([155, 192]));
 export const HOODED_CLOAK_VARIANTS = Object.freeze(new Set([1, 2, 5]));
 export const HOODED_ROBES = Object.freeze(new Set([163, 200]));   // variant 1 is the hood up
-/** What covers the chest so the sun cannot heat the armour under it: the mod's own list (Climates.cs ArmorCovered, the
- *  published source) - the plain robes, the priest's and the priestess's robes, and the three long gowns: the evening
- *  gown, the day gown and the casual dress (a cloak covers too - armorWarmth). AUDIT C&C (2026-10-12): SURV1's reading
- *  of the IL had the Anticlere Surcoat and the Challenger Straps where the three gowns stand, so a strap shaded a
- *  cuirass and a gown did not. A surcoat stays out, as the mod has it and as DFU draws it: under the cuirass (its
- *  drawOrder 40 to the cuirass's 50; the robes' 80 draw over it). */
-export const COVERING_CHEST = Object.freeze(new Set([163, 164, 195, 196, 197, 200, 201]));
+/** What covers the chest so the sun cannot heat the armour under it: what the doll draws OVER the cuirass - the plain
+ *  robes, the priest's and the priestess's robes (drawOrder 80 to the cuirass's 50; a cloak's 90 covers too -
+ *  armorWarmth). AUDIT C&C T1 (2026-10-12): SURV1's reading of the IL had the Anticlere Surcoat and the Challenger
+ *  Straps beside the robes, so a strap shaded a cuirass. The mod's own list (Climates.cs ArmorCovered, the published
+ *  source) is the robes and the three long gowns - the evening gown, the day gown and the casual dress; the gowns are
+ *  drawn under the cuirass like every other chest garment (drawOrder 40), so the metal the player sees in the sun is
+ *  the metal the sun heats. A declared departure (Port-Ledger A). */
+export const COVERING_CHEST = Object.freeze(new Set([163, 164, 200, 201]));
 
 /** Armour: [leather, chain, plate] warmth and [chain, plate] metal, by
  *  slot. Metal heats in the sun and chills in the cold. */
@@ -140,7 +145,7 @@ export function naturalTemperature({ climateIndex, month, hour, weather, insideB
   if (insideBuilding) {
     const roofed = Math.trunc((climate + season) / 2);
     const street = climate + season + hourTemperature(hour, climateIndex) + (WEATHER_TEMP[weather] ?? 0);
-    return Math.abs(street) < Math.abs(roofed) ? street : roofed;
+    return Math.max(-Math.abs(roofed), Math.min(Math.abs(roofed), street)) || 0;   // AUDIT C&C T4: the street's own reading, softened to the roof's size - never across nought (and nought, never -0)
   }
   const day = insideDungeon ? 0 : hourTemperature(hour, climateIndex);
   const sky = insideDungeon ? 0 : (WEATHER_TEMP[weather] ?? 0);
@@ -303,10 +308,13 @@ export function clothingWarmth(worn, { wet = 0, natural = 0, inSunlight = false,
   // CLOTHES-BREATHE: half in the heat, the dry reading with it - AUDIT TEMP-UI E7: eased in a degree at a time from the
   // line, never past half, so a warmer world never reads cooler (it fell from half at once, and a world of 12 read
   // seventeen degrees cooler than one of 10 in a warm outfit)
-  if (natural > CLOTHES_BREATHE_ABOVE) warmth = Math.max(Math.trunc(warmth / 2), warmth - (natural - CLOTHES_BREATHE_ABOVE));
-  const pure = warmth;
-  warmth = Math.max(0, warmth - Math.min(wet, WET_MAX));
-  if (natural > 30 && inSunlight && hood) warmth = Math.max(0, warmth - HOOD_SHADE);   // AUDIT SURV D: never below nothing, as the law says
+  // AUDIT C&C T5: and a hood's shade in strong sun eases in the same way - a degree a degree past thirty, to its ten -
+  // and is taken before the wet, so the dry reading is the dry law's. It came off whole at 31, after the wet: a hooded
+  // outfit read Scorching 51 at a natural 30 and Hot 45 at 35, and its dry note named a warmth the law never gave
+  const shade = natural > 30 && inSunlight && hood ? Math.min(HOOD_SHADE, natural - 30) : 0;
+  if (natural > CLOTHES_BREATHE_ABOVE) warmth = Math.max(Math.trunc(warmth / 2) - shade, warmth - (natural - CLOTHES_BREATHE_ABOVE));
+  const pure = Math.max(0, warmth);   // AUDIT SURV D: never below nothing, as the law says
+  warmth = Math.max(0, pure - Math.min(wet, WET_MAX));
   return { warmth, pure, hood };
 }
 
@@ -328,7 +336,7 @@ export function armorWarmth(worn, { natural = 0, wet = 0, inSunlight = false } =
   const metalTemp = Math.trunc((metal * natural) / 20);
   let heat = 0;
   if (metalTemp > 0 && inSunlight && !covered) heat = metalTemp;
-  else if (metalTemp < 0) heat = Math.trunc((metalTemp - 1) / 2);   // toward the colder side
+  else if (metalTemp < 0) heat = Math.trunc((metalTemp + 1) / 2);   // AUDIT C&C T11: the mod's own (Climates.cs Armor(), toward nought) - it chilled a degree colder than the mod at every reading
   const warmth = warm > 0 ? Math.max(0, warm - Math.min(wet, WET_MAX)) : 0;
   return { warmth: warmth + heat, pieces: warm, metal: metalTemp, heat, covered };
 }
@@ -349,15 +357,19 @@ export function dungeonTemperature(natTemp) {
  */
 export function feltTemperature(env = {}, worn = null, ctx = {}) {
   const natural = naturalTemperature(env);
-  const wet = Math.min(Math.max(0, ctx.wet ?? 0), WET_MAX);
-  let natTemp = resistTemperature(natural, ctx);
-  const natResisted = natTemp;   // TEMP-UI: the air resisted, before the ground's correction (the breakdown's two rows)
-  if (env.insideDungeon) natTemp = dungeonTemperature(natTemp);
+  // AUDIT C&C T7: the law reads WHOLE wetness - a weatherproof garment turns part of a minute's soaking aside
+  // (LOOT14), the counter keeps the fraction, and a fractional reading printed "-10" over the word "cold"
+  const wet = Math.floor(Math.min(Math.max(0, Number(ctx.wet) || 0), WET_MAX));
   // AUDIT TEMP-UI E3: THE AIR THE BODY STANDS IN - underground the dungeon's, not the surface's. The clothes breathed and
   // the armour's metal heated or chilled by the sky over the dungeon, so a desert dungeon's air of -20 read the starting
   // kit halved for the surface's heat ("cold") where every other dungeon read it whole ("comfortable"); and the food
-  // spoiled by the surface's heat (needs.js reads `air` for the rot).
+  // spoiled by the surface's heat (needs.js reads `air` for the rot, and the drying).
   const air = env.insideDungeon ? dungeonTemperature(natural) : natural;
+  // AUDIT C&C T1: AND THE RESISTANCES TURN THAT AIR toward nought - they were laid on the surface's reading before the
+  // ground's correction, so underground a Resist Fire pushed a cool hall colder (a naked Argonian in an Alik'r dungeon,
+  // -15 bare, read -35 Freezing with fifty) and a Resist Frost did nothing while its row still showed. A declared
+  // departure (Port-Ledger A): the mod resists before the dungeon's correction.
+  const natTemp = resistTemperature(air, ctx);
   const clothes = clothingWarmth(worn, { wet, natural: air, inSunlight: !!env.inSunlight, gear: ctx.gearWarmth });
   const armour = armorWarmth(worn, { natural: air, wet, inSunlight: !!env.inSunlight });
   const race = RACE_TEMP[ctx.raceId] ?? 0;
@@ -384,7 +396,7 @@ export function feltTemperature(env = {}, worn = null, ctx = {}) {
     cloak: cloakState(worn).cloak, hood: clothes.hood, wet,
     // TEMP-UI: the rest of the sum, so a breakdown adds up to `felt` exactly (temperatureBreakdown): the resistances on
     // the air, the ground's correction, the bare skin, the drink to hand, a garment's degrees
-    worldResist: natResisted - natural, dungeon: natTemp - natResisted, naked: NAKED_OFFSET, waterCools: watered - unwatered, degrees: felt - watered,
+    worldResist: natTemp - air, dungeon: air - natural, naked: NAKED_OFFSET, waterCools: watered - unwatered, degrees: felt - watered,
     wetGain: weatherWetGain(env.weather, { cloak: cloakState(worn).cloak, hood: clothes.hood, insideBuilding: env.insideBuilding, insideDungeon: env.insideDungeon })
         * (1 - Math.min(GEAR_DRY_MOST, Math.max(0, Number(ctx.gearDry) || 0)) / 100)   // LOOT14: weatherproofing turns the weather's soaking aside
       + environmentWet(env),
@@ -440,7 +452,7 @@ export function temperatureBreakdown(env = {}, temp = null) {
   add('armour', 'Armour', temp.armour, temp.metal > 0 ? 'hot metal' : temp.metal < 0 ? 'cold metal' : null);   // `metal` is the heat the law laid on: the sun's, uncovered, or the cold's
   add('fire', 'A fire', temp.fire);
   add('wet', 'Wet through', -temp.water);
-  add('skin', 'Bare skin', temp.naked);
+  add('skin', 'Heat loss', temp.naked);   // AUDIT C&C T8: the mod's own offset, every body's - not "Bare skin" on a body dressed head to foot
   add('drink', 'Water to hand', temp.waterCools);
   add('garment', 'Enchanted garment', temp.degrees);
   return out;

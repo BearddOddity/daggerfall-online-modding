@@ -56,8 +56,10 @@ test('SURV1: the natural temperature is climate + month + hour + weather, shelte
 });
 
 test('SURV1: rain wets you unless a cloak covers you, a hood keeps the storm out of your neck, water soaks you', () => {
-  assert.equal(weatherWetGain('rain'), 1);
-  assert.equal(weatherWetGain('rain', { cloak: true }), 0);
+  // AUDIT C&C T2: the mod's own (Climates.cs Weather()) - rain three bare, one through a cloak, none under its hood; snow
+  // one bare and none under any cloak (SURV1's reading had the two swapped)
+  assert.deepEqual([weatherWetGain('rain'), weatherWetGain('rain', { cloak: true }), weatherWetGain('rain', { cloak: true, hood: true })], [3, 1, 0]);
+  assert.deepEqual([weatherWetGain('snow'), weatherWetGain('snow', { cloak: true }), weatherWetGain('snow', { cloak: true, hood: true })], [1, 0, 0]);
   assert.equal(weatherWetGain('thunder'), 5);
   assert.equal(weatherWetGain('thunder', { cloak: true }), 2);
   assert.equal(weatherWetGain('thunder', { cloak: true, hood: true }), 1);
@@ -108,8 +110,8 @@ test('SURV1: armour warms a little and its metal heats in the sun or chills in t
   assert.equal(hot.warmth, 6 + 16, 'and the sun adds it');
   assert.equal(armorWarmth(plate, { natural: 40, inSunlight: false }).warmth, 6, 'shade: the metal does not cook');
   const cold = armorWarmth(plate, { natural: -40 });
-  assert.equal(cold.heat, Math.trunc((-16 - 1) / 2), 'cold metal chills at half, toward the colder side');
-  assert.equal(cold.warmth, 6 - 8);
+  assert.equal(cold.heat, -7, 'cold metal chills at half, toward nought - the mod\'s own (-16 + 1) / 2 (AUDIT C&C T11)');
+  assert.equal(cold.warmth, 6 - 7);
   const covered = worn({ ...plate, [S.Cloak1]: item(154, { variant: 0 }) });
   assert.equal(armorWarmth(covered, { natural: 40, inSunlight: true }).heat, 0, 'a cloak over it keeps the sun off');
   const leather = worn({ [S.ChestArmor]: armor(102, 0x0000) });

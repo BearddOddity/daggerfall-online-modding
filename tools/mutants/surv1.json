@@ -11,8 +11,8 @@
   {
     "name": "SURV1-wet-clothes-keep-their-warmth",
     "file": "src/systems/survival/temperature.js",
-    "old": "  warmth = Math.max(0, warmth - Math.min(wet, WET_MAX));",
-    "new": "  warmth = Math.max(0, warmth);",
+    "old": "  warmth = Math.max(0, pure - Math.min(wet, WET_MAX));",
+    "new": "  warmth = Math.max(0, pure);",
     "tests": [
       "test/surv1_model.test.js"
     ]
@@ -29,8 +29,8 @@
   {
     "name": "SURV1-a-dungeon-is-the-sky",
     "file": "src/systems/survival/temperature.js",
-    "old": "  if (env.insideDungeon) natTemp = dungeonTemperature(natTemp);",
-    "new": "",
+    "old": "  const air = env.insideDungeon ? dungeonTemperature(natural) : natural;",
+    "new": "  const air = natural;",
     "tests": [
       "test/surv1_model.test.js"
     ]

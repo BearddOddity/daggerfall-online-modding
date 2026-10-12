@@ -32,7 +32,7 @@
   {
     "name": "TEMPUI-resistance-unsaid",
     "file": "src/systems/survival/temperature.js",
-    "old": "worldResist: natResisted - natural,",
+    "old": "worldResist: natTemp - air,",
     "new": "worldResist: 0,",
     "why": "the resistance missing from the sum",
     "tests": [
@@ -42,7 +42,7 @@
   {
     "name": "TEMPUI-the-ground-unsaid",
     "file": "src/systems/survival/temperature.js",
-    "old": "dungeon: natTemp - natResisted,",
+    "old": "dungeon: air - natural,",
     "new": "dungeon: 0,",
     "why": "the dungeon's correction missing from the sum",
     "tests": [

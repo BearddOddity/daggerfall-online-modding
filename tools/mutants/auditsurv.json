@@ -57,10 +57,11 @@
   {
     "name": "AUDITSURV-a-hood-shades-below-nothing",
     "file": "src/systems/survival/temperature.js",
-    "old": "  if (natural > 30 && inSunlight && hood) warmth = Math.max(0, warmth - HOOD_SHADE);",
-    "new": "  if (natural > 30 && inSunlight && hood) warmth -= HOOD_SHADE;",
+    "old": "  const pure = Math.max(0, warmth);   // AUDIT SURV D: never below nothing, as the law says\n",
+    "new": "  const pure = warmth;   // AUDIT SURV D: never below nothing, as the law says\n",
     "tests": [
-      "test/auditsurv.test.js"
+      "test/auditsurv.test.js",
+      "test/auditcc.test.js"
     ]
   },
   {

@@ -123,7 +123,7 @@ test('TEMP-UI: the breakdown adds up to the felt temperature, to the degree - ov
     { key: 'clothes', label: 'Clothing', value: 8, note: '+12° dry' },
     { key: 'armour', label: 'Armour', value: t.armour, note: 'cold metal' },
     { key: 'fire', label: 'A fire', value: 15 },
-    { key: 'skin', label: 'Bare skin', value: NAKED_OFFSET },
+    { key: 'skin', label: 'Heat loss', value: NAKED_OFFSET },
   ]);
   assert.ok(t.armour < 0, 'the plate\'s cold outweighs its warmth on a mountain night');
   const hot = feltTemperature(DESERT_NOON, [], { raceId: RACES.Breton, hasWater: true });
