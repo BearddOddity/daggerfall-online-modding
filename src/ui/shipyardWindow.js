@@ -37,7 +37,16 @@ export const SHIPYARD_TABS = Object.freeze([
   Object.freeze({ id: 'refits', label: 'Refits' }),
   Object.freeze({ id: 'crew', label: 'Crew Hall' }),
 ]);
+/** MENU-ORDER (2026-10-12): each page's picture (ui/menuGlyphs.js). */
+export const SHIPYARD_TAB_ICONS = Object.freeze({ ships: 'ship', fleet: 'anchor', yard: 'saw', refits: 'anvil', crew: 'people' });
 export const SHIPYARD_CSS = `
+.dfyard-pic { display: block; color: #c9bba1; } .dfyard-card .dfyard-pic::before { width: 40px; height: 40px; margin: 0 0 4px; }
+.dfyard-card[data-hull="0"] .dfyard-pic::before { width: 24px; height: 24px; }   /* MENU-ORDER: her picture her size - a rowboat small, a galley great */
+.dfyard-card[data-hull="1"] .dfyard-pic::before { width: 30px; height: 30px; }
+.dfyard-card[data-hull="2"] .dfyard-pic::before { width: 38px; height: 38px; }
+.dfyard-card[data-hull="4"] .dfyard-pic::before { width: 44px; height: 44px; }
+.dfyard-card[data-hull="3"] .dfyard-pic::before { width: 50px; height: 50px; }
+.dfyard-tab[data-dficon] { display: inline-flex; align-items: center; justify-content: center; gap: 2px; }
 .dfyard-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px 0; }
 .dfyard-tab { flex: 1 1 auto; padding: 5px 10px; font: inherit; font-size: 13px; letter-spacing: 0.06em; color: #d8cfae; border: 2px solid; cursor: pointer;
   background: rgba(4,5,7,0.4); text-shadow: 1px 1px 0 #050608; }
@@ -46,8 +55,8 @@ export const SHIPYARD_CSS = `
 .dfyard-card { display: flex; flex-direction: column; gap: 5px; padding: 10px 11px; border: 2px solid; background: rgba(4,5,7,0.5); white-space: normal; }
 .dfyard-card b { font-weight: normal; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: #efe8d6; text-shadow: 1px 1px 0 #050608; }
 .dfyard-card .dfyard-line { font-size: 12px; color: #c9bfa4; }
-.dfyard-card .dfyard-figs { font-size: 11px; color: #b3a684; }
-.dfyard-card .dfyard-why { font-size: 11px; color: #e59a8e; }
+.dfyard-card .dfyard-figs { font-size: 12px; color: #b3a684; }   /* MENU-ORDER: a step larger */
+.dfyard-card .dfyard-why { font-size: 12px; color: #e59a8e; }
 .dfyard-card .dfnaval-btn { min-width: 0; margin-top: 4px; font-size: 13px; padding: 5px 10px; }
 .dfyard-row { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(0, 1.6fr) auto; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(5,6,8,0.6); white-space: normal; }
 .dfyard-row:last-child { border-bottom-color: transparent; }
@@ -219,7 +228,9 @@ export function mountShipyardWindow(host, deps) {
       const t = shipCardText(s);
       const card = el('div', 'dfyard-card');
       card.setAttribute('data-hull', String(s.hull));
-      card.append(el('b', null, t.name), el('span', 'dfyard-line', t.line), el('span', 'dfyard-figs', t.figs));
+      const pic = el('span', 'dfyard-pic');   // MENU-ORDER: a ship's card leads with a ship
+      pic.setAttribute('data-dficon', 'ship');
+      card.append(pic, el('b', null, t.name), el('span', 'dfyard-line', t.line), el('span', 'dfyard-figs', t.figs));
       if (t.note) card.append(el('span', 'dfyard-figs', t.note));
       if (t.why) card.append(el('span', 'dfyard-why', t.why));
       const key = `buy:${s.hull}`;
@@ -387,6 +398,7 @@ export function mountShipyardWindow(host, deps) {
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', String(t.id === m.page));
       b.setAttribute('data-tab', t.id);
+      b.setAttribute('data-dficon', SHIPYARD_TAB_ICONS[t.id] ?? 'ship');   // MENU-ORDER: each page its picture
       tabs.append(b);
     }
     for (const c of [...body.children]) c.remove();

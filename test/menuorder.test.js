@@ -7,6 +7,7 @@
 import './chargenDom.mjs';   // a document for the tabs that draw after an await (withDom's is the call's alone)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { DFICON_ROWS, DFICON_CSS, dficonSvg } from '../src/ui/menuGlyphs.js';
 import { DECOR_KINDS } from '../src/systems/decorCatalogue.js';
 import { createDecorBar, decorBarKeys, decorFiltersText, DECOR_LAYOUT_WORDS, DECOR_KEYS_WORD } from '../src/ui/decorPanel.js';
@@ -22,6 +23,13 @@ import { createMarketTab, MARKET_VIEW_ICONS, MARKET_VIEW_GROUPS } from '../src/u
 import { createVendorTab } from '../src/ui/vendorTab.js';
 import { PROF_CSS } from '../src/ui/enhancedPlusStyle.js';
 import { pictureNode } from '../src/ui/menuGlyphs.js';
+import { setVendorPage, drawVendorPage, resetVendorPage } from '../src/ui/vendorPage.js';
+import { mountReforgeWindow, REFORGE_PAGES, REFORGE_PAGE_ICONS } from '../src/ui/reforgeWindow.js';
+import { SHIPYARD_CSS, SHIPYARD_TAB_ICONS } from '../src/ui/shipyardWindow.js';
+import { SHIPYARD_HULLS } from '../src/systems/shipyards.js';
+import { mountNavalYardWindow } from '../src/ui/navalYardWindow.js';
+import { mountEnhancedMerchantPanel, MERCHANT_ICONS } from '../src/ui/enhancedMerchantPanel.js';
+import { REFORGE_CSS } from '../src/ui/enhancedPlusStyle.js';
 
 const lit = (rows) => rows.join('').split('').filter((c) => c === '#').length;
 
@@ -216,4 +224,69 @@ test('MENU-ORDER the board\'s rows pictured: a Market material row, a supplier\'
     assert.deepEqual(picOf(card.children[0]).map((i) => [i.className, i.attrs.src]), [['prof-matpic', 'data:pic']], 'a Stores card its material\'s picture');
     setProfessionsPages(null);
   });
+});
+
+test('MENU-ORDER the rest: the Vendor page\'s pieces and the Market\'s crafted pieces pictured; the Reforge\'s pages, the shipmaster\'s, the yard\'s and a merchant\'s presses each their glyph; a Reforge row with no press of its own gives its name the room; a ship\'s picture her size (mutants: each dropped)', async () => {
+  const PIC = { src: 'data:pic', w: 26, h: 26 };
+  const imgs = (root) => { const out = []; const walk = (n) => { for (const c of n.children ?? []) { if (c.tagName === 'IMG') out.push(c); walk(c); } }; walk(root); return out; };
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+  const el = (tag, cls, t) => { const n = document.createElement(tag); if (cls) n.className = cls; if (t != null) n.textContent = t; return n; };
+  // THE VENDOR PAGE: my trader's piece, pictured
+  resetVendorPage();
+  const piece = { name: 'Dagger' };
+  setVendorPage({ shown: () => true, mine: async () => ({ ok: true, data: { traders: [{ map: 1, id: 2 }], stock: [{ id: 's', item: piece, price: 9, vendor: { map: 1, id: 2 }, expiresAt: Date.now() / 1000 + 86400 }], sold: [], gold: 0 } }),
+    search: async () => ({ ok: true, data: { rows: [] } }), regionHere: () => 0, regionNames: ['Here'], nameOf: (it) => it.name, townOf: () => 'Town', picture: (it) => (it === piece ? PIC : null) });
+  let page = el('div');
+  const redraw = () => { page = el('div'); drawVendorPage(page, () => {}, { el, divider: (w) => el('h3', null, w) }); };
+  redraw(); await tick(); redraw();
+  const vrow = find(page, '.vendor-row');
+  assert.deepEqual(imgs(vrow.children[0]).map((i) => [i.className, i.attrs.src]), [['vendor-pic', 'data:pic']], 'the page\'s piece pictured');
+  setVendorPage(null);
+  // THE MARKET'S CRAFTED PIECES
+  const crafted = { crafted: { rows: [{ id: 'P', kind: 'piece', piece: { quality: 1, maker: 'Ann', wear: 0, provenance: 'pv' }, price: 30, region: 17, road: { courier: 0, seconds: 0, road: 0 } }] } };
+  const book = { state: { open: true, balance: 50, road: [], counts: {} }, pending: 0, cached: () => null, read: async (view) => ({ ok: true, data: crafted[view] ?? { rows: [] } }), settle: async () => ({ ok: true, settled: 0 }) };
+  let root = null;
+  const tab = createMarketTab({ book, stores: () => new Map(), region: 17, regionName: 'D', regionNameOf: () => 'W', hubs: {}, name: (k) => k, countName: (k) => k, pieces: () => [],
+    take: () => true, putBack: () => {}, mint: () => {}, pieceName: () => 'Steel Longsword', weavers: [], stock: async () => ({ ok: true }), piecePicture: (p) => (p.provenance === 'pv' ? PIC : null) },
+  { busy: () => false, run: async (go) => go(), rerender: () => { root = tab.body(); }, nowS: () => 0, alive: () => true });
+  await tab.open();
+  root = tab.body();
+  root.querySelectorAll('.market-view').find((b) => b.attrs['data-dficon'] === MARKET_VIEW_ICONS.crafted).onclick();
+  await tick(); await tick();
+  root = tab.body();
+  assert.deepEqual(imgs(find(root, '.market-row').children[0]).map((i) => i.attrs.src), ['data:pic'], 'a crafted piece pictured');
+  // THE REFORGE'S PAGES
+  withDom((dom) => {   // the Reforge writes a dataset, which the chargen stand-in has not
+    const host = dom.mk('div');
+    dom.body.append(host);
+    const view = mountReforgeWindow(host, { items: () => [], payer: () => ({ items: [], goldPieces: 0 }), gold: () => 0, picture: () => null, nameOf: () => '', reforge: () => ({ ok: false }), salvage: () => ({ ok: false }) });
+    const tabs = host.querySelectorAll('.reforge-tab');
+    assert.ok(tabs.length >= 2);
+    assert.deepEqual(tabs.map((t) => t.attrs['data-dficon']), tabs.map((t) => REFORGE_PAGE_ICONS[t.dataset.page]), 'each page its glyph');
+    view.unmount?.();
+  });
+  for (const id of Object.keys(REFORGE_PAGES)) assert.ok(DFICON_ROWS[REFORGE_PAGE_ICONS[id]], `a glyph for ${id}`);
+  assert.match(REFORGE_CSS, /\.reforge-shell \.broker-offer:not\(\.codex-row\):not\(\.codex-set\):not\(\.codex-gilded\):not\(\.scry-row\):not\(:has\(> button\)\) \{ grid-template-columns: 48px minmax\(0, 1fr\) max-content; \}/);
+  // THE SHIPMASTER'S SHIPS, THEIR SIZE
+  const sizes = SHIPYARD_HULLS.map((h) => Number(new RegExp(`\\.dfyard-card\\[data-hull="${h}"\\] \\.dfyard-pic::before \\{ width: (\\d+)px`).exec(SHIPYARD_CSS)?.[1]));
+  assert.deepEqual(sizes, [...sizes].sort((a, b) => a - b), 'each hull larger than the last the yard sells');
+  assert.ok(sizes.every((n) => n > 0) && new Set(sizes).size === sizes.length);
+  for (const icon of Object.values(SHIPYARD_TAB_ICONS)) assert.ok(DFICON_ROWS[icon]);
+  // THE YARD'S PAGES
+  const yard = el('div');
+  const proto = Object.getPrototypeOf(yard);
+  proto.removeAttribute ??= function removeAttribute(k) { delete this.attrs[k]; };
+  mountNavalYardWindow(yard, { model: { name: 'Small Ship', uid: 42, offer: () => ({ rows: [], whole: 0, gold: 100 }), ship: () => ({ hull: 1, maxHull: 1, sail: 1, maxSail: 1, crew: 1, maxCrew: 1, barrels: 0 }) } });
+  assert.deepEqual(find(yard, '.dfnaval-tabs').children.map((b) => b.attrs['data-dficon']), ['saw', 'anchor', 'treasure']);
+  // A MERCHANT'S PRESSES
+  const shop = el('div');
+  mountEnhancedMerchantPanel(shop, { title: 'Repair Shop', buttons: ['Repair item', 'Talk', 'Sell', 'Exit', 'Something else'].map((label) => ({ label, onClick() {} })) });
+  assert.deepEqual(shop.querySelectorAll('.tavern-act').map((b) => b.attrs['data-dficon'] ?? null), ['anvil', 'talk', 'treasure', 'back', null], 'each known press its glyph, an unknown one its word alone');
+  for (const icon of Object.values(MERCHANT_ICONS)) assert.ok(DFICON_ROWS[icon]);
+  // THE HOST HANDS THE PICTURES OVER (scenes/world.js): the Stores page's, the board's market and traders, a stall's, the Vendor page's
+  const W = readFileSync(new URL('../src/scenes/world.js', import.meta.url), 'utf8');
+  assert.match(W, /book: profBook, name: \(k\) => materialLabel\(k\), withdraw: [^\n]*\n\s*picture: \(k, wake\) => materialPicture\(k, \{ onReady: wake \}\),/, 'the Stores page');
+  assert.match(W, /hubs: marketHubs, name: \(k\) => materialLabel\(k\), countName: materialCountLabel,\n\s*picture: \(k, wake\) => materialPicture\(k, \{ onReady: wake \}\), itemPicture: \(it, wake\) => itemPicture\(it, \{ onReady: wake \}\), piecePicture: marketPiecePicture,/, 'the market');
+  assert.equal((W.match(/picture: \(it, wake\) => itemPicture\(it, \{ onReady: wake \}\),/g) ?? []).length, 3, 'the board\'s traders, a stall and the Vendor page');
+  assert.match(W, /const marketPiecePicture = \(piece, wake\) => \{[^]*?return itemPicture\(_pieceItems\.get\(piece\.provenance\), \{ onReady: wake \}\);/, 'a crafted piece, minted once');
 });

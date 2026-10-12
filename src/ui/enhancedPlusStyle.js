@@ -1034,7 +1034,12 @@ export const REFORGE_CSS = `/* ── LOOT9/LOOT10: THE REFORGE'S WINDOW (ui/ref
 @media (max-width: 720px) {
   .reforge-tabs { padding: 6px 12px 0; }
   .broker-offer > .reforge-keep { grid-column: 3; grid-row: 3; }   /* the Broker's phone rule spans every press over two rows: Keep sat on Break it */
-}`;
+}
+/* MENU-ORDER (2026-10-12): a piece's name whole, on two lines if it needs them - SCRY-FIT's price sized to its words and
+   a press's column kept for a row with no press had cut every name on the Reforge's page to "Warrior..." - so a row with
+   no press of its own gives that column to its name */
+.reforge-shell .broker-offer:not(.codex-row):not(.codex-set):not(.codex-gilded):not(.scry-row):not(:has(> button)) { grid-template-columns: 48px minmax(0, 1fr) max-content; }
+.reforge-shell .broker-name { white-space: normal; line-height: 1.25; }`;
 /** BOUNTY1 (2026-09-28): THE BOUNTY BOARD'S WINDOW and the payday notice (ui/bountyWindow.js) - the Broker's kind: a
  *  stone window over the world, the town's notices in a list, the one pressed read whole beside it (under it on a
  *  phone). The kit dresses the window, the card, the rows, the header and the presses (ui/enhancedFrame.js); this is

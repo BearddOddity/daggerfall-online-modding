@@ -6,7 +6,7 @@ import { byClass, keydown, Node_ } from './chargenDom.mjs';   // the suite's min
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createShipyardHost, SHIPYARD_PAGES, AT_HAND } from '../src/scenes/shipyardHost.js';
-import { mountShipyardWindow, shipCardText, fleetRowText, recruitText, SHIPYARD_TABS } from '../src/ui/shipyardWindow.js';
+import { mountShipyardWindow, shipCardText, fleetRowText, recruitText, SHIPYARD_TABS, SHIPYARD_TAB_ICONS } from '../src/ui/shipyardWindow.js';
 import { createShipyardOverlay, shipyardOpen, closeShipyard } from '../src/ui/navalPlunderDoor.js';
 import { WARM_CHUNKS } from '../src/ui/enhancedChunk.js';
 import { fleetShip, fleetBook, titleDeed, knowShip, _resetFleetForTests, shipLabel } from '../src/systems/fleet.js';
@@ -252,6 +252,9 @@ test('SHIPYARDS THE WINDOW MOUNTED: its tabs page the model; a ship bought, a sh
   const tab = (id) => byClass(host, 'dfyard-tab').find((b) => b.getAttribute('data-tab') === id);
   const selected = () => byClass(host, 'dfyard-tab').find((b) => b.getAttribute('aria-selected') === 'true')?.getAttribute('data-tab');
   assert.equal(byClass(host, 'dfyard-card').length, SHIPYARD_HULLS.length);
+  // MENU-ORDER (bible/10-UI/Menu-Order.md f): each page its picture, each ship's card a ship
+  assert.deepEqual(byClass(host, 'dfyard-tab').map((b) => b.getAttribute('data-dficon')), SHIPYARD_TABS.map((t) => SHIPYARD_TAB_ICONS[t.id]));
+  assert.ok(byClass(host, 'dfyard-card').every((c) => byClass(c, 'dfyard-pic')[0]?.getAttribute('data-dficon') === 'ship'), 'a ship on every card');
   // buying: the first press asks, a second at once (a double click) does nothing, a second a beat later buys
   const buyBtn = () => byClass(byClass(host, 'dfyard-card').find((c) => c.getAttribute('data-hull') === '1'), 'dfnaval-take')[0];
   click(buyBtn());

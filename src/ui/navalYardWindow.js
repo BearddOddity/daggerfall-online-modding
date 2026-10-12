@@ -262,6 +262,7 @@ export function mountNavalYardWindow(host, deps) {
   const officeTab = button('Harbourmaster', 'dfnaval-btn', () => { tab = 'office'; note = null; render(); });
   const tradeTab = button('Exchange', 'dfnaval-btn', () => { tab = 'trade'; note = null; render(); });
   tabs.append(yardTab, officeTab, tradeTab);
+  yardTab.setAttribute('data-dficon', 'saw'); officeTab.setAttribute('data-dficon', 'anchor'); tradeTab.setAttribute('data-dficon', 'treasure');   // MENU-ORDER: each page its picture
   const exchange = () => (typeof m.exchange === 'function' ? m.exchange() : null);
   const tLede = el('p', 'dfnaval-lede');
   const tradeSec = el('section', 'dfnaval-sec'), tradeHead = el('h3', 'dfnaval-sechead'), tradeList = el('ul', 'dfnaval-holdlist');

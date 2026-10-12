@@ -48,6 +48,8 @@ const el = (tag, cls = null, text = null) => {
 export const REFORGE_TITLE = 'The Reforge';
 export const REFORGE_SUB = 'Welkynd Shards and gold roll one line again or hone it up its band · a piece salvaged breaks into shards';   // LOOT17: the hone
 export const REFORGE_PAGES = Object.freeze({ reforge: 'Reforge', salvage: 'Salvage', imprint: 'Imprint', codex: 'Codex', scry: 'Scry', sockets: 'Sockets', lift: 'Lift Curse' });   // LOOT10: the imprint and the codex; LOOT16: the temple's lifting; LOOT19: scrying; LOOT20: sockets
+/** MENU-ORDER (2026-10-12): each page's picture (ui/menuGlyphs.js). */
+export const REFORGE_PAGE_ICONS = Object.freeze({ reforge: 'anvil', salvage: 'chisel', imprint: 'rune', codex: 'books', scry: 'eye', sockets: 'gem', lift: 'light' });
 /** The pages the guild's window shows when its host names none - never the temple's (LOOT16); LOOT19: and its scryers'. */
 export const REFORGE_GUILD_PAGES = Object.freeze(['reforge', 'salvage', 'imprint', 'codex', 'scry', 'sockets']);   // LOOT20: and its sockets
 /** LOOT20 (the Loot arc II, bible/06-Systems/Loot-II-Arc.md section 12): THE SOCKETS' PAGE - every piece of the pack with
@@ -218,6 +220,7 @@ export function mountReforgeWindow(host, deps) {
   for (const id of pages) {
     const t = el('button', 'act reforge-tab', REFORGE_PAGES[id]);
     t.setAttribute('type', 'button');
+    t.setAttribute('data-dficon', REFORGE_PAGE_ICONS[id] ?? 'anvil');   // MENU-ORDER: each page its picture
     t.setAttribute('role', 'tab');
     t.dataset.page = id;
     t.onclick = (e) => { e.stopPropagation(); page = /** @type {any} */ (id); picked = null; dropAsk(); render(); };

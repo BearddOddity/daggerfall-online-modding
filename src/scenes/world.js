@@ -2085,6 +2085,13 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (!n) { const it = mintPiece(piece, piece.provenance); n = it ? itemLongName(it) : 'a crafted piece'; _pieceNames.set(piece.provenance, n); }
     return n;
   };
+  /** MENU-ORDER: a crafted piece's picture - the piece its record mints, minted once and kept by its provenance id. */
+  const _pieceItems = new Map();
+  const marketPiecePicture = (piece, wake) => {
+    if (!piece?.provenance) return null;
+    if (!_pieceItems.has(piece.provenance)) { let it = null; try { it = mintPiece(piece, piece.provenance); } catch { it = null; } _pieceItems.set(piece.provenance, it); }
+    return itemPicture(_pieceItems.get(piece.provenance), { onReady: wake });
+  };
   /** PROF5: the crafted pieces this character may list - in the pack, none worn, locked or bound (TRADE1's refusals), and
    *  the home's crafted furniture not set down. AUDIT 30 C2: none enchanted since its craft - the market mints a piece
    *  again from its record, and the item maker's work would be lost on the way (smithItems asMinted). */
@@ -27867,7 +27874,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     const market = marketBook && profBook && profBook.state.open !== false && marksBook?.state?.open !== false && Number.isInteger(region) ? {
       book: marketBook, stores: () => profBook.state.stores, region, regionName: REGION_NAMES[region] ?? 'the region',
       regionNameOf: (r) => REGION_NAMES[r] ?? 'another region', hubs: marketHubs, name: (k) => materialLabel(k), countName: materialCountLabel,
-      picture: (k, wake) => materialPicture(k, { onReady: wake }), itemPicture: (it, wake) => itemPicture(it, { onReady: wake }),   // MENU-ORDER: a row's picture
+      picture: (k, wake) => materialPicture(k, { onReady: wake }), itemPicture: (it, wake) => itemPicture(it, { onReady: wake }), piecePicture: marketPiecePicture,   // MENU-ORDER: a row's picture
       board: [town.px, town.py],   // SEAT1d (Seats-Arc 7.2): the board's town - the seat whose bailiwick takes the Tithe
       tithe: () => (seatBook?.open === true ? boardTithePct(seatBook.data?.seats ?? [], region, [town.px, town.py]) : null),   // AUDIT SEATS-3 D3: its rate as the seats' list says it (null: not read)
       pieces: marketPieces, take: marketTake, putBack: marketPutBack, mint: marketMint, pieceName: marketPieceName, drop: marketDrop, goods: () => marketGoods.goods(), good: (it) => marketGoods.good(it), goodName: (rec) => marketGoods.goodName(rec),   // MARKET-ANY: a piece from the pack, for gold
@@ -28021,6 +28028,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     mine: () => marketBook.myVendors(), search: (region) => vendorReachable(region),
     patronName: (pt) => livingPatronName(pt),   // LW15: who of the town bought it
     regionHere: vendorRegionHere, regionNames: REGION_NAMES, nameOf: vendorNameOf, townOf: vendorTownOf, stats: vendorItemStats,
+    picture: (it, wake) => itemPicture(it, { onReady: wake }),   // MENU-ORDER: a piece's picture on its row
     take: (row) => vendorTake(row), collectGold: async () => {
       const region = vendorRegionHere();
       if (region == null) return { ok: false, text: 'Collect your takings where a region\'s bank can hold them.' };

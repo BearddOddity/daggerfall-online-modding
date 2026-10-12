@@ -189,6 +189,7 @@ export function medianLineNode(line) {
  *   carried?: () => Map<string, number>, putIn?: (key: string, n: number) => Promise<{ ok: boolean, error?: string }>,
  *   picture?: (key: string, wake: () => void) => ({ src: string, w: number, h: number }|null),
  *   itemPicture?: (item: any, wake: () => void) => ({ src: string, w: number, h: number }|null),
+ *   piecePicture?: (piece: any, wake: () => void) => ({ src: string, w: number, h: number }|null),
  * }} m the host's market (scenes/world.js); `drop` - a piece a settled listing took, out of the save (AUDIT 30 C3); MARKET-ANY:
  *   `goods` - the pack's pieces, each with why it may not list (null: it may), `good(item)` - the piece's wire record, its
  *   index in the save and its taking, `goodName` - a pack piece's record named as the pack names it; PROF12: `apothecaries` the
@@ -428,6 +429,7 @@ export function createMarketTab(m, ui) {
   const named = (text, pic) => { const n = el('b', null, text); if (pic) { if (n.prepend) n.prepend(pic); else n.append(pic); } return n; };
   const matPic = (key) => pictureNode(m.picture?.(key, wake) ?? null, el, 'market-pic');
   const itemPic = (it) => pictureNode(m.itemPicture?.(it, wake) ?? null, el, 'market-pic');
+  const piecePic = (p) => pictureNode(m.piecePicture?.(p, wake) ?? null, el, 'market-pic');
   function rowButton(row, cls) {
     const b = el('button', `market-row${cls}${st.picked === row.id ? ' on' : ''}`);
     b.setAttribute('type', 'button');
@@ -451,7 +453,7 @@ export function createMarketTab(m, ui) {
   function pieceRow(row) {
     const p = row.piece;
     const b = rowButton(row, ' market-piece');
-    b.append(el('b', null, m.pieceName(p)),
+    b.append(named(m.pieceName(p), piecePic(p)),
       el('span', 'market-quality', [QUALITY_NAMES[p.quality] ?? null, p.maker ? `made by ${p.maker}` : null, wearText(p.wear)].filter(Boolean).join(' · ')),
       el('span', 'market-price', priceText(row.price, row.currency)),
       el('span', 'market-where', `${where(row)}${roadText(row)}`));
@@ -511,7 +513,7 @@ export function createMarketTab(m, ui) {
   function auctionRow(a) {
     const p = a.piece;
     const b = rowButton(a, ' market-piece market-auction');
-    b.append(el('b', null, m.pieceName(p)),
+    b.append(named(m.pieceName(p), piecePic(p)),
       el('span', 'market-quality', [QUALITY_NAMES[p.quality] ?? null, p.maker ? `made by ${p.maker}` : null, wearText(p.wear)].filter(Boolean).join(' · ')),
       el('span', 'market-price', standing(a)),
       el('span', 'market-where', `${where(a)}${roadText({ ...a, kind: 'piece' })} · ${endsText(a.endsAt)}`));
