@@ -615,6 +615,43 @@ the views before the walk frames, each once, worn in the frame of the last; befo
 are; a look let go halfway gives back exactly what was dyed. `coats1_horsecoats.test.js`' two pool pins count frames
 by `HORSE_DYE_PICTURES` (PIN MOVED). Mutants: `tools/mutants/perfdye.json`, 7, all dead.
 
+## OWN-HULL-RANGE — my own sea's ship far off stands no hull either
+
+*The owner's live client (2026-10-12), main with every open performance fix built in, travelling the overworld along
+the Iliac Bay's coast.*
+
+**Found.** Halfway through the run fourteen hulls stood at once, 9 to 727 km off, in four regions - and the frame went
+from 90 FPS to 37: their sails baked (`comeSailAwayPool.js frame`, +4.5 ms a frame), their wakes and flags gathered and
+drawn (+3.4 ms), their rigging stepped (`navalHost.js poseShip`, +2.9 ms), their animators (+1.3 ms), the collector
+(+1.5 ms). None had an owner. PEER-HULL-RANGE gave a far PEER's hull back to the pool, and built every ship with no
+owner wherever she lay (`peerHullNear`: `!e.owner ||`). But a ship with no owner is not only this tab's own traffic: it
+is also every peer ship this tab ADOPTS as its owner leaves the room or goes quiet (`releaseOwner` -> `adopt`, wherever
+she lies) - so the 80-700 km fleets PEER-HULL-RANGE was written for came back as mine, hulls and all.
+
+**The fix.** PEER-HULL-RANGE's edges for every ship (`peerHullNear`, `shedFarHulls`): built within
+`PEER_HULL_NEAR_M`, given back past `PEER_HULL_FAR_M`. Her record sails, fights, burns and sinks as ever - the captains,
+the director and the damage read the record, never the hull. But for what reads one of my own sea's ships BY her
+hull wherever she is (`hullKept`): bodies on her deck, the boarding I am in, a prize not yet settled (`claimPrize`
+moves her deck by her hull), and a fight - hers (engage or board, afloat) or one that targets her (`foughtIds`): a
+shot lands only on a hull (`targets`) and a galley rams only one (`checkShipRams`), so a fight between hull-less ships
+would never end. A peer's ship is unchanged.
+
+**Measured.** On the live client with the fix built in and a switch for the old law, fourteen galleons launched
+30-650 km off with the host's own `spawnShip`, the two laws alternating every 20 s, three times each, standing in the
+overworld:
+
+| | every ship of mine with a hull | OWN-HULL-RANGE |
+|---|---|---|
+| average | 75.1 FPS | 149.8 FPS |
+| median | 12.5 ms | 8.3 ms |
+| 99th percentile | 25.0 ms | 12.5 ms |
+| frames over 33 ms | 5 | 0 |
+
+Pins: `test/ownhullrange.test.js` (4), over the real pool: a ship of mine near and 90 km off, the eye coming and going;
+a far peer's ship adopted as they leave stays hull-less; `hullKept`'s every case; a far ship it keeps built and never
+given back, a peer's never kept by it. Mutants: `tools/mutants/ownhullrange.json`, 11, all dead;
+`peerhullrange.json`'s PHR-no-range re-aimed at the build's new line, its nine all dead.
+
 ## What is left, ranked
 
 Each with what was found and whether it moves the picture (those are the owner's).
