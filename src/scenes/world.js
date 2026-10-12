@@ -808,7 +808,7 @@ import { ChatLog, CHAT_REJOIN_MS } from '../net/chat.js';   // CHAT1: the tabs a
 import { LANG_OLD_RELAY_TEXT, NO_LANG_TEXT, langJoinedText } from '../net/chat.js';   // CHAT-LANG: the Language tab's words
 import { CHAT_LANGS, chatLangRoom } from '../net/wire.js';   // CHAT-LANG: the language channels
 import { LANG_LINES, unknownLangText } from '../net/chatCommands.js';   // CHAT-LANG: /lang's list and refusal
-import { oocText, localLineHeard, nextRegionRoom, regionJoinedText, CHAN_OLD_RELAY_TEXT, ROLL_OLD_RELAY_TEXT, EMOTE_OLD_RELAY_TEXT, GUILD_OLD_RELAY_TEXT, NO_GUILD_TEXT, SOLO_LOCAL_TEXT, partyNoteTab } from '../net/chat.js';   // CHAT-CHAN: the channels' own laws (a second chat import: CHAT1's pin holds the first as it stands)
+import { oocText, localLineHeard, nextRegionRoom, regionJoinedText, CHAN_OLD_RELAY_TEXT, ROLL_OLD_RELAY_TEXT, EMOTE_OLD_RELAY_TEXT, GUILD_OLD_RELAY_TEXT, NO_GUILD_TEXT, partyNoteTab } from '../net/chat.js';   // CHAT-CHAN: the channels' own laws (a second chat import: CHAT1's pin holds the first as it stands)
 import { parseChatLine, HELP_LINES, CHAT_GREETING_TEXT, unknownCommandText, emptyCommandText, hostMisuseText, badRollText, expandShortcodes, EMOTE_LINES, foundText, FIND_OFFLINE_TEXT, FIND_RELAY_TEXT } from '../net/chatCommands.js';   // CHAT-CHAN: what a typed line IS; DICE1: and a roll; EMOTE1: an action, a gesture, a shortcode
 import { partyRosterSource, localRosterSource, guildRosterSource } from '../net/roster.js';   // CHAT-CHAN: the Party and Local tabs' composed lists
 import { partyCompassPoints } from '../ui/partyMapMarks.js';   // COMPASS-PARTY: the party's points on the compass
@@ -16832,7 +16832,6 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  its lists, the view itself, the spawns it was told of. They sat in applyPose past `if (!pose) return;`, so a save
    *  without a pose (an older envelope) loaded with the last run's chases still running, its rudder held, its "?"s. */
   function overworldLoadReset() {
-    _soloMemory = null;   // AUDIT FB1007b H2: nor the tutorial dungeon's memory - the loaded character's time is the save's
     tvRaid.chase.clear(); tvRaid.spent.clear(); tvRaid.list = []; tvRaid.at = -Infinity; tvRaid.peer.clear(); tvRaid.spentAt.length = 0;   // OWS3: no chase across a load; OW6: nor what the peers said, nor what I was saying
     csaJourneyHelm.held.clear(); csaJourneyHelm.row = false; tvSea.means = null; tvSea.phase = null; tvSea.boat = null; tvSea.wasLive = false;   // AUDIT OWS A1: nor a crossing's hand on the helm - a load into a dungeon's boat kept its rudder held
     tvPlates = { at: null, list: [] };   // AUDIT DEEP T2-4: the loaded character's discoveries - never the plates the last one knew
@@ -21282,21 +21281,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     else { _worldSaid = said; _worldSaidAt = now; _worldSaidKey = key; }
     return ok;
   };
-  // AUDIT FB1007b H2: THE TUTORIAL DUNGEON'S OWN MEMORY. No room remembers a solo dungeon (HOLD-SOLO), so every entry
-  // built it whole - its dead risen, the containers emptied full again, rolled anew at the player's level: the LOOT-REGEN
-  // report's "all the guys I killed before have loot again", and the one online dungeon outside WORLD8's hour. Its memory
-  // is kept here as a room keeps one (the place's own record, stamped on the relay's clock), taken at the door out and
-  // laid back at the next door in. A load is its own time and forgets it, as a reload of the page does.
-  let _soloMemory = null;   // { mapId, shared }
-  const keepSoloMemory = () => {
-    const id = onlineOn ? modes?.roomIdentity?.() : null;
-    if (_loading) _soloMemory = null;
-    else if (id?.solo) _soloMemory = { mapId: id.mapId, shared: modes?.placeSharedWorld() };
-  };
-  const restoreSoloMemory = () => {
-    const id = onlineOn ? modes?.roomIdentity?.() : null;
-    if (!_loading && id?.solo && _soloMemory?.mapId === id.mapId) modes?.restorePlaceSharedWorld(_soloMemory.shared);
-  };
   // WORLD2: ONE SIMULATION PER ROOM. While I host a world room the dungeon's layout foes are mine to step and I
   // stream every changed one FOES_MS apart (every one FOES_FULL_MS apart, so a dropped delta heals); while another
   // hosts, my layout foes are puppets that follow the stream and my blows on them go to the host as hits.
@@ -21590,9 +21574,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     const mode = modes?.mode ?? 'exterior';
     const identity = modes?.roomIdentity?.();
     if (identity?.kind === 'arena') return { error: 'battle' };
-    // AUDIT FB1007b H3: the tutorial dungeon is each character's own (HOLD-SOLO) - staff sent there landed in their own
-    // empty copy, told they stood at the player's exact position
-    if (identity?.solo) return { error: 'unavailable' };
     // WAGONS2 (FINAL AUDIT): a caravan's room is no building a door of the street walks into (staff sent there were told
     // the instance could not be entered) - staff land behind its rear door, outside, where its owner steps out
     const caravanRoom = mode === 'interior' ? modes?.caravanRoom ?? null : null;
@@ -21658,7 +21639,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     let entered = d.kind === 'exterior';
     if (d.kind === 'interior') entered = await modes?.restoreInterior?.({ door: d.door, ...(d.layout != null ? { layout: d.layout } : {}), ...(d.privateRoom ? { privateRoom: d.privateRoom } : {}), ...(d.sailingCabin ? { sailingCabin: d.sailingCabin, cabinOwner: d.cabinOwner } : {}) }, null, { strictDoor: true });
     else if (d.kind === 'dungeon') {
-      entered = await modes?.startInDungeon?.({ locationKey: d.locationKey ?? null });
+      entered = await modes?.startInDungeon?.({ locationKey: d.locationKey ?? null, holdOpen: true });   // HOLD-ONCE: staff may land by a player in Privateer's Hold
       entered = entered && (modes?.dungeonLocation?.mapTableData?.mapId >>> 0) === d.mapId;
     } else if (d.kind === 'gate') entered = await modes?.enterGateArena?.(d.gate);
     else if (d.kind === 'abyss') {
@@ -22350,11 +22331,6 @@ export async function bootWorld(canvas, renderer, params, status) {
         link.onStaffTeleport = (m) => client.receive(m);
       }
       if (tab.room === SOCIAL_ROOM) link.onGate = (g) => gateLink?.word(g);   // WB3b: the hub's word of a kill, and a fighter's receipt outside the court
-      // AUDIT FB1007b H4: the hub's welcome carries the relay's clock too (AUDIT SOC B7) - heard as the presence session's
-      // is. In the tutorial dungeon that session keys no room (HOLD-SOLO) and its welcome never came: a session loaded or
-      // born there ran on this machine's clock until the player walked out - the time away paid late, over the time in
-      // the Hold, and every trusted reading (a banishment's term, a receipt's life, the timers) blank
-      if (tab.room === SOCIAL_ROOM) link.onClock = (offsetMs) => online?.onClock?.(offsetMs);
       if (tab.room === SOCIAL_ROOM) link.onSerpent = (w) => serpentLink?.word(w);   // SERPENT1: the hub's word of a sea serpent's kill, Bay-wide, and the day's at my hello
       if (tab.room === SOCIAL_ROOM) link.onRite = (w) => riteHost?.onBroken(w);   // WB12d: the hub's word of a broken rite, and at my hello
       if (tab.room === SOCIAL_ROOM) link.onSd = (w) => sdHost?.heard(w);   // SD2b: the hub's record of the Super dungeon - at my hello and at every move
@@ -28415,11 +28391,8 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  from before the channels, no party), else the socket it rides (connecting, reconnecting, refused: the session's
    *  own line, labelled with the tab - AUDIT CHAT B5). The Region tab before its first region reads the World link's,
    *  whose welcome is what it waits on. */
-  /** AUDIT FB1007b H5: online, in a place no one shares - the tutorial dungeon (HOLD-SOLO): connected, and alone. */
-  const soloHere = () => !!online && !!modes?.roomIdentity?.()?.solo;
   const chatStatus = (tabId) => {
     const tab = chatLog?.tab(tabId);
-    if (tabId === 'local' && soloHere()) return SOLO_LOCAL_TEXT;   // AUDIT FB1007b H5
     if ((tabId === 'party' || tabId === 'region') && chanOld()) return CHAN_OLD_RELAY_TEXT;
     if (tabId === 'party' && !social?.party) return NO_PARTY_TEXT;
     if (tabId === 'guild' && guildOld()) return GUILD_OLD_RELAY_TEXT;   // GUILD1c
@@ -28443,7 +28416,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (tabId === 'lang' && !chatLog.tab('lang')?.room) return why(langOld() ? LANG_OLD_RELAY_TEXT : NO_LANG_TEXT);   // CHAT-LANG: no channel yet
     // EMOTE1: an action only down a session whose relay carries one - an older one would say the words bare
     const s = tabId === 'local' ? online : tabId === 'party' || tabId === 'guild' ? socialLink() : chatLinks.get(tabId);
-    if (tabId === 'local' && soloHere()) return why(SOLO_LOCAL_TEXT);   // AUDIT FB1007b H5: said, never kept in the field in silence
     if (me && s?.status === 'open' && !s.emoteOk) return why(EMOTE_OLD_RELAY_TEXT);
     if (tabId === 'local') return online?.sendChat(text, { me }) ?? false;
     if (tabId === 'party') {
@@ -28464,7 +28436,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     const why = (line) => { chatLog.push(tabId, { text: line, system: true }); return false; };
     if ((tabId === 'party' || tabId === 'region') && chanOld()) return why(CHAN_OLD_RELAY_TEXT);
     if (tabId === 'guild' && guildOld()) return why(GUILD_OLD_RELAY_TEXT);   // GUILD1c
-    if (tabId === 'local' && soloHere()) return why(SOLO_LOCAL_TEXT);   // AUDIT FB1007b H5
     if (tabId === 'lang' && !chatLog.tab('lang')?.room) return why(langOld() ? LANG_OLD_RELAY_TEXT : NO_LANG_TEXT);   // CHAT-LANG
     const s = tabId === 'local' ? online : tabId === 'party' || tabId === 'guild' ? socialLink() : chatLinks.get(tabId);
     if (s?.status === 'open' && !s.rollOk) return why(ROLL_OLD_RELAY_TEXT);
@@ -28841,7 +28812,6 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (!online && !mail) return null;
     const readers = pageReaders();
     const why = readers.length ? null
-      : soloHere() ? PAGE_NO_READERS_TEXT   // AUDIT FB1007b H5: in the Hold, connected and alone - never "not connected"
       : (!online || online.status !== 'open') ? `${NOT_CONNECTED_TEXT}.`
         : (!online.pageOk ? PAGE_UNSUPPORTED_TEXT : PAGE_NO_READERS_TEXT);
     return { readers, why, show: showPage, letter: mail ? letterPage : null };
@@ -29183,10 +29153,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     else {
       const ident = modes?.roomIdentity?.();
       const loc = _questLoc();   // the location under the player: an interior's room is named by it
-      // HOLD-SOLO (FIELD BUGS 2026-10-07b, nObOdy: "Lock privateer's hold. The first dungeon is a tutorial area"): the
-      // tutorial dungeon keys no room - no one stands in it but its own character, its foes and doors are its save's,
-      // and nobody hands a fresh character what it did not earn; the street outside is the shared world again
-      key = ident?.private ? privateRoomHere(ident) : ident?.solo ? null : roomKeyFor({
+      key = ident?.private ? privateRoomHere(ident) : roomKeyFor({
         host: 'world', mode,
         mapId: ident?.kind === 'dungeon' ? (ident.mapId ?? null) : (loc?.mapTableData?.mapId ?? null),
         regionIndex: ident?.kind === 'dungeon' ? ident.regionIndex : (loc?.regionIndex ?? -1),
@@ -29876,10 +29843,10 @@ export async function bootWorld(canvas, renderer, params, status) {
     wildHallEpoch: () => { const h = wildHallHere(); return h ? (_wdunEpoch.get(h.key) ?? 0) : 0; },   // PVPDUNGEONS: its reset's epoch
     wildNoBank: () => { if (!wildHere()) return false; townTalk.say('There are no banks in the mountains.'); return true; },
     wildNoHouse: () => { if (!wildHere()) return false; townTalk.say('No house is for sale in the Wrothgarian Mountains.'); return true; },   // PVPDUNGEONS   // PVPDUNGEONS: no banks, so no houses either
-    onDungeonLeave: () => { if (_wdunInside) wdunLeft(false); const n = handOverRoomFoes(); if (n) console.info(`[foes] handed ${n} quest foe(s) at the dungeon's door`); keepSoloMemory(); gatherHost?.leaveDungeon(); worldPublish(performance.now(), true); },   // WORLD1: the room's memory goes out while the dungeon still stands; QUEST-PARTY phase 3c: my shared quest's foes to the party who stay
+    onDungeonLeave: () => { if (_wdunInside) wdunLeft(false); const n = handOverRoomFoes(); if (n) console.info(`[foes] handed ${n} quest foe(s) at the dungeon's door`); gatherHost?.leaveDungeon(); worldPublish(performance.now(), true); },   // WORLD1: the room's memory goes out while the dungeon still stands; QUEST-PARTY phase 3c: my shared quest's foes to the party who stay
     // OH-D: the four DFU events There's a Hole in the Bottom of the Ocean subscribes to (its Install), raised by the doors
     onSetDungeon: (ctx) => ohAbyss?.onDungeonSet(ohDungeonOf(ctx)),   // DaggerfallDungeon.OnSetDungeon
-    onTransitionDungeonInterior: (ctx) => { navalStow(); ohAbyss?.onDungeonEntered(ohDungeonOf(ctx)); csaOnTransition(); dungeonTierSay(); navalTransition(); restoreSoloMemory(); },   // PlayerEnterExit.OnTransitionDungeonInterior (CSA-C: Come Sail Away's OnTransition after OceanHoles' - the mods' load order); TIER1: the tier said, online
+    onTransitionDungeonInterior: (ctx) => { navalStow(); ohAbyss?.onDungeonEntered(ohDungeonOf(ctx)); csaOnTransition(); dungeonTierSay(); navalTransition(); },   // PlayerEnterExit.OnTransitionDungeonInterior (CSA-C: Come Sail Away's OnTransition after OceanHoles' - the mods' load order); TIER1: the tier said, online
     onFailedTransition: () => { ohAbyss?.onTransitionFailed(); },   // PlayerEnterExit.OnFailedTransition
     onTransitionDungeonExterior: () => { navalStow(); ohAbyss?.onDungeonExited(); csaOnTransition(); navalTransition(); },   // PlayerEnterExit.OnTransitionDungeonExterior (and Come Sail Away's)
     onEnemySpawn: (rec) => { const d = ohDungeonOf(modes?.dungeonCtx); if (d) ohAbyss?.onEnemySpawned(d, d.foeView(rec)); },   // OH-E: GameManager.OnEnemySpawn
@@ -30617,7 +30584,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     await worldQuickLoad({ ...bootLoadPick, snap });
   } else if (params.has('classic') && getBool('Startup', 'StartInDungeon') && startLoc.hasDungeon) {
     status('entering the dungeon');
-    const entered = await modes.startInDungeon();
+    const entered = await modes.startInDungeon({ holdOpen: true });   // HOLD-ONCE: the new game's start is the one way into Privateer's Hold online
     if (!entered) console.warn('[world] no dungeon entrance at the start cell; starting outside');
     // FIX-C: the dungeon stand IS the spawn. Nothing in worldModes writes
     // this flag, so the exterior gate above the motor was still armed the
