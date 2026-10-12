@@ -369,7 +369,9 @@ export class PlayerWeapon {
    * does ~21. Everything else `weapon` carries (the draw, the swing sound,
    * the art) is the screen's and stays. BAL6-CLAWS (bible/05-Combat/
    * Balance-Arc.md section 12): BAL6 had the claws strike as silver; the
-   * owner reverted it - the bare hand, ungated, DFU's.
+   * owner reverted it - the bare hand, ungated, DFU's. BAL6-GAUNTLETS: the
+   * plate gauntlets the beast wears add their metal's damage to it, a port
+   * departure (combat/clawMetal.js, read by both cores).
    */
   get strikingWeapon() {
     if (!this.weapon?.werecreatureClaws) return this.weapon;

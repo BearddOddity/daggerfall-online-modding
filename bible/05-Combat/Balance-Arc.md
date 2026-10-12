@@ -475,12 +475,15 @@ THE LAWS.
   asked: "Metal's damage bonus"). MorphSelf empties the hands, never the gauntlets, and the pack is refused to the
   beast, so it fights in what it wore. `combat/clawMetal.js` clawMetalDamage: in beast form, plate gauntlets
   (`systems/armorMaterials.js` plateMetal - DFU mints plate as `0x0200` plus the metal) add their metal's
-  GetWeaponMaterialModifier to every claw hit: the same points a blade of it adds, Elven +1 to Daedric +6, never below
-  the bare claws (Iron's -1 is not taken). Leather and chain have no metal. Damage alone: no to-hit, no gate, no
-  silver's double. Both cores add it where a weapon's material modifier stands (`combat/pcaao.js`
-  pcaaoHandToHandAttackDamage, after the strength term and before the floor; `combat/formulas.js`
-  handToHandAttackDamage, before the enemy-type term), and the stats card shows it as the claws' own line
-  (`combat/combatStats.js`; `ui/statsCard.js`, "Gauntlets"). A man's fist takes none, nor a monk's or a vampire's.
+  GetWeaponMaterialModifier to every claw hit: the points DFU's core adds to a blade of it, Elven +1 to Daedric +6,
+  never below the bare claws (Iron's -1 is not taken). Leather and chain have no metal, nor gloves whose class reads as
+  leather (Roleplay & Realism's Brigandine Gloves, AUDIT CLAWS B1), nor a broken pair (B3); the piece is what the equip
+  rules seat in the Gloves slot (B4). Damage alone: no to-hit, no gate, no silver's double, no condition band. Both
+  cores add it where a weapon's material modifier stands (`combat/pcaao.js` pcaaoHandToHandAttackDamage, after the
+  strength term and before the floor; `combat/formulas.js` handToHandAttackDamage, before the enemy-type term), inside
+  a backstab's treble. The refereed lanes' stand-in carries it (`combat/duelCombat.js`, A1), and the stats card models
+  it (`combat/combatStats.js`), though the card is not open to a beast - it is the pack's flip side. A man's fist takes
+  none, nor a monk's or a vampire's.
 - **The hood shields, it does not make it night** (asked: "Hood only shields"). `systems/vampirism.js` vampireStatMod:
   bare in the street's sun -20, hooded there 0, out of the sun (a roof, underground, a cell, the night) DFU's +20, hood
   or not - Mac's "Should be buffed in interiors" and "shielding against the sun" both kept.
@@ -499,7 +502,8 @@ third more a swing). Two healing changes a day are one, and the Ring's endless o
 street by day is +0 where it was +20 (its +30 skills alone: about x1.10-1.17 a mortal's damage). THE FOUR HOSTS: none
 is touched - each law is the curse's or the blow's, read wherever the curse runs its round and the blow is struck
 (`scenes/world.js`, `scenes/worldModes.js`, `scenes/dungeonContext.js` and `scenes/exterior.js` all strike through the
-same two cores and run the same round).
+same two cores and run the same round; world.js's refereed lanes strike through `combat/duelCombat.js`'s sheet, which
+carries the claws' metal since AUDIT CLAWS A1).
 
 RECORDED, NOT CHANGED:
 
@@ -508,12 +512,15 @@ RECORDED, NOT CHANGED:
 - **The vampire's clan spells** stay at DFU's flat 5 spell points (MinimumCastingCost; asked: "Leave at 5"), Ice Storm
   and Wildfire among them. A refereed fight bounds every cast whatever it cost (INT10, and section 14's ceiling).
 - **Every fist** - a vampire's, a monk's and, since BAL6-CLAWS, the beast's - stays ungated: DFU's rule.
-- **The referees' fist bounds** (BAL6-GAUNTLETS). Both clip a claim, never refuse it. The siege's (`net/siegeRef.js`
-  siegeBlowMax: the bare hand's 21 at skill 100 and the bonuses at their caps, x2) holds a beast in Daedric gauntlets
-  at skill 100 with every bonus at its cap: 55 of its 56 before the critical and 110 of 112 after under the overhaul,
-  52 in DFU's core. Past skill 100 (the softcap's 200, which `net/arenaLaw.js` ARENA_HAND_MAX reads) the siege's bound
-  already clipped any fist, gauntlets or none, and the arena's room past a bare hand's 41 (ARENA_MOD_MAX, 20) is under
-  a Khajiit hand-to-hand expert's own 28 in the overhaul. Both are the relay's, and neither moved here.
+- **The referees' fist bounds** (BAL6-GAUNTLETS, read again by AUDIT CLAWS). Both clip a claim, never refuse it. The
+  duel, the siege, the Royal Tourney, a siege work and the wild zone roll on the stand-in of `combat/duelCombat.js`,
+  whose sheet holds every stat and skill at 100: there the siege's bound (`net/siegeRef.js` siegeBlowMax: the bare
+  hand's 21 at skill 100 and the bonuses at their caps, x2) holds a beast in Daedric gauntlets with every bonus at its
+  cap - 55 of its 56 before the critical and 110 of 112 after under the overhaul, 52 in DFU's core. The arena strikes
+  through the real entity, and its cap (`net/arenaLaw.js`: a bare hand's 41 at the softcap's 200, ARENA_MOD_MAX's 20,
+  x2) already clips a level-30 beast's top critical, the beast's +30 Critical Strike taking the overhaul's multiplier
+  past x2 (x2.3 at 130): a Khajiit hand-to-hand expert's bare critical 127 (5 clipped), in Daedric 140 (18). Both are
+  the relay's, and neither moved here.
 - **The silver-to-hit of a beast in a refereed fight**: every referee rolls a striker's claim against the striker's own
   stand-in, so the beast's defence never counts there - reading it would make the beast stronger in PvP, not weaker.
 - **The wereboar** is the werewolf in another skin (the same advantages, claws and change), as in DFU.
@@ -522,15 +529,90 @@ Pinned: `test/bal6_curses.test.js` (6) by execution - the advantages through liv
 the change's instant and after a round, a pre-BAL6 save's word rewritten; the heal's day, the Ring's change without it,
 the stamp clamped on a load; BAL6-CLAWS: 2,000 seeded beast swings at a Lich's Mithril whole, as at no metal, with
 the soft rule on and off and nothing said, a man's fist the same, and DFU's core seed for seed; BAL6-GAUNTLETS:
-plateMetal over every armour material, the claws' metal through the curse, the equip table and the change (Elven +1
-to Daedric +6; iron, leather, chain, bare claws, human form, the change back and a man nothing), +6 a hit in both
-cores at one roll, 2,000 seeded swings in each core landing the same blows (DFU's exactly 6 heavier each), and the
-stats card's span and line in both cores; vampireStatMod in the street and under a roof, bare and hooded.
-`tools/mutants/bal6.json` (26, all dead: BAL6-CLAWS retired the five claw records and aimed four at the restored
-gates - the claws as silver in either core, the claws refused with DFU's line under the overhaul with its soft rule
-off, every fist gated; BAL6-GAUNTLETS aimed eleven - every fist's, iron's -1 taken, leather or chain a metal, a metal
-past Daedric, the wrong slot, either core without it, the metal as to-hit in either core, the card without it, and
-mintCondition's plate offset, which `test/audit23_systems.test.js` pins).
+plateMetal over every armour material, the claws' metal through the curse, CreateArmor's gauntlets, the equip table and
+the change (Elven +1 to Daedric +6; iron, leather, chain, bare claws, human form, the change back and a man nothing),
++6 a hit in both cores at one roll, before the overhaul's floor and inside a backstab's treble, 2,000 seeded swings in
+each core landing the same blows (DFU's exactly 6 heavier each, at an Orc Warlord), and the stats card's model in both
+cores - its span, its part, its hit chance at every reference foe, its floor; vampireStatMod in the street and under a
+roof, bare and hooded. `tools/mutants/bal6.json` (26, all dead: BAL6-CLAWS retired the five claw records and aimed
+four at the restored gates - the claws as silver in either core, the claws refused with DFU's line under the overhaul
+with its soft rule off, every fist gated; BAL6-GAUNTLETS aimed eleven - every fist's, iron's -1 taken, leather or chain
+a metal, a metal past Daedric, the wrong slot, either core without it, the metal as to-hit in either core, the card
+without it, and mintCondition's plate offset, which `test/audit23_systems.test.js` pins). AUDIT CLAWS's own, below.
+
+### AUDIT CLAWS (2026-10-12, the owner: "Audit this") - BAL6-CLAWS and BAL6-GAUNTLETS read again before they merge
+
+Three independent lanes, each a cold read of the pull request (#841) against a frozen snapshot of its head, with
+repros: every place a claw blow is struck, refereed, predicted or shown, and the beast-form flag's life; every gauntlet
+the game can put on and what it is made of; and what the change says and pins (every number recomputed, its pins
+mutated past their 26 records - 47 more, and 5). CI's own run found one more. Every finding was reproduced before it
+was fixed. FOUND, each fixed and pinned (`test/auditclaws.test.js` 4; `test/bal6_curses.test.js`'s pins strengthened,
+still 6; `tools/mutants/auditclaws.json` 22 of 22 dead, `bal6.json` 26 of 26):
+
+- **HIGH - A1: the gauntlets never reached a refereed blow.** The duel, the siege, the Royal Tourney, a siege work and
+  the wild zone (and its PvP halls) strike through a stand-in of the striker's sheet (`scenes/world.js` duelStrikeOut
+  and its kin; `combat/duelCombat.js` duelAttackerOf, duelStub), which carried no beast form and no equip table: a
+  beast in Daedric gauntlets claimed exactly what a bare-clawed one did there, while the arena (the host's own blow)
+  and every fight with a foe carried the metal. FIXED: the sheet carries the law's word (`cm`, read off the striker's
+  own entity), the stub carries it as `clawMetal`, and the law reads it - never the gauntlets themselves, because the
+  striker rolls against a stand-in of its own sheet, which would wear them as the defender's armour. The client's
+  alone: since INT8 the sheet never goes on the wire (a strike carries its rolled `d`), and the referees' bounds hold
+  the claim (RECORDED above).
+- **MEDIUM - A2: a load kept the last game's beast form.** `systems/save.js` restorePlayer writes a save onto the same
+  entity, and it rebuilt the curse's marker but not `isInBeastForm`, its mirror. A man's save loaded over a transformed
+  werewolf kept it (the curse's round returns at once with no curse), so his fist took the gauntlets' +6 and the
+  street's politeness gate and the tells read a beast; a transformed save on a fresh page waited a round for it, the
+  claws without their metal until then. FIXED: set from the curse it restores, beside the marker.
+- **MEDIUM - B1: Roleplay & Realism's Brigandine Gloves counted as plate.** The mod (on by default) seats its gloves
+  (template 524) in the Gloves slot at any metal; their class reads them as leather (ItemGloves.cs: "This fools the DFU
+  code into treating this item as leather for forbidden checks"), and so do the forbidden-armour test, Better Ambience
+  and Immersive Footsteps. The law read the raw material: a career barred from plate wore Daedric brigandine for
+  Daedric claws - about half the Gloves-slot pieces random loot draws, and the Master Armorer sells them. FIXED: the
+  class's material (`systems/rriItems.js` rriNativeMaterialValue, the port's one reader of it).
+- **LOW - B3: a broken pair kept its metal.** Survival's rust writes a worn piece's condition straight down and leaves
+  it on, and a classic import keeps a worn 0-condition piece worn. FIXED: a broken piece (`equip.js` isBrokenItem) is
+  no metal.
+- **LOW - B4: the law read whatever sat in the slot.** A load seats each item at its saved slot and trusts it: a
+  cuirass saved at the Gloves slot, or the mod's gloves left there with the mod off, read as gauntlets. FIXED: only a
+  piece the equip rules seat in the Gloves slot (`equip.js` getEquipSlot).
+- **LOW - B2: "the plate offset's one home" was not.** Three readers of the same member still wrote `m - 0x0200`
+  themselves: a plate piece's value (`itemTemplates.js` itemBaseValue), weight (`inventory.js` unitWeightInKg) and
+  armour value (`armorMaterials.js` materialArmorValue). FIXED: all read `plateMetal`, identical for every input (an
+  index past Daedric reads each table's own fallback, as it did), each still pinned by the suites that pinned it
+  (`audit18_systems_items`, `shopstock`; `audit18_combat` and four more). The docstring names FormulaHelper's
+  RandomArmorMaterial, not ItemBuilder's.
+- **LOW - C2 to C8: pins that could not fail.** DFU's "the same blows land" sat at a Lich's 3% floor, where +6 to hit
+  lands nothing more (now at an Orc Warlord: 854 of 2,000 land); the order the pages give - after Strength, before the
+  overhaul's floor - and a backstab trebling the metal were unpinned in both cores and on the card; so were the card's
+  hit chance with the metal, and DFU's silence for the claws at Mithril; and the gauntlets were a hand-built literal,
+  not CreateArmor's (`combat/enemyEquipment.js` armorOfMaterial). FIXED, each with the mutant that survived it, now
+  dead (nine records).
+- **LOW - A4: the stats card's line could not be seen.** The card is the pack's flip side, and the pack is refused to
+  a beast: the patch notes promised a "Gauntlets" line no player could open. FIXED: the label is taken back
+  (`ui/statsCard.js` as it was); the card still models the cores for whatever entity it is handed, and the pages say
+  what a player can see.
+- **LOW - CI: the account Worker bundles the law.** The account service reaches `combat/formulas.js`, so
+  `combat/clawMetal.js` joined its bundle without joining its deploy's path filter (`test/accountdeploy.test.js` walks
+  the graph): a change to it alone would never have deployed the service. FIXED
+  (`.github/workflows/account-deploy.yml`). The change's own fast runs could not see it - a Worker's import walk
+  imports nothing of the file and names it nowhere - so the suite's eight import-graph walks ran with them after.
+- **LOW - C9: pages and comments.** "Past skill 100 the siege's bound already clipped any fist" was false (the refereed
+  stand-in holds every skill at 100); "the same points a blade of it adds" holds in DFU's core, not under the
+  overhaul's condition bands; the fifth departure's parenthetical and the overhaul page's part table; the test file's
+  header; `playerWeapon.js` strikingWeapon's comment. FIXED.
+
+RECORDED, NOT FIXED (each another arc's, or the relay's):
+
+- **The arena's fist cap clips a beast's top critical** (A5) - above, under the referees' fist bounds.
+- **The plate encoding is still written beside its home**: `combat/enemyEquipment.js` ARMOR_MATERIAL (Leather, Chain,
+  PLATE_BASE), `net/recipeLaw.js` ARMOR_LEATHER/CHAIN/PLATE (read by `net/temperLaw.js` and `systems/smithItems.js`),
+  `systems/itemLaw.js`'s literal list of the thirteen, `ui/paperDoll.js`'s dye index (a second GetArmorDyeColor beside
+  `systems/itemDye.js` armorDyeColor), and `systems/itemInfo.js`'s name index (`& 0xff`, which names a quest's
+  materialless Gauntlets "Iron" while they are priced and armoured as leather).
+- **`systems/physicalItems.js` itemLook reads `nativeMaterialValue`**, which no producer writes: a leather and a Daedric
+  pair share one look key in the world's item pool.
+- **The claws' metal is not scaled by the gauntlets' condition**: the overhaul's bands scale a weapon's whole blow,
+  and the claws' blow is the beast's own. Only a broken pair is nothing (B3).
 
 ## 13. BAL7 - the loot that wins alone (2026-10-12)
 

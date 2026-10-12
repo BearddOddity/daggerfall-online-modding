@@ -122,7 +122,7 @@ export function itemBaseValue(item, lookup = templateByIndex) {
   if (item.group === 'Armor') {
     const m = item.material ?? 0;
     if (m === 0x0100) return t.basePrice * 2;                     // chain
-    if (m >= 0x0200) return materialValue(t.basePrice, m - 0x0200);   // plate
+    if (isPlate(m)) return materialValue(t.basePrice, plateMetal(m));   // plate (AUDIT CLAWS B2: the decode's one home)
     return t.basePrice;                                           // leather
   }
   return t.basePrice;
@@ -295,7 +295,7 @@ export function mintCondition(item) {
   const mat = item.material;
   if (mat != null && max > 0) {
     if (item.group === 'Weapons') max = Math.trunc((max * (conditionMultipliersByMaterial[mat] ?? 4)) / 4);
-    else if (item.group === 'Armor' && isPlate(mat)) max = Math.trunc((max * (conditionMultipliersByMaterial[plateMetal(mat)] ?? 4)) / 4);   // BAL6-GAUNTLETS: the plate offset's one home
+    else if (item.group === 'Armor' && isPlate(mat)) max = Math.trunc((max * (conditionMultipliersByMaterial[plateMetal(mat)] ?? 4)) / 4);   // BAL6-GAUNTLETS: the plate decode's one home (armorMaterials.js plateMetal)
   }
   item.maxCondition = max;
   item.currentCondition = max;
