@@ -79,3 +79,26 @@ whose life is over as none, so the spawns stand again for it all the same.
   elite/normal result". It stands the same dungeon again: a new template per life needs every client and the relay
   to agree on a life counter per pixel, which the keep above lets go of, and the map id, the dungeon's room and the
   automap all key on the one pixel.
+
+## AUDIT SPAWN-REBIRTH (2026-10-12, Mac: "Lets do an audit on this")
+
+A cold review of the branch at `bee9d484` (every finding read off the code; then each re-read here before anything
+moved): eight findings, six fixed, two answered.
+
+| | Finding | Verdict | Done |
+|---|---|---|---|
+| F1 | A first entry is made underground, with the socket in the dungeon's room, where `sendOverworld` says nothing (a cell's alone); `overworldLedgerFrame` let a row go after OW_SAY_KEEP_MS (10 min) there, so a run longer than that never told the cell it began - and `has()` keeps a re-entry from owing it again. Before SPAWN-REBIRTH the first sight was said from the overworld | real, this change's | fixed: what is owed waits for a cell - while the primary room is none, the owed rows' keep is held, and it is counted from the cell they are said in (`world.js` overworldLedgerFrame). A clear, made underground too, had the same hole since OW6L |
+| F2 | A spawn back from the dead on a pixel built EMPTY while it was dead (the pixel still loaded): `expired` answers false, so the Overworld marked it found and walked to bare grass - FIELD BUGS 29h the other way round | real, narrow (a player near the pixel across its return) | fixed: `tvSpawnGone` takes the build's word both ways - a built pixel stands a spawn if and only if it was built with one; off the built ground, the clocks |
+| F3 | A client whose clock runs up to OW_ROW_SLACK_MIN ahead can start a new life the relay still counts as the old one's last two minutes: its entry is min-merged into the old row and lost with it | real, not worth its code | answered: the window is ten real seconds once per spawn's thirty-eight hours, it needs a fast clock, and its cost is one life the cell does not hold (the spawn lives a little longer for the rest). A fix is a third arm in the relay's min-merge, which must stay the same in any order |
+| F4 | `toJSON` judged a life over by a HIGH-WATER clock that `load()` never reset: a clock read fast before the shared offset landed left every row its mark had passed out of the next save | real | fixed: the clock the ledger was LAST asked at, and a load forgets it (`spawnedDungeons.js` createSpawnLedger) |
+| F5 | `merge`'s `now` defaults to NaN, which min-merges as OW6L did (the veteran's bug) | answered | the one caller passes `_spawnClock()`; NaN is the boot before the ticker stands, where dropping the cell's welcome would lose more than a min-merge risks - and `expired` reads a life that is over as none whatever was merged |
+| F6 | `_spawnSeen` skipped a Hollow but not a Wild Zone hall (`spawned: true` too): entering the day's hall noted a TTL1 row, and fourteen real hours on - inside its 24-hour day - `_locationToBuild` took it out and built its pixel empty; on a pixel the world's spawn roll also holds, the cell took the row, so for everyone in it | real, older than this change | fixed: no hall's entry or clear notes a row, and no row (an older build's) takes a hall out (`world.js` _spawnSeen, _noteSpawnCleared, _locationToBuild) |
+| F7 | The world197 bump's note kept world196's (CHAT-LANG) inline, and this bump dropped it | real | fixed: world197 and world196 on their own history lines in `wire.js`; world198 re-hashed in place, undeployed |
+| F8 | `spawnExpired` wrote the two clocks a second time beside `spawnDeath` | real, a cleanup | fixed: one law - dead from `spawnDeath`, back REBIRTH_TTL_MINUTES after it (the same answers, a negative elapsed never expiry) |
+
+Pins: `test/ow6_ledger.test.js` (20; F1's host run - a run three keeps long underground, its entry said from the cell
+it comes out in), `test/tv6_dungeons.test.js` (F2 on the AUDIT OW4 D2/D4 host), `test/spawneddungeons.test.js` (F4 on
+the save test, F6 on the host run and the clear's source). Mutants: `tools/mutants/spawnrebirth.json` (23 - F1, F2,
+F4 and F6 added; the short clock's record left to `ttl1.json`, whose three expiry records re-aim at `spawnDeath`), and
+`fb0929h_spawnplate.json`, `ow4d.json` and `ow5d.json`'s `tvSpawnGone` and `_locationToBuild` records re-aimed by
+content.

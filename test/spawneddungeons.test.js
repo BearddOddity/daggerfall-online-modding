@@ -287,7 +287,7 @@ test('SPAWN-REBIRTH: merge at a clock - a heard row of a life that is over is ta
   assert.deepEqual(old.toJSON(), [['4,4', 0]]);
 });
 
-test('SPAWN-REBIRTH: a save carries no life that is over - toJSON leaves out every row whose spawn has stood again by the latest clock the ledger was asked at, and keeps them all when no clock was ever asked', async () => {
+test('SPAWN-REBIRTH: a save carries no life that is over - toJSON leaves out every row whose spawn has stood again by the clock the ledger was last asked at, and keeps them all when no clock was asked since it was made or loaded (AUDIT SPAWN-REBIRTH F4: the last clock, never a high mark; a load forgets it)', async () => {
   const { createSpawnLedger, GENERAL_TTL_MINUTES, REBIRTH_TTL_MINUTES } = await import('../src/world/spawnedDungeons.js');
   const back = GENERAL_TTL_MINUTES + REBIRTH_TTL_MINUTES;
   const rows = [['1,1', 0], ['2,2', 500], ['3,3', 0, 1]];
@@ -296,9 +296,12 @@ test('SPAWN-REBIRTH: a save carries no life that is over - toJSON leaves out eve
   assert.deepEqual(L.toJSON(), rows, 'no clock asked (an offline session never reads these): every row kept');
   L.expired('9,9', back + 100);
   assert.deepEqual(L.toJSON(), [['2,2', 500]], 'asked at a later clock: the lives that are over are left out');
-  L.expired('9,9', 50);
-  assert.deepEqual(L.toJSON(), [['2,2', 500]], 'the latest clock, never an earlier one');
   assert.equal(L.size, 3, 'the rows themselves are held until a new life replaces them');
+  L.expired('9,9', 50);
+  assert.deepEqual(L.toJSON(), rows, 'AUDIT F4: the clock last asked - a clock read fast and corrected leaves no row out on its high mark');
+  L.expired('9,9', back + 100);
+  L.load(rows);
+  assert.deepEqual(L.toJSON(), rows, 'AUDIT F4: a load forgets the clock - nothing judged until it is asked again');
 });
 
 test('TTL1 by source: expiry is checked on the pixel build, and never while the player is in it', async () => {
@@ -327,6 +330,7 @@ test('TTL1 by source: expiry is checked on the pixel build, and never while the 
   const k = w.indexOf('const _noteSpawnCleared = () => {');
   const cleared = w.slice(k, w.indexOf('\n  };\n', k));
   assert.match(cleared, /if \(!locationIndex\.get\(key\)\?\.spawned\) return;/, 'a real dungeon being cleared never invents a ledger row');
+  assert.match(cleared, /if \(locationIndex\.get\(key\)\.wildHall\) return;/, 'AUDIT SPAWN-REBIRTH F6: nor a Wild Zone hall being cleared - its day is the hub\'s');
   assert.match(cleared, /_spawnLedger\.clear\(key, _spawnClock\(\)\)/);
   assert.match(w, /onDungeonCleared: _noteSpawnCleared,/, 'the host answers the context');
   assert.match(w, /onDungeonSpawned: \(\) => \{ const p = playerTravelPixel\(\); _spawnSeen\(`\$\{p\.x\},\$\{p\.y\}`\); \},/, 'entering one starts the long clock too - a save loaded straight into a spawn was never built through buildPixelNow this session');
@@ -445,6 +449,16 @@ test('AUDIT OW5b D2 host run (SPAWN-REBIRTH): A SPAWN PAST ITS TIME IS GONE UNTI
   h._spawnSeen('7,9');
   assert.deepEqual(h.d.ledger.toJSON(), [['7,9', h.d.now]], 'the next entry starts the new life\'s clocks');
   assert.deepEqual(h.d.owed, ['7,9'], 'and the cell hears them');
+  // AUDIT SPAWN-REBIRTH F6: a Wild Zone hall is `spawned` too, and its day is the hub's - its entry starts no spawn's clock,
+  // and a row an older build left for its pixel never takes it out
+  const hall = run();
+  hall.d.index.set('9,9', { name: 'Elite Hall (9,9)', spawned: true, wildHall: { ring: 1, key: '9,9' } });
+  hall._spawnSeen('9,9');
+  assert.equal(hall.d.ledger.size, 0, 'entering a hall starts no clock');
+  assert.deepEqual(hall.d.owed, [], 'and owes the cell nothing');
+  hall.d.ledger.note('9,9', 0);
+  hall.d.now = GENERAL_TTL_MINUTES + 1;
+  assert.equal(hall._locationToBuild(9, 9)?.name, 'Elite Hall (9,9)', 'a row past its seven days never takes a hall out');
   const inside = run({ inside: true });
   inside._locationToBuild(3, 3);
   inside._spawnSeen('3,3');

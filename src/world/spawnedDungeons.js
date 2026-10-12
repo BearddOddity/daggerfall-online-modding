@@ -328,11 +328,10 @@ export function spawnReborn(rec, now) {
  * otherwise read as astronomically old and vanish on sight.
  */
 export function spawnExpired(rec, now) {
-  if (!rec || !Number.isFinite(now)) return false;
-  if (spawnReborn(rec, now)) return false;
-  if (Number.isFinite(rec.cleared) && now - rec.cleared >= CLEARED_TTL_MINUTES) return true;
-  if (Number.isFinite(rec.seen) && now - rec.seen >= GENERAL_TTL_MINUTES) return true;
-  return false;
+  // AUDIT SPAWN-REBIRTH F8: the two clocks are spawnDeath's alone (they were written twice, here and there): dead from
+  // its death, back REBIRTH_TTL_MINUTES after it
+  const d = spawnDeath(rec);
+  return Number.isFinite(d) && Number.isFinite(now) && now >= d && now - d < REBIRTH_TTL_MINUTES;
 }
 
 /**
@@ -356,14 +355,18 @@ export function spawnExpired(rec, now) {
  *
  * SPAWN-REBIRTH: a row whose spawn has stood again (spawnReborn) is of a life that is over. It is as good as no row:
  * `note` and `clear` start the new life's clocks over it, `has` and `expired` read it as none, `merge` neither takes one
- * nor lets one stand in the way of a later life's row, and the save leaves it out (`toJSON`, at the latest clock the
- * ledger was asked at - none asked, every row kept: an offline session never reads these clocks).
+ * nor lets one stand in the way of a later life's row, and the save leaves it out (`toJSON`, at the clock the ledger
+ * was last asked at since it was made or loaded - none asked, every row kept: an offline session never reads these
+ * clocks).
  */
 export function createSpawnLedger() {
   /** @type {Map<string, {seen:number, cleared?:number}>} */
   const rows = new Map();
-  let last = NaN;   // SPAWN-REBIRTH: the latest clock any call carried - what the save judges a life over by
-  const at = (now) => { if (Number.isFinite(now) && !(now <= last)) last = now; return now; };
+  // SPAWN-REBIRTH: the clock the last call carried - what the save judges a life over by. AUDIT SPAWN-REBIRTH F4: the
+  // LAST, never the highest (a clock read fast before the shared offset landed, then corrected, left every row its high
+  // mark had passed out of the next save), and a load forgets it (the rows it judged are gone)
+  let last = NaN;
+  const at = (now) => { if (Number.isFinite(now)) last = now; return now; };
   /** The row a key holds at `now` - none for one whose spawn has stood again. */
   const live = (key, now) => { const r = rows.get(key); return r && !spawnReborn(r, now) ? r : null; };
   return {
@@ -418,10 +421,11 @@ export function createSpawnLedger() {
     forget(key) { return rows.delete(key); },
     get size() { return rows.size; },
     /** The whole ledger, for a save to carry and a test to read. SPAWN-REBIRTH: less the rows whose spawn has stood again
-     *  by the latest clock the ledger was asked at - a save carries no life that is over. */
+     *  by the clock the ledger was last asked at - a save carries no life that is over. */
     toJSON: () => [...rows].filter(([, r]) => !spawnReborn(r, last)).map(([k, r]) => [k, r.seen, ...(Number.isFinite(r.cleared) ? [r.cleared] : [])]),
     load(rowsIn) {
       rows.clear();
+      last = NaN;   // AUDIT SPAWN-REBIRTH F4
       for (const [k, seen, cleared] of rowsIn ?? []) {
         if (typeof k === 'string' && Number.isFinite(seen)) rows.set(k, Number.isFinite(cleared) ? { seen, cleared } : { seen });
       }

@@ -2234,6 +2234,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     const key = `${p.x},${p.y}`;
     if (!locationIndex.get(key)?.spawned) return;
     if (locationIndex.get(key).superTier) return;   // SD2b: a Hollow's life is the hub's record - a cleared one is not two days from gone
+    if (locationIndex.get(key).wildHall) return;   // AUDIT SPAWN-REBIRTH F6: nor is a Wild Zone hall's - its day is the hub's (net/wildLaw.js)
     _spawnLedger.clear(key, _spawnClock());
     owSayRow(key);   // OW6L: and the cell hears the short clock start
   };
@@ -2263,6 +2264,11 @@ export async function bootWorld(canvas, renderer, params, status) {
   function overworldLedgerFrame(now) {
     if (!online?.owOk || now - _owSaidAt < OW_SAY_MS || (!_owSay.sp.size && !_owSay.dg.size)) return;
     _owSaidAt = now;
+    // AUDIT SPAWN-REBIRTH F1: WHAT IS OWED WAITS FOR A CELL. A first entry and a clear are made underground, with my socket
+    // in the dungeon's room, where nothing is said (online.js sendOverworld: a cell's alone) - and a row owed past
+    // OW_SAY_KEEP_MS was let go there, so a run longer than that never told the cell it had begun. Its keep is counted
+    // from the cell it is said in
+    if (!isCellRoom(online.room)) { for (const k of _owSay.dg.keys()) _owSay.dg.set(k, now); return; }
     const bandLife = Math.floor(bandNowMs() / BAND_LIFE_MS), raidLife = Math.floor(raidNowMs() / RAIDER_LIFE_MS);
     for (const id of [..._owSay.sp.keys()]) if ((id[0] === 'b' ? bandLifeOf(id) < bandLife - 1 : raiderLifeOf(id) < raidLife - 1)) _owSay.sp.delete(id);
     for (const [key, since] of [..._owSay.dg]) if (now - since > OW_SAY_KEEP_MS) _owSay.dg.delete(key);
@@ -2294,6 +2300,7 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  (onDungeonSpawned), never a pixel streaming in - and a row of a life that is over is none (the ledger's `has`). */
   function _spawnSeen(key) {
     if (locationIndex.get(key)?.superTier) return;   // SD2b: never a Hollow's - its life is the hub's record, not a spawn's clocks
+    if (locationIndex.get(key)?.wildHall) return;   // AUDIT SPAWN-REBIRTH F6: nor a Wild Zone hall's - its day is the hub's; noted, it was taken out at its pixel's next build fourteen real hours on, and on a pixel the spawn roll also holds the cell took the row
     const now = _spawnClock();
     const fresh = !_spawnLedger.has(key, now);
     _spawnLedger.note(key, now);
@@ -2410,7 +2417,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (etherSea && inEther(px, py)) return etherPlaceAt(px, py);   // ETHER-PLACES: an isle's place, or the open sea's none
     const key = `${px},${py}`;
     const loc = locationIndex.get(key);
-    if (loc?.spawned && _spawnLedger.expired(key, _spawnClock()) && !_insideSpawn(key)) {
+    if (loc?.spawned && !loc.wildHall && _spawnLedger.expired(key, _spawnClock()) && !_insideSpawn(key)) {   // AUDIT SPAWN-REBIRTH F6: a hall's day is its own
       _locIndexGen += 1;   // AUDIT OW4 D5
       locationIndex.delete(key);
       return null;
@@ -2453,8 +2460,11 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  FIELD BUGS 29h (SPAWN-PLATE; the Discord: "Elite Dungeons that despawn stay on map ... no entrance anymore but are
    *  still marked"): standing on the ground is the BUILD's word - whether the pixel stood a location, never that it is
    *  built. A pixel built after the clock ran out is built EMPTY, and read as built it kept its found plate (the store
-   *  files a spawn for good) and its walk to bare grass whenever the traveller came within the grid. */
-  const tvSpawnGone = (x, y) => { const key = `${x},${y}`; return _spawnLedger.expired(key, _spawnClock()) && !_insideSpawn(key) && built.get(key)?.location == null; };
+   *  files a spawn for good) and its walk to bare grass whenever the traveller came within the grid.
+   *  AUDIT SPAWN-REBIRTH F2: and the build's word BOTH WAYS - a pixel built empty while its spawn was dead stands none
+   *  until it is built again, though the spawn has stood again since (its time over, `expired` answers false: the plate
+   *  and the walk came back over the same bare grass, 29h's report the other way round); off the built ground, the clocks. */
+  const tvSpawnGone = (x, y) => { const key = `${x},${y}`; if (_insideSpawn(key)) return false; const b = built.get(key); return b ? b.location == null : _spawnLedger.expired(key, _spawnClock()); };
   /** AUDIT OW4 D4: WHAT spawnedDungeonAt WOULD STAND on a pixel it has not built - its own gates (the sea, a path across
    *  the pixel, the clocks; the roll and the page are asked by the caller) and its clone, with none of its writes (the
    *  index, the roads' provisional keys): a far found spawn is marked, never built. */

@@ -10,7 +10,7 @@ import {
 import { LOCATION_TYPES, CLIMATES, getMapPixelID } from '../src/formats/mapsFile.js';
 import { TV_FAR_RANGE } from '../src/systems/travelFarPlaces.js';
 import { ARRIVAL_BUFFER } from '../src/systems/travelAutopilot.js';
-import { spawnedMapId, spawnsDungeon, createSpawnLedger, GENERAL_TTL_MINUTES } from '../src/world/spawnedDungeons.js';
+import { spawnedMapId, spawnsDungeon, createSpawnLedger, GENERAL_TTL_MINUTES, REBIRTH_TTL_MINUTES } from '../src/world/spawnedDungeons.js';
 import { planRoute, routeLegs, routeDrawPoints, routeGround, TV_MOUNTAIN_CLIMATE, TV_STEEP_RISE } from '../src/systems/travelRoute.js';
 
 // PIN MOVED (AUDIT OW5 G2): the Overworld's own lines are said through tvSay - held at the scale they are said at
@@ -455,6 +455,12 @@ test('AUDIT OW4 D2/D4 host: a spawn is GONE by the feature\'s own test (the ledg
   assert.equal(gone(5, 6), false, 'AUDIT OW5b D2: standing on built ground, it stands until that ground is built again');
   built.set('5,6', { location: null });   // FIELD BUGS 29h (SPAWN-PLATE): the ground built again with the clock run out - empty
   assert.equal(gone(5, 6), true, 'built EMPTY is gone - no plate over bare grass, no walk to it');
+  // AUDIT SPAWN-REBIRTH F2: the build's word both ways - its time over, a spawn stands again off the built ground, never
+  // on a pixel built empty while it was dead (the plate and the walk over bare grass, 29h the other way round)
+  clock = GENERAL_TTL_MINUTES + REBIRTH_TTL_MINUTES;
+  assert.equal(gone(5, 6), true, 'its time over, its pixel built empty while it was dead: still none on that ground');
+  built.clear();
+  assert.equal(gone(5, 6), false, 'off the built ground: the clocks - it stands again');
   built.clear();
   clock = NaN;
   assert.equal(gone(5, 6), false, 'a clock not yet running expires nothing');

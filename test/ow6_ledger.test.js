@@ -20,7 +20,7 @@ import {
 } from '../src/net/overworldLaw.js';
 import {
   parseClient, validOwIn, validOwOut, owGate, owRoomGate, relaySupportsOverworld, OW_RELAY_MIN, OW_HZ_MAX, OW_BURST_MAX,
-  OW_ROOM_HZ_MAX, OW_KINDS, OW_LEDGER_KEY, OW_BAND_ID_RE, OW_RAIDER_ID_RE, owWireRow, cellOfRoom, RELAY_VERSION,
+  OW_ROOM_HZ_MAX, OW_KINDS, OW_LEDGER_KEY, OW_BAND_ID_RE, OW_RAIDER_ID_RE, owWireRow, cellOfRoom, isCellRoom, RELAY_VERSION,
   worldRoom, WORLD_CELL, PIXEL_UNITS, DROP_STRIKES_MAX, sharedClassicMinutes, wallMsForClassicMinutes, ONLINE_MINUTES_PER_MS,
 } from '../src/net/wire.js';
 import { BAND_LIFE_MS, BAND_CELL_PX, BAND_ID_RE, bandsNear, bandPixelOf, wanderAt, BAND_WANDER_MPS } from '../src/systems/travelBands.js';
@@ -563,7 +563,7 @@ function ledgerHost({ online, clockMin = M0, ms = T0 } = {}) {
     _bandSpent: new Set(), _bandChase: new Map(), _bandPeer: new Map(), tvRaid: { spent: new Set(), chase: new Map(), peer: new Map() }, tvDng: { at: {} },
   };
   const scope = {
-    online: d.online, _spawnLedger: d._spawnLedger, _spawnClock: () => d.clockMin, bandNowMs: () => d.ms, raidNowMs: () => d.ms,
+    online: d.online, _spawnLedger: d._spawnLedger, _spawnClock: () => d.clockMin, bandNowMs: () => d.ms, raidNowMs: () => d.ms, isCellRoom,   // AUDIT SPAWN-REBIRTH F1: what is owed waits for a cell
     BAND_LIFE_MS, RAIDER_LIFE_MS, bandLifeOf, raiderLifeOf, _bandSpent: d._bandSpent, _bandChase: d._bandChase, _bandPeer: d._bandPeer,
     tvRaid: d.tvRaid, tvDng: d.tvDng, performance: { now: () => d.t },
     locationIndex: d.locationIndex = new Map(),   // SD2b (PIN MOVED): the first-sight door asks the index whether its pixel holds a Hollow - never noted
@@ -577,7 +577,7 @@ function ledgerHost({ online, clockMin = M0, ms = T0 } = {}) {
 test('OW6L host run: WHAT I SPEND AND MY SPAWNS\' CLOCKS ARE OWED TO THE CELL until it takes them - a spent band or raider, a spawn\'s first sight (and never a sight already in my ledger), its clear; said a second apart at most, what the cell did not take said again, nothing said to a relay that keeps no ledger (and nothing lost); a spent id of a life gone and a row owed too long let go (mutants: the first sight unsaid, the rest dropped, an old relay spoken to)', () => {
   const sent = [];
   let take = Infinity;
-  const online = { owOk: false, sendOverworld: (k, payload) => { const went = payload.slice(0, take); sent.push([k, went]); return went; } };
+  const online = { owOk: false, room: CELL, sendOverworld: (k, payload) => { const went = payload.slice(0, take); sent.push([k, went]); return went; } };
   const h = ledgerHost({ online });
   const key = `${S1[0]},${S1[1]}`;
   h._spawnSeen(key);
@@ -612,8 +612,25 @@ test('OW6L host run: WHAT I SPEND AND MY SPAWNS\' CLOCKS ARE OWED TO THE CELL un
   assert.deepEqual(h.owed(), { sp: [], dg: [] }, 'both let go');
 });
 
+test('AUDIT SPAWN-REBIRTH F1 host run: A FIRST ENTRY MADE UNDERGROUND REACHES THE CELL - owed while my socket stands in the dungeon\'s room, where nothing is said, it is never let go there however long the run, and is said from the cell I come out in; its keep counted from there (mutants: let go underground; the keep counted from the entry)', () => {
+  const sent = [];
+  const online = { owOk: true, room: 'dungeon:m123456', sendOverworld: (k, payload) => { if (!isCellRoom(online.room)) return []; sent.push([k, payload]); return payload; } };
+  const h = ledgerHost({ online });
+  const key = `${S1[0]},${S1[1]}`;
+  h.d.t = 1_000;
+  h._spawnSeen(key);   // the first-entry door, at the dungeon's build - the socket already in its room
+  assert.deepEqual(h.owed().dg, [key]);
+  for (let t = 2_000; t <= 1_000 + 3 * h.OW_SAY_KEEP_MS; t += 60_000) h.overworldLedgerFrame(t);
+  assert.deepEqual(sent, [], 'nothing said from the dungeon\'s room');
+  assert.deepEqual(h.owed().dg, [key], 'and the row still owed, three keeps on');
+  online.room = CELL;
+  h.overworldLedgerFrame(1_000 + 3 * h.OW_SAY_KEEP_MS + h.OW_SAY_MS);
+  assert.deepEqual(sent, [['dg', [[...S1, M0]]]], 'out in the cell: the cell hears the run began');
+  assert.deepEqual(h.owed().dg, [], 'taken');
+});
+
 test('OW6L host run: THE CELL\'S WORD HEARD - a spent band is spent here and its chase ends, a spent raider too; a row min-merged into my spawn ledger, the Overworld\'s dungeons read again only when it moved (mutants: a band unspent, a raider taken for a band, the list never re-read)', () => {
-  const h = ledgerHost({ online: { owOk: true, sendOverworld: () => [] } });
+  const h = ledgerHost({ online: { owOk: true, room: CELL, sendOverworld: () => [] } });
   h.d._bandChase.set(bandIn(0), {}); h.d._bandPeer.set(bandIn(0), {}); h.d.tvRaid.chase.set(raiderIn(), {});
   h.overworldLedgerHeard({ k: 'sp', ids: [bandIn(0), raiderIn()] });
   assert.ok(h.d._bandSpent.has(bandIn(0)) && !h.d._bandChase.has(bandIn(0)) && !h.d._bandPeer.has(bandIn(0)), 'the band: spent, its chase ended');
@@ -639,7 +656,7 @@ test('OW6L END TO END: A spends a band and first sees a spawn; the relay\'s cell
     const a = r.connect(), b = r.connect();
     await r.hello(a, 'peer-0001', ON); await r.hello(b, 'peer-0002', ON);
     const pending = [];
-    const bridge = { owOk: true, sendOverworld: (k, payload) => { pending.push(say(a, k === 'sp' ? { k, ids: payload } : { k, rows: payload })); return payload; } };
+    const bridge = { owOk: true, room: CELL, sendOverworld: (k, payload) => { pending.push(say(a, k === 'sp' ? { k, ids: payload } : { k, rows: payload })); return payload; } };
     const A = ledgerHost({ online: bridge }), B = ledgerHost({ online: bridge }), C = ledgerHost({ online: bridge });
     const key = `${S2[0]},${S2[1]}`;
     A._spawnSeen(key); A.owSaySpent(bandIn(3));
