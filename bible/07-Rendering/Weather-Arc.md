@@ -1140,7 +1140,8 @@ were not a leak but read like one:
   the panner and the low-pass stayed wired into the bus. `releaseNodes` lets go of all of them, as the beds and the
   retrigger loops already did.
 - **One eye array a frame.** The falling weather's draws (the sand, the rain and snow, the wisps) each minted
-  `new Float32Array(eye)` every frame; each host now fills one (`wxEye32`, `eye32`) made at boot.
+  `new Float32Array(eye)` every frame; each host now fills one (`wxEye32`, `eye32`) made at boot - world.js inside
+  `drawFalling`, not in the frame, whose bytecode PERF-V8 holds under three quarters of V8's ceiling.
 
 Pinned in test/rainleak.test.js on a recording GL and a recording audio context; `tools/mutants/rainleak.json`, 16, 16
 dead. What still mints an eye a frame - the bolts (test/bolt_lightning.test.js pins their eye as the view's own), and in

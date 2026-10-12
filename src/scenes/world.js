@@ -35227,7 +35227,6 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // 150-450 m up and back - so the weather was a small cube round the sprite, seen from outside it. They wrap round
     // the eye the view is drawn from: the air in front of the camera is full of it, as it is when you stand in it.
     const wxEye = tvf ? mwv.eye : cam.pos;
-    wxEye32[0] = wxEye[0]; wxEye32[1] = wxEye[1]; wxEye32[2] = wxEye[2];
     // WX2: what falls is what the front SHOWS - under the enhanced sky the
     // outgoing rain tapers after the sim has cleared and the incoming
     // holds off until the deck is in. Classic: the sim's mode, as W1.
@@ -35235,6 +35234,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // the wisps - writes no depth, so every pass drawn AFTER it painted over it: the grass field and the halls' banners
     // stood in front of rain falling nearer the eye. It is drawn once the opaque world is whole (below, after the banners).
     const drawFalling = () => {
+      wxEye32[0] = wxEye[0]; wxEye32[1] = wxEye[1]; wxEye32[2] = wxEye[2];   // RAIN-LEAK: filled here, not in the frame - PERF-V8's bytecode ceiling
       const precipShown = enhancedFront ? fx.shown : precipMode;
       if (precipShown === 'sand') {
         // WEATHER2d: THE SANDSTORM'S SAND - the wisps' program in the sand's look, the front's intensity its
