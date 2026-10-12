@@ -10181,8 +10181,8 @@ HOME-VOTE II (below).
   offered its take-back alone (II A3: homeVoteRows, homeVotePressable). The vote is shown at once and read back (the
   registry's `vote`; a house the page holds no owner of is asked again, and no vote sent), never told as a home of
   mine changed (LEGACY7's listener).
-- **HOME-VOTE - what a negative score hides, and from whom.** While a home's score runs below zero it is SHUNNED
-  (homeShunned), and what its owner chose to show stands for its INSIDERS alone - the owner's own account (any of its
+- **HOME-VOTE - what a negative score hides, and from whom.** While a home's score runs down to HOME_SHUN_AT (-5,
+  HOME-SHUN below) it is SHUNNED (homeShunned), and what its owner chose to show stands for its INSIDERS alone - the owner's own account (any of its
   characters: `mine`) and, for a hall, an account with any character in its guild (`member`, `insider` -
   homeDecorShown). Everyone else walks into the room Daggerfall furnished - no placed piece but a hired trader with
   goods on sale at it (a shop, never a decoration: decorStaysShunned; II A1: any piece may be made a trader, so the
@@ -10197,9 +10197,9 @@ HOME-VOTE II (below).
   map opened (II B6: nothing re-reads it on a clock; a viewer standing at a yard keeps what they read). The owner
   reads the score at their own door - on its plaque, or in their Info box where none is drawn (II B2) - and,
   shunned, that the house's decorations are hidden from other players.
-- **The calls made here, each the owner's to change.** NEGATIVE means a score below zero, as asked - one vote down on a
-  home nobody has voted up hides it until somebody does; there is no minimum count (the week's age and the hour's 30
-  are what stand between a throwaway account and every home). A hall is a player's house and is voted as one.
+- **The calls made here, each the owner's to change.** SHUNNED means five votes down, net (HOME_SHUN_AT - HOME-SHUN,
+  below: it was any score below zero, as first asked); there is no minimum count beyond it (the week's age and the
+  hour's 30 are what stand between a throwaway account and every home). A hall is a player's house and is voted as one.
   "Exterior decorations" is read as the yard AND the painted outside (HOME-LOOK's Exterior tab); a hall's banners are
   its guild's heraldry, not its decor, and stand. A hired trader stands. A tenant renting a room, and a party member
   let in, are visitors: a shunned home is bare to them. The vicinity is the door: the service cannot see where a voter
@@ -10215,8 +10215,8 @@ HOME-VOTE II (below).
   more of a shunned home's room and paint than a new one (AUDIT A3); its yards are the client's to hide. No relay
   change.
 - Pinned in `test/decorfigure.test.js` (8) and `test/homevote.test.js` (12); `tools/mutants/decorfigure.json` 19 dead
-  and 1 equivalent as recorded, `tools/mutants/homevote.json` 92 dead and 1 equivalent as recorded (AUDIT HOME-VOTE
-  II's among them). PIN MOVED: guild_yard's and homelook's look-merge pin (a look
+  and 1 equivalent as recorded, `tools/mutants/homevote.json` 94 dead and 1 equivalent as recorded (AUDIT HOME-VOTE
+  II's and HOME-SHUN's among them). PIN MOVED: guild_yard's and homelook's look-merge pin (a look
   counts where it is shown - never lookOfHome, which would rebuild the owner's street under the painter's preview;
   `tools/mutants/guild_yard.json` and `housing.json` re-aimed); home2's, homerent's and guild1d_client's door rows (the
   visitor's rows and the votes under them); decor1's room list (the vote's gate between the list stood and its
@@ -10337,6 +10337,38 @@ fixed and pinned unless DOCUMENTED:
   and the placer's figure by kind (every catalogue person is in the archives).
 - Pinned in `test/homevote.test.js` (four AUDIT II tests) and `test/decorfigure.test.js`; `tools/mutants/homevote.json`
   and `decorfigure.json` - every AUDIT II mutant dead but the two equivalents.
+
+### HOME-SHUN - a home is hidden at five votes down, not one (2026-10-12, from play)
+
+A player, in feature-feedback: "I put a park bench and a small fence in my backyard and it got voted down from 0 to -1
+from some troll ... how can anyone vote positively for your house if no one sees it ... people could see the negative,
+and also vote negative, thinking it's bad (they can't see what's there) ... I think the voting system should hide
+placements from everyone starting at like, -5, -10 or something ... -1 is a bit crazy since you START at 0 when you buy
+a house. The system should primarily hide plagues that the majority hates."
+
+- **The law.** A home is shunned at HOME_SHUN_AT, -5 - its score at five down net or lower (`src/net/homeVoteLaw.js`
+  homeShunned) - where any score below zero hid it. One account's word against a house nobody had seen yet hid it from
+  everyone, and a hidden house could only be voted on blind, so a vote down drew more of them; at -1 to -4 a house now
+  stands whole, to be seen and voted up. The bar sits at the low end of the player's "-5, -10": the week's age and the
+  hour's 30 already stand between a throwaway account and a home, and five accounts a week old agreeing is the town's
+  word, not a troll's.
+- **One law, every reader.** Everything that hides a home reads homeShunned: the room the service hands out
+  (`server-account/src/homeVotes.js` homeShownTo, so a build from before HOME-SHUN is handed a home at -1 to -4 whole),
+  the paint homesInTown says (`server-account/src/homes.js` lookFor), the client's room, yard and paint
+  (homeDecorShown), and the door's lines (`src/systems/onlineHomes.js` homeVoteLines). No migration: the score kept on
+  the row is unchanged, only what it means. A home that stood at -1 to -4 stands whole again at the next read of its
+  town.
+- **The four hosts.** As HOME-VOTE: `scenes/world.js` and `scenes/worldModes.js` read the law and change no line;
+  `scenes/exterior.js` and `scenes/dungeonContext.js` stand no online homes. ACCOUNT_VERSION is unchanged: the service
+  reads the law it imports, and no route's shape moves - the deploy is the service and the page together, either first.
+- Pinned in `test/homevote.test.js` (12): -1 to -4 shown and -5, -6 shunned; a visitor shown at -1 and hidden at -5; the
+  owner, a member and the kin shown at -5; the service hands a home at -1 its whole room and at -5 its trader alone; a
+  hall shunned by five votes down. PIN MOVED: every service pin that shunned a home by one vote now votes it down by
+  five accounts (the test's `shun`); the yard's pin stands at HOME_SHUN_AT. Mutants: `tools/mutants/homevote.json`'s
+  HOME-VOTE-zero-shunned re-aimed at the new line, and HOME-SHUN-one-vote-hides and HOME-SHUN-the-bar-itself-shown,
+  both dead. FOUND ON THE WAY: HOME-VOTE-gone-never-re-asked survived on main - its pin voted on a house the page held
+  no owner of, which re-asks before it sends - so a vote on a house sold under the reader now reaches the service's own
+  `no-home` and is pinned to re-ask.
 
 ### YARD-LIGHT - a yard's lamp lights as the town's (2026-10-07)
 

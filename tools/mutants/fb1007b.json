@@ -141,8 +141,8 @@
   {
     "name": "FB1007B-SEAT-OVER-SUCCESSION",
     "file": "src/scenes/legacyHost.js",
-    "old": "    if (!family || past || family.pending || !deps.on() || !p || !isAlive(p) || !playedHere(p)) return null;\n    const t = deps.town(deps.here());\n    return t &&",
-    "new": "    if (!family || past || !deps.on() || !p || !isAlive(p) || !playedHere(p)) return null;\n    const t = deps.town(deps.here());\n    return t &&",
+    "old": "    if (!family || past || family.pending || !deps.on() || !p || !isAlive(p) || !playedHere(p)) return null;\n    const t = placeHere();\n    return t &&",
+    "new": "    if (!family || past || !deps.on() || !p || !isAlive(p) || !playedHere(p)) return null;\n    const t = placeHere();\n    return t &&",
     "tests": [
       "test/fb1007b_familyseat.test.js"
     ]
