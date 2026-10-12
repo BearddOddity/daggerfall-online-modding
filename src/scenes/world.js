@@ -9,7 +9,8 @@
 import { DecisionBoxWindow } from '../ui/decisionBox.js';   // REST-WARN2: the Plus decision box
 import { isGothwayGarden, gothwayNorthSpots } from '../systems/gothwayBoards.js';
 import { wildGiantsAt, WILD_GIANT_STAND_M, WILD_GIANT_RESPAWN_MS } from '../systems/wildGiants.js';   // ZONE-GIANTS   // GOTHWAY-BOARDS: at the north entrance
-import { NAV_CELL } from '../world/cityNavigation.js';   // GOTHWAY-NORTH: the walk grid's cell
+import { NAV_CELL } from '../world/cityNavigation.js';
+import { pixelKeyText } from '../world/pixelKeys.js';   // PIXEL-KEYS: a built pixel's key text made once   // GOTHWAY-NORTH: the walk grid's cell
 import { BULLETIN_BOARD_MODEL_ID } from '../world/rmbLayout.js';   // GOTHWAY-BOARDS: the board's own model
 import { restAilmentLines } from '../systems/restWarning.js';   // REST-WARN
 import { walkModeOn, bindWalkMode } from '../player/walkMode.js';   // PADWALK: walk mode, one button on and off
@@ -8688,7 +8689,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   };
   const csaPixelAt = (x, z) => {
     const c = state.compensation;
-    return built.get(`${state.mapOrigin.x + Math.floor((x - c[0]) / TERRAIN_SIZE)},${state.mapOrigin.y - Math.floor((z - c[2]) / TERRAIN_SIZE)}`) ?? null;
+    return built.get(pixelKeyText(state.mapOrigin.x + Math.floor((x - c[0]) / TERRAIN_SIZE), state.mapOrigin.y - Math.floor((z - c[2]) / TERRAIN_SIZE))) ?? null;   // PIXEL-KEYS: the sea's soundings ask it hundreds of times a frame
   };
   /** A MeshCollider's mesh in its object's frame: the bundle's, a classic model's, or Unity's own Plane or Cube. */
   const csaColliderMesh = (c) => {
