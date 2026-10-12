@@ -226,8 +226,11 @@ test('ACC1b: the migration is the real schema, and applying it twice changes not
   // records the service wrote. It grants nothing: Founder is still `firstPlayed` against the cutoff, read at every ask.
   // SD9b added ONE (0090): `sd_honours`, what a Brass Remnant's kills granted the account on their first writes (Hourbreaker,
   // The Turning Hour) - a roll that happened, recorded as WB9g's sale is and held for good; the kills are `sd_kills`' rows.
+  // NAME-AS added ONE (0111): `name_as`, which name the room reads - 'character' for the realm character's the token is
+  // minted for, null for the account's - the one choice about a name, as `title` is about a title. The name itself is
+  // still never stored twice: displayName derives the account's, and the character's is its own row's.
   assert.deepEqual(cols.sort(), ['aura', 'created_at', 'email', 'first_played_at', 'glyphs_off', 'guest_name', 'handle', 'handle_lc', 'id', 'insignia', 'insignia_spent',
-    'last_seen', 'legal_accepted_at', 'muted_by', 'muted_until', 'password', 'patreon_at', 'patreon_status', 'patreon_tiers', 'patreon_user',
+    'last_seen', 'legal_accepted_at', 'muted_by', 'muted_until', 'name_as', 'password', 'patreon_at', 'patreon_status', 'patreon_tiers', 'patreon_user',
     'played_at', 'played_s', 'privacy_version', 'recovery_hash',
     'registered_at', 'renown_hour', 'renown_hour_xp', 'renown_last_credit', 'sd_honours', 'terms_version', 'title']);
   // GLYPH-WEAR: `glyphs_off` is the one glyph column, and it grants nothing - it is the choice of which true glyphs to hide
