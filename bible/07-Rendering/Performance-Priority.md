@@ -73,6 +73,11 @@ the closures read live there now - `dt`, the batch lists), and 21 closures are m
 young allocation, under 0.01% of a frame. Not measured: the frame's time in the game - the change is that V8 is now
 allowed to optimize it, and how much that buys is the real machine's A/B (For the owner).
 
+**MWNPC19 (2026-10-12, `04-Characters/Morrowind-NPCs.md` section 28).** The frame had grown to 45,893 bytes, 187 under
+the 3/4 line, and the standing horses' and the crews' calls took it over. Their work is the host's own functions
+(`standingHorsesFrame`, `offerCrews`), and the look's step before the motor - `if (!gamePaused()) {`, the look filter,
+the keyboard look, the lock-on - runs as a closure of its own, `frameLook`: 44,976 bytes.
+
 Pins: `test/perfv8.test.js` (2) - every `frame` in the world host's graph and every closure moved out of one under the
 ceiling and under three quarters of it (the tripwire: move the next statement out before the cliff, not after); over
 the parse, the 21 closures by name in order, each made in the frame and called once - a plain call, the statement after

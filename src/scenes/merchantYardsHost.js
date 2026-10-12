@@ -266,11 +266,15 @@ export function createMerchantYards({
     yardToScene(y.at, y.site.yaw, k[0], 0, k[1], b.origin);
   }
   function poseHorses(y, cam) {
-    if (!y.horses.length || !renderer?.createBillboardBatch || !horseArt?.()) return;
+    if (!y.horses.length) return;
     const a = (y.site.yaw * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
+    // STAND-HORSE: where each stands and faces whether or not its picture is up - the 3D horse stands there too
     for (const h of y.horses) {
       yardToScene(y.at, y.site.yaw, h.x, 0, h.z, h.pos);
       h.fwd[0] = h.forward[0] * c + h.forward[1] * s; h.fwd[1] = 0; h.fwd[2] = -h.forward[0] * s + h.forward[1] * c;
+    }
+    if (!renderer?.createBillboardBatch || !horseArt?.()) return;
+    for (const h of y.horses) {
       const view = horseViewFor(calculateHorseOrientation(cam ?? h.pos, h.pos, h.fwd));
       if (!view) continue;
       if (!h.batch) { h.batch = renderer.createBillboardBatch(HORSE_ARCHIVE, horseStillRecord(0), { w: HORSE_BILLBOARD_WIDTH, h: HORSE_BILLBOARD_HEIGHT }, [[0, 0, 0]]); h.batch.origin = [0, 0, 0]; }
@@ -361,6 +365,15 @@ export function createMerchantYards({
           y._mwLook = folkLookOf({ archive, personFaceRecordId: 0, gender: y.site.keeper?.sex === 'female' ? GENDERS.Female : GENDERS.Male, guard: false }, race, textSeed(String(y.key)));
         }
         offer(personActor(y, y._mwLook, b.origin, eyeAt, dt), b);
+      }
+    },
+    /** STAND-HORSE (bible/04-Characters/Morrowind-NPCs.md section 28): each standing yard's horses offered to the
+     *  host's standing horses (world/standingHorses.js) - where it stands, the way it faces, the bay its sprite is drawn
+     *  in (look 0, the art's own), its billboard. @param {{ offer: Function }} horses */
+    offerHorses(horses) {
+      for (const y of yards.values()) {
+        if (!y.at) continue;
+        y.horses.forEach((h, i) => horses.offer(h, h.pos, Math.atan2(h.fwd[0], h.fwd[2]), 0, h.batch, 1 + i));
       }
     },
     /** The keepers and the horses, for the host's flats. */
