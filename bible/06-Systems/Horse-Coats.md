@@ -146,8 +146,10 @@ other flank.
 - **The pool's horses** (`scenes/horseCartPool.js`): the bay's decoded views
   and walk frames are kept, and each look's are dyed off them once
   (`horseArt.ensureLook`) under `h<view>~<code>` and `w<view>#<frame>~<code>`,
-  one set a frame (`_dyeBudget` - the walk set is some 20 ms of CPU, and a road
-  can show six looks at once); an owner's team is posed in its owner's look
+  `HORSE_DYE_PICTURES` (5) pictures a frame among every look (`_dyeBudget` -
+  PERF-DYE: the walk set is forty pictures, some 45 ms of CPU, and a set a frame
+  was a hitch for every look met on a road; `07-Rendering/Performance-Priority.md`);
+  an owner's team is posed in its owner's look
   (`lookOfOwner`) - the bay's until the look's are up. Past `HORSE_LOOKS_KEPT`
   (16) looks, the one longest undrawn is let go (`trimLooks`). Both hosts hand
   the pool the look through the one seam, `world/wagonModels.js` wagonPoolDeps.
