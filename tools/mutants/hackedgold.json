@@ -291,5 +291,23 @@
     "tests": [
       "test/hackedgold.test.js"
     ]
+  },
+  {
+    "name": "HACKED-GOLD-PRICE-CAP-an-honest-price-capped",
+    "file": "src/systems/loot.js",
+    "old": "    it.value = Math.min(it.value, Math.max(_priceCeiling(it), wireFloorOf(it)));",
+    "new": "    it.value = Math.min(it.value, Math.max(_priceCeiling(it) / 2, wireFloorOf(it)));",
+    "tests": [
+      "test/int1_itemlaw.test.js"
+    ]
+  },
+  {
+    "name": "HACKED-GOLD-PRICE-CAP-a-deed-capped",
+    "file": "src/systems/loot.js",
+    "old": "if (_priceCeiling && !VALUE_IS_IDENTITY_TEMPLATES.includes(it.templateIndex) && !BOAT_TEMPLATES.includes(it.templateIndex)) {",
+    "new": "if (_priceCeiling && !VALUE_IS_IDENTITY_TEMPLATES.includes(it.templateIndex)) {",
+    "tests": [
+      "test/int1_itemlaw.test.js"
+    ]
   }
 ]

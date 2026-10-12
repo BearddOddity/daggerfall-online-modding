@@ -670,7 +670,8 @@ the clock, and the legacy record held to its own law.
   pile's count past one DFU `int` are law findings (`itemLaw.js` GOLD_INT_MAX, `judge.js` purseWord) - the absurd holds
   from day one, the measure no longer saturates; the law's version 4, `ACCOUNT_VERSION` acct122 (TECH1's rule; 3 and acct121 on its branch, renumbered past BAL9 at the merge). The
   review (INT6): `realm-gains` (who went past the bucket, largest first) and `realm-trades` (whom a character traded
-  with, and what each gave). `test/hackedgold.test.js` (10); `tools/mutants/hackedgold.json` (32, all dead). Read again
+  with, and what each gave). `test/hackedgold.test.js` (10), and `int1_itemlaw`'s honest sweep through the projection with
+  and without the ceiling - no honest price moved; `tools/mutants/hackedgold.json` (34, all dead). Read again
   against the session's "I dont wanna mess with honest players": an honest player feels it at one place alone - online
   a letter goes into no room's container or body, and one already lying there is dropped (no one can tell it from a
   forged one) - asked, and kept. Coins on a peer's word: asked, they stay. Left for Mac, on the page: the budget's

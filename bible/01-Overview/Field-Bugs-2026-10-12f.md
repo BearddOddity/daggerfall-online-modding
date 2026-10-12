@@ -119,9 +119,14 @@ owner's body keeping a letter, its count); a building's word heard and said; eve
 held under the ceiling (an honest one, a letter, a deed, the floor); the worn offer; the put on the classic pack online
 and off, and the enhanced pack's gates; GOLD-INT's bounds; GOLD-INT over the real service (a letter of a trillion and a
 purse past one count held by the law, the realm trade refusing it as its own); the review (`gains` past the bucket while
-`holds` is empty, `trades` both ways, 403 to anyone else). `tools/mutants/hackedgold.json` (32, all dead - one first
-survived: the building's pin used the field's nine trillion, which GOLD-INT now refuses at the door before the peer's
-law is asked, so it pinned nothing; it carries a letter the law takes). PIN MOVED: SS3's, PORTAL1's and AUDIT SS's
+`holds` is empty, `trades` both ways, 403 to anyone else). And `test/int1_itemlaw.test.js`'s HACKED-GOLD PRICE-CAP
+(added at the merge past BAL9, after the session's "I dont wanna mess with honest players"): every piece the honest
+sweep mints comes off the wire's projection at the price it did without the ceiling registered - BAL9's caster lines
+and arcane Legendaries among them, and a deed priced past the ceiling at its own price - so the cap can take value from
+no honest player, and a new honest piece past the ceiling fails here before it ships. `tools/mutants/hackedgold.json`
+(34, all dead - one first survived: the building's pin used the field's nine trillion, which GOLD-INT now refuses at
+the door before the peer's law is asked, so it pinned nothing; it carries a letter the law takes. The two the
+honest-price pin answers, alone: an honest price capped, the ceiling halved; a deed capped). PIN MOVED: SS3's, PORTAL1's and AUDIT SS's
 source pins and their seven records (`unbound` to `peerHanded` at the sites, re-aimed by content, all dead); WORLD4's,
 WORLD8's and AUDIT WORLD4's; WORLD6b-iii(c)'s body count; CORPSE-GOLD's lifted scope; the law version's (INT1, TECH1);
 the account version's (acct122, its six records re-aimed, all dead; at the merge past BAL9 they and BAL9's own two version records were re-aimed again, all dead). Six more records re-aimed by content, all dead:
