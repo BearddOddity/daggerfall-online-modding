@@ -1923,8 +1923,9 @@ producers before it was fixed.
 ### Decided (AUDIT C&C, below)
 
 - **Boons reaches other players (B1)**: kept the player's - its +5s ride
-  the duel's and the siege's live stats and Thriving's luck a room's loot,
-  as every live buff does. AUDIT C&C says why.
+  the striker's live stats in every refereed fight and Thriving's luck a
+  room's loot, as every live buff does. AUDIT C&C says why, and what H5
+  found under it.
 - **An older build erases a stored Boons (B12)**: inherent to a new stored
   value; a player who runs an old desktop build picks Boons again.
 - **The enhanced menu's own Stats page (B11)**: its Attributes page names
@@ -2130,12 +2131,17 @@ lines, the clothes, the load, the page, the phone's rule).
   is always the host's own, and a one-minute step is that minute. The
   climate is still the arrival's: the route is the travel's, not the
   needs'.
-- **B1 - BOONS ONLINE: KEPT.** Every live buff rides the duel's sheet
+- **B1 - BOONS ONLINE: KEPT.** Every live buff rides the striker's sheet
   (`combat/duelCombat.js` `duelAttackerOf` reads `liveStat`) and a room's
   loot - a Fortify Strength gives far more than a boon's +5 - and the tier
   is every player's to choose and every boon is earned by keeping the
   body. Leaving the points out online would have made Boons online the
-  hearth alone.
+  hearth alone. What rides is the STRIKER's half alone: since INT8 every
+  blow and spell between players is counted on the striker's machine, and
+  nothing of the defender's sheet - its boons, attributes, armour or
+  effects - reaches a roll; the referee's vitality and clips are its
+  defence. Under that, H5 (below) found the striker's own buffs counted
+  for nothing.
 - **B11 - THE ATTRIBUTES PAGE SAYS WHY.** The enhanced menu's Stats
   Attributes page names the boons under its meters
   (`ui/temperatureCard.js` `boonStatRows`, the pack's own).
@@ -2342,3 +2348,45 @@ Pinned by `test/auditcc_items.test.js` (the real producers, the real camp
 pool), with the camp lists in `auditrest2_camps`, `auditrest3`,
 `rest2_campfire`, `rest6_consumables` and `surv3_camps` and the kit in
 `surv2_items` re-aimed by content.
+
+### Found and fixed - the boons in a fight between players (H5)
+
+B1 kept Boons online on the reading that every live buff rides the duel's
+sheet. It rode the STRIKER's: since INT8 every blow and spell between
+players - a duel's, a siege's and its works', a Royal Tourney's, the open
+zone's - is rolled or counted on the striker's own machine, against a
+stand-in, and the referee clips the number. The stand-in was a stub of
+the striker's OWN sheet (`duelStub(duelAttackerOf(me))`), so every
+attribute the striker brought cancelled itself; PCAAO charged it for the
+"target's" luck past 50 - its own - and its own endurance resisted its
+blow; its own race and willpower saved against its own spell (a Breton's
+Magic bolt counted 1,184 of 200 where its Fire bolt counted 2,361); a
+Disintegrate counted the caster's own health; and under DFU's own core
+the stand-in had no armour table, an armour past any, so 3 blows in 100
+landed. Over 200,000 seeded swings of the starting Shortsword (PCAAO,
+the core online play is held to), Thriving LOWERED its owner's hit
+chance, 60.59% bare to 59.62%, and a Fortify Luck of 15 to 58.66%.
+
+Every roll and count between players takes one neutral stand-in now
+(`combat/duelCombat.js` `duelStandIn`): every attribute 50, the middle of
+the wire's own clamp, where every `stat - 50` term of both cores reads
+nought; level 1; no race, skill or career bits; whole at the wire's vital
+ceiling, so a Disintegrate counts the body whole and is sent at the cast
+cap (60) - as the gate boss's stand-in, whose health nothing here can
+empty because the relay holds the real one; unarmoured, DFU's 100s. The
+same swings land 61.62% Quenched, Thriving and at +15 Luck, and 60.59% at
++5; the Breton's bolts count alike; DFU's core lands 55.78%. A
+high-attribute striker lands more than it did - BAL8's per-second figures
+were measured on the old stand-in - inside the referee's same window.
+
+What reaches a fight between players, then: the striker's live sheet -
+its attributes (boons, Fortifies, diseases, gear's bonuses), the skills a
+blow reads, its weapon - and nothing of the defender's. The defender's
+attributes, armour, Dodging and effects reach no roll; its defence is the
+referee's vitality and clips. Reading them would make a defender's
+unsigned word (the INSPECT1 card) its defence - BAL8 records that as a
+design of its own, a signed defence.
+
+Pinned by `test/auditcc_pvp.test.js`, with `duel_combat`'s source pin and
+`audit_seats_client`'s G5 fixture re-aimed to the stand-in the hosts
+hand.
