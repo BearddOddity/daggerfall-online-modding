@@ -24,6 +24,10 @@ player's ship far off stands no hull on my client. It does not move the picture 
 fog on every lane (AUDIT PEER-HULL-RANGE moved its edges there and gave a hull built again her record's dress). Its
 section is after PERF-WAGON.
 
+YARD-MERGE (2026-10-12, a capture of the draws in Daggerfall) merges a settled yard's models into one mesh and its
+flats of one picture into one batch: the draws cut by 17-18% where furnished yards stand in view. Its section is after
+YARD-RANGE.
+
 ## How the pass was run
 
 NOT IN THE REAL GAME. The frame probe (`tools/frameProbe.mjs`, PERF-NEXT's recipe) needs the freeware ARENA2, and its
@@ -149,7 +153,7 @@ performance with player's exterior decor items". Read from the code, not measure
 
 **Left.** A yard's lamps keep AUDIT YARD-LIGHT L2's law (no distance cuts a lamp) at 75 and 150 m; Off takes them with
 the yard. A yard's flats are still one batch a piece - merged batches by record, as a pixel's own flats are, would cut
-the draws again and are the next lever. Whether this player's town is yard-bound is not known: the 15.1 ms before the
+the draws again and are the next lever (YARD-MERGE, below, pulled it, and merged a yard's models too). Whether this player's town is yard-bound is not known: the 15.1 ms before the
 frame is not the game's code (`Performance-Exterior.md` SCRIPT-SPLIT), and `?perf=cpu` against an offline visit to the
 same town (yards stand online only) would say.
 
@@ -157,6 +161,62 @@ Pins: `test/yardrange.test.js` (5) - the law and the shelf's default, the row's 
 over the real yard and pool, the default, 75 m and Off - models and flats alike, my own yard always, Off taking a
 stranger's yard down and standing it again; my own yard 200 m off; six syncs of an unchanged town stringifying nothing.
 Mutants: `tools/mutants/yardrange.json`, 10, all dead.
+
+## YARD-MERGE — a yard's models one mesh, its flats of one picture one batch
+
+**Found.** A capture standing in Daggerfall (2026-10-12, the perf build: main and the open performance pull requests,
+every WebGL call counted a frame and a draw's stack sampled one in 32): 1,878 draws a frame, 7,854 WebGL calls, 569
+textures bound. About 360 of the draws were the yards' model pieces - `decorRoom.js draw`, a `drawMesh` a piece, one
+draw a texture of its model - and at a second spot the yards handed 185 flats to the billboard pass, 86 pictures among
+them, each its own batch and its own draw. The town's own statics had been one mesh a pixel since PERF4; a yard's
+pieces never were. YARD-RANGE's "Left" named the lever.
+
+**The fix.** A pool its host lets merge (`createDecorRoom`'s `merge` - the town's yards; a room's host gives none) merges
+once it has stood unchanged `DECOR_MERGE_SETTLE_MS` (500 ms: a town's yards stand piece by piece as their models land -
+one merge, not one a landing) and its host's budget allows (`homeYards.js` `YARD_MERGES_A_FRAME`, one a frame: a town
+streaming in stands every yard at once).
+
+- **The models.** PERF4's `StaticBatchBuilder` over every model piece standing (`decorMergeable`: its triangles,
+  normals and texture coordinates in hand, no door, standing from the pool's origin) - each piece's own matrix less the
+  origin (`mergeDecorModels`), drawn back at it (`decorMergeMatrix`), grouped by each sub-mesh's OWN texture key,
+  unresolved: the merge draws through the host's remap as each piece did (a yard's town's climate is written into its
+  pixel's table as its pieces land, so a key resolved at the merge could be one landed late). One `drawMesh` - one draw
+  a texture - by the host's verdict over the merge's whole box (PERF-YARD's law), its count the pieces'.
+- **The flats.** Flats of one picture, one drawn size (a mirrored one apart) and one lean (the sway and Windfall's share
+  its batch was given) are one billboard batch of many quads, each where it stood (`decorFlatMergeKey`), as a town's
+  flats of one record are. Drawn alone, as before: a figure (the people lane's), a mount (the decal pass's), an animated
+  flat (its animator's, frame by frame - a lamp's flame), a tree Low Poly Trees stands (scaled a flat at a time), any
+  batch with a look of its own, and a picture standing once. A group is handed while any of its flats is big enough to
+  see (YARD-RANGE's size law).
+- **Change.** A piece standing after the merge draws on its own until the next; a merged piece taken out, moved or
+  replaced lets the merges go at once - every piece draws on its own that frame - and the pool merges again once it
+  settles (the decorator's edits included). A recentre moves the merges as one (`restand`); nothing is merged again.
+
+**What it changes on screen.** Nothing for a piece in view. A piece off screen whose yard's box is in view is drawn
+(the GPU clips it) where it was culled alone, and a model too small to see far off (YARD-RANGE's cup past 15 m) is
+drawn with its yard's merge - the flats keep the size law a group at a time.
+
+**Measured** (the perf build, RX 6700 XT, the `__ymOff` switch flipped live, ABBA, standing still; draws counted a
+frame by a light wrapper on the draw calls):
+
+| spot | draws a frame, off -> on | FPS, off -> on |
+|---|---|---|
+| Daggerfall's street, facing furnished yards (models only) | 2,343 -> 1,940 (-17%) | 152.1 -> 158.8 (vsync on: 240 Hz steps) |
+| above the same streets, 10-20 m over the roofs | 2,594 -> 2,129 (-18%) | 163.1 -> 164.2 (vsync off: within the noise) |
+| the same, a CPU profile and a toplevel trace over it | - | 159.8 -> 166.6 |
+
+The same spot's time a frame (the CPU A/B, 4 phases a side): the GPU process's main thread - where ANGLE turns each draw
+into Direct3D - 4.45 -> 3.95 ms (-11%, every phase on below every phase off); the renderer's main thread 6.15 -> 5.90 ms
+(-4%). On this machine the frame is not the draws': the FPS moves within the noise without a profiler. The cut is the
+draws and their cost on both threads, which is the frame on a machine where a draw is dear (the browser's WebGL, a
+weaker CPU, a slower driver - YARD-RANGE's player at 20-40 fps).
+
+Pins: `test/yardmerge.test.js` (12) - the merge where each piece's matrix stood it, keyed unresolved; what joins one;
+the settle, the budget, one draw through the same remap; the verdict over the merge's box and a recentre; a removal
+letting it go and asking a merge again, a late piece on its own; no merge for a room, one model, or one without
+normals; the yards' budget wired; the flats' key and every way out of it; a group of one picture, handed once; a
+removal and a recentre over a group; the size law a group at a time; a group's lean, a host's flat asking. Mutants:
+`tools/mutants/yardmerge.json`, 53, all dead.
 
 ## PERF-INST — a mesh's copies are remembered by place
 
