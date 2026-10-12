@@ -67,7 +67,7 @@ chosen so the answer does not depend on them. test/fb1012b_veinhue.test.js (4); 
 
 ## GRASS-PORTAL: the street's blended flats are drawn after the grass (3)
 
-`src/render/renderer.js` billboardBlended, holdBlendedBillboards; `src/scenes/world.js` `lateFlats`, drawLateFlats.
+`src/render/renderer.js` billboardBlended, holdBlendedBillboards, holdBlended, drawHeld; `src/scenes/world.js` the frame.
 
 FOUND. The violet vortex is COMPANION-PORTAL's (`scenes/portalFx.js`), stood by a Portal Stone (`scenes/portalGates.js`)
 and by a companion's arrival. It is a concealed batch (`conceal` mode 3), so drawBillboards draws it in its blended
@@ -77,11 +77,11 @@ the portal and the field's far edge drew over it - the band across its middle. R
 the rain.
 
 FIXED. The frame takes the street's blended flats (a portal's vortex, a veiled foe, a ghost - the blended phase's own
-test, `billboardBlended`, now the one law the phase asks too) out of its billboards in place (`holdBlendedBillboards`,
-which empties the held list first) and draws them in a call of their own after the grass, the banners and the haze,
-before what falls (`drawLateFlats`). Their shadows are recorded by that call - the records are replayed the next frame.
-The list and its draw are the host's, made before the frame first runs (PERF-V8: the frame stood 249 bytes under its
-budget; a frame local and two closures cost more than they saved). THE FOUR HOSTS: world.js alone draws grass;
+test, `billboardBlended`, now the one law the phase asks too) out of its billboards in place (`renderer.holdBlended`,
+after DW-F has flagged them) and draws them in a call of their own after the grass, the banners and the haze, before
+what falls (`renderer.drawHeld`). Their shadows are recorded by that call - the records are replayed the next frame.
+The held list is the renderer's, emptied by each hold and each draw (PERF-V8: the frame stood 249 bytes under its
+budget - a frame local and two closures cost more than they saved; two calls fit). THE FOUR HOSTS: world.js alone draws grass;
 exterior.js stands no portal and no grass, worldModes.js neither, and dungeonContext.js stands portals and no grass.
 Not done: the static flats' spectral archives (`allBatches`), which a town does not stand. test/fb1012b_grassportal.test.js (3).
 

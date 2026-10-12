@@ -1833,6 +1833,7 @@ export class Renderer {
     this._bbDissolveOn = false;   // DISSOLVE: the billboard program's uDissolve as last sent (the frame block resets it)
     this._bbGlintOn = false;   // TELL2: the billboard program's uGlint as last sent - a glinting batch's (the frame block resets it to none)
     this._bbTintOn = false;   // ARENA5: the billboard program's uBatchTint as last sent - a washed batch's (the frame block resets it to white)
+    this._heldFlats = [];   // GRASS-PORTAL: the blended flats a host held back for a later call (holdBlended / drawHeld)
     this._dwCamFwd = new Float32Array(3);
     this._fogColor = new Float32Array([0, 0, 0]);
     this._camPos = new Float32Array(3);
@@ -6465,7 +6466,7 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
       _arena: arena, _q0: q0, _ibOff: q0 * BB_QUAD_INDEX_BYTES,
       _scales: scales ?? null, lptProto: undefined, farH: undefined,
       _place: count > 1 && !dynamic ? placementGrid(centers) : null,
-      _box: undefined, sway: undefined, windfall: undefined, tip: undefined, conceal: undefined, hitFlash: undefined, eliteGlow: undefined, eliteTime: undefined, elitePad: undefined, glint: undefined, dissolve: undefined, tint: undefined, noShadow: undefined, selfCard: undefined, _dead: undefined, _moveScratch: undefined, dwColumn: undefined,
+      _box: undefined, sway: undefined, windfall: undefined, tip: undefined, conceal: undefined, hitFlash: undefined, eliteGlow: undefined, eliteTime: undefined, elitePad: undefined, glint: undefined, dissolve: undefined, tint: undefined, dye: undefined, noShadow: undefined, selfCard: undefined, _dead: undefined, _moveScratch: undefined, dwColumn: undefined,
       castOnly: undefined,
       _bbKey: undefined, _bbKeyId: undefined, _bbKeyRecord: undefined, _bbKeyFrame: undefined, _bbKeyArchive: undefined,
       _shGen: undefined, _shAx: NaN, _shAy: NaN, _shAz: NaN, _shSeen: undefined, _shOx: NaN, _shOy: NaN, _shOz: NaN, _shFrame: undefined,
@@ -7588,6 +7589,17 @@ void main() { vec4 t = texture(uTex, vUV); if (t.a < 0.5) discard; outColor = ve
     if (!this.lptAtlases.delete(tex)) return;
     if (this._tex0Bound === tex) this._tex0Bound = null;
     this.gl.deleteTexture(tex);
+  }
+
+  /** GRASS-PORTAL (FIELD BUGS 2026-10-12b): HOLD BACK `batches`' blended flats (holdBlendedBillboards, in place), for
+   *  drawHeld to draw after the passes that would paint over them - the renderer's one list, emptied by each hold and
+   *  each draw, so nothing a frame held reaches the next. */
+  holdBlended(batches) { holdBlendedBillboards(batches, this._heldFlats); }
+  /** GRASS-PORTAL: DRAW WHAT holdBlended HELD, in a drawBillboards of its own - and let it go. */
+  drawHeld(camRight, camUp) {
+    const held = this._heldFlats;
+    if (held.length) this.drawBillboards(held, camRight, camUp);
+    held.length = 0;
   }
 
   drawBillboards(batches, camRight, camUp) {

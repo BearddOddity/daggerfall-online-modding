@@ -20,7 +20,7 @@ import { createPortalGates } from './portalGates.js'; import { PORTAL_TEXT, PORT
 import { createPartyMapSender, hasSharedCartography } from '../systems/partyMap.js';   // PARTY-MAP
 import { liveDungeonAutomapKey, getDungeonAutomap, mergePartyAutomap } from '../systems/automap.js';   // PARTY-MAP: the live dungeon's record, and a mate's rows merged into it
 import { FlatAnimator, armFlatAnim } from '../render/flatAnimation.js';   // FA1: the flats that move
-import { WORLD_FRAME, holdBlendedBillboards } from '../render/renderer.js';   // AUDIT-EL F5; GRASS-PORTAL
+import { WORLD_FRAME } from '../render/renderer.js';   // AUDIT-EL F5
 import { windmillsOn } from '../world/windmills.js';   // WM3: the Windmills pack's switch
 import { openWodWorld, wodOn, wodLightColors } from '../world/worldOfDaggerfall.js';   // WOD2: World of Daggerfall's loader, one per page
 import { wodLightPosition, wodLightProperties, isWodShrub, WOD_ROCK_SITES, rockSeatDrop } from '../world/wodLocationObjects.js'; import { wodRockUvs } from '../world/wodRockUv.js';   // WOD2: the mod's own AddLight; WOD-BUSH: its shrub, stood on the ground (ROCK-SUNK: never a rock field's boulder); FB1001-WODROCK: a stretched rock piece's faces at its pebble's texel density (on this line, so no cite below it moves)
@@ -35206,7 +35206,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     cityGuards.drawBodies(canvas, proj, view, mwv.eye, foeDt);   // MWNPC6: and the watch's, the same way
     exteriorFoes.drawBodies(canvas, proj, view, mwv.eye, foeDt);   // MWNPC5c: the foes in their bodies - what batches() offered this frame, before the billboards draw (cast-only where a body stands)
     if (deepWaters && livePersonBatches.length) dwFlagColumnFlats(livePersonBatches);   // DW-F: the foes, the corpses and the piles in a carved sea take the column's share
-    holdBlendedBillboards(livePersonBatches, lateFlats);   // GRASS-PORTAL: drawn after the grass (drawLateFlats)
+    renderer.holdBlended(livePersonBatches);   // GRASS-PORTAL (FIELD BUGS 2026-10-12b): the blended flats write no depth - drawn after the grass (drawHeld)
     if (livePersonBatches.length) renderer.drawBillboards(livePersonBatches, camRight, bbUp);
     if (castBatches.length) renderer.recordShadowBillboards(castBatches, camRight, UP_Y);   // SHADOW-REACH: the flats the view cull rejected, for the maps alone (the wind is the frame's, set above)
     if (deepWaters) drawDeepWatersSurfaces(now);   // DW-C: the sea's surface - the mod's Transparent queue, after every opaque thing and every cut-out flat
@@ -35493,7 +35493,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     }
     };
     frameHaze();
-    drawLateFlats(camRight, bbUp);   // GRASS-PORTAL: the blended flats, over the grass behind them
+    renderer.drawHeld(camRight, bbUp);   // GRASS-PORTAL: the street's blended flats, over the grass behind them
     drawFalling();   // RAIN-OVER-GRASS: after the grass and the banners, before the translucent bodies and the fires
     exteriorFoes.drawVeiledBodies();   // MWNPC5c: the concealed foes' bodies, beside the peers'
     cityGuards.drawVeiledBodies();   // MWNPC6: and the watch's
@@ -35968,15 +35968,5 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     frameEnd();   // PERF1
     requestAnimationFrame(frame);
   }
-  // GRASS-PORTAL (FIELD BUGS 2026-10-12b, "Grass renders through portals"): the street's blended flats - a portal's
-  // vortex, a veiled foe, a ghost - write no depth, so the grass drawn after them painted every blade behind them over
-  // them. The frame holds them back from the street's billboards (holdBlendedBillboards) and draws them here after the
-  // grass, the banners and the haze, before what falls (RAIN-OVER-GRASS's law). One list, the host's (PERF-V8: no frame
-  // local), emptied by its draw - made before the frame first runs, below.
-  const lateFlats = [];
-  const drawLateFlats = (camRight, camUp) => {
-    if (lateFlats.length) renderer.drawBillboards(lateFlats, camRight, camUp);
-    lateFlats.length = 0;
-  };
   requestAnimationFrame(frame);
 }

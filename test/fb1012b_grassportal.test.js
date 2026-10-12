@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { billboardBlended, holdBlendedBillboards } from '../src/render/renderer.js';
+import { billboardBlended, holdBlendedBillboards, Renderer } from '../src/render/renderer.js';
 
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
@@ -28,18 +28,35 @@ test('GRASS-PORTAL the street\'s blended flats are held back in place, the rest 
   assert.deepEqual(out, [ghost, portal], 'the blended ones, and nothing of the frame before');
 });
 
+test('GRASS-PORTAL the renderer holds them in its one list and draws them in a call of its own, emptied by the hold and the draw (mutants: the held list never let go; drawn in no call)', () => {
+  const r = Object.create(Renderer.prototype);
+  r._heldFlats = [];
+  const drawn = [];
+  r.drawBillboards = (bs) => { drawn.push([...bs]); };
+  const portal = { archive: 182, conceal: { mode: 3 } }, man = { archive: 182 };
+  const street = [man, portal];
+  r.holdBlended(street);
+  assert.deepEqual(street, [man]);
+  r.drawHeld([1, 0, 0], [0, 1, 0]);
+  assert.deepEqual(drawn, [[portal]], 'drawn once, alone');
+  r.drawHeld([1, 0, 0], [0, 1, 0]);
+  assert.equal(drawn.length, 1, 'let go: the next frame draws nothing of it');
+  r.holdBlended([man]);
+  r.drawHeld([1, 0, 0], [0, 1, 0]);
+  assert.equal(drawn.length, 1, 'nothing held, no call');
+});
+
 test('GRASS-PORTAL the world host draws the held flats after the grass, the banners and the haze, before what falls; the renderer\'s blended phase asks the same test (mutants: the late draw before the grass; the hold dropped; a second law in the phase)', () => {
   const w = src('src/scenes/world.js');
   const at = (needle) => { const i = w.indexOf(needle); assert.ok(i >= 0, needle); assert.equal(w.indexOf(needle, i + 1), -1, `one ${needle}`); return i; };
-  const hold = at('    holdBlendedBillboards(livePersonBatches, lateFlats);');
+  const hold = at('    renderer.holdBlended(livePersonBatches);');
   const street = at('    if (livePersonBatches.length) renderer.drawBillboards(livePersonBatches, camRight, bbUp);');
   const grass = at('    frameGrass();');
   const banners = at('    frameBanners();');
   const haze = at('    frameHaze();');
-  const late = at('    drawLateFlats(camRight, bbUp);');
+  const late = at('    renderer.drawHeld(camRight, bbUp);');
   const falling = at('    drawFalling();   // RAIN-OVER-GRASS');
   assert.ok(hold < street && street < grass && grass < banners && banners < haze && haze < late && late < falling, 'held, the street, the grass, the banners, the haze, the held flats, the rain');
-  assert.match(w, /const drawLateFlats = \(camRight, camUp\) => \{\n\s*if \(lateFlats\.length\) renderer\.drawBillboards\(lateFlats, camRight, camUp\);\n\s*lateFlats\.length = 0;\n\s*\};/);
   const r = src('src/render/renderer.js');
   assert.match(r, /if \(!billboardBlended\(b\)\) continue;   \/\/ MWNPC5b/);
 });
