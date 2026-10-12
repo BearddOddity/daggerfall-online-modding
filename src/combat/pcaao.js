@@ -85,7 +85,7 @@ import { liveStat } from '../systems/statMods.js';
 import { skillValue, SKILLS } from '../systems/skills.js';
 import { RACES } from '../systems/races.js';
 import { SPECIAL_ABILITY_BITS } from '../systems/specialAdvantages.js';
-import { WEAPONS, weaponMinDamage, weaponMaxDamage, weaponSkillUsed, strikeMaterialOf } from '../characters/weapons.js';
+import { WEAPONS, weaponMinDamage, weaponMaxDamage, weaponSkillUsed } from '../characters/weapons.js';
 import { equipTableOf, lowerCondition, blowWear, slotForBodyPart, EQUIP_SLOTS, weaponProficiencyFlag } from '../systems/equip.js';
 import { SHIELD_PARTS, isShieldTemplate, itemArmorValue } from '../systems/armorMaterials.js';
 import { conditionPercentage, itemLongName } from '../systems/itemInfo.js';
@@ -1046,23 +1046,24 @@ export function pcaaoAttackDamage(attacker, target, {
     if (int(((b.minDamage ?? 0) + (b.maxDamage ?? 0)) / 2) > wepAvg) weapon = null;
   }
   const struckWith = weapon;   // WEAR-VANILLA: the weapon the blow is struck with - never a monster's stand-in below
-  const struckMaterial = strikeMaterialOf(attacker, weapon);   // BAL6: a weapon's metal, or the beast's claws' silver
-  if (struckMaterial !== null) {
+  if (weapon) {
     if (modules.softMaterialRequirements) {
-      if ((target.minMetalToHit ?? -1) > struckMaterial) {
-        let m = F((target.minMetalToHit ?? -1) - struckMaterial);
+      if ((target.minMetalToHit ?? -1) > weapon.material) {
+        let m = F((target.minMetalToHit ?? -1) - weapon.material);
         m = m <= 0 ? F(1) : F(F(Math.min(F(m * F(0.2)), F(0.9)) - 1) * -1);
         matReqDamMulti = m;
       }
-    } else if ((target.minMetalToHit ?? -1) > struckMaterial) {
-      if (isPlayer(attacker)) say?.(MATERIAL_INEFFECTIVE_TEXT);
-      if (notes) notes.ineffective = true;
-      return 0;
+      skillID = weaponSkillOf(weapon);
+      if (skillID === SKILLS.BluntWeapon) bluntWep = true;
+    } else {
+      if ((target.minMetalToHit ?? -1) > weapon.material) {
+        if (isPlayer(attacker)) say?.(MATERIAL_INEFFECTIVE_TEXT);
+        if (notes) notes.ineffective = true;
+        return 0;
+      }
+      skillID = weaponSkillOf(weapon);
+      if (skillID === SKILLS.BluntWeapon) bluntWep = true;
     }
-  }
-  if (weapon) {
-    skillID = weaponSkillOf(weapon);
-    if (skillID === SKILLS.BluntWeapon) bluntWep = true;
   } else {
     skillID = SKILLS.HandToHand;
   }

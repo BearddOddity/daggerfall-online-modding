@@ -2,7 +2,8 @@
 // "Hood only shields", "Beast claws count as silver"). Measured first: a lycanthrope with a sword in hand struck at
 // x1.8-2.9 a plain character's damage a second without ever changing, every change healed it whole (twice a day, and
 // without end under Hircine's Ring), and the beast's +30 Hand-to-Hand fist met a Lich's Mithril hide ungated; a hooded
-// vampire stood +20 at every hour.
+// vampire stood +20 at every hour. BAL6-CLAWS (2026-10-12; the owner: "revert the material nerf on werewolf"): the
+// claws' silver is taken back - the beast's fist meets a foe's metal ungated again, DFU's bare hand.
 //
 // Pinned by execution through the curse's own round and change (systems/lycanthropy.js), the stat and skill channels
 // (liveStat, skillValue), both combat cores (the overhaul's pcaaoAttackDamage and DFU's calculateAttackDamage) and the
@@ -20,7 +21,7 @@ import { isFullMoonFromMinutes, MINUTES_PER_DAY, CLASSIC_GAME_START_TIME } from 
 import { liveStat } from '../src/systems/statMods.js';
 import { skillValue, SKILLS } from '../src/systems/skills.js';
 import { clampMarkersAheadOf } from '../src/systems/save.js';
-import { WEAPON_MATERIALS, BEAST_CLAW_MATERIAL, strikeMaterialOf } from '../src/characters/weapons.js';
+import { WEAPON_MATERIALS } from '../src/characters/weapons.js';
 import { pcaaoModules, pcaaoAttackDamage } from '../src/combat/pcaao.js';
 import { calculateAttackDamage } from '../src/combat/formulas.js';
 import { makeEnemyEntity } from '../src/characters/enemyEntity.js';
@@ -121,11 +122,7 @@ const swings = (attacker, target, modules, n = 2000) => {
   return sum;
 };
 
-test('BAL6: the beast\'s claws meet a foe\'s metal as SILVER - the overhaul\'s soft rule cuts them at a Lich\'s Mithril (x0.4), DFU\'s gate refuses them; an ordinary fist stays ungated, DFU\'s (mutants: the claws ungated; the claws as iron; every fist gated)', () => {
-  assert.equal(BEAST_CLAW_MATERIAL, WEAPON_MATERIALS.Silver);
-  assert.equal(strikeMaterialOf({ isInBeastForm: true }, null), WEAPON_MATERIALS.Silver, 'the beast\'s bare hand');
-  assert.equal(strikeMaterialOf({ isInBeastForm: false }, null), null, 'a man\'s bare hand: no gate');
-  assert.equal(strikeMaterialOf({ isInBeastForm: true }, { material: WEAPON_MATERIALS.Ebony }), WEAPON_MATERIALS.Ebony, 'a weapon\'s own metal, whoever holds it');
+test('BAL6-CLAWS: the beast\'s claws meet no metal - DFU\'s bare hand, ungated at a Lich\'s Mithril in both cores, the soft rule on or off, as a man\'s fist is (mutants: the claws as silver in either core, BAL6\'s; every fist gated)', () => {
   const M = modsOf();
   const strong = () => { const q = P(); q.stats.strength = 90; q.skills[SKILLS.HandToHand] = 70; q.skills[SKILLS.CriticalStrike] = 70; return q; };   // the level-12 beast's own numbers
   const beast = { ...strong(), isInBeastForm: true };
@@ -133,27 +130,27 @@ test('BAL6: the beast\'s claws meet a foe\'s metal as SILVER - the overhaul\'s s
   assert.equal(lich(-1).minMetalToHit, -1);
   assert.equal(ENEMY_BASICS[32].minMetalToHit, WEAPON_MATERIALS.Mithril, 'the fixture is the real Lich\'s Mithril');
   const open = swings(beast, lich(-1), M);
-  const gated = swings(beast, lich(WEAPON_MATERIALS.Mithril), M);
   assert.ok(open > 2000, `the claws land (${open})`);
-  assert.ok(gated / open > 0.34 && gated / open < 0.46, `Mithril over silver, three tiers: x0.4 (${gated} / ${open})`);
-  assert.equal(swings(beast, lich(WEAPON_MATERIALS.Silver), M), open, 'a silver-hide foe takes the claws whole');
+  assert.equal(swings(beast, lich(WEAPON_MATERIALS.Mithril), M), open, 'the overhaul\'s soft rule: the claws at Mithril whole');
   assert.equal(swings(man, lich(WEAPON_MATERIALS.Mithril), M), swings(man, lich(-1), M), 'a man\'s fist: DFU\'s, no gate');
-  // without the soft rule: DFU's refusal, said
+  // without the soft rule: no refusal, nothing said
+  const hard = modsOf({ softMaterialRequirements: false });
+  assert.equal(swings(beast, lich(WEAPON_MATERIALS.Mithril), hard), swings(beast, lich(-1), hard), 'DFU\'s gate asks a weapon alone');
   const said = [];
   const notes = {};
-  assert.equal(pcaaoAttackDamage(beast, lich(WEAPON_MATERIALS.Mithril), { weapon: null, rolls: () => 0.01, dfRand: () => 0, modules: modsOf({ softMaterialRequirements: false }), say: (t) => said.push(t), notes }), 0);
-  assert.equal(notes.ineffective, true);
-  assert.equal(said.length, 1, 'the HUD says so');
-  // and DFU's own core (every mod off): the beast's claws refused at Mithril, landed at silver; a man's fist ungated
-  const rolls = mulberry(3);
-  let dfuMan = 0, dfuBeast = 0, dfuBeastSilver = 0;
-  for (let i = 0; i < 300; i++) {
-    dfuMan += calculateAttackDamage(man, lich(WEAPON_MATERIALS.Mithril), { rolls, dfRand: () => Math.floor(rolls() * 32768) });
-    dfuBeast += calculateAttackDamage(beast, lich(WEAPON_MATERIALS.Mithril), { rolls, dfRand: () => Math.floor(rolls() * 32768) });
-    dfuBeastSilver += calculateAttackDamage(beast, lich(WEAPON_MATERIALS.Silver), { rolls, dfRand: () => Math.floor(rolls() * 32768) });
-  }
-  assert.equal(dfuBeast, 0, 'DFU\'s core: the claws ineffective at Mithril');
-  assert.ok(dfuMan > 0 && dfuBeastSilver > 0, `a man's fist and the claws at silver land (${dfuMan}, ${dfuBeastSilver})`);
+  pcaaoAttackDamage(beast, lich(WEAPON_MATERIALS.Mithril), { weapon: null, rolls: () => 0.01, dfRand: () => 0, modules: hard, say: (t) => said.push(t), notes });
+  assert.deepEqual([notes.ineffective, said], [undefined, []], 'no "ineffective" line for the claws');
+  // and DFU's own core (every mod off): the claws and a man's fist land at Mithril as at no metal, seed for seed
+  const dfu = (who, metal, seed) => {
+    const rolls = mulberry(seed);
+    let sum = 0;
+    for (let i = 0; i < 300; i++) sum += calculateAttackDamage(who, lich(metal), { rolls, dfRand: () => Math.floor(rolls() * 32768) });
+    return sum;
+  };
+  const dfuBeast = dfu(beast, -1, 3);
+  assert.ok(dfuBeast > 0, `DFU's core: the claws land (${dfuBeast})`);
+  assert.equal(dfu(beast, WEAPON_MATERIALS.Mithril, 3), dfuBeast, 'DFU\'s core: the claws at Mithril whole');
+  assert.equal(dfu(man, WEAPON_MATERIALS.Mithril, 3), dfu(man, -1, 3), 'DFU\'s core: a man\'s fist whole');
 });
 
 test('BAL6: the hood shields, it does not make it night - bare in the street\'s sun -20, hooded there 0, out of the sun +20 hooded or not (mutants: the hood the night\'s +20, HOOD-SUN\'s; the hood shielding nothing)', () => {

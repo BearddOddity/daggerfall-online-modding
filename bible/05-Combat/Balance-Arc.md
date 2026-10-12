@@ -462,19 +462,19 @@ THE LAWS.
   own day) has passed since the last change that healed (`lastMorphHeal`, a curse clock's marker: `save.js`
   clampMarkersAheadOf brings it back to a save's clock), whichever way it goes and whatever forced it. The Ring frees the
   change, never the heal. A curse from before BAL6 has no stamp: its next change heals.
-- **The beast's claws strike as silver** (asked: "Beast claws count as silver"). `characters/weapons.js`
-  strikeMaterialOf - a weapon's metal, the beast's claws' silver (BEAST_CLAW_MATERIAL), or none - is what both cores'
-  material gates read (`combat/pcaao.js`, `combat/formulas.js`): under the overhaul's soft rule a Mithril foe takes the
-  claws at x0.4 (three tiers); with it off, DFU's refusal and its line, as a silver blade meets. An ordinary fist - a
-  monk's, a vampire's - stays DFU's, ungated.
+- **The beast's claws meet no metal - DFU's** (BAL6-CLAWS, 2026-10-12; the owner: *"revert the material nerf on
+  werewolf"*). BAL6 had the claws strike as silver (asked: "Beast claws count as silver"): a Mithril foe took them at
+  x0.4 under the overhaul's soft rule, and refused them with DFU's line without it. The owner took that back the same
+  day. Both cores' material gates ask a weapon alone again (`combat/pcaao.js`, `combat/formulas.js`, as before BAL6;
+  `characters/weapons.js` strikeMaterialOf and BEAST_CLAW_MATERIAL are gone), so the claws are the bare hand:
+  hand-to-hand and ungated, as a monk's and a vampire's fists are. Measurement 3 stands as it was measured.
 - **The hood shields, it does not make it night** (asked: "Hood only shields"). `systems/vampirism.js` vampireStatMod:
   bare in the street's sun -20, hooded there 0, out of the sun (a roof, underground, a cell, the night) DFU's +20, hood
   or not - Mac's "Should be buffed in interiors" and "shielding against the sun" both kept.
 
 WHAT MOVES. A lycanthrope in human form strikes and takes as the character it is (19.5 -> 6.8 a second at level 12,
-35.6 -> 19.9 at level 20; a duel's 30.1 -> 18.2); the beast is unchanged but for a metal-hided foe (a level-12 beast on a
-Lich ~12.5 -> ~5.0 a swing, on an Ancient Lich ~10.6 -> ~4.3; with the soft rule off, nothing); two healing changes a
-day are one, and the Ring's endless ones are one. A hooded vampire in the street by day is +0 where it was +20 (its
+35.6 -> 19.9 at level 20; a duel's 30.1 -> 18.2); the beast is unchanged, a metal-hided foe included (BAL6-CLAWS); two
+healing changes a day are one, and the Ring's endless ones are one. A hooded vampire in the street by day is +0 where it was +20 (its
 +30 skills alone: about x1.10-1.17 a mortal's damage). THE FOUR HOSTS: none is touched - each law is the curse's or the
 blow's, read wherever the curse runs its round and the blow is struck (`scenes/world.js`, `scenes/worldModes.js`,
 `scenes/dungeonContext.js` and `scenes/exterior.js` all strike through the same two cores and run the same round).
@@ -485,16 +485,17 @@ RECORDED, NOT CHANGED:
   x1.67-2.07 (Mac's VAMP-SUN). The other lever offered - the +20 the night's alone, 0 sheltered by day - was not chosen.
 - **The vampire's clan spells** stay at DFU's flat 5 spell points (MinimumCastingCost; asked: "Leave at 5"), Ice Storm
   and Wildfire among them. A refereed fight bounds every cast whatever it cost (INT10, and section 14's ceiling).
-- **A vampire's and a monk's fists** stay ungated: DFU's rule, and the beast's claws were the measured outlier.
+- **Every fist** - a vampire's, a monk's and, since BAL6-CLAWS, the beast's - stays ungated: DFU's rule.
 - **The silver-to-hit of a beast in a refereed fight**: every referee rolls a striker's claim against the striker's own
   stand-in, so the beast's defence never counts there - reading it would make the beast stronger in PvP, not weaker.
 - **The wereboar** is the werewolf in another skin (the same advantages, claws and change), as in DFU.
 
 Pinned: `test/bal6_curses.test.js` (4) by execution - the advantages through liveStat and skillValue in both forms, at
 the change's instant and after a round, a pre-BAL6 save's word rewritten; the heal's day, the Ring's change without it,
-the stamp clamped on a load; 2,000 seeded beast swings at a Lich's Mithril (x0.4), at silver (whole), a man's fist
-ungated, DFU's refusal through both cores; vampireStatMod in the street and under a roof, bare and hooded.
-`tools/mutants/bal6.json` (16).
+the stamp clamped on a load; BAL6-CLAWS: 2,000 seeded beast swings at a Lich's Mithril whole, as at no metal, with
+the soft rule on and off and nothing said, a man's fist the same, and DFU's core seed for seed; vampireStatMod in the
+street and under a roof, bare and hooded. `tools/mutants/bal6.json` (14, all dead: BAL6-CLAWS retired the five claw
+records and aimed three at the restored gates - the claws as silver in either core, every fist gated).
 
 ## 13. BAL7 - the loot that wins alone (2026-10-12)
 
