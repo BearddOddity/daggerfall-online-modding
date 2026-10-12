@@ -2543,6 +2543,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const precipOpts = { enhanced: sky.enhanced, countCap: Number(params.get('rain')) || null };
   if (sky.pixelSnow) precipOpts.pixelSnow = sky.pixelSnow;   // DS1: Dynamic Skies' InitSnow - the pixel snow replacement, when its switch is on
   let precip = precipMode ? new PrecipitationRenderer(renderer.gl, precipOpts) : null;
+  const wxEye32 = new Float32Array(3);   // RAIN-LEAK: the falling weather's eye, filled each frame - never a fresh array a frame
   // PERF-WARM: the renderer's on-demand programs, and the rain's whole
   // renderer, paid for at idle rather than on the frame that first needs
   // them. The rain is the expensive one: a weather change builds a
@@ -35153,6 +35154,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // 150-450 m up and back - so the weather was a small cube round the sprite, seen from outside it. They wrap round
     // the eye the view is drawn from: the air in front of the camera is full of it, as it is when you stand in it.
     const wxEye = tvf ? mwv.eye : cam.pos;
+    wxEye32[0] = wxEye[0]; wxEye32[1] = wxEye[1]; wxEye32[2] = wxEye[2];
     // WX2: what falls is what the front SHOWS - under the enhanced sky the
     // outgoing rain tapers after the sim has cleared and the incoming
     // holds off until the deck is in. Classic: the sim's mode, as W1.
@@ -35165,7 +35167,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         // WEATHER2d: THE SANDSTORM'S SAND - the wisps' program in the sand's look, the front's intensity its
         // strength, on the one wind's rate and travel; the rain program never draws it
         if (sand && !_dwPrecipOff) {
-          sand.draw({ on: true, strength01: fx.intensity, windV: wd.windV, step: wd.step, gust: wd.gust }, proj, view, new Float32Array(wxEye), now / 1000);
+          sand.draw({ on: true, strength01: fx.intensity, windV: wd.windV, step: wd.step, gust: wd.gust }, proj, view, wxEye32, now / 1000);
           renderer.markForeignPass();
         }
       } else if (precipShown && precip) {   // W1 review: the gate is the MODE, never the object - the renderer outlives a clear-up
@@ -35194,7 +35196,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         // click is a Travel Options journey, whose DisableWeatherAndSound stood the particles down while the rain loop
         // played on - but the Overworld's journey is SEEN, the world going on under it, so what falls keeps falling there
         if ((!_travelWeatherOff || tvf) && !_dwPrecipOff) {
-          precip.draw(precipShown, proj, view, new Float32Array(wxEye), camRight, now / 1000);
+          precip.draw(precipShown, proj, view, wxEye32, camRight, now / 1000);
           renderer.markForeignPass();   // EV6: so did the rain
         }
       }
@@ -35202,7 +35204,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       // rain and before the grass, on the same integrated wind; a foreign
       // pass like the rain. Their row is read every frame.
       if (wisps && wd.on && wispsOn() && !_dwAirOff) {
-        wisps.draw(wd, proj, view, new Float32Array(wxEye), now / 1000);
+        wisps.draw(wd, proj, view, wxEye32, now / 1000);
         renderer.markForeignPass();
       }
     };
