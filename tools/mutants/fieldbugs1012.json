@@ -27,6 +27,15 @@
     ]
   },
   {
+    "name": "RING-WARN-the-strikes-unsaid",
+    "file": "src/net/realmTradeLaw.js",
+    "old": "export const TRADE_HELD_STRIKES = ' Each time the law holds it counts: the third time, trading stays frozen until staff have looked.';",
+    "new": "export const TRADE_HELD_STRIKES = '';",
+    "tests": [
+      "test/ringhold.test.js"
+    ]
+  },
+  {
     "name": "VOID-ROOM-the-facing-unread",
     "file": "src/systems/decorRooms.js",
     "old": "      if (below.back && above.back) { y = fy - 0.05; continue; }",

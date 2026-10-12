@@ -153,7 +153,8 @@ object lands, so a read that fails leaves nothing in R2.
 holdOf). Staff's and the copies' are staff's alone to lift - a breach of the law over a copies' hold is no way out (the
 audit: a 'law' checkpoint stepped it down, and the next clean one lifted it). The law's lifts at the next clean
 checkpoint until `STRIKES_FOR_REVIEW` (3) HOLDS have come - a strike a hold, never a checkpoint (the audit: one piece
-carried six minutes was staff's); its finding is written once a signature. Staff who judge the law's word wrong clear it
+carried six minutes was staff's), the same piece taken up again included - and every law hold's notice says the holds
+are counting (RING-WARN, `01-Overview/Field-Bugs-2026-10-12.md`); its finding is written once a signature. Staff who judge the law's word wrong clear it
 (`law_excused`): the same signature holds nothing again, a new one does. A verdict writes over the row only as it read
 it (`judge_rev`): a staff act, or a copy another's checkpoint charged, landing in between stands, and the next checkpoint
 judges again.

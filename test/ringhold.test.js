@@ -7,7 +7,7 @@ import worker from '../server-account/src/index.js';
 import { standService } from './accountDb.mjs';
 import { seatRealm, freshSave } from './realmSeat.mjs';
 import { TRADE_HELD_NOTICES } from '../src/net/realmTradeLaw.js';
-import { tradeHeldNotice } from '../src/systems/itemIds.js';
+import { tradeHeldNotice, tradeHeldLawNotice } from '../src/systems/itemIds.js';
 import { settleRealmTradeHalf } from '../src/systems/realmSaves.js';
 import { STRIKES_FOR_REVIEW } from '../server-account/src/judge.js';
 
@@ -46,4 +46,14 @@ test('RING-HOLD: a trade refused over my own law hold names the piece the sessio
   assert.equal(r.why, 'trade-held');
   assert.match(r.text, /a Ring it carries/);
   assert.doesNotMatch(r.text, /something/);
+});
+
+test('RING-WARN: a law hold\'s notice says each hold counts and the third is staff\'s - named or not - and the words\' "third" is the service\'s STRIKES_FOR_REVIEW', () => {
+  assert.equal(STRIKES_FOR_REVIEW, 3, 'the notices say "the third time" and the review "three times" - a new count moves the words');
+  const named = tradeHeldNotice(null, 'law', { code: 'crafted', t: 135 });
+  assert.equal(named, tradeHeldLawNotice('Ring'));
+  for (const text of [named, TRADE_HELD_NOTICES.law]) {
+    assert.match(text, /until it is gone\. Each time the law holds it counts: the third time, trading stays frozen until staff have looked\.$/);
+  }
+  assert.match(TRADE_HELD_NOTICES.review, /three times/);
 });

@@ -61,8 +61,15 @@ trade refusal was built from the reason key alone, so even with the Ring carried
 
 FIXED. A law hold with no finding answers `why: { code: 'review' }`; the client stores the `why` it heard and says the
 review notice ("until staff have looked") when it comes; a refusal over my own hold says the notice the session last
-said, the piece named. The three-strike law itself is unchanged - whether picking the same piece up again should be a
-new strike is Mac's call. test/ringhold.test.js. The reporter's hold is staff's: `node tools/realmReview.mjs holds`,
+said, the piece named.
+
+RING-WARN (Mac, asked whether taking the same piece up again should be a new strike: "Your call"). The rule stands:
+a strike a hold, the same piece's included. A piece parked on the ground while its carrier trades and taken up again
+after is exactly what the strikes are for - counting a signature once would let it be parked forever. What trapped the
+player was the notice, which offered "until it is gone" as the way out and never said the holds were counting. Every
+law hold's notice now ends `TRADE_HELD_STRIKES` (`net/realmTradeLaw.js`): "Each time the law holds it counts: the third
+time, trading stays frozen until staff have looked." - the generic one and the one naming the piece; test/ringhold.test.js
+pins it on both and pins the words' "third" to the service's STRIKES_FOR_REVIEW. test/ringhold.test.js. The reporter's hold is staff's: `node tools/realmReview.mjs holds`,
 `findings <id>`, `clear`.
 
 ## ETHER-HOLD and UW-GLOW (7, 8)
