@@ -93,8 +93,13 @@ export const CASUAL_CLOAKS = Object.freeze(new Set([154, 191]));
 export const FORMAL_CLOAKS = Object.freeze(new Set([155, 192]));
 export const HOODED_CLOAK_VARIANTS = Object.freeze(new Set([1, 2, 5]));
 export const HOODED_ROBES = Object.freeze(new Set([163, 200]));   // variant 1 is the hood up
-/** What covers the chest so the sun cannot heat the armour under it. */
-export const COVERING_CHEST = Object.freeze(new Set([163, 164, 176, 177, 200, 201]));
+/** What covers the chest so the sun cannot heat the armour under it: the mod's own list (Climates.cs ArmorCovered, the
+ *  published source) - the plain robes, the priest's and the priestess's robes, and the three long gowns: the evening
+ *  gown, the day gown and the casual dress (a cloak covers too - armorWarmth). AUDIT C&C (2026-10-12): SURV1's reading
+ *  of the IL had the Anticlere Surcoat and the Challenger Straps where the three gowns stand, so a strap shaded a
+ *  cuirass and a gown did not. A surcoat stays out, as the mod has it and as DFU draws it: under the cuirass (its
+ *  drawOrder 40 to the cuirass's 50; the robes' 80 draw over it). */
+export const COVERING_CHEST = Object.freeze(new Set([163, 164, 195, 196, 197, 200, 201]));
 
 /** Armour: [leather, chain, plate] warmth and [chain, plate] metal, by
  *  slot. Metal heats in the sun and chills in the cold. */

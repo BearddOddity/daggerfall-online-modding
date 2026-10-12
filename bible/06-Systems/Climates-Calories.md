@@ -2086,8 +2086,8 @@ lines, the clothes, the load, the page, the phone's rule).
   are felt at their own hour and month.
 - **E10 - the hour is a staircase** (a desert's 40 degrees at 16:00): by the
   mod's design; the plate shows it as it is.
-- `COVERING_CHEST` shades armour under Challenger Straps (warmth 1) but not
-  under a surcoat - worth reading against the mod's IL.
+- **A strap shaded the armour and a gown did not** (`COVERING_CHEST`): the
+  mod's own list, read off its source (AUDIT C&C T1).
 
 ## AUDIT C&C - THE DECISIONS MADE, AND THE WHOLE ARC AUDITED (2026-10-12)
 
@@ -2127,5 +2127,17 @@ lines, the clothes, the load, the page, the phone's rule).
   Attributes page names the boons under its meters
   (`ui/temperatureCard.js` `boonStatRows`, the pack's own).
 - **B12** stays inherent, and Casual stays the default.
+- **T1 - A GOWN COVERS THE ARMOUR, A STRAP DOES NOT.** The question was
+  read against the mod's own source, which is public
+  (github.com/Ralzar81/Climates-Calories, every revision to 1.7.0):
+  `ArmorCovered` keeps the sun off a cuirass under any cloak, the plain
+  robes, the priest's and the priestess's robes, and the three long gowns
+  - the evening gown, the day gown and the casual dress. SURV1's reading
+  of the IL had the Anticlere Surcoat and the Challenger Straps where the
+  three gowns stand, so a strap shaded the metal and a gown did not.
+  `COVERING_CHEST` is the mod's list now - a reading corrected, not a
+  departure. A surcoat stays out, as the mod has it and as DFU draws it:
+  under the cuirass (its drawOrder 40 to the cuirass's 50; the robes' 80
+  draw over it).
 
 Pinned by `test/auditcc.test.js`.
