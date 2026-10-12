@@ -81,6 +81,15 @@
     ]
   },
   {
+    "name": "BAL6-CLAWS-the-overhaul-hard-rule-refuses-the-claws",
+    "file": "src/combat/pcaao.js",
+    "old": "    skillID = SKILLS.HandToHand;\n",
+    "new": "    skillID = SKILLS.HandToHand;\n    if (attacker?.isInBeastForm && !modules.softMaterialRequirements && (target.minMetalToHit ?? -1) > 2) {\n      if (isPlayer(attacker)) say?.(MATERIAL_INEFFECTIVE_TEXT);\n      if (notes) notes.ineffective = true;\n      return 0;\n    }\n",
+    "tests": [
+      "test/bal6_curses.test.js"
+    ]
+  },
+  {
     "name": "BAL6-CLAWS-dfu-claws-as-silver",
     "file": "src/combat/formulas.js",
     "old": "  if (weapon && (target.minMetalToHit ?? -1) > weapon.material) {",

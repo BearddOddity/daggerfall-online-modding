@@ -122,7 +122,7 @@ const swings = (attacker, target, modules, n = 2000) => {
   return sum;
 };
 
-test('BAL6-CLAWS: the beast\'s claws meet no metal - DFU\'s bare hand, ungated at a Lich\'s Mithril in both cores, the soft rule on or off, as a man\'s fist is (mutants: the claws as silver in either core, BAL6\'s; every fist gated)', () => {
+test('BAL6-CLAWS: the beast\'s claws meet no metal - DFU\'s bare hand, ungated at a Lich\'s Mithril in both cores, the soft rule on or off, as a man\'s fist is (mutants: the claws as silver in either core, BAL6\'s; the claws refused with DFU\'s line under the overhaul, soft rule off; every fist gated)', () => {
   const M = modsOf();
   const strong = () => { const q = P(); q.stats.strength = 90; q.skills[SKILLS.HandToHand] = 70; q.skills[SKILLS.CriticalStrike] = 70; return q; };   // the level-12 beast's own numbers
   const beast = { ...strong(), isInBeastForm: true };

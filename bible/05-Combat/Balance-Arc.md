@@ -282,6 +282,7 @@ thirteen. The simulation leaves out the formulas' tail (an elite, the mentor, a 
 | BAL4 | the offline defaults | three switches and the death's cost |
 | BAL5 | the blow paid back (section 11, 2026-10-11) | one law at the door, one cap, one flavour retired |
 | BAL6 | the curses (section 12, 2026-10-12) | the beast's advantages, its heal, its claws; the vampire's hood |
+| BAL6-CLAWS | the claws' silver taken back (section 12, 2026-10-12) | one law reverted: both cores' gates as before BAL6 |
 | BAL7 | the loot that wins alone (section 13, 2026-10-12) | one flavour retired, one cap, two powers halved |
 | BAL8 | the PvP referee, one rule for every striker (section 14, 2026-10-12) | one ceiling at the referee, one door's facing |
 
@@ -474,10 +475,11 @@ THE LAWS.
 
 WHAT MOVES. A lycanthrope in human form strikes and takes as the character it is (19.5 -> 6.8 a second at level 12,
 35.6 -> 19.9 at level 20; a duel's 30.1 -> 18.2); the beast is unchanged, a metal-hided foe included (BAL6-CLAWS); two
-healing changes a day are one, and the Ring's endless ones are one. A hooded vampire in the street by day is +0 where it was +20 (its
-+30 skills alone: about x1.10-1.17 a mortal's damage). THE FOUR HOSTS: none is touched - each law is the curse's or the
-blow's, read wherever the curse runs its round and the blow is struck (`scenes/world.js`, `scenes/worldModes.js`,
-`scenes/dungeonContext.js` and `scenes/exterior.js` all strike through the same two cores and run the same round).
+healing changes a day are one, and the Ring's endless ones are one. A hooded vampire in the street by day is +0 where
+it was +20 (its +30 skills alone: about x1.10-1.17 a mortal's damage). THE FOUR HOSTS: none is touched - each law is
+the curse's or the blow's, read wherever the curse runs its round and the blow is struck (`scenes/world.js`,
+`scenes/worldModes.js`, `scenes/dungeonContext.js` and `scenes/exterior.js` all strike through the same two cores and
+run the same round).
 
 RECORDED, NOT CHANGED:
 
@@ -494,8 +496,9 @@ Pinned: `test/bal6_curses.test.js` (4) by execution - the advantages through liv
 the change's instant and after a round, a pre-BAL6 save's word rewritten; the heal's day, the Ring's change without it,
 the stamp clamped on a load; BAL6-CLAWS: 2,000 seeded beast swings at a Lich's Mithril whole, as at no metal, with
 the soft rule on and off and nothing said, a man's fist the same, and DFU's core seed for seed; vampireStatMod in the
-street and under a roof, bare and hooded. `tools/mutants/bal6.json` (14, all dead: BAL6-CLAWS retired the five claw
-records and aimed three at the restored gates - the claws as silver in either core, every fist gated).
+street and under a roof, bare and hooded. `tools/mutants/bal6.json` (15, all dead: BAL6-CLAWS retired the five claw
+records and aimed four at the restored gates - the claws as silver in either core, the claws refused with DFU's line
+under the overhaul with its soft rule off, every fist gated).
 
 ## 13. BAL7 - the loot that wins alone (2026-10-12)
 
