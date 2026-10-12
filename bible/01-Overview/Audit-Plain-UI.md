@@ -68,5 +68,6 @@ hard to find.
 - `test/audit_plainui.test.js` (11): a pin for every FIXED and PINNED finding above.
 - `tools/mutants/audit_plainui.json`: 31 mutants, 31 dead; `tools/mutants/plainui.json`'s 20 (four re-aimed by
   content), `audit657.json`'s D4, `board_ui.json`'s guide and `lw2.json`'s two talk doors re-aimed and dead again.
-- PINS MOVED in `test/plainui.test.js` (the words that changed), `test/audit657_board.test.js` (D4 by the press).
+- PINS MOVED in `test/plainui.test.js` (the words that changed), `test/audit657_board.test.js` (D4 by the press),
+  `test/lw6c_keepsake.test.js` (the refusal before the moment, U11).
 - `tools/noticeBoardProbe.mjs` on both skins, desktop and phone: every tab inside the viewport, nothing spilling.
