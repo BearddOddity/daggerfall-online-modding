@@ -59,6 +59,14 @@ test('LODE-MARK an account whose Motherlode today is found is told of none and s
   assert.deepEqual(r.said, [], 'neither the warning nor the rising - it stands for them nowhere');
   assert.deepEqual(r.b.markedAll(), []);
   assert.deepEqual(r.b.standingAll(), []);
+  // warned, and then the day's find heard (another device's strike): the mark goes with it
+  const late = bookRig();
+  late.b.tick(); await tick();
+  const k = late.b.state.lodes[1];
+  late.at(k.opensAt - 600); late.b.tick();
+  assert.deepEqual(late.b.markedAll().map((l) => l.key), [k.key], 'warned: marked');
+  late.b.state.found = 'found-elsewhere';
+  assert.deepEqual(late.b.markedAll(), [], 'found since: no mark');
 });
 
 test('LODE-MARK the far mark is its own colour, clear of every other mark on the strip, and drawn over the near veins (mutants: Mining\'s copper; the floats off the hex; the far mark first under the rest)', () => {

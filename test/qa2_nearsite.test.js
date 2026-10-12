@@ -385,6 +385,10 @@ test('QUEST-TOWN a local site NEAR-SITE takes in another town is marked so; the 
     assert.equal(t.locationName, 'Gothhead', 'its town named in the quest list');
     assert.ok(t.regionName, 'and its region');
     assert.deepEqual(t.find, { regionIndex: 17, regionName: 'Region 17', locationName: 'Gothhead' }, 'the map\'s diamond and the compass have it');
+    const off = entryTarget(q.getMessage(1020), { canFindPlace: () => false, currentLocationName: () => 'Aldleigh' });
+    assert.equal(off.locationName, 'Gothhead', 'its town named even before the map has it - the entry names nothing else to look for');
+    assert.ok(off.regionName);
+    assert.equal(off.find, null, 'and no box for a place the map lacks');
     // DFU's own: a pawnshop in the quest's town
     const o = mapOf(regions(true), [17, 0]);
     const seen = [];

@@ -1735,7 +1735,7 @@ export class Renderer {
     this.outsideViewDraws = new Set();
     this.outsideViewSkip = new Set();
     this._rwExterior = null; this._rwTarget = null; this._rwOutside = null; this._rwBg = null; this._rwEmptyVao = null;   // made on the first ask
-    this._rwPv = null; this._rwQ = null; this._rwPanes = []; this._rwPaneN = 0; this._rwPaneOn = false; this._rwViewDraws = 0;
+    this._rwPv = null; this._rwQ = null; this._rwPanes = []; this._rwPaneN = 0; this._rwPaneOn = false; this._rwPaneProg = null; this._rwViewDraws = 0;
     // The value last uploaded to the solid program's uEmissionColor
     // (uniforms are program state, so this survives a program switch).
     this._emissionColorUp = null;

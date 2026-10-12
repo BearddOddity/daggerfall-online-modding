@@ -34,6 +34,8 @@ test('HOLD-KEPT a chest that does not stand moves no record onto another chest, 
   assert.equal(near.size, 1);
   const far = matchChests([{ key: 'container:0', model: 41116, at: [1 + CHEST_MATCH_REACH + 0.05, 0, 2], items: [] }], [chest(41116, 1, 0, 2)], O);
   assert.equal(far.size, 0);
+  // another model standing where a record's chest stood is not that chest
+  assert.equal(matchChests([{ key: 'container:0', model: 41116, at: [5, 0, 1], items: [] }], [chest(41815, 5, 0, 1)], O).size, 0, 'not its model');
   // two records of one model never share a chest
   const two = matchChests([{ key: 'container:0', model: 41116, at: [1, 0, 2] }, { key: 'container:1', model: 41116, at: [1.1, 0, 2] }], [chest(41116, 1, 0, 2)], O);
   assert.equal(two.size, 1);
