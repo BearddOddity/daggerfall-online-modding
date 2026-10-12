@@ -231,8 +231,8 @@ test('ETHER-CHART2 the ship ringed on the canvas, and off it a pointer at the ed
     const l = mm.ship.label, names = mm.isles.filter((i) => i.label).map((i) => i.box);
     assert.ok(l.box[0] >= 0 && l.box[2] <= W && l.box[1] >= 0 && l.box[3] <= H, 'on the canvas');
     const e = mm.ship.edge, tw = l.box[2] - l.box[0] - 12;
-    const first = Math.max(M.MARGIN, Math.min(W - tw - M.MARGIN, e.x - Math.cos(e.a) * 28 - tw / 2));
-    if (Math.abs(l.x - first) > 1e-6 || Math.abs(l.y - Math.max(M.MARGIN + 9, Math.min(H - M.MARGIN - 9, e.y - Math.sin(e.a) * 28))) > 1e-6) { moved++; assert.ok(!names.some((n) => over(n, l.box)), 'moved: to a clear spot'); }
+    const first = Math.max(M.CHART_MARGIN, Math.min(W - tw - M.CHART_MARGIN, e.x - Math.cos(e.a) * 28 - tw / 2));
+    if (Math.abs(l.x - first) > 1e-6 || Math.abs(l.y - Math.max(M.CHART_MARGIN + 9, Math.min(H - M.CHART_MARGIN - 9, e.y - Math.sin(e.a) * 28))) > 1e-6) { moved++; assert.ok(!names.some((n) => over(n, l.box)), 'moved: to a clear spot'); }
   }
   assert.ok(seen >= 4);
   assert.ok(moved >= 1, `a pointer's words moved off a name (${moved} of ${seen})`);

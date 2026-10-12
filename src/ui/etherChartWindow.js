@@ -61,7 +61,7 @@ export const CHART_TRACKING = '0.5px';
 export const LABEL_CHAR_PX = 6.7;
 export const LABEL_H = 14;
 /** ETHER-CHART2: the margin the chart's own words keep from the canvas's edge. */
-export const MARGIN = 8;
+export const CHART_MARGIN = 8;
 /** ETHER-CHART2: an isle's mark's half side at each zoom (a port's one more). */
 export const ICON_PX = Object.freeze([2.5, 3, 4, 5, 6]);
 /** ETHER-CHART2: the scale bar's lengths (leagues) and its longest (px) - the grid's squares the bar's length. */
@@ -267,7 +267,7 @@ export function chartModel(word, v, w, h, { measure = null, pick = null } = {}) 
       }
     }
     if (!t.box) {
-      const cx = Math.max(tw / 2 + 6, Math.min(w - tw / 2 - 6, t.x)), cy = Math.max(MARGIN + LABEL_H / 2, t.y - t.r - 10);
+      const cx = Math.max(tw / 2 + 6, Math.min(w - tw / 2 - 6, t.x)), cy = Math.max(CHART_MARGIN + LABEL_H / 2, t.y - t.r - 10);
       const box = [cx - tw / 2 - 3, cy - LABEL_H / 2, cx + tw / 2 + 3, cy + LABEL_H / 2];
       // AUDIT ETHER-CHART2 C8: over her own square - never below it nor beside it (held to the canvas, a square running
       // off its top or side set her name in open water, or in another legend's square)
@@ -285,7 +285,7 @@ export function chartModel(word, v, w, h, { measure = null, pick = null } = {}) 
   // she was off the chart)
   if (ship.edge) {
     const e = ship.edge, words = `Your ship - ${ship.way}`, tw = width(words, CHART_FONT.small);
-    const at = (lx, ly) => { const x = Math.max(MARGIN, Math.min(w - tw - MARGIN, lx)), y = Math.max(MARGIN + 9, Math.min(h - MARGIN - 9, ly)); return { x, y, words, box: [x - 6, y - 9, x + tw + 6, y + 9] }; };
+    const at = (lx, ly) => { const x = Math.max(CHART_MARGIN, Math.min(w - tw - CHART_MARGIN, lx)), y = Math.max(CHART_MARGIN + 9, Math.min(h - CHART_MARGIN - 9, ly)); return { x, y, words, box: [x - 6, y - 9, x + tw + 6, y + 9] }; };
     const ix = e.x - Math.cos(e.a) * 28 - tw / 2, iy = e.y - Math.sin(e.a) * 28;
     const ox = -Math.cos(e.a) * 40, oy = -Math.sin(e.a) * 40;
     const spots = [at(ix, iy), at(ix, iy - 24), at(ix, iy + 24), at(ix + ox, iy + oy), at(ix + ox, iy + oy - 24), at(ix + ox, iy + oy + 24)];

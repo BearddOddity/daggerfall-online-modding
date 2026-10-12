@@ -301,7 +301,7 @@ test('AUDIT ETHER-CHART2 T5: a haunt named in view - her plate\'s top in the can
         assert.ok(t.box[1] === 4 || near(t.box[1], foot), `${t.name}: her plate at the canvas's top or her square's foot`);
         if (t.box[1] === 4) topped++;
       }
-      if (t.at && !t.inside && t.y - t.r - 10 < M.MARGIN + M.LABEL_H / 2) { floored++; assert.equal(t.at[1], M.MARGIN + M.LABEL_H / 2, `${t.name}: her name inside the margin`); }
+      if (t.at && !t.inside && t.y - t.r - 10 < M.CHART_MARGIN + M.LABEL_H / 2) { floored++; assert.equal(t.at[1], M.CHART_MARGIN + M.LABEL_H / 2, `${t.name}: her name inside the margin`); }
     }
   }
   assert.ok(topped >= 1 && floored >= 1, `the floors met (${topped}, ${floored})`);

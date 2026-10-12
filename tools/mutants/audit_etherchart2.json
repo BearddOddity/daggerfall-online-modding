@@ -389,7 +389,7 @@
   {
     "name": "AE-T5-floor",
     "file": "src/ui/etherChartWindow.js",
-    "old": "cy = Math.max(MARGIN + LABEL_H / 2, t.y - t.r - 10);",
+    "old": "cy = Math.max(CHART_MARGIN + LABEL_H / 2, t.y - t.r - 10);",
     "new": "cy = t.y - t.r - 10;",
     "tests": [
       "test/audit_etherchart2.test.js"
