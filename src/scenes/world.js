@@ -2546,6 +2546,7 @@ export async function bootWorld(canvas, renderer, params, status) {
   const precipOpts = { enhanced: sky.enhanced, countCap: Number(params.get('rain')) || null };
   if (sky.pixelSnow) precipOpts.pixelSnow = sky.pixelSnow;   // DS1: Dynamic Skies' InitSnow - the pixel snow replacement, when its switch is on
   let precip = precipMode ? new PrecipitationRenderer(renderer.gl, precipOpts) : null;
+  const wxEye32 = new Float32Array(3);   // RAIN-LEAK: the falling weather's eye, filled each frame - never a fresh array a frame
   // PERF-WARM: the renderer's on-demand programs, and the rain's whole
   // renderer, paid for at idle rather than on the frame that first needs
   // them. The rain is the expensive one: a weather change builds a
@@ -22858,7 +22859,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     peerName: (id) => peerName(id),
     selfId: () => online?.id ?? '',
     near: tradeNear,   // the ONE range rule (TRADE_RANGE_M metres), asked by the ask, the accept, the lock, the confirm and every frame of a live trade
-    escrow: realmSession ? realmTradeEscrow({ session: realmSession, checkpoint: () => onlineCheckpoint() }) : null,   // REALM P2.1: both confirms hand the commit to the realm, which moves the goods between the two records at once - the checkpoint first, while the goods are still in the pack
+    escrow: realmSession ? realmTradeEscrow({ session: realmSession, checkpoint: () => onlineCheckpoint(), heldSaid: () => tradeHeldNotice(null, realmSession.tradeHeld, realmSession.tradeHeldWhy) }) : null,   // REALM P2.1: both confirms hand the commit to the realm, which moves the goods between the two records at once - the checkpoint first, while the goods are still in the pack
     open: (session) => {
       tradeWin = createPlayerTradeWindow(session, { items: () => (playerEntity.items ??= []), entity: playerEntity, gold: () => tradePack.gold(),
         rows: (id, pick) => townTalk.lines(id, pick) });   // AUDIT TRADE-INFO D2: an artifact's powers are its TEXT.RSC words, as the pack's card reads them
@@ -35229,12 +35230,13 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // the wisps - writes no depth, so every pass drawn AFTER it painted over it: the grass field and the halls' banners
     // stood in front of rain falling nearer the eye. It is drawn once the opaque world is whole (below, after the banners).
     const drawFalling = () => {
+      wxEye32[0] = wxEye[0]; wxEye32[1] = wxEye[1]; wxEye32[2] = wxEye[2];   // RAIN-LEAK: filled here, not in the frame - PERF-V8's bytecode ceiling
       const precipShown = enhancedFront ? fx.shown : precipMode;
       if (precipShown === 'sand') {
         // WEATHER2d: THE SANDSTORM'S SAND - the wisps' program in the sand's look, the front's intensity its
         // strength, on the one wind's rate and travel; the rain program never draws it
         if (sand && !_dwPrecipOff) {
-          sand.draw({ on: true, strength01: fx.intensity, windV: wd.windV, step: wd.step, gust: wd.gust }, proj, view, new Float32Array(wxEye), now / 1000);
+          sand.draw({ on: true, strength01: fx.intensity, windV: wd.windV, step: wd.step, gust: wd.gust }, proj, view, wxEye32, now / 1000);
           renderer.markForeignPass();
         }
       } else if (precipShown && precip) {   // W1 review: the gate is the MODE, never the object - the renderer outlives a clear-up
@@ -35263,7 +35265,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
         // click is a Travel Options journey, whose DisableWeatherAndSound stood the particles down while the rain loop
         // played on - but the Overworld's journey is SEEN, the world going on under it, so what falls keeps falling there
         if ((!_travelWeatherOff || tvf) && !_dwPrecipOff) {
-          precip.draw(precipShown, proj, view, new Float32Array(wxEye), camRight, now / 1000);
+          precip.draw(precipShown, proj, view, wxEye32, camRight, now / 1000);
           renderer.markForeignPass();   // EV6: so did the rain
         }
       }
@@ -35271,7 +35273,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       // rain and before the grass, on the same integrated wind; a foreign
       // pass like the rain. Their row is read every frame.
       if (wisps && wd.on && wispsOn() && !_dwAirOff) {
-        wisps.draw(wd, proj, view, new Float32Array(wxEye), now / 1000);
+        wisps.draw(wd, proj, view, wxEye32, now / 1000);
         renderer.markForeignPass();
       }
     };
