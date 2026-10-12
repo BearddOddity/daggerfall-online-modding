@@ -653,7 +653,7 @@ Stone). The faces say so now: `reforge.js` `salvageRefusal` answers `'classic'` 
 grade and no `provenance` (a made piece stays `'not'` - the Enchanting Station's disenchant is its door, as F2 below
 says); the Salvage page lists it after every piece that breaks, its press "Classic magic" and disabled, "No shards",
 the reason its title; the pack card's Salvage, pressed, says why (`enhancedInventory.js` `SALVAGE_CLASSIC`) and asks
-nothing. `test/fb1012c_salvageclassic.test.js` (4), `tools/mutants/fb1012c_salvageclassic.json` (11, all dead).
+nothing. `test/fb1012d_salvageclassic.test.js` (4), `tools/mutants/fb1012d_salvageclassic.json` (11, all dead).
 
 ### LOOT10 - the codex, and the imprint (2026-10-01)
 

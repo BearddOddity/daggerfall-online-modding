@@ -6,7 +6,7 @@
 // Legendary), a row each in its tier's frame; a row pressed shows the piece whole beside the list, and each line the
 // Reforge may roll again carries its own press with the price on it (or why not, in a word or two: "Need 2 more
 // shards", "Not identified") - and SALVAGE - every laddered piece that will break, what it breaks into, and a press
-// that asks before it breaks it ("Break it" / "Keep"); after them (FB1012c SALVAGE-CLASSIC) every piece that wears
+// that asks before it breaks it ("Break it" / "Keep"); after them (FB1012d SALVAGE-CLASSIC) every piece that wears
 // Magic the ladder never graded - DFU's own magic - its press "Classic magic", saying why it never breaks. The purse
 // (the Welkynd Shards a press may spend, the gold) and the last word of a press stand in the header.
 //
@@ -100,7 +100,7 @@ export const REFORGE_REFUSALS = Object.freeze({
   gone: 'No longer in your pack', aetheric: 'An Aetheric piece is the Broker\'s to dismantle', gilded: 'A Gilded piece will not break', artifact: 'An artifact will not break',
   quest: 'A quest\'s item will not break', bound: 'Bound - it will not break', locked: 'Locked - unlock it first',
   gems: 'A gem is set in it - extract or unset it first',   // AUDIT GEM: salvage never breaks a set gem
-  classic: 'Classic magic will not break - the guilds sell and make it; shards come from a piece the loot ladder graded',   // FB1012c SALVAGE-CLASSIC
+  classic: 'Classic magic will not break - the guilds sell and make it; shards come from a piece the loot ladder graded',   // FB1012d SALVAGE-CLASSIC
 });
 /** A line's press word - "Reforge" (the imprint's "Imprint" - AUDIT LOOT F6: its presses said Reforge), or why not in a
  *  word or two that fits the button. */
@@ -277,7 +277,7 @@ export function mountReforgeWindow(host, deps) {
     const rows = page === 'reforge'
       ? items.filter((it) => reforgePrice(it) && reforgeableLines(it).length)
       : [...items.filter((it) => salvageShards(it) > 0 && !['aetheric', 'gilded', 'artifact', 'quest', 'off'].includes(salvageRefusal(it) ?? '')),
-        ...items.filter((it) => salvageRefusal(it) === 'classic')];   // FB1012c SALVAGE-CLASSIC: a piece that wears Magic and will never break is listed after them, saying why
+        ...items.filter((it) => salvageRefusal(it) === 'classic')];   // FB1012d SALVAGE-CLASSIC: a piece that wears Magic and will never break is listed after them, saying why
     if (!rows.includes(picked)) picked = page === 'reforge' ? rows[0] ?? null : null;
     if (page === 'salvage') everyMagic(rows);   // LOOT18
     if (!rows.length) {
@@ -311,7 +311,7 @@ export function mountReforgeWindow(host, deps) {
           if (done?.ok) say(true, SALVAGED(nameOf(it), done.shards ?? n)); else say(false, REFORGE_REFUSALS[done?.reason ?? ''] ?? 'It will not break.');
           render();
         };
-        row.append(frameOf(it, picture), text, el('span', 'broker-price', n > 0 ? shardsText(n) : 'No shards'), btn);   // FB1012c: a classic piece's
+        row.append(frameOf(it, picture), text, el('span', 'broker-price', n > 0 ? shardsText(n) : 'No shards'), btn);   // FB1012d: a classic piece's
         if (asking === it) {
           const keep = el('button', 'act broker-buy reforge-keep', 'Keep');
           keep.setAttribute('type', 'button');

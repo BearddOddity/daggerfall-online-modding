@@ -58,7 +58,7 @@ import { characterIdOf, mintCharacterId } from './characterId.js';
 import { ownMinutes, skyMinutes } from './worldTick.js';
 import { isNight } from '../world/worldClock.js';   // RVN1: a fight begun by night
 import { tieredGear } from './eliteFoes.js';
-import { foeSeed } from '../characters/foeBodies.js';   // FB1012c ALLY-RACE: the person a revenant is born as - the seed its body was drawn by
+import { foeSeed } from '../characters/foeBodies.js';   // FB1012d ALLY-RACE: the person a revenant is born as - the seed its body was drawn by
 import { goldStack, isSummoned, isGoldPieces, addItem, addGoldPieces } from './inventory.js';   // RVN11b: a deserter's pack, handed back   // RVN8: never a summoned piece or gold taken
 import { unequipItem, equipTableOf, EQUIP_SLOTS } from './equip.js';   // RVN8: what it takes, off the hand that held it
 import { isLocked } from './itemLock.js';   // RVN8: LOCK1's promise - a locked piece stays yours
@@ -210,7 +210,7 @@ const joinName = (given, epithet) => (/^the /.test(epithet) ? `${given} ${epithe
  *  breaks and runs) one minted on it then and kept, so the revenant it becomes speaks as it already did. */
 const voiceIdOf = (entity) => entity?.revenant?.id ?? (entity._voiceId ??= mintCharacterId());
 const isU32 = (v) => Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
-/** FB1012c ALLY-RACE (bible/01-Overview/Field-Bugs-2026-10-12c.md): ITS PERSON - the seed its Morrowind body's race,
+/** FB1012d ALLY-RACE (bible/01-Overview/Field-Bugs-2026-10-12d.md): ITS PERSON - the seed its Morrowind body's race,
  *  face, head, hair and clothes are drawn by (characters/foeBodies.js ownPerson). Minted once, at its birth, off the body
  *  that did the deed (foeSeed: the man the player saw), and kept on the record, so every return, the kneel, the oath, the
  *  sworn one at the player's side and a betrayal are that one person - each stand drew its own off where it stood, and
@@ -219,7 +219,7 @@ export const revenantPerson = (r) => (isU32(r?.person) ? r.person : hashStr(`${r
 /** RVN2: what a standing revenant carries of its record - its name and rank (FOE-TITLE, TELL's tier), what it learned and
  *  its weakness, and `edge`, what they do (systems/revenantFeud.js adaptEdge: the brain, the motor, the doors and the
  *  formulas read it there). */
-const revenantStamp = (r) => ({ id: r.id, name: r.name, rank: r.rank, learned: [...(r.learned ?? [])], weak: r.weak ?? null, edge: adaptEdge(r.learned, r.weak), sigBlow: signatureStamp(r), person: revenantPerson(r) });   // RVN5: its signature (rank 2 and up); FB1012c ALLY-RACE: its person, every stand
+const revenantStamp = (r) => ({ id: r.id, name: r.name, rank: r.rank, learned: [...(r.learned ?? [])], weak: r.weak ?? null, edge: adaptEdge(r.learned, r.weak), sigBlow: signatureStamp(r), person: revenantPerson(r) });   // RVN5: its signature (rank 2 and up); FB1012d ALLY-RACE: its person, every stand
 
 /** A REVENANT'S GIVEN NAME: DFU's own banks - a monster's from Monster1/Monster2, a class foe's (a person) a first
  *  name from one of the eight races' banks - drawn on a stream SEEDED by the revenant's id, the shared DFRandom put
@@ -301,7 +301,7 @@ function sanitize(r) {
     notice: isStr(r.notice) ? r.notice : null,
     archive: Number.isInteger(r.archive) ? r.archive : null,
     personality,
-    person: revenantPerson(r),   // FB1012c ALLY-RACE: its person kept (an older record's, its id's)
+    person: revenantPerson(r),   // FB1012d ALLY-RACE: its person kept (an older record's, its id's)
     // REVENANT-FATE: how it ended (or did not) - executed, sworn to the player, released by the player
     fate: FATES.has(r.fate) ? r.fate : null, sworn: !!r.sworn && !r.defeated, swornAt: isNum(r.swornAt) ? r.swornAt : null,
     companion: r.sworn && !r.defeated ? sanitizeCompanion(r.companion, personality) : null,
@@ -436,7 +436,7 @@ export function revenantDeed(player, entity, deedName, { mobileType = entity?.mo
       archive: Number.isInteger(archive) ? archive : null,   // REVENANT-CARD: the sprite it wore (a retextured kind's own), for its portrait
       personality: personalityFor(id, mobileType),   // REVENANT-VOICE: who it is - one per id
       fate: null, sworn: false, swornAt: null, companion: null,   // REVENANT-FATE: not judged yet
-      person: rec ? foeSeed(rec) : revenantPerson({ id }),   // FB1012c ALLY-RACE: the body it did the deed in is the person it stays
+      person: rec ? foeSeed(rec) : revenantPerson({ id }),   // FB1012d ALLY-RACE: the body it did the deed in is the person it stays
       ...newFeudFields(id, mobileType, 1, entity.career ?? null),   // RVN1 (section 26): its draws (the weakness never what its career shrugs off), and nothing yet learned
     };
     _state.list.push(r);

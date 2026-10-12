@@ -10771,7 +10771,7 @@ export async function bootWorld(canvas, renderer, params, status) {
       if (way === 'out') captainLedger.chartIsle(veilhaven().key);   // the landfall's port, on the charts from the first
       else crossGate.asked('out');   // home in the crossing waters: not asked out again until she has left them
       setMidScreenText(crossingWords(way), 7);
-      const heavy = cargoWords(csaRuntime.state.boatCargoMod);   // FB1012c ETHER-STRAND (bible/01-Overview/Field-Bugs-2026-10-12c.md): the crossing's words cover the helm's - her load said again beneath them, or the boat that came home never says why she will not move
+      const heavy = cargoWords(csaRuntime.state.boatCargoMod);   // FB1012d ETHER-STRAND (bible/01-Overview/Field-Bugs-2026-10-12d.md): the crossing's words cover the helm's - her load said again beneath them, or the boat that came home never says why she will not move
       if (heavy) townTalk.say(heavy, 7);
       captainSay();
       return true;
@@ -33758,7 +33758,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
             getInteractionMode(), playerEntity, {
               nearerThan,
               doorBehind: _race.doorDistance,   // TACT3d: a peaceful guard is no door (the race below, read when the arm runs)
-              behind: _race.next,   // FB1012c ALLY-YIELDS: what the press takes past him - my companion yields to it where it answers
+              behind: _race.next,   // FB1012d ALLY-YIELDS: what the press takes past him - my companion yields to it where it answers
               hud: (t) => townTalk.say(t),
               modal: (t) => townTalk.showOverlay(new ActionTextBox(String(t).split('\n'))),
               makeEnemiesHostile: _makeEnemiesHostile,
@@ -33802,7 +33802,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
             gate: _gatePick,   // WB2
             broker: _brokerPick,   // SET7
             boat: _csaBoatPick,   // CSA-D
-            door: modes.exteriorActivationHit(cam.pos, useFwd),   // FB1012c ALLY-YIELDS: the door set's pick, its reach with it (`doorDistance` is its distance)
+            door: modes.exteriorActivationHit(cam.pos, useFwd),   // FB1012d ALLY-YIELDS: the door set's pick, its reach with it (`doorDistance` is its distance)
             personDistances: _talkPersons().map((p) => rayPersonDistance(cam.pos, useFwd, p.pos)),
           });
           const _lootPick = _race.loot, _dropPick = _race.drop;

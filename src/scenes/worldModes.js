@@ -7049,7 +7049,7 @@ export function createWorldModes(host) {
   function exteriorActivationDistance(eye = player.eye, dir = eyeDir()) {
     return exteriorActivationHit(eye, dir)?.distance ?? Infinity;
   }
-  /** FB1012c ALLY-YIELDS: ...and that activatable's own pick, its reach beside its distance - the street's press hands it
+  /** FB1012d ALLY-YIELDS: ...and that activatable's own pick, its reach beside its distance - the street's press hands it
    *  to the race (activationRace.js `door`), whose `next` asks whether it answers from here before a companion standing
    *  in front of it may take the press. Null off the street, or with nothing under the ray. */
   function exteriorActivationHit(eye = player.eye, dir = eyeDir()) {
@@ -8595,7 +8595,7 @@ export function createWorldModes(host) {
       reach, getInteractionMode(), playerEntity, {
         nearerThan,
         doorBehind: doorDistanceOf(eye, dir, targets, interiorCtx.collider),   // TACT3d; AUDIT TACT C5: a DOOR behind him, never the shelf the ladder would open
-        behind: _pick,   // FB1012c ALLY-YIELDS: the ladder's winner (read when the arm runs) - my companion yields to it where it answers
+        behind: _pick,   // FB1012d ALLY-YIELDS: the ladder's winner (read when the arm runs) - my companion yields to it where it answers
         hud: (t) => say(t),
         modal: (t) => mountInterior(new ActionTextBox(String(t).split('\n'))),
         makeEnemiesHostile: () => makeEnemiesHostile(interiorEnemyDatabase()),
@@ -9828,7 +9828,7 @@ export function createWorldModes(host) {
       reach, getInteractionMode(), playerEntity, {
         nearerThan,
         doorBehind: doorDistanceOf(eye, dir, targets, dungeonCtx.collider),   // AUDIT TACT C7: a castle's peaceful guard is no door either
-        behind: _pick,   // FB1012c ALLY-YIELDS: the ladder's winner, underground - my companion yields to it where it answers
+        behind: _pick,   // FB1012d ALLY-YIELDS: the ladder's winner, underground - my companion yields to it where it answers
         openCompanion: (rec) => !!host.openCompanionPack?.(rec),   // COMPANION-KIT: my companion's pack, underground
         openFate: (rec) => !!host.openRevenantFate?.(rec),   // REVENANT-FATE: a beaten revenant's choice, underground
         openLiving: (rec) => !!host.openLivingDiver?.(rec),   // LW14: a company of the living world's door, underground
@@ -13887,7 +13887,7 @@ export function createWorldModes(host) {
     enterCaravanRoom,   // WAGONS1
     tryEnter,
     exteriorActivationDistance,   // AUDIT 63 F33 (review): the rival distance the living-foe arm must beat
-    exteriorActivationHit,   // FB1012c ALLY-YIELDS: ...and its pick, reach and all, for the race's `next`
+    exteriorActivationHit,   // FB1012d ALLY-YIELDS: ...and its pick, reach and all, for the race's `next`
     exteriorHoverPick,   // WORLD-HOVER: the plaque's winner, raced exactly as the press's is
     exteriorHoverName,   // ...and what that winner is called
     openYardTrade,   // MERCHANT-YARDS: a yard's counter, opened from the street (scenes/world.js merchantYards' `open`)
