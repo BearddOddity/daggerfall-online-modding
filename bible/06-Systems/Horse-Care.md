@@ -137,8 +137,11 @@ What reads the gait:
   and UpdateMode mounts on the fast clop); its sprite nods on WALK_FRAME_TIME, 0.25 s - twice DFU's 0.125, a cycle the
   ground DFU's own ride covered in one of its. The gallop keeps every DFU arm: the fast clop off the edge, 1.2 pitch,
   0.125 s.
-- **The others' clop**: the pose's `hs` carries the slow ride (`scenes/world.js`'s latch reads `slowRide`), so a peer
-  hears my walk as I do. The wire is unchanged; an older client hears it slow too.
+- **The others' clop**: the pose's `hs` carries the slow ride (`scenes/world.js`'s latch reads `slowRide`), and a peer's
+  animator plays it as the rider's own plays the walk - a state (`net/remotePlayers.js`, AUDIT HORSE-WALK: on the edge
+  alone, a peer first seen at a walk or mounting into one clopped fast until a first gallop) - with the gallop's 1.2
+  pitch off the pose's gallop bit (mv 2; every peer's gallop had been heard at 1.0 since STEED1). So a peer hears my
+  walk and my gallop as I do. The wire is unchanged; an older client swaps on the edge alone.
 - **The 3D horse** (`06-Systems/Horse-Coats.md`, The 3D horse): a slow ride never gallops (`world/horseModel.js`
   gaitFor's `gallops`) - the player's off the host's word (`horse.slow`, `player/mwView.js`), a peer's off its pose's
   `hs` (`net/peerBodies.js`). Daggerfall's walk stands on the gallop's own edge, inside its hold either way, so the gait
@@ -211,6 +214,6 @@ upkeep its odometer's metres, the HUD its bar and the Stable page its acts. `sce
 (`transport.js` dismountOnTransition) - and are named, not wired.
 
 Pinned: `test/steed1_horsecare.test.js`; mutants `tools/mutants/steed1.json`, and HORSE-LIVES's and UPKEEP-ONLINE's
-`tools/mutants/wagonmend.json`. THE WALK: `test/horsewalk.test.js`; mutants `tools/mutants/horsewalk.json` (37, all
+`tools/mutants/wagonmend.json`. THE WALK: `test/horsewalk.test.js`; mutants `tools/mutants/horsewalk.json` (40, all
 dead). The saddle panel and the page's polish:
 `test/steedui_saddle.test.js`; mutants `tools/mutants/steedui.json`.

@@ -109,5 +109,14 @@
     "tests": ["test/horsewalk.test.js"]},
   {"name": "HORSEWALK-saddle-reads-upkeep", "file": "src/scenes/saddleHost.js",
     "old": "walks: mode === 'Horse' && rideWalks(mode),", "new": "walks: mode === 'Horse' && !!upkeep.rideWalks?.(mode),",
+    "tests": ["test/horsewalk.test.js"]},
+  {"name": "HORSEWALK-peer-walk-unread", "file": "src/net/remotePlayers.js",
+    "old": "walking: !!peer.shown.hs, running: peer.shown.mv === 2 });", "new": "running: peer.shown.mv === 2 });",
+    "tests": ["test/horsewalk.test.js"]},
+  {"name": "HORSEWALK-peer-gallop-pitch-unread", "file": "src/net/remotePlayers.js",
+    "old": "walking: !!peer.shown.hs, running: peer.shown.mv === 2 });", "new": "walking: !!peer.shown.hs });",
+    "tests": ["test/horsewalk.test.js"]},
+  {"name": "HORSEWALK-peer-gallop-bit-any-move", "file": "src/net/remotePlayers.js",
+    "old": "running: peer.shown.mv === 2 });", "new": "running: !!peer.shown.mv });",
     "tests": ["test/horsewalk.test.js"]}
 ]

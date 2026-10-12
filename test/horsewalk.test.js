@@ -20,6 +20,9 @@ import { gaitFor, horseGait, stepHorseGait, gaitShare } from '../src/world/horse
 import { createHorseRig } from '../src/world/horseRig.js';
 import { saddleGait, drawEnhancedSaddle, hideEnhancedSaddle } from '../src/ui/enhancedSaddle.js';
 import { createSaddleHost } from '../src/scenes/saddleHost.js';
+import { AudioEngine } from '../src/systems/audio.js';
+import { RemotePlayers } from '../src/net/remotePlayers.js';
+import { SOUND } from '../src/systems/soundClips.js';
 import { FEATURES } from '../src/systems/features.js';
 import { TUTORIALS } from '../src/systems/tutorialCatalogue.js';
 import { fakeDoc, one } from './decorFakes.mjs';
@@ -156,6 +159,33 @@ test('HORSE-WALK THE RIDING SPRITE AND ITS CLOP: a walk is the slow horse - the 
   const c = new RidingAnimator();
   c.mount(TRANSPORT_MODES.Cart, { rolls: () => 0.5 });
   assert.equal(c.update(0.01, { mode: TRANSPORT_MODES.Cart, movingLessThanHalfSpeed: false }).clip, RIDING_SOUND.cart);
+});
+
+test('HORSE-WALK THE OTHERS HEAR IT (AUDIT HORSE-WALK): a peer\'s clop through the real RemotePlayers plays the pose\'s slow ride (`hs`) as the rider\'s own animator plays the walk - a state, not the edge: first seen at a walk, the slow clop at half the volume from its first frame (on the edge alone it clopped fast until a first gallop); the gallop (hs gone, mv 2) the fast clop, whole, at the running pitch 1.2; a walk again the slow; every time (mutants: HORSEWALK-peer-walk-unread, -peer-gallop-pitch-unread, -peer-gallop-bit-any-move)', () => {
+  const param = () => ({ value: 0 });
+  const ctx = {
+    state: 'running', destination: { connect(n) { return n; } },
+    listener: { positionX: param(), positionY: param(), positionZ: param(), forwardX: param(), forwardY: param(), forwardZ: param(), upX: param(), upY: param(), upZ: param() },
+    createGain: () => ({ gain: param(), connect(n) { return n; }, disconnect() {} }),
+    createPanner: () => ({ positionX: param(), positionY: param(), positionZ: param(), connect(n) { return n; }, disconnect() {} }),
+    createBufferSource: () => ({ buffer: null, playbackRate: param(), loop: false, connect(n) { return n; }, start() {}, stop() {}, disconnect() {} }),
+  };
+  const e = new AudioEngine();
+  e.ctx = ctx; e.enabled = true; e._ensureCtx = () => {};
+  for (const k of [SOUND.HorseClop2, SOUND.HorseClop, SOUND.AnimalHorse]) e.buffers.set(k, { duration: 0.5 });
+  const heard = [];
+  const setLoop3d = e.setLoop3d.bind(e);
+  e.setLoop3d = (name, clip, pos, opts) => { heard.push({ clip, volume: opts?.volume, pitch: opts?.pitch }); return setLoop3d(name, clip, pos, opts); };
+  const rp = new RemotePlayers({ renderer: {}, deps: { fetchBytes: async () => null, palette: null, audio: e }, compose: async () => null });
+  const peer = (o) => ({ id: 'ann-0001', name: 'ann', shown: { x: 1, y: 0, z: 4, yaw: 0, pitch: 0, wd: 0, an: 0, fk: 0, rd: 1, rv: 0, ...o }, look: null });
+  const sync = (p) => { rp.sync([p], (sh) => [sh.x, sh.y, sh.z], { bodyHeight: () => 2, eye: [0, 1.7, 0], dt: 1 / 30 }); return heard.at(-1); };
+  const slow = { clip: SOUND.HorseClop, volume: RIDING_VOLUME_SCALE * 0.5, pitch: 1 };
+  const fast = { clip: SOUND.HorseClop2, volume: RIDING_VOLUME_SCALE, pitch: 1.2 };
+  assert.deepEqual(sync(peer({ mv: 1, hs: 1 })), slow, 'first seen at a walk: the slow clop, half the volume');
+  for (let i = 0; i < 2; i++) {
+    assert.deepEqual(sync(peer({ mv: 2 })), fast, `gallop ${i}: the fast clop, whole, at the running pitch`);
+    assert.deepEqual(sync(peer({ mv: 1, hs: 1 })), slow, `walk ${i}`);
+  }
 });
 
 /** scenes/world.js's own lines, lifted from its source and run (the tv8_party_walk technique). */
