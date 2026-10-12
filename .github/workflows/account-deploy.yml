@@ -868,7 +868,7 @@ jobs:
             one=$(curl -sS --max-time 10 -o /dev/null -w '%{time_total}' "$worker/v1/seats/sieges/live" 2>/dev/null) || one=""
             read1+=("$one")
           done
-          # the middle of the answers that came, in ms - none, none
+          # the middle of the answers that came, in ms - nothing where none came
           mid() { printf '%s\n' "$@" | grep -E '^[0-9]+(\.[0-9]+)?$' | sort -n | awk '{ v[NR] = $1 } END { if (NR) printf "%d", v[int((NR + 1) / 2)] * 1000 + 0.5 }'; }
           h=$(mid "${health[@]}") || h=""
           s=$(mid "${read1[@]}") || s=""
