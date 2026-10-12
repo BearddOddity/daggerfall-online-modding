@@ -28,6 +28,7 @@ import { liveStat } from '../systems/statMods.js';
 import { STAT_KEYS_ORDER } from '../systems/chargen.js';
 import { weaponSkillUsed } from '../characters/weapons.js';
 import { armorValuesOf } from '../systems/equip.js';   // AUDIT C&C H5: the stand-in's unarmoured table, DFU's own 100s
+import { clawMetalDamage, CLAW_METAL_MAX } from './clawMetal.js';   // AUDIT CLAWS A1: the beast's claws' metal rides the sheet
 import { DUEL_LEVEL_MAX, DUEL_STAT_MAX, DUEL_SKILL_MAX, DUEL_RACE_MAX, DUEL_TEMPLATE_MAX, DUEL_MATERIAL_MAX, CARD_VITAL_MAX, CAST_EFFECTS_MAX, DUEL_SWINGS } from '../net/wire.js';
 
 /** The four skills a blow reads, in the order the wire carries them (`sk`): the weapon's own (Archery for a bow, the
@@ -64,7 +65,10 @@ const u32 = (v) => { const n = Number(v); return Number.isFinite(n) ? (n >>> 0) 
 /** The skill a weapon template swings with - HandToHand for no weapon. */
 const skillForTemplate = (t) => (Number.isInteger(t) ? (weaponSkillUsed(t) ?? SKILLS.HandToHand) : SKILLS.HandToHand);
 
-/** THE ATTACKER'S SHEET, as the wire carries it (`a`), clamped at the wire's bounds so an honest frame is never refused. */
+/** THE ATTACKER'S SHEET, as the wire carries it (`a`), clamped at the wire's bounds so an honest frame is never refused.
+ *  AUDIT CLAWS A1: `cm`, the beast's claws' metal (combat/clawMetal.js) - read here off the striker's own entity, because
+ *  the stub has no equip table to read it from; the duel, the siege, the Royal Tourney, a siege work and the wild zone
+ *  all strike through this sheet. Never on the wire since INT8 (a strike carries its rolled `d`). */
 export function duelAttackerOf(entity, weapon = null) {
   const ws = skillForTemplate(weapon?.templateIndex);
   return {
@@ -74,6 +78,7 @@ export function duelAttackerOf(entity, weapon = null) {
     sk: [ws, SKILLS.HandToHand, SKILLS.CriticalStrike, SKILLS.Backstabbing].map((id) => clamp(skillValue(entity, id), 0, DUEL_SKILL_MAX)),
     cf: [clamp(entity?.career?.attackModifierFlags ?? 0, 0, 255), u32(entity?.career?.weaponArmorShieldsBitfield), u32(entity?.career?.abilityFlagsAndSpellPointsBitfield)],
     h: [clamp(entity?.health ?? 0, 0, CARD_VITAL_MAX), clamp(entity?.maxHealth ?? 1, 1, CARD_VITAL_MAX)],
+    cm: clamp(clawMetalDamage(entity), 0, CLAW_METAL_MAX),
   };
 }
 
@@ -111,6 +116,9 @@ export function duelStub(a, w = null) {
     career: { attackModifierFlags: a.cf[0], weaponArmorShieldsBitfield: a.cf[1], abilityFlagsAndSpellPointsBitfield: a.cf[2] },
     health: a.h[0], maxHealth: a.h[1],
     activeEffects: [], items: [], equipTable: {},
+    // AUDIT CLAWS A1: the claws' metal as the sheet's word, never the gauntlets themselves - the stub has no equip table
+    // to wear them from (and AUDIT C&C H5's neutral stand-in, duelStandIn, carries no `cm`: it has no claws)
+    clawMetal: clamp(a.cm ?? 0, 0, CLAW_METAL_MAX),
   };
   return { stub, weapon };
 }

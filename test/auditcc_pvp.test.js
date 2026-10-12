@@ -101,6 +101,7 @@ test('AUDIT C&C H5 THE NEUTRAL STAND-IN: every blow and spell between players is
     skillOverrides: { 19: 0, 30: 0, 34: 0 },
     career: { attackModifierFlags: 0, weaponArmorShieldsBitfield: 0, abilityFlagsAndSpellPointsBitfield: 0 },
     health: 99999, maxHealth: 99999, activeEffects: [], items: [], equipTable: {},
+    clawMetal: 0,   // AUDIT CLAWS A1's stub carries the claws' metal (its sheet's `cm`) - the stand-in has no claws
     armorValues: [100, 100, 100, 100, 100, 100, 100],
   });
   assert.deepEqual(STAT_KEYS_ORDER.map((k) => liveStat(s, k)), [50, 50, 50, 50, 50, 50, 50, 50], 'what the formula reads');
