@@ -71,7 +71,7 @@ import { CARAVAN_SCENE_NAME, CARAVAN_TEXT, readCaravanRoom, isCaravanRoom, turnC
 import { wagonItemName } from '../systems/wagonKinds.js';   // WAGONS2 (FINAL AUDIT): a marked wagon's name on the keyed shelf
 import { wagonLoadedHeld } from '../systems/tradePack.js';   // WAGONS2 (AUDIT): the wagon a loaded store hangs on - FINAL AUDIT: the pack's one law
 import { caravanPaintRows } from '../systems/wagonLooks.js';   // WAGONS2: the caravan's inside, painted from the decorator
-import { caravanDecorDoc, readCaravanDecor } from '../systems/caravanVisit.js';   // WAGONS2-VISIT: what a caravan's owner placed, said to its room and stood for its visitor
+import { caravanDecorDoc, readCaravanDecor, readCaravanHidden } from '../systems/caravanVisit.js';   // WAGONS2-VISIT: what a caravan's owner placed, said to its room and stood for its visitor
 import { caravanKeyOf } from '../net/privateInterior.js';   // WAGONS2-VISIT: a caravan's own room
 import { INTERIOR_SHELL_BUCKET } from './decorBase.js';   // HOME-DOORS: a doorway is an opening in the shell's walls   // AUDIT 63 F22: AddFlats' RandomTreasure arm lives with the walk that finds its markers
 import { advanceMachinery, mountMachineryChild, machineryChildPos, MILL_SOUND } from '../world/windmills.js';   // WM4b: the machinery's moving parts; WM4c: its hum
@@ -12680,7 +12680,7 @@ export function createWorldModes(host) {
      *  caravanDecorDoc: the pieces as the save keeps them, unturned) - null anywhere else, a visit included. */
     myCaravanDecor() {
       if (mode !== 'interior' || !interiorCtx || !isCaravanRoom(interiorCabin) || privateVisitRoom) return null;
-      return caravanDecorDoc(turnCaravanScene({ decor: interiorDecor.list() }, interiorCabin.turn).decor);
+      return caravanDecorDoc(turnCaravanScene({ decor: interiorDecor.list() }, interiorCabin.turn).decor, interiorCtx.base?.hidden() ?? []);   // WAGONS2-BASE: and what I took out of the room - its keys need no turn
     },
     /** WAGONS2-VISIT: WHAT A CARAVAN'S OWNER PLACED, STOOD FOR ITS VISITOR - the document its room `room` said
      *  (systems/caravanVisit.js readCaravanDecor), turned with the caravan as it stands here and stood whole (the owner's
@@ -12688,6 +12688,7 @@ export function createWorldModes(host) {
     applyCaravanDecor(room, doc) {
       if (!caravanGuestHere() || !interiorCtx || room !== privateVisitRoom) return false;
       interiorDecor.set(turnCaravanScene({ decor: readCaravanDecor(doc) ?? [] }, -interiorCabin.turn).decor);
+      interiorCtx.base?.setHidden(readCaravanHidden(doc));   // WAGONS2-BASE: the room's own pieces its owner took out (the lantern and its light) are out for its guest too
       return true;
     },
     /** WAGONS2-VISIT: the caravan I visit has moved on or gone (net/caravanVisitLink.js) - stood outside behind its door,
