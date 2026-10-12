@@ -4573,7 +4573,14 @@ export function createNavalHost(deps) {
     }
     for (const b of myBoats()) list.push({ ship: null, movable: false, pos: b.GameObject.position, yaw: yawOfRot(b.GameObject.rotation), hull: b.hull });
     if (list.length < 2) return;
+    // NAV-COST (2026-10-12): a hull on the flat made once a pass (again once it is shoved), and two whose centres stand
+    // farther apart than twice their reaches never measured - every pair of the sea's was, every frame, two new flats
+    // each, and nearly all of them hundreds of km apart. hullOverlap's answer for them is null: a hull's half extent
+    // along any axis is under its half length and half width together, and one of A's own axes holds at least 1/sqrt 2
+    // of the distance between the centres - so past twice the reaches some axis separates them.
+    const flatOf = (x) => (x.flat ??= flatHull(x.pos, x.yaw, x.hull));
     const shove = (x, v) => {
+      x.flat = null;
       x.ship.pos[0] += v[0]; x.ship.pos[2] += v[1];
       const l = Math.hypot(v[0], v[1]) || 1, f = forwardOfYaw(x.ship.yaw);
       const into = -(f[0] * v[0] + f[2] * v[1]) / l;   // her heading into what she met
@@ -4583,7 +4590,9 @@ export function createNavalHost(deps) {
       for (let j = i + 1; j < list.length; j++) {
         const A = list[i], B = list[j];
         if (!A.movable && !B.movable) continue;
-        const push = hullOverlap(flatHull(A.pos, A.yaw, A.hull), flatHull(B.pos, B.yaw, B.hull));
+        const a = flatOf(A), b = flatOf(B), reach = 2 * (a.hl + a.hw + b.hl + b.hw), dx = b.c[0] - a.c[0], dz = b.c[1] - a.c[1];
+        if (dx * dx + dz * dz > reach * reach) continue;
+        const push = hullOverlap(a, b);
         if (!push) continue;
         if (A.movable && B.movable) { shove(A, [push[0] / 2, push[1] / 2]); shove(B, [-push[0] / 2, -push[1] / 2]); }
         else if (A.movable) shove(A, push);

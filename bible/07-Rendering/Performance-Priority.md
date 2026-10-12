@@ -652,6 +652,56 @@ a far peer's ship adopted as they leave stays hull-less; `hullKept`'s every case
 given back, a peer's never kept by it. Mutants: `tools/mutants/ownhullrange.json`, 11, all dead;
 `peerhullrange.json`'s PHR-no-range re-aimed at the build's new line, its nine all dead.
 
+## OVERWORLD-WALK — walking the overworld, the same answers for less
+
+*The owner (2026-10-12): "when I stand on the coast my FPS is 130, when I start walking it drops to 40 practically."
+Measured on the live client with every open performance fix built in: standing 115 FPS, walking the same coast 55 -
+the frame's main thread 8.5 ms standing, 18.2 walking, and the page allocating some 430 MB a second.*
+
+**Found.** No one thing: walking turns on a dozen systems that standing leaves idle, each 0.5-2 ms a frame. Three of
+them did work that gave the same answer for less, and made most of the garbage the collector then stopped the frame for:
+
+- **NAV-COST - the sea's captains** (`systems/naval/navalAI.js stepCaptain`, `scenes/navalHost.js separateHulls`). A
+  captain asked `hostile` - for a wary pirate a sizing-up, `shipPower` and `fightingPower` - of every ship in the sea,
+  every frame, and only then whether it was in sight; and the pass that keeps hulls apart measured every pair of the
+  sea's ships, two new flats a pair, nearly all of them hundreds of km apart. Now her sight is asked first (both halves
+  read nothing they change), and a pair farther apart than twice their reaches is never measured (`hullOverlap`
+  answers null for it: a hull's half extent along any axis is under its half length and half width together, and one
+  of A's own axes holds at least 1/sqrt 2 of the distance between the centres); a flat is made once a pass, again once
+  its hull is shoved.
+- **PIXEL-KEYS - the sea's soundings** (`world/pixelKeys.js pixelKeyText`, `scenes/world.js csaPixelAt`). A captain
+  sounds the water ahead (`navalIsWater`, three points a step of every probe), and each sounding made its pixel's key
+  text anew, `${x},${y}`, to ask the built pixels. The text is made once a pixel now, kept by its numbers - the same
+  string every time - within PIXEL_KEY_SPAN of nought, PIXEL_KEYS_KEPT of them.
+- **PERF-ROPE - the moving teams' harness** (`systems/wagonRopes.js stepRope`). Every sub-step made two new end
+  arrays, every step two more, and every link of every iteration a `Math.hypot` of three, whose every answer was boxed
+  (7% of what the page allocated, walking). A rope steps in place now: its ends in its own arrays, the sub-step's in
+  one pair for every rope, a length as a root of its squares - the rope it was to within a float's rounding.
+
+**Measured.** On the live client with the three (and NAV-FAR-AI, its own pull request) behind one switch, walking the
+same coast, the old and the new alternating 15 s at a time three times over, standing between:
+
+| walking the coast | the old | OVERWORLD-WALK |
+|---|---|---|
+| average | 78.6 FPS | 92.8 FPS |
+| median frame | 12.4 ms | 8.4 ms |
+| 90th percentile | 20.8 ms | 16.7 ms |
+| 99th percentile | 33.4 ms | 29.2 ms |
+| allocated | 430 MB/s | 360 MB/s |
+| main thread a frame | 12.7 ms | 10.8 ms |
+
+By the profile, the harness's step -0.36 ms a frame (the old rope gone from it), the captains' `hostile` -0.21 ms; the
+rest of the main thread's -1.9 ms is the walk's own (the terrain built, what the eye fell on). Standing, the same build
+drew 203 FPS: walking still costs, and the rest is elsewhere (What is left).
+
+Pins: `test/navcost.test.js` (4) - a captain never sizes up a ship past her sight, one in sight is and is fought; past
+twice their reaches no two hulls overlap (20,000 random pairs); two in each other pushed apart, and a heap of three where
+the old pass put them. `test/pixelkeys.test.js` (3) - every key the text it was (50,000 random pixels, negative ones,
+-0, past the span, fractions), the same string each time, the keeping bounded, and the soundings asking by it.
+`test/perfrope.test.js` (2) - 200 teams' 120 steps against the old law restated, every knot within a micrometre; the
+ends kept in the rope's own arrays. Mutants: `tools/mutants/navcost.json` (5 dead, 1 equivalent as recorded: the cull
+is the cost alone), `pixelkeys.json` (4), `perfrope.json` (4), all dead.
+
 ## What is left, ranked
 
 Each with what was found and whether it moves the picture (those are the owner's).
