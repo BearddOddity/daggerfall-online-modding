@@ -21558,7 +21558,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     let entered = d.kind === 'exterior';
     if (d.kind === 'interior') entered = await modes?.restoreInterior?.({ door: d.door, ...(d.layout != null ? { layout: d.layout } : {}), ...(d.privateRoom ? { privateRoom: d.privateRoom } : {}), ...(d.sailingCabin ? { sailingCabin: d.sailingCabin, cabinOwner: d.cabinOwner } : {}) }, null, { strictDoor: true });
     else if (d.kind === 'dungeon') {
-      entered = await modes?.startInDungeon?.({ locationKey: d.locationKey ?? null });
+      entered = await modes?.startInDungeon?.({ locationKey: d.locationKey ?? null, holdOpen: true });   // HOLD-ONCE: staff may land by a player in Privateer's Hold
       entered = entered && (modes?.dungeonLocation?.mapTableData?.mapId >>> 0) === d.mapId;
     } else if (d.kind === 'gate') entered = await modes?.enterGateArena?.(d.gate);
     else if (d.kind === 'abyss') {
@@ -30489,7 +30489,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     await worldQuickLoad({ ...bootLoadPick, snap });
   } else if (params.has('classic') && getBool('Startup', 'StartInDungeon') && startLoc.hasDungeon) {
     status('entering the dungeon');
-    const entered = await modes.startInDungeon();
+    const entered = await modes.startInDungeon({ holdOpen: true });   // HOLD-ONCE: the new game's start is the one way into Privateer's Hold online
     if (!entered) console.warn('[world] no dungeon entrance at the start cell; starting outside');
     // FIX-C: the dungeon stand IS the spawn. Nothing in worldModes writes
     // this flag, so the exterior gate above the motor was still armed the

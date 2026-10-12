@@ -44,7 +44,7 @@ test('HOLD-SHARED: the tutorial dungeon is still the location on the classic sta
     assert.equal(isStartDungeon(locationAt(109, 158)), false, 'a custom start cell takes the tutorial with it');
     assert.equal(isStartDungeon(locationAt(200, 158)), true);
   } finally { setValue('Startup', 'StartCellX', '109'); }
-  assert.deepEqual(Object.keys(startDungeon).sort(), ['isStartCell', 'isStartDungeon'], 'HOLD-SOLO\'s isTutorialHold and SHIPPED_START_CELL gone');
+  assert.deepEqual(['isTutorialHold', 'SHIPPED_START_CELL'].filter((n) => n in startDungeon), [], 'HOLD-SOLO\'s isTutorialHold and SHIPPED_START_CELL gone');
 });
 
 // worldModes.js's roomIdentity, executed from its source

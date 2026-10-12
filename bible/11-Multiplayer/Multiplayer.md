@@ -44,7 +44,8 @@ inhabit that world while also being able to continue their progress
 ... True persistance"), a persistent shared world one room at a time:
 a dungeon's dead stay dead for whoever comes next, kept by the relay
 and not by anyone's save. (Privateer's Hold among them: HOLD-SOLO keyed it no room from
-2026-10-07 until HOLD-SHARED reverted it, 2026-10-12 - `06-Systems/Online-Arc.md`.)
+2026-10-07 until HOLD-SHARED reverted it, 2026-10-12; online it is entered once, by the new game's start -
+HOLD-ONCE, `06-Systems/Online-Arc.md`.)
 
 ## The three locked decisions
 

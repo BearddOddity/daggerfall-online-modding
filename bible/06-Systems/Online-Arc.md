@@ -15552,6 +15552,32 @@ its simulation (WORLD2), its acts (WORLD3), its loot (WORLD4) and a trade from a
   13 HOLD and H records retired, 46 left), sdonline.json SD-ONLINE-the-identity-blind and auditparty8.json
   AP-hud-place-by-words by content. PIN MOVED: tier1_dungeontiers (the transition's line), sdonline (the identity).
 
+## HOLD-ONCE (2026-10-12, asked: "Let's make it where players outside of privateers hold cannot re enter") - online, Privateer's Hold is entered once
+
+A character begins in Privateer's Hold and, online, walks out of it for good. `scenes/worldModes.js` tryEnterDungeon -
+the one funnel every dungeon entry takes (the door, startInDungeon's Recall, quest transfer, cemetery and Hollow arms,
+the abyss, the undercroft, the arena floor) - refuses the Hold online before its gate (no hub's word, no build) and
+says so: "You cannot go back into Privateer's Hold." (`systems/startDungeon.js` HOLD_ONCE_TEXT).
+
+- The Hold is known by its map id - `systems/startDungeon.js` isPrivateersHold, `world/dungeonTextures.js`
+  PRIVATEERS_HOLD_MAP_ID (187853213, DaggerfallDungeon.IsMainStoryDungeon's first; MAIN_STORY_DUNGEON_IDS reads the
+  same constant) - never the configured start cell, a setting that would otherwise open the real Hold.
+- What still enters: the new game's start (`scenes/world.js`, the classic start's `startInDungeon({ holdOpen: true })`),
+  a save made inside the Hold (the load's `fromLoad`), and a staff `/tp` to a player there (prepareStaffDestination's
+  `holdOpen`). PH1's death respawn inside the Hold stands the player in place and enters nothing.
+- What is refused: the Hold's door from outside, a Recall to an anchor set inside (it lands at the Hold's pixel
+  outside, DFU's "The way underground is closed. Repositioning player." arm), and a quest's `transfer pc inside` there
+  (the exterior fallback, as for any site with no entrance).
+- Offline, the Hold's door is DFU's. The relay is untouched: the Hold keeps its shared room (HOLD-SHARED, above), and
+  every player in it is one who has not yet walked out.
+- Four hosts: `scenes/worldModes.js` holds the gate, and both town hosts build it; `scenes/world.js` marks its two
+  ways in; `scenes/exterior.js` hands no `dungeonOnline` (offline, DFU's); `scenes/dungeonContext.js` enters no dungeon.
+
+- **Pinned**: `test/holdonce.test.js` (3) - isPrivateersHold against a moved start cell; tryEnterDungeon executed from
+  its source, online and off, every arm; the ways in by source. `tools/mutants/holdonce.json` (11, all dead). PIN MOVED
+  (`holdOpen` beside `fromLoad`): mapkeep, castle1, classicstart, dungeonentry, audit68_worldmodes (the Hold's refusal
+  before the gate), fixc_firstStart (the new game's start), staffTeleport (the staff landing).
+
 ## CARDS5 (2026-10-08, Mac: "Do 3 4 and 5") - the relay deals
 
 The relay's newest authority, beside the gate's boss and the arena's bout: a building's room keeps its card tables

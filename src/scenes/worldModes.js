@@ -272,7 +272,7 @@ import { expandGuildRows } from '../systems/guildServiceActions.js';   // MACROS
 import { hallAccessAnytime } from '../systems/guildServices.js';
 import { resolveVariantGuild } from '../systems/guildVariants.js';
 import { getBool, getInt } from '../systems/settings.js';   // R1: InstantRepairs / AllowMagicRepairs go LIVE
-import { isStartDungeon } from '../systems/startDungeon.js';   // PH1: Privateer's Hold - the classic start's own cell
+import { isStartDungeon, isPrivateersHold, HOLD_ONCE_TEXT } from '../systems/startDungeon.js';   // PH1: Privateer's Hold - the classic start's own cell; HOLD-ONCE: the Hold itself, by its map id
 import { reviveForPlay } from '../systems/deathRespawn.js';   // PH1: the in-place respawn's own heal, the SAME fraction world.js's own online respawn uses
 import { reducedRepairCost } from '../systems/guildServices.js';   // R1: FightersGuild.ReducedRepairCost finds its caller
 import {
@@ -9217,7 +9217,11 @@ export function createWorldModes(host) {
     mapTableData: loc.mapTableData && { ...loc.mapTableData },
     dungeon: loc.dungeon && { ...loc.dungeon, blocks: loc.dungeon.blocks?.map((b) => ({ ...b })) },
   });
-  async function tryEnterDungeon(hit, entries, { preferEnterMarker = false, fromLoad = false } = {}) {
+  async function tryEnterDungeon(hit, entries, { preferEnterMarker = false, fromLoad = false, holdOpen = false } = {}) {
+    // HOLD-ONCE (2026-10-12, asked: "Let's make it where players outside of privateers hold cannot re enter"): online,
+    // Privateer's Hold is entered once - by the new game's start (or a save made inside it, or staff landing by a player
+    // there: `holdOpen`); its door, a Recall to an anchor set inside and a quest's transfer are refused. Offline, DFU's.
+    if (!fromLoad && !holdOpen && host.dungeonOnline?.() && isPrivateersHold(hit?.dfLocation)) { say(HOLD_ONCE_TEXT); return false; }
     return gatedTransition(async (live) => {   // AUDIT 68 X3-transition-build-race
       // PVPDUNGEONS: the zone's tier rules - the hub's word on my lock is awaited INSIDE the gate (AUDIT 68 X3: awaited
       // before it, a teleport, a recall or a load during the hub's four seconds did not stale the door, and the dungeon
@@ -9745,7 +9749,7 @@ export function createWorldModes(host) {
    *  candidates the exit landing is computed from. The classic start
    *  used to boot scenes/dungeon.js, which has no exit path at all, so
    *  Privateer's Hold was a sealed box: the whole reason this exists. */
-  async function startInDungeon({ locationKey = null, fromLoad = false } = {}) {
+  async function startInDungeon({ locationKey = null, fromLoad = false, holdOpen = false } = {}) {   // HOLD-ONCE: `holdOpen` - the new game's start and a staff landing may enter Privateer's Hold online
     const entries = doorTargets();
     // CRUX1 (2026-09-22, "the final dungeon mission is unbeatable"):
     // AND WITHOUT A DOOR. DFU's StartDungeonInterior(location) builds
@@ -9770,7 +9774,7 @@ export function createWorldModes(host) {
     // DE1: this is StartDungeonInterior, not the door transition - the
     // player is placed inside without ever walking through, so the
     // ENTER marker wins and the facing is plain north.
-    return tryEnterDungeon(hit, entries, { preferEnterMarker: true, fromLoad });   // MAP-KEEP: a save's own dungeon, entered on the load arm
+    return tryEnterDungeon(hit, entries, { preferEnterMarker: true, fromLoad, holdOpen });   // MAP-KEEP: a save's own dungeon, entered on the load arm
   }
 
   function tryExitDungeon({ pressCast = false, interact = false, actClick = false } = {}) {
