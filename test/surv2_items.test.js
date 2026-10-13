@@ -291,8 +291,8 @@ test('SURV2: by source - the pipeline stands a vendor archive in, the weight law
   // wrote the system itself and so carries it on the prefs shelf - a
   // distinction no player can see. What this pin owns is unchanged:
   // the row declares the key and the default, once (RF4).
-  // SURV-TIERS: the default is a tier now - Casual, on - and the player still owns the switch, Off included
-  assert.match(read('src/systems/features.js'), /key: 'survival', initial: 'casual', online: 'player',/, 'the row owns the key and the default: on (Casual), and the player owns the switch');
+  // SURV-TIERS: the default is a tier now - on - and the player still owns the switch, Off included. BOONS-DEFAULT: Boons
+  assert.match(read('src/systems/features.js'), /key: 'survival', initial: 'boons', online: 'player',/, 'the row owns the key and the default: on (Boons), and the player owns the switch');   // PIN MOVED
 });
 
 // ═══ AUDIT VC6 (2026-09-18): THE DROP ROLLS ON THE POOL'S OWN STREAM ══

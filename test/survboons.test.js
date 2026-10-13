@@ -92,11 +92,11 @@ const plate = () => ({ templateIndex: 104, group: 'Armor', material: 0x0200, max
 
 afterEach(() => { _resetForTests(); });
 
-test('SURV-BOONS: the fourth tier - on the one key, stored by name between Off and Casual; the switch reads it, the shelf keeps it, the feed hands its rules, the gate stays down, and it is the player\'s online; Casual stays the default; and the table is the four rules, written out to the value', () => {
+test('SURV-BOONS: the fourth tier - on the one key, stored by name between Off and Casual; the switch reads it, the shelf keeps it, the feed hands its rules, the gate stays down, and it is the player\'s online; the default since BOONS-DEFAULT; and the table is the four rules, written out to the value', () => {
   assert.deepEqual([...SURVIVAL_TIER_IDS], ['off', 'boons', 'casual', 'hard']);
   assert.equal(SURVIVAL_STORED.boons, 'boons');
   assert.equal(isStoredTier('boons'), true); assert.equal(tierOfStored('boons'), 'boons'); assert.equal(rulesForTier('boons'), BOONS);
-  assert.equal(SURVIVAL_DEFAULT, 'casual', 'a new tier is a choice, not the new default');
+  assert.equal(SURVIVAL_DEFAULT, 'boons', 'BOONS-DEFAULT (2026-10-13, Mac: "make boons the default")');   // PIN MOVED: SURV-BOONS had it a choice, not the default
   const row = FEATURES.find((f) => f.id === 'mod-climates-calories');
   assert.deepEqual(row.control.tiers[1], ['boons', 'Boons'], 'the bar\'s second segment');
   assert.match(row.note, /On Boons neglect costs nothing and a body kept fed and watered, and rested in a bed or by a fire, earns bonuses/);
@@ -427,7 +427,7 @@ test('SURV-BOONS: the sheet explains the points - the Stats side\'s Boons rows i
   const page = TUTORIALS.find((t) => t.id === 'survival');
   assert.deepEqual(page.body, [
     'You need food, water, warmth and sleep. Icons at the screen\'s left edge show what you are short on, and on Boons what you have earned.',   // PIN MOVED (AUDIT C&C S13): where the tiles stand
-    'Survival can be Off, Boons, Casual (the default) or Hard. On Boons, needs met give bonuses; on Hard, needs can hurt you and make you sick. Change it in Settings > Features.',
+    'Survival can be Off, Boons (the default), Casual or Hard. On Boons, needs met give bonuses; on Hard, needs can hurt you and make you sick. Change it in Settings > Features.',   // PIN MOVED (BOONS-DEFAULT)
   ]);
-  assert.match(read('src/ui/credits.js'), /in four tiers in Settings: Off, Boons \(neglect costs nothing, and a body kept fed, watered and rested earns bonuses\), Casual/);   // PIN MOVED (AUDIT C&C S8): the drink's swing is taken in Boons too
+  assert.match(read('src/ui/credits.js'), /in four tiers in Settings: Off, Boons \(the default: neglect costs nothing, and a body kept fed, watered and rested earns bonuses\), Casual/);   // PIN MOVED (AUDIT C&C S8): the drink's swing is taken in Boons too
 });

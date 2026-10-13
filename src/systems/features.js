@@ -1429,9 +1429,10 @@ export const FEATURES = Object.freeze([
   // Off is the classic game: no needs, no provisions minted.
   // SURV-TIERS (2026-09-23): the one switch is tiers - Off, Boons
   // (SURV-BOONS, 2026-10-12: neglect costs nothing, a need met earns a bonus),
-  // Casual (the default: the needs only borrow stamina, and a rest,
+  // Casual (the needs only borrow stamina, and a rest,
   // a meal or a drink never costs more than it gives) and Hard (the arc
-  // as above, the costed rest with it); survival/difficulty.js.
+  // as above, the costed rest with it); survival/difficulty.js. The default
+  // is Boons since BOONS-DEFAULT (2026-10-13, Mac: "make boons the default"), Casual before it.
   // BLOOD1 (2026-09-19, Mac: "I really want to try and build our own
   // version as close to 1:1 as possible" / "read in how their module
   // works so we can achieve our own type of parity") - THE PORT'S OWN
@@ -1516,13 +1517,14 @@ export const FEATURES = Object.freeze([
     // them, as the Gore row is held to GORE_TIERS).
     //
     // SURV-BOONS (2026-10-12, the owner: "Players would still be able to switch between CAC versions"): A FOURTH SEGMENT ON
-    // THE SAME KEY - Boons, stored by name, between Off and Casual (the gentlest first). The default stays Casual, and
+    // THE SAME KEY - Boons, stored by name, between Off and Casual (the gentlest first). The default stayed Casual until
+    // BOONS-DEFAULT (2026-10-13, Mac: "make boons the default"), and
     // the same reading holds: a boon is MY body's, so the tier is the player's online.
     //
     // TEMP-UI (2026-10-12, the owner: "add a temperature widget to the UI"): THE TEMPERATURE PLATE IS A PART - shown by
     // default beside the compass (ui/enhancedHud.js), a picture with no gameplay in it, so each player's own online.
     control: Object.freeze({
-      store: 'prefs', key: 'survival', initial: 'casual', online: 'player',
+      store: 'prefs', key: 'survival', initial: 'boons', online: 'player',   // BOONS-DEFAULT: difficulty.js SURVIVAL_DEFAULT
       tiers: Object.freeze([[false, 'Off'], ['boons', 'Boons'], ['casual', 'Casual'], ['hard', 'Hard']]),
       also: Object.freeze([Object.freeze({ store: 'prefs', key: 'survivalTempHud', initial: true, online: 'player' })]),
       parts: Object.freeze([Object.freeze({ key: 'survivalTempHud', label: 'Temperature on the HUD' })]),

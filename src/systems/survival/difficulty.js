@@ -7,7 +7,9 @@
 // ONE KEY, FOUR ANSWERS. The survival pref (survival/switch.js) was a
 // boolean; it is a tier now: OFF (the classic game), BOONS (SURV-BOONS,
 // 2026-10-12: the rewards-only tier - its rules are at the end of this
-// note), CASUAL (the default) and HARD (the arc as SURV1-7 built it).
+// note - THE DEFAULT since BOONS-DEFAULT, 2026-10-13, Mac: "make boons
+// the default"), CASUAL (the default until then) and HARD (the arc as
+// SURV1-7 built it).
 // SURV-TIERS made the first three. Every law that can charge the
 // player reads its tier's RULES from this table, handed in by the host's
 // composition - env.js survivalFeed (the minute law), scenes/shared.js
@@ -103,7 +105,7 @@
 export const SURVIVAL_OFF = 'off';
 /** The tiers in the Features bar's order. */
 export const SURVIVAL_TIER_IDS = Object.freeze([SURVIVAL_OFF, 'boons', 'casual', 'hard']);   // SURV-BOONS: the gentlest first after Off
-export const SURVIVAL_DEFAULT = 'casual';
+export const SURVIVAL_DEFAULT = 'boons';   // BOONS-DEFAULT (2026-10-13, Mac: "make boons the default") - Casual until then
 
 /** AUDIT SURV-TIERS: what each tier is STORED as on the prefs shelf -
  *  the values the Features row's segments write (systems/features.js

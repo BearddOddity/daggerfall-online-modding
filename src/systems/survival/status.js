@@ -70,8 +70,10 @@ export const HUD_BOON_WORDS = Object.freeze({
 /** The tier a reader reads the record by: the LIVE tier's rules where the reader knows them (AUDIT SURV-BOONS C14: the
  *  HUD, the pack and - AUDIT C&C S11 - the Status page hand `rules` in, survival/switch.js survivalRules, so a turn of
  *  the tier shows at once and not a game minute later); else the record's word for it - a record that carries the
- *  minute law's `boons` is a rewarding tier's (Boons), any other the default tier's. */
-const tierOf = (s, rules) => rules ?? (Array.isArray(s.boons) ? SURVIVAL_RULES.boons : SURVIVAL_RULES[SURVIVAL_DEFAULT]);
+ *  minute law's `boons` is a rewarding tier's (Boons), any other a tier that costs, read as the gentlest of them,
+ *  Casual. BOONS-DEFAULT (2026-10-13): that was "the default tier's" while the default was Casual - with Boons the
+ *  default it would have read a record no rewarding tier wrote as Boons. */
+const tierOf = (s, rules) => rules ?? (Array.isArray(s.boons) ? SURVIVAL_RULES.boons : SURVIVAL_RULES.casual);
 /** The record's own word that a lit fire answered its last minute's cold (the minute law's `s.warmed`). */
 const warmedBy = (s, word) => !!s.warmed && (word === 'cold' || word === 'freezing' || word === 'deadly cold');
 

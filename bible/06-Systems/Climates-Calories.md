@@ -101,6 +101,7 @@ carry, and everything static.
 | TEMP-UI | the temperature shown: the HUD plate, the pack's plaque, the card's comparison, the Stats side's breakdown, the Status page's number | `survival/temperature.js` (`naturalParts`, `temperatureBreakdown`, `signedDegrees`, the sum's parts on `feltTemperature`), `survival/env.js` (`feltNow`, the feed kept), `survival/needs.js` (`feltCtx`), `survival/status.js` (`temperatureReadout`), `ui/enhancedHud.js`, `ui/temperatureCard.js`, `ui/armourCard.js` (`modsForSlots`, the wear's `worn`), `ui/statsCard.js`, the sheets |
 | AUDIT TEMP-UI | the body's warmth unresisted, the swim soaks, the dungeon's air, the clothes eased, the drink's floor, the landing floored, the shown weather, a NaN record mended | `survival/temperature.js`, `env.js`, `needs.js`, `scenes/dungeonContext.js`, `scenes/world.js` |
 | SURV-OFFSIGHT | Off sees another player's camp - the flame, its light, the tent - and uses none of it; its own stay out of sight | `scenes/camps.js` (`seen`, the doors of sight, beside `shown`, the doors of use) |
+| BOONS-DEFAULT | Boons is the default tier (Mac, 2026-10-13: "make boons the default"); a record no rewarding tier wrote reads as Casual where no tier is handed in | `survival/difficulty.js` (`SURVIVAL_DEFAULT`), `systems/features.js` (the row's `initial`), `survival/status.js` (`tierOf`), the first-need page and the credits |
 
 ### The temperature (SURV1)
 
@@ -210,8 +211,8 @@ death handler, the food's too (FOE-CAP, Mac: "never drop more then 3
 items in total max. Gold included") - so a bear leaves three things at
 the most, its meat among them (five in an Elite Dungeon).] All of it behind the
 one switch (`survival/switch.js`, the `mod-climates-calories` feature
-row) - on in Boons, Casual (the default) and Hard, gone in Off
-(SURV-TIERS, SURV-BOONS).
+row) - on in Boons (the default since BOONS-DEFAULT), Casual and Hard,
+gone in Off (SURV-TIERS, SURV-BOONS).
 
 ### The camps (SURV3)
 
@@ -1774,7 +1775,8 @@ Hungry now, since the sack - which never spoils - goes first.
 
 **One key, four answers.** The Features bar reads `Off | Boons | Casual |
 Hard`; Boons is stored by name (`'boons'`), the load keeps it as it keeps
-the others (`isStoredTier` reads the table), the default stays Casual, and
+the others (`isStoredTier` reads the table), the default stayed Casual
+(until BOONS-DEFAULT, at the end of this page, made it Boons), and
 like every tier it is the player's online - a boon is MY body's, and it
 reaches other players as every live buff does, through the striker's
 sheet in a fight and Thriving's luck in a room's loot (the question AUDIT
@@ -2213,7 +2215,8 @@ lines, the clothes, the load, the page, the phone's rule).
 - **B11 - THE ATTRIBUTES PAGE SAYS WHY.** The enhanced menu's Stats
   Attributes page names the boons under its meters
   (`ui/temperatureCard.js` `boonStatRows`, the pack's own).
-- **B12** stays inherent, and Casual stays the default.
+- **B12** stays inherent, and Casual stayed the default - until Mac's
+  word a day later made it Boons (BOONS-DEFAULT, at the end of this page).
 - **T1 - WHAT THE DOLL DRAWS OVER THE CUIRASS COVERS IT.** The question
   was read against the mod's own source, which is public
   (github.com/Ralzar81/Climates-Calories, every revision to 1.7.0):
@@ -2895,3 +2898,43 @@ list is longer), SURV7's dungeon fire (the castle's word follows its
 line), SURVBOONS' silent page (the bank's line rides beside the boon's),
 SURVTIERS' tiers again (the place reads `seen`, and `shown` is still the
 mutant) and R11's comment (it names REST1's tile).
+
+## BOONS-DEFAULT - BOONS IS THE DEFAULT (2026-10-13)
+
+> Mac: *"make boons the default"*.
+
+**The default tier is Boons** (`difficulty.js` `SURVIVAL_DEFAULT`, and
+the Features row's `initial`, which the prefs shelf takes its default
+from - RF4; `survtiers` holds the two equal). Casual had been the default
+since SURV-TIERS; B12 (above) kept it so the day before.
+
+**Who moves.** PREF1's shelf never stores the default, so a player who
+never touched the tier - or who chose Casual while Casual was the default,
+which stored nothing - reads the new default and plays Boons. A player who
+chose Off, Hard or Boons keeps it: those are stored by name (Off as the
+old switch's `false`). Online it is each player's own, as every tier is.
+
+**A record's own word, mended.** Where a reader is handed no tier, the
+status law reads the record's word for it (`status.js` `tierOf`, AUDIT
+SURV-BOONS C14): a record carrying the minute law's `boons` was written in
+a rewarding tier, any other "the default tier's". That held while the
+default was Casual; with Boons the default it read a record no rewarding
+tier wrote as Boons - Casual's page lost "You are well rested." and its
+chips their red. Such a record reads as Casual now, the gentlest tier
+that costs, which is what it always resolved to. Every reader in the game
+hands the live tier in (the HUD, the pack, the Status page), so the
+fallback is the pins' and a no-level number's alone; nothing a player saw
+changed by it.
+
+**The words.** The first-need page says "Off, Boons (the default),
+Casual or Hard", and the credits name Boons the default.
+
+Pinned by `survtiers` (the default, the row and the shelf, the junk value
+and the default stored back - by `SURVIVAL_DEFAULT`, not a literal),
+`survboons` (the default, the page, the credits, Casual's word through
+`tierOf`), `surv5_ui` (the level in the default tier and in Casual) and
+`surv2_items` / `auditcc_ui` (the row and the credits), PIN MOVED where
+they held Casual. Mutants: five new in `survboons.json` (80 now) - the
+default and the row back to Casual, the record read as the default, the
+page and the credits naming Casual - and six re-aimed by content; all
+dead.

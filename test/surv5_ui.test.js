@@ -10,6 +10,7 @@ import {
 } from '../src/systems/survival/tavernMenu.js';
 import { survivalHudChips, survivalStatusLines, survivalStatusRows, STATUS_TEXT, HUD_NEED_WORDS, needLevel } from '../src/systems/survival/status.js';
 import { newSurvival, survivalOf, runSurvivalMinutes, NEED } from '../src/systems/survival/needs.js';
+import { SURVIVAL_RULES } from '../src/systems/survival/difficulty.js';   // BOONS-DEFAULT: Casual's levels named, not the default's
 import { STIFF_HOURS } from '../src/systems/survival/rest.js';
 import { createSurvivalItem } from '../src/systems/survival/items.js';
 import { TEMPLATE, FOOD_STAGE } from '../src/systems/survival/food.js';
@@ -107,7 +108,8 @@ test('SURV5: the strip and the page - one chip a felt need, nothing while every 
   assert.deepEqual(survivalHudChips(e, 800).map((c) => `${c.key}:${c.text}:${c.level}`),
     ['hunger:Hungry:warn', 'thirst:Parched:danger', 'sleep:Tired:warn', 'wet:Wet:warn', 'temp:Freezing:danger', 'stiff:Stiff:warn', 'drunk:Very drunk:danger']);
   assert.equal(HUD_NEED_WORDS.hunger.starving, 'Starving');   // PIN MOVED (AUDIT C&C S5): the table is words; the level is the tier's (needLevel)
-  assert.equal(needLevel('hunger', 'starving'), 'danger', 'Starving costs in the default tier');
+  assert.equal(needLevel('hunger', 'starving'), 'warn', 'Starving costs nothing in the default tier - Boons since BOONS-DEFAULT');   // PIN MOVED
+  assert.equal(needLevel('hunger', 'starving', { rules: SURVIVAL_RULES.casual }), 'danger', 'and costs in Casual');
   assert.deepEqual(survivalStatusLines(e, 800, { endurance: 50 }), [
     STATUS_TEXT.hunger.hungry, STATUS_TEXT.thirst.parched, STATUS_TEXT.sleep.tired, STATUS_TEXT.wet.wet, 'You feel freezing.',
     'Felt temperature: -35 (comfortable from -10 to +10).',   // PIN MOVED (TEMP-UI): the number under the word

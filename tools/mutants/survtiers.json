@@ -137,8 +137,9 @@
   {
     "name": "SURVTIERS-default-is-hard",
     "file": "src/systems/survival/difficulty.js",
-    "old": "export const SURVIVAL_DEFAULT = 'casual';",
+    "old": "export const SURVIVAL_DEFAULT = 'boons';",
     "new": "export const SURVIVAL_DEFAULT = 'hard';",
+    "note": "BOONS-DEFAULT (2026-10-13): re-aimed by content - the default is Boons.",
     "tests": [
       "test/survtiers.test.js"
     ]
@@ -173,8 +174,9 @@
   {
     "name": "SURVTIERS-row-default-hard",
     "file": "src/systems/features.js",
-    "old": "store: 'prefs', key: 'survival', initial: 'casual', online: 'player',",
+    "old": "store: 'prefs', key: 'survival', initial: 'boons', online: 'player',",
     "new": "store: 'prefs', key: 'survival', initial: 'hard', online: 'player',",
+    "note": "BOONS-DEFAULT (2026-10-13): re-aimed by content - the row's default is Boons.",
     "tests": [
       "test/survtiers.test.js"
     ]

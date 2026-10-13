@@ -646,9 +646,10 @@
   {
     "name": "SURVBOONS-the-record-not-the-tier",
     "file": "src/systems/survival/status.js",
-    "old": "const tierOf = (s, rules) => rules ?? (Array.isArray(s.boons) ? SURVIVAL_RULES.boons : SURVIVAL_RULES[SURVIVAL_DEFAULT]);",
-    "new": "const tierOf = (s, rules) => (Array.isArray(s.boons) ? SURVIVAL_RULES.boons : SURVIVAL_RULES[SURVIVAL_DEFAULT]);",
+    "old": "const tierOf = (s, rules) => rules ?? (Array.isArray(s.boons) ? SURVIVAL_RULES.boons : SURVIVAL_RULES.casual);",
+    "new": "const tierOf = (s, rules) => (Array.isArray(s.boons) ? SURVIVAL_RULES.boons : SURVIVAL_RULES.casual);",
     "why": "AUDIT SURV-BOONS C14: a turn of the tier shown a minute late",
+    "note": "BOONS-DEFAULT (2026-10-13): re-aimed by content - a record no rewarding tier wrote reads as Casual, not the default.",
     "tests": [
       "test/survboons.test.js"
     ]
@@ -736,9 +737,10 @@
   {
     "name": "SURVBOONS-tutorial-names-three",
     "file": "src/systems/tutorialCatalogue.js",
-    "old": "'Survival can be Off, Boons, Casual (the default) or Hard.",
-    "new": "'Survival can be Off, Casual (the default) or Hard.",
+    "old": "'Survival can be Off, Boons (the default), Casual or Hard.",
+    "new": "'Survival can be Off, Casual or Hard.",
     "why": "the page names no Boons",
+    "note": "BOONS-DEFAULT (2026-10-13): re-aimed by content - the page names Boons the default.",
     "tests": [
       "test/survboons.test.js"
     ]
@@ -750,6 +752,59 @@
     "new": "  if (!survivalOn()) return [];",
     "why": "AUDIT SURV-BOONS C13: the Boons rows in another tier",
     "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "BOONS-DEFAULT-casual-again",
+    "file": "src/systems/survival/difficulty.js",
+    "old": "export const SURVIVAL_DEFAULT = 'boons';",
+    "new": "export const SURVIVAL_DEFAULT = 'casual';",
+    "why": "BOONS-DEFAULT (2026-10-13, Mac: \"make boons the default\"): the default back to Casual",
+    "tests": [
+      "test/survtiers.test.js",
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "BOONS-DEFAULT-the-row-casual-again",
+    "file": "src/systems/features.js",
+    "old": "store: 'prefs', key: 'survival', initial: 'boons', online: 'player',",
+    "new": "store: 'prefs', key: 'survival', initial: 'casual', online: 'player',",
+    "why": "BOONS-DEFAULT: the Features row - the shelf's default (RF4) - back to Casual",
+    "tests": [
+      "test/survtiers.test.js"
+    ]
+  },
+  {
+    "name": "BOONS-DEFAULT-a-record-no-boons-wrote-reads-as-the-default",
+    "file": "src/systems/survival/status.js",
+    "old": "SURVIVAL_RULES.boons : SURVIVAL_RULES.casual);",
+    "new": "SURVIVAL_RULES.boons : SURVIVAL_RULES[SURVIVAL_DEFAULT]);",
+    "why": "BOONS-DEFAULT: a record no rewarding tier wrote (no `boons`) read as the default - Boons now - so Casual's page lost its word and its chips their red",
+    "tests": [
+      "test/survboons.test.js",
+      "test/surv5_ui.test.js"
+    ]
+  },
+  {
+    "name": "BOONS-DEFAULT-the-page-says-casual",
+    "file": "src/systems/tutorialCatalogue.js",
+    "old": "'Survival can be Off, Boons (the default), Casual or Hard.",
+    "new": "'Survival can be Off, Boons, Casual (the default) or Hard.",
+    "why": "BOONS-DEFAULT: the first-need page names Casual the default",
+    "tests": [
+      "test/survboons.test.js"
+    ]
+  },
+  {
+    "name": "BOONS-DEFAULT-the-credits-say-casual",
+    "file": "src/ui/credits.js",
+    "old": "Boons (the default: neglect costs nothing",
+    "new": "Boons (neglect costs nothing",
+    "why": "BOONS-DEFAULT: the credits do not name the default",
+    "tests": [
+      "test/auditcc_ui.test.js",
       "test/survboons.test.js"
     ]
   }
