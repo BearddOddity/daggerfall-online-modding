@@ -551,6 +551,7 @@ import { preloadMessageBoxArt } from '../ui/messageBox.js';   // U11
 import { buildingDataForDoor, locationBuildings, BUILDING_KEY_0, makeBuildingKey, blockBuildingCount } from '../systems/talkTopics.js';   // E2: the shop identity   // H2: every building, with its key   // AUDIT 58: BuildingDirectory.buildingKey0, the key both ship interiors are filed under
 import { hitSoundFor, swingSoundFor, ENEMY_HIT_VOLUME, PLAYER_HIT_VOLUME } from '../systems/soundClips.js';   // AUDIT 58: DFU's two hit volumes
 import { isInvisible, entityIsParalyzed, concealBits } from '../systems/effects.js';   // AUDIT 39: the S19 gate is host-agnostic in DFU
+import { tellSpellLanded } from '../systems/spellPower.js';   // AUDIT SCHOOLS L2 F4: my spell on the serpent's hide, told to the paths' riders
 import { hasActiveEffect, applySpell } from '../systems/effects.js';   // PEERLIGHT2: my Light spell, for the pose; SERPENT4: a hand's spell on the sea serpent's stand-in
 import { combatVisualsOn, peerDraw } from '../systems/combatVisuals.js';   // INVIS-LOOK: a concealed peer, drawn as the enhanced lane draws a concealed foe
 import { isEntityWaterWalking, assignModBundle, removeBundleNamed, WATER_WALKING_SILENT_KIND } from '../systems/effects.js';   // CSA-I: the boat's water walk
@@ -785,7 +786,6 @@ import { magicPowersLines } from '../systems/itemPowers.js';   // HOME-VENDOR: a
 import { itemIsIdentified } from '../systems/tradeModes.js';   // HOME-VENDOR: known, or "powers unknown"
 import { setSigilOnline, setSigilRenown } from '../systems/sigil.js';   // SIGIL1: a weapon won online carries a sigil, woken by my Renown
 import { setSetsDueling, setsDueling, drinkWorn, setSetsWearer } from '../systems/sigilSets.js';   // SET2: the duel's word - sets sleep in one; SET4: the drink, whole; SET5: the wearer a tooltip reads
-import '../systems/arcanePowers.js';   // SCHOOLS3/4 (bible/06-Systems/Arcane-Specialisations.md): what the paths DO - every passive and rider registered at import, for every mode of this page (worldModes.js's interiors, dungeonContext.js's dungeons)
 import { lootHudChips } from '../systems/lootPowers.js'; import { setSetPowersVoice, setHudChips, heldPlayerBlow, remarkPlayerBlow } from '../systems/sigilSetPowers.js'; import '../systems/lootDrought.js'; import '../systems/lootCodex.js'; import { createLootLines } from './lootLines.js';   // SET3: what the sets DO - every power registered at import; its voice is this host's; SET5: its chips; LOOT4: and lootPowers.js beside it, what a loot piece DOES (the Loot arc), every kind registered at import; LOOT8: lootDrought.js, the drought's finder and take listener, registered at import; LOOT10: lootCodex.js, the codex's take listener, round sweep and record; LOOT11: the lines of light over a find
 import { computeEntityMods, registerEntityFold, EMPTY_MODS } from '../systems/entityMods.js';   // SET3: the sets' stat fold, recomputed the moment they wake or sleep; SEAT1d: the Festive buff's
 import { createSeatEdicts, FESTIVE_FOLD, festiveMods } from '../systems/seatEdicts.js';   // SEAT1d: a held seat as this client lives it
@@ -8706,13 +8706,15 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
   /** SERPENT4: a harmful missile of mine on its hide (hostMagic.js boxMarks) - its harmful families landed on the stand-in
    *  through the one door every spell lands by (applySpell), the hurt summed and handed to the host; the stand-in forgets
    *  every lasting family at once, as the gate's does. */
-  function serpentSpellOn(sp, target) {
+  function serpentSpellOn(sp, target, caster = null) {
     const harm = duelSpellOf(sp), e = serpentStandIn();
     if (!harm) return false;
-    let dealt = 0;
+    let dealt = 0, r = null;
     const sinks = { hurt: (n) => { dealt += Math.max(0, n); }, heal() {}, drainFatigue() {}, restoreFatigue() {}, drainMagicka() {}, restoreMagicka() {} };
-    try { applySpell(harm, playerEntity.level, e, sinks, Math.random, { entity: playerEntity }); } finally { e.activeEffects = []; }
+    try { r = applySpell(harm, playerEntity.level, e, sinks, Math.random, { entity: playerEntity }); } finally { e.activeEffects = []; }
     if (!(dealt >= 1)) return false;
+    // AUDIT SCHOOLS L2 F4: told to the paths' riders as any landing of mine - no foe record (the hand's door holds it)
+    tellSpellLanded({ caster: playerEntity, target: e, foe: null, spell: sp, r, self: false, took: dealt, cast: caster?.cast ?? null });
     serpentHost?.handStruck?.(target, dealt);
     return true;
   }
@@ -13025,7 +13027,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     duelMark: () => { if (!duelMgr.fighting) return siegeSpellMarks(); const b = duelBody(duelMgr.opponent); return b ? { ...b, name: peerName(b.id) ?? 'your opponent' } : null; },   // AUDIT-SEATS G5: outside a duel, a siege's foes (WILD1: and past them the open zone's fair players)
     castAtDuel: (id, sp) => duelSpellOut(id, sp),
     boxMarks: () => serpentHost?.handBoxes?.() ?? null,   // SERPENT4: the sea serpent's hide, a hand's harmful missile's mark
-    castAtBox: (sp, q) => serpentSpellOn(sp, q),
+    castAtBox: (sp, q, caster) => serpentSpellOn(sp, q, caster),
     castRefusal: () => modes?.castRefusal?.() ?? null,   // HOME-MAGIC: a visitor casts nothing in another's online home (worldModes.js visitorMagicRefusal)
     spellRefusal: (sp) => battleSpellRefusal(sp),   // AUDIT-SEATS G5: Teleport, Recall and Levitate do nothing in a siege's room
     collider: { raycast: (o, d, m) => ((modes?.mode === 'interior' && modes?.interiorCollider) ? modes?.interiorCollider : collider).raycast(o, d, m) },

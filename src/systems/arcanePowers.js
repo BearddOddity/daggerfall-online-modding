@@ -14,8 +14,9 @@
 //   Attuned Wards                the CAST COST modifier (spellcost.js)
 //   Between Moments              the CAST SPEED modifier (castSpeed.js)
 //   Glamour                      the entity FOLD (entityMods.js): attributes and skills
-//   Foresight, the Warden's      the DAMAGE modifier (playerEntity.js - the one door every hurt comes through; a foe's
-//   guard                        BLOW alone, the door's own mark: sigilSetPowers.js pendingPlayerBlow)
+//   Foresight                    the BLOW EVASION (playerEntity.js - asked before any modifier, a foe's BLOW alone, the
+//                                door's own mark: sigilSetPowers.js pendingPlayerBlow)
+//   the Warden's guard           the DAMAGE modifier (the same door; whole points, the fraction carried)
 //   Slip Away, Absolution        the HURT listener (a hurt that crosses its line, with a recovery)
 //   Steadfast                    the MAGIC ROUND
 //   Death's Due, Soul Well       the KILL listener (playerKills.js)
@@ -34,10 +35,10 @@ import { SKILLS } from './skills.js';
 import { pathAwake, isSignatureSpell, PATH_NUMBERS, PATH_BY_ID } from './arcanePaths.js';
 import { sigilDueling } from './sigil.js';
 import { registerSpellPowerMod, registerSpellPierceMod, registerSpellLandedListener } from './spellPower.js';
-import { registerSpellCostMod, calculateCastCost, effectSchool } from './spellcost.js';
+import { registerSpellCostMod, effectSchool } from './spellcost.js';
 import { registerCastSpeedMod } from './castSpeed.js';
 import { registerEntityFold, newMods, EMPTY_MODS } from './entityMods.js';
-import { registerPlayerDamageMod, registerPlayerHurtListener, playerEntity } from '../characters/playerEntity.js';
+import { registerPlayerDamageMod, registerPlayerHurtListener, registerPlayerBlowEvasion, playerEntity } from '../characters/playerEntity.js';
 import { registerPlayerKillListener } from './playerKills.js';
 import { registerMagicRoundHook } from './worldTick.js';
 import { registerAbsorptionChance } from './absorption.js';
@@ -45,15 +46,15 @@ import { pendingPlayerBlow } from './sigilSetPowers.js';   // the door's one law
 import { healMine, manaMine } from './playerHeal.js';
 import { playerDoor } from './playerDoor.js';
 import { isMagicallyConcealed } from './effects.js';
-import { enemyEntityGroup, ENEMY_GROUPS } from '../combat/formulas.js';
+import { near, foeGroup, elementShare } from './lootPowers.js';   // AUDIT SCHOOLS (L1 H1-H2, L3 F1): the one reach law, the one foe group, the one element share
 import { KNIGHT_CITY_WATCH } from '../characters/mobileTypes.js';
 import { hudText } from './notify.js';
 import { t } from './textManager.js';
 
 // ── the numbers: the law's own (arcanePaths.js PATH_NUMBERS - the one home the words print and this file does) ──
 const N = PATH_NUMBERS;
-/** How far above or below a foe another may stand and still be "near" it (lootPowers.js REACH_RISE_M's sense). */
-const NEAR_RISE_M = 3;
+/** The classic elements by index (DFU ElementTypes) as the loot's element share names them. */
+const ELEMENT_NAMES = Object.freeze(['fire', 'frost', 'poison', 'shock', 'magic']);
 
 // ── the session's memory, its clock, its dice and its voice ─────────
 let _now = () => performance.now() / 1000;
@@ -61,9 +62,10 @@ let _rand = Math.random;
 const fresh = () => ({
   slipReady: 0, absolutionReady: 0,      // Trickster, Hierophant
   conflux: 0, confluxUntil: 0,           // Elementalist
-  guardUntil: 0,                         // Warden's Living Aegis
+  guardUntil: 0, guardOwed: 0,           // Warden's Living Aegis, and the fraction its lighter blows carry
   wardUntil: 0,                          // Wardwright's Prismatic Ward
   marks: new WeakMap(),                  // Seer: foe entity -> laid open until
+  stacked: new WeakSet(),                // Elementalist: the casts Conflux has counted (one stack a cast)
 });
 let _s = fresh();
 let _say = (line) => { hudText(line); };
@@ -78,11 +80,9 @@ export function awakePathId(entity) {
 }
 const me = () => playerDoor()?.player?.() ?? playerEntity;
 const share = (e) => (Number.isFinite(e?.health) && e.maxHealth > 0 ? e.health / e.maxHealth : 1);
-const undeadOrDaedra = (t) => {
-  if (!t || t.isPlayer) return false;
-  const g = enemyEntityGroup(t.careerIndex);
-  return g === ENEMY_GROUPS.Undead || g === ENEMY_GROUPS.Daedra;
-};
+/** AUDIT SCHOOLS L1 H2: through the loot's one foe group (lootPowers.js foeGroup) - a class foe's careerIndex is its
+ *  class's, and read as a monster's it named a Barbarian, a Knight and the City Watch undead. */
+const undeadOrDaedra = (t) => { const g = foeGroup(t); return g === 'undead' || g === 'daedra'; };
 const neverCounts = (e) => e?.mobileType === KNIGHT_CITY_WATCH || e?.team === 'PlayerAlly' || e?.mobileTeam === 'PlayerAlly';
 const shieldHolds = (e) => (e?.activeEffects ?? []).some((a) => a.kind === 'shield' && !a.ended && (a.shieldRemaining ?? 0) > 0);
 
@@ -98,23 +98,23 @@ const selfBundle = (name, type, subType, rounds, { magnitude = 0, chance = 1 } =
 });
 /** A rider's bundle is named for the signature spell that cast it (the record's own name). */
 const spellName = (id) => PATH_BY_ID[id].spell.name;
-const castOnMe = (bundle) => { try { playerDoor()?.castOnPlayer?.(bundle); } catch { /* the door is the host's */ } };
+/** A rider's bundle on me - a power's: merged with my own like-kind effect as DFU merges, the larger Shield pool or ward
+ *  chance kept (AUDIT SCHOOLS L1 M1: effects.js powerCast). */
+const castOnMe = (bundle) => { try { playerDoor()?.castOnPlayer?.(bundle, { power: true }); } catch { /* the door is the host's */ } };
 
-/** The other live foes near a foe's feet, nearest first - none of them the struck one. */
+/** The other live foes my harm may reach near the struck foe, nearest first - the loot's one reach law (lootPowers.js
+ *  near: never an ally or a foe at peace, never one a storey away, never one behind a wall). */
 function foesNear(struck, metres) {
   const door = playerDoor();
   const at = struck?.ai?.feet;
   if (!door || !Array.isArray(at)) return [];
-  const out = [];
-  for (const f of door.foes?.() ?? []) {
-    if (!f || f === struck || f.dead || f.entity === struck.entity || !Array.isArray(f.ai?.feet)) continue;
-    const p = f.ai.feet;
-    const flat = Math.hypot(p[0] - at[0], p[2] - at[2]);
-    if (flat <= metres && Math.abs((p[1] ?? 0) - (at[1] ?? 0)) <= NEAR_RISE_M) out.push({ f, flat });
-  }
-  return out.sort((a, b) => a.flat - b.flat).map((x) => x.f);
+  const flat = (f) => Math.hypot(f.ai.feet[0] - at[0], f.ai.feet[2] - at[2]);
+  return near(door, at, metres, struck.entity).filter((f) => f !== struck).sort((a, b) => flat(a) - flat(b));
 }
 const hurt = (f, n) => { if (f && n >= 1) playerDoor()?.hurtFoe?.(f, n); };
+/** An arc of `spell`'s element on another foe: none on one IMMUNE to it, half on one that RESISTS (lootPowers.js
+ *  elementShare - the career's own word, as the loot's Chain Lightning arc). */
+const arcOn = (f, amount, spell) => hurt(f, Math.floor(amount * elementShare(f.entity, ELEMENT_NAMES[spell?.element] ?? 'magic')));
 
 // ── the passives ────────────────────────────────────────────────────
 
@@ -161,19 +161,30 @@ export function pathFold(entity) {
   mods.skills[SKILLS.Streetwise] = N.glamour.streetwise;
   return mods;
 }
-/** The damage door: Foresight (a foe's blow, one in eight, to nothing) and the Warden's guard (a foe's blow lighter). */
-export function pathDamageMod(entity, dmg) {
-  const id = awakePathId(entity);
-  if (!id || !pendingPlayerBlow()) return dmg;
-  if (id === 'seer' && _rand() < 1 / N.foresight.oneIn) { say(t('schools.say.foresight', 'Foresight: you saw the blow coming.')); return 0; }
-  if (id === 'warden' && _now() < _s.guardUntil) return (dmg * (100 - N.livingAegis.lighter)) / 100;
-  return dmg;
+/** Foresight: a foe's blow, one in eight, evaded - asked by the door BEFORE any modifier (AUDIT SCHOOLS L1 M3: as a
+ *  damage modifier it ran after the sets', which spent Iron Hide's ward and Gearward's winding on a blow that never came). */
+export function pathEvade(entity) {
+  if (awakePathId(entity) !== 'seer' || !pendingPlayerBlow()) return false;
+  if (!(_rand() < 1 / N.foresight.oneIn)) return false;
+  say(t('schools.say.foresight', 'Foresight: you saw the blow coming.'));
+  return true;
 }
-/** The hurt listener: Slip Away and Absolution - a hurt that takes me across the line, while ready.
- *  @param {any} entity @param {{ before?: number, after?: number }} [hurt] */
-export function pathHurt(entity, { before = 0, after = 0 } = {}) {
+/** The damage door: the Warden's guard - a foe's blow lighter, in whole points with the fraction carried (AUDIT SCHOOLS
+ *  L1 M2: a raw share left health fractional - 183.2 after three 7-point blows - as Hold the Line's carry does not). */
+export function pathDamageMod(entity, dmg) {
+  if (awakePathId(entity) !== 'warden' || !pendingPlayerBlow() || !(_now() < _s.guardUntil)) return dmg;
+  const owed = (dmg * N.livingAegis.lighter) / 100 + _s.guardOwed;
+  const cut = Math.floor(owed + 1e-9);
+  _s.guardOwed = owed - cut;
+  return Math.max(0, dmg - cut);
+}
+/** The hurt listener: Slip Away and Absolution - a hurt that takes me across the line, while ready. Never one a death
+ *  save turned aside (AUDIT SCHOOLS L1 M4: `saved` - the Vigil's and Shed Skin's own rule, AUDIT 625 P1: the death that
+ *  never happened spent Absolution's heal and its three minutes).
+ *  @param {any} entity @param {{ before?: number, after?: number, saved?: boolean }} [hurt] */
+export function pathHurt(entity, { before = 0, after = 0, saved = false } = {}) {
   const id = awakePathId(entity);
-  if (!id || !(after > 0) || !(entity.maxHealth > 0)) return;
+  if (!id || saved || !(after > 0) || !(entity.maxHealth > 0)) return;
   const crossed = (line) => after < entity.maxHealth * line && before >= entity.maxHealth * line;
   const now = _now();
   if (id === 'trickster' && crossed(N.slipAway.below) && now >= _s.slipReady) {
@@ -209,15 +220,20 @@ export const pathAbsorbChance = (target) => (awakePathId(target) === 'wardwright
 
 // ── the riders ──────────────────────────────────────────────────────
 
-/** MY spell LANDED (spellPower.js tellSpellLanded): Conflux's stack for any damage spell of mine at a foe, and the
- *  signature spell's rider when it is MY awake path's.
- *  @param {{ caster?: any, target?: any, foe?: any, spell?: any, r?: any, self?: boolean, reflected?: boolean }} [landing] */
-export function pathLanded({ caster = null, target = null, foe = null, spell = null, r = null, self = false, reflected = false } = {}) {
+/** MY spell LANDED (spellPower.js tellSpellLanded): Conflux's stack for a damage spell of mine at a foe, and the
+ *  signature spell's rider when it is MY awake path's. `took` is what the foe could lose (AUDIT SCHOOLS L1 M6 - never
+ *  the overkill of a bolt on a 3-point rat); `cast` the cast's token, its `cost` the magicka it really took (L1 L2).
+ *  @param {{ caster?: any, target?: any, foe?: any, spell?: any, r?: any, self?: boolean, reflected?: boolean, took?: number, cast?: any }} [landing] */
+export function pathLanded({ caster = null, target = null, foe = null, spell = null, r = null, self = false, reflected = false, took = null, cast = null } = {}) {
   const id = awakePathId(caster);
   if (!id || !r || reflected) return;
-  const landed = Number.isFinite(r.damage) ? r.damage : 0;
+  const landed = Number.isFinite(took) ? took : Number.isFinite(r.damage) ? r.damage : 0;
+  const paid = Number.isFinite(cast?.cost) ? cast.cost : 0;
   const now = _now();
-  if (id === 'elementalist' && !self && landed > 0 && target && !target.isPlayer) {
+  // Conflux: ONE stack a cast (AUDIT SCHOOLS L1 L1, L2 F6: an area spell over five foes built five) - a landing with no
+  // cast token (a Cast When Strikes proc, BAL9's "my spell") is its own cast
+  if (id === 'elementalist' && !self && landed > 0 && target && !target.isPlayer && !(cast && _s.stacked.has(cast))) {
+    if (cast) _s.stacked.add(cast);
     _s.conflux = Math.min(N.conflux.stacks, (now < _s.confluxUntil ? _s.conflux : 0) + 1);
     _s.confluxUntil = now + N.conflux.seconds;
   }
@@ -232,19 +248,19 @@ export function pathLanded({ caster = null, target = null, foe = null, spell = n
       if (r.paralyzed > 0) castOnMe(selfBundle(spellName('trickster'), 23, 0, N.fleetingHold.rounds));
       break;
     case 'riftwalker':
-      if (landed > 0) for (const f of foesNear(foe, N.riftLance.metres)) hurt(f, Math.round(landed * N.riftLance.share));
+      if (landed > 0) for (const f of foesNear(foe, N.riftLance.metres)) arcOn(f, landed * N.riftLance.share, spell);
       break;
     case 'shadowcaster':
       if (landed > 0) castOnMe(selfBundle(spellName('shadowcaster'), 24, 0, N.shadowBolt.rounds));
       break;
     case 'spellbreaker':
-      if (landed > 0) manaMine(caster, calculateCastCost(spell, caster).sp * N.unravel.back);
+      if (landed > 0) manaMine(caster, paid * N.unravel.back);   // AUDIT SCHOOLS L1 L2, L2 F7: of what the cast took
       break;
     case 'bloodmage':
       if (landed > 0 && target.health > 0 && share(target) < N.bloodBoil.below) hurt(foe, landed);
       break;
     case 'elementalist':
-      if (landed > 0) for (const f of foesNear(foe, N.chainLightning.metres).slice(0, N.chainLightning.foes)) hurt(f, Math.round(landed * N.chainLightning.share));
+      if (landed > 0) for (const f of foesNear(foe, N.chainLightning.metres).slice(0, N.chainLightning.foes)) arcOn(f, landed * N.chainLightning.share, spell);
       break;
     case 'seer':
       if (landed > 0) _s.marks.set(target, now + N.psychicLance.seconds);
@@ -256,7 +272,10 @@ export function pathLanded({ caster = null, target = null, foe = null, spell = n
       }
       break;
     case 'enchanter':
-      if (r.pacify) manaMine(caster, calculateCastCost(spell, caster).sp);
+      // AUDIT SCHOOLS L1 M5: only a foe this cast CALMED - hostile before it (the host clears the flag after this word) and
+      // one with a mind here to calm (the host calms `foe.ai` alone); a foe already at peace, or one with no ai, gave a
+      // free cast. One no Pacify sways (`pacifyImmune`, the gate's Warden) never reports `pacify` (effects.js refuses it)
+      if (r.pacify && foe?.ai && foe.ai.isHostile !== false) manaMine(caster, paid);
       break;
     case 'necromancer':
       if (landed > 0) healMine(caster, landed * N.siphonLife.share);
@@ -283,6 +302,7 @@ registerSpellCostMod(ARCANE_POWERS, pathCastCost);
 registerCastSpeedMod(ARCANE_POWERS, pathCastSpeed);
 registerEntityFold(ARCANE_POWERS, pathFold);
 registerPlayerDamageMod(ARCANE_POWERS, pathDamageMod);
+registerPlayerBlowEvasion(ARCANE_POWERS, pathEvade);   // AUDIT SCHOOLS L1 M3: Foresight, before any modifier
 registerPlayerHurtListener(ARCANE_POWERS, pathHurt);
 registerMagicRoundHook(ARCANE_POWERS, pathRound);
 registerPlayerKillListener(ARCANE_POWERS, pathKill);

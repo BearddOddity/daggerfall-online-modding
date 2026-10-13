@@ -31,7 +31,7 @@ import { getWorldVariationSaveData, restoreWorldVariationData, clearWorldDataVar
 import { snapshotAutomap, restoreAutomap } from './automap.js';   // A1: dictAutomapDungeonsDiscoveryState rides SaveData_v1
 import { createSceneCache, snapshotSceneCache, restoreSceneCache } from './sceneCache.js';   // P1
 import { seedCustomSpellIndex } from './spellMaker.js';   // S1: made spells carry their own record
-import { isPathId } from './arcanePaths.js';   // SCHOOLS1: the specialisation's id, read through its own table
+import { isPathId, pathWitnessed } from './arcanePaths.js';   // SCHOOLS1: the specialisation's id, read through its own table
 import { seedBundleSeq, effectKindLoaded } from './effects.js';   // X10: the live-bundle counter's restore half; AUDIT PRE-MERGE 0928 S3: a mod's effect restores only while its mod is loaded
 import { repairLostCurses } from './curseRepair.js';   // CURSE-REPAIR1: a curse the round clock pruned, given back
 import { repairUnmintedConditions, repoolWeaponConditions } from './conditionRepair.js';   // DISC21-A: a wearable minted with no condition, minted; WEAPON-POOL: a weapon on its row's pool, moved to the one pool
@@ -1095,6 +1095,12 @@ export function restorePlayer(entity, snap, spellsByIndex = null) {
       + `${spellsByIndex ? '' : ' (SPELLS.STD not loaded yet)'} - HELD, not dropped:`, _pending);
   }
   seedCustomSpellIndex(entity.spells);
+  // AUDIT SCHOOLS L3 F2: a save an OLDER BUILD carried has no `arcanePath` key at all (a newer one writes null for none)
+  // and keeps its signature spell whole - the book bears witness to the permanent choice that build dropped
+  if (snap.arcanePath === undefined && !entity.arcanePath) {
+    const witnessed = pathWitnessed(entity.spells, entity.masteredSkills);
+    if (witnessed) { entity.arcanePath = witnessed; entity.pathPrompted = true; }
+  }
   // CURSE-REPAIR1: after the spellbook AND the effect list (and the racial marker) are back - a tagged curse spell with no
   // curse behind it is a curse the round clock pruned before CURSE-PERSIST1, given back at the save's own clock.
   repairLostCurses(entity, { now: Math.floor(snap.classicMinutes ?? 0) });

@@ -4822,15 +4822,17 @@ function statsMaster(detail, m) {
  *  the path chosen (gold, what it does); or each path two mastered schools open, what it does and a Choose button that
  *  asks first (permanent); or, with none open, how one opens. The page's own card, pips and tags. */
 function statsSpecialisation(detail, ms) {
-  const card = el('section', 'px-mgroup');
+  // AUDIT SCHOOLS L4 8: a class that can never master two schools sees no card at all
+  if (!ms.path && !ms.pathChoices?.length && !ms.pathPossible) return;
+  const card = el('section', 'px-mgroup px-spec');   // AUDIT SCHOOLS L4 5: px-spec - its rows stack on a phone
   const head = el('div', 'px-mhead');
   head.append(el('span', 'px-mname', t('pause.master.spec.title', 'Specialisation')));
   card.append(head);
-  const pathRow = (name, rows, side, chosen) => {
+  const pathRow = (name, schools, rows, side, chosen) => {
     const row = el('div', chosen ? 'px-mrow2 is-mastered' : 'px-mrow2 is-ready');
     const body = el('div', 'px-mbody');
     const top = el('div', 'px-mtop');
-    top.append(el('span', 'k', `${chosen ? '\u25c6 ' : ''}${name}`));
+    top.append(el('span', 'k', `${chosen ? '\u25c6 ' : ''}${name}`), el('span', 'v px-spec-schools', schools));
     body.append(top);
     for (const line of rows) if (line) body.append(el('div', 'px-master-about', line));
     row.append(body, side);
@@ -4839,14 +4841,14 @@ function statsSpecialisation(detail, ms) {
   if (ms.path) {
     const side = el('div', 'px-mside');
     side.append(el('span', 'px-mtag gold', t('pause.master.spec.chosen', 'Chosen')));
-    card.append(pathRow(ms.path.name, ms.path.rows.slice(1), side, true));
+    card.append(pathRow(ms.path.name, ms.path.schools, [...ms.path.rows, t('schools.sheet.sold', 'Its signature spell is sold to you at the Mages Guild.')], side, true));
   } else if (ms.pathChoices?.length) {
     for (const p of ms.pathChoices) {
       const side = el('div', 'px-mside');
       const b = el('button', 'act primary px-mbtn', t('pause.master.spec.choose', 'Choose'));
       b.onclick = () => askCard(p.ask, () => { _masterNote = ms.choosePath(p.id).text; render(); });
       side.append(b);
-      card.append(pathRow(p.name, p.rows, side, false));
+      card.append(pathRow(p.name, p.schools, p.rows, side, false));
     }
   } else {
     card.append(el('div', 'px-master-about', t('pause.master.spec.none', 'Master two schools of magic to choose a specialisation: the pair names it, and it gives a passive and a signature spell.')));

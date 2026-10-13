@@ -120,7 +120,7 @@ export function foeGroup(target) {
   return g === ENEMY_GROUPS.Undead ? 'undead' : g === ENEMY_GROUPS.Daedra ? 'daedra' : g === ENEMY_GROUPS.Humanoid ? 'humanoid'
     : g === ENEMY_GROUPS.Animals ? 'animal' : null;
 }
-const ELEMENT_FLAG = Object.freeze({ fire: EFFECT_FLAGS.Fire, frost: EFFECT_FLAGS.Frost, shock: EFFECT_FLAGS.Shock, poison: EFFECT_FLAGS.Poison });
+const ELEMENT_FLAG = Object.freeze({ fire: EFFECT_FLAGS.Fire, frost: EFFECT_FLAGS.Frost, shock: EFFECT_FLAGS.Shock, poison: EFFECT_FLAGS.Poison, magic: EFFECT_FLAGS.Magic });   // AUDIT SCHOOLS: and magic, a path's arc's (arcanePowers.js)
 /** How much of an element a foe takes: none IMMUNE, half when it RESISTS, else whole. */
 export function elementShare(target, element) {
   const t = careerTolerance(target?.career ?? {}, ELEMENT_FLAG[element] ?? 0);
@@ -269,8 +269,10 @@ export function lootStrike(attacker, target, damage, weapon) {
 const flat2 = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 const rise = (a, b) => Math.abs((a[1] ?? 0) - (b[1] ?? 0));
 /** The live foes my harm may reach near `feet`, but `except` - never an ally or a foe at peace (the sets' AUDIT SET H1),
- *  one a storey away (M4) or one behind a wall (the host's ray, where it has one). */
-function near(door, feet, metres, except) {
+ *  one a storey away (M4) or one behind a wall (the host's ray, where it has one). AUDIT SCHOOLS (L1 H1, L3 F1): THE ONE
+ *  REACH LAW, exported - a path's arcs (systems/arcanePowers.js) wrote their own and reached allies, foes at peace and
+ *  foes behind walls. */
+export function near(door, feet, metres, except) {
   return door.foes().filter((f) => f.entity !== except && !f.dead && f.ai?.feet && !friendlyProtected(f, { protection: true })
     && rise(f.ai.feet, feet) <= REACH_RISE_M && flat2(f.ai.feet, feet) <= metres && (!door.clear || door.clear(feet, f.ai.feet)));
 }

@@ -830,7 +830,7 @@ export class CharSheet {
     const showHth = ids.includes(SKILLS.HandToHand);
     const lines = (twoColumn ? Math.ceil(ids.length / 2) : ids.length) + (showHth ? 1 : 0);
     // SCHOOLS1: the Specialisation row under it, while Master Skills is in force and a path is chosen or open
-    const pathText = masterSkillsActive(e) ? (pathOf(e) ? t('schools.sheet.chosen', '{name}  (S)', { name: pathOf(e).name }) : pathChoices(e).length ? t('schools.sheet.choose', 'Choose a specialisation  (S)') : null) : null;
+    const pathText = masterSkillsActive(e) ? (pathOf(e) ? t('schools.sheet.chosen', '{name}  (S)', { name: pathOf(e).name }) : pathChoices(e).length ? t('schools.sheet.choose', 'Specialise  (S)') : null) : null;
     const h = (lines + 1 + (pathText ? 1 : 0)) * 9 + 14;   // SOFTCAP3: + the Master Skills row under the skills
     const w = twoColumn ? 246 : 130;
     const x = twoColumn ? Math.floor((320 - w) / 2) : 8;
@@ -878,8 +878,8 @@ export class CharSheet {
   _pathPrompt() {
     const e = this.entity;
     const chosen = pathOf(e);
-    this.page = 0;
-    if (chosen) { this.child = new YesNoBoxWindow({ okOnly: true, rows: [...pathAboutRows(chosen), '', t('schools.sheet.sold', 'Its signature spell is sold to you at the Mages Guild.')] }); return; }
+    // AUDIT SCHOOLS L4 H1: the plate stays behind a choosing box, so "No, then S" reaches the next path
+    if (chosen) { this.page = 0; this.child = new YesNoBoxWindow({ okOnly: true, rows: [...pathAboutRows(chosen), '', t('schools.sheet.sold', 'Its signature spell is sold to you at the Mages Guild.')] }); return; }
     const pool = pathChoices(e);
     if (!pool.length) return;
     const p = pool[(this._pathPick = ((this._pathPick ?? -1) + 1)) % pool.length];
@@ -901,8 +901,10 @@ export class CharSheet {
     const grp = ['primary', 'major', 'minor'][this.page - 1] ?? null;
     if (grp && masterSkillsActive(e)) {
       const pool = masteryCandidates(e).filter((id) => careerGroupOf(e, id) === grp);
-      this.page = 0;
+      // AUDIT SCHOOLS L4 H1: the plate STAYS behind a choosing box - "No, then M, for the next" read a key the closed
+      // plate no longer answered (the box's own window draws over it while it stands; a click on the plate still closes it)
       if (!pool.length) {
+        this.page = 0;
         const sl = masterySlots(e, grp);
         this.child = new YesNoBoxWindow({ okOnly: true, rows: [
           `${MASTERY_GROUP_NAMES[grp]} skills: ${sl.used} of ${sl.max} mastered.`, '',

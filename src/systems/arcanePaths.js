@@ -47,8 +47,9 @@ const slot = (type, subType, ...parts) => Object.freeze({ type, subType, setting
 const DAMAGE_HEALTH = (...p) => slot(4, 0, ...p);
 const HEAL_HEALTH = (...p) => slot(10, 8, ...p);
 
-/** The signature spells' indices: their own band, below RESURRECT1's -45001 and every number a made spell is minted
- *  (spellMaker.js mintCustomSpellIndex counts down from -1, and seedCustomSpellIndex steps past any it loads). */
+/** The signature spells' indices: their own band, below RESURRECT1's -45001 and PARTY-MAP's -46001, under the ready-made
+ *  ceiling (spellMaker.js READY_MADE_INDEX_CEILING - a made spell is never minted or seeded there). PERSISTED DATA: a
+ *  bought copy carries its index, so the band never moves (pinned literal, -46101..-46115). */
 export const SIGNATURE_INDEX_BASE = -46100;
 
 /**
@@ -90,114 +91,137 @@ export const PATH_NUMBERS = Object.freeze({
 const N = PATH_NUMBERS;
 const pc = (x) => Math.round(x * 100);   // a share, as the percent the words print
 
+// THE SIGNATURE SPELLS' NAMES IN ENGLISH - each one home, read by its words' t() below and minted into the record
+// (AUDIT SCHOOLS L4 4): a record's name is its canonical one, as a SPELLS.STD record's is, and the spellbook, the HUD and
+// the quickslots show it in the player's language through loot.js shownSpellName - minted in the buyer's language, a
+// Russian or Korean name crossed the wire's printable-ASCII label as nothing, and a language switch left a book naming a
+// spell the shelf named otherwise.
+const AEGIS_BOLT = 'Aegis Bolt';
+const FLEETING_HOLD = 'Fleeting Hold';
+const RIFT_LANCE = 'Rift Lance';
+const LIVING_AEGIS = 'Living Aegis';
+const PRISMATIC_WARD = 'Prismatic Ward';
+const SHADOW_BOLT = 'Shadow Bolt';
+const UNRAVEL = 'Unravel';
+const BLOOD_BOIL = 'Blood Boil';
+const CHAIN_LIGHTNING = 'Chain Lightning';
+const PSYCHIC_LANCE = 'Psychic Lance';
+const DAWNBOLT = 'Dawnbolt';
+const BEGUILE = 'Beguile';
+const SIPHON_LIFE = 'Siphon Life';
+const SOUL_LANCE = 'Soul Lance';
+const SANCTIFY = 'Sanctify';
+
 /** THE WORDS a player reads for each path, through the text core - read when they are read (never at module load). */
 const WORDS = Object.freeze({
   battlemage: () => ({
     name: t('schools.battlemage.name', 'Battlemage'),
-    spell: t('schools.battlemage.spell', 'Aegis Bolt'),
+    spell: t('schools.battlemage.spell', AEGIS_BOLT),
     passiveName: t('schools.battlemage.passive', 'Spellsteel'),
     passive: t('schools.battlemage.passiveText', 'While your Shield holds, your damage spells strike {pct}% harder.', { pct: N.spellsteel.pct }),
     rider: t('schools.battlemage.rider', 'Wards you with a Shield of {times} times what it landed (at most {most}% of your health) for {rounds} rounds.', { times: N.aegisBolt.times, most: N.aegisBolt.most, rounds: N.aegisBolt.rounds }),
   }),
   trickster: () => ({
     name: t('schools.trickster.name', 'Trickster'),
-    spell: t('schools.trickster.spell', 'Fleeting Hold'),
+    spell: t('schools.trickster.spell', FLEETING_HOLD),
     passiveName: t('schools.trickster.passive', 'Slip Away'),
-    passive: t('schools.trickster.passiveText', 'A hurt that leaves you under {pct}% of your health turns you invisible for {rounds} rounds. Ready again after {minutes} minutes.', { pct: pc(N.slipAway.below), rounds: N.slipAway.rounds, minutes: N.slipAway.recover / 60 }),
+    passive: t('schools.trickster.passiveText', 'A hurt that takes you below {pct}% of your health turns you invisible for {rounds} rounds. Ready again after {minutes} minutes.', { pct: pc(N.slipAway.below), rounds: N.slipAway.rounds, minutes: N.slipAway.recover / 60 }),
     rider: t('schools.trickster.rider', 'When it takes hold, you fade from sight: Chameleon for {rounds} rounds.', { rounds: N.fleetingHold.rounds }),
   }),
   riftwalker: () => ({
     name: t('schools.riftwalker.name', 'Riftwalker'),
-    spell: t('schools.riftwalker.spell', 'Rift Lance'),
+    spell: t('schools.riftwalker.spell', RIFT_LANCE),
     passiveName: t('schools.riftwalker.passive', 'Between Moments'),
     passive: t('schools.riftwalker.passiveText', 'Your casting hands move {pct}% faster.', { pct: N.betweenMoments.pct }),
     rider: t('schools.riftwalker.rider', 'Every other foe within {metres} metres of the one it strikes takes {pct}% of what it landed.', { metres: N.riftLance.metres, pct: pc(N.riftLance.share) }),
   }),
   warden: () => ({
     name: t('schools.warden.name', 'Warden'),
-    spell: t('schools.warden.spell', 'Living Aegis'),
+    spell: t('schools.warden.spell', LIVING_AEGIS),
     passiveName: t('schools.warden.passive', 'Steadfast'),
     passive: t('schools.warden.passiveText', 'While your Shield holds, {pct}% of your health comes back each round.', { pct: N.steadfast.pct }),
     rider: t('schools.warden.rider', 'For {seconds} seconds, foes\' blows land {pct}% lighter on you.', { seconds: N.livingAegis.seconds, pct: N.livingAegis.lighter }),
   }),
   wardwright: () => ({
     name: t('schools.wardwright.name', 'Wardwright'),
-    spell: t('schools.wardwright.spell', 'Prismatic Ward'),
+    spell: t('schools.wardwright.spell', PRISMATIC_WARD),
     passiveName: t('schools.wardwright.passive', 'Attuned Wards'),
     passive: t('schools.wardwright.passiveText', 'Your Alteration and Thaumaturgy spells cost {pct}% less magicka.', { pct: N.attunedWards.pct }),
-    rider: t('schools.wardwright.rider', 'For {seconds} seconds, a Destruction spell that strikes you is absorbed {pct}% of the time.', { seconds: N.prismaticWard.seconds, pct: N.prismaticWard.chance }),
+    rider: t('schools.wardwright.rider', 'For {seconds} seconds, a Destruction spell that strikes you is absorbed {pct}% of the time, while your magicka has room for it.', { seconds: N.prismaticWard.seconds, pct: N.prismaticWard.chance }),
   }),
   shadowcaster: () => ({
     name: t('schools.shadowcaster.name', 'Shadowcaster'),
-    spell: t('schools.shadowcaster.spell', 'Shadow Bolt'),
+    spell: t('schools.shadowcaster.spell', SHADOW_BOLT),
     passiveName: t('schools.shadowcaster.passive', 'Unseen Strike'),
     passive: t('schools.shadowcaster.passiveText', 'While you are invisible, chameleon or shaded, your damage spells strike {pct}% harder.', { pct: N.unseenStrike.pct }),
     rider: t('schools.shadowcaster.rider', 'When it lands, shadow wraps you: Shadow for {rounds} rounds.', { rounds: N.shadowBolt.rounds }),
   }),
   spellbreaker: () => ({
     name: t('schools.spellbreaker.name', 'Spellbreaker'),
-    spell: t('schools.spellbreaker.spell', 'Unravel'),
+    spell: t('schools.spellbreaker.spell', UNRAVEL),
     passiveName: t('schools.spellbreaker.passive', 'Sunder'),
     passive: t('schools.spellbreaker.passiveText', 'Your damage spells meet saving throws {points} lower.', { points: N.sunder.points }),
     rider: t('schools.spellbreaker.rider', 'When it lands, {pct}% of its magicka comes back.', { pct: pc(N.unravel.back) }),
   }),
   bloodmage: () => ({
     name: t('schools.bloodmage.name', 'Bloodmage'),
-    spell: t('schools.bloodmage.spell', 'Blood Boil'),
+    spell: t('schools.bloodmage.spell', BLOOD_BOIL),
     passiveName: t('schools.bloodmage.passive', 'Sanguine Tide'),
     passive: t('schools.bloodmage.passiveText', 'Your damage spells strike 1% harder for every {per}% of your health missing, at most {most}%.', { per: N.sanguine.perMissing, most: N.sanguine.most }),
     rider: t('schools.bloodmage.rider', 'A foe it leaves under {pct}% of its health boils again for as much.', { pct: pc(N.bloodBoil.below) }),
   }),
   elementalist: () => ({
     name: t('schools.elementalist.name', 'Elementalist'),
-    spell: t('schools.elementalist.spell', 'Chain Lightning'),
+    spell: t('schools.elementalist.spell', CHAIN_LIGHTNING),
     passiveName: t('schools.elementalist.passive', 'Conflux'),
     passive: t('schools.elementalist.passiveText', 'Each damage spell of yours that lands builds a stack for {seconds} seconds: {pct}% more spell damage a stack, at most {stacks}.', { seconds: N.conflux.seconds, pct: N.conflux.pct, stacks: N.conflux.stacks }),
     rider: t('schools.elementalist.rider', 'Arcs to the {foes} nearest other foes within {metres} metres for {pct}% of what it landed.', { foes: N.chainLightning.foes, metres: N.chainLightning.metres, pct: pc(N.chainLightning.share) }),
   }),
   seer: () => ({
     name: t('schools.seer.name', 'Seer'),
-    spell: t('schools.seer.spell', 'Psychic Lance'),
+    spell: t('schools.seer.spell', PSYCHIC_LANCE),
     passiveName: t('schools.seer.passive', 'Foresight'),
     passive: t('schools.seer.passiveText', 'One foe\'s blow in {n} is foreseen and lands nothing.', { n: N.foresight.oneIn }),
     rider: t('schools.seer.rider', 'The foe it strikes is laid open: for {seconds} seconds your damage spells at it meet its saving throw {points} lower.', { seconds: N.psychicLance.seconds, points: N.psychicLance.points }),
   }),
   lightbringer: () => ({
     name: t('schools.lightbringer.name', 'Lightbringer'),
-    spell: t('schools.lightbringer.spell', 'Dawnbolt'),
+    spell: t('schools.lightbringer.spell', DAWNBOLT),
     passiveName: t('schools.lightbringer.passive', 'Dawn\'s Ward'),
     passive: t('schools.lightbringer.passiveText', 'Your damage spells strike undead and daedra {pct}% harder.', { pct: N.dawnsWard.pct }),
     rider: t('schools.lightbringer.rider', '{heal}% of what it lands heals you, and undead and daedra burn again for {burn}%.', { heal: pc(N.dawnbolt.heal), burn: pc(N.dawnbolt.burn) }),
   }),
   enchanter: () => ({
     name: t('schools.enchanter.name', 'Enchanter'),
-    spell: t('schools.enchanter.spell', 'Beguile'),
+    spell: t('schools.enchanter.spell', BEGUILE),
     passiveName: t('schools.enchanter.passive', 'Glamour'),
     passive: t('schools.enchanter.passiveText', '+{personality} Personality, +{etiquette} Etiquette and +{streetwise} Streetwise.', { personality: N.glamour.personality, etiquette: N.glamour.etiquette, streetwise: N.glamour.streetwise }),
-    rider: t('schools.enchanter.rider', 'A foe it calms gives its magicka back whole.'),
+    rider: t('schools.enchanter.rider', 'A foe it calms returns its whole cost in magicka.'),
   }),
   necromancer: () => ({
     name: t('schools.necromancer.name', 'Necromancer'),
-    spell: t('schools.necromancer.spell', 'Siphon Life'),
+    spell: t('schools.necromancer.spell', SIPHON_LIFE),
     passiveName: t('schools.necromancer.passive', 'Death\'s Due'),
     passive: t('schools.necromancer.passiveText', 'Each foe you kill returns {health}% of your health and {magicka}% of your magicka.', { health: N.deathsDue.health, magicka: N.deathsDue.magicka }),
     rider: t('schools.necromancer.rider', '{pct}% of what it lands heals you.', { pct: pc(N.siphonLife.share) }),
   }),
   soulbinder: () => ({
     name: t('schools.soulbinder.name', 'Soulbinder'),
-    spell: t('schools.soulbinder.spell', 'Soul Lance'),
+    spell: t('schools.soulbinder.spell', SOUL_LANCE),
     passiveName: t('schools.soulbinder.passive', 'Soul Well'),
     passive: t('schools.soulbinder.passiveText', 'Each foe you kill returns {pct}% of your magicka, {trapped}% if your Soul Trap held it.', { pct: N.soulWell.magicka, trapped: N.soulWell.trapped }),
     rider: t('schools.soulbinder.rider', '{pct}% of what it lands comes back as magicka.', { pct: pc(N.soulLance.share) }),
   }),
   hierophant: () => ({
     name: t('schools.hierophant.name', 'Hierophant'),
-    spell: t('schools.hierophant.spell', 'Sanctify'),
+    spell: t('schools.hierophant.spell', SANCTIFY),
     passiveName: t('schools.hierophant.passive', 'Absolution'),
-    passive: t('schools.hierophant.passiveText', 'A hurt that leaves you under {below}% of your health heals {pct}% of your health. Ready again after {minutes} minutes.', { below: pc(N.absolution.below), pct: N.absolution.heal, minutes: N.absolution.recover / 60 }),
+    passive: t('schools.hierophant.passiveText', 'A hurt that takes you below {below}% of your health heals {pct}% of your health. Ready again after {minutes} minutes.', { below: pc(N.absolution.below), pct: N.absolution.heal, minutes: N.absolution.recover / 60 }),
     rider: t('schools.hierophant.rider', 'Wards you: Spell Resistance {pct}% for {rounds} rounds.', { pct: N.sanctify.chance, rounds: N.sanctify.rounds }),
   }),
 });
+/** The signature spell's English name, by path - the record's canonical name. */
+const SPELL_EN = Object.freeze({ battlemage: AEGIS_BOLT, trickster: FLEETING_HOLD, riftwalker: RIFT_LANCE, warden: LIVING_AEGIS, wardwright: PRISMATIC_WARD, shadowcaster: SHADOW_BOLT, spellbreaker: UNRAVEL, bloodmage: BLOOD_BOIL, elementalist: CHAIN_LIGHTNING, seer: PSYCHIC_LANCE, lightbringer: DAWNBOLT, enchanter: BEGUILE, necromancer: SIPHON_LIFE, soulbinder: SOUL_LANCE, hierophant: SANCTIFY });
 /** A path's words now: { name, spell, passiveName, passive, rider } - in the player's language. */
 export const pathWords = (id) => WORDS[id]?.() ?? null;
 
@@ -225,7 +249,7 @@ const PATH_ROWS = [
 ];
 export const PATHS = Object.freeze(PATH_ROWS.map(([id, schools, [n, icon, element, rangeType, slots]]) => Object.freeze({
   id, schools: Object.freeze([...schools]),
-  spell: Object.freeze({ get name() { return pathWords(id).spell; }, index: SIGNATURE_INDEX_BASE - n, icon, element, rangeType, slots: Object.freeze([...slots]) }),
+  spell: Object.freeze({ get name() { return pathWords(id).spell; }, nameEn: SPELL_EN[id], index: SIGNATURE_INDEX_BASE - n, icon, element, rangeType, slots: Object.freeze([...slots]) }),
   get name() { return pathWords(id).name; },
   get passive() { const w = pathWords(id); return { name: w.passiveName, text: w.passive }; },
   get rider() { return pathWords(id).rider; },
@@ -245,6 +269,15 @@ export const isSignatureSpell = (sp) => !!sp && isPathId(sp.path) && sp.index ==
 
 /** A path's two schools, by DFU's own skill names (in the player's language). */
 const schoolsOf = (p) => ({ a: SKILL_NAMES[p.schools[0]], b: SKILL_NAMES[p.schools[1]] });
+/** A path's two schools as one line ("Restoration and Mysticism"). */
+export const pathSchoolsText = (p) => t('schools.choice.schools', '{a} and {b}', schoolsOf(p));
+/** AUDIT SCHOOLS L4 8: can this character EVER meet a path - two of the six schools among its career's primary, major
+ *  and minor skills (a mastery's own law: masterSkills.js careerGroupOf)? */
+export function pathPossible(entity) {
+  const c = entity?.career;
+  const career = new Set([...(c?.primarySkills ?? []), ...(c?.majorSkills ?? []), ...(c?.minorSkills ?? [])]);
+  return MAGIC_SKILLS.filter((id) => career.has(id)).length >= 2;
+}
 
 // ── the choice ──────────────────────────────────────────────────────
 
@@ -264,7 +297,7 @@ export function pathChoices(entity) {
 /** Why this path cannot be chosen now, or null when it can. */
 export function pathRefusal(entity, id) {
   if (!isPathId(id)) return t('schools.refuse.none', 'No such specialisation.');
-  if (pathOf(entity)) return t('schools.refuse.already', 'You are already a {name}.', { name: pathOf(entity).name });
+  if (pathOf(entity)) return t('schools.refuse.already', 'Your specialisation is already chosen: {name}.', { name: pathOf(entity).name });
   if (!masterSkillsActive(entity)) return t('schools.refuse.off', 'Master Skills is off.');
   const p = PATH_BY_ID[id];
   if (!p.schools.every((s) => isMasteredSkill(entity, s))) return t('schools.refuse.schools', 'Master {a} and {b} first.', schoolsOf(p));
@@ -277,7 +310,7 @@ export function choosePath(entity, id) {
   if (why) return { ok: false, text: why };
   entity.arcanePath = id;
   const p = PATH_BY_ID[id];
-  return { ok: true, text: t('schools.chosen', 'You are now a {name}. {spell} is sold to you at the Mages Guild.', { name: p.name, spell: p.spell.name }) };
+  return { ok: true, text: t('schools.chosen', 'Specialisation chosen: {name}. {spell} is sold to you at the Mages Guild.', { name: p.name, spell: p.spell.name }) };
 }
 
 export const PATH_DECLINED_TEXT = 'You can choose a specialisation later in your skill screen.';
@@ -300,13 +333,25 @@ export function pathChoiceRows(entity, id, { others = true } = {}) {
   if (!p) return [];
   const more = others ? pathChoices(entity).length - 1 : 0;
   return [
-    t('schools.choice.title', 'Become a {name}?', { name: p.name }),
-    t('schools.choice.schools', '{a} and {b}', schoolsOf(p)),
+    t('schools.choice.title', 'Specialise as {name}?', { name: p.name }),
+    pathSchoolsText(p),
     '',
     ...pathPowerRows(p),
     '',
     t('schools.choice.final', 'This decision cannot be undone.'),
     ...(more > 0 ? [t('schools.choice.others', '{n, plural, one {# other specialisation is open to you.} other {# other specialisations are open to you.}}', { n: more })] : []),
+  ];
+}
+
+/** AUDIT SCHOOLS L4 M1: the one ask when SEVERAL paths are open - their names, and where each is chosen. */
+export function pathsOpenRows(open) {
+  return [
+    t('schools.open.title', 'Specialisation'),
+    '',
+    t('schools.open.count', '{n, plural, one {# specialisation is open to you:} other {# specialisations are open to you:}}', { n: open.length }),
+    open.map((p) => p.name).join(', '),
+    '',
+    t('schools.open.where', 'Choose one in your skill screen. The choice cannot be undone.'),
   ];
 }
 
@@ -322,7 +367,14 @@ export function pathAboutRows(p) {
  *  its schools mastered, not mentoring. Answers the path, or null. (A refereed fight is the powers' word to add -
  *  systems/arcanePowers.js; the price reads none, and a duel's opponent takes the plain bundle whatever it cost.) */
 export function pathAwake(entity) {
-  if (!entity?.isPlayer || entity.peer || entity._mentor) return null;
+  return entity?._mentor ? null : pathHeld(entity);
+}
+/** The path this entity HOLDS now, mentoring or not - my own player entity, Master Skills in force, both its schools
+ *  mastered. What a signature spell is cast in and the shelf read (AUDIT SCHOOLS L2 F5: through pathAwake, a mentored
+ *  Necromancer's Siphon Life priced and trained as the Destruction they never chose - 9 magicka became 105 on joining a
+ *  lower party); mentoring's own law lowers the schools' values (skillValue) and their climb (schoolPotency). */
+export function pathHeld(entity) {
+  if (!entity?.isPlayer || entity.peer) return null;
   const p = pathOf(entity);
   if (!p || !masterSkillsActive(entity) || !p.schools.every((s) => isMasteredSkill(entity, s))) return null;
   return p;
@@ -333,7 +385,7 @@ export function pathAwake(entity) {
  *  the path's first). The price, the tally and the school past 100 all read it. */
 export function pathCastSchool(entity, spell, school) {
   if (!spell || !isSignatureSpell(spell)) return school;
-  const p = pathAwake(entity);
+  const p = pathHeld(entity);
   if (!p || p.id !== spell.path) return school;
   if (p.schools.includes(school)) return school;
   const [a, b] = p.schools;
@@ -344,26 +396,32 @@ export function pathCastSchool(entity, spell, school) {
 // ── the judge ───────────────────────────────────────────────────────
 
 /** SCHOOLS5: the judge's word on a SAVE's path - [] when lawful, else `{ code: 'path', at }` findings: a path no table
- *  holds, a path whose schools are not both mastered, or a signature spell that is not the save's own path's.
- *  A save with no path and no signature spell is lawful whatever else it holds. */
+ *  holds, or a path whose schools are not both mastered - what GRANTS a path's powers. A signature spell is NOT judged
+ *  (AUDIT SCHOOLS L3 F2): one without its awake path is the plain bundle the spell maker could make (no rider, its own
+ *  schools - arcanePaths.js pathCastSchool, arcanePowers.js), so flagging it protected nothing, and it froze the trade of
+ *  an honest player whose save an older build had carried (that build kept the spell whole and dropped `arcanePath`).
+ *  A save with no path is lawful whatever else it holds. */
 export function pathFindings(save) {
   const out = [];
   if (!save || typeof save !== 'object') return out;
   const raw = save.arcanePath;
-  let path = null;
-  if (raw != null) {
-    if (!isPathId(raw)) out.push({ code: 'path', at: 'id' });
-    else {
-      path = PATH_BY_ID[raw];
-      // both schools mastered - a mastery is only ever made at 100 (masterSkills.js masteryRefusal), and the judge reads
-      // no skill's value here: a value can be lowered after its mastery, and a mastery is never undone
-      const mastered = Array.isArray(save.masteredSkills) ? save.masteredSkills : [];
-      if (!path.schools.every((s) => mastered.includes(s))) out.push({ code: 'path', at: 'schools' });
-    }
-  }
-  (Array.isArray(save.spells) ? save.spells : []).forEach((sp, i) => {
-    if (!sp || typeof sp !== 'object' || sp.path == null) return;
-    if (!isSignatureSpell(sp) || !path || sp.path !== path.id) out.push({ code: 'path', at: i });
-  });
+  if (raw == null) return out;
+  if (!isPathId(raw)) return [{ code: 'path', at: 'id' }];
+  // both schools mastered - a mastery is only ever made at 100 (masterSkills.js masteryRefusal), and the judge reads no
+  // skill's value here: a value can be lowered after its mastery, and a mastery is never undone
+  const mastered = Array.isArray(save.masteredSkills) ? save.masteredSkills : [];
+  if (!PATH_BY_ID[raw].schools.every((s) => mastered.includes(s))) out.push({ code: 'path', at: 'schools' });
   return out;
+}
+
+/** AUDIT SCHOOLS L3 F2: THE PATH A BOOK BEARS WITNESS TO - a save an older build carried keeps its signature spell whole
+ *  (made spells are saved as records) and drops `arcanePath`, which a permanent choice must not lose. The book's
+ *  signature spells name ONE path, both its schools mastered: that path; anything else (none, two paths' spells, a school
+ *  unmastered): null. Only the shelf sells a signature spell, and only to its own path's holder. */
+export function pathWitnessed(spells, masteredSkills) {
+  const ids = new Set((Array.isArray(spells) ? spells : []).filter(isSignatureSpell).map((sp) => sp.path));
+  if (ids.size !== 1) return null;
+  const id = [...ids][0];
+  const mastered = Array.isArray(masteredSkills) ? masteredSkills : [];
+  return PATH_BY_ID[id].schools.every((s) => mastered.includes(s)) ? id : null;
 }

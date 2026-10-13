@@ -12165,13 +12165,13 @@
   "by": "claude-in-session"
  },
  "schools.choice.title": {
-  "en": "cfbe6117f827",
-  "tr": "76d1a92faf55",
+  "en": "23933019d233",
+  "tr": "3de495bd67c9",
   "by": "claude-in-session"
  },
  "schools.chosen": {
-  "en": "a6744c243d23",
-  "tr": "a6bdce735aa1",
+  "en": "ed1316b2698a",
+  "tr": "0802c7e4ba41",
   "by": "claude-in-session"
  },
  "schools.declined": {
@@ -12220,8 +12220,8 @@
   "by": "claude-in-session"
  },
  "schools.enchanter.rider": {
-  "en": "1abbe001f04c",
-  "tr": "2a348dff1463",
+  "en": "65fe70caf30e",
+  "tr": "3565e1c2fb93",
   "by": "claude-in-session"
  },
  "schools.enchanter.spell": {
@@ -12240,8 +12240,8 @@
   "by": "claude-in-session"
  },
  "schools.hierophant.passiveText": {
-  "en": "5057a0b1dbf0",
-  "tr": "287d940e3e74",
+  "en": "3257d2323b95",
+  "tr": "4569a3f394ab",
   "by": "claude-in-session"
  },
  "schools.hierophant.rider": {
@@ -12304,9 +12304,24 @@
   "tr": "1c7b1721e013",
   "by": "claude-in-session"
  },
+ "schools.open.count": {
+  "en": "09adfea43a27",
+  "tr": "a151f2562746",
+  "by": "claude-in-session"
+ },
+ "schools.open.title": {
+  "en": "ea1414d4c6d8",
+  "tr": "9cfbf710574f",
+  "by": "claude-in-session"
+ },
+ "schools.open.where": {
+  "en": "8bd11a1596b1",
+  "tr": "9ee59f77e678",
+  "by": "claude-in-session"
+ },
  "schools.refuse.already": {
-  "en": "0713e02c472d",
-  "tr": "e1edca96e5ee",
+  "en": "faf2fd4869d4",
+  "tr": "df99637ee71f",
   "by": "claude-in-session"
  },
  "schools.refuse.none": {
@@ -12425,8 +12440,8 @@
   "by": "claude-in-session"
  },
  "schools.sheet.choose": {
-  "en": "c42872b282db",
-  "tr": "e415ea9ff86e",
+  "en": "245cbcdc6aa8",
+  "tr": "4473e63f7e69",
   "by": "claude-in-session"
  },
  "schools.sheet.chosen": {
@@ -12441,7 +12456,7 @@
  },
  "schools.sheet.sold": {
   "en": "2d22ae7b3a64",
-  "tr": "11e74fbfa664",
+  "tr": "201d6c2e6038",
   "by": "claude-in-session"
  },
  "schools.soulbinder.name": {
@@ -12505,8 +12520,8 @@
   "by": "claude-in-session"
  },
  "schools.trickster.passiveText": {
-  "en": "8070b319f002",
-  "tr": "8f6c4d5918cb",
+  "en": "e1426f4a1127",
+  "tr": "ccbe7f8d3a4b",
   "by": "claude-in-session"
  },
  "schools.trickster.rider": {
@@ -12560,8 +12575,8 @@
   "by": "claude-in-session"
  },
  "schools.wardwright.rider": {
-  "en": "5e059ad954b9",
-  "tr": "22744d173806",
+  "en": "8301a4c962ec",
+  "tr": "264788449c48",
   "by": "claude-in-session"
  },
  "schools.wardwright.spell": {

@@ -8,19 +8,20 @@
 // bought copy is the buyer's own (spellbookWindow.js confirmTrade copies it shallowly).
 
 import { buildCustomSpell } from './spellMaker.js';
-import { PATH_BY_ID, pathAwake } from './arcanePaths.js';
+import { PATH_BY_ID, pathHeld } from './arcanePaths.js';
 
 /** The signature spell's record for path `id`, or null for no such path. */
 export function signatureSpell(id) {
   const p = PATH_BY_ID[id];
   if (!p) return null;
   const s = p.spell;
-  return { ...buildCustomSpell({ slots: s.slots.map((x) => ({ ...x, settings: { ...x.settings } })), rangeType: s.rangeType, element: s.element, name: s.name, icon: s.icon, index: s.index }), path: p.id };
+  return { ...buildCustomSpell({ slots: s.slots.map((x) => ({ ...x, settings: { ...x.settings } })), rangeType: s.rangeType, element: s.element, name: s.nameEn, icon: s.icon, index: s.index }), path: p.id };   // AUDIT SCHOOLS L4 4: its canonical English name - shown in the player's language (loot.js shownSpellName)
 }
 
-/** The Buy Spells shelf's offer to this entity: its own awake path's signature spell, or nothing. */
+/** The Buy Spells shelf's offer to this entity: its own path's signature spell, or nothing - a path HELD (mentoring
+ *  takes nothing from the shelf; AUDIT SCHOOLS L2 F5). */
 export function signatureOffers(entity) {
-  const p = pathAwake(entity);
+  const p = pathHeld(entity);
   const sp = p ? signatureSpell(p.id) : null;
   return sp ? [sp] : [];
 }

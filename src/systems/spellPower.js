@@ -28,8 +28,9 @@
 // (spellcost.js castSchool). And SCHOOLS3's LANDED listeners: the cast engine's word that MY spell landed, which the
 // paths' riders answer (systems/arcanePowers.js).
 //
-// A leaf: the skills' ids, the softcap's climb, the page's lane and the refereed fight's word (sigil.js), so
-// systems/effects.js reads it with no cycle.
+// Its imports: the skills' ids, the softcap's climb, the page's lane and the refereed fight's word (sigil.js). No leaf -
+// sigil.js reaches some 145 files (the wire, the folds, the price; AUDIT SCHOOLS L5) - but none of them imports this
+// file or systems/effects.js back, so effects.js reads it with no cycle.
 
 import { SKILLS } from './skills.js';
 import { SKILL_SOFT_CAP, climbedSkill } from './skillSoftcap.js';
@@ -81,10 +82,14 @@ export function spellPowerMult(caster, target, opts = {}) {
   return schoolPotency(caster, opts) * (1 + pct / 100);
 }
 
-/** SCHOOLS3: named listeners told when MY spell LANDED - `fn({ caster, target, spell, r, cost, self })`: `r` the
- *  landing's answer (systems/effects.js applySpell's), `cost` the magicka the cast took (0 when unknown), `self` true for
- *  my own cast on me. The cast engine tells them (scenes/hostMagic.js applySpellToFoe, applySpellToPlayer) - the one
- *  engine every host casts through. A non-function removes the name; one that throws is skipped. */
+/** SCHOOLS3: named listeners told when MY spell LANDED - `fn({ caster, target, foe, spell, r, self, reflected, took,
+ *  cast })`: `r` the landing's answer (systems/effects.js applySpell's); `foe` the door's record of the target (null on
+ *  a relay's stand-in, whose body the relay holds); `self` true for my own cast on me, `reflected` for my spell a foe
+ *  turned back at me; `took` what the target could lose (never the overkill past its health); `cast` the cast's token
+ *  (`{ cost }`, the magicka it took - one token for every landing of one cast; null for a landing no cast released, a
+ *  Cast When Strikes proc's). The cast engine tells them (scenes/hostMagic.js applySpellToFoe, applySpellToPlayer) - the
+ *  one engine every host casts through - and the relay's stand-ins (scenes/dungeonContext.js tellStandIn, scenes/world.js
+ *  serpentSpellOn). A non-function removes the name; one that throws is skipped. */
 const _landed = new Map();
 export function registerSpellLandedListener(name, fn) { if (typeof fn === 'function') _landed.set(name, fn); else _landed.delete(name); }
 export function tellSpellLanded(info) {

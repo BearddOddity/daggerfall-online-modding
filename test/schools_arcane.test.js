@@ -31,6 +31,7 @@ import { setStruck, _resetSetPowersForTests } from '../src/systems/sigilSetPower
 import { setSigilDueling } from '../src/systems/sigil.js';
 import { setPlayerDoor } from '../src/systems/playerDoor.js';
 import { computeEntityMods } from '../src/systems/entityMods.js';
+import { _resetPlayerHealForTests } from '../src/systems/playerHeal.js';
 import { snapshotPlayer, restorePlayer } from '../src/systems/save.js';
 import { createPlayerMagic } from '../src/scenes/hostMagic.js';
 import { validCastData } from '../src/net/wire.js';
@@ -63,7 +64,15 @@ function pathMage(id, raw = 150) {
   assert.equal(AP.choosePath(p, id).ok, true);
   return p;
 }
-const reset = () => { POW._resetArcanePowersForTests(); _resetSetPowersForTests(); setSigilDueling(false); setPlayerDoor(null); };
+/** Every power's memory fresh, and every test hook a test may have left set (AUDIT SCHOOLS L5 M5: the heal's carried
+ *  fraction, the clock, the dice and the duel's word - a failing assertion left them for the next test). */
+const reset = () => {
+  POW._resetArcanePowersForTests(); _resetSetPowersForTests(); _resetPlayerHealForTests();
+  POW._setArcanePowersClockForTests(null); POW._setArcanePowersRandForTests(null);
+  setSigilDueling(false); setPlayerDoor(null);
+};
+/** My cast's wrapper as the cast engine mints it - the token carrying what the cast took (hostMagic.js newCast). */
+const castBy = (p, cost = 0) => ({ entity: p, cast: { cost } });
 /** A foe that saves at 50 (Willpower 0), which a roll of 0.999 always fails. */
 const foeEnt = (over = {}) => ({ isPlayer: false, career: {}, stats: { willpower: 0 }, activeEffects: [], level: 21, health: 100, maxHealth: 100, careerIndex: 1, ...over });
 const eff = (type, subType, o = {}) => ({ type, subType, durationBase: 1, durationMod: 0, durationPerLevel: 1, chanceBase: 0, chanceMod: 0, chancePerLevel: 1,
@@ -137,10 +146,10 @@ test('SCHOOLS1 THE CHOICE: two mastered schools open their path, three open thre
   assert.equal(AP.choosePath(three, 'seer').ok, false);
   assert.equal(AP.pathRefusal(three, 'nobody'), 'No such specialisation.');
   const r = AP.choosePath(three, 'warden');
-  assert.deepEqual(r, { ok: true, text: 'You are now a Warden. Living Aegis is sold to you at the Mages Guild.' });
+  assert.deepEqual(r, { ok: true, text: 'Specialisation chosen: Warden. Living Aegis is sold to you at the Mages Guild.' });
   assert.equal(three.arcanePath, 'warden');
   assert.deepEqual(AP.pathChoices(three), [], 'chosen: nothing more open');
-  assert.deepEqual(AP.choosePath(three, 'necromancer'), { ok: false, text: 'You are already a Warden.' });
+  assert.deepEqual(AP.choosePath(three, 'necromancer'), { ok: false, text: 'Your specialisation is already chosen: Warden.' });
   assert.equal(three.arcanePath, 'warden', 'permanent');
   // offline the switch: off opens nothing and refuses
   const off = mage([RES, MYS]);
@@ -156,7 +165,7 @@ test('SCHOOLS1 THE CHOICE: two mastered schools open their path, three open thre
   assert.equal(AP.nextPathChoice(ask), null, 'asked once - the skill screen keeps it');
   // the box: what it does, that it is permanent
   const rows = AP.pathChoiceRows(mage([ALT, RES, MYS]), 'necromancer');
-  assert.deepEqual(rows, ['Become a Necromancer?', 'Restoration and Mysticism', '',
+  assert.deepEqual(rows, ['Specialise as Necromancer?', 'Restoration and Mysticism', '',
     'Death\'s Due: Each foe you kill returns 5% of your health and 5% of your magicka.',
     'Siphon Life (signature spell): 50% of what it lands heals you.', '', 'This decision cannot be undone.',
     '2 other specialisations are open to you.']);
@@ -206,7 +215,7 @@ test('SCHOOLS1 THE SAVE: the path and its one ask round-trip; an id no table hol
   assert.equal(forged.arcanePath, null, 'no such path');
   const old = structuredClone(playerEntity);
   const { arcanePath: _a, pathPrompted: _b, ...before } = snap;
-  restorePlayer(old, before);
+  restorePlayer(old, { ...before, spells: [] });   // and no book to bear witness (an older build's save with one: audit_schools)
   assert.equal(old.arcanePath, null, 'a save from before the arc');
   assert.equal(old.pathPrompted, false);
 });
@@ -266,7 +275,7 @@ test('SCHOOLS2 THE SCHOOLS PAST 100: online, each school\'s climb past 100 is 1%
   let got = 0;
   page(true, () => applySpell(regen, 20, r200, { heal: (n) => { got += n; }, say() {} }, () => 0.5, { entity: r200 }));
   assert.equal(got, 14, 'the first round x1.4');
-  assert.equal(r200.activeEffects.find((a) => a.kind === 'regenerate').potency, 1.4);
+  assert.equal(r200.activeEffects.find((a) => a.kind === 'regenerate').school, RES, 'its school, read each round (AUDIT SCHOOLS L2 F3)');
   // Alteration: the Shield's pool
   const a200 = mage([ALT], 200);
   const shield = SELF(eff(35, 255, { durationBase: 5, magnitudeBaseLow: 50, magnitudeBaseHigh: 50 }));
@@ -387,8 +396,8 @@ test('SCHOOLS3 THE RIDERS, through the cast engine\'s landing door: each signatu
   const t1 = rec('t1', foeEnt({ health: 500, maxHealth: 500 }), [0, 0, 0]);
   door([t1], sb);
   const cost = calculateCastCost(signatureSpell('spellbreaker'), sb).sp;
-  engine(sb, [t1]).applySpellToFoe(signatureSpell('spellbreaker'), 20, t1, { entity: sb });
-  assert.equal(sb.magicka, Math.floor(cost / 3));
+  engine(sb, [t1]).applySpellToFoe(signatureSpell('spellbreaker'), 20, t1, castBy(sb, cost));
+  assert.equal(sb.magicka, Math.floor(cost / 3), 'a third of what the cast took');
   reset();
   const so = pathMage('soulbinder', 100);
   door([t1], so);
@@ -448,12 +457,13 @@ test('SCHOOLS3 THE RIDERS THAT WRAP ME: Aegis Bolt\'s Shield of twice what it la
   const knight = rec('knight', foeEnt({ mobileType: 130 }), [0, 0, 0]);   // an enemy class: Charm's own
   door([knight], en);
   en.magicka = 0;
-  const calm = engine(en, [knight], () => 0.1).applySpellToFoe(signatureSpell('enchanter'), 20, knight, { entity: en }, { bypassSavingThrows: true });
+  const paid = calculateCastCost(signatureSpell('enchanter'), en).sp;
+  const calm = engine(en, [knight], () => 0.1).applySpellToFoe(signatureSpell('enchanter'), 20, knight, castBy(en, paid), { bypassSavingThrows: true });
   assert.equal(calm.pacify, true);
-  assert.equal(en.magicka, Math.min(en.maxMagicka, calculateCastCost(signatureSpell('enchanter'), en).sp), 'its whole price back (never past the pool)');
+  assert.equal(en.magicka, Math.min(en.maxMagicka, paid), 'its whole price back (never past the pool)');
   assert.ok(en.magicka > 0);
   en.magicka = 0;
-  const unmoved = engine(en, [knight], () => 0.999).applySpellToFoe(signatureSpell('enchanter'), 20, knight, { entity: en }, { bypassSavingThrows: true });
+  const unmoved = engine(en, [knight], () => 0.999).applySpellToFoe(signatureSpell('enchanter'), 20, knight, castBy(en, paid), { bypassSavingThrows: true });
   assert.equal(unmoved.pacify, undefined);
   assert.equal(en.magicka, 0, 'a foe it never calmed gives nothing back');
   // the self-casts: Hierophant's Spell Resistance; Warden's guard; Wardwright's ward
@@ -498,12 +508,6 @@ test('SCHOOLS3 THE RIDERS THAT WRAP ME: Aegis Bolt\'s Shield of twice what it la
   now += 31;
   assert.equal(POW.pathAbsorbChance(ww), 0, 'for 30 seconds');
   POW._setArcanePowersClockForTests(null);
-  // my own spell turned back at me is no self-cast
-  reset();
-  const back = pathMage('hierophant', 100);
-  const d7 = door([], back);
-  engine(back).applySpellToPlayer(signatureSpell('hierophant'), 20, { entity: back }, { reflectedCount: 1 });
-  assert.deepEqual(d7.cast, []);
 });
 
 test('SCHOOLS4 THE PASSIVES, each through its own seam: Spellsteel, Unseen Strike, Sanguine Tide, Conflux and Dawn\'s Ward onto a damage spell; Sunder off the throw; Attuned Wards off the price; Between Moments onto the hands; Glamour folded; Foresight and the kills, the hurts and the round (mutants: each number moved; each asleep)', () => {
@@ -621,7 +625,6 @@ test('SCHOOLS4 THE PASSIVES, each through its own seam: Spellsteel, Unseen Strik
   wa.activeEffects.push({ kind: 'shield', shieldRemaining: 5, startingShield: 5, roundsRemaining: 5 });
   POW.pathRound(wa);
   assert.equal(wa.health, 110);
-  POW.pathRound(foeEnt({ health: 1, maxHealth: 100, activeEffects: wa.activeEffects }));
   // the kills: Death's Due, Soul Well (a fifth when my trap held it)
   reset();
   const ne = pathMage('necromancer', 100);
@@ -648,7 +651,7 @@ test('SCHOOLS4 THE PASSIVES, each through its own seam: Spellsteel, Unseen Strik
   assert.ok(Math.abs(peer - sm * 0.1) < 1, 'a peer\'s trap is not mine: 10%');
 });
 
-test('SCHOOLS5 THE JUDGE: a save\'s path a table holds with both schools mastered and no signature spell but its own; an honest save, with a path or without, finds nothing (mutants: the schools unread; another path\'s spell passes; a save with none found)', () => {
+test('SCHOOLS5 THE JUDGE: a save\'s path a table holds with both its schools mastered - what grants a path\'s powers; a signature spell is never judged (an inert plain bundle without its path - AUDIT SCHOOLS L3 F2); an honest save finds nothing (mutants: the schools unread; an unknown id passes; the judge never asks)', () => {
   const p = pathMage('necromancer', 120);
   p.spells = [signatureSpell('necromancer')];
   const snap = JSON.parse(JSON.stringify(snapshotPlayer(p)));
@@ -656,11 +659,16 @@ test('SCHOOLS5 THE JUDGE: a save\'s path a table holds with both schools mastere
   const codes = (s) => characterFindings(s, null).filter((f) => f.code === 'path');
   assert.deepEqual(codes(save), [], 'lawful');
   assert.deepEqual(codes({ ...save, arcanePath: null, spells: [] }), [], 'no path at all');
-  assert.deepEqual(codes({ ...save, arcanePath: 'archlich' }), [{ code: 'path', at: 'id' }, { code: 'path', at: 0 }]);
-  assert.deepEqual(codes({ ...save, masteredSkills: [RES] }), [{ code: 'path', at: 'schools' }]);
-  assert.deepEqual(codes({ ...save, spells: [...save.spells, signatureSpell('seer')] }), [{ code: 'path', at: 1 }], 'another path\'s spell');
-  assert.deepEqual(codes({ ...save, arcanePath: null }), [{ code: 'path', at: 0 }], 'a signature spell and no path');
-  assert.deepEqual(codes({ ...save, spells: [{ ...signatureSpell('necromancer'), index: -1 }] }), [{ code: 'path', at: 0 }], 'a record that says a path and is not its spell');
+  assert.deepEqual(codes({ ...save, arcanePath: 'archlich' }), [{ code: 'path', at: 'id' }], 'a path no table holds');
+  assert.deepEqual(codes({ ...save, masteredSkills: [RES] }), [{ code: 'path', at: 'schools' }], 'a school unmastered');
+  assert.deepEqual(codes({ ...save, masteredSkills: [] }), [{ code: 'path', at: 'schools' }], 'neither');
+  // a signature spell is never the judge's: another path's beside mine, one with no path (an older build's save), a
+  // record that names a path and is not its spell - each a plain bundle in play, none a power
+  assert.deepEqual(codes({ ...save, spells: [...save.spells, signatureSpell('seer')] }), []);
+  const { arcanePath: _gone, ...olderBuild } = save;
+  assert.deepEqual(codes(olderBuild), [], 'an older build dropped the path and kept the spell: no frozen trade');
+  assert.deepEqual(codes({ ...save, spells: [{ ...signatureSpell('necromancer'), index: -1 }] }), []);
   assert.ok(judgeSave(save).findings.every((f) => f.code !== 'path'));
+  assert.ok(judgeSave({ ...save, arcanePath: 'archlich' }).findings.some((f) => f.code === 'path'), 'the judge asks the law');
   assert.match(src('.github/workflows/account-deploy.yml'), /- "src\/systems\/arcanePaths\.js"/, 'the law joins the deploy\'s filter');
 });

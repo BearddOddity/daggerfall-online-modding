@@ -742,7 +742,13 @@ function runEffectRound(a, target, sinks, rolls) {
   } else if (a.kind === 'regenerate') {
     // Regenerate.MagicRound: IncreaseHealth(GetMagnitude) every round
     let n = effectMagnitude(a.effect, a.casterLevel, a.saveScaled ?? false, a.element, a.flag, target, rolls);
-    if (n > 0 && a.potency > 1) n = Math.max(1, Math.round(n * a.potency));   // SCHOOLS2: Restoration past 100, fixed at the cast
+    // SCHOOLS2: Restoration past 100, read EVERY ROUND as a damage over time's school is (AUDIT SCHOOLS L2 F3: frozen at
+    // the cast, a Regenerate cast before a duel or a mentoring kept it through both) - my own cast on myself alone, never
+    // a worn item's (the tail's heldItem) nor a stored entry restored without its caster
+    if (n > 0 && a.school != null && !a.heldItem) {
+      const k = schoolMult(a.caster, target, a.school, { self: true });
+      if (k !== 1) n = Math.max(1, Math.round(n * k));
+    }
     if (n > 0 && sinks.heal && !regenBarred()) sinks.heal(n);   // WBX6: the Burning Court keeps no regeneration (systems/courtRules.js)
   }
 }
@@ -885,7 +891,12 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
   // target is mine to strengthen (systems/spellPower.js schoolMult): on MYSELF (`self`) a heal, a Shield, a concealment's
   // rounds, a ward's chance; at a FOE a chance. 1 for every cast but my own, offline, while mentoring, in a refereed fight.
   const schoolOf = (e) => castSchool(caster?.entity ?? null, spell, e);
-  const potencyOf = (e, self) => schoolMult(caster?.entity ?? null, target, schoolOf(e), { self });
+  // AUDIT SCHOOLS L2 F2, F9: never a WORN item's bundle (a Cast When Held effect keeps what it landed with until the
+  // item's reroll - past a duel's start and a mentoring alike); never my own spell a foe turned back at me
+  const noSchool = ctx.heldItem != null || (ctx.reflectedCount ?? 0) > 0;
+  const potencyOf = (e, self) => (noSchool ? 1 : schoolMult(caster?.entity ?? null, target, schoolOf(e), { self }));
+  /** The caster a regenerate entry keeps for its rounds' school: mine, when the school may read at all. */
+  const selfSchoolCaster = () => (noSchool ? null : caster?.entity ?? null);
   const chanceOf = (e, self) => {
     const ch = chanceValue(e, casterLevel);
     const k = potencyOf(e, self);
@@ -915,6 +926,13 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
   // its damage over time stops at the duel's floor, and the duel's end strips it
   const duelCast = ctx.duelCast === true;
   const findInc = (pred) => (heldItem ? undefined : target.activeEffects?.find((a) => !a.heldItem && !!a.bundleAlly === allyCast && !!a.bundleDuel === duelCast && pred(a)));
+  // AUDIT SCHOOLS (L1 M1, L2 F1): A POWER'S BUNDLE ON ME (ctx.powerCast - a path's rider, through the door's castOnPlayer
+  // with `power`) merges as DFU's incumbents merge, one entry a kind, so every reader keeps DFU's first-match law (X11) -
+  // but where EITHER side of a merge is a power's, the Shield's pool and a ward's chance take the LARGER: by DFU's recast
+  // law alone a 40-point rider Shield capped my own 140-point Shield cast after it at 40, and my own 6-point Shield
+  // swallowed every rider after it. The entry a power made says so (`bundlePower`).
+  const powerCast = ctx.powerCast === true;
+  const powerMerge = (inc) => powerCast || inc?.bundlePower === true;
   // S24: absorption is tested PER EFFECT, before any of them lands
   // (EntityEffectManager :507-518), and an absorbed effect is skipped
   // entirely - `continue`, not a reduced magnitude.
@@ -1286,7 +1304,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
         const sKey = settingsKeyOf(e);
         const inc = findInc((a) => a.kind === 'regenerate' && a.settingsKey === sKey);
         if (inc) renewActing(inc, rounds, target, sinks, rolls);
-        else pushActive(target, { kind: 'regenerate', effect: e, casterLevel, element: saveElement(e), flag: saveFlag(e), saveScaled, settingsKey: sKey, potency: potencyOf(e, true), roundsRemaining: rounds }, sinks, rolls);   // magic-11; SCHOOLS2: Restoration past 100, on myself, fixed at the cast
+        else pushActive(target, { kind: 'regenerate', effect: e, casterLevel, element: saveElement(e), flag: saveFlag(e), saveScaled, settingsKey: sKey, caster: selfSchoolCaster(), school: schoolOf(e), roundsRemaining: rounds }, sinks, rolls);   // magic-11; SCHOOLS2: Restoration past 100, read each round (runEffectRound)
         // F078: Start's HUD line. base.Start precedes the incumbency
         // resolution, so it prints on EVERY cast that takes - the
         // merge into an incumbent does not silence it.
@@ -1379,6 +1397,9 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
         // stopped absorbing for good after its first bust.
         const inc = findInc((a) => a.kind === 'shield' && !a.ended);
         if (inc) {
+          // AUDIT SCHOOLS L1 M1: a power's merge takes the larger pool (above) - DFU's cap at the first cast's pool is the law
+          // of a spell recast; a rider's pool is what its landing earned, and the first bolt of a chain no longer caps the rest
+          if (powerMerge(inc) && pool > inc.startingShield) inc.startingShield = pool;
           renewRounds(inc, rounds - 1);
           inc.shieldRemaining = Math.min(inc.startingShield, inc.shieldRemaining + pool);
         } else {
@@ -1425,7 +1446,14 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
           : isSpellReflectionEffect(e) ? 'spellReflection'
             : isComprehendLanguages(e) ? 'comprehendLanguages' : 'spellResistance';
         const inc = findInc((a) => a.kind === k);
-        if (inc) renewRounds(inc, rounds - 1);   // rounds renewed (STACK-CAP); the incumbent's chance stands
+        if (inc) {
+          renewRounds(inc, rounds - 1);   // rounds renewed (STACK-CAP); the incumbent's chance stands -
+          // AUDIT SCHOOLS L1 M1: but a power's merge takes the larger chance (above); Absorption carries its settings, never a chance
+          if (k !== 'spellAbsorption' && powerMerge(inc)) {
+            const chance = k === 'comprehendLanguages' ? chanceValue(e, casterLevel) : chanceOf(e, true);
+            if (chance > (inc.chance ?? 0)) inc.chance = chance;
+          }
+        }
         else {
           // X2: ABSORPTION carries its chance SETTINGS, not a frozen
           // number - TryEffectBasedAbsorption recomputes
@@ -1867,6 +1895,7 @@ export function applySpell(spell, casterLevel, target, sinks, rolls = Math.rando
         list[i].bundleSelfCast = selfCast;
         list[i].bundleAlly = allyCast;   // AUDIT ALLY-CAST C2/C4: a party mate's gift - never merged with my own, and mine to dispel without a roll
         if (duelCast) list[i].bundleDuel = true;   // DUEL1: the duel opponent's - floored, and stripped when the duel ends
+        if (powerCast) list[i].bundlePower = true;   // AUDIT SCHOOLS: a power's - a merge with it takes the larger pool or chance
       }
     }
   }
