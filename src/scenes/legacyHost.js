@@ -603,6 +603,17 @@ export function createLegacyHost(deps) {
       touch(family);
     }
   }
+  /** FB1013c REMAINS-STAND: A LIST MADE READY TO BE TAKEN FROM where it lies - by its own window, or by its body (the
+   *  world's stand, remainsToStand). It wears its remains' mark (AUDIT LEGACY II H4: the bones go back into it, and into
+   *  nothing that is not the character's own keeping - systems/itemTransfer.js planStore); the load's item repairs run
+   *  on it once (ITEM-WALK B: whichever copy it came from) before its claim's mark; and, nobody's, it is noted as it
+   *  stands before them - a change from here is a claim (claimTouched). */
+  const repairedLists = new WeakSet();
+  function readyList(r) {
+    Object.defineProperty(r.items, REMAINS_LIST, { value: r.of, configurable: true, writable: true, enumerable: false });
+    if (!repairedLists.has(r.items)) { repairItemLists([r.items]); repairedLists.add(r.items); }
+    if (r.by == null && !openedSig.has(r.id)) openedSig.set(r.id, itemsSig(r.items));
+  }
   const bonesOf = (r) => (it) => isRemainsItem(it) && it.legacyRemains.line === family.id && it.legacyRemains.of === r.of;
   const carriedNow = () => deps.carried?.() ?? deps.entity?.items ?? [];
 
@@ -631,13 +642,9 @@ export function createLegacyHost(deps) {
         const here = deps.atPlace?.(r.place) ?? false;
         if (!here) { openedThisVisit.delete(r.id); continue; }
         if (openedThisVisit.has(r.id) || deps.inFight()) continue;
-        // AUDIT LEGACY II H4: the list wears its remains' mark while open - the bones go back into it, and into nothing
-        // that is not the character's own keeping (systems/itemTransfer.js planStore)
-        Object.defineProperty(r.items, REMAINS_LIST, { value: r.of, configurable: true, writable: true, enumerable: false });
-        repairItemLists([r.items]);   // ITEM-WALK B: the load's item repairs on the list as it opens, whichever copy it came from - before its claim's mark
+        readyList(r);   // its mark, its repairs, and nobody's: claimed once changed (claimTouched)
         if (deps.openRemains?.(r, r.items)) {
           openedThisVisit.add(r.id);
-          if (r.by == null && !openedSig.has(r.id)) openedSig.set(r.id, itemsSig(r.items));   // claimed once changed (claimTouched)
           if (!r.found) { r.found = true; deps.say(LEGACY_TEXT.remainsFound(r.name)); touch(family); store(); }
         }
       } else if (r.state === 'taken' && !restAskedThisVisit.has(r.id) && deps.atRest?.()) {
@@ -698,6 +705,16 @@ export function createLegacyHost(deps) {
   const mapMarks = () => (family && deps.on() && !past ? openRemains() : []).filter((r) => r.state === 'lying' && r.place?.pixel).map((r) => ({
     cx: r.place.pixel.x + 0.5, cy: r.place.pixel.y + 0.5, r: LEGACY_RING_R, label: `The remains of ${r.name}`, id: `${LEGACY_QUEST_PREFIX}${r.id}`, place: r.place.mode === 'dungeon', farmKey: null,
   }));
+  /** FB1013c REMAINS-STAND (FIELD BUGS 2026-10-13c, "remains did not appear"): THE REMAINS THE WORLD STANDS - every row
+   *  of the line still lying where its fallen fell that the one played may seek (openRemains), its list made ready to be
+   *  taken from (readyList), for the world host to stand as a body where it lies (scenes/legacyRemainsStand.js). None for
+   *  the past, a waiting Succession, a page not the one played's, or with the switch off - the slow tick's own guards. */
+  function remainsToStand() {
+    if (!family || !deps.on() || past || family.pending || !deps.entity?.chargenDone) return [];
+    const p = current();
+    if (!p || !isAlive(p) || !playedHere(p)) return [];
+    return openRemains().filter((r) => r.state === 'lying' && r.place).map((r) => { readyList(r); return r; });
+  }
 
   /**
    * THE SUCCESSION'S CHOICE: `{ personId }` a living member, or `{ newborn: true }` a child of the fallen - the waiting
@@ -1342,6 +1359,7 @@ export function createLegacyHost(deps) {
     passMantle,
     questLogEntries,
     mapMarks,
+    remainsToStand,
     layToRest,
     takeBorn,
     bornResult,

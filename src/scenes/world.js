@@ -653,6 +653,7 @@ import { setRaidingPartiesHost, raidFrame as raidingPartiesFrame, raidState, rai
 import { modSaveRecords, restoreModSaveRecords, newGameModSaveRecords, registerModSaveData } from '../systems/modSaveData.js';   // WA1: DFU's per-mod save slot, for the mods after HCC; OH-D: Ocean Holes' OceanHoleSaveData
 import { applyDeathPenalty, deathPenaltyText, stateDeathLoss, statedDeathLoss } from '../systems/deathPenalty.js';   // DEATH-PENALTY: an online death costs a tenth of the purse
 import { createLegacyHost, LEGACY_TEXT, REMAINS_FLAT } from './legacyHost.js';   // LEGACY1: Project Legacy's family - the record, the deaths, the births
+import { createRemainsStand } from './legacyRemainsStand.js';   // FB1013c REMAINS-STAND: the house's fallen, seen where they lie
 import { isFamilyRes } from '../systems/legacy/household.js';   // LEGACY-HOME: one of the line among a town's residents
 import { legacyOn, legacySettings } from '../systems/legacy/settings.js';
 import { listFamilies, newestSaveOf } from '../systems/legacy/store.js';
@@ -15737,6 +15738,9 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     if (_legacyT > 0 || !legacyHost) return;
     _legacyT = 1;
     const said = legacyHost.tick();
+    // FB1013c REMAINS-STAND: the house's fallen stood where they lie - after the tick, which lays the bones again and lets
+    // a claim lapse before a list is made ready (legacyHost.js remainsToStand); their line of light under the house's name
+    setLootMarksLive(legacyRemainsStand.frame(legacyHost.remainsToStand()) > 0, 'legacy');
     // AUDIT LEGACY A2: asked every second until it is shown - never dropped under a window that stood when it was first asked
     if (!said || successionOpen() || (townTalk.overlayActive && !townTalk.overlayDone) || modes?.deathUp?.()) return;
     if (said.past) openLegacyDeadLoad(said);
@@ -27698,9 +27702,13 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
       mapId: loc?.mapTableData?.mapId != null ? loc.mapTableData.mapId >>> 0 : null,   // LEGACY-HOME: the seat's town, as its residents know it
       dungeon: dl ? { regionIndex: dl.regionIndex, locationIndex: dl.locationIndex } : null,
       pos: mode === 'dungeon' ? pos : null,
-      world: mode === 'exterior' ? state.worldCoords(pos) : null,
+      // FB1013c: and the height they stood at - the body stands there (a roof, a bridge): a record's, so in DFU's frame
+      // (AUDIT LANDFORMS C1) on the ground it was measured on (TERRAIN-SCALE1), as the Recall anchor keeps its own
+      world: mode === 'exterior' ? { ...state.worldCoords(pos), y: groundFrameHeight(pos[1] - state.compensation[1], pos[0], pos[2]), terrainScale: STREAMING_TERRAIN_SCALE } : null,
     };
   };
+  /** LEGACY4 + AUDIT LEGACY H1: whether `h` (legacyHere) stands in the dungeon a remains' `place` names - by its location. */
+  const legacyInDungeonOf = (h, place) => h.mode === 'dungeon' && !!place?.dungeon && h.dungeon?.regionIndex === place.dungeon.regionIndex && h.dungeon?.locationIndex === place.dungeon.locationIndex;
   /** LEGACY4: is the player where these remains lie - in their dungeon, or within a stone's throw of where they fell
    *  outdoors (in a building: anywhere on its town's pixel, in the street). */
   const legacyAtPlace = (place) => {
@@ -27708,7 +27716,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     const h = legacyHere();
     // AUDIT LEGACY H1: underground, where they fell - within a few paces of the fallen's own floor position (the dungeon's
     // fixed coordinates), not anywhere in the dungeon
-    if (place.mode === 'dungeon') return h.mode === 'dungeon' && !!place.dungeon && h.dungeon?.regionIndex === place.dungeon.regionIndex && h.dungeon?.locationIndex === place.dungeon.locationIndex
+    if (place.mode === 'dungeon') return legacyInDungeonOf(h, place)
       && (!place.pos || !h.pos || Math.hypot(h.pos[0] - place.pos[0], h.pos[1] - place.pos[1], h.pos[2] - place.pos[2]) <= LEGACY_REMAINS_NEAR_DUNGEON);
     if (h.mode !== 'exterior' || h.pixel.x !== place.pixel?.x || h.pixel.y !== place.pixel?.y) return false;
     if (place.mode !== 'exterior' || !place.world) return true;
@@ -27729,6 +27737,34 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     if (w) townTalk.showOverlay(w);
     return !!w;
   };
+  /** FB1013c REMAINS-STAND (`01-Overview/Field-Bugs-2026-10-13c.md`): WHERE A REMAINS' PLACE STANDS in the pool the one
+   *  played stands in now - underground, the floor under the fallen's last position in their own dungeon; outdoors, the
+   *  ground under where they fell (at the height they stood at, where the row kept it), once its pixel is built; null
+   *  anywhere else. A building's death lies in its town's street by the law (Legacy-Arc section 7: its place names no
+   *  building, and its list opens anywhere on the pixel), so no body stands for it. */
+  const legacyRemainsFeet = (place) => {
+    if (!place || !playerSpawned) return null;
+    const mode = modes?.mode ?? 'exterior';
+    if (place.mode === 'dungeon') {
+      if (mode !== 'dungeon' || !Array.isArray(place.pos) || !legacyInDungeonOf(legacyHere(), place)) return null;
+      return modes?.dungeonCtx?.floorAt?.(place.pos[0], place.pos[1], place.pos[2]) ?? [place.pos[0], place.pos[1], place.pos[2]];
+    }
+    if (mode !== 'exterior' || place.mode !== 'exterior' || !place.world) return null;
+    const [x, z] = state.localFromWorld(place.world.x, place.world.z);
+    const ground = heightAt(x, z);
+    if (!Number.isFinite(ground)) return null;   // its pixel not built yet - stood once it is
+    const y = Number.isFinite(place.world.y) ? restandHeight(place.world.y, x, z, scaleOf(place.world.terrainScale)) + state.compensation[1] : ground;   // the anchor's own read (anchorLanding)
+    return floorLanding(collider, [x, Math.max(y, ground) + 0.5, z]);
+  };
+  /** FB1013c REMAINS-STAND: the house's fallen, seen where they lie - a body in the street's pool, or the building's or the
+   *  dungeon's (worldModes droppedPool), whose list is the record's own (scenes/legacyRemainsStand.js). */
+  const legacyRemainsStand = createRemainsStand({
+    pool: () => ((modes?.mode ?? 'exterior') === 'exterior' ? droppedLoot : (modes?.droppedPool?.() ?? null)),
+    feetOf: legacyRemainsFeet,
+    pixelKeyOf: (place) => (place?.mode === 'exterior' && place.pixel ? `${place.pixel.x},${place.pixel.y}` : null),   // dies with its pixel (collectPixel), stood again when it is built
+    icon: REMAINS_FLAT,
+    label: (r) => `The remains of ${r.name}`,
+  });
   /** AUDIT LEGACY: what the one played keeps - the pack, the wagon and the Materials Bag. */
   const legacyCarried = () => [...(playerEntity.items ?? []), ...(playerEntity.wagonItems ?? []), ...(playerEntity.bagItems ?? [])];
   /** LEGACY4: a place to lay the dead to rest - a temple's inside, or the family's seat. */
@@ -27848,7 +27884,11 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
       return true;
     },
     saveNow: () => (legacyFirstSave ? legacyFirstSave() : !!(modes ? modes?.quickSaveNow(QUICK_SAVE_NAME, { quiet: true }) : worldQuickSave(QUICK_SAVE_NAME, { quiet: true }))),   // LEGACY7: an online birth's is the realm's first checkpoint (legacyRealmBirth)   // `?.` inside the arm: audit24 wave37's gate above the declaration; AUDIT LEGACY B6: answers whether it saved
-    inFight: () => areEnemiesNearby([...(cityGuards?.guards ?? []), ...(exteriorFoes?.foes ?? []), ...(modes?.dungeonCtx?.foes ?? [])]),
+    // FB1013c LIVE-FIGHT: the fight is the PLACE the one played stands in - the street's foes and watch outdoors, the
+    // building's or the dungeon's own inside (GameManager.AreEnemiesNearby walks the ACTIVE enemies alone). The street's
+    // pools stand frozen while a mode is mounted, their senses latched as the player went in, and one hostile walker
+    // within a hundred metres of the door kept every visit below "in a fight": the remains never opened, no switch
+    inFight: () => areEnemiesNearby((modes?.mode ?? 'exterior') === 'exterior' ? exteriorFoePool() : (modes?.insideFoes?.() ?? [])),
     payEstate: (n) => legacyAddItem(playerEntity.items ??= [], letterOfCredit(n)),
     giveItems: (items) => { for (const it of items) legacyAddItem(playerEntity.items ??= [], it); },   // AUDIT LEGACY: an elder's bequest, into the pack
     killer: () => { const e = playerHarmMark(); return e ? (e.revenant?.name ?? e.displayName ?? (Number.isInteger(e.mobileType) ? enemyDisplayName(e.mobileType) : null)) : null; },   // LEGACY4: who struck the fallen down - a revenant by its own name

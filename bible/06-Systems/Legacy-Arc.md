@@ -259,7 +259,14 @@ finishChargen`, `test/legacychoice.test.js`, `tools/mutants/legacychoice.json`):
   them: their bones ("The remains of Ysolde Hlaalu", the port's own item, template 1810), the heirloom and a tenth of
   their purse (at most 2,500 gold). They are a LIST THE RECORD OWNS, opened as a container where they lie - the
   inventory window over it, in any mode (`openLootList`) - once a visit, never in a fight: what the heir leaves stays
-  with them, and nothing is ever laid in the world twice (AUDIT LEGACY H1). The bones are always somewhere - in the list
+  with them, and nothing is ever laid in the world twice (AUDIT LEGACY H1). AND THEY ARE SEEN THERE (FB1013c
+  REMAINS-STAND, `01-Overview/Field-Bugs-2026-10-13c.md`: H1 had taken the pile's picture with the pile, and in Castle
+  Wayrest's halls an heir walked past a six-pace spot nothing marked): a body - their own picture, a line of light over
+  it - stands where they lie, on the floor under the fallen's last position underground and at the spot outdoors (at the
+  height they stood), in the pool of the host the heir stands in; its list is the record's own
+  (`scenes/legacyRemainsStand.js`), so it is pressed as any body and no save carries it. A death in a building keeps the
+  street's law and stands none. "Never in a fight" is the place the heir stands in (LIVE-FIGHT: the street's pools,
+  frozen underground, kept it shut on the spot). The bones are always somewhere - in the list
   or in the heir's keeping (the pack, the wagon or the Materials Bag); gone from both (sold, dropped), they lie again
   where the fallen fell.
 - **The death quest**, "The Bones of <name>", is the heir's from their first day: the journal names where and the
@@ -679,6 +686,7 @@ world, locked to its own family.
 | LEGACY-HOME | the bloodline in the world: the family home, the seat's townsfolk, their day, Play as by talking (section 10b) | built |
 | AUDIT LEGACY II | the six-lens audit of LEGACY1-4 and LEGACY-HOME (`01-Overview/Audit-Legacy-II.md`) | built |
 | AUDIT LEGACY III | the six-lens audit of the whole arc, server side too (`01-Overview/Audit-Legacy-III.md`) - character-bound weddings, the line's own route bound, the write made from what it read, two copies' persons kept apart, the news on the reader's clock | built |
+| FB1013c | REMAINS-STAND (the remains seen where they lie: a body over the record's own list), LIVE-FIGHT (the remains' fight is the place the heir stands in); ESTATE-WIDER planned - the wagon and the bank's balance, the owner's call (section 7; `01-Overview/Field-Bugs-2026-10-13c.md`) | built |
 
 ## WED-GATE - a character who may wed, weds (FIELD BUGS 2026-10-08)
 
