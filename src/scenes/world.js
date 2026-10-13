@@ -579,6 +579,8 @@ import { essenceOf, piecePoints, DISENCHANTER } from '../net/alchemyLaw.js';   /
 import { facetBand } from '../net/recipeLaw.js';   // PROF10: the facet's attribute band
 import { panBand, DISH_LEVEL } from '../net/recipeLaw.js';   // PROF9: the pan's attribute band; a feast's level at the table
 import { COOK_FIRE } from '../net/professionLaw.js';   // PROF9: the fire Cooking is done at - any lit one, no fee
+import { SURVEYOR } from '../net/professionLaw.js';   // MINE-PERKS: Mining 100's Surveyor, whose own word witnesses the ground
+import { lodeMapMarks } from '../ui/lodeMapMark.js';   // MINE-PERKS: a Motherlode Sense's day's Motherlodes, on both maps
 import { setFeastShare, takeFeastGift, shareFeastWith } from '../systems/cookItems.js';   // PROF9: a feast shared with the party at the table
 import { hasSkillet, packSavedFires, CAMP_TEXT } from '../systems/survival/camp.js';   // PROF9: C&C's Skillet widens the pan's window; AUDIT REST II H5: a dungeon save's fires carried out
 import { allyCastFrame } from '../systems/allyCast.js';   // PROF9: a feast reaches a party mate as ALLY-CAST's gift
@@ -17740,6 +17742,14 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
       isOnShip: () => isOnShip(playerEntity, playerEntity.boardShipPosition ?? null, playerTravelPixel()),
     };
   }
+  /** MINE-PERKS (Professions-Arc 43): THE MAPS' MOTHERLODES - a Motherlode Sense's (Mining 100) every one of the day's
+   *  still to rise or standing, from the day's start (net/motherlodeBook.js sensedAll); none for anyone else, whose
+   *  compass alone marks one, from its warning (LODE-MARK). */
+  const _lodesSensed = [];
+  const lodeMapMarksNow = () => {
+    if (!motherlodeBook || profBook?.state.open !== true || profBook.track('mining').specs?.[100] !== 'motherlode-sense') return [];
+    return lodeMapMarks(motherlodeBook.sensedAll(_lodesSensed), Math.floor((Date.now() + _sharedOffsetMs) / 1000), { oreName: (m) => materialLabel(m).replace(/ Ore$/, '') });
+  };
   /** ORE-MAP (ui/oreMapTip.js): A BARE PIXEL'S ORE CARD on the held map - its veins, its dungeons', its kingdom's own and
    *  whether the witnesses have vouched for its ground. The ground's witnessed state is the book's (net/profBook.js
    *  pixel); one the book has not heard today is asked once, after the pointer has rested on it ORE_ASK_MS, through the
@@ -17760,7 +17770,8 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
         gatherHost?.askPixels([[px, py]]).then(() => again?.(), () => {});
       }, ORE_ASK_MS);
     }
-    return oreMapTip({ climate: maps.getClimateIndex(px, py), region: maps.getRegionIndexAt(px, py), fact });
+    const surveyed = profBook?.state?.open === true && profBook.track('mining').specs?.[100] === SURVEYOR;   // MINE-PERKS
+    return oreMapTip({ climate: maps.getClimateIndex(px, py), region: maps.getRegionIndexAt(px, py), fact, surveyed });
   };
   /** ONE construction for the map, because G5 gave it a second opener
    *  and the dependency list is long enough that two copies would
@@ -17828,6 +17839,9 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
       bounties: () => [...(bountyHost?.mapMarks() ?? []), ...(legacyHost?.mapMarks() ?? [])],   // LEGACY4: and where the house's fallen lie, ringed as a hunt is
       // RVN7c (bible/12-Enhanced-AI/Feud-Arc.md 18.3): each revenant lair heard of - a blood-red circle, on both maps
       revenants: () => revenantMapMarks(),
+      // MINE-PERKS (Professions-Arc 43): a Motherlode Sense's day's Motherlodes - each on its pixel from the day's start,
+      // its ore and its hour (ui/lodeMapMark.js); none without the Sense, nor with the professions shut
+      lodes: () => lodeMapMarksNow(),
       // HOME-VENDOR: the trader's waypoint - its town's pixel, the house's owner and the town, on both maps (ui/vendorMapMark.js)
       vendor: () => { const wp = vendorWaypoint(); const t = wp ? _townOfMapId.get(wp.map) : null; return t ? { px: t.px, py: t.py, label: `Trader: ${wp.owner || 'a'}'s house`, town: t.name } : null; },
       // HUB1: each region's hub, marked and named - online alone (systems/regionHubs.js); offline the map is DFU's

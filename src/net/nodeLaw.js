@@ -298,10 +298,13 @@ export function veinSlots({ climate, region = null, confirmed = false }) {
  * UNCONFIRMED_VEIN_TIER (3 - UNWITNESSED-ORE; it was 2) and takes no signature. A confirmed one of a signature region holds its signature ore BESIDE the climate's veins, in the
  * slots after them (Daggerfall's two) - AUDIT 29 A6: in their place, a Swamp's one vein was Wayrest's Mithril and a
  * novice there had no ore on any witnessed ground ("the crowns sit on the richest veins", 4.7, not the only ones). Null
- * where the climate holds no veins, or past the day's slots.
- * @param {{ x: number, y: number, day: number, slot: number, climate: number, region?: number|null, confirmed?: boolean }} p
+ * where the climate holds no veins, or past the day's slots. MINE-PERKS (Professions-Arc 43): `surveyed` - a Surveyor's
+ * own vein (Mining 100, professionLaw SURVEYOR) - is drawn over its climate's whole table on ground not confirmed, the
+ * Surveyor's word its witness; it takes no signature, which waits on the witnesses still (the region is the claim a lie
+ * is worth most on).
+ * @param {{ x: number, y: number, day: number, slot: number, climate: number, region?: number|null, confirmed?: boolean, surveyed?: boolean }} p
  */
-export function vein({ x, y, day, slot, climate, region = null, confirmed = false }) {
+export function vein({ x, y, day, slot, climate, region = null, confirmed = false, surveyed = false }) {
   const table = VEIN_TABLES[climate];
   if (!table || !Number.isSafeInteger(slot) || slot < 0 || slot >= veinSlots({ climate, region, confirmed })) return null;
   const u = 0.04 + 0.92 * unit('vein', x, y, day, slot, 1);
@@ -310,7 +313,7 @@ export function vein({ x, y, day, slot, climate, region = null, confirmed = fals
     const sig = /** @type {{ ore: string, slots: number }} */ (regionSignature(/** @type {number} */ (region)));
     return { slot, u, v, tier: tierOfKey(sig.ore), material: sig.ore, signature: true };
   }
-  const d = drawFromTable(table, unit('vein', x, y, day, slot, 3), unit('vein', x, y, day, slot, 4), confirmed ? 7 : UNCONFIRMED_VEIN_TIER);
+  const d = drawFromTable(table, unit('vein', x, y, day, slot, 3), unit('vein', x, y, day, slot, 4), confirmed || surveyed ? 7 : UNCONFIRMED_VEIN_TIER);
   return d ? { slot, u, v, tier: d.tier, material: d.material, signature: false } : null;
 }
 /** Every vein of a pixel's day, slot 0 first - the climate's, then a signature's. */
@@ -547,7 +550,7 @@ export function foodYield({ roll, step = 1, march = false, tideMult = 1 }, chanc
 export const VEIN_YIELD = Object.freeze([2, 3]);
 export const BOULDER_YIELD = Object.freeze([3, 5]);
 /**
- * A VEIN'S YIELD, in PROF0 6's order: the base roll; a Deep Delver's dungeon vein x1.5; a march's +25% (a surface vein
+ * A VEIN'S YIELD, in PROF0 6's order: the base roll; a Deep Delver's dungeon vein x2 (MINE-PERKS; x1.5 until then); a march's +25% (a surface vein
  * on a confirmed pixel - the caller's `march`); the fraction a chance. The act moves no ore (its step waits for
  * PROF3's quality - PROF0 23).
  */

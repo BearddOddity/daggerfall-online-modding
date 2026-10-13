@@ -105,8 +105,12 @@ export const ACT_POINTER = Object.freeze({ basket: 'cursor', mine: 'look', trace
  *  needs nothing; the net's gentle throw still lands where the look sends it (its state carries no `gentle`, and is
  *  named here so it never will by accident). */
 export const actPointer = (st) => (st?.gentle === true && st.kind !== 'fish' ? null : ACT_POINTER[st?.kind] ?? null);
-/** NODE-MARKS: the stood pixels walked for the marks - those within this many metres, past any kind's reach. */
-const MARK_WALK_M = 256;
+/** NODE-MARKS: the stood pixels walked for the marks - those within this many metres, past any kind's reach (MINE-PERKS:
+ *  a Prospector's veins' 500 m, scenes/mineHost.js PROSPECT_M; it was 256, past their 200). */
+export const MARK_WALK_M = 512;
+/** MINE-PERKS (Professions-Arc 43): the Overworld marks the nearest this many nodes a kind names on their own
+ *  (`overworldOne` - a Prospector's veins), beside the GROUP_MAX groups and never in their count. */
+export const OW_ONE_MAX = 24;
 /** AUDIT NODE-MARKS (the independent pass): a place is any three numbers - the player's feet are the motor's
  *  Float32Array (player/motor.js), which `Array.isArray` refuses, and every mark was refused with them. */
 const isVec3 = (v) => v != null && typeof v === 'object' && v.length >= 3;
@@ -234,6 +238,9 @@ export function aimAt(eyePos, at, view) {
  *   prompt's words (GROUND_WHERE_WORDS) - a ready plan there is no ready plan; null where it passes
  * @property {boolean} [marksLoose] NODE-MARKS: its loose nodes are walked for the marks (Hunting's bodies); without it
  *   they are never asked for there (Fishing's cast - the look itself, and its water's check is Foraging's whole world)
+ * @property {(node: any, ctx: { specs: (profession: string) => any }) => (string|null)} [overworldOne] MINE-PERKS: a node
+ *   the Overworld marks on its own, named by the words this answers (a Prospector's vein, "Silver Vein"), not in its
+ *   profession's group; null where it rides the group
  */
 
 /**
@@ -936,7 +943,8 @@ export function createGatherHost(deps) {
       // SEASONAL-EYE (AUDIT 2026-10-01 part four): a spec chosen mid-session that changes what STANDS - Herbalism 100's
       // Seasonal Eye, the herbs out of season - stands the pixels again; the patches waited for the next state read or the
       // day's turn, and named another herb than the service rolled
-      const eye = book.state.open === true ? (specs('herbalism')[100] ?? null) : standSpecs;
+      // MINE-PERKS: and Mining 100's Surveyor, whose veins on ground not witnessed stand their climate's whole table
+      const eye = book.state.open === true ? `${specs('herbalism')[100] ?? ''}|${specs('mining')[100] ?? ''}` : standSpecs;
       if (eye !== standSpecs) { if (standSpecs !== undefined) restandAll(); standSpecs = eye; }
       if (book.state.open !== true) {
         if (act) { act.act.cancel(); act = null; }   // AUDIT 29 C5: shut mid-act - the act ends (the swing was held off, the tool in the hand)
@@ -1076,7 +1084,9 @@ export function createGatherHost(deps) {
      * (NODE-MARKS' own test: not worked today), as one mark at their middle with their count: `{ key, at, label, kind:
      * 'gather <profession>', color }` - the travel view's own mark shape. Within GROUP_M of `pos`, the nearest
      * GROUP_MAX; read again at most every GROUP_REFRESH_MS (the view asks every frame), and none with the professions
-     * shut or underground. Hunting's bodies are no group (they lie where they fell, nearby alone).
+     * shut or underground. Hunting's bodies are no group (they lie where they fell, nearby alone). MINE-PERKS: a node its
+     * kind names on its own (`overworldOne` - a Prospector's vein) is a mark of its own, its words the kind's, the nearest
+     * OW_ONE_MAX after the groups.
      * @param {number[]} pos the player's feet, in the scene
      */
     overworldGroups(pos) {
@@ -1087,11 +1097,19 @@ export function createGatherHost(deps) {
         if (book.state.open === true && isVec3(pos) && !dungeon) {
           /** `${pixel}:${profession}` -> { s, profession, nodes, x, z } (x, z the sum of the nodes' pixel-local places) */
           const byKey = new Map();
+          const ones = [];   // MINE-PERKS: the nodes their kind marks on their own (a Prospector's veins)
           for (const s of nearPixels(pos, GROUP_M)) {
             for (const n of s.nodes) {
               const k = kindOf(n);
               if (!k || !(k.mark ? k.mark(n, markCtx) : !k.gone(n))) continue;
               const profession = k.professions[0];
+              const one = k.overworldOne?.(n, markCtx) ?? null;
+              if (one) {
+                const tr = deps.pixelTranslation(s.entry.px, s.entry.py, _t);
+                const d = Math.hypot(n.local[0] + tr[0] - pos[0], n.local[2] + tr[2] - pos[2]);
+                if (d <= GROUP_M) ones.push({ d, s, local: n.local, mark: { key: `gather:one:${n.key}`, at: [0, 0, 0], label: one, kind: `gather ${profession}`, color: nodeMarkCss(profession), dist: d / 1000 } });
+                continue;
+              }
               const key = `${pixelKey(s.entry.px, s.entry.py)}:${profession}`;
               let g = byKey.get(key);
               if (!g) byKey.set(key, g = { s, profession, nodes: [], x: 0, z: 0 });
@@ -1111,7 +1129,8 @@ export function createGatherHost(deps) {
             all.push({ d, s: g.s, local: at.local, mark: { key: `gather:${key}`, at: [0, 0, 0], label: groupLabel(g.profession, g.nodes.length), kind: `gather ${g.profession}`, color: nodeMarkCss(g.profession), dist: d / 1000 } });   // OW-NODE-KM: how far off, km - the Overworld's node reach reads it
           }
           all.sort((a, b) => a.d - b.d || (a.mark.key < b.mark.key ? -1 : 1));
-          groupsKept = all.slice(0, GROUP_MAX);
+          ones.sort((a, b) => a.d - b.d || (a.mark.key < b.mark.key ? -1 : 1));
+          groupsKept = [...all.slice(0, GROUP_MAX), ...ones.slice(0, OW_ONE_MAX)];   // MINE-PERKS: the groups, then the singles
         }
       }
       // AUDIT GATHER-OW: placed on every call from its pixel's translation NOW - the floating origin moves the scene under

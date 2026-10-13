@@ -154,7 +154,7 @@ Marks** and a week's wait.
 
 | Profession | At 50 | At 100 |
 |---|---|---|
-| Mining | **Prospector** - veins within 200 m marked on the compass and held map; gem chance +10% / **Deep Delver** - dungeon veins yield +50% | **Motherlode Sense** - Motherlode warnings 30 minutes ahead, not 10 / **Stonebreaker** - quarrying yields Cut Stone directly |
+| Mining | **Prospector** - veins within ~~200~~ 500 m marked on the compass, and each vein its own mark on the Overworld, named by its ore; gem chance +10% / **Deep Delver** - dungeon veins yield ~~+50%~~ x2, and every vein of the dungeon on the compass | **Motherlode Sense** - the day's Motherlodes marked on both maps from the day's start; warnings 30 minutes ahead, not 10 / **Surveyor** (the **Stonebreaker** until MINE-PERKS, on its id) - their own word witnesses the ground for their own veins (never a signature); quarrying yields Cut Stone directly. MINE-PERKS, section 43 |
 | Logging | **Lumberjack** - 2 chops fewer a tree (3 at least) / **Forester** - heartwood chance x2 | **Charcoal Burner** - a log burns to 2 Charcoal, not 1 / **Timberwright** - a log saws to 3 planks, not 2 |
 | Herbalism | **Gardener** - common herbs yield +1 / **Botanist** - the steady window +50% | **Seasonal Eye** - off-season herbs at half rate / **Apothecary's Friend** - every herb you pick counts as unbruised |
 | Hunting | **Tracker** - animals within 100 m marked / **Tanner** - hides cure 1:1, not 2:1 | **Trophy Hunter** - a trophy decor piece from a tier 5+ kill / **Butcher** - meat x2, and it spoils half as fast |
@@ -392,7 +392,7 @@ DECIDED (Mac: "tree chopping, picking up ingredients, fishing, etc. Active playe
 |---|---|---|---|
 | **Logging** | Swing at the trunk: tier 1-2 trees take **5** chops, 3-4 take **6**, 5-6 take **8** (Lumberjack -2, at least 3). The tree creaks at half, leans, and falls away from you (the flat tips over in 1.5 s and is gone - no fade, AUDIT 30 R10; the Morrowind model falls). Logs drop at its foot and are taken by walking over them. A stump stands for the rest of your day. | **The ring**: a circle shrinks onto the trunk's notch over **900 ms**; strike while it is inside the band - **±12%** of the notch's radius at Novice, **±20%** at Master - for a **Clean Cut** (worth 2 chops) | fewer swings; Heartwood 2% a Clean Cut |
 | **Mining** | Strike the vein: tiers 1-2 take **4** strikes, 3-4 **5**, 5-6 **7**. It cracks in stages (crack decals) and sheds chunks. | **The glint**: one of five points on the vein face glints for **1.2 s** (**2 s** at Master) and moves after every strike; a strike within the glint's radius counts **double** | a gem chance 3% a clean strike; a **clean finish** (every strike on the glint) raises the ore one quality step |
-| **Quarrying** (Mining, on a rock field's boulders) | As Mining; yields Rough Stone | As Mining | Cut Stone directly on a clean finish (Stonebreaker always) |
+| **Quarrying** (Mining, on a rock field's boulders) | As Mining; yields Rough Stone | As Mining | Cut Stone directly on a clean finish (Stonebreaker always - the Surveyor since MINE-PERKS, section 43) |
 | **Herbalism** | Kneel at the plant (E). A common herb comes up in **0.8 s**. | **The steady hand**, for uncommon and rare herbs with the sickle: hold E for **2.5 s** while a meter fills; turning the view more than **3 degrees** or moving **bruises** the herb | an unbruised herb (+5% Alchemy Potent chance each, 9.3); a bruised one yields 1 less (at least 1) |
 | **Hunting** | Kneel at a body your own blow felled (E) with the knife. | **The trace**: a dotted line of 5-9 points over the carcass; draw the knife along it (mouse; the right stick moves a cursor; a finger on the touch layer). Accuracy is the mean deviation against a tolerance that widens with rank | a **clean pelt** (score 0.8+) is one quality step up; a **torn** one (under 0.4) yields 1 less |
 | **Herbalism, the Basket** | Kneel at a patch (E) with the Basket (FORAGE0 14.6); the patch gives its food once a day besides its herbs | **The search**: three finds glint in turn among the leaves, **1.0 s** each (**1.4 s** at Master); tap each while it glints | all three: +50%; two: +25% |
@@ -1803,7 +1803,7 @@ instruction), and what was found (FACT):
   Dwarven Scrap 4, Platinum 5, Adamantium 6, and Moonstone 4 in a Woodlands or HauntedWoodlands dungeon (4.1's deep
   veins); tiers 3-6 by the weights. They stand on the dungeon's own walls: from one of its foe markers (the layout's
   list, the same on every client) a ray at chest height along the slot's bearing through the dungeon's collider to the
-  first near-vertical face within 12 m, the vein a third of a metre off it - the elite foes' clearance rays' precedent
+  first near-vertical face within 12 m, the vein a third of a metre off it (at its foot on the floor, 0.75 m out, since MINE-PERKS, section 43) - the elite foes' clearance rays' precedent
   (`dungeonContext.js`). A dungeon a client's hash made (`spawned`) grows none. **The witnessed dungeon** (SEAT0 3.2's
   law, a second kind): a harvest carries the dungeon's climate and region, three accounts a week registered agreeing
   confirm it; a dungeon not confirmed is worth its least - tier 3 (Silver) and no gem - and, its id the client's word,
@@ -1821,7 +1821,7 @@ instruction), and what was found (FACT):
   strike on the glint (Prospector x1.1), by the node's climate (4.6: Amber, Jade, Turquoise, Malachite, one of Ruby,
   Sapphire, Emerald in the Mountain; a Diamond from a dungeon vein), on a confirmed pixel or dungeon only - the
   service rolls each, never past the strikes a finish needs. Gentle acts: every strike plain, no clean act, no gem.
-- **The yields** (section 6's order): a vein 2-3, a boulder 3-5 Rough Stone; Deep Delver x1.5 on a dungeon vein; a
+- **The yields** (section 6's order): a vein 2-3, a boulder 3-5 Rough Stone; Deep Delver x1.5 (x2 since MINE-PERKS, section 43) on a dungeon vein; a
   march's +25% on a confirmed surface pixel; the Cut Stone cut; the fraction a chance. A gem is one, beside.
 - **A gem's tier** (the Stores' and a writ's reference): DECIDED by its DFU price's band - to 10 gold tier 2 (Jade), to
   50 tier 3 (Malachite, Turquoise), to 100 tier 4 (Amber), to 250 tier 5 (Ruby), past it tier 6 (Sapphire, Emerald,
@@ -4123,6 +4123,81 @@ CARP-YARD (the same day, Mac: "Let's also redesign their buildings like we did w
 an open-air place of its own, the JOINERY - a third yard beside each city's and town's Stable and Wagon Yard. Its
 workbench is a station at the furnisher's fee (`03-World/Merchant-Yards.md` CARP-YARD). The Furniture Store and its
 bench stand as they were.
+
+## 43. MINE-PERKS - the four Mining choices made worth a choice (BUILT 2026-10-13)
+
+The players' `#feature-feedback` thread "Mining perks need buff...", handed over as screenshots (SaberGGaming):
+
+- *"Prospector - Since all gathering nodes are seen 150m away on the compass this perk is basically pointless as its
+  only a 50m difference. Maybe change this to where on the overhead travel it shows all the individual veins in the
+  area?"*
+- *"Deep delver - Its very hard to find veins inside dungeons considering that they like to spawn halfway in the wall so
+  its hard to see not to mention actually finding one in the labyrinths where not many spawn anyway so 50% more from
+  the veins is kinda meh. Even 100% more would only make it slightly more useful. Not sure what to do with this one..."*
+- *"Motherlode sense - Make it mark the motherlode spots with a waypoint on the travel map or something, an extra 20
+  minutes of heads up doesn't do anything considering its damn near impossible to find these anyway."*
+- *"Stonebreaker - I doubt I'll ever be quarrying boulders or whatever this is for once I get 100 mining. This probably
+  should be something completely different, maybe being able to 'self witness' high end nodes so that they spawn with
+  just you around?"*
+
+**What stood (FACT).** NODE-MARKS (section 31) marks every node from 150 m (`NODE_MARK_M`) and a Prospector's veins
+from 200 m (`PROSPECT_M`) - the thread's arithmetic is right. GATHER-OW (section 6) shows the Overworld one diamond a
+profession a pixel, "Mining ×6", for everyone. A dungeon's 1-4 veins a day stood a third of a metre off the wall the
+ray found and half a metre up (`scenes/dungeonContext.js` profVeinWall), and their flats - turned to the eye, spread
+about that point - went into the wall at any look but a near square one. A Deep Delver's x1.5 was its whole effect.
+LODE-MARK (`01-Overview/Field-Bugs-2026-10-12g.md`) puts a Motherlode on everyone's compass from its warning, so the
+Sense's thirty minutes were twenty minutes more of one compass mark, and no map marked one. A clean finish on a boulder
+already yields Cut Stone (section 23), so the Stonebreaker gave only the unclean finishes' cut.
+
+**DECIDED (the record's, from the thread; Mac handed it over).** Each choice keeps its id - a track's `spec50`,
+`spec100` and `respec_to` hold them, so no row moves and nobody who chose one loses it:
+
+- **The Prospector** (Mining 50): veins on the compass from **500 m** (`PROSPECT_M`; the marks' walk, `MARK_WALK_M`, 512
+  where it was 256) and - the thread's own ask - **each vein its own mark on the Overworld**, named by its ore ("Silver
+  Vein", `mineNodeName`), where everyone's are Mining's group. A kind may name a node the Overworld marks alone
+  (`GatherKind.overworldOne`, `scenes/gatherHost.js`); the nearest `OW_ONE_MAX` (24) of them stand after the groups and
+  outside their count, so a Prospector's veins never crowd another profession's group off. A boulder and a Motherlode
+  ride the group. The gem's x1.1 stands.
+- **The Deep Delver** (Mining 50): a dungeon vein **x2** (`DEEP_DELVER_MULT` - "even 100% more" is taken, and is not the
+  answer alone) and **every vein of the dungeon on the compass**, wherever the miner stands in it (`DEEP_DELVER_M`,
+  2,000 m, past any dungeon's reach - "actually finding one in the labyrinths"). And for everyone - the thread's "halfway
+  in the wall" is everyone's - **a dungeon vein stands at its wall's foot**: on the floor, 0.75 m out
+  (`PROF_VEIN_OFF_M`, `PROF_VEIN_UP_M` 0). The ray, the wall and the slot are as they were, so every client stands it in
+  one place still. Reasoned from the flats' sizes and the old offsets, NOT SEEN - no game data in this tree; Mac's eye is
+  asked on a dungeon's vein from the side.
+- **The Motherlode Sense** (Mining 100): **the day's Motherlodes on both maps from the day's start** - each the
+  bounty's circle on its pixel (`ui/lodeMapMark.js`, the compass's aqua, `MOTHERLODE_MARK_CSS`), its ore and, while it
+  is still to rise, the hour it rises on the reader's own clock; gone once spent or past its two hours, and none after
+  the account's find today (`net/motherlodeBook.js` sensedAll). Read by the bounty's reader and painted by its painter,
+  as RVN7c's lairs are; the held map's legend names it. A "waypoint" is the circle - the maps' own way of saying where;
+  WAYPOINTS' shared marks are the players' own. The warning's thirty minutes stand. Everyone else's Motherlode is the
+  compass's, from its warning, as LODE-MARK left it.
+- **The Surveyor** (Mining 100, `SURVEYOR` - the Stonebreaker's id): **their own word witnesses the ground, for their
+  own veins**. On a pixel the witnesses have not confirmed, a Surveyor's surface vein is drawn over its climate's whole
+  table - the confirmed draw, slot for slot (`net/nodeLaw.js` vein's `surveyed`) - and finds its gem as on witnessed
+  ground; the service decides it (`server-account/src/professions.js`: `surveyed` = a vein, not confirmed, the
+  character's `spec100`), and the client stands the same vein (`scenes/mineHost.js` standMineNodes, and the gathering
+  host stands the pixels again when Mining's choice at 100 changes - SEASONAL-EYE's key, widened). The held map's ore
+  card says so in its own words (`ui/oreMapTip.js`: "No vein here waits on witnesses", or only the crown's ore).
+  WHAT IT IS NOT, by intent: never a **signature** (a region's own ore, which waits on the witnesses still - the region
+  is the claim a lie is worth most on, and `veinSlots` counts no signature slot on the Surveyor's word); never the
+  **March's** or a **Tide's** (named by the region, on confirmed ground alone); never a **dungeon's** vein (a dungeon's
+  id is the client's word, AUDIT 29 A5's four a day); never a witness for anyone else - the ground stays unconfirmed, and
+  a pixel the witnesses confirmed as something else is refused as it was. THE TRADE, said: the witness law bounds what a
+  lie about a pixel buys (UNWITNESSED-ORE, section 6). A modified client at Mining 100 can now claim a climate's whole
+  table - Gold, Platinum, Mithril, the Desert's Ebony - on any pixel, as it already could on every pixel three accounts
+  confirmed; each node once a character a day and the hour's writes still bound it. Its Cut Stone at the rock stands.
+
+THE FOUR HOSTS (MINE-PERKS): `scenes/world.js` - WIRED (the maps' `lodes`, the ore card's `surveyed`, and the
+gathering host it builds carries the rest); `scenes/dungeonContext.js` - WIRED (the vein's wall foot; the Deep Delver's
+marks ride the dungeon's own `nodeMarks`); `scenes/worldModes.js` - no node stands in a building, nothing to wire;
+`scenes/exterior.js` - FLAGGED by name, as PROF2's: the fixed city has no gathering host.
+
+Pinned: `test/mineperks.test.js` (12). `tools/mutants/mineperks.json` (28, all dead). PINS MOVED: `prof2_law` (the
+Deep Delver's x2), `prof2_service` (its six), `prof2_client` (`PROSPECT_M`), `fb1009e_unwitnessedore` (the vein's cap
+read `confirmed || surveyed`), `fb1011_oremap` (the card's `surveyed`), `fb1004e_overworld` (the legend's `_lodes`).
+Re-aimed by content: `tools/mutants/fb1001_boulders.json` GATHER-OW-the-cap-unasked, `fb1009e_unwitnessedore.json`
+UNWITNESSED-ORE-the-vein-held-to-two, `prof2.json` PROF2-6-unconfirmed-any-tier. Ledger A (MINE-PERKS).
 
 ## Appendix A - a day of a gatherer
 
