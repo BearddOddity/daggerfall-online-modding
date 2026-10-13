@@ -915,7 +915,7 @@ French and in English.
 
 QUEST-SHELF-MAIN (`06-Systems/Quest-Arc.md`) was written before the ratchet reached main, and its Abandon in the
 chronicle (`ui/enhancedChronicle.js`) carried four new literals of prose. It landed with them routed instead: the label,
-the armed label, the title and both aria-labels are `chronicle.quests.*` (5 keys - the catalog's 2,475), read when the
-button is drawn, so the file's count stays at 35. They are drafted in-session into the thirteen whole languages, and
-`abandon (a quest)` and `reclaim (a quest)` were added to those languages' glossaries. The twelve drafting languages owe
-them with the rest. `test/questshelfmain.test.js` reads the button in French and in English.
+the armed label, the title and both aria-labels are `chronicle.quests.*` (5 keys - the catalog's 2,511 at its merge of
+main), read when the button is drawn, so the file's count stays at 35. They are drafted in-session into the thirteen
+whole languages, and `abandon (a quest)` and `reclaim (a quest)` were added to those languages' glossaries. The twelve
+drafting languages owe them with the rest. `test/questshelfmain.test.js` reads the button in French and in English.
