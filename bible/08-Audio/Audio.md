@@ -814,3 +814,24 @@ of the first cut was dead code - the overlap release covers the rounded re-strik
 
 Port-Ledger A: THE MUSIC ON A MIDI DEVICE. Pins: `test/midiout1.test.js`, 15 tests; `tools/mutants/midiout1.json`,
 28 mutants, all dead.
+
+## GATHER-FEEL (2026-10-13): the gathering heard - the port's own clips, a blow as it lands
+
+Mac: "I want to improve gathering, add gathering sounds and overall make the experience more palatable." The record is
+`06-Systems/Professions-Arc.md` section 43; what it is to this page:
+
+- **Thirty-six clips the port makes**, the climb's way (CLIMB4): `tools/gatherSfx.mjs` synthesises them from noise and
+  sine on the shared kit, `tools/sfxSynth.mjs` (which now holds the climb's pieces - its eleven clips byte for byte), and
+  bakes them to DAGGER.SND's 11025 Hz unsigned 8-bit mono (`tools/sndify.mjs`) into `public/sfx/gather-*.wav`, each with
+  its row in `public/sfx/SOURCES.md`. Deterministic: every noise seeded, so the tool writes the shipped bytes. A struck
+  body is modal synthesis (damped sines - wood's few and quickly gone, stone's brief and bright, ore's long and
+  shimmering), a groan and a rip a stick-slip pulse train through resonant bands, water rising-pitch bubbles under
+  splashes whose top falls away, leaves short grains through a leaf's band. `--measure` prints each clip's attack,
+  crest, tail and brightness (`tools/sfxBake.mjs` measure).
+- **One ear** (`systems/gatherSounds.js`), registered on the bus under string keys (`registerSound`, MW-D40's door), the
+  first frame the port's own sounds are on (ES1). Positional through `play3d` at the node (a node in reach - DFU's
+  activation distance - at its full volume) or where the net landed; a hand's and a chime flat through `playOneShot`. Its
+  clock is the frame's whole time, so a held beat is due when the hand's blow lands. The classic skin keeps
+  `systems/profSounds.js`'s DFU clips, said by the ear on the same beats.
+- **Levels** are each clip's measured loudness (its loudest 50 ms) set against the others: a blow near -15 dB at the
+  bus, the fall near -8, the water's plip near -28 - a first mix, set on numbers; no clip here has been heard by ear.

@@ -630,8 +630,8 @@
   {
     "name": "PROF4-logs-never-taken",
     "file": "src/scenes/treeHost.js",
-    "old": "<= LOGS_TAKE_M) { drop(lg.entry, lg.batch); logsLying.splice(i, 1); }",
-    "new": "< 0) { drop(lg.entry, lg.batch); logsLying.splice(i, 1); }",
+    "old": "<= LOGS_TAKE_M) { drop(lg.entry, lg.batch); logsLying.splice(i, 1); say?.('logs'); }",
+    "new": "< 0) { drop(lg.entry, lg.batch); logsLying.splice(i, 1); say?.('logs'); }",
     "tests": [
       "test/prof4_client.test.js"
     ]

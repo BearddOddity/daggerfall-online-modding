@@ -48,6 +48,12 @@
 //   patch, a vein, a boulder, a tree, a school, a body - on the compass
 //   in its profession's colour and lit in the world by its glow (marks:
 //   the kind's own word on each, its footprint and its reach).
+//   THE EAR AND THE LAST BLOW (GATHER-FEEL). The act heard every frame
+//   (systems/gatherSounds.js), its node going (a kind's `goneSound`), a
+//   clean finish, the goods and a rank. A chop or a strike counts on its
+//   press and lands on its swing's hit frame: an act that ends on one
+//   keeps its tool in the hand until the swing runs out (`follow`), and
+//   its node goes as the blow lands (`landing`), not as it is pressed.
 //
 // One owner: the host builds it online, and disposes it with the page.
 // ═══════════════════════════════════════════════════════════════════
@@ -64,6 +70,7 @@ import { harvestHauls } from '../ui/haulCards.js';   // HAUL-CARDS: a harvest's 
 import { BAG_WORDS, goodsWhere } from '../net/bagLaw.js';   // BAG1: where the goods went
 import { nodeMarkCss } from '../ui/nodeMarks.js';   // GATHER-OW: a group's glyph in its profession's compass colour
 import { noteFirstUse } from '../systems/tutorials.js';   // TUT1: the first touch of a system pops its tutorial page
+import { createGatherEar } from '../systems/gatherSounds.js';   // GATHER-FEEL: the gathering's ear
 
 /** A node answers E within DFU's activation distance, and within this many degrees of the look. */
 export const NODE_REACH = DEFAULT_ACTIVATION_DISTANCE;
@@ -211,7 +218,8 @@ export function aimAt(eyePos, at, view) {
  * @property {(entry: any, nodes: any[]) => void} [stood] PROF4: a pixel's nodes of this kind stood (the felled trees sunk)
  * @property {(node: any, at: { entry: any, from: number[], tr: number[] }) => void} [felled] PROF4: a node taken on the
  *   service's answer, this session (the tree's fall)
- * @property {(dt: number, ctx: { feet: number[], translation: (entry: any) => number[]|null }) => void} [frame] PROF4: every frame
+ * @property {(dt: number, ctx: { feet: number[], translation: (entry: any) => number[]|null, say?: (name: string, at?: number[]|null) => void }) => void} [frame] PROF4: every frame
+ *   (GATHER-FEEL: `say` - a beat of the kind's own through the host's ear, the logs taken)
  * @property {(entry: any) => void} [dropped] PROF4: a pixel torn down
  * @property {(ctx: { entity: any, dungeon: boolean }) => any[]} [looseNodesOf] PROF7: nodes that carry their own place -
  *   `{ key, at: () => number[]|null, lift?, reach?, yields? }`, `at` the node's scene place now (Hunting's bodies), above
@@ -234,6 +242,8 @@ export function aimAt(eyePos, at, view) {
  *   prompt's words (GROUND_WHERE_WORDS) - a ready plan there is no ready plan; null where it passes
  * @property {boolean} [marksLoose] NODE-MARKS: its loose nodes are walked for the marks (Hunting's bodies); without it
  *   they are never asked for there (Fishing's cast - the look itself, and its water's check is Foraging's whole world)
+ * @property {string} [goneSound] GATHER-FEEL: what the ear hears as a node of it goes (systems/gatherSounds.js
+ *   GATHER_SAY) - a tree's fall, a vein's rubble; none where the act's own end says it (a herb pulled)
  */
 
 /**
@@ -251,6 +261,7 @@ export function aimAt(eyePos, at, view) {
  *   step?: (n: number) => boolean, settled?: (pos: number[]) => boolean,
  *   pointer?: (want: 'cursor'|'look') => ((() => void) | null), haul?: (entries: any[]) => boolean,
  *   marks?: { findLine: (found: any, kind: string) => (string|null) } | null,
+ *   audio?: any, ear?: any,
  * }} deps `active` - the streaming world's exterior, walking, nothing over it (the host's); `activeDungeon` - a dungeon
  *   entered, walking, nothing over it; `activeInterior` - INDOOR-SKIN: a building entered, walking, nothing over it (its
  *   loose nodes alone); `nowMs` the shared clock. PROF-MENU: `plaque` - the loot plaque stands (it names
@@ -261,7 +272,7 @@ export function aimAt(eyePos, at, view) {
  *   wealthy home, its footprint and a block round it), where no node of the ground (a kind with a `where`) stands.
  *   `pointer(want)` - HERB-CURSOR: the mouse an act needs (ACT_POINTER), asked as it starts; answers its release, called
  *   as it ends, or null. `marks` - SILVER-FINDS: the marks book (net/marksBook.js), a harvest's find said and its
- *   balance kept
+ *   balance kept. `audio` - GATHER-FEEL: the bus the ear says the acts on (systems/audio.js), or `ear` one built already
  */
 export function createGatherHost(deps) {
   const { book, hud, kinds } = deps;
@@ -285,6 +296,13 @@ export function createGatherHost(deps) {
   let chipLeft = 0;
   let chipProfession = /** @type {string|null} */ (null);
   const _t = [0, 0, 0];
+  /** GATHER-FEEL: the ear; an act finished on a swing still in the air - its tool stays in the hand until the swing runs
+   *  out (`follow`); and the finished acts whose node goes as their last blow lands (`landing`, each `{ a, left }`) */
+  const ear = deps.ear ?? createGatherEar({ audio: deps.audio ?? null });
+  let follow = null;
+  let landing = [];
+  /** GATHER-FEEL: a kind's own beat said through the ear (the tree's logs taken) */
+  const sayKind = (name, at = null) => ear.say(name, at);
   /** PROF2: the dungeon the player stands in, as a place: its identity and ground, the wall its veins stand on, and its
    *  own doors for the flats (owned with the dungeon's batches). */
   let dungeon = null;
@@ -592,6 +610,7 @@ export function createGatherHost(deps) {
     if (!a) return false;
     if (a.refused) { hud.toast(a.refused); return false; }
     act = { ...a, node: t.node, px: t.px, py: t.py, dungeon: t.dungeon, interior: !!t.interior, loose: !!t.loose, info: t.info, world: t.world };
+    follow = null;   // GATHER-FEEL: the new act's tool is the hand's now
     syncPointer();   // HERB-CURSOR: in the press's frame, while its activation stands (a lock a browser asks one for)
     chipProfession = a.profession;
     chipLeft = CHIP_S;
@@ -617,7 +636,11 @@ export function createGatherHost(deps) {
     if (!report) return;
     a.report = report;   // AUDIT 32 P10: the act's own words, said with its answer
     a.clean = report.clean === true || report.finds >= 3;
-    if (a.clean) hud.cue?.('clean');   // PROF-SCENES: a clean finish rings
+    // GATHER-FEEL: an act that ended on a chop or a strike ended on its PRESS - its blow is still in the air: the tool
+    // stays in the hand until its swing runs out, and the clean finish rings as the blow lands
+    const lands = Number(a.act.landsIn) > 0 ? Number(a.act.landsIn) : 0;
+    if (lands > 0) follow = a;
+    if (a.clean) ear.say('clean', null, { delay: lands });   // PROF-SCENES: a clean finish rings
     if (a.tool) wearForagingTool(a.tool, deps.entity());   // FORAGE0 14.1: a completed act wears its tool by one
     const before = rank(a.profession);
     book.harvest({
@@ -632,7 +655,10 @@ export function createGatherHost(deps) {
     // counted), so the patch, the vein and the tree went a whole round trip after the act that took them - the fall
     // waited on the service. Fallen and stood again now, once; the answer stands it again only where it was refused
     // (`answered`), and the goods, the XP and a rank's rise are said when it comes, as ever.
-    fallNow(a);
+    // GATHER-FEEL: now being as the last blow LANDS - a vein went, and a tree began to fall, under the pick and the axe
+    // still raised; an act with nothing in the air goes at once
+    if (lands > 0) { a.landing = true; landing.push({ a, left: lands }); }
+    else fallNow(a);
   }
   /** GATHER-SPEED: a finished act's node gone now, where the book already counts it so - a felled tree's fall, then its
    *  place stood again (its picture, its glow and the compass's mark go). Marked on the act (`fell`), said once. */
@@ -651,6 +677,7 @@ export function createGatherHost(deps) {
     if (now && k.felled) {
       try { Promise.resolve(k.felled(now, { entry: s.entry, from: deps.eye().pos, tr: deps.pixelTranslation(a.px, a.py, [0, 0, 0]) })).catch((e) => console.warn('[gather] a fall', e)); } catch (e) { console.warn('[gather] a fall', e); }
     }
+    if (k.goneSound) ear.say(k.goneSound, actWorld(a) ?? a.world);   // GATHER-FEEL: the node heard going - a tree's fall, a vein's rubble
     restandOf(a);
   }
   /** A harvest's answer said: the Stores, the XP, a gem, a rank's rise; a refusal in words; a kept one once. */
@@ -670,6 +697,7 @@ export function createGatherHost(deps) {
       let hauled = false;
       try { hauled = live && deps.haul?.(harvestHauls(d, { name: k?.haulName?.(d) ?? null, note })) === true; } catch { hauled = false; }
       if (!hauled) hud.toast(k?.storesLine ? k.storesLine(d) : storesLine(d), { keep: true });   // GATHER-SAID: the goods in one line, outlasting the rest; PROF4's Resin, PROF7's butchery in it; PROF8's species
+      ear.say('haul');   // GATHER-FEEL: the goods into the bag
       if (!storesSaid) { storesSaid = true; hud.toast(storesWhereLine(deps.keyLabel?.('Professions') ?? '', d.carry === true)); }
       if (!hauled) hud.toast(`+${d.xp} ${professionName(profession)} XP${note}`);
       // BAG1: what found no room in the bag or the pack is said even where the card said the goods - the card counts what came
@@ -685,6 +713,7 @@ export function createGatherHost(deps) {
       const after = d.track?.rank ?? before;
       if (after > before) {
         hud.toast(`${professionName(profession)} ${before} -> ${after}`);
+        ear.say('rank');   // GATHER-FEEL: a rank's chime, after the goods' bag
         const crossed = BANNER_RANKS.filter((b) => before < b && after >= b);
         if (crossed.length) {
           const at = crossed[crossed.length - 1];
@@ -696,7 +725,7 @@ export function createGatherHost(deps) {
       chipProfession = profession;
       chipLeft = CHIP_S;
       // PROF4: the node's fall (fell) - GATHER-SPEED: once, at the act's end where it went then (fallNow)
-      if (a && !a.loose && !a.fell && k?.gone(a.node)) fell(a, k);   // PROF7: a body stands nothing of the host's to stand again
+      if (a && !a.loose && !a.fell && !a.landing && k?.gone(a.node)) fell(a, k);   // PROF7: a body stands nothing of the host's to stand again; GATHER-FEEL: a blow in the air lands first
       else if (!a && nodeKeyOf) restandNode(nodeKeyOf);
       return;
     }
@@ -712,6 +741,7 @@ export function createGatherHost(deps) {
       return;
     }
     hud.toast(accountRefusalText(r?.error));
+    if (a?.landing) { a.landing = false; landing = landing.filter((l) => l.a !== a); }   // GATHER-FEEL: refused before its blow landed - its node never went
     // GATHER-SPEED: and a refused one - its node went as its act ended, and stands again unless it is another's (node-taken)
     if (a && !a.loose && (r?.error === 'node-taken' || a.fell)) restandOf(a);
     else if (!a && nodeKeyOf) restandNode(nodeKeyOf);
@@ -763,7 +793,9 @@ export function createGatherHost(deps) {
       if (!d) return;
       for (const b of d.batches) d.drop(b);
       d.batches = [];
-      if (act?.dungeon) { act.act.cancel(); act = null; hud.setMeter(null); hud.toast(ACT_STOPPED_LINE); }   // GATHER-SAID
+      if (act?.dungeon) { act.act.cancel(); act = null; ear.stop(); hud.setMeter(null); hud.toast(ACT_STOPPED_LINE); }   // GATHER-SAID; GATHER-FEEL: its blows go with it
+      if (follow?.dungeon) follow = null;   // GATHER-FEEL: the pick put away with the dungeon...
+      landing = landing.filter((l) => !l.a.dungeon);   // ...and a vein's last blow lands in no other place
     },
     /** Whether an act is playing - the host keeps the weapon's swing, and the press ladder, off it. */
     acting: () => !!act,
@@ -798,7 +830,7 @@ export function createGatherHost(deps) {
       return taken;
     },
     /** The tool in the hand for the rig (combat/weaponRig.js actTool): the act's, as DFU's own sprite. */
-    handTool: () => (act?.hand ? act.hand(act) : null),
+    handTool: () => (act?.hand ? act.hand(act) : follow?.hand ? follow.hand(follow) : null),   // GATHER-FEEL: and a finished act's last swing, until it runs out
     /**
      * E pressed - or, PROF-MENU, the activation's click (`click`): a node in reach takes it. The row the plaque has lit
      * over the node is the one pressed; a click presses that and nothing else (a click with no lit row of a node's is the
@@ -919,7 +951,7 @@ export function createGatherHost(deps) {
       return start(t, plan, templateIndex) ? 'started' : 'taken';
     },
     /** Escape: the act ends, nothing lost. True when there was one. */
-    cancel() { if (!act) return false; act.act.cancel(); act = null; syncPointer(); hud.setMeter(null); return true; },   // HERB-CURSOR: the mouse given back
+    cancel() { if (!act) return false; ear.stop(); act.act.cancel(); act = null; syncPointer(); hud.setMeter(null); return true; },   // HERB-CURSOR: the mouse given back; GATHER-FEEL: its blows in the air with it
     /** Every frame the host is in the streaming world. */
     tick(dt) {
       syncPointer();   // AUDIT HERB-CURSOR A3/B1: before anything of the frame can throw
@@ -939,7 +971,10 @@ export function createGatherHost(deps) {
       const eye = book.state.open === true ? (specs('herbalism')[100] ?? null) : standSpecs;
       if (eye !== standSpecs) { if (standSpecs !== undefined) restandAll(); standSpecs = eye; }
       if (book.state.open !== true) {
+        ear.stop();   // GATHER-FEEL: an act shut mid-way takes its blows with it...
         if (act) { act.act.cancel(); act = null; }   // AUDIT 29 C5: shut mid-act - the act ends (the swing was held off, the tool in the hand)
+        follow = null; landing = [];   // GATHER-FEEL: ...and a finished one's last swing is put away, nothing left to land
+        ear.frame(dt, null);   // GATHER-FEEL: a beat said still sounds
         target = null;   // NODE-SHUT (AUDIT 2026-10-01 part four): shut, no node is the target - CLIMB-NODE's hold reads it, and it held the free climb everywhere until they opened again
         syncPointer();   // HERB-CURSOR
         hud.setPrompt(null); hud.setMeter(null); hud.setChip(null); hud.frame(dt); return;
@@ -958,7 +993,15 @@ export function createGatherHost(deps) {
       book.pump((h, r, before) => answered(null, r, before ?? rank(r?.data?.track?.profession ?? 'herbalism'), h?.node));
       // PROF4: the kinds' own frame - a felled tree's fall, the logs at its foot
       const feetNow = deps.feet();
-      for (const k of kinds) k.frame?.(dt, { feet: feetNow, translation: (e) => (stood.get(pixelKey(e.px, e.py))?.entry === e ? deps.pixelTranslation(e.px, e.py, [0, 0, 0]) : null) });
+      for (const k of kinds) k.frame?.(dt, { feet: feetNow, translation: (e) => (stood.get(pixelKey(e.px, e.py))?.entry === e ? deps.pixelTranslation(e.px, e.py, [0, 0, 0]) : null), say: sayKind });   // GATHER-FEEL: `say` - a kind's own beat (the logs taken)
+      // GATHER-FEEL: the last blows in the air land - their nodes go - and the tool that struck one is put away as its
+      // swing runs out
+      if (landing.length) {
+        for (const l of landing) l.left -= dt;
+        const due = landing.filter((l) => !(l.left > 0));
+        if (due.length) { landing = landing.filter((l) => l.left > 0); for (const l of due) { l.a.landing = false; fallNow(l.a); } }
+      }
+      if (follow) { follow.act.tick(dt, {}); if (!(follow.act.swing > 0)) follow = null; }
       const input = deps.input();
       const attack = input.attack || (!!act && struck === act);   // ACT-TOUCH: the edge ring's press, or the hooks' - on the act it struck
       struck = null;
@@ -970,18 +1013,21 @@ export function createGatherHost(deps) {
         act.world = w ?? act.world;
         const gone = act.loose ? !w : !act.dungeon && !stood.has(pixelKey(act.px, act.py));   // its pixel torn down under it; PROF7: its body let go
         act.act.tick(dt, { held: input.held || act.heldByUse === true, attack, view: v, pos: { x: feet[0], z: feet[2] }, aim: aimAt(pos, act.world, v) });   // TOOL-USE: a hold the Use made
+        ear.frame(dt, act.act, act.world, pos);   // GATHER-FEEL: the act heard - its blows as they land, its node's place, the net's
         const away = gone || Math.hypot(act.world[0] - pos[0], act.world[2] - pos[2]) > (act.node.reach ?? NODE_REACH) + 1;
         const here = act.dungeon ? inDungeon() : act.interior ? indoors() : deps.active();   // INDOOR-SKIN: a building's act ends at its door
         if (act.act.state.cancelled || away || !here) {   // GATHER-SAID: said, never only the meter gone (Escape ends it in `cancel`, unsaid)
           // AUDIT FB1005 W2: an act dropped is ENDED, as at every other drop - a window, a door, the helm, a pixel's
           // edge: Fishing's live cast stayed neither done nor cancelled and kept the bank a target (SHORE-CAST)
           if (!act.act.state.done && !act.act.state.cancelled) act.act.cancel();
+          ear.stop();   // GATHER-FEEL: its blows in the air go with it
           act = null; hud.setMeter(null); hud.toast(ACT_STOPPED_LINE);
         }
         else if (act.act.state.done) { hud.setMeter(act.act, act.label ?? '', { byUse: act.heldByUse === true }); finish(act); }   // PROF-SCENES: the last frame drawn (its blow's cue) before the marks go
         else hud.setMeter(act.act, act.label ?? '', { byUse: act.heldByUse === true });   // TOUCH-HOLD: a Use's hold says no key
         hud.setPrompt(null);
       } else {
+        ear.frame(dt, null);   // GATHER-FEEL: a finished act's last blow still lands, its chime still rings
         target = live() ? findTarget() : null;
         if (target) {
           // PROF-MENU: the plaque names the node and lists its acts where it stands - no prompt beside it; where none
@@ -1126,6 +1172,6 @@ export function createGatherHost(deps) {
       return out;
     },
     /** The page's teardown. */
-    dispose() { this.leaveDungeon(); for (const s of stood.values()) unstand(s.entry); stood.clear(); act = null; syncPointer(); hud.dispose(); },
+    dispose() { this.leaveDungeon(); for (const s of stood.values()) unstand(s.entry); ear.stop(); follow = null; landing = []; stood.clear(); act = null; syncPointer(); hud.dispose(); },   // GATHER-FEEL: the ear's beats, the hand and the landings let go
   };
 }

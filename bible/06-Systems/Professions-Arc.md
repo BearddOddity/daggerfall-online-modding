@@ -411,8 +411,10 @@ else Foraging's Fish (1605). A **trophy** is the species' own Deep Waters templa
 
 - A felled tree, a spent vein, a picked patch and a skinned body are gone **for you for the rest of the UTC day** - a
   patch once both its harvests are taken (its herbs, and the Basket's food).
-- The sounds are DFU's own from the player's data (the wood and stone hits, the splash), and Immersive Footsteps' and
-  Better Ambience's where they are on.
+- The sounds are ~~DFU's own from the player's data (the wood and stone hits, the splash)~~ the port's own on the
+  enhanced skin - the axe in the wood, the pick on the stone, the leaves, the knife, the net, the tree's groan and fall,
+  each heard as its blow lands (GATHER-FEEL, section 43) - and DFU's own on the classic skin (`systems/profSounds.js`),
+  and Immersive Footsteps' and Better Ambience's where they are on.
 - Weather and the hour matter: the net fills fastest in the first and last daylight hours (07:00-07:59 and 17:00-17:59 -
   a bonus; ANY-HOUR: the wilderness no longer closes at night); rain wets the herbs (the steady window -20%); a storm
   drives the fish deep (longer waits, bigger fish).
@@ -3161,7 +3163,8 @@ unmoved.
   the mine's points and the knife's line where they stand on the node, the glint's double reach and the trace's
   tolerance at their true size; the chop's ring, the hold's arc, the Basket's glint, the float and the haul's bar about
   the crosshair; the count's pips and one hint under it that fades after 2.5 s unchanged. Still forms under reduced
-  motion; every cue a sound (`systems/profSounds.js`).
+  motion; every cue a sound (`systems/profSounds.js` - GATHER-FEEL, section 43: the gathering's ear says them now,
+  `systems/gatherSounds.js`, the HUD none).
 - **The stations (PROF-STATIONS).** The heat, the stitch's beat and the plane keep their bars and rules, dressed in the
   plaque's frame and the kit's tones (`ui/profStationStyle.js`); no pictures.
 - **The mouse (HERB-CURSOR, `01-Overview/Field-Bugs-2026-10-02.md` part four, and its audit).** The Basket's glints
@@ -4123,6 +4126,95 @@ CARP-YARD (the same day, Mac: "Let's also redesign their buildings like we did w
 an open-air place of its own, the JOINERY - a third yard beside each city's and town's Stable and Wagon Yard. Its
 workbench is a station at the furnisher's fee (`03-World/Merchant-Yards.md` CARP-YARD). The Furniture Store and its
 bench stand as they were.
+
+## 43. GATHER-FEEL - the gathering heard, and its last blow seen (BUILT 2026-10-13)
+
+Mac: "I want to improve gathering, add gathering sounds and overall make the experience more palatable".
+
+**What stood (MEASURED).**
+
+- **The acts said DAGGER.SND's combat and window clips** (PROF-SCENES' table, `systems/profSounds.js`): a chop and a
+  plain strike a blow's Hit1-5, a Clean Cut and a strike on the glint the parry's ring (Parry6), a clean finish the
+  lock's click (ActivateLockUnlock), the Basket's find and the knife's every point the window button's click, a bruise and
+  a slip the high swing. The HUD said them as it drew the reticle (`ui/profHud.js` setMeter, PROF-RETICLE's `actCues`),
+  flat, on the frame the press counted.
+- **Most of an act said nothing**: the kneel and the herb pulled; the tree's creak at half its chops (5.2 - `chopAct`
+  raised `creaked` for "the host plays it once", and nothing did: the hint alone said "it creaks"); the tree's fall and
+  its logs; a vein worked out; the net's 5-30 s wait and its whole haul of up to 20 s; the goods' card; a rank's banner.
+- **Every blow was heard before it landed.** A chop or a strike counts on its press; the hand draws DFU's strike over the
+  act's `swingS`, 0.45 s, five frames (`scenes/treeHost.js` axeHandFrame, `scenes/mineHost.js` pickHandFrame), and DFU's
+  melee blow lands on the strike's frame 2 (FPSWeapon.GetHitFrame, `characters/weaponStates.js` HIT_FRAME_MELEE) - 0.18 s
+  after the press, when the sound had already been.
+- **The last blow was never seen.** The act ends on the press that finishes it: the tool left the hand that frame
+  (`handTool` null), and GATHER-SPEED's fall (`fallNow`, at the act's end) took the vein down, and began the tree's fall,
+  under a pick and an axe still raised.
+
+**As built.**
+
+- **The clips** - thirty-six of the port's own, synthesised from noise and sine and baked to DAGGER.SND's 11025 Hz 8-bit
+  mono the climb's way: `tools/gatherSfx.mjs` on the shared kit, `tools/sfxSynth.mjs`, which takes the climb's pieces
+  now (unit, knock, rough, bandSweep, rub, grit - moved out of `tools/climbSfx.mjs` unchanged, its eleven clips byte for
+  byte). An axe in a trunk (three, and a Clean Cut's fuller one), the tool's swing (two), the tree's groan, its fall (its
+  ground struck at `FALL_S` - the tool imports it from the tree host - as the tipping picture lies flat), its logs; a pick
+  on stone (three), on the glint (the ore's ring), a vein's rubble; hands among leaves (two), a herb pulled, a herb
+  bruised, the Basket's find, a glint's sparkle; the knife through hide (three), its slip, the pelt peeled; the net
+  thrown, landing, a plip by the floats (two), the tug, the catch fighting (two), the net hauled in; a clean finish's two
+  bell notes, the goods' satchel, a rank's four. Each its row in `public/sfx/SOURCES.md` and `test/doctrine.test.js`.
+- **The ear** (`systems/gatherSounds.js` createGatherEar), built and fed every frame by the gathering host. It hears an
+  act's beats off its machine's own state (`actBeats` - an act's first frame read against the machine's beginning, so a
+  net thrown on the frame it was cast, by a tapped E, is heard), and says a blow as it LANDS (`landsIn`, below), at the
+  node in the world (`play3d`, a node in reach - DFU's activation distance - at its full volume), the net's sounds where
+  it landed (the throw's metres along the look's bearing, at full volume to `NET_REF_M`), a hand's and a chime at the
+  ear. A sound of several is never the one just heard, its pitch moved up to 5% (a chime never); the slice's pitch
+  climbs along the knife's line. The water keeps its own time: a plip every 2.2-5.5 s while the net waits, the catch
+  fighting every 0.5-1.1 s while it hauls - every 0.32 s, louder, while it slips outside the band. `say` - a beat the
+  act's state cannot hear: a node going (a kind's `goneSound`: the tree's `fall`, a vein's or a boulder's `rubble`), the
+  logs gathered up (the tree kind's frame, `say`), the clean finish as its last blow lands, the goods into the bag on the
+  answer (`GATHER_SAY.haul.gap`: a burst of kept answers rings one), a rank's chime after it. `stop` - an act ended
+  before its end (Escape, walked off, a window, the dungeon left, the switch shut) takes its blows in the air with the
+  hand; a finished act's last blow and a beat said land all the same.
+- **The mix** - each beat's volume levelled by its clip's measured loudness (the loudest 50 ms of each): a blow near
+  -15 dB, the fall near -8, a chime -15, the swing -24, the water's plip -28. A first mix, set on numbers.
+- **The switch** - the port's own sounds (ES1, `systems/enhancedSounds.js`; the Enhanced sounds row says the gathering
+  now). Off, or on the classic skin, the ear says the DFU cue the HUD said before for each beat that had one, on the
+  blow's time, and nothing for the rest (`GATHER_SAY`'s `classic`). The HUD draws and says nothing: its `cue` door and
+  `actCues` are gone, the cues the ear's.
+- **The last blow.** `characters/weaponStates.js` MELEE_HIT_SHARE - the hit frame's share of a strike's five, 0.4 - is
+  where a tool's blow lands; `systems/chopAct.js` and `mineAct.js` answer `landsIn`, the seconds to it, and their swing
+  runs out past the act's end (it counts nothing there). The host (`scenes/gatherHost.js`): an act that ends with a
+  blow in the air keeps its tool in the hand until the swing runs out (`follow`, the rig's `handTool`), and its node goes
+  as the blow LANDS (`landing`) - GATHER-SPEED's law kept, the node going with its act, the act's end now its last blow's
+  landing. An answer that comes first waits for the blow (no early fall, the rubble said once); a refusal before it takes
+  nothing down (GATHER-SPEED's node-taken stands it as another's, unheard). An act with nothing in the air - a herb, a
+  search, a pelt, a net - goes at its end, as before.
+
+THE FOUR HOSTS (GATHER-FEEL): `scenes/world.js` - WIRED: it hands its bus to the one gathering host (`audio`), which
+plays the street's nodes, a dungeon's veins and a building's bodies; `scenes/worldModes.js` and `scenes/dungeonContext.js`
+- WIRED through that host: no host of their own, and their rigs draw the last swing through the world host's handTool
+(`profActTool`); `scenes/exterior.js` - FLAGGED by name, as every profession is there (17.1: no nodes).
+
+OPEN, recorded rather than built: the acts are heard by their player alone - a peer neither sees an act (5.1's activity
+field on the pose is unbuilt, a relay change) nor hears one; the vein's crack decals and shed chunks (5.2) are still
+unbuilt; a blow shakes no camera. And NOT HEARD HERE: the clips were designed against their spectrograms and the four
+measures (`node tools/gatherSfx.mjs --measure`: attack, crest, tail, brightness) - this container plays no sound - so
+their character and the mix are for Mac's ear.
+
+Pinned: `test/gatherfeel.test.js` (19) - the clips shipped, whole and baked deterministically, every clip a beat's; the
+fall's ground at FALL_S; the clips registered once; MELEE_HIT_SHARE and `landsIn`, the swing past the end; every act's
+beats off the real machines; the ear's landing time, place, reach, variety, pitch and chimes; the net's place and the
+water's clocks; a said beat, the gap, the rank's wait, `stop`; the classic skin; and the host over the real kinds - the
+tool through its last swing, the node at the landing, the rubble, an answer first, a refusal first, Escape, a patch going
+at its end, the tree's creak, fall and logs, the bus handed. `tools/mutants/gatherfeel.json` (52, all dead).
+PIN MOVED: PROF-RETICLE's cue test (`test/profreticle.test.js` - the HUD silent, the classic table standing) and its
+host pin (the clean chime the ear's); the harnesses of GATHER-SPEED (`test/gatherspeed.test.js`), AUDIT 29 C4, AUDIT 30
+A5 and A11 and PROF4's host tick past the last blow's landing. Records re-aimed: `gatherspeed.json`
+GATHER-SPEED-act-end-stands-nothing (the landing's fall), `prof4.json` PROF4-logs-never-taken, `profreticle.json`
+PROFRETICLE-host-clean-cue; retired with the HUD's voice, PROFRETICLE-cues-unsaid and PROFRETICLE-cue-door-dead (the
+ear's act-unfed and switch-ignored stand in their place). Every existing record on a file the slice touched was judged
+again - 398: 396 dead, the one recorded equivalent alive, and one SURVIVOR, which survives on the base commit too:
+VEIN-NEED-press-keeps-nothing (`fb0929h_veinneed.json`) - PROF-MENU's fallback in `press` answers the unlit press, and
+the row the plaque has lit was unpinned. Pinned now (`test/fb0929h_veinneed.test.js` +1); dead. Ledger A (PROFESSIONS,
+GATHER-FEEL).
 
 ## Appendix A - a day of a gatherer
 

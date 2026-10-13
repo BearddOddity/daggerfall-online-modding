@@ -25,8 +25,15 @@
 //
 // Esc (the host's `cancel`) ends it, nothing lost: the tree stands, no
 // tool wears, no harvest is asked.
+//
+// GATHER-FEEL (2026-10-13): A CHOP LANDS ON ITS HIT FRAME. The count is
+// the press's; the blow the hand draws lands MELEE_HIT_SHARE into its
+// swing (`landsIn`), and the swing runs out after the act's end, so the
+// last chop is drawn landing (scenes/gatherHost.js's follow-through) and
+// heard as it lands (systems/gatherSounds.js).
 // ═══════════════════════════════════════════════════════════════════
 import { CHOP_ACT, chopsFor, ringBand } from '../net/professionLaw.js';
+import { MELEE_HIT_SHARE } from '../characters/weaponStates.js';
 
 /** The ring's radius, in the notch's radii, `t` seconds into a pass: ringFrom down to ringTo, one speed. */
 export const ringAt = (t) => CHOP_ACT.ringFrom - ((CHOP_ACT.ringFrom - 1) * t) / CHOP_ACT.ringS;
@@ -59,10 +66,12 @@ export function createChopAct({ tier, rank = 0, band = 1, lumberjack = false, ge
     get inBand() { return !gentle && Math.abs(ringAt(st.ring) - 1) <= st.band; },
     /** The swing's phase, 0 (none) to 1 (just struck) - the hand draws the chop's frames by it. */
     get swing() { return st.swing > 0 ? st.swing / CHOP_ACT.swingS : 0; },
+    /** GATHER-FEEL: seconds until the swing under way lands its blow - 0 once it has, or with none under way. */
+    get landsIn() { return Math.max(0, st.swing - CHOP_ACT.swingS * (1 - MELEE_HIT_SHARE)); },
     /** One frame. `attack` - attack pressed this frame (an edge). @param {number} dt @param {{ attack?: boolean }} input */
     tick(dt, { attack = false } = {}) {
+      st.swing = Math.max(0, st.swing - dt);   // GATHER-FEEL: past the end too - the last swing runs out, its blow lands
       if (st.done || st.cancelled) return;
-      st.swing = Math.max(0, st.swing - dt);
       if (Number.isFinite(dt) && dt > 0) { st.ring += dt; if (st.ring >= RING_PASS_S) st.ring -= RING_PASS_S; }
       if (!attack || st.swing > 0) return;
       st.swing = CHOP_ACT.swingS;

@@ -184,6 +184,7 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
       sinkFelled(f, sunk, renderer);
     },
     gone: (n) => goneIn(book, n.key, 'logs'),
+    goneSound: 'fall',   // GATHER-FEEL: the tree heard coming down, its ground struck as the picture lies flat (FALL_S)
     mark: (n) => (goneIn(book, n.key, 'logs') ? null : TREE_MARK),   // NODE-MARKS: a standing tree; a felled one's stump none
     tools: Object.freeze([FT.WoodAxe]),   // TOOL-USE: the Wood-Axe's Use at a tree is E there
     where: () => actChecksRefusal(GROUND_WHERE, GROUND_WHERE_WORDS),   // SETTLE-SAID
@@ -243,8 +244,9 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
         logsLying.push({ entry, batch: logs, at, key: n.key });
       }
     },
-    /** Every frame: the falls tip, each gone once it lies flat; the logs are taken when walked over. */
-    frame(dt, { feet, translation }) {
+    /** Every frame: the falls tip, each gone once it lies flat; the logs are taken when walked over - GATHER-FEEL: and
+     *  heard gathered up (`say`, the host's ear). */
+    frame(dt, { feet, translation, say = null }) {
       for (let i = falls.length - 1; i >= 0; i--) {
         const fl = falls[i];
         fl.t += dt;
@@ -256,7 +258,7 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
         const lg = logsLying[i];
         const tr = translation(lg.entry);
         if (!tr) { logsLying.splice(i, 1); continue; }
-        if (Math.hypot(lg.at[0] + tr[0] - feet[0], lg.at[2] + tr[2] - feet[2]) <= LOGS_TAKE_M) { drop(lg.entry, lg.batch); logsLying.splice(i, 1); }
+        if (Math.hypot(lg.at[0] + tr[0] - feet[0], lg.at[2] + tr[2] - feet[2]) <= LOGS_TAKE_M) { drop(lg.entry, lg.batch); logsLying.splice(i, 1); say?.('logs'); }
       }
     },
     /** AUDIT GATHER-SPEED G2: A FELL REFUSED - the fall is the act's end's now (scenes/gatherHost.js fallNow), so a
