@@ -18,7 +18,7 @@ is a Ledger A row.
 | 5 | "Some locations have floating houses" - "Temple of Kynareth has floating houses due to terrain modifications" (SylviaBun) | the pack hills' stand-ins seat a plateau's houses at their origin and fall away under their edges | fixed (HILL-SEAT) |
 | 6 | "Cant complete quest 'the lost child'" - "accidentally said 'no' ... now i cant interact with it at all" (Ant1-Chr1st) | DFU's own soft-lock: K0C00Y05's No leads nowhere and its clicked-npc task never listens again | in progress (NO-ASKS-AGAIN) |
 | 7 | "Performance issues with boss AoE attacks circles and player sprites" (HellRay) | being measured | in progress (AOE-PERF) |
-| 8 | "Molag bal mace do nothing" - "It's effect is not working and it's extremely fragile" (Boar) | the strength arm raises a stat the port caps at 100 - DFU raises the cap with it | in progress (MACE-MAX) |
+| 8 | "Molag bal mace do nothing" - "It's effect is not working and it's extremely fragile" (Boar) | the strength arm raises a stat the port caps at 100 - DFU raises the cap with it | fixed (MACE-MAX) |
 | 9 | "Tavern in Issaqumbaa marked as a player house" (SylviaBun) | the door's plaque named the first building box holding the ray's point - a neighbour house's - while the click entered the tavern | fixed (DOOR-NAME) |
 | 10 | "Delayed death after combat despite full health" (sxxlxxr, Knightshead) | DFU's exhaustion collapse: fatigue spent with a foe in the spawn band is death whatever the health, and the box saying so was replaced by the death screen before it drew | in progress (SPENT-ASHORE) |
 
@@ -166,6 +166,42 @@ NOT SEEN. Where the reporter's Iron came from; the card names it whichever way i
 
 `test/fb1013d_writwall.test.js` (3); `tools/mutants/fb1013d_writwall.json` (13, all dead). No pin moved.
 
+## MACE-MAX: the Mace lifts its wielder past what they hold rested (8)
+
+`src/systems/statMods.js` liveStat; `src/systems/artifactEffects.js` the Mace's strikes, magicRound, unequipped;
+`src/systems/enchantments.js` (type 26's unequipped); `src/systems/save.js` copyEffectEntry.
+
+FOUND. The Mace is minted right (createArtifact = DFU's SetArtifact: Daedric, 1500 uses, enchantment [26, 2]) and its
+Strikes payload fires in every host (each host's player blow reaches calculateAttackDamage, whose tail runs it); "Spells:
+none" is DFU's own RSC 8702. Nearly every foe has no magicka, so nearly every landed blow takes the STRENGTH arm - and DFU
+raises the live effect's stat MAX mod beside its mod (MaceOfMolagBalEffect.cs:138-139: "Using the Mace of Molag Bal can
+actually give its bearer ... more strength than he would have fully rested"), and GetLiveStatValue clamps at
+MaxStatValue plus the merged max mods (DaggerfallStats.cs:155-161). The port clamped at a flat 100 with no max-mod layer
+- its header RECORDED it - so a wielder at 100 Strength gained nothing on any blow: the effect did nothing. Beside it,
+the magicka overflow moved the max only at the next round, so a second strike in the same round counted the first's
+overflow again (two 10-point drains on a full pool raised it 30, not DFU's 20), and the bonus outlived taking the Mace
+off: its decay runs only in a worn item's rounds, which with the max lifted would have been strength past 100 for good.
+
+FIXED. DaggerfallStats' max mods: any live effect entry may carry `statMaxMods`, and liveStat's ceiling is
+MAX_STAT_VALUE plus every live entry's (MergeStatMaxMods; an ended entry's are not live). The Mace raises max mod and
+mod together and its decay clears both; the max mods are saved with the effect (effectData.statMaxMods). The overflow
+raises the live max at once (ChangeMaxMagickaModifier, :117-123). Taking the Mace off removes its live effect
+(UnequipHeldItem's Held-bundle sweep), through the type-26 row's new `unequipped` hook. The recorded departure's sentence
+is deleted. DFU's only writer of StatMaxMods is this effect.
+
+FRAGILITY - DFU'S, NOT CHANGED. Measured over 400 kills a row through the real formula (a level-10 wielder, Blunt
+Weapon 60): the loss per kill equals DFU's bill rebuilt from the same blows - wear, plus the blow's damage whenever the
+target fails its save (MaceOfMolagBalEffect.cs:147-151), about 85-90% of it. 20-57 uses a kill (a Spider 20, an Orc 46,
+an Orc Sergeant 56): 26-74 kills from 1500 uses, and a broken enchanted piece is gone (smiths repair no magic, DFU's
+default). A mundane Daedric mace holds 6,400 in DFU and 12,800 here (WEAPON-POOL), which makes the gap read wider. One
+port-only weight rides the bill: the payload sees the landed damage after the target's own multipliers (a stagger's
+x1.25, an overreach's x1.3, a revenant's), as the drain does - the owner's call.
+
+NOT SEEN. Whether the reporter stood at 100 Strength. The inspect card shows 100 while the bonus lasts: its bound is the
+relay's (`CARD_STAT_MAX`, a relay deploy to move).
+
+`test/fb1013d_macemax.test.js` (4); `tools/mutants/fb1013d_macemax.json` (8, all dead). No pin moved.
+
 ## THE FOUR HOSTS
 
 - SPELL-LOCK: the law is the ActionSystem's, every host's door graph. worldModes.js (a building: its act through
@@ -180,6 +216,10 @@ NOT SEEN. Where the reporter's Iron came from; the card names it whichever way i
   exterior.js draws and collides them for the fixed city's life, as it does every model of its one location.
   worldModes.js's rooms and dungeonContext.js stand no hill.
 - WRIT-WALL: the board is every host's (an overlay); no host seam.
+- MACE-MAX: the law is the entity's (liveStat) and the enchantment dispatcher's. Every host's player blow reaches
+  calculateAttackDamage's Strikes payload - world.js and exterior.js through their foes' and guards' resolvePlayerHit,
+  worldModes.js's rooms through the same two pools, dungeonContext.js through its own - and every host mounts the
+  enchant clock that stamps a strike.
 
 ## Pins
 
@@ -190,3 +230,4 @@ HOME-DOORS-the-early-record-dropped (the early record now drops a peer's lock). 
 carries the mod's `.cs:701-702` that DOOR-NAME's comment cites.
 `test/fb1013d_hillseat.test.js` (8, one on ARENA2_PATH); `tools/mutants/fb1013d_hillseat.json` 18, all dead.
 `test/fb1013d_writwall.test.js` (3); `tools/mutants/fb1013d_writwall.json` 13, all dead.
+`test/fb1013d_macemax.test.js` (4); `tools/mutants/fb1013d_macemax.json` 8, all dead.
