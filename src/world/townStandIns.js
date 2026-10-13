@@ -32,6 +32,7 @@ import { installDetStandIns, MeshBuilder } from './detStandIns.js';
 import { TOWN_PICTURE_ARCHIVE, PICTURE } from './townPictures.js';
 import { registerFlatField } from './flatFields.js';
 import { RMBRP_HILL_SHAPES, SHAPE_BEARINGS, SHAPE_RINGS } from './rmbrpHillShapes.js';   // FIELD BUGS 2026-10-05 HILL-SHAPES: the pack's hills, measured
+import { wrapAngle } from './mat4.js';   // FIELD BUGS 2026-10-13d HILL-SEAT: a pad corner's turn, in one step
 import { shareDetailedShipsArt } from '../systems/detailedShips.js';   // Cliffworms' Items (archive 1210): his pictures, the towns' too
 
 const U = 0.025;   // MeshReader.GlobalScale: one classic unit in metres
@@ -477,8 +478,7 @@ function hillPad(mb, seat, hull, top, tex, uvOf) {
   for (let i = 0; i < n; i++) {
     const [ax, az] = hull[i], [bx, bz] = hull[(i + 1) % n];
     const a0 = outward((i + n - 1) % n);
-    let a1 = outward(i);
-    while (a1 < a0) a1 += 2 * Math.PI;
+    const a1 = a0 + wrapAngle(outward(i) - a0);   // the corner's outward turn, (0, pi) on a convex hull - ONCRASH1's one wrap
     const fan = Math.max(1, Math.ceil((a1 - a0) / HILL_PATCH_FAN));
     for (let k = a1 > a0 ? 0 : fan; k <= fan; k++) rays.push([ax, az, a0 + ((a1 - a0) * k) / fan]);
     const along = Math.ceil(Math.hypot(bx - ax, bz - az) / HILL_PATCH_RAY);
