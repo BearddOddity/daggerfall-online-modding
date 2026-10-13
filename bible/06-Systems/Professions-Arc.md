@@ -380,7 +380,7 @@ DECIDED (Mac: "tree chopping, picking up ingredients, fishing, etc. Active playe
   existence, ~~the daily caps~~ (RETIRED, CAP-OFF, 2026-10-07: no day's cap - the bounds that stand, section 6, are the service's too) and
   the dice stay the service's.
 - **Others see it.** The pose ~~grows an activity field (tool and act: 4 bits)~~ carries the act (`ga`), its beats
-  (`gb`) and the net's throw (`gm` - PEER-ACTS, section 44), a relay version with its LAW row (world199): a peer sees you
+  (`gb`) and the net's throw (`gm` - PEER-ACTS, section 44), a relay version with its LAW row (world200): a peer sees you
   swing, kneel, throw and haul, and hears each beat at your act. The node's state is each character's own (section 6),
   so a tree another felled still stands for you.
 - **Gentle acts** (a setting, accessibility): every act completes at a plain result, with no clean bonus and no
@@ -430,6 +430,17 @@ else Foraging's Fish (1605). A **trophy** is the species' own Deep Waters templa
   the pixel's climate and region as the client derived them, and the service keeps them as a witnessed row. A pixel
   **confirmed** by 3 accounts yields its whole table; an **unconfirmed** pixel yields tiers 1-2 only - its veins 1-3
   since UNWITNESSED-ORE, below - (so a lie about a pixel nobody else has walked buys little); a **disputed** pixel (two witnesses agreeing on another answer) keeps its confirmed table until a moderator settles it (SEAT0 3.2).
+- **The ground** (ETHER-NODES, 2026-10-12, the owner: "We also need to implement gathering nodes within the area";
+  `03-World/Eltheric-Ocean.md`): a map pixel is the Bay's 1000 x 500 or the Eltheric Ocean's box past the Veil
+  (`pixelOk`) - its isles stand the day's nodes by their climates, its water the schools, and an id there is read four
+  digits east and a sign north (`herb:8009:-5194:...`), in its one spelling. The law knew the Bay alone: an isle's
+  harvest was refused `bad-node`, its witnesses `bad-pixels`. The service at acct124; `world/ethericSea.js` in the account
+  deploy's path filter (the law imports it). The ground's one home is `ethericSea.js` `onBayOrEther` (ETHER-OW,
+  2026-10-13: the Overworld's bands and raiders are born on it too; the law's answers unchanged). A Motherlode is not
+  sited there (AUDIT ETHER-OW C2-1, `01-Overview/Audit-Ether-OW.md`): a strike asks the relay's Watch receipt of the
+  site's pixel, and the Watch's ground is the Bay's map (`net/watchReceipt.js` `watchPixelOk` - one home, the relay's mint,
+  the service's receipt and `motherlodeSites` reading it); the isles' confirmed pixels are never a site. The service at
+  acct125, the relay at world199 (its answers as they were).
 - **How many** - per wilderness map pixel per day, never inside a location's rect:
 
 | Climate | Trees | Herb patches | Veins | Boulders (quarry) |
@@ -1434,7 +1445,7 @@ of Makers; commissions; regional prices to haul between; and every seat on the m
   kingdomLaw.js (built - the last PROF2's, SEAT0 4.3's map); recipeLaw.js (built, PROF3; Carpentry's with PROF4) and
   productRecord.js (PROF3's signed record); marketLaw.js (built, PROF5 - the market's bounds, fees, tax, courier and
   road; AUDIT 30 R15: this line left it out).
-- The relay: the activity field on the pose (a `RELAY_VERSION` and LAW row - BUILT, PEER-ACTS's world199, section 44);
+- The relay: the activity field on the pose (a `RELAY_VERSION` and LAW row - BUILT, PEER-ACTS's world200, section 44);
   the in-person check for deliveries.
 
 ## 15. The slices, in order
@@ -4264,7 +4275,7 @@ Mac: "Do the not done" - section 43's three open items: a blow shook no camera; 
   lets every burst go. The vein's own world, on both skins, as a tree's fall is (PROF4), and the striker's alone, as the
   node is.
 
-**PEER-ACTS - another player's gathering, seen and heard.** RELAY_VERSION **world199**, its LAW row.
+**PEER-ACTS - another player's gathering, seen and heard.** RELAY_VERSION **world200**, its LAW row (world199 on its branch, renumbered past main's AUDIT ETHER-OW world199 at the merge).
 
 - **The wire** (`net/wire.js` validPose, `gatherOf`): `ga` the act - `net/peerGather.js` GATHER_POSE_ACTS' index + 1:
   the axe at a trunk, the pick at a stone, a kneel by hand, with the sickle, with the Basket, with the knife, the net
@@ -4337,7 +4348,7 @@ Pinned: `test/gf2_blowshake.test.js` (8), `test/gf2_veincracks.test.js` (8), `te
 rig shared with GATHER-FEEL's pins (`test/gatherRig.mjs` - `test/gatherfeel.test.js`'s own, lifted). Mutants:
 `tools/mutants/gatherfeel2.json` (121: BLOW-SHAKE 17, VEIN-CRACKS 43, PEER-ACTS 61; all dead).
 
-PIN MOVED: RELAY_VERSION world199 over forty relay pins (and `test/disc7.test.js`'s list), the LAW row in
+PIN MOVED: RELAY_VERSION world200 over forty relay pins (world199 on the branch, renumbered at the merge) (and `test/disc7.test.js`'s list), the LAW row in
 `test/relayversion.test.js`; the renderer's - the composition order (`test/dwf_audit.test.js`), the billboard pass's
 lines and its NOT list (`test/la_cost.test.js`), the batch's minted fields, 60 (`test/hard3_types.test.js`); the stood
 flats' counts (`test/gatherspeed.test.js`, `test/audit29_host.test.js` - a burst's batch is no node's flats); VEIN-HUE's

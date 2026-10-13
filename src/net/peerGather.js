@@ -4,7 +4,7 @@
 // hears one"; bible/06-Systems/Professions-Arc.md 5.1 "Others see it" and section 44) - ANOTHER PLAYER'S GATHERING, SEEN
 // AND HEARD.
 //
-// THE WIRE. The pose carries the act (net/wire.js validPose, world199): `ga` its code - GATHER_POSE_ACTS' index + 1, what
+// THE WIRE. The pose carries the act (net/wire.js validPose, world200): `ga` its code - GATHER_POSE_ACTS' index + 1, what
 // the hands are doing (the axe at a trunk, the pick at a stone, a kneel by hand, with the sickle, with the Basket, with
 // the knife, the net wound, flying, waiting, tugged, hauled) - for as long as the hand is on it: the act playing, and a
 // finished one whose last swing is still in the air (GATHER-FEEL's `follow` - the tool the gatherer's own hand holds);

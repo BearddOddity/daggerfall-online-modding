@@ -840,7 +840,7 @@ Mac: "I want to improve gathering, add gathering sounds and overall make the exp
 
 Mac: "Do the not done." The record is `06-Systems/Professions-Arc.md` section 44 (PEER-ACTS); what it is to this page:
 
-- **The same clips, the same beats.** A peer's act rides their pose (RELAY_VERSION world199: the act, its beats, the
+- **The same clips, the same beats.** A peer's act rides their pose (RELAY_VERSION world200: the act, its beats, the
   net's throw), and the beats the pose counts are the gatherer's own ear's law (`actBeats`) - so the others hear what
   the gatherer hears. `net/peerGather.js` PeerGatherSounds says them positional through `play3d`, with the peers' own
   falloff (`net/remotePlayers.js` PEER_SOUND_PROFILE - full inside 6 m, silent past 30), at the act's place: a metre
