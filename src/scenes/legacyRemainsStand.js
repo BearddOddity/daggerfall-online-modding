@@ -75,9 +75,7 @@ export function createRemainsStand({ pool, feetOf, pixelKeyOf = () => null, icon
       }
       return stood.size;
     },
-    /** Every body let go. */
+    /** Every body let go - a load's adopt replaced every list (world.js letGoRemains, AUDIT FB1013d A2). */
     clear() { for (const id of [...stood.keys()]) unstand(id); },
-    /** How many stand now. */
-    count: () => stood.size,
   };
 }

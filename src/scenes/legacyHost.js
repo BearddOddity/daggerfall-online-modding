@@ -160,10 +160,10 @@ export function mergeFamily(stored, saved, cid) {
 /**
  * @param {{
  *   entity:any, storage:() => any, tab:() => any, on:() => boolean, online:() => boolean,
- *   killer?:() => (string|null), atPlace?:(place:any) => boolean, openRemains?:(rec:any, items:any[]) => boolean,
+ *   killer?:() => (string|null), atPlace?:(place:any) => boolean, openRemains?:(rec:any, items:any[]) => boolean, letGoRemains?:() => void,
  *   atRest?:() => boolean, askRest?:(name:string, yes:() => void) => boolean, takeItem?:(item:any) => void,
  *   carried?:() => any[], giveItems?:(items:any[]) => void,
- *   now:() => number, own:() => number, here:() => any, town:(here:any) => ({region:string, loc:string, mapId?:number}|null),
+ *   now:() => number, own:() => number, here:(o?:{height?:boolean}) => any, town:(here:any) => ({region:string, loc:string, mapId?:number}|null),
  *   nearestTown:(here:any) => ({region:string, loc:string}|null), gold:() => number, say:(line:string) => void,
  *   boot:(search:string) => void, search:() => string, loadCharacter:(characterId:string) => boolean,
  *   saveNow:() => boolean, inFight:() => boolean, payEstate?:(gold:number) => void, rng?:() => number,
@@ -329,6 +329,7 @@ export function createLegacyHost(deps) {
   function adopt(rec) {
     past = null; outcome = null; deathSeen = false; elderSaid = false; bornShare = null;
     openedThisVisit.clear(); restAskedThisVisit.clear(); remainsSig = ''; residentsKept.clear(); openedSig.clear(); deedsSaid.clear();
+    deps.letGoRemains?.();   // AUDIT FB1013d A2: every row's list is replaced below - a body stood over an old one goes now
     const cid = cidOf();
     const saved = readFamily(rec);
     const stored = saved ? loadFamily(deps.storage(), saved.id) : familyOfCharacter(cid);
@@ -493,7 +494,7 @@ export function createLegacyHost(deps) {
     const p = current();
     if (!family || !p || !deps.on() || past || family.pending || !isAlive(p) || p.retired != null || !deps.entity?.chargenDone) return null;
     writeCurrent();
-    const d = { at: deps.now(), place: deps.here(), gold: deps.gold(), by: deps.killer?.() ?? null, cause: 'fell' };
+    const d = { at: deps.now(), place: deps.here({ height: true }), gold: deps.gold(), by: deps.killer?.() ?? null, cause: 'fell' };   // AUDIT FB1013d B2: the remains' place keeps the height it was stood at - asked here alone
     if (family.model === MODELS.enduring) {
       const cursed = !!(deps.entity && (liveVampirism(deps.entity) || liveLycanthropy(deps.entity)));   // AGELESS-CURSE: a vampire or a lycanthrope pays no toll
       const paid = payToll(p, legacySettings().tollShare, p.lived, { ageless: cursed });
@@ -579,7 +580,12 @@ export function createLegacyHost(deps) {
       if (r.by != null && r.by !== me?.id && (!by || !isAlive(by) || by.retired != null)) {
         // AUDIT LEGACY II A3: the list as the lapsed claimant LEFT it is what lies now - the next claimant's rewinds
         // return to it, never to the list as first laid (which still held what the lapsed one took)
-        r.by = null; r.state = 'lying'; r.first = JSON.parse(JSON.stringify(r.items)); lapsed = true;
+        r.by = null; r.state = 'lying';
+        // AUDIT FB1013d A1: and the bones they carried off lie again NOW (the bones are always somewhere), before any door
+        // notes the list as nobody's (readyList): laid at the next step instead, a body stood in between noted the list
+        // bare, and their return read as a claim of the one played's, who never touched it
+        if (!r.items.some(bonesOf(r)) && !carriedNow().some(bonesOf(r))) r.items.unshift(mintRemainsItem({ line: family.id, of: r.of, name: r.name }));
+        r.first = JSON.parse(JSON.stringify(r.items)); lapsed = true;
       }
     }
     if (lapsed) { touch(family); store(); }
@@ -638,6 +644,13 @@ export function createLegacyHost(deps) {
         r.state = 'lying';   // AUDIT LEGACY II H2: the claim stays the claimant's - the bones lie again for them to find
         touch(family); store();
         if (was === 'taken') deps.say(LEGACY_TEXT.remainsReturned(r.name));
+      } else if (r.state === 'taken' && inList && !kept) {
+        // AUDIT FB1013d A3: put back into their own list (a window held open across the step that marked them taken): they
+        // lie again where they are, the claim the claimant's (AUDIT LEGACY II H2) - left 'taken', no door opened the list,
+        // no ring marked it, and a temple's rest found no bones to lay
+        r.state = 'lying';
+        touch(family); store();
+        deps.say(LEGACY_TEXT.remainsReturned(r.name));
       }
       if (r.state === 'lying') {
         const here = deps.atPlace?.(r.place) ?? false;
