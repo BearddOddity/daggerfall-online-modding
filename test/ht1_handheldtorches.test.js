@@ -220,7 +220,7 @@ test('HT1: the Mods pane entry is the shipped modsettings.json - every key, its 
   _resetModSettings();
   const pane = rd('src/ui/enhancedMenu.js');
   assert.match(pane, /\} else if \(isTextKey\(def\)\) \{/, 'the pane has a key capture');
-  assert.match(pane, /b\.textContent = 'press a key';/);
+  assert.match(pane, /b\.textContent = t\('mods\.pane\.pressKey', 'press a key'\);/);   // L10N4: in the player's language
   assert.match(pane, /const name = e\.code === 'Escape' \? null : keyCodeForDomCode\(e\.code\);/, 'the capture spells the key as Unity would; Escape cancels');
   assert.match(pane, /\} else if \(isTupleKey\(def\)\) \{/, 'the pane has a pair of steppers');
   assert.match(pane, /const stepOf = def\.tuple === 'int' \? 1 : \(def\.step \?\? 0\.1\);/);
@@ -844,7 +844,7 @@ test('HT1: the rig runs the component beside the widget - one per rig, the pool 
   assert.match(rig, /handheld,\s*\/\/ HT1/);
   assert.match(rd('src/systems/lycanthropy.js'), /export const isTransformedLycanthrope = \(entity\) => isTransformedNow\(entity\);/);
   assert.match(rd('src/systems/playerTorch.js'), /const o = lanternAtWaist\(entity\?\.lightSource\) \? \(_waistOverride \?\? LANTERN_HIP\) : \(_offsetOverride \?\? TORCH_OFFSET\);/);   // HT-WAIST: a lantern at the waist lights from the hip
-  assert.match(rd('src/systems/features.js'), /modFeature\('handheld-torches', 'Takes effect at once\.', '\w+'\)/);
+  assert.match(rd('src/systems/features.js'), /modFeature\('handheld-torches', \(\) => t\('features\.effect\.atOnce', 'Takes effect at once\.'\), '\w+'\)/);
   // GUARD1 (2026-09-15): this line USED to read `/160 modules/`. It was
   // a hand-written copy of a number `audit18_bible_docs.test.js` (U42)
   // already DERIVES from the directory, so it said nothing U42 does not
@@ -871,7 +871,7 @@ test('HT1: the five hosts - each owns a pool, feeds the rig its raw keys and the
     assert.match(src, /\.\.\.droppedTorches\.lights\(\)\)/, `${name}: the dropped lights in the point-light channel`);
     assert.match(src, /const _torchPick = pickActivatableHit\(cam\.pos, useFwd, droppedTorches\.targets\(\), collider\);/, `${name}: the mod's RegisterCustomActivation on the same ray`);
     assert.match(src, /const _torchNearest = _race\.torchWins;/, `${name}: the torch arm reads the one race (HARD2)`);
-    assert.match(src, /if \(_torchNearest\) \{ if \(_torchPick\.distance > _torchPick\.reach\) setMidScreenText\(TOO_FAR_AWAY_TEXT\); else droppedTorches\.activate\(_torchPick\.key, getInteractionMode\(\)\); \}/, `${name}: the 3.2 reach and the mode`);
+    assert.match(src, /if \(_torchNearest\) \{ if \(_torchPick\.distance > _torchPick\.reach\) setMidScreenText\(tooFarAwayText\(\)\); else droppedTorches\.activate\(_torchPick\.key, getInteractionMode\(\)\); \}/, `${name}: the 3.2 reach and the mode`);
     assert.match(src, /if \(_mode\(\) !== _torchesMode\) \{ droppedTorches\.destroyAll\(\); weaponRig\.silenceTorch\(\);[^\n]*? _torchesMode = _mode\(\); \}[^\n]*\n\s*if \(modes\.frame\(dt, now\)\) \{/, `${name}: AUDIT 66 F11 - the transition sweep runs ABOVE the modal return, where the transition is`);
     assert.match(src, /droppedTorches\.tick\(dt\);/, `${name}: the burn`);
     assert.match(src, /\.\.\.droppedTorches\.batches\(\)\)/, `${name}: drawn with the people`);
@@ -1024,7 +1024,7 @@ test('TORCH-VIS (the ladder): a lit hand draws while merely sheathed, the weapon
   // the sheathed case, and a readied spell, a cast in flight and an equip countdown all still hide the torch
   assert.match(rig, /const torchOnly = !shown\(\) && !spellArmed\(\) && !fpsSpellCasting\.isPlayingAnim\s*\n\s*&& \(entity\?\.equipCountdown \?\? 0\) <= 0 && isHeldLight\(entity\?\.lightSource\)\s*\n\s*&& \(!fpArm\.active\(\) \|\| fpArm\.torchShown\(\)\)\s*\n\s*&& !lanternAtWaist\(entity\?\.lightSource\);/,
     'the exception names every leg of shown() it does NOT relax, asks the mod\'s own light test, and lets the Morrowind arm veto a light it has no art for - HT-WAIST: and a lantern at the waist, which no hand holds');
-  assert.match(rig, /if \(paralyzed \|\| \(!shown\(\) && !torchOnly && !sheetOnly && !shieldRect && !gunSliding && !armCasts\)\) return;/, 'the gate takes the exception, and paralysis still takes everything (MAP-FIELD put the held sheet\'s own leg beside the torch\'s, SW1b the shield\'s, FIELD-GUN13 the gun still sliding out of frame, MW-CAST1 the Morrowind arm\'s casting hands - the same law, five things that are not a drawn weapon)');
+  assert.match(rig, /if \(paralyzed \|\| \(!shown\(\) && !torchOnly && !sheetOnly && !shieldRect && !gunSliding && !armCasts && !armsClimb\)\) return;/, 'the gate takes the exception, and paralysis still takes everything (MAP-FIELD put the held sheet\'s own leg beside the torch\'s, SW1b the shield\'s, FIELD-GUN13 the gun still sliding out of frame, MW-CAST1 the Morrowind arm\'s casting hands, CLIMB-HANDS II its hands on the stone - the same law, six things that are not a drawn weapon)');
   // and the weapon stays hidden: the return sits AFTER the torch hand and BEFORE the clone and the sprite
   const draw = rig.slice(rig.indexOf('const torchOnly ='));
   const torchAt = draw.indexOf('handheld.draw(renderer, c, fpTint)');

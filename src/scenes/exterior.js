@@ -10,6 +10,7 @@ import { effectiveLevel } from '../systems/mentorMode.js';   // SOFTCAP2: mentor
 import { dfmodGroundLayers } from '../systems/dfmodTextures.js';   // GROUND1: an attached mod's terrain tile set
 import { getFloat } from '../systems/settings.js';   // AUDIT 28 W1: NightAmbientLightScale
 import { markPuddleWater, carryPuddleMask } from '../world/puddleMask.js';   // WATER-PUDDLE: the puddle is the art's
+import { dilateCoastalClimate } from '../world/terrainHelper.js';   // AUDIT C&C (lens T): ReadyCheck's coastal repair, as the streaming host runs it
 import { WORLD_FRAME } from '../render/renderer.js';   // AUDIT-EL F5
 import { windmillsOn } from '../world/windmills.js';   // WM3: the Windmills pack's switch
 import { wodOn, wodLightColors } from '../world/worldOfDaggerfall.js';   // WOD4: the mod's switch and its per-light colours
@@ -153,7 +154,7 @@ import { ActionTextBox } from '../ui/actionText.js';   // AUDIT 23 (C5): the col
 import { toggleStatusReadout } from '../ui/statusBox.js';   // STATUS-LIVE: the Status readout, one composer for all four hosts
 import { statusReadoutTakesAction } from '../systems/statusReadout.js';   // STATUS-LIVE: ...and the yield this host's own key ladder owes, which never reaches routeAction
 import { liveStat } from '../systems/statMods.js';
-import { maxFatigue } from '../systems/statMods.js';   // AUDIT 23 (C5)
+import { maxFatigue, clampFatigue } from '../systems/statMods.js';   // AUDIT 23 (C5); AUDIT C&C N5: SetFatigue's clamp
 import { FootstepMachine, pickFootstepSet } from '../systems/footsteps.js';   // FS-slice
 import { immersiveFootsteps } from '../systems/immersiveFootsteps.js';
 import { betterAmbience, classicFootstepAllowed } from '../systems/betterAmbience.js';   // BA1: Better Ambience - the shake, the dungeon's fog and light, the reverb, the indoor rain, its own stride   // IF1: Immersive Footsteps owns the stride and the three landing sounds once its clips are in (DisableVanillaFootsteps)
@@ -168,6 +169,8 @@ import { createLefayMonument } from './lefayMonumentHost.js'; import { isLefayTo
 import { createCamps } from './camps.js'; import { PORTAL_TEXT } from '../systems/portalStone.js';   // SURV3: the camps this host stands; PORTAL1: the street's own refusal
 import { drinkAtSource, isWaterSourceFlat, isDrySourceFlat, WATER_SOURCE_MODELS, DRY_SOURCE_TEXT } from '../systems/survival/items.js';   // SURV3: the mod's water sources
 import { survivalOn } from '../systems/survival/switch.js';   // HT1: Handheld Torches' dropped lights, thrown torches and burning foes   // AUDIT 24 (wave 39): EnemyBlood.ShowBloodSplash
+import { sunlit } from '../systems/survival/temperature.js';   // AUDIT C&C: the sun's one law - this reader's minute, and a jump's replay its own
+import { markOutCold } from '../systems/survival/needs.js';   // AUDIT C&C N2: the collapse's hour a night on the ground
 import { liveLycanthropy } from '../systems/lycanthropy.js';   // SURV7: the env's lycanthrope and beast-form flags
 import { elementalResistanceChance, ELEMENTS } from '../systems/spellcast.js';   // SURV7: the env's fire and frost resistances
 import { createCityGuards } from './cityGuards.js';   // G1
@@ -181,7 +184,7 @@ import { createArrestFlow } from './arrestFlow.js';   // G2
 import { makeInView } from '../player/cameraView.js';   // AUDIT 17e F24
 import { pickActivatableHit, pickQuestFoe, pickFoe, peacefulFoePass } from '../player/activate.js';   // G3: corpse loot; QG1/ROAD-G G2: the foe-click door; TI1: the lock-on pick
 import { raceActivation } from '../player/activationRace.js';   // HARD2: one home for "the nearest thing under the one ray takes the click"
-import { RAY_DISTANCE, DEFAULT_ACTIVATION_DISTANCE, MOBILE_NPC_ACTIVATION_DISTANCE, TOO_FAR_AWAY_TEXT } from '../player/activate.js';   // AUDIT 63 F33: ActivateMobileEnemy (PlayerActivate.cs:800-841); AUDIT 65 MC-2: the loot handlers' refusal
+import { RAY_DISTANCE, DEFAULT_ACTIVATION_DISTANCE, MOBILE_NPC_ACTIVATION_DISTANCE, tooFarAwayText } from '../player/activate.js';   // AUDIT 63 F33: ActivateMobileEnemy (PlayerActivate.cs:800-841); AUDIT 65 MC-2: the loot handlers' refusal
 import { setMidScreenText } from '../ui/midScreenText.js';   // AUDIT 64 F34: DaggerfallHUD's centred label, where PlayerActivate's refusals go
 import { tryMobileEnemyActivate } from '../player/mobileEnemyActivate.js';
 import { FOUND_NOTHING_VALUABLE_TEXT_ID } from '../systems/talk.js';   // GetRandomText(8999)
@@ -302,7 +305,7 @@ import { ServiceFlowWindow } from '../ui/guildServiceWindows.js';   // ROAD-C c2
 import { discoveredBuildings, setDiscoveredBuildingCustomName, discoverLocation, undiscoverBuilding } from '../systems/discovery.js';   // A2: the nameplates' gate; c2/S10: the plate rename; QX1: RevealLocation's filing
 import { activeMemberships } from '../systems/guilds.js';   // F117
 import { revealGuildHallsOnMap, revealingMemberships } from '../systems/guildHallReveal.js';   // AUDIT 63 F9: ThievesGuild/DarkBrotherhood RevealGuildHallOnMap; AUDIT CHAP2 D4: either book's
-import { avoidDeath, AVOID_DEATH_TEXT } from '../systems/guildServices.js';   // F117: Stendarr
+import { avoidDeath, avoidDeathText } from '../systems/guildServices.js';   // F117: Stendarr
 import { dungeonLocationFor } from '../world/smallerDungeons.js';   // QX1/AUDIT 28 F-B2: the quest layer sees the SIZED dungeon
 import { ensureFactionRep, getReputation, changeReputation } from '../systems/factionRep.js';   // QX1: the quest layer's reputation doors
 import { findFactions, findFactionByTypeAndRegion, getPeopleOfCurrentRegion, getCourtOfCurrentRegion } from '../systems/talk.js';   // QX1 review: Person.cs's faction-type reads, over the PERSISTENT store
@@ -335,6 +338,7 @@ import { keptOffArenaGround, ARENA_GROUND_M } from '../systems/arenaGround.js'; 
 import { registerAttackResolutionListener } from '../combat/formulas.js';
 import { registerPlayerSwingListener } from '../combat/playerWeapon.js';
 import { raceDisplayName } from '../systems/talkSession.js';   // MACRO-ONE: %ra's display name, as world.js reads it
+import { localizedText, getLocalizedLocationName, getLocalizedRegionName, getLocalizedFactionName } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language; L10N3e: and the place names shown
 import { startTutorialTour } from '../ui/tutorialPopup.js';   // TUT1: the welcome tour - and the popups' handler, registered by this host (the four hosts' rule)
 
 export async function bootExterior(canvas, renderer, params, status) {
@@ -363,6 +367,10 @@ export async function bootExterior(canvas, renderer, params, status) {
   arch.load(archBytes);
   const maps = new MapsFile();
   maps.load(mapsBytes, climateBytes, politicBytes);
+  // AUDIT C&C (lens T): StreamingWorld.ReadyCheck's coastal repair, as world.js runs it - DFU reads every climate after
+  // it (PlayerGPS.CurrentClimateIndex), and this host read the raw buffer: a coastal town whose own pixel is raw Ocean
+  // read the sea's nought (E4) here and its land's climate in the streaming world.
+  dilateCoastalClimate(maps, 2);
   // QX1 - THE QUEST PACK, loaded WITH the rest of the location's data
   // and not later. The bridge itself cannot be built until the clock,
   // the talk seam and the guard pool exist, far down this boot, but
@@ -1281,8 +1289,12 @@ export async function bootExterior(canvas, renderer, params, status) {
   // this host's context (guards as the nearby enemies, the one clock's
   // day, outside). Function-hoisted: cityGuards/townTalk close later.
   let _inExhaustion = false;
+  // AUDIT C&C N2/H1: DFU's popup guard (PlayerEntity.cs:2385-2391 displayingExhaustedPopup), in both lanes - this host
+  // had none at all, so a drain to nothing under the collapse's box collapsed the body again (world.js's twin says why)
+  let _exhaustedBox = null;
+  const exhaustedShowing = () => !!_exhaustedBox && !_exhaustedBox.done && townTalk.containsOverlay(_exhaustedBox);
   function onExhaustedExterior() {
-    if (_inExhaustion) return;
+    if (_inExhaustion || exhaustedShowing()) return;
     _inExhaustion = true;
     try {
       const out = exhaustionOutcome({
@@ -1309,9 +1321,11 @@ export async function bootExterior(canvas, renderer, params, status) {
       // the inventory, the map and the spellbook alike, and the
       // refusal meant the one message that explains the lost hour (or
       // the drowning) was dropped.
-      townTalk.pushOverlay(new ActionTextBox(lines));
+      _exhaustedBox = new ActionTextBox(lines);
+      townTalk.pushOverlay(_exhaustedBox);
       if (out.kind === 'rest') {
         // CAMP-REST: the forced hour is spent through the tick as a rest, never replayed as walking time (no group roll)
+        markOutCold(playerEntity);   // AUDIT C&C N2: the needs feel the hour as a night on the ground (world.js's twin)
         playerTicker.advance(60);   // RaiseTime(1 hour); the latch holds re-entry
         runEncounterTick(walkMode ? player.pos : cam.pos, true);
         playerEntity.health = Math.min(playerEntity.maxHealth, playerEntity.health + out.health);
@@ -1327,7 +1341,7 @@ export async function bootExterior(canvas, renderer, params, status) {
   // C14: the swing's own fatigue drain rides the same collapse law.
   const drainExteriorFatigue = (n) => {
     if (n <= 0) return;
-    playerEntity.fatigue = Math.max(0, (playerEntity.fatigue ?? 0) - n);
+    playerEntity.fatigue = clampFatigue(playerEntity, (playerEntity.fatigue ?? 0) - n);   // AUDIT C&C N5: SetFatigue's clamp, the ceiling too
     surfacePlayer();
     if (playerEntity.fatigue <= 0 && playerEntity.health > 0) onExhaustedExterior();
   };
@@ -1340,13 +1354,15 @@ export async function bootExterior(canvas, renderer, params, status) {
     const wm = skyMinutes();   // TIME1: the air's month and hour are the sky's
     const weather = currentWeather();
     const lyc = liveLycanthropy(playerEntity);
+    const hour = (((wm % 1440) + 1440) % 1440) / 60;
+    const sheltered = m === 'exterior' && !!playerEntity.isResting && !!camps.tentNear(feet);   // AUDIT C&C I2: a rest at a tent sleeps under its roof
     return {
       climateIndex: locClimateIndex,
-      month: dateFromClassicMinutes(wm).month, hour: (((wm % 1440) + 1440) % 1440) / 60, weather,
+      month: dateFromClassicMinutes(wm).month, hour, weather,
       insideBuilding: m === 'interior', insideDungeon: m === 'dungeon',
-      inSunlight: m === 'exterior' && !isNight(minuteNow()) && (weather === 'sunny' || weather === 'cloudy'),
+      inSunlight: m === 'exterior' && sunlit({ hour, weather, sheltered }),   // AUDIT C&C: the sun's one law, the replay's too
       swimming: m === 'exterior' && !!player.isPlayerSwimming, transport: !!player.riding,
-      byFire: m === 'exterior' && camps.byFire(feet),
+      byFire: m === 'exterior' && camps.byFire(feet), sheltered,
       resting: !!playerEntity.isResting, sleeping: playerEntity.isResting && !playerEntity.isLoitering ? (playerEntity.restKind ?? 'rough') : null,
       lycanthrope: !!lyc, beastForm: !!lyc?.isTransformed,
       fireResist: elementalResistanceChance(playerEntity, ELEMENTS.Fire), frostResist: elementalResistanceChance(playerEntity, ELEMENTS.Frost),
@@ -1389,7 +1405,7 @@ export async function bootExterior(canvas, renderer, params, status) {
   // in this function, initialised by the first time damage can land.
   setAvoidDeathHook(() => {
     if (!avoidDeath(activeMemberships(playerEntity))) return false;
-    townTalk.say(AVOID_DEATH_TEXT);
+    townTalk.say(avoidDeathText());
     return true;
   });
 
@@ -1433,7 +1449,7 @@ export async function bootExterior(canvas, renderer, params, status) {
         dfBlock: e.dfBlock, recordIndex: e.recordIndex,
         position: [e.door.matrix[12], e.door.matrix[13], e.door.matrix[14]],
       })),
-      locationName, regionName,
+      locationName, regionName, mapId: dfLocation.mapTableData?.mapId ?? 0, regionIndex: dfLocation.regionIndex,   // L10N3e: ...and the ids the name bag shows them by (TalkManager.cs:2788-2789, :2857-2858), as world.js's topics carry them
       playerPos: () => (walkMode ? [...player.pos] : [...cam.pos]),
     },
     // AUDIT 58 (talk lane): the mode keys sit UNDER the window gate, and
@@ -1806,7 +1822,7 @@ export async function bootExterior(canvas, renderer, params, status) {
     },
     entity: { wagonWeight: () => totalWeight(playerEntity.wagonItems ?? []), wagonKgLimit: () => wagonKgFor(playerEntity) },   // WAGONS1: the driven wagon's
     activateMode: () => getInteractionMode(), fadeInProgress: () => false,
-    say: (l) => townTalk.say(l), setMidScreenText: (t, seconds) => setMidScreenText(t, seconds), tooFarText: () => TOO_FAR_AWAY_TEXT,
+    say: (l) => townTalk.say(l), setMidScreenText: (t, seconds) => setMidScreenText(t, seconds), tooFarText: tooFarAwayText,
     settings: hccSettings, actionPressed: hccActionPressed, now: () => performance.now() / 1000,
     worldCoordToMapPixel: () => _locPixel,   // (no accelerated-journey query on this host: the runtime reads an absent seam as "no such mod")
     // AUDIT HCC (branch audit): dfuiOpenInventoryWindow goes through the host's own inventory door - a transformed
@@ -3386,8 +3402,12 @@ export async function bootExterior(canvas, renderer, params, status) {
       // ui/meshStamp.js) and the Position-bearing subrecord walk the
       // plate anchors now come off.
       getGpuMesh(99900).catch(() => {});
+      // L10N3e: the plates' names carry the shown pair beside the canonical one - GetLocalizedLocationName by the MapId
+      // and GetLocalizedRegionName by the index (ExteriorAutomap.cs:717-718); the canonical pair still chooses the palace
+      const shownLocation = getLocalizedLocationName(dfLocation.mapTableData?.mapId, dfLocation.name ?? locationName);
       const summaries = buildingSummaries(dfLocation.exterior?.buildings ?? [], loc.blocks,
-        { locationName: dfLocation.name ?? locationName, regionName: maps.getRegionName(dfLocation.regionIndex), locationIndex: dfLocation.locationIndex ?? 0 });
+        { locationName: dfLocation.name ?? locationName, regionName: maps.getRegionName(dfLocation.regionIndex), locationIndex: dfLocation.locationIndex ?? 0,
+          shownLocationName: shownLocation, shownRegionName: getLocalizedRegionName(dfLocation.regionIndex, (i) => maps.getRegionName(i)) });
       // ROAD-D D5, PAID BY QX1. The residence plate arm
       // (ExteriorAutomap.cs:682-709) walks QuestMachine.GetAllActiveQuests
       // and this host had no machine to walk, so every residence took
@@ -3419,7 +3439,7 @@ export async function bootExterior(canvas, renderer, params, status) {
       mwViewFirstPerson();   // MW-MAP1: the town plan is read in the head (MAP-POV's law), on this host as on the streaming one
       townTalk.showOverlay(createTownMapWindow({
         holder: sheetHolderOf(() => weaponRig),   // MW-MAP1: the Morrowind hands lane on the M key
-        locationName: dfLocation.name ?? locationName,
+        locationName: shownLocation,   // L10N3e: the title, as shown - the key is locationId
         locationId: locId,
         gridW: loc.width, gridH: loc.height,
         blocks: loc.blocks.map((bl) => ({ x: bl.x, y: bl.y, autoMap: bl.dfBlock?.rmbBlock?.fldHeader?.autoMapData, landmark: arenaTownLandmark(bl.dfBlock) })),   // ARENA-MAP: the Arena's name (world/arenaCity.js)
@@ -3438,7 +3458,7 @@ export async function bootExterior(canvas, renderer, params, status) {
         // renamingLabelRef.Text`, :888); the canonical is only
         // TextBox.Name/DefaultText (:887, :889)
         rename: (buildingKey, displayed) => townTalk.pushOverlay(new ServiceFlowWindow([{
-          rows: ['Custom name: '],   // Internal_Strings `customName` (:889)
+          rows: [localizedText('customName', 'Custom name: ')],   // Internal_Strings `customName` (:889)
           field: { numeric: false, maxCharacters: 80, initial: displayed ?? '' },
           onInput: (text) => { setDiscoveredBuildingCustomName(locId, buildingKey, text); return null; },
         }])),
@@ -4179,7 +4199,9 @@ export async function bootExterior(canvas, renderer, params, status) {
     // The notebook's three header reads (PlayerNotebook's own ctx).
     dateTimeString: () => dateTimeString(dateFromClassicMinutes(skyMinutes())),   // TIME1: the date the player sees
     midDateTimeString: () => midDateTimeString(dateFromClassicMinutes(skyMinutes())),
-    cityName: () => dfLocation.name ?? locationName,
+    cityName: () => getLocalizedLocationName(dfLocation.mapTableData?.mapId, dfLocation.name ?? locationName),   // L10N3e: MacroHelper.CityName as it is shown (PlayerNotebook.cs:114, MacroHelper.cs:571) - this host always stands in its location
+    noteMinutes: () => skyMinutes(),   // L10N5: what a header records, for a load to draw it in its own language
+    notePlace: () => ({ mapId: dfLocation.mapTableData?.mapId ?? null, name: dfLocation.name ?? locationName }),
     addHUDText: (t) => townTalk.say(t),
     // The tokens arrive ALREADY expanded and already chunked - Quest.cs:785.
     showPopup: (_q, tokens) => { const rows = tokensToRows(tokens); if (rows.length) showQuestBox({ rows }); },
@@ -5015,7 +5037,7 @@ export async function bootExterior(canvas, renderer, params, status) {
       `${dfLocation.regionIndex}:${dfLocation.name ?? locationName}`,
       buildingSummaries(dfLocation.exterior?.buildings ?? [], loc.blocks,
         { locationName: dfLocation.name ?? locationName, regionName: maps.getRegionName(dfLocation.regionIndex), locationIndex: dfLocation.locationIndex ?? 0 }),
-      { factionName: (id) => townTalk.factionDict?.get(id)?.name ?? '' });
+      { factionName: (id) => { const n = townTalk.factionDict?.get(id)?.name; return n == null ? '' : getLocalizedFactionName(id, n); } });   // L10N3e: GetGuildName's GetFactionData, a translation's name for the id (ThievesGuild.cs:246, DarkBrotherhood.cs:255, PersistentFactionData.cs:176)
   }).catch(() => {});
   let last = performance.now();
   const lookGate = makeLookGate(canvas);
@@ -5557,13 +5579,13 @@ export async function bootExterior(canvas, renderer, params, status) {
           // the nearest thing under the one ray takes it.
           const _torchNearest = _race.torchWins;
           // EOTB-IL: the mod's cart under the same ray (RegisterCustomActivation(41239, CheckWagon, 3.2)) - Info names it, any other mode opens the pack with the wagon
-          if (_race.campWins) { if (_campPick.distance > _campPick.reach) setMidScreenText(TOO_FAR_AWAY_TEXT); else camps.activate(_campPick.key, getInteractionMode(), plaqueActionFor(_campPick.key)); }   // SURV3: the camp's menu, or its name
-          else if (_race.waterWins) { if (_springPick.distance > _springPick.reach) setMidScreenText(TOO_FAR_AWAY_TEXT); else drinkAtSpring(_springPick.key); }   // SURV3: the skins filled
-          else if (_race.wagonWins) { if (_wagonPick.distance > _wagonPick.reach) setMidScreenText(TOO_FAR_AWAY_TEXT); else mwViewWagonActivate(getInteractionMode(), { say: (l) => townTalk.say(l), openInventoryWithWagon: () => { const w = makeInventoryWindow(EOTB_WAGON_PACK); if (w) townTalk.showOverlay(w); } }); }   // DISC10-E L3: a refused pack is null
-          else if (_race.horseCartWins) { hcc.activate(_hccPick.key, _hccPick.distance, (l) => townTalk.say(l), () => setMidScreenText(TOO_FAR_AWAY_TEXT), plaqueActionFor(_hccPick.key)); }   // ACT-MENU: the verb the plaque lit, where it stands   // HCC: the runtime's own reach test and refusals
-          else if (_torchNearest) { if (_torchPick.distance > _torchPick.reach) setMidScreenText(TOO_FAR_AWAY_TEXT); else droppedTorches.activate(_torchPick.key, getInteractionMode()); }   // the mod's own activation, ahead of DFU's ladder
+          if (_race.campWins) { if (_campPick.distance > _campPick.reach) setMidScreenText(tooFarAwayText()); else camps.activate(_campPick.key, getInteractionMode(), plaqueActionFor(_campPick.key)); }   // SURV3: the camp's menu, or its name
+          else if (_race.waterWins) { if (_springPick.distance > _springPick.reach) setMidScreenText(tooFarAwayText()); else drinkAtSpring(_springPick.key); }   // SURV3: the skins filled
+          else if (_race.wagonWins) { if (_wagonPick.distance > _wagonPick.reach) setMidScreenText(tooFarAwayText()); else mwViewWagonActivate(getInteractionMode(), { say: (l) => townTalk.say(l), openInventoryWithWagon: () => { const w = makeInventoryWindow(EOTB_WAGON_PACK); if (w) townTalk.showOverlay(w); } }); }   // DISC10-E L3: a refused pack is null
+          else if (_race.horseCartWins) { hcc.activate(_hccPick.key, _hccPick.distance, (l) => townTalk.say(l), () => setMidScreenText(tooFarAwayText()), plaqueActionFor(_hccPick.key)); }   // ACT-MENU: the verb the plaque lit, where it stands   // HCC: the runtime's own reach test and refusals
+          else if (_torchNearest) { if (_torchPick.distance > _torchPick.reach) setMidScreenText(tooFarAwayText()); else droppedTorches.activate(_torchPick.key, getInteractionMode()); }   // the mod's own activation, ahead of DFU's ladder
           else {
-          if (lootKey && _lootPick.distance > _lootPick.reach) setMidScreenText(TOO_FAR_AWAY_TEXT);   // MC-2: the corpse's own refusal (:936-941)
+          if (lootKey && _lootPick.distance > _lootPick.reach) setMidScreenText(tooFarAwayText());   // MC-2: the corpse's own refusal (:936-941)
           // MAC-E: a body under the ray opens the inventory WITH the body
           // as the remote target (PlayerActivate.cs:957), exactly as the
           // pile arm below does and as the dungeon host has since U26.
@@ -5587,7 +5609,7 @@ export async function bootExterior(canvas, renderer, params, status) {
           // the pile itself now, so the gate is the skin question every
           // other pack arm asks - and on the classic skin it still comes
           // down to the same art.
-          else if (dropKey && _dropPick.distance > _dropPick.reach) setMidScreenText(TOO_FAR_AWAY_TEXT);   // MC-2: ActivateLootContainer's (:868-873)
+          else if (dropKey && _dropPick.distance > _dropPick.reach) setMidScreenText(tooFarAwayText());   // MC-2: ActivateLootContainer's (:868-873)
           // PI1: an item standing as itself is taken on the press (Physical Items' TryPickup) - no window
           else if (dropKey && droppedLoot.physical.owns(dropKey)) droppedLoot.physical.pick(dropKey, playerEntity);
           else if (dropKey && inventoryDoorReady()) {

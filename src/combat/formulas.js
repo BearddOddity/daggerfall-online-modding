@@ -42,6 +42,7 @@ import { clawMetalDamage } from './clawMetal.js';   // BAL6-GAUNTLETS: the beast
 import { totalWeight } from '../systems/inventory.js';   // EW1: ItemCollection.GetWeight, the one home for a stack's kg
 import { liveVampirism } from '../systems/racialLive.js';   // VU1: an import-free LEAF - vampirism.js cycles back here through loot.js
 import { breakNormalPowerConcealment } from '../systems/concealment.js';   // wave 31: BreakNormalPowerConcealmentEffects, in its own leaf so this import cannot cycle
+import { localizedText } from '../systems/textManager.js';   // L10N3d: DFU's Internal_Strings, read in the player's language (an import-free leaf)
 import { blowTaken } from '../systems/blowTaken.js';   // TELL1: what the target takes - a leaf, for the brain that registers into it imports the motor that imports this file
 
 // ---- Dice100.cs verbatim ----
@@ -117,6 +118,8 @@ export const entityMaxEncumbrance = (entity) => {
  *  (`materialIneffective`), verbatim - GetLocalizedText hands it over
  *  with no substitution, so the words are the whole string. */
 export const MATERIAL_INEFFECTIVE_TEXT = 'The material of the weapon you are using is ineffective.';
+/** L10N3d: that line where it is said, in the player's language. */
+export const materialIneffectiveText = () => localizedText('materialIneffective', MATERIAL_INEFFECTIVE_TEXT);
 export const spellPointsFor = (intelligence, multiplier) => Math.floor(intelligence * multiplier);
 export const magicResist = (willpower) => Math.floor(willpower / 10);
 export const toHitModifier = (agility) => Math.floor(agility / 10) - 5;
@@ -484,9 +487,11 @@ export function weaponAttackDamage(attacker, target, damageMod, weapon, rolls = 
  *  A landed backstab speaks: Internal_Strings.csv:57
  *  (`successfulBackstab`), verbatim into PopupMessage (:987-988). */
 export const SUCCESSFUL_BACKSTAB_TEXT = 'Successful backstab!';
+/** L10N3d: that popup where it is said, in the player's language. */
+export const successfulBackstabText = () => localizedText('successfulBackstab', SUCCESSFUL_BACKSTAB_TEXT);
 export function backstabDamage(damage, backstabbingLevel, rolls = Math.random, say = null) {
   if (backstabbingLevel > 1 && dice100(backstabbingLevel, rolls())) {
-    say?.(SUCCESSFUL_BACKSTAB_TEXT);
+    say?.(successfulBackstabText());
     return damage * 3;
   }
   return damage;
@@ -596,9 +601,9 @@ export function calculateAttackDamage(attacker, target, { weapon = null, damageM
   // at the tail is past the block the roll is made in.
   let struckPart = -1;
   const report = (damage) => {
-    // DUEL1: a duel opponent's blow is resolved on the DEFENDER's machine with a stub of the striker's sheet
-    // (combat/duelCombat.js duelStub - `isPlayer`, and `peer`): its numbers are the striker's HUD's, never the
-    // defender's, which would pop them as if the defender had struck
+    // DUEL1: a blow between players is rolled with a stub of the striker's sheet (combat/duelCombat.js duelStub -
+    // `isPlayer`, and `peer`) - since INT8 on the striker's own machine, against a neutral stand-in (AUDIT C&C H5): the
+    // stub's report stays quiet, and the host says a miss and the referee's word a hit (reportPlayerAttack, below)
     if (_playerAttackHook && attacker.isPlayer && !attacker.peer) {
       try { _playerAttackHook({ ...notes, damage, attacker, target, weapon }); } catch { /* a HUD is not the formula's problem */ }
     }
@@ -626,7 +631,7 @@ export function calculateAttackDamage(attacker, target, { weapon = null, damageM
     // too-low weapon material returns 0, and when the attacker is
     // the PLAYER the HUD says so (`materialIneffective`,
     // Internal_Strings.csv:56). Enemies fail silently.
-    if (attacker.isPlayer) say?.(MATERIAL_INEFFECTIVE_TEXT);
+    if (attacker.isPlayer) say?.(materialIneffectiveText());
     notes.ineffective = true;
     return report(0);
   }
@@ -853,9 +858,10 @@ export function registerAttackResolutionListener(name, fn) { if (typeof fn === '
  *  backstab). Reporting only - registered by the enhanced HUD, never by
  *  the classic skin, and no formula reads it. */
 export function setPlayerAttackHook(fn) { _playerAttackHook = fn ?? null; }
-/** DUEL1: a duel blow's resolution, reported through the same seam on the STRIKER's machine. The formula ran on the
- *  DEFENDER's (net/duelSession.js - the defender resolves every blow), whose report stays quiet there (`peer`); the
- *  answer it sent back ({ hit, damage }) is this one's to show. */
+/** DUEL1: a blow between players, reported through the same seam on the STRIKER's machine. Since INT8 the formula runs
+ *  there, on the striker's stub (`peer`, whose own report stays quiet) against a neutral stand-in (AUDIT C&C H5), and the
+ *  host shows a miss at once and a hit at the referee's word ({ hit, damage } - scenes/world.js); the dungeon's court
+ *  boss shows a spell's number through it too (HN1). [DUEL1's defender resolved every blow and sent this answer back.] */
 export function reportPlayerAttack(r) {
   if (!_playerAttackHook || !r) return;
   try { _playerAttackHook({ critical: false, backstab: false, ineffective: false, ...r }); } catch { /* a HUD is not the duel's problem */ }

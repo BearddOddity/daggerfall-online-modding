@@ -35,6 +35,12 @@ export const PREF_DEFAULTS = Object.freeze({
   // to scale - so it belongs in the port's own prefs, beside the other
   // things only this port has.
   hudScale: 1,
+  // L10N1b (2026-09-27, Mac: "a proper localization/translation integration"): the language the game's text is shown
+  // in - a systems/localeCatalog.js tag, 'en' the port's own. Read at boot (scenes/localeData.js initLocale; ?lang=
+  // overrides it for one visit). `languageOffered`: the front door has offered the browser's own language once and
+  // the player answered, so it asks no more.
+  language: 'en',
+  languageOffered: false,
   // MAP-SCALE (FIELD BUGS 2026-10-09e, "Desktop client in-game map icons and text too small on high resolutions"): the
   // held map's interface scale - 'auto' (the screen's height over 1080) or a number (ui/mapScale.js).
   mapScale: 'auto',
@@ -285,11 +291,14 @@ export function loadPrefs() {
         // needs nothing - and it can only hold `false`, since `true` was
         // the default and PREF1's shelf writes no default: a player who
         // turned the arc off stays Off, and one who never touched it
-        // stored nothing and moves to Casual with the default, as Mac
-        // asked. AUDIT SURV-TIERS: anything else on the key (a hand-edited
-        // `true`, a corrupted value) names no tier and is dropped HERE, so
+        // stored nothing and moves with the default (Casual then, as Mac
+        // asked; Boons since BOONS-DEFAULT). AUDIT SURV-TIERS: anything else
+        // on the key (a hand-edited `true`, a corrupted value) names no
+        // tier and is dropped HERE, so
         // the Features bar - which matches a stored value by its string -
         // and the laws read the one default rather than two answers.
+        // SURV-BOONS (2026-10-12): a fourth tier, Boons, stored by name -
+        // isStoredTier reads the table, so it is kept like the others.
         if (p.survival !== undefined && !isStoredTier(p.survival)) _prefs.survival = PREF_DEFAULTS.survival;
       }
     }
