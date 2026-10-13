@@ -44,7 +44,7 @@
   {
     "name": "PROFRETICLE-host-clean-cue",
     "file": "src/scenes/gatherHost.js",
-    "old": "    if (a.clean) ear.say('clean', null, { delay: lands });   // PROF-SCENES: a clean finish rings\n",
+    "old": "    if (a.clean) ear.say('clean', null, { of: a.act });   // PROF-SCENES: a clean finish rings - as its last blow lands\n",
     "new": "",
     "tests": [
       "test/profreticle.test.js",

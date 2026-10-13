@@ -526,6 +526,7 @@ export class PeerBodies {
         if (b.far || dt > 0 || !this._buildInRange) { b.posed = false; b.stale = false; b.owed = false; }   // AUDIT PEER-CADENCE F2: far (or a frozen frame) - whatever skin stands is stale by the time it is stepped again
         if (b.swing != null) { b.swing = peer.shown.an | 0; b.cast = peer.shown.cn | 0; b.pending = null; }
         if (b.hit != null) { b.hit = peer.shown.ht | 0; if ((peer.shown.dd | 0) !== b.dead) b.dead = null; }   // MWNPC4: and the reactions - a recoil out of sight is not played, a death out of sight is a corpse on waking   // AUDIT WORLD C7: not arming (far, or frozen) - the counts follow, so a blow out of sight is not replayed on waking
+        if (b.gather) peerGatherSwing(b.gather, peer.shown);   // AUDIT GATHER-FEEL W3: and the act's beats (PEER-ACTS) - C7's law: a tool's blow out of sight is no strike on waking
       }
     }
     this._stepDue(dt);

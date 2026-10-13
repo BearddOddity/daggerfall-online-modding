@@ -286,7 +286,7 @@ test('PROF-RETICLE host: the marks stand round the crosshair\'s middle and read 
   assert.match(w, /const hud = createProfHud\(\{ anchor: \(\) => reticleAnchor\(canvas, fieldOfView\(\)\) \}\);/);
   const g = src('src/scenes/gatherHost.js');
   assert.match(g, /else if \(act\.act\.state\.done\) \{ hud\.setMeter\(act\.act, act\.label \?\? '', \{ byUse: act\.heldByUse === true \}\); finish\(act\); \}/);
-  assert.match(g, /if \(a\.clean\) ear\.say\('clean', null, \{ delay: lands \}\);/);   // PIN MOVED (GATHER-FEEL): the clean finish the ear's, as its last blow lands
+  assert.match(g, /if \(a\.clean\) ear\.say\('clean', null, \{ of: a\.act \}\);/);   // PIN MOVED (GATHER-FEEL): the clean finish the ear's, as its last blow lands - PIN MOVED again (AUDIT GATHER-FEEL LANDING): riding that blow's machine
   assert.ok(PROF_CSS.indexOf(PROF_ACT_CSS) > PROF_CSS.indexOf('.prof-meter { position: fixed; left: 50%; top: 50%;'), 'after the old meter\'s rules');
   assert.match(PROF_ACT_CSS, /\.prof-meter\.prof-reticle \{ position: fixed; left: var\(--rx, 50%\); top: var\(--ry, 50%\); transform: translate\(-50%, -50%\);/);
   assert.match(PROF_ACT_CSS, /padding: 0; margin: 0; background: none; border: 0; box-shadow: none;/, 'no plate');

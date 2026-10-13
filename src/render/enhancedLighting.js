@@ -695,7 +695,7 @@ ${LPT_FS_TEXEL}  if (tex.a < ((uSpectral == 1 || uConceal.x > 0.0) ? 0.1 : 0.5))
   }
   if (dissolveGone(uv)) discard;   // DISSOLVE: burnt away, or not yet through its portal
   vec3 emission = elDecode(emissionTexel);   // SPRITE-GRAD: sampled above the cut
-  vec3 albedo = max(elDecode(tex.rgb) - emission, vec3(0.0)) * veinCrackShade(uv);   // VEIN-CRACKS: a worked vein's seams, the classic lane's law
+  vec3 albedo = max(elDecode(tex.rgb * veinCrackShade(uv)) - emission, vec3(0.0));   // VEIN-CRACKS: a worked vein's seams, the classic lane's law - AUDIT GATHER-FEEL V4: the shade the texel's display colour takes there, then decoded with it (on the linear albedo a seam stood at half the classic's dark)
   vec3 base = vBBBase + vec3(0.0, 0.5, 0.0);   // EL2: the shadow is read a half unit up the sprite's base, once for the whole flat
   // PERF-SUN2: a flat has no normal, so there is no n.L to gate on - but
   // there is still uBBSun, which is the sun's whole share of the tint

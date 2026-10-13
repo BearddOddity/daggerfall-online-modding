@@ -370,8 +370,8 @@ still bound the shake. The pitch, roll and eye are first person only (the climb'
 reaches every view, as the climb's does; in third person the hands' dip has no hands to move. GATHER-FEEL II
 (BLOW-SHAKE, `06-Systems/Professions-Arc.md` section 44): a gathering tool's landed blow goes into the same springs
 through their one door (`combat/techniqueFx.js` kickFx), so the same setting scales it - a dip of the look, the eye and
-the hands lighter than any technique's, on the enhanced skin alone and never under reduced motion; the setting's note
-names it.
+the hands, each under the least any technique's hit dips it (AUDIT GATHER-FEEL F5/R1: the look's stood at and past
+cleave's), on the enhanced skin alone and never under reduced motion; the setting's note names it.
 
 **Performance.** THE FEEL costs nothing while no technique is in the air: its springs are a preallocated typed array
 (critically damped, stepped by their closed form - the same curve at any frame rate, put to exact rest from below a

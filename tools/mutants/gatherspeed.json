@@ -162,8 +162,8 @@
  {
   "name": "GATHER-SPEED-act-end-stands-nothing",
   "file": "src/scenes/gatherHost.js",
-  "old": "for (const l of due) { l.a.landing = false; fallNow(l.a); }",
-  "new": "for (const l of due) { l.a.landing = false; }",
+  "old": "    if (a.landing) { a.landing = false; fallNow(a); }",
+  "new": "    if (a.landing) { a.landing = false; }",
   "tests": [
    "test/gatherspeed.test.js"
   ],

@@ -47,8 +47,8 @@
   {
     "name": "HERB-CURSOR-escape-unsynced",
     "file": "src/scenes/gatherHost.js",
-    "old": "act.act.cancel(); unwork(act); act = null; syncPointer(); hud.setMeter(null); return true; },",
-    "new": "act.act.cancel(); unwork(act); act = null; hud.setMeter(null); return true; },",
+    "old": "act.act.cancel(); act = null; syncPointer(); hud.setMeter(null); return true; },",
+    "new": "act.act.cancel(); act = null; hud.setMeter(null); return true; },",
     "tests": [
       "test/fb1002_herbcursor.test.js"
     ]
@@ -74,8 +74,8 @@
   {
     "name": "HERB-CURSOR-dispose-unsynced",
     "file": "src/scenes/gatherHost.js",
-    "old": "stood.clear(); act = null; syncPointer(); hud.dispose(); },",
-    "new": "stood.clear(); act = null; hud.dispose(); },",
+    "old": "standGen.clear(); act = null; syncPointer(); hud.dispose(); },",
+    "new": "standGen.clear(); act = null; hud.dispose(); },",
     "tests": [
       "test/fb1002_herbcursor.test.js"
     ]

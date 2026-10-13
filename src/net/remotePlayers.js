@@ -1000,7 +1000,6 @@ export class RemotePlayers {
   rebaseFootsteps() {
     for (const fm of this._footsteps.values()) fm.rebase();
     this._climbSounds.rebase();   // CLIMB5: and the climb's last places - the shift is no reach up the wall
-    this._gatherSounds.rebase();   // PEER-ACTS: and a net's place, a blow in the air - places in the old frame
   }
 
   /** PEER-FS2 (Mac: "attacking sounds are not in"): every SWING - not just
@@ -1089,6 +1088,7 @@ export class RemotePlayers {
    *  is (the sync above ran before the recentre, so its panners stood in the old frame for one frame: a click). */
   rebaseSounds(offset) {
     if (!offset) return;
+    this._gatherSounds.rebase(offset);   // PEER-ACTS (AUDIT GATHER-FEEL W1): a net's place and a blow in the air move with the land
     for (const [id, r] of this._riding) {
       if (!r.at) continue;
       r.at = [r.at[0] + offset[0], r.at[1] + offset[1], r.at[2] + offset[2]];

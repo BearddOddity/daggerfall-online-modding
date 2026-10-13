@@ -38,7 +38,7 @@
   {
     "name": "GATHER-FEEL-chop-lands-whole-swing",
     "file": "src/systems/chopAct.js",
-    "old": "get landsIn() { return Math.max(0, st.swing - CHOP_ACT.swingS * (1 - MELEE_HIT_SHARE)); },",
+    "old": "get landsIn() { return Math.max(0, st.swing - CHOP_REST_S); },",
     "new": "get landsIn() { return Math.max(0, st.swing); },",
     "tests": [
       "test/gatherfeel.test.js"
@@ -47,7 +47,7 @@
   {
     "name": "GATHER-FEEL-strike-lands-whole-swing",
     "file": "src/systems/mineAct.js",
-    "old": "get landsIn() { return Math.max(0, st.swing - MINE_ACT.swingS * (1 - MELEE_HIT_SHARE)); },",
+    "old": "get landsIn() { return Math.max(0, st.swing - MINE_REST_S); },",
     "new": "get landsIn() { return Math.max(0, st.swing); },",
     "tests": [
       "test/gatherfeel.test.js"
@@ -56,8 +56,8 @@
   {
     "name": "GATHER-FEEL-chop-swing-frozen-at-end",
     "file": "src/systems/chopAct.js",
-    "old": "      st.swing = Math.max(0, st.swing - dt);   // GATHER-FEEL: past the end too - the last swing runs out, its blow lands\n      if (st.done || st.cancelled) return;",
-    "new": "      if (st.done || st.cancelled) return;\n      st.swing = Math.max(0, st.swing - dt);",
+    "old": "      st.swing = Math.max(0, st.swing - dt);   // GATHER-FEEL: past the end too - the last swing runs out, its blow lands\n      if (aloft && !(st.swing > CHOP_REST_S)) st.landed++;   // AUDIT GATHER-FEEL LANDING: counted before a press can begin the next swing\n      if (st.done || st.cancelled) return;",
+    "new": "      if (st.done || st.cancelled) return;\n      st.swing = Math.max(0, st.swing - dt);\n      if (aloft && !(st.swing > CHOP_REST_S)) st.landed++;",
     "tests": [
       "test/gatherfeel.test.js"
     ]
@@ -65,8 +65,8 @@
   {
     "name": "GATHER-FEEL-strike-swing-frozen-at-end",
     "file": "src/systems/mineAct.js",
-    "old": "      st.swing = Math.max(0, st.swing - dt);   // GATHER-FEEL: past the end too - the last swing runs out, its blow lands\n      if (st.done || st.cancelled) return;",
-    "new": "      if (st.done || st.cancelled) return;\n      st.swing = Math.max(0, st.swing - dt);",
+    "old": "      st.swing = Math.max(0, st.swing - dt);   // GATHER-FEEL: past the end too - the last swing runs out, its blow lands\n      if (aloft && !(st.swing > MINE_REST_S)) st.landed++;   // AUDIT GATHER-FEEL LANDING: counted before a press can begin the next swing\n      if (st.done || st.cancelled) return;",
+    "new": "      if (st.done || st.cancelled) return;\n      st.swing = Math.max(0, st.swing - dt);\n      if (aloft && !(st.swing > MINE_REST_S)) st.landed++;",
     "tests": [
       "test/gatherfeel.test.js"
     ]
@@ -74,7 +74,7 @@
   {
     "name": "GATHER-FEEL-blow-on-the-press",
     "file": "src/systems/gatherSounds.js",
-    "old": "out.push(beat(st.last === 'clean' ? 'chopClean' : 'chop', lands));",
+    "old": "out.push(beat(st.last === 'clean' ? 'chopClean' : 'chop', lands, 1, 1, rides(0)));",
     "new": "out.push(beat(st.last === 'clean' ? 'chopClean' : 'chop'));",
     "tests": [
       "test/gatherfeel.test.js"
@@ -101,8 +101,8 @@
   {
     "name": "GATHER-FEEL-glint-crossed",
     "file": "src/systems/gatherSounds.js",
-    "old": "out.push(beat(st.last === 'glint' ? 'pickGlint' : 'pick', lands));",
-    "new": "out.push(beat(st.last === 'glint' ? 'pick' : 'pickGlint', lands));",
+    "old": "out.push(beat(st.last === 'glint' ? 'pickGlint' : 'pick', lands, 1, 1, rides(0)));",
+    "new": "out.push(beat(st.last === 'glint' ? 'pick' : 'pickGlint', lands, 1, 1, rides(0)));",
     "tests": [
       "test/gatherfeel.test.js"
     ]
@@ -236,8 +236,8 @@
   {
     "name": "GATHER-FEEL-rank-at-once",
     "file": "src/systems/gatherSounds.js",
-    "old": "queue(beat(name, Math.max(0, Number(delay) || 0) + (say.after ?? 0)), isVec3(at) ? [at[0], at[1], at[2]] : null);",
-    "new": "queue(beat(name, Math.max(0, Number(delay) || 0)), isVec3(at) ? [at[0], at[1], at[2]] : null);",
+    "old": "const wait = Math.max(0, Number(delay) || 0) + (say.after ?? 0);",
+    "new": "const wait = Math.max(0, Number(delay) || 0);",
     "tests": [
       "test/gatherfeel.test.js"
     ]
@@ -245,8 +245,8 @@
   {
     "name": "GATHER-FEEL-stop-drops-all",
     "file": "src/systems/gatherSounds.js",
-    "old": "stop() { if (heard) pending = pending.filter((p) => p.of !== heard); heard = null; prev = {}; },",
-    "new": "stop() { pending = []; heard = null; prev = {}; },",
+    "old": "if (act) pending = pending.filter((p) => p.of !== act);",
+    "new": "if (act) pending = [];",
     "tests": [
       "test/gatherfeel.test.js"
     ]
@@ -254,8 +254,8 @@
   {
     "name": "GATHER-FEEL-stop-drops-none",
     "file": "src/systems/gatherSounds.js",
-    "old": "stop() { if (heard) pending = pending.filter((p) => p.of !== heard); heard = null; prev = {}; },",
-    "new": "stop() { heard = null; prev = {}; },",
+    "old": "if (act) pending = pending.filter((p) => p.of !== act);",
+    "new": "if (act && false) pending = pending.filter((p) => p.of !== act);",
     "tests": [
       "test/gatherfeel.test.js"
     ]
@@ -299,8 +299,8 @@
   {
     "name": "GATHER-FEEL-classic-on-the-press",
     "file": "src/systems/gatherSounds.js",
-    "old": "    if (b.delay > 0) pending.push({ due: clock + b.delay, b, place: place ?? placeOf(GATHER_SAY[b.name]?.where), of });",
-    "new": "    if (b.delay > 0 && on()) pending.push({ due: clock + b.delay, b, place: place ?? placeOf(GATHER_SAY[b.name]?.where), of });",
+    "old": "    if (!(wait > 0)) { fire(b, place, voice); return; }",
+    "new": "    if (!(wait > 0) || !on()) { fire(b, place, voice); return; }",
     "tests": [
       "test/gatherfeel.test.js"
     ]
@@ -326,8 +326,8 @@
   {
     "name": "GATHER-FEEL-follow-never-put-away",
     "file": "src/scenes/gatherHost.js",
-    "old": "if (follow) { stepAct(follow, dt, {}); if (!(follow.act.swing > 0)) follow = null; }",
-    "new": "if (follow) { stepAct(follow, dt, {}); }",
+    "old": "        if (follow && !(follow.act.swing > 0)) follow = null;\n",
+    "new": "",
     "tests": [
       "test/gatherfeel.test.js"
     ]
@@ -335,7 +335,7 @@
   {
     "name": "GATHER-FEEL-node-gone-on-the-press",
     "file": "src/scenes/gatherHost.js",
-    "old": "    if (lands > 0) { a.landing = true; landing.push({ a, left: lands }); }\n    else fallNow(a);",
+    "old": "    if (lands > 0) a.landing = true;   // AUDIT GATHER-FEEL LANDING: gone in blowLanded, on its machine's own clock\n    else fallNow(a);",
     "new": "    fallNow(a);",
     "tests": [
       "test/gatherfeel.test.js"
@@ -362,8 +362,8 @@
   {
     "name": "GATHER-FEEL-refusal-keeps-the-landing",
     "file": "src/scenes/gatherHost.js",
-    "old": "if (a?.landing) { a.landing = false; landing = landing.filter((l) => l.a !== a); }",
-    "new": "if (a?.landing) { void a; }",
+    "old": "      a.landing = false;   // GATHER-FEEL: refused before its blow landed - its node never went",
+    "new": "      void a;",
     "tests": [
       "test/gatherfeel.test.js"
     ]
@@ -371,10 +371,11 @@
   {
     "name": "GATHER-FEEL-escape-keeps-the-blow",
     "file": "src/scenes/gatherHost.js",
-    "old": "cancel() { if (!act) return false; ear.stop(); act.act.cancel();",
+    "old": "cancel() { if (!act) return false; letGo(act); act.act.cancel();",
     "new": "cancel() { if (!act) return false; act.act.cancel();",
     "tests": [
-      "test/gatherfeel.test.js"
+      "test/gatherfeel.test.js",
+      "test/audit_gatherfeel.test.js"
     ]
   },
   {
@@ -434,7 +435,7 @@
   {
     "name": "GATHER-FEEL-gone-unsaid",
     "file": "src/scenes/gatherHost.js",
-    "old": "    if (k.goneSound) ear.say(k.goneSound, actWorld(a) ?? a.world);",
+    "old": "    if (k.goneSound) ear.say(k.goneSound, actWorld(a) ?? a.world, { voice: a.node.key });",
     "new": "    if (k.goneSound) void a;",
     "tests": [
       "test/gatherfeel.test.js"
@@ -461,7 +462,7 @@
   {
     "name": "GATHER-FEEL-clean-at-once",
     "file": "src/scenes/gatherHost.js",
-    "old": "if (a.clean) ear.say('clean', null, { delay: lands });",
+    "old": "if (a.clean) ear.say('clean', null, { of: a.act });",
     "new": "if (a.clean) ear.say('clean', null, { delay: 0 });",
     "tests": [
       "test/profreticle.test.js",

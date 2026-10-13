@@ -2,8 +2,8 @@
  {
   "name": "GF2-BLOWSHAKE-a-blow-looks-up",
   "file": "src/systems/gatherBlow.js",
-  "old": "plain: f({ cam: f({ pitch: -0.7, eye: -0.012 }), hands: f({ y: 0.022 }) }),",
-  "new": "plain: f({ cam: f({ pitch: 0.7, eye: -0.012 }), hands: f({ y: 0.022 }) }),",
+  "old": "plain: f({ cam: f({ pitch: -0.45, eye: -0.012 }), hands: f({ y: 0.022 }) }),",
+  "new": "plain: f({ cam: f({ pitch: 0.45, eye: -0.012 }), hands: f({ y: 0.022 }) }),",
   "tests": [
    "test/gf2_blowshake.test.js"
   ]
@@ -11,8 +11,8 @@
  {
   "name": "GF2-BLOWSHAKE-the-clean-one-no-deeper",
   "file": "src/systems/gatherBlow.js",
-  "old": "clean: f({ cam: f({ pitch: -1.1, eye: -0.02 }), hands: f({ y: 0.034 }) }),",
-  "new": "clean: f({ cam: f({ pitch: -0.8, eye: -0.02 }), hands: f({ y: 0.034 }) }),",
+  "old": "clean: f({ cam: f({ pitch: -0.7, eye: -0.02 }), hands: f({ y: 0.034 }) }),",
+  "new": "clean: f({ cam: f({ pitch: -0.5, eye: -0.02 }), hands: f({ y: 0.034 }) }),",
   "tests": [
    "test/gf2_blowshake.test.js"
   ]
@@ -20,8 +20,8 @@
  {
   "name": "GF2-BLOWSHAKE-a-shake-on-a-tool",
   "file": "src/systems/gatherBlow.js",
-  "old": "plain: f({ cam: f({ pitch: -0.8, eye: -0.014 }), hands: f({ y: 0.025 }) }),",
-  "new": "plain: f({ cam: f({ pitch: -0.8, eye: -0.014 }), hands: f({ y: 0.025 }), shake: 1 }),",
+  "old": "plain: f({ cam: f({ pitch: -0.5, eye: -0.014 }), hands: f({ y: 0.025 }) }),",
+  "new": "plain: f({ cam: f({ pitch: -0.5, eye: -0.014 }), hands: f({ y: 0.025 }), shake: 1 }),",
   "tests": [
    "test/gf2_blowshake.test.js"
   ]
@@ -92,8 +92,8 @@
  {
   "name": "GF2-BLOWSHAKE-the-kick-at-the-press",
   "file": "src/scenes/gatherHost.js",
-  "old": "    if (!(was > 0) || Number(a.act.landsIn) > 0) return false;\n",
-  "new": "    if (was > 0 || !(Number(a.act.landsIn) > 0)) return false;\n",
+  "old": "    if (!((a.act.state?.landed | 0) > was)) return false;\n",
+  "new": "    if (!(Number(a.act.landsIn) > 0)) return false;\n",
   "tests": [
    "test/gf2_blowshake.test.js"
   ]
@@ -101,8 +101,8 @@
  {
   "name": "GF2-BLOWSHAKE-the-blow-never-read",
   "file": "src/scenes/gatherHost.js",
-  "old": "    const was = Number(a.act.landsIn) || 0;\n",
-  "new": "    const was = 0;\n",
+  "old": "    const was = a.act.state?.landed | 0;\n",
+  "new": "    const was = Infinity;\n",
   "tests": [
    "test/gf2_blowshake.test.js"
   ]
@@ -110,8 +110,8 @@
  {
   "name": "GF2-BLOWSHAKE-the-follow-unstepped",
   "file": "src/scenes/gatherHost.js",
-  "old": "if (follow) { stepAct(follow, dt, {}); if (!(follow.act.swing > 0)) follow = null; }",
-  "new": "if (follow) { follow.act.tick(dt, {}); if (!(follow.act.swing > 0)) follow = null; }",
+  "old": "        for (const sw of swings) stepAct(sw, dt, {});",
+  "new": "        for (const sw of swings) sw.act.tick(dt, {});",
   "tests": [
    "test/gf2_blowshake.test.js"
   ]
@@ -146,7 +146,7 @@
  {
   "name": "GF2-BLOWSHAKE-the-setting-silent",
   "file": "src/ui/enhancedMenu.js",
-  "old": "'How much a weapon technique, or a tool\\'s blow as you gather, shakes and tilts the view and dips your hands.',",
+  "old": "'How much a weapon technique shakes and tilts the view and dips your hands - and, on the Enhanced skin, how far a tool\\'s blow dips them as you gather.',",
   "new": "'How much a weapon technique shakes and tilts the view and dips your hands.',",
   "tests": [
    "test/gf2_blowshake.test.js"
@@ -290,7 +290,7 @@
  {
   "name": "GF2-VEINCRACKS-the-lane-albedo-whole",
   "file": "src/render/enhancedLighting.js",
-  "old": "  vec3 albedo = max(elDecode(tex.rgb) - emission, vec3(0.0)) * veinCrackShade(uv);",
+  "old": "  vec3 albedo = max(elDecode(tex.rgb * veinCrackShade(uv)) - emission, vec3(0.0));",
   "new": "  vec3 albedo = max(elDecode(tex.rgb) - emission, vec3(0.0));",
   "tests": [
    "test/gf2_veincracks.test.js"
@@ -335,8 +335,8 @@
  {
   "name": "GF2-VEINCRACKS-escape-leaves-them-open",
   "file": "src/scenes/gatherHost.js",
-  "old": "act.act.cancel(); unwork(act); act = null; syncPointer(); hud.setMeter(null); return true; },",
-  "new": "act.act.cancel(); act = null; syncPointer(); hud.setMeter(null); return true; },",
+  "old": "cancel() { if (!act) return false; letGo(act);",
+  "new": "cancel() { if (!act) return false; ear.stop(act.act);",
   "tests": [
    "test/gf2_veincracks.test.js"
   ]
@@ -344,8 +344,8 @@
  {
   "name": "GF2-VEINCRACKS-a-refusal-leaves-them-open",
   "file": "src/scenes/gatherHost.js",
-  "old": "    if (a && !a.loose && r?.error !== 'node-taken') unwork(a);",
-  "new": "    if (false) unwork(a);",
+  "old": "    if (a && !a.loose) unwork(a);   // VEIN-CRACKS: refused",
+  "new": "    if (false) unwork(a);   // VEIN-CRACKS: refused",
   "tests": [
    "test/gf2_veincracks.test.js"
   ]
@@ -389,7 +389,7 @@
  {
   "name": "GF2-VEINCRACKS-a-torn-pixel-moved-on",
   "file": "src/scenes/gatherHost.js",
-  "old": "      for (const bu of bursts) if (bu.entry === entry) { bu.gone = true; bu.batch = null; }   // ...its chunks' too (on its list, freed with it)\n",
+  "old": "      for (const bu of bursts) if (bu.entry === entry) { bu.gone = true; bu.batch = null; }   // ...its chunks' too (on its list, freed with it; stepBursts lets them go)\n",
   "new": "",
   "tests": [
    "test/gf2_veincracks.test.js"
@@ -416,7 +416,7 @@
  {
   "name": "GF2-VEINCRACKS-the-dungeon-left-keeps-them",
   "file": "src/scenes/gatherHost.js",
-  "old": "      for (const bu of bursts) if (bu.dungeon === d) dropBurst(bu);   // VEIN-CRACKS: its chunks, through its doors\n",
+  "old": "      for (const bu of bursts) if (bu.dungeon === d) dropBurst(bu);   // VEIN-CRACKS: its chunks, through its doors (stepBursts lets them go)\n",
   "new": "",
   "tests": [
    "test/gf2_veincracks.test.js"
@@ -434,8 +434,8 @@
  {
   "name": "GF2-VEINCRACKS-the-face-away",
   "file": "src/systems/gatherBlow.js",
-  "old": "      p: [at[0] + dx * C.face + sx * across, at[1] + high, at[2] + dz * C.face + sz * across],",
-  "new": "      p: [at[0] - dx * C.face + sx * across, at[1] + high, at[2] - dz * C.face + sz * across],",
+  "old": "    const p = [at[0] + dx * C.face + sx * across, at[1] + high, at[2] + dz * C.face + sz * across];",
+  "new": "    const p = [at[0] - dx * C.face + sx * across, at[1] + high, at[2] - dz * C.face + sz * across];",
   "tests": [
    "test/gf2_veincracks.test.js"
   ]
@@ -443,8 +443,8 @@
  {
   "name": "GF2-VEINCRACKS-gravity-unsquared",
   "file": "src/systems/gatherBlow.js",
-  "old": "    const y = c.p[1] + c.v[1] * s - 0.5 * g * s * s;",
-  "new": "    const y = c.p[1] + c.v[1] * s - 0.5 * g * s;",
+  "old": "    c.p[1] += c.v[1] * s - 0.5 * g * s * s;",
+  "new": "    c.p[1] += c.v[1] * s - 0.5 * g * s;",
   "tests": [
    "test/gf2_veincracks.test.js"
   ]
@@ -452,8 +452,8 @@
  {
   "name": "GF2-VEINCRACKS-through-the-floor",
   "file": "src/systems/gatherBlow.js",
-  "old": "    const ground = y <= floor;",
-  "new": "    const ground = false;",
+  "old": "    if (left > dt) { c.t += s; return true; }",
+  "new": "    if (true) { c.t += s; return true; }",
   "tests": [
    "test/gf2_veincracks.test.js"
   ]
@@ -470,8 +470,8 @@
  {
   "name": "GF2-VEINCRACKS-the-box-too-small",
   "file": "src/systems/gatherBlow.js",
-  "old": "  const r = C.face + C.spread + Math.hypot(C.out[1], C.side) * flight;",
-  "new": "  const r = C.face + C.spread + Math.hypot(C.out[1], C.side) * flight * 0.5;",
+  "old": "  const r = C.face + C.spread + Math.hypot(C.out[1], C.side) * flight + w / 2;",
+  "new": "  const r = C.face + C.spread + Math.hypot(C.out[1], C.side) * flight * 0.5 + w / 2;",
   "tests": [
    "test/gf2_veincracks.test.js"
   ]
@@ -497,8 +497,8 @@
  {
   "name": "GF2-VEINCRACKS-the-floor-the-veins-foot",
   "file": "src/scenes/mineHost.js",
-  "old": "floor: n.what === 'dvein' ? n.local[1] - DVEIN_UP_M : n.local[1] }),",
-  "new": "floor: n.local[1] }),",
+  "old": "floor: n.what === 'dvein' ? n.local[1] - DVEIN_UP_M : n.local[1],",
+  "new": "floor: n.local[1],",
   "tests": [
    "test/gf2_veincracks.test.js"
   ]
@@ -533,8 +533,8 @@
  {
   "name": "GF2-VEINCRACKS-the-landing-at-the-steps-end",
   "file": "src/systems/gatherBlow.js",
-  "old": "      s = disc > 0 ? Math.max(0, Math.min(s, (c.v[1] + Math.sqrt(disc)) / g)) : 0;",
-  "new": "      s = Math.max(0, s);",
+  "old": "    const s = left <= dt ? Math.max(0, left) : dt;   // the step's time aloft, at most to its landing",
+  "new": "    const s = dt;",
   "tests": [
    "test/gf2_veincracks.test.js"
   ]
@@ -794,8 +794,8 @@
  {
   "name": "GF2-PEERACTS-the-net-lands-at-the-body",
   "file": "src/net/peerGather.js",
-  "old": "s.net = feet && (shown?.gm | 0) > 0 ? [feet[0] + Math.sin(yaw) * shown.gm, feet[1], feet[2] + Math.cos(yaw) * shown.gm] : place;",
-  "new": "s.net = place;",
+  "old": "          s.net = peerNetAt(shown, feet, yaw) ?? place;",
+  "new": "          s.net = place;",
   "tests": [
    "test/gf2_peeracts.test.js"
   ]
@@ -866,8 +866,8 @@
  {
   "name": "GF2-PEERACTS-the-rebase-keeps",
   "file": "src/net/peerGather.js",
-  "old": "rebase() { for (const s of this.peers.values()) { s.net = null; s.held.length = 0; } }",
-  "new": "rebase() {}",
+  "old": "    for (const s of this.peers.values()) for (const p of [s.net, ...s.held.map((h) => h.at)]) if (p) { p[0] += offset[0]; p[1] += offset[1]; p[2] += offset[2]; }",
+  "new": "    void offset;",
   "tests": [
    "test/gf2_peeracts.test.js"
   ]
@@ -920,7 +920,7 @@
  {
   "name": "GF2-PEERACTS-the-recentre",
   "file": "src/net/remotePlayers.js",
-  "old": "    this._gatherSounds.rebase();   // PEER-ACTS",
+  "old": "    this._gatherSounds.rebase(offset);   // PEER-ACTS",
   "new": "    // PEER-ACTS",
   "tests": [
    "test/gf2_peeracts.test.js"
@@ -1073,7 +1073,7 @@
  {
   "name": "GF2-PEERACTS-the-idle-misses-a-lone-beat",
   "file": "src/net/peerGather.js",
-  "old": "if (!ga && !s.ga && gb === s.gb && !s.held.length) return;",
+  "old": "if (!ga && !s.ga && !fresh && !s.held.length) return;",
   "new": "if (!ga && !s.ga && !s.held.length) return;",
   "tests": [
    "test/gf2_peeracts.test.js"
@@ -1082,8 +1082,8 @@
  {
   "name": "GF2-PEERACTS-the-idle-drops-a-blow-in-the-air",
   "file": "src/net/peerGather.js",
-  "old": "if (!ga && !s.ga && gb === s.gb && !s.held.length) return;",
-  "new": "if (!ga && !s.ga && gb === s.gb) return;",
+  "old": "if (!ga && !s.ga && !fresh && !s.held.length) return;",
+  "new": "if (!ga && !s.ga && !fresh) return;",
   "tests": [
    "test/gf2_peeracts.test.js"
   ]

@@ -177,10 +177,13 @@ export function treeKind({ book, renderer = null, flatBatchAabb = null, getTextu
       return [{ archive, record: STUMP_RECORD, scale: 1, centers: [n.local] }];
     },
     /** The pixel's felled trees sunk in their batches (and yesterday's stood again). */
-    stood(entry, nodes) {
+    /** @param {any} entry @param {any[]} nodes @param {(key: string) => boolean} [landing] */
+    stood(entry, nodes, landing = () => false) {
       const f = entry?.forest;
       if (!f?.groups || !renderer) return;
-      const sunk = new Set(nodes.filter((n) => goneIn(book, n.key, 'logs')).map((n) => `${n.flat.group}#${n.flat.i}`));   // GATHER-SPEED: or being counted
+      // GATHER-SPEED: or being counted - AUDIT GATHER-FEEL F1: never a tree whose felling chop is still in the air (the
+      // gathering host's `landing`): it falls as that chop lands, whatever stands its pixel again meanwhile
+      const sunk = new Set(nodes.filter((n) => goneIn(book, n.key, 'logs') && !landing(n.key)).map((n) => `${n.flat.group}#${n.flat.i}`));
       sinkFelled(f, sunk, renderer);
     },
     gone: (n) => goneIn(book, n.key, 'logs'),

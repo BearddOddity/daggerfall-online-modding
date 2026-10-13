@@ -24,17 +24,24 @@ const src = (p) => readFileSync(join(ROOT, p), 'utf8');
 const DEG = Math.PI / 180;
 const ON = { enhanced: () => true, reduced: () => false, motion: () => 1 };
 
-test('GF2-BLOWSHAKE B1: the table - an axe\'s and a pick\'s blow, plain and clean, each a dip of the look, the eye and the hands, the clean one deeper on every channel, the pick\'s deeper than the axe\'s; no roll, no lens, no shake; every dip under the lightest a technique\'s hit makes (mutants: a blow that looks up, a clean one no deeper, a shake on a tool)', () => {
+test('GF2-BLOWSHAKE B1: the table - an axe\'s and a pick\'s blow, plain and clean, each a dip of the look, the eye and the hands, the clean one deeper on every channel, the pick\'s deeper than the axe\'s; no roll, no lens, no shake; every dip under the least any technique\'s hit dips its channel (mutants: a blow that looks up, a clean one no deeper, a shake on a tool)', () => {
   assert.deepEqual(Object.keys(GATHER_BLOW_FEEL).sort(), ['chop', 'mine']);
-  const lightest = Math.min(...Object.values(TECH_FX).map((t) => t.hit?.hands?.y).filter((y) => y > 0));
-  assert.equal(lightest, 0.04, 'the whirlwind\'s');
+  // PIN MOVED (AUDIT GATHER-FEEL F5/R1): every channel against the least a technique's hit moves it - the hands alone were
+  // read, and three of the look's dips stood at or past cleave's; and the table's own numbers (a row at a tenth passed)
+  const least = (read) => Math.min(...Object.values(TECH_FX).map((t) => read(t.hit ?? {})).filter((v) => v > 0));
+  const lightest = least((h) => h.hands?.y ?? 0), look = least((h) => -(h.cam?.pitch ?? 0)), eye = least((h) => -(h.cam?.eye ?? 0));
+  assert.deepEqual([lightest, look, eye], [0.04, 0.8, 0.06], 'the whirlwind\'s hands, cleave\'s look, execute\'s eye');
+  assert.deepEqual(JSON.parse(JSON.stringify(GATHER_BLOW_FEEL)), {
+    chop: { plain: { cam: { pitch: -0.45, eye: -0.012 }, hands: { y: 0.022 } }, clean: { cam: { pitch: -0.65, eye: -0.018 }, hands: { y: 0.03 } } },
+    mine: { plain: { cam: { pitch: -0.5, eye: -0.014 }, hands: { y: 0.025 } }, clean: { cam: { pitch: -0.7, eye: -0.02 }, hands: { y: 0.034 } } },
+  }, 'the record\'s table');
   for (const [kind, rows] of Object.entries(GATHER_BLOW_FEEL)) {
     assert.deepEqual(Object.keys(rows).sort(), ['clean', 'plain'], kind);
     for (const [k, r] of Object.entries(rows)) {
       assert.deepEqual(Object.keys(r).sort(), ['cam', 'hands'], `${kind} ${k}: no shake, no burst, no sound`);
       assert.deepEqual(Object.keys(r.cam).sort(), ['eye', 'pitch'], `${kind} ${k}: no roll, no lens`);
       assert.ok(r.cam.pitch < 0 && r.cam.eye < 0 && r.hands.y > 0, `${kind} ${k}: down, every channel`);
-      assert.ok(r.hands.y < lightest, `${kind} ${k}: under every technique's hit`);
+      assert.ok(r.hands.y < lightest && -r.cam.pitch < look && -r.cam.eye < eye, `${kind} ${k}: under every technique's hit, on every channel`);
     }
     assert.ok(rows.clean.cam.pitch < rows.plain.cam.pitch && rows.clean.cam.eye < rows.plain.cam.eye && rows.clean.hands.y > rows.plain.hands.y, `${kind}: the clean blow deeper`);
   }
@@ -181,14 +188,16 @@ test('GF2-BLOWSHAKE B6: through the host - Escape mid-swing takes its blow with 
     t.host.tick(MINE_ACT.swingS);
     assert.equal(calls.length, 0, 'the blow went with the hand');
     // a patch: the hand's act swings nothing
-    const patch = t.host.nodesOf(PX, 150).find((n) => n.kind === 'herb');
-    if (patch) {
-      await arrive(t, patch);
-      t.face(patch);
-      t.host.tick(0.016);
-      if (t.host.press()) for (let i = 0; i < 40 && t.host.acting(); i++) t.host.tick(0.05);
-      assert.equal(calls.length, 0, 'a herb swings nothing');
-    }
+    // AUDIT GATHER-FEEL R16: asserted, never guarded - a guard that stopped running would pass silently
+    const patch = t.host.nodesOf(PX, 150).find((n) => n.kind === 'herb' && n.tier === 1);
+    assert.ok(patch, 'a tier-1 patch');
+    await arrive(t, patch);
+    t.face(patch);
+    t.host.tick(0.016);
+    assert.equal(t.host.press(), true, 'the herb\'s act');
+    for (let i = 0; i < 40 && t.host.acting(); i++) t.host.tick(0.05);
+    assert.equal(t.host.acting(), false, 'pulled');
+    assert.equal(calls.length, 0, 'a herb swings nothing');
     // a tree: the axe's blow
     const tree = t.host.nodesOf(PX, 150).find((n) => n.kind === 'tree');
     assert.ok(tree, 'a tree');
@@ -208,13 +217,14 @@ test('GF2-BLOWSHAKE B6: through the host - Escape mid-swing takes its blow with 
 test('GF2-BLOWSHAKE B7: the seams - the host steps its machines through stepAct alone and feels a landed blow by default through gatherBlowFeel; the springs are the view\'s, never the look the glint is aimed with; the player\'s setting names the tool\'s blow (mutants: a machine ticked behind stepAct\'s back, the default feel dropped)', () => {
   const host = src('src/scenes/gatherHost.js');
   assert.equal(host.match(/\.act\.tick\(/g)?.length, 1, 'one tick: stepAct\'s');
-  assert.match(host, /function stepAct\(a, dt, input\) \{\n\s+const was = Number\(a\.act\.landsIn\) \|\| 0;\n\s+a\.act\.tick\(dt, input\);/);
+  assert.match(host, /function stepAct\(a, dt, input\) \{\n\s+const was = a\.act\.state\?\.landed \| 0;\n\s+a\.act\.tick\(dt, input\);/);   // PIN MOVED (AUDIT GATHER-FEEL LANDING): a blow landed is the machine's count
   assert.match(host, /const feel = deps\.feel \?\? gatherBlowFeel;/);
   const blow = src('src/systems/gatherBlow.js');
   assert.match(blow, /import \{ kickFx, techniqueMotion \} from '\.\.\/combat\/techniqueFx\.js';/, 'the springs\' one door');
   assert.doesNotMatch(blow, /\b(cam|camera|view)\.(pitch|yaw)\s*[-+*/]?=/, 'no camera written: the springs are folded into the view by every host (player/climbFeel.js)');
   const menu = src('src/ui/enhancedMenu.js');
-  assert.match(menu, /choiceRow\('techniqueMotion', 'Technique camera motion',\n\s+'How much a weapon technique, or a tool\\'s blow as you gather, shakes and tilts the view and dips your hands\.',/);
+  // PIN MOVED (AUDIT GATHER-FEEL F8): the note says what a blow does, and where - a dip, never a shake or a tilt, on the Enhanced skin alone
+  assert.match(menu, /choiceRow\('techniqueMotion', 'Technique camera motion',\n\s+'How much a weapon technique shakes and tilts the view and dips your hands - and, on the Enhanced skin, how far a tool\\'s blow dips them as you gather\.',/);
 });
 
 test('GF2-BLOWSHAKE B8: a blow\'s answer never stops an act - a feel that throws, and the vein is struck out and goes as its last blow lands all the same (mutant: the throw let through)', async () => {

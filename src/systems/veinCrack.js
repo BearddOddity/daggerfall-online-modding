@@ -6,7 +6,8 @@
 //
 // `batch.crack` = [share worked 0..1, seed 0..1]: the ore's picture is split along the seams of a field of cells a few of
 // the art's own texels across, each seam a texel wide - the seams nearest the face's heart open first, spreading outward
-// as one network in the order their seed gives, until a vein a blow from breaking is broken into fragments. A seam is
+// in the order their seed gives (the most of it one network, a few short dashes apart - AUDIT GATHER-FEEL V5), until a
+// vein a blow from breaking is broken into fragments. A seam is
 // the texel's colour taken down (VEIN_CRACK_SHADE), lit as the flat is, so the light, the wash and the fog fall on it as
 // on the ore. Undefined or null: whole. The gathering host lays it on the struck node's own batch as each blow lands
 // (scenes/gatherHost.js).
@@ -17,7 +18,8 @@ export const VEIN_CRACK_CELL = 7;
 export const VEIN_CRACK_SHADE = 0.3;
 /** A seam's turn to open, of the share worked: its own (the pattern's seed) and its distance from the face's heart (0 the
  *  middle, about 1 the rim), weighted - the heart's the more, so the first blow's crack is a star at the middle and each
- *  blow after spreads it outward as one network, never scattered dashes. */
+ *  blow after spreads it outward, the most of it one network. AUDIT GATHER-FEEL V5: not all of it - the heart is weighed
+ *  texel by texel and a seam's own turn seam by seam, so a few short dashes (a texel or a few) open apart from it. */
 export const VEIN_CRACK_ORDER = Object.freeze({ own: 0.35, heart: 0.75 });
 
 /** Put a crack on a batch at `share` worked (0 or less, or none: whole), its pattern `seed` (0..1). Written in place: a

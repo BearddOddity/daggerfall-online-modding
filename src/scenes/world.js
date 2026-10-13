@@ -34255,6 +34255,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       betterAmbience.rebase();   // BA1: the same anchor, the mod's own machine
       remotePlayers?.rebaseFootsteps?.();   // PEER-BUZZ: and every peer's - their strides are measured in scene units now, so they recentre with the rest
       remotePlayers?.rebaseSounds?.(r.offset);   // AUDIT DISC7 B6: and the riders' loops, in the frame the listener moves in
+      gatherHost?.rebase(r.offset);   // AUDIT GATHER-FEEL: and the gathering's ear - a net's place, a blow in the air - with the land
       _dwSwimSound.rebase(r.offset);   // DW-D: the swim's odometer too - a recentre is not a stroke
       if (_partyRestVoteOrigin) { _partyRestVoteOrigin[0] += r.offset[0]; _partyRestVoteOrigin[1] += r.offset[1]; _partyRestVoteOrigin[2] += r.offset[2]; }   // AUDIT PARTY-REST: PARTY-REST16's origin is a scene point too - unshifted, a crossing read as a 819-unit walk and cancelled the vote
       mwViewRebase(r.offset);   // EOTB-IL: FloatingOrigin.OnPositionUpdate - the sprite camera's smoothing follows the origin

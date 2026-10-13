@@ -10,13 +10,15 @@
 // finished one whose last swing is still in the air (GATHER-FEEL's `follow` - the tool the gatherer's own hand holds);
 // `gm` the net's throw in whole metres while it is out; and `gb` the beats - a count, round and round past 255, times 16
 // with the last beat's kind under it (GATHER_POSE_BEATS: a blow, a clean one, a bruise, the herb pulled, a find, a miss,
-// the knife going in, its stroke, its tear, the pelt off, the net in). The count rides on its own, as the landed blows'
+// the knife going in, its stroke, its tear, the pelt off, the net in - and a blow taken back, its act let go while it was
+// still in the air: AUDIT GATHER-FEEL W2, the gatherer's own ear drops it). The count rides on its own, as the landed blows'
 // does (`hk`): a beat counted as its act ends - the herb pulled, the pelt off, the net in - rides the pose that ends it,
 // and the count runs on across acts, so a peer that missed a pose between two acts never hears an old beat again. All
 // three absent until a player gathers.
 //
 // THE SENDER (createGatherPose): the act's beats are the ear's own law (systems/gatherSounds.js actBeats, run on its own
-// last state), each one the pose names counted - so the others hear what the gatherer hears, on the same beats.
+// last state), each one the pose names counted - so the others hear what the gatherer hears, on the same beats; and the
+// host counts a blow taken back where its ear drops one (scenes/gatherHost.js letGo).
 //
 // THE RECEIVER. Every lane that draws a peer reads the same fields:
 //   - the Morrowind body (net/peerBodies.js) holds the act's tool - the classic lane's own stand-in weapon, the War Axe,
@@ -48,8 +50,10 @@ const f = Object.freeze;
 
 /** The acts the pose names, by `ga` - 1: an act machine's state kind, a net's by its phase. */
 export const GATHER_POSE_ACTS = f(['chop', 'mine', 'hand', 'steady', 'basket', 'trace', 'wind', 'fly', 'wait', 'tug', 'haul']);
-/** The beats the pose names, by `gb` & 15 (sixteen at most - the wire's POSE_GATHER_BEAT_MAX). */
-export const GATHER_POSE_BEATS = f(['blow', 'clean', 'bruise', 'pluck', 'find', 'miss', 'knife', 'slice', 'tear', 'peel', 'out']);
+/** The beats the pose names, by `gb` & 15 (sixteen at most - the wire's POSE_GATHER_BEAT_MAX). AUDIT GATHER-FEEL W2:
+ *  `stop` - the blow counted just before it taken back (its act let go while it was in the air), dropped by every peer
+ *  before it lands, as the gatherer's own ear drops it. */
+export const GATHER_POSE_BEATS = f(['blow', 'clean', 'bruise', 'pluck', 'find', 'miss', 'knife', 'slice', 'tear', 'peel', 'out', 'stop']);
 /** The ear's beats (systems/gatherSounds.js actBeats' names) that are the pose's: the tool's blows, the hand's and the
  *  knife's moments, the net in. The rest are the act's own (a swing comes with its blow, a kneel and a throw with the act
  *  itself) or the gatherer's alone (the glint's sparkle, the tree's creak - its node is theirs). */
@@ -66,23 +70,24 @@ export function gatherActCode(st) {
 
 /**
  * THE SENDER: `frame(act)` every frame of the gathering host - the act machine playing, or null - counts the beats the
- * pose names (the ear's own law, on its own last state); `fields(act)` the pose's fields for the act the hand is on (the
- * one playing, or a finished one's last swing - null for none): `ga` and the net's `gm` for it, and the beats' `gb`
- * whatever it is - the count is the session's, run on across acts and riding past their end.
+ * pose names (the ear's own law, on its own last state); `stop()` counts a blow taken back (the host's, as it lets an
+ * act go with its blow in the air); `fields(act)` the pose's fields for the act the hand is on (the one playing, or a
+ * finished one's last swing - null for none): `ga` and the net's `gm` for it, and the beats' `gb` whatever it is - the
+ * count is the session's, run on across acts and riding past their end.
  */
 export function createGatherPose() {
   let heard = null, prev = {}, n = 0, gb = 0;
+  const count = (kind) => { n = (n % 255) + 1; gb = n * 16 + GATHER_POSE_BEATS.indexOf(kind); };
   return {
     frame(act) {
       if (act !== heard) { heard = act; prev = {}; }
       if (!act?.state) return;
       for (const b of actBeats(prev, act.state, 0)) {
         const kind = POSE_BEAT_OF[/** @type {keyof typeof POSE_BEAT_OF} */ (b.name)];
-        if (kind === undefined) continue;
-        n = (n % 255) + 1;
-        gb = n * 16 + GATHER_POSE_BEATS.indexOf(kind);
+        if (kind !== undefined) count(kind);
       }
     },
+    stop() { count('stop'); },
     fields(act) {
       const out = /** @type {{ ga?: number, gb?: number, gm?: number }} */ ({});
       const ga = gatherActCode(act?.state);
@@ -142,9 +147,11 @@ export function peerGatherSwing(seen, shown) {
 
 // ---- the receiver: what a peer's act sounds like ---------------------------------------------------------------------
 
-/** The least time between two of one peer's beats (ms): an honest act's are a third of a second apart and more (a swing is
- *  0.45 s), and a pose stream that flips its fields every pose asks a one-shot of every drawn frame - the climb's floor
- *  (net/peerClimb.js PEER_CUE_MS). */
+/** The least time between two of one peer's beats (ms): one pose at the pose's top rate (net/online.js POSE_HZ, pinned
+ *  equal - AUDIT GATHER-FEEL R7: it is no floor of the climb's). The wire carries an honest act's beats one a pose at
+ *  most - a tool's a swing apart (0.45 s), the knife's strokes and the Basket's finds as often as a pose goes - and a
+ *  pose stream that flips its fields every pose would ask a one-shot of every drawn frame. A blow taken back is no cue:
+ *  it is heard under the floor. */
 export const PEER_GATHER_CUE_MS = 100;
 /** Where a peer's act is heard: this far before the body (metres, along its facing - a node is worked within DFU's
  *  activation distance), this high off its feet. */
@@ -159,6 +166,11 @@ const BEAT_SAYS = f({ bruise: 'bruise', pluck: 'pluck', find: 'find', miss: 'mis
 
 /** A peer's act's place: PEER_ACT_REACH_M before its feet along its facing, PEER_ACT_HIGH_M up. */
 export const peerActAt = (feet, yaw, reach = PEER_ACT_REACH_M, high = PEER_ACT_HIGH_M) => [feet[0] + Math.sin(yaw) * reach, feet[1] + high, feet[2] + Math.cos(yaw) * reach];
+/** The acts a net is out for (its water heard where it landed). */
+const NET_OUT = new Set(['wait', 'tug', 'haul']);
+/** Where a peer's net landed: its throw (`gm`, whole metres) before its feet along its facing, at their height - null
+ *  with no throw on the pose. */
+const peerNetAt = (shown, feet, yaw) => (feet && (shown?.gm | 0) > 0 ? [feet[0] + Math.sin(yaw) * shown.gm, feet[1], feet[2] + Math.cos(yaw) * shown.gm] : null);
 
 export class PeerGatherSounds {
   /**
@@ -174,7 +186,7 @@ export class PeerGatherSounds {
     this.rand = rand;
     this.install = install;
     this.now = now;
-    /** id -> { ga, gb, net, cueAt, plipAt, thrashAt, held: [{ due, name, at, pitch, gain }] } */
+    /** id -> { ga, gb, net, cueAt, plipAt, thrashAt, held: [{ due, name, at, pitch, gain, n }] } - `n` a held blow's count */
     this.peers = new Map();
     /** sound -> the key last played */
     this.last = new Map();
@@ -186,15 +198,19 @@ export class PeerGatherSounds {
    */
   update(id, shown, feet, heard = true) {
     const ga = shown?.ga | 0, gb = shown?.gb | 0;
+    const yaw = Number.isFinite(shown?.yaw) ? shown.yaw : 0;
     let s = this.peers.get(id);
     if (!s) { this.peers.set(id, { ga, gb, net: null, cueAt: -Infinity, plipAt: Infinity, thrashAt: Infinity, held: [] }); return; }   // first seen: an old act is not replayed
-    if (!ga && !s.ga && gb === s.gb && !s.held.length) return;   // gathering nothing, no new beat, nothing in the air: a frame's no work (every peer in the room passes here)
+    const fresh = gb > 0 && gb !== s.gb;   // a beat not yet heard (AUDIT GATHER-FEEL W4: none on a pose that names none - a reload's new page, its count not yet begun)
+    if (!ga && !s.ga && !fresh && !s.held.length) return;   // gathering nothing, no new beat, nothing in the air: a frame's no work (every peer in the room passes here)
     const t = this.now();
     const doing = GATHER_POSE_ACTS[ga - 1] ?? null, before = GATHER_POSE_ACTS[s.ga - 1] ?? null;   // the act now, and as last seen (named apart from the hosts' key `act` - ROAD-H H5's sweep reads `if (act === ...)` as a key's arm)
-    const yaw = Number.isFinite(shown?.yaw) ? shown.yaw : 0;
     const ok = heard && !!feet && !!this.audio?.play3d;
     if (ok && this.install && this.on()) installGatherSounds(this.audio);
     const place = feet ? peerActAt(feet, yaw) : null;
+    // AUDIT GATHER-FEEL W2: a blow taken back - its act let go while it was in the air (the pose's `stop`) - goes before it
+    // lands, as the gatherer's own ear drops it: the blow counted just before the stop, under the floor or not
+    if (fresh && gatherBeatOf(gb) === 'stop' && s.held.length) { const was = (((gb >> 4) + 253) % 255) + 1; s.held = s.held.filter((h) => h.n !== was); }
     // the held blows whose time has come, first - they were struck before anything this pose begins; dropped with the
     // peer out of earshot
     if (s.held.length) {
@@ -212,7 +228,7 @@ export class PeerGatherSounds {
         if (doing === 'hand' || doing === 'steady' || doing === 'basket') { this._say('kneel', place); cued = true; }
         if (doing === 'fly') { this._say('throw', place); cued = true; }
         if (doing === 'wait') {
-          s.net = feet && (shown?.gm | 0) > 0 ? [feet[0] + Math.sin(yaw) * shown.gm, feet[1], feet[2] + Math.cos(yaw) * shown.gm] : place;
+          s.net = peerNetAt(shown, feet, yaw) ?? place;
           this._say('netLand', s.net); cued = true;
         }
         if (doing === 'tug') { this._say('tug', s.net ?? place); cued = true; }
@@ -220,13 +236,13 @@ export class PeerGatherSounds {
       }
       // a beat: the tool's swing now and its blow on the hit frame (the tool the act's - or, a last blow come with the
       // pose that let the act go, the act's it ended); the hand's, the knife's and the net's own
-      if (gb > 0 && gb !== s.gb) {
+      if (fresh) {
         const kind = gatherBeatOf(gb);
         const tool = doing === 'chop' || doing === 'mine' ? doing : before === 'chop' || before === 'mine' ? before : null;
         const blow = (kind === 'blow' || kind === 'clean') && tool ? BLOW_SAYS[tool][kind] : null;
         if (blow && tool && place) {
           this._say('swing', place, tool === 'mine' ? GATHER_SOUND.PICK_SWING_PITCH : 1);
-          s.held.push({ due: t + PEER_BLOW_DELAY_S[tool] * 1000, name: blow, at: place, pitch: 1, gain: 1 });
+          s.held.push({ due: t + PEER_BLOW_DELAY_S[tool] * 1000, name: blow, at: place, pitch: 1, gain: 1, n: gb >> 4 });
           cued = true;
         } else if (kind && BEAT_SAYS[/** @type {keyof typeof BEAT_SAYS} */ (kind)]) {
           this._say(BEAT_SAYS[/** @type {keyof typeof BEAT_SAYS} */ (kind)], kind === 'out' ? peerActAt(feet, yaw, 0, PEER_ACT_HIGH_M) : place);
@@ -235,7 +251,10 @@ export class PeerGatherSounds {
       }
     }
     if (cued) s.cueAt = t;
-    if (doing !== 'wait' && doing !== 'tug' && doing !== 'haul') s.net = null;
+    // the net's place is state, not a cue (AUDIT GATHER-FEEL W1): found whenever its act is out and none is held - its
+    // landing unheard (out of earshot, under the floor, before the first sight) leaves its water at the net, not the body
+    if (!NET_OUT.has(/** @type {string} */ (doing))) s.net = null;
+    else if (!s.net) s.net = peerNetAt(shown, feet, yaw);
     // the water's own beats: a plip by the floats while the net waits, the catch fighting while it hauls
     if (doing === 'wait') {
       if (before !== 'wait' || !Number.isFinite(s.plipAt)) s.plipAt = t + this._span(GATHER_SOUND.PLIP_MIN_S, GATHER_SOUND.PLIP_MAX_S);
@@ -251,8 +270,13 @@ export class PeerGatherSounds {
 
   /** A peer gone (left the room, out of the drawn set): the next sight of them is a first. */
   forget(id) { this.peers.delete(id); }
-  /** The floating origin moved: the places held in the old frame (a net's, a held blow's) are no places now. */
-  rebase() { for (const s of this.peers.values()) { s.net = null; s.held.length = 0; } }
+  /** The floating origin moved (`offset` added to every scene point - world.js's recentre, through remotePlayers.js
+   *  rebaseSounds): the places held (a net's where it landed, a blow's in the air) move with the land (AUDIT GATHER-FEEL
+   *  W1: dropped, a net's water was heard at the body for the rest of its cast). */
+  rebase(offset) {
+    if (!offset) return;
+    for (const s of this.peers.values()) for (const p of [s.net, ...s.held.map((h) => h.at)]) if (p) { p[0] += offset[0]; p[1] += offset[1]; p[2] += offset[2]; }
+  }
 
   _span(lo, hi) { return (lo + this.rand() * (hi - lo)) * 1000; }
 

@@ -316,6 +316,11 @@ export function standMotherlodes({ lodes, samples, tilemap, locationRect = null,
 /** A dungeon vein's checks: Foraging's inside, settlement, daylight and sea are the surface's (PROF0 5.1, 23) - the foe
  *  and the load are asked. */
 export const DUNGEON_SKIP = Object.freeze(['inside', 'town', 'daylight', 'sea']);
+/** VEIN-CRACKS (GATHER-FEEL II): how far up its wall a dungeon's vein stands over the floor under it, metres - the
+ *  dungeon's own law (scenes/dungeonContext.js profVeinWall, PROF_VEIN_UP_M), pinned equal by test/gf2_veincracks.test.js
+ *  and not imported: the dungeon's host takes no professions module. A vein's chunks fall to that floor. AUDIT GATHER-FEEL F4: above standDungeonVeins' doc, which
+ *  stood on this constant and left the function's parameters untyped. */
+export const DVEIN_UP_M = 0.5;
 /**
  * A DUNGEON'S VEINS AS THE CLIENT STANDS THEM (PROF0 23): the law's veins of the day, each on the wall its ray finds
  * (`wall(marker, bearing)` - the dungeon's own, scenes/dungeonContext.js veinWall: world metres or null) -
@@ -323,10 +328,6 @@ export const DUNGEON_SKIP = Object.freeze(['inside', 'town', 'daylight', 'sea'])
  * @param {{ dungeon: number, day: number, climate: number, confirmed?: boolean,
  *   wall: (marker: number, bearing: number) => (number[]|null) }} p
  */
-/** VEIN-CRACKS (GATHER-FEEL II): how far up its wall a dungeon's vein stands over the floor under it, metres - the
- *  dungeon's own law (scenes/dungeonContext.js profVeinWall, PROF_VEIN_UP_M), pinned equal by test/gf2_veincracks.test.js
- *  and not imported: the dungeon's host takes no professions module. A vein's chunks fall to that floor. */
-export const DVEIN_UP_M = 0.5;
 export function standDungeonVeins({ dungeon, day, climate, confirmed = false, wall }) {
   const out = [];
   for (const v of dungeonVeins({ dungeon, day, climate, confirmed })) {
@@ -438,7 +439,12 @@ export function mineKind({ book, lodes = null, marks = null }) {
      *  of its own picture - its ore's record, its wash and its colour, as its flats wear them - that fall to the ground
      *  it stands on (a dungeon's vein stands DVEIN_UP_M up its wall). */
     cracks: true,
-    chunkOf: (n) => ({ archive: ORE_FLAT_ARCHIVE, record: mineRecord(n), tint: mineWash(n), dye: mineWash(n) ? ORE_DYE : 0, floor: n.what === 'dvein' ? n.local[1] - DVEIN_UP_M : n.local[1] }),
+    chunkOf: (n, entry = null) => ({
+      archive: ORE_FLAT_ARCHIVE, record: mineRecord(n), tint: mineWash(n), dye: mineWash(n) ? ORE_DYE : 0, floor: n.what === 'dvein' ? n.local[1] - DVEIN_UP_M : n.local[1],
+      // AUDIT GATHER-FEEL V3: a street node's ground anywhere about it - its pixel's own heightmap, the ground its foot was
+      // found on (a dungeon's floor is the one floor under its wall)
+      ground: n.what !== 'dvein' && entry?.samples ? (x, z) => groundAt(entry.samples, x, z) : null,
+    }),
     where: (n) => (n.what === 'dvein' ? null : actChecksRefusal(GROUND_WHERE, GROUND_WHERE_WORDS)),   // SETTLE-SAID: a dungeon's vein asks no settlement (DUNGEON_SKIP)
     /** PROF-MENU: the menu's title - the boulder, or the vein's ore. */
     nodeName: (n) => (n.what === 'boulder' ? 'Boulder' : n.what === 'motherlode' ? `Motherlode of ${materialLabel(n.material).replace(/ Ore$/, '')}` : `${materialLabel(n.material).replace(/ Ore$/, '')} Vein`),

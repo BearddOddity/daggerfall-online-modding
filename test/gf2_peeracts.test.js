@@ -1,6 +1,6 @@
 // GATHER-FEEL II - PEER-ACTS (2026-10-13, Mac: "Do the not done" - GATHER-FEEL's open "a peer neither sees an act ...
 // nor hears one"; bible/06-Systems/Professions-Arc.md 5.1 "Others see it" and section 44): ANOTHER PLAYER'S GATHERING,
-// SEEN AND HEARD. The wire (net/wire.js validPose's `ga`, `gb`, `gm` - world199) through the door, the relay and the
+// SEEN AND HEARD. The wire (net/wire.js validPose's `ga`, `gb`, `gm` - world200) through the door, the relay and the
 // lerp, and end to end between two sessions over the real Room; the sender (net/peerGather.js createGatherPose) off the
 // real act machines and through the gathering host over the real kinds (scenes/gatherHost.js poseAct - the last blow and
 // the herb pulled ride past their act's end); the receiver's ear (PeerGatherSounds) and every lane that draws a peer -
@@ -368,7 +368,7 @@ test('PEER-ACTS P6 the receiver\'s ear: the hand\'s, the knife\'s and the net\'s
   assert.deepEqual(shots.at(-1).at, [FEET[0], FEET[1] + 0.8, FEET[2]], 'the net in, at the body');
 });
 
-test('PEER-ACTS P7 the receiver\'s ear: the classic skin says the DFU cue the gatherer\'s own ear says, positional; out of earshot or behind the switch it says nothing and replays nothing later, its blows in the air dropped; a floor under one peer\'s cues; a peer forgotten is met afresh; the recentre drops what was held (mutants: the classic skin silent; a beat replayed; the held blow kept; the floor; the rebase)', () => {
+test('PEER-ACTS P7 the receiver\'s ear: the classic skin says the DFU cue the gatherer\'s own ear says, positional; out of earshot or behind the switch it says nothing and replays nothing later, its blows in the air dropped; a floor under one peer\'s cues; a peer forgotten is met afresh; the recentre carries what was held with the land (mutants: the classic skin silent; a beat replayed; the held blow kept; the floor; the rebase)', () => {
   // the classic skin
   const c = ear({ on: false });
   c.s.update('p', { yaw: 0, ga: code('mine') }, FEET);
@@ -401,16 +401,19 @@ test('PEER-ACTS P7 the receiver\'s ear: the classic skin says the DFU cue the ga
   assert.equal(s.peers.has('p'), false);
   step(0.5); s.update('p', { yaw: 0, ga: code('mine'), gb: beat(5, 'blow') }, FEET);
   assert.equal(shots.length, before, 'a first sight again');
-  // the recentre: a blow in the air and the net's place are places in the old frame
+  // the recentre: a blow in the air is a place on the land - PIN MOVED (AUDIT GATHER-FEEL W1): it moves with the land,
+  // where it was dropped with the old frame (and a net's water with it, heard at the body for the rest of its cast)
+  const off = [-819.2, 0, 0], moved = [FEET[0] + off[0], FEET[1], FEET[2]];
   step(0.5); s.update('p', { yaw: 0, ga: code('mine'), gb: beat(6, 'blow') }, FEET);
-  s.rebase();
-  step(0.5); s.update('p', { yaw: 0, ga: code('mine'), gb: beat(6, 'blow') }, FEET);
-  assert.equal(sfx(shots).at(-1), 'swing', 'the held blow went with the old frame');
+  s.rebase(off);
+  step(0.5); s.update('p', { yaw: 0, ga: code('mine'), gb: beat(6, 'blow') }, moved);
+  assert.equal(sfx(shots).at(-1), 'pick', 'the held blow lands after the recentre');
+  assert.deepEqual(shots.at(-1).at.map((v) => +v.toFixed(6)), peerActAt(moved, 0).map((v) => +v.toFixed(6)), '...where it was struck, in the new frame');
 });
 
 // ═══ THE LANES ═══════════════════════════════════════════════════════════════════════════════════════════════════════
 
-test('PEER-ACTS P8 the peers\' sync hears every peer gathering - a body peer\'s, a hidden one\'s - behind the swings\' switch and within earshot; a peer gone is forgotten and the recentre drops what was held (mutants: the sound unwired; the switch, the earshot ignored; the sweep; the rebase)', async () => {
+test('PEER-ACTS P8 the peers\' sync hears every peer gathering - a body peer\'s, a hidden one\'s - behind the swings\' switch and within earshot; a peer gone is forgotten and the recentre carries what was held with the land (mutants: the sound unwired; the switch, the earshot ignored; the sweep; the rebase)', async () => {
   const { getPref, setPref } = await import('../src/systems/uiPrefs.js');
   const shots = [];
   const rp = new RemotePlayers({ renderer: {}, deps: { fetchBytes: async () => null, palette: null, audio: { play3d: (k, at) => shots.push({ key: k, at: [...at] }) } }, compose: async () => null });
@@ -438,9 +441,11 @@ test('PEER-ACTS P8 the peers\' sync hears every peer gathering - a body peer\'s,
     assert.equal(shots.length, 2, 'past the peers\' far edge: nothing made');
     frame({ ga: code('chop'), gb: beat(5, 'blow') }, { hidden: () => true });
     assert.deepEqual(sfx(shots).slice(2), ['swing'], 'a peer no lane stands is still heard');
-    rp.rebaseFootsteps();
+    // PIN MOVED (AUDIT GATHER-FEEL W1): the recentre carries the blow in the air with the land (rebaseSounds, the offset's door)
+    rp.rebaseSounds([-819.2, 0, 0]);
     frame({ ga: code('chop'), gb: beat(5, 'blow') });
-    assert.equal(shots.length, 3, 'the recentre dropped the blow in the air');
+    assert.deepEqual(sfx(shots).slice(3), ['chop'], 'the blow in the air lands after the recentre');
+    assert.deepEqual(shots[3].at.map((v) => +v.toFixed(6)), peerActAt([3 - 819.2, 0, 4], 0).map((v) => +v.toFixed(6)), '...carried with the land');
     rp.sync([], toScene, opts);
     assert.equal(rp._gatherSounds.peers.has('ida-0001'), false, 'gone: forgotten');
   } finally { setPref('peerAttackSounds', was); }

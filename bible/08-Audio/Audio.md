@@ -830,9 +830,13 @@ Mac: "I want to improve gathering, add gathering sounds and overall make the exp
   crest, tail and brightness (`tools/sfxBake.mjs` measure).
 - **One ear** (`systems/gatherSounds.js`), registered on the bus under string keys (`registerSound`, MW-D40's door), the
   first frame the port's own sounds are on (ES1). Positional through `play3d` at the node (a node in reach - DFU's
-  activation distance - at its full volume) or where the net landed; a hand's and a chime flat through `playOneShot`. Its
-  clock is the frame's whole time, so a held beat is due when the hand's blow lands. The classic skin keeps
-  `systems/profSounds.js`'s DFU clips, said by the ear on the same beats.
+  activation distance - at its full volume) or where the net landed; a hand's and a chime flat through `playOneShot`. A
+  blow is held for its machine to land it (AUDIT GATHER-FEEL F3: the machine's count of blows landed - one clock with the
+  view's kick, the chunks and the node's going; the ear's own clock keeps the rest). A node's going is kept by its key
+  while it sounds (the bus's `play3dVoice`, a positional shot whose stop fades over VOICE_FADE_S): a refused harvest's
+  tree stood again is heard falling no more (AUDIT GATHER-FEEL F7). The floating origin's shift carries the places the
+  ear holds (AUDIT GATHER-FEEL). The classic skin keeps `systems/profSounds.js`'s DFU clips, said by the ear on the same
+  beats.
 - **Levels** are each clip's measured loudness (its loudest 50 ms) set against the others: a blow near -15 dB at the
   bus, the fall near -8, the water's plip near -28 - a first mix, set on numbers; no clip here has been heard by ear.
 
@@ -854,7 +858,10 @@ Mac: "Do the not done." The record is `06-Systems/Professions-Arc.md` section 44
   classic skin the DFU cue the gatherer's ear says for that beat (`systems/profSounds.js`), positional too.
 - **The switch and the floor.** Behind the swings' switch (`peerAttackSounds`, "Attack sounds" - a tool's blow is a
   swing) and the earshot; the law is told every change while silent, so turning it back on replays nothing; one cue a
-  peer every 100 ms (the climb's floor, AUDIT CLIMB-ARC N6); a peer gone forgotten; the floating origin's shift drops a
-  blow in the air.
+  peer every 100 ms (one pose at the pose's top rate, POSE_HZ - AUDIT GATHER-FEEL R7: no floor of the climb's); a peer
+  gone forgotten; the floating origin's shift carries a blow in the air and the net's place with the land (AUDIT
+  GATHER-FEEL W1). A blow the gatherer took back (Escape, walked off, a window, the dungeon left, the switch shut) rides
+  the pose as its `stop`, and is dropped before it lands, under the floor too (AUDIT GATHER-FEEL W2); the net's water is
+  heard at the net however its landing was missed (W1).
 - **Not heard here**: the creak, the fall, the logs, a vein's rubble and its chunks are the node's, and the node is each
   character's own - another's tree still stands for you.

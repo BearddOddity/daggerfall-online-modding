@@ -167,8 +167,11 @@ export function gatherClip(sfx, prev, rand) {
 
 // ---- the beats: what an act's frame says ---------------------------------------------------------------------------
 
-/** A beat: `name` (GATHER_SAY's), `delay` seconds from this frame, a `pitch` and a `gain` of its own. */
-const beat = (name, delay = 0, pitch = 1, gain = 1) => ({ name, delay, pitch, gain });
+/** A beat: `name` (GATHER_SAY's), `delay` seconds from this frame, a `pitch` and a `gain` of its own; `after` - a beat
+ *  that rides a blow in the air (the blow itself, the creak it raises): the seconds after that blow LANDS, the ear holding
+ *  it for its machine to count it landed (AUDIT GATHER-FEEL LANDING: one clock, the act's) - null for one that rides
+ *  none. */
+const beat = (name, delay = 0, pitch = 1, gain = 1, after = null) => ({ name, delay, pitch, gain, after });
 /** Every machine's state as it begins (systems/chopAct.js, mineAct.js, herbAct.js, traceAct.js, fishAct.js): an act is
  *  heard from here, so its first frame says what that frame did - a net thrown on the frame it was cast (a tapped E
  *  never winds), a blow struck on the frame it began. */
@@ -176,8 +179,9 @@ const BEGUN = Object.freeze({ chops: 0, creaked: false, strikes: 0, bruised: fal
 
 /**
  * THE BEATS an act's frame says, read off its state against the last frame's (`prev`, mutated to this one); `landsIn`
- * the act's blow still in the air (the machines' own - 0 for an act that swings nothing). An act's first frame
- * (`prev` empty) says its start - the kneel among the leaves - and is read against the machine's beginning (BEGUN).
+ * the act's blow still in the air (the machines' own - 0 for an act that swings nothing): a beat that rides it says how
+ * long after it lands (`after`), its `delay` the whole wait as this frame reckons it. An act's first frame (`prev`
+ * empty) says its start - the kneel among the leaves - and is read against the machine's beginning (BEGUN).
  *   chop   - every chop: the swing at once, the blow as it lands (a Clean Cut its own), the creak that half its chops
  *            raise just after it (none on the chop that fells it - the fall groans its own);
  *   mine   - every strike: the swing (the pick's, lower), the blow as it lands (on the glint, the ore's ring);
@@ -192,18 +196,19 @@ export function actBeats(prev, st, landsIn = 0) {
   const out = [];
   if (!st) return out;
   const lands = Number(landsIn) > 0 ? Number(landsIn) : 0;
+  const rides = (after) => (lands > 0 ? after : null);   // a beat on a blow in the air lands with it
   if (prev.kind == null) {
     Object.assign(prev, BEGUN);
     if (st.kind === 'hand' || st.kind === 'steady' || st.kind === 'basket') out.push(beat('kneel'));
   }
   if (st.kind === 'chop' && st.chops > (prev.chops ?? 0)) {
     out.push(beat('swing'));
-    out.push(beat(st.last === 'clean' ? 'chopClean' : 'chop', lands));
-    if (st.creaked && !prev.creaked && !st.done) out.push(beat('creak', lands + GATHER_SOUND.CREAK_AFTER_S));
+    out.push(beat(st.last === 'clean' ? 'chopClean' : 'chop', lands, 1, 1, rides(0)));
+    if (st.creaked && !prev.creaked && !st.done) out.push(beat('creak', lands + GATHER_SOUND.CREAK_AFTER_S, 1, 1, rides(GATHER_SOUND.CREAK_AFTER_S)));
   }
   if (st.kind === 'mine' && st.strikes > (prev.strikes ?? 0)) {
     out.push(beat('swing', 0, GATHER_SOUND.PICK_SWING_PITCH));
-    out.push(beat(st.last === 'glint' ? 'pickGlint' : 'pick', lands));
+    out.push(beat(st.last === 'glint' ? 'pickGlint' : 'pick', lands, 1, 1, rides(0)));
   }
   if (st.kind === 'steady' && st.bruised && !prev.bruised) out.push(beat('bruise'));
   if ((st.kind === 'hand' || st.kind === 'steady') && st.done && !prev.done) out.push(beat('pluck'));
@@ -252,9 +257,15 @@ const isVec3 = (v) => v != null && typeof v === 'object' && v.length >= 3 && Num
 /**
  * THE GATHERING'S EAR. `frame(dt, act, at, eye)` every frame of the host - the act machine playing (null for none), its
  * node's place in the scene and the eye's: it hears the act's beats (actBeats) and the water's own while the net waits
- * and hauls, and says each on its time. `say(name, at, { delay })` - a beat the act's state cannot hear: a tree's fall
- * and a vein's rubble as their node goes, the logs taken, a clean finish, the goods and a rank. `stop()` - the act
- * ended before its end: the blows still in the air are dropped with the hand that swung them.
+ * and hauls, and says each on its time - a blow as its machine LANDS it (AUDIT GATHER-FEEL LANDING: the machine's
+ * count of blows landed, `landed`, passing the one it was struck as - the hand's hit frame; the host steps every
+ * machine whose swing still runs before it frames the ear, so the blow, the view's kick, the chunks and the node's going
+ * are one frame - one clock, the act's).
+ * `say(name, at, { delay, of, voice })` - a beat the act's state cannot hear: a tree's fall and a vein's rubble as their
+ * node goes (kept by the node's key, `voice`), the logs taken, a clean finish (as its last blow lands), the goods and a
+ * rank. `hush(voice)` - a node's going taken back (a refused harvest stands it again): its sound fades and stops
+ * (AUDIT GATHER-FEEL F7). `stop(act)` - an act let go before its end: its blows still in the air are dropped with the
+ * hand that swung them. `rebase(offset)` - the floating origin moved: the places held move with the land.
  * @param {{ audio?: any, on?: () => boolean, rand?: () => number, cue?: (name: string) => any, install?: boolean }} [o]
  *   `audio` the bus (playOneShot, play3d, registerSound); `on` the switch (the port's own sounds); `rand` the variety's
  *   dice (the pins' seam; Math.random bare - the port's own variety, no DFU draw); `cue` the classic skin's voice
@@ -264,17 +275,20 @@ export function createGatherEar({ audio = null, on = enhancedSoundsOn, rand = Ma
   /** the act last heard and its state as last heard; its node's place; where its net landed */
   let heard = null, node = null, net = null;
   let prev = {};
-  /** beats waiting for their time: `{ due, b, place, of }` - `place` where it was heard (null at the ear), `of` the act
-   *  it was heard from (null for one said) */
+  /** beats waiting for their time: `{ due, b, place, of, blow }` - `place` where it was heard (its own copy - null at
+   *  the ear), `of` the act machine it was heard from or rides (null for one said alone); a beat riding a blow in the air
+   *  waits on its machine (`due` Infinity) until that machine counts `blow` landed, and is due its `after` then */
   let pending = [];
   let clock = 0;
   /** the water's next beat: seconds to the next plip while the net waits, to the next thrash while it hauls */
   let plipIn = 0, thrashIn = 0;
   /** sfx -> the key last played; name -> the clock it last sounded */
   const last = new Map(), saidAt = new Map();
+  /** AUDIT GATHER-FEEL F7: a node's going still sounding, by its key - the bus's own handle (play3dVoice), let go as it ends */
+  const voices = new Map();
 
   const placeOf = (where) => (where === 'node' ? node : where === 'net' ? (net ?? node) : null);
-  function fire(b, place = null) {
+  function fire(b, place = null, voice = null) {
     const say = GATHER_SAY[b.name];
     if (!say) return false;
     if (say.gap && clock - (saidAt.get(b.name) ?? -Infinity) < say.gap) return false;
@@ -293,16 +307,25 @@ export function createGatherEar({ audio = null, on = enhancedSoundsOn, rand = Ma
     const at = place ?? placeOf(say.where);
     try {
       if (say.where !== 'ear' && isVec3(at) && audio.play3d) {
-        audio.play3d(key, at, volume, { refDistance: say.where === 'net' ? GATHER_SOUND.NET_REF_M : DEFAULT_ACTIVATION_DISTANCE, pitch });
+        const o = { refDistance: say.where === 'net' ? GATHER_SOUND.NET_REF_M : DEFAULT_ACTIVATION_DISTANCE, pitch };
+        if (voice != null && audio.play3dVoice) {   // AUDIT GATHER-FEEL F7: kept, to be taken back
+          const h = audio.play3dVoice(key, at, volume, { ...o, onEnd: () => { if (voices.get(voice) === h) voices.delete(voice); } });
+          if (h) voices.set(voice, h);
+        } else audio.play3d(key, at, volume, o);
       } else audio.playOneShot?.(key, volume, pitch);
     } catch { return false; }   // a sound never stops an act
     return true;
   }
-  /** A beat on its time: now, or held until its delay has run - at the place it was heard at (a last blow still in the
-   *  air when the next act begins lands on its own node, not the next one). */
-  function queue(b, place = null, of = null) {
-    if (b.delay > 0) pending.push({ due: clock + b.delay, b, place: place ?? placeOf(GATHER_SAY[b.name]?.where), of });
-    else fire(b, place);
+  /** A beat on its time: now, or held until its delay has run - or, riding `of`'s blow in the air, until that blow
+   *  lands and its `after` has run - at the place it was heard at (a last blow still in the air when the next act begins
+   *  lands on its own node, not the next one). */
+  function queue(b, place = null, of = null, voice = null) {
+    const rides = !!of && b.after != null;
+    const aloft = rides && Number(of.landsIn) > 0;   // its blow in the air: the next its machine lands
+    const wait = aloft ? Infinity : rides ? b.after : b.delay;
+    if (!(wait > 0)) { fire(b, place, voice); return; }
+    const at = place ?? placeOf(GATHER_SAY[b.name]?.where);
+    pending.push({ due: clock + wait, b, place: at ? [at[0], at[1], at[2]] : null, of, blow: aloft ? (of.state?.landed | 0) + 1 : 0, voice });
   }
 
   return {
@@ -338,24 +361,46 @@ export function createGatherEar({ audio = null, on = enhancedSoundsOn, rand = Ma
           }
         }
       }
-      // the beats whose time has come, in the order they were held
+      // the beats whose time has come, in the order they were held - a blow's once its machine has landed it
       if (pending.length) {
-        const due = pending.filter((p) => p.due <= clock);
-        if (due.length) {
+        for (const p of pending) if (p.due === Infinity && (p.of?.state?.landed | 0) >= p.blow) p.due = clock + (p.b.after ?? 0);
+        if (pending.some((p) => p.due <= clock)) {
+          const due = pending.filter((p) => p.due <= clock);
           pending = pending.filter((p) => p.due > clock);
-          for (const p of due) fire(p.b, p.place);
+          for (const p of due) fire(p.b, p.place, p.voice);
         }
       }
     },
-    /** A beat the act's state cannot hear, at `at` (a node's place) or its own place, now or after `delay` s. */
-    say(name, at = null, { delay = 0 } = {}) {
+    /** A beat the act's state cannot hear, at `at` (a node's place) or its own place, now or after `delay` s - or, `of`
+     *  an act machine, `delay` s after its blow in the air lands (a clean finish rings with the last blow), let go with
+     *  it. `voice` - a node's key: the sound kept under it while it sounds, for `hush` (AUDIT GATHER-FEEL F7). */
+    say(name, at = null, { delay = 0, of = null, voice = null } = {}) {
       const say = GATHER_SAY[name];
       if (!say) return;
-      queue(beat(name, Math.max(0, Number(delay) || 0) + (say.after ?? 0)), isVec3(at) ? [at[0], at[1], at[2]] : null);
+      const wait = Math.max(0, Number(delay) || 0) + (say.after ?? 0);
+      queue(beat(name, wait, 1, 1, of ? wait : null), isVec3(at) ? [at[0], at[1], at[2]] : null, of, voice);
     },
-    /** The act ended before its end (Escape, walked off, a window, the dungeon left): its blows in the air go with the
-     *  hand that swung them - a finished act's last blow, and a beat said, land all the same. */
-    stop() { if (heard) pending = pending.filter((p) => p.of !== heard); heard = null; prev = {}; },
+    /** AUDIT GATHER-FEEL F7: a node's going taken back (its harvest refused, the node stood again): the sound said under
+     *  its key fades and stops (a node's going is said at once - never held). */
+    hush(voice) {
+      if (voice == null) return;
+      const h = voices.get(voice);
+      voices.delete(voice);
+      try { h?.stop(); } catch { /* a sound never stops an act */ }
+    },
+    /** An act let go before its end (Escape, walked off, a window, the dungeon left, the professions shut) - the one
+     *  playing (the act heard, unnamed) or a finished one's last swing: its beats in the air (its blow, what rides it)
+     *  go with the hand that swung it - every other act's, and a beat said alone, land all the same. */
+    stop(act = heard) {
+      if (act) pending = pending.filter((p) => p.of !== act);
+      if (act === heard) { heard = null; prev = {}; }
+    },
+    /** The floating origin moved (world.js's recentre: `offset` added to every scene point) - the places held (the
+     *  node's, the net's where it landed, each beat's in the air) stand where they stood on the land. */
+    rebase(offset) {
+      if (!isVec3(offset)) return;
+      for (const p of [node, net, ...pending.map((q) => q.place)]) if (p) { p[0] += offset[0]; p[1] += offset[1]; p[2] += offset[2]; }
+    },
     /** The beats still held, for the pins. */
     get pending() { return pending.map((p) => p.b.name); },
   };

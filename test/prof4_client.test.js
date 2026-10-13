@@ -492,8 +492,9 @@ test('PROF4 wiring: a built pixel keeps its forest (the tree flats by World of D
   assert.match(d, /const ours = row && row\.owner === player\.id && Number\(row\.template\) === p\.item\.t && Number\(row\.listed\) === 0 && !elsewhere;/);   // AUDIT 30 S6: and not on the market, and not standing twice
   assert.match(d, /delete plain\.mk;/);
   const g = src('src/scenes/gatherHost.js');
-  assert.match(g, /for \(const k of kinds\) k\.stood\?\.\(entry, rec\.nodes\.filter\(\(n\) => n\.kind === k\.id\)\);/);
-  assert.match(g, /for \(const f of k\.gone\(n\) \? \(k\.goneFlatsOf\?\.\(n, entry\) \?\? \[\]\) : k\.flatsOf\(n\)\) \{/);
+  // PIN MOVED (AUDIT GATHER-FEEL F1): the kinds told which nodes' last blow is still in the air, and a node gone once it has landed
+  assert.match(g, /for \(const k of kinds\) k\.stood\?\.\(entry, rec\.nodes\.filter\(\(n\) => n\.kind === k\.id\), landingOn\);/);
+  assert.match(g, /for \(const f of shownGone\(k, n\) \? \(k\.goneFlatsOf\?\.\(n, entry\) \?\? \[\]\) : k\.flatsOf\(n\)\) \{/);
   // AUDIT 30 A5: the node as its pixel stands now, the fall's failure its own
   assert.match(g, /const now = s\?\.nodes\.find\(\(x\) => x\.key === a\.node\.key\) \?\? null;\n\s*if \(now && k\.felled\) \{\n\s*try \{ Promise\.resolve\(k\.felled\(now, \{ entry: s\.entry, from: deps\.eye\(\)\.pos, tr: deps\.pixelTranslation\(a\.px, a\.py, \[0, 0, 0\]\) \}\)\)\.catch/);
 });

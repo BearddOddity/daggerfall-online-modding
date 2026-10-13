@@ -41,6 +41,9 @@ function ear({ on = () => true, rand = dice(0.5), cue = () => {} } = {}) {
   return { audio, e: createGatherEar({ audio, on, rand, cue, install: false }) };
 }
 const keysOf = (shots) => shots.map((s) => s.key);
+/** One host frame of a machine and the ear, in the host's order (scenes/gatherHost.js tick: every machine stepped, then
+ *  the ear framed) - AUDIT GATHER-FEEL LANDING: a blow is said as its machine lands it, so the machine must run. */
+const both = (e, act, dt, at, input = {}) => { act.tick(dt, input); e.frame(dt, act, at); };
 function wavHeader(b) {
   const s = (o) => b.toString('latin1', o, o + 4);
   return { riff: s(0), wave: s(8), fmt: s(12), format: b.readUInt16LE(20), channels: b.readUInt16LE(22), rate: b.readUInt32LE(24), bits: b.readUInt16LE(34), data: s(36), dataLen: b.readUInt32LE(40) };
@@ -262,19 +265,20 @@ test('GATHER-FEEL G9: the net\'s beats - thrown (on the act\'s first frame where
 
 // ═══ THE EAR ═════════════════════════════════════════════════════════════════════════════════════════════════════════
 
-test('GATHER-FEEL G10: the ear says a blow as it LANDS, at its node in reach at full volume; the swing at the ear at once; a sound of several never the one just heard, its pitch moved a little; a chime never moved; the act\'s blow that lands after the next act begins lands on its own node (mutants: the delay dropped, the node\'s reach, the repeat, the chime moved)', () => {
+test('GATHER-FEEL G10: the ear says a blow as it LANDS (its machine counting it landed - AUDIT GATHER-FEEL LANDING), at its node in reach at full volume; the swing at the ear at once; a sound of several never the one just heard, its pitch moved a little; a chime never moved; the act\'s blow that lands after the next act begins lands on its own node (mutants: the delay dropped, the node\'s reach, the repeat, the chime moved)', () => {
+  // PIN MOVED (AUDIT GATHER-FEEL LANDING): the ear no longer times a blow on its own clock - it waits for the machine to
+  // land it, so the pin steps the machine before each ear frame, as the host does
   const { audio, e } = ear({ rand: dice(0.5) });
   const node = [10, 2, 30];
   const a = createChopAct({ tier: 1 });
   e.frame(0.016, a, node);
-  a.tick(0.001, { attack: true });
-  e.frame(0.001, a, node);
+  both(e, a, 0.001, node, { attack: true });
   assert.deepEqual(keysOf(audio.shots).map(sfxOf), ['swing'], 'the swing at once, the blow still in the air');
   assert.equal(audio.shots[0].at, null, 'the swing at the ear');
   assert.equal(audio.shots[0].volume, GATHER_SAY.swing.volume);
-  e.frame(CHOP_ACT.swingS * MELEE_HIT_SHARE - 0.01, a, node);
+  both(e, a, CHOP_ACT.swingS * MELEE_HIT_SHARE - 0.01, node);
   assert.equal(audio.shots.length, 1, 'not yet');
-  e.frame(0.02, a, node);
+  both(e, a, 0.02, node);
   assert.equal(sfxOf(audio.shots[1].key), 'chop', 'landed');
   assert.deepEqual(audio.shots[1].at, node, 'at the node');
   assert.equal(audio.shots[1].ref, DEFAULT_ACTIVATION_DISTANCE, 'a node in reach at its full volume');
@@ -298,10 +302,9 @@ test('GATHER-FEEL G10: the ear says a blow as it LANDS, at its node in reach at 
   const { audio: b4, e: e4 } = ear();
   const first = createMineAct({ tier: 1, rng: dice(0, 0.3, 0.6, 0.9) });
   e4.frame(0.01, first, [1, 0, 1]);
-  first.tick(0.001, { attack: true, aim: { yaw: 40, pitch: 40 } });
-  e4.frame(0.001, first, [1, 0, 1]);
-  e4.frame(0.05, createHerbAct({ kind: 'hand' }), [50, 0, 50]);
-  e4.frame(0.2, null);
+  both(e4, first, 0.001, [1, 0, 1], { attack: true, aim: { yaw: 40, pitch: 40 } });
+  first.tick(0.05); e4.frame(0.05, createHerbAct({ kind: 'hand' }), [50, 0, 50]);   // its last swing still stepped (the host's `swings`)
+  first.tick(0.2); e4.frame(0.2, null);
   const pick = b4.shots.find((s) => sfxOf(s.key) === 'pick');
   assert.deepEqual(pick?.at, [1, 0, 1], 'its own node');
 });
@@ -381,15 +384,15 @@ test('GATHER-FEEL G12: a beat said - at its own place or the ear, after its dela
   const { audio: b2, e: e2 } = ear();
   const done = createMineAct({ tier: 1, rng: dice(0, 0.3, 0.6, 0.9) });
   e2.frame(0.01, done, [1, 0, 1]);
-  for (let i = 0; i < 20 && !done.state.done; i++) { done.tick(MINE_ACT.swingS + 0.01); e2.frame(MINE_ACT.swingS + 0.01, done, [1, 0, 1]); done.tick(0.001, { attack: true, aim: { yaw: 40, pitch: 40 } }); e2.frame(0.001, done, [1, 0, 1]); }
+  for (let i = 0; i < 20 && !done.state.done; i++) { both(e2, done, MINE_ACT.swingS + 0.01, [1, 0, 1]); both(e2, done, 0.001, [1, 0, 1], { attack: true, aim: { yaw: 40, pitch: 40 } }); }
   e2.say('clean', null, { delay: 0.1 });
   const next = createChopAct({ tier: 1 });
-  e2.frame(0.01, next, [9, 0, 9]);
-  next.tick(0.001, { attack: true });
-  e2.frame(0.001, next, [9, 0, 9]);
+  done.tick(0.01); e2.frame(0.01, next, [9, 0, 9]);   // PIN MOVED (AUDIT GATHER-FEEL LANDING): the finished act's last swing stepped, as the host steps it
+  done.tick(0.001); both(e2, next, 0.001, [9, 0, 9], { attack: true });
   e2.stop();
+  assert.ok(!e2.pending.includes('chop'), 'the stopped act\'s blow let go - never held for a landing its machine will not make (AUDIT GATHER-FEEL LANDING)');
   const before = b2.shots.length;
-  e2.frame(0.5);
+  done.tick(0.5); e2.frame(0.5);
   const after = keysOf(b2.shots.slice(before)).map(sfxOf);
   assert.deepEqual(after.sort(), ['clean', 'pick'], 'the vein\'s last blow and the chime land; the cancelled chop never does');
 });
@@ -400,10 +403,9 @@ test('GATHER-FEEL G13: the classic skin - the switch off, each beat says the DFU
   const node = [0, 0, 3];
   const a = createChopAct({ tier: 1 });
   e.frame(0.01, a, node);
-  a.tick(0.001, { attack: true });
-  e.frame(0.001, a, node);
+  both(e, a, 0.001, node, { attack: true });
   assert.deepEqual(cues, [], 'the blow still in the air');
-  e.frame(CHOP_ACT.swingS * MELEE_HIT_SHARE + 0.01, a, node);
+  both(e, a, CHOP_ACT.swingS * MELEE_HIT_SHARE + 0.01, node);   // PIN MOVED (AUDIT GATHER-FEEL LANDING): the machine lands it
   assert.deepEqual(cues, ['strike'], 'DFU\'s hit, as the blow lands');
   e.say('fall', node); e.say('haul'); e.say('rank'); e.say('logs');
   e.say('clean');
@@ -538,6 +540,7 @@ test('GATHER-FEEL G15: a harvest refused before its last blow lands takes nothin
     t.input.v = { held: false, attack: false, choice: false };
     const n = t.audio.shots.length;
     assert.equal(t.host.cancel(), true);
+    assert.deepEqual(t.e.pending.filter((k) => /^pick/.test(k)), [], 'its blow let go at once, never held (AUDIT GATHER-FEEL LANDING)');
     t.host.tick(MINE_ACT.swingS);
     assert.ok(!t.audio.shots.slice(n).some((s) => /gather:pick/.test(s.key)), 'the blow went with the hand');
     assert.equal(t.host.handTool(), null);

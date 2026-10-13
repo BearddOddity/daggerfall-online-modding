@@ -2907,7 +2907,7 @@ function portRowsGame({ pause = false } = {}) {
  *  landed blow (systems/gatherBlow.js gatherBlowFeel - the springs' one door), on the enhanced skin. */
 function techniqueMotionRow() {
   const row = choiceRow('techniqueMotion', 'Technique camera motion',
-    'How much a weapon technique, or a tool\'s blow as you gather, shakes and tilts the view and dips your hands.',
+    'How much a weapon technique shakes and tilts the view and dips your hands - and, on the Enhanced skin, how far a tool\'s blow dips them as you gather.',
     [[1, 'Full'], [0.75, '75%'], [0.5, 'Half'], [0.25, 'Low'], [0, 'Off']]);
   if (row?.dataset) { row.dataset.opt = 'techniqueMotion'; row.dataset.pref = 'techniqueMotion'; }   // ORG2: the map finds it by its key
   return row;

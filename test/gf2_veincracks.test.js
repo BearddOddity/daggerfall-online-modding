@@ -131,7 +131,8 @@ test('GF2-VEINCRACKS V3: both billboard programs compose the crack - its uniform
   assert.match(bb, /\$\{FLAT_DISSOLVE_GLSL\}\n\$\{FLAT_CRACK_GLSL\}\n/, 'classic: its block after the burn\'s');
   assert.ok(EL_BB_FS.indexOf(FLAT_CRACK_GLSL) > EL_BB_FS.indexOf('float dissolveGrain('), 'the lane: its block after the burn\'s');
   assert.match(bb, /vec3 albedo = max\(tex\.rgb - emission, vec3\(0\.0\)\) \* veinCrackShade\(uv\);/, 'classic: the albedo, before the light');
-  assert.match(EL_BB_FS, /vec3 albedo = max\(elDecode\(tex\.rgb\) - emission, vec3\(0\.0\)\) \* veinCrackShade\(uv\);/, 'the lane: the same law, in its linear light');
+  // PIN MOVED (AUDIT GATHER-FEEL V4): the shade is of the display's colour - taken there, then decoded into the lane's light
+  assert.match(EL_BB_FS, /vec3 albedo = max\(elDecode\(tex\.rgb \* veinCrackShade\(uv\)\) - emission, vec3\(0\.0\)\);/, 'the lane: the same law, in its linear light');
   assert.ok(EL_BB_FS.includes(FLAT_CRACK_GLSL), 'the lane composes the one block');
   for (const lane of [null, EL_LANE]) {
     const { draws, canvas } = stateGl();
@@ -181,33 +182,34 @@ test('GF2-VEINCRACKS V4: the chunks\' law - a blow sheds three, one on the glint
     }
   }
   // the arc at any frame rate: the same place after the same time, in one step or sixty
-  const one = shedChunks(at, eye, 1, dice(0.5))[0], many = shedChunks(at, eye, 1, dice(0.5))[0];
-  stepChunk(one, 0.3, -100);
-  for (let i = 0; i < 60; i++) stepChunk(many, 0.005, -100);
+  // PIN MOVED (AUDIT GATHER-FEEL V3): the ground a chunk comes down on is its own, found as it is shed - handed to shedChunks
+  const one = shedChunks(at, eye, 1, dice(0.5), -100)[0], many = shedChunks(at, eye, 1, dice(0.5), -100)[0];
+  stepChunk(one, 0.3);
+  for (let i = 0; i < 60; i++) stepChunk(many, 0.005);
   for (let k = 0; k < 3; k++) assert.ok(near(one.p[k], many.p[k], 1e-9), `axis ${k}: ${one.p[k]} ${many.p[k]}`);
   const fresh = shedChunks(at, eye, 1, dice(0.5))[0];
   assert.ok(near(one.p[1], fresh.p[1] + fresh.v[1] * 0.3 - 0.5 * C.gravity * 0.09, 1e-9), 'p + v t - g t^2 / 2');
   assert.ok(near(one.p[2], fresh.p[2] + fresh.v[2] * 0.3, 1e-9), 'and across at its own speed');
   // the landing at any frame rate: the same place on the ground in steps of a thirtieth, a two-hundred-fortieth or one hitch
-  const landAt = (dt) => { const ch = shedChunks(at, eye, 1, dice(0.3, 0.8, 0.6, 0.9, 0.2))[0]; while (ch.rest < 0) stepChunk(ch, dt, 0); return ch.p; };
+  const landAt = (dt) => { const ch = shedChunks(at, eye, 1, dice(0.3, 0.8, 0.6, 0.9, 0.2), 0)[0]; while (ch.rest < 0) stepChunk(ch, dt); return ch.p; };
   const [a30, a240, hitch] = [landAt(1 / 30), landAt(1 / 240), landAt(0.4)];
   for (let k = 0; k < 3; k++) assert.ok(near(a30[k], a240[k], 1e-9) && near(a30[k], hitch[k], 1e-9), `axis ${k}: ${a30[k]} ${a240[k]} ${hitch[k]}`);
   // down on the floor, lying, sinking, gone
-  const c = shedChunks(at, eye, 1, dice(0.5))[0];
   const floor = 0;
+  const c = shedChunks(at, eye, 1, dice(0.5), floor)[0];
   let t = 0;
-  while (c.rest < 0 && t < 3) { stepChunk(c, 1 / 60, floor); t += 1 / 60; }
+  while (c.rest < 0 && t < 3) { stepChunk(c, 1 / 60); t += 1 / 60; }
   assert.equal(c.p[1], floor, 'on the floor, never through it');
   assert.ok(t < C.flyMaxS, 'it fell before its time ran out');
   const r0 = c.rest;
   assert.ok(r0 >= 0 && r0 < 1 / 60, 'the rest of its landing step, lain');
   const lay = [c.p[0], c.p[2]];
-  for (let i = 0; i < 10; i++) assert.equal(stepChunk(c, (C.restS - r0) / 10, floor), true);
+  for (let i = 0; i < 10; i++) assert.equal(stepChunk(c, (C.restS - r0) / 10), true);
   assert.deepEqual([c.p[0], c.p[2]], lay, 'it lies where it fell');
   assert.equal(chunkSink(c, 0.2), 0, 'not sunk while it rests');
-  stepChunk(c, C.sinkS / 2, floor);
+  stepChunk(c, C.sinkS / 2);
   assert.ok(near(chunkSink(c, 0.2), 0.1, 1e-9), 'half sunk half way');
-  assert.equal(stepChunk(c, C.sinkS, floor), false, 'gone');
+  assert.equal(stepChunk(c, C.sinkS), false, 'gone');
   // the box: every place of every chunk of many bursts, sunk ones too
   const h = 0.2;
   const box = chunkBox(at, floor, h);
@@ -216,8 +218,8 @@ test('GF2-VEINCRACKS V4: the chunks\' law - a blow sheds three, one on the glint
   let farthest = 0;
   for (let s = 0; s < rolls.length; s++) {
     const r = rolls[s];
-    for (const ch of shedChunks(at, [at[0] + Math.sin(s), at[1] + 0.6, at[2] + Math.cos(s)], 7, r)) {
-      for (let i = 0; i < 400 && stepChunk(ch, 1 / 120, floor); i++) {
+    for (const ch of shedChunks(at, [at[0] + Math.sin(s), at[1] + 0.6, at[2] + Math.cos(s)], 7, r, floor)) {
+      for (let i = 0; i < 400 && stepChunk(ch, 1 / 120); i++) {
         const y = ch.p[1] - chunkSink(ch, h);
         assert.ok(ch.p[0] >= box[0] && ch.p[0] <= box[3] && ch.p[2] >= box[2] && ch.p[2] <= box[5] && y >= box[1] && y + h <= box[4], `burst ${s}: a chunk outside its box`);
         farthest = Math.max(farthest, Math.hypot(ch.p[0] - at[0], ch.p[2] - at[2]));
