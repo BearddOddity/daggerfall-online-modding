@@ -53,12 +53,17 @@ test('WEATHER3a: THE LAW SOLVES THE TABLE - every climate and season, averaged o
   }
 });
 
-test('WEATHER3a: a tight row THINS the fronts\' rings instead of missing the table (the swamp\'s spring: a tenth cloudy)', () => {
-  const swampSpring = birthLaw(CLIMATES.Swamp, SEASONS.Spring);
-  const cloudy = (rings) => rings.find(([w]) => w === 'cloudy')[1];
-  assert.ok(cloudy(swampSpring.rings.rain) < SYSTEM_TYPES.rain.rings[1][1], 'the rain front\'s cloud skirt is thinner in the swamp spring');
+test('WEATHER3a: a tight row THINS the fronts\' rings instead of missing the table (the woodlands\' summer: a twentieth overcast; the desert: none)', () => {
+  // RAIN-HOURS (2026-10-13) re-aimed this pin: the swamp's spring it named thinned nothing once WEATHER3g's fronts
+  // stood - its rain front's cloud skirt read 0.9999999999999993 of its share, a rounding residue the pin passed on -
+  // and with the falling words worn for half their odds the swamp has room for every ring. The rows that thin are the
+  // ones whose deck is too thin for every front's ring of it.
+  const overcast = (rings) => rings.find(([w]) => w === 'overcast')[1];
   const woodsSummer = birthLaw(CLIMATES.Woodlands, SEASONS.Summer);
-  assert.equal(cloudy(woodsSummer.rings.rain), SYSTEM_TYPES.rain.rings[1][1], 'where the table has room, the front keeps its whole shape');
+  assert.ok(overcast(woodsSummer.rings.rain) < 0.9 * SYSTEM_TYPES.rain.rings[0][1], `the rain front's deck is thinner in the woodlands' summer (${overcast(woodsSummer.rings.rain).toFixed(3)})`);
+  assert.equal(overcast(birthLaw(CLIMATES.Desert, SEASONS.Spring).rings.rain), 0, 'the desert has no deck: a front born there wears none');
+  const swampSpring = birthLaw(CLIMATES.Swamp, SEASONS.Spring);
+  assert.deepEqual(swampSpring.rings.rain, SYSTEM_TYPES.rain.rings, 'where the table has room, the front keeps its whole shape');
   assert.deepEqual(swampSpring.rings.thunder, [], 'a storm cell has no rings: it stands in its front');
   // the covering means read the table the priority down
   const mu = coverMeans({ thunder: 0.5, rain: 0.25 });
@@ -89,7 +94,7 @@ test('WEATHER3a: the sandstorm is born only on the desert table\'s land, a share
 // years of the season: a front is ~100 km and a day across, so one season's samples see only a few hundred
 // independent systems and the noise alone would reach three points.
 const GATE_ROWS = [['subtropical', SEASONS.Summer], ['swamp', SEASONS.Spring], ['swamp', SEASONS.Fall], ['desert', SEASONS.Spring], ['mountains', SEASONS.Winter], ['woodlands', SEASONS.Fall]];
-test('WEATHER3a: THE CALIBRATION GATE - the sampled map holds each worn word to the Chronicles row', () => {
+test('WEATHER3a: THE CALIBRATION GATE - the sampled map holds each worn word to the Chronicles row as the map wears it', () => {
   const N = 3000;
   let sumAbs = 0, cells = 0;
   for (const [name, season] of GATE_ROWS) {
@@ -104,10 +109,15 @@ test('WEATHER3a: THE CALIBRATION GATE - the sampled map holds each worn word to 
       if (w === 'sandstorm') w = 'cloudy';   // the Chronicles' cloudy it was drawn from
       count[w] = (count[w] ?? 0) + 1;
     }
-    const row = WEATHER_TABLE[name][season];
+    // RAIN-HOURS (2026-10-13): the row as the map wears it - rain and thunder for WET_HOURS of their odds, the hours
+    // they give up the dry words' (test/rainhours.test.js holds that law to the Chronicles' digits); clear air is the
+    // share nothing paints, and a sandstorm counts as the cloudy it was drawn from
+    const t = targetShares(WEATHER_TABLE[name], season);
+    const worn = { ...t, cloudy: t.cloudy + t.sandstorm, sunny: 1 - PRIORITY.reduce((sum, w) => sum + t[w], 0) };
+    const row = ROW_ORDER.map((w) => worn[w] * 100);
     ROW_ORDER.forEach((w, i) => {
       const got = ((count[w] ?? 0) / N) * 100;
-      assert.ok(Math.abs(got - row[i]) < 2.6, `${name} season ${season} ${w}: ${got.toFixed(1)}% sampled, the table says ${row[i]}%`);
+      assert.ok(Math.abs(got - row[i]) < 2.6, `${name} season ${season} ${w}: ${got.toFixed(1)}% sampled, the row as worn says ${row[i].toFixed(1)}%`);
       sumAbs += Math.abs(got - row[i]); cells++;
     });
   }
@@ -183,7 +193,10 @@ test('WEATHER3a: PRIORITY - where systems overlap the worn word is the highest, 
   let checked = 0;
   for (let i = 0; i < 400 && checked < 30; i++) {
     const x = 120000 + i * 1733, z = 80000 + i * 911, m = YEAR + 120 * 1440 + i * 37;
-    const painted = systemsNear(x, z, m, at, 0).filter((s) => insideClip(s, x, z)).map((s) => bandAt(s, s.d)).filter(Boolean);
+    // RAIN-HOURS (2026-10-13): each system read in its OWN measure (radialOf, WEATHER3h), as the law reads it - this
+    // oracle read the centre's distance, a disc, and passed only while no probe fell where a shape turns a band; on the
+    // map the calibration moved, five of its thirty probes did, and in each the shaped read agreed with the worn word
+    const painted = systemsNear(x, z, m, at, 0).filter((s) => insideClip(s, x, z)).map((s) => bandAt(s, radialOf(s, x, z))).filter(Boolean);
     if (painted.length < 2) continue;
     const top = painted.map((p) => p.word).sort((a, b) => PRIORITY.indexOf(a) - PRIORITY.indexOf(b))[0];
     assert.equal(weatherAt(x, z, m, at).word, top);
@@ -191,10 +204,19 @@ test('WEATHER3a: PRIORITY - where systems overlap the worn word is the highest, 
   }
   assert.ok(checked >= 10, 'overlaps exist and were checked');
   const snowGround = (w) => (w === 'rain' || w === 'thunder' ? 'snow' : w);
-  for (let i = 0; i < 200; i++) {
-    const w = weatherAt(100000 + i * 3001, 90000, YEAR + 90 * 1440, at, { ground: snowGround }).word;
+  // RAIN-HOURS (2026-10-13): only probes the map rains on can show the ground turning a drop - this line of 200 at one
+  // minute fell under some rain while a jungle spring rained 52% of the time, and under none at 26%, and the ground law
+  // dropped whole (WEATHER3a-ground-after-priority) survived it. Each probe is now a place the bare map rains on.
+  let wet = 0;
+  for (let i = 0; i < 2000 && wet < 40; i++) {
+    const x = 100000 + i * 3001, z = 90000 + (i % 9) * 17000, m = YEAR + 90 * 1440 + (i % 13) * 97;
+    const bare = weatherAt(x, z, m, at).word;
+    if (bare !== 'rain' && bare !== 'thunder') continue;
+    wet++;
+    const w = weatherAt(x, z, m, at, { ground: snowGround }).word;
     assert.ok(w !== 'rain' && w !== 'thunder', 'the ground turned every drop');
   }
+  assert.ok(wet >= 20, `the probes stood under rain and storms (${wet})`);
 });
 
 test('WEATHER3a: THE SEARCH MISSES NOTHING - every system over a point, against a brute walk of a far wider box', () => {
