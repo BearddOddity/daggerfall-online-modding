@@ -2970,8 +2970,8 @@
   "by": "claude-in-session"
  },
  "credits.climatesCalories.what": {
-  "en": "711238d34816",
-  "tr": "2ff4ab21698d",
+  "en": "290e625d0057",
+  "tr": "7cc9785d8666",
   "by": "claude-in-session"
  },
  "credits.comeSailAway.terms": {
@@ -3864,6 +3864,11 @@
   "tr": "d9cc50e3c20b",
   "by": "claude-in-session"
  },
+ "features.mod.climatesCalories.boons": {
+  "en": "b0e0ff22a34e",
+  "tr": "9bc09dc7114a",
+  "by": "claude-in-session"
+ },
  "features.mod.climatesCalories.casual": {
   "en": "1001e6a79636",
   "tr": "1eaad0a7c6f4",
@@ -3880,8 +3885,13 @@
   "by": "claude-in-session"
  },
  "features.mod.climatesCalories.note": {
-  "en": "a7310916be02",
-  "tr": "3773e4c0ef4b",
+  "en": "1998f1dcc907",
+  "tr": "884edeaf2b86",
+  "by": "claude-in-session"
+ },
+ "features.mod.climatesCalories.tempHud": {
+  "en": "d29177d0448a",
+  "tr": "4824f1b51669",
   "by": "claude-in-session"
  },
  "features.mod.diverseWeapons.effect": {

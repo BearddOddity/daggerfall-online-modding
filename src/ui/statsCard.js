@@ -15,6 +15,7 @@ import { dollArmour, overallArmour, tenth, PART_NAMES } from './armourCard.js';
 import { SKILL_NAMES, SKILLS } from '../systems/skills.js';
 import { itemLongName } from '../systems/itemInfo.js';
 import { PIXEL_STACK } from './pixelifyFive.js';   // the Enhanced Plus face: Pixelify Sans, its 5 from Silkscreen
+import { temperatureStatRows, boonStatRows } from './temperatureCard.js';   // TEMP-UI: the felt temperature's parts; AUDIT SURV-BOONS C13: and the boons
 import { savingChance, elementalResistanceChance, ELEMENTS, EFFECT_FLAGS } from '../systems/spellcast.js';   // STATS-RESIST: the saving throw's own law
 import { t, localizedText } from '../systems/textManager.js';   // L10N4: the card's words in the player's language; the attributes are DFU's own
 
@@ -214,10 +215,30 @@ export function buildStatsPage(entity, repaint, opts = {}) {
   sk.append(row(skillName, `${s.skill}%`), row(SKILL_NAMES[SKILLS.CriticalStrike], `${s.crit.skill}%`), row(SKILL_NAMES[SKILLS.Backstabbing], `${s.backstab.skill}%`), row(SKILL_NAMES[SKILLS.Dodging], `${s.dodging}%`));
   page.append(sk);
 
+  // TEMP-UI (2026-10-12, the owner: "allowing players to see their personal temperature in their inventory"): THE FELT
+  // TEMPERATURE, part by part - the land, the season, the hour, the weather, a roof or the ground, the resistances, the
+  // race, the clothing, the armour, a fire, the wet, the bare skin, a drink to hand, a garment's degrees - adding up to
+  // the number (ui/temperatureCard.js temperatureStatRows; none with Climates & Calories Off)
+  const tempRows = temperatureStatRows(entity);
+  if (tempRows.length) {
+    const tp = section('Temperature', 13);
+    for (const [k, v, title] of tempRows) tp.append(row(k, v, title));
+    tp.title = 'What you feel where you stand: the world\u2019s temperature, then everything about you that warms or cools it.';
+    page.append(tp);
+  }
+  // AUDIT SURV-BOONS C13: the boons a Boons body has earned - the raised attributes above, explained
+  const boonRows = boonStatRows(entity);
+  if (boonRows.length) {
+    const bn = section('Boons', 14);
+    for (const [k, v] of boonRows) bn.append(row(k, v));
+    bn.title = 'Climates & Calories on Boons: what a body kept fed, watered and rested has earned.';
+    page.append(bn);
+  }
+
   const foot = el('p', 'sf-foot sf-rise', s.core === 'overhaul'
     ? t('stats.rules.overhaul', 'Rules: Physical Combat And Armor Overhaul. Damage is before the foe\u2019s armour reduces it.')
     : t('stats.rules.classic', 'Rules: the original game\u2019s combat formulas. Damage is before any armour effects.'));
-  foot.style.setProperty('--i', '13');
+  foot.style.setProperty('--i', '15');   // TEMP-UI: after the Temperature and Boons sections
   page.append(foot);
   return page;
 }

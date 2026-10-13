@@ -73,11 +73,11 @@ import { hasPortFor, hasPort, setSeatHarbours, PORT_LOCATION_IDS, maskMapId } fr
 import { WoodsFile, MAP_WIDTH, MAP_HEIGHT } from '../formats/woodsFile.js';
 import { buildTerrainIndices, isOutdoorWaterTile, TERRAIN_TILE_DIM, TERRAIN_SKIRT_DEPTH, surfaceHeightAt, surfaceNormalAt, surfaceNormalFromSamples, gridValueAt, groundOffPlane, terrainSampleHeightAt, lowestGroundUnder } from '../world/terrainSurface.js';   // GRASS-LIT2: the ground's normal under a blade; SNOWFALL1: and a pixel's that keeps none
 import { waterUniforms, buildWaterIndices, waterSwitchOn } from '../render/waterSurface.js';   // WATER1: the enhanced water surface over the pixel's own grid; WATER-AUDIT: its own index set
-import { waterBedDepths } from '../world/waterBed.js';   // WATER-NEXT 2: the bed under the water, carved for the eye alone (AUDIT WATER-NEXT H1: the cap's re-carve asks its depths)
+import { bedFields, sheetDepthsOf } from '../world/waterBed.js';   // WATER-NEXT 2: the bed under the water, carved for the eye alone (AUDIT WATER-NEXT H1: the cap's re-carve asks its depths)
 import { createRipples, createRippleStir, RIPPLE_SPAN, RIPPLE_CELLS, BOAT_STIR, BOAT_WAKE_SPEED } from '../world/waterRipples.js';   // WATER-NEXT 4: the rings and wakes
 import { waterCorners, WATER_DRAW_MASK_TABLE } from '../world/waterCorners.js';   // GRASS-WET1: the one table that says which of a tile's corners stand in water - the DRAW's, because a blade in a puddle is a picture, not a physics
 import { windowEmissionRGB } from '../render/windowEmission.js';
-import { realWindowsMode, VIEW_RINGS, VIEW_CLIP_PAD, clockFogColor } from '../render/realWindows.js';   // RW1: the rooms behind the glass, and the street a building's glass looks out on
+import { realWindowsMode, VIEW_RINGS, clockFogColor } from '../render/realWindows.js';   // RW1: the rooms behind the glass, and the street a building's glass looks out on
 import { CITY_LIGHT_COLOR, CITY_LIGHT_RANGE, LIGHTS_ARCHIVE, collectCityLights, nearestLights, capFadeColors, capFadePairs, fillLanternPool, rangesFor } from '../world/cityLights.js';
 import { isHearthFlat, HEARTH_NEAR } from '../systems/survival/hearth.js';   // HEARTH1: which of those lanterns is a fire you could cook on, and how far one can matter
 import { withPlayerLights } from './magicCandle.js';   // X11/T1: the lights the PLAYER carries
@@ -181,7 +181,7 @@ import { ActionTextBox } from '../ui/actionText.js';   // AUDIT 23 (C5)
 import { isTombstoneModel, searchKey, searchCooldownLeft, markSearched, SEARCHED_TEXT, rollSearchOutcome, pickSearchUndead, rollSearchElite, searchMessage, mintSearchFind, setSearchClock, SEARCH_FOES_PER_PLAYER, SEARCH_FOE_SPACING } from '../systems/searchables.js';   // SEARCH1: a graveyard's headstones
 import { toggleStatusReadout } from '../ui/statusBox.js';   // STATUS-LIVE: the Status readout, one composer for all four hosts
 import { statusReadoutTakesAction } from '../systems/statusReadout.js';   // STATUS-LIVE: ...and the yield this host's own key ladder owes, which never reaches routeAction
-import { maxFatigue, FATIGUE_MULTIPLIER, liveStat, STAT_KEYS_ORDER } from '../systems/statMods.js';   // AUDIT 23 (C5); AUDIT SOC B5: the party pose's fatigue in the digits a sheet shows
+import { maxFatigue, FATIGUE_MULTIPLIER, liveStat, STAT_KEYS_ORDER, clampFatigue } from '../systems/statMods.js';   // AUDIT 23 (C5); AUDIT SOC B5: the party pose's fatigue in the digits a sheet shows
 // V5: resting above ground. RestWindow and RestSession have been
 // finished since U7; what was missing was a host outside the dungeon
 // that opens one, and CanRest's whole town half.
@@ -331,7 +331,8 @@ import { wearCondition, wearOf, WEAR_WHOLE } from '../net/marketLaw.js';   // PR
 import { commissionFilledBy } from '../net/writLaw.js';   // AUDIT 31 L8: a piece that answers a commission, the law's own test
 
 import { unseenText } from '../net/boardLaw.js';   // NOTICE1: the count over a board
-import { alignSurvival } from '../systems/survival/needs.js';   // SURV7: the needs' markers at an arrival
+import { alignSurvival, markOutCold } from '../systems/survival/needs.js';   // SURV7: the needs' markers at an arrival; AUDIT C&C N2: the collapse's hour a night on the ground
+import { sunlit } from '../systems/survival/temperature.js';   // AUDIT C&C: the sun's one law - this reader's minute, and a jump's replay its own
 import { liveLycanthropy } from '../systems/lycanthropy.js';   // SURV7: the env's lycanthrope and beast-form flags
 import { elementalResistanceChance, ELEMENTS, BODY_CAPSULE_RADIUS, EFFECT_FLAGS, savingThrow } from '../systems/spellcast.js';   // SURV7: the env's fire and frost resistances; WB4: the saving throw a boss's fire meets   // DW-E3: a foe's controller, as a fish's probe meets it
 import { createTownWatch, runTownWatchFrame } from '../systems/townWatch.js';   // DISC19-F: the watch defends the town
@@ -894,7 +895,7 @@ import { createFestivalStage, festivalBannerAnchors, festivalLanternsOf } from '
 import { drawBanner } from '../ui/heraldryArt.js';   // GUILD1d: ...its heraldry painted on it
 import { heraldryLookup } from '../ui/heraldrySwatch.js';   // HERALDRY-SHOWN: a guild's heraldry by its tag, off what this client holds
 import { AuraRingRenderer, auraWearers, auraLookOf, auraBeastStep, auraMotionStep, auraCapeStep, auraSpriteBones, auraSpritePosed, auraWingLights, CLOAK_BONES, AURA_KINDLE_S, AURA_FORGET_S } from '../render/auraRing.js'; import { peerBodyYaw } from '../net/peerClimb.js';   // WB9g: Dagon's Fire at a wearer's feet; SHADOW-CLOAK: a peer's facing, the cloak's front (on this line, so no cite below it moves)
-import { duelAttackerOf, duelWeaponOf, duelSwingOf, resolveDuelStrike, duelWearDamage, duelStub, duelSpellOf } from '../combat/duelCombat.js';   // DUEL1: the blow between two duellists - INT8/INT9: the striker's half alone, the relay referees
+import { duelAttackerOf, duelWeaponOf, duelSwingOf, resolveDuelStrike, duelWearDamage, duelStandIn, duelSpellOf } from '../combat/duelCombat.js';   // DUEL1: the blow between two duellists - INT8/INT9: the striker's half alone, the relay referees (AUDIT C&C H5: against the neutral stand-in)
 import { createPageWindow, pageView } from '../ui/pageWindow.js';   // JOURNAL1: a page another player holds out, read and kept
 import { PageOffers, pageOfferText, pageShownText, pageTooFarText, keptPageTokens, keptLetterTokens, letterOfPage, PAGE_UNSUPPORTED_TEXT, PAGE_NO_READERS_TEXT, PAGE_GONE_TEXT } from '../net/journalPage.js';   // JOURNAL1: a page of the journal shown, and one shown to me kept
 import { quickslotTag, quickslotHand, tagText, actionKeyWord } from '../ui/quickslotTags.js';   // JOURNAL1: the F-menu's own key, named off the live bindings
@@ -2210,9 +2211,9 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
    *  temporal dead zone, which `?.` cannot save (bootorder.js's BOOT-TDZ2
    *  gate catches exactly this). Until the ticker stands this answers
    *  NaN, and the pure law's own guards make every call a no-op: nothing
-   *  expires on a clock that has not started, and the start pixel's
-   *  first sight is simply recorded the next time it streams in - or the
-   *  moment the player enters it, which is what onDungeonSpawned is for. */
+   *  expires on a clock that has not started. SPAWN-REBIRTH: a spawn's
+   *  long clock starts the moment a player enters it, which is what
+   *  onDungeonSpawned is for - never when its pixel streams in. */
   let _spawnClock = () => NaN;
   /** TTL1: is the player standing in the spawn on this pixel RIGHT NOW?
    *  The creator's rule says "when there is no player in it" of both
@@ -2235,19 +2236,21 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     const key = `${p.x},${p.y}`;
     if (!locationIndex.get(key)?.spawned) return;
     if (locationIndex.get(key).superTier) return;   // SD2b: a Hollow's life is the hub's record - a cleared one is not two days from gone
+    if (locationIndex.get(key).wildHall) return;   // AUDIT SPAWN-REBIRTH F6: nor is a Wild Zone hall's - its day is the hub's (net/wildLaw.js)
     _spawnLedger.clear(key, _spawnClock());
     owSayRow(key);   // OW6L: and the cell hears the short clock start
   };
   // OW6L (2026-09-29, the player: "Everything needs that persistence between players in the overworld"): THE CELL'S
   // OVERWORLD LEDGER (net/overworldLaw.js, kept by the relay's cell room; net/online.js sendOverworld / onOverworld).
   // What I spend - a band fought or escaped (TV7), a raider come alongside or outsailed (OWS3) - and a spawned
-  // dungeon's clocks - its first sight here, its first clear (TTL1) - are said to the cell I stand in, which keeps them
+  // dungeon's clocks - its first entry here, its first clear (TTL1, SPAWN-REBIRTH) - are said to the cell I stand in, which keeps them
   // and says them to every player there, and to one who walks in later in its welcome: a band someone fought is gone
   // for everyone for its life, not only for those whose frames heard it (TV7b's word reached three pixels, that minute);
   // and every player's spawned dungeons run out on the SAME clocks - the earliest sight and the earliest clear anyone
   // had (the spawn ledger's merge), where each client's own clocks let two players disagree for days whether one stood.
   // A word the cell did not take (the gate shut, a socket down, a dungeon's room rather than a cell) is said again.
-  // Declared ahead of the spawn roll below, whose first sight says its row during the boot's own builds (BOOT-TDZ).
+  // Declared ahead of the spawn roll below, whose first sight said its row during the boot's own builds (BOOT-TDZ; SPAWN-REBIRTH: a
+  // first entry says it now, and a save loaded straight into a spawn enters it during the boot).
   const OW_SAY_MS = 1000;   // how often what is owed is said (the session's own bucket is OW_HZ_MAX a second)
   const OW_SAY_KEEP_MS = 10 * 60 * 1000;   // a row owed past this is let go (my ledger keeps it; the cell's behind-answer heals)
   const OW_SAY_MAX = 64;   // and never more owed than this, the oldest let go
@@ -2255,7 +2258,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
   let _owSaidAt = -Infinity;
   /** OW6L: a band or a raider spent here - owed to the cell. */
   function owSaySpent(id) { _owSay.sp.delete(id); _owSay.sp.set(id, performance.now()); owSayBound(_owSay.sp); }
-  /** OW6L: a spawned dungeon's row (its first sight, its clear) - owed to the cell as my ledger has it now. */
+  /** OW6L: a spawned dungeon's row (its first entry, its clear) - owed to the cell as my ledger has it now. */
   function owSayRow(key) { if (!_spawnLedger.wireRow(key)) return; _owSay.dg.delete(key); _owSay.dg.set(key, performance.now()); owSayBound(_owSay.dg); }
   function owSayBound(m) { while (m.size > OW_SAY_MAX) m.delete(m.keys().next().value); }
   /** OW6L: what is owed, said (a second apart at most) - what the cell took no longer owed; a spent id of a life gone, and
@@ -2263,6 +2266,11 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
   function overworldLedgerFrame(now) {
     if (!online?.owOk || now - _owSaidAt < OW_SAY_MS || (!_owSay.sp.size && !_owSay.dg.size)) return;
     _owSaidAt = now;
+    // AUDIT SPAWN-REBIRTH F1: WHAT IS OWED WAITS FOR A CELL. A first entry and a clear are made underground, with my socket
+    // in the dungeon's room, where nothing is said (online.js sendOverworld: a cell's alone) - and a row owed past
+    // OW_SAY_KEEP_MS was let go there, so a run longer than that never told the cell it had begun. Its keep is counted
+    // from the cell it is said in
+    if (!isCellRoom(online.room)) { for (const k of _owSay.dg.keys()) _owSay.dg.set(k, now); return; }
     const bandLife = Math.floor(bandNowMs() / BAND_LIFE_MS), raidLife = Math.floor(raidNowMs() / RAIDER_LIFE_MS);
     for (const id of [..._owSay.sp.keys()]) if ((id[0] === 'b' ? bandLifeOf(id) < bandLife - 1 : raiderLifeOf(id) < raidLife - 1)) _owSay.sp.delete(id);
     for (const [key, since] of [..._owSay.dg]) if (now - since > OW_SAY_KEEP_MS) _owSay.dg.delete(key);
@@ -2285,15 +2293,19 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     }
     if (msg?.k !== 'dg') return;
     let moved = false;
-    for (const [px, py, seen, cleared] of msg.rows) moved = _spawnLedger.merge(`${px},${py}`, seen, cleared) || moved;
+    const now = _spawnClock();   // SPAWN-REBIRTH: a heard row of a life that is over is none, and gives way to a later life's
+    for (const [px, py, seen, cleared] of msg.rows) moved = _spawnLedger.merge(`${px},${py}`, seen, cleared, now) || moved;
     if (moved) tvDng.at = null;   // the Overworld's dungeons read again: a spawn now gone leaves its list
   }
-  /** OW6L: a spawn's first sight here - its long clock started, and the cell told (a sight already in my ledger - my own,
-   *  or the cell's merged in - starts nothing and says nothing). */
+  /** OW6L: a spawn's first entry here - its long clock started, and the cell told (an entry already in my ledger - my own,
+   *  or the cell's merged in - starts nothing and says nothing). SPAWN-REBIRTH: the one door that starts it - entering
+   *  (onDungeonSpawned), never a pixel streaming in - and a row of a life that is over is none (the ledger's `has`). */
   function _spawnSeen(key) {
     if (locationIndex.get(key)?.superTier) return;   // SD2b: never a Hollow's - its life is the hub's record, not a spawn's clocks
-    const fresh = !_spawnLedger.wireRow(key);
-    _spawnLedger.note(key, _spawnClock());
+    if (locationIndex.get(key)?.wildHall) return;   // AUDIT SPAWN-REBIRTH F6: nor a Wild Zone hall's - its day is the hub's; noted, it was taken out at its pixel's next build fourteen real hours on, and on a pixel the spawn roll also holds the cell took the row
+    const now = _spawnClock();
+    const fresh = !_spawnLedger.has(key, now);
+    _spawnLedger.note(key, now);
     if (fresh) owSayRow(key);
   }
   const _spawnUnroaded = new Set();   // SPAWN-ROADS: spawned keys decided before the road network landed
@@ -2382,6 +2394,8 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
       // rides the save), so the pixel stays empty. It was forgotten here, and the roll is a pure hash of the pixel: the
       // very next ask - the build's own, a moment after buildPixel's probe had asked - stood the same dungeon again on a
       // fresh seven days. "Spawned Dungeons should expire/removed" (TTL1, the creator's rule relayed by Mac)
+      // SPAWN-REBIRTH: gone until it stands again - REBIRTH_TTL_DAYS after it died the row is of a life that is over,
+      // `expired` answers false, and the same dungeon stands here with no clock running until a player enters it
       if (_spawnLedger.expired(key, _spawnClock()) && !_insideSpawn(key)) {
         _locIndexGen += 1;   // AUDIT OW4 D5
         locationIndex.delete(key);
@@ -2392,7 +2406,8 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
       _locIndexGen += 1;   // AUDIT OW4 D5
       locationIndex.set(key, loc);
       if (!net) _spawnUnroaded.add(key);   // SPAWN-ROADS: decided without the network - the sweep asks again
-      _spawnSeen(key);   // TTL1: first sight starts the seven-day clock (OW6L: and the cell hears it)
+      // SPAWN-REBIRTH: standing it starts NO clock - the seven days start when a player enters it (onDungeonSpawned).
+      // A first sight here started them for every spawn within the terrain distance of a road walked, entered or not
       return loc;
     } catch (e) { console.warn('[spawned dungeons]', px, py, e?.message ?? e); return null; }
   };
@@ -2404,7 +2419,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     if (etherSea && inEther(px, py)) return etherPlaceAt(px, py);   // ETHER-PLACES: an isle's place, or the open sea's none
     const key = `${px},${py}`;
     const loc = locationIndex.get(key);
-    if (loc?.spawned && _spawnLedger.expired(key, _spawnClock()) && !_insideSpawn(key)) {
+    if (loc?.spawned && !loc.wildHall && _spawnLedger.expired(key, _spawnClock()) && !_insideSpawn(key)) {   // AUDIT SPAWN-REBIRTH F6: a hall's day is its own
       _locIndexGen += 1;   // AUDIT OW4 D5
       locationIndex.delete(key);
       return null;
@@ -2447,11 +2462,14 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
    *  FIELD BUGS 29h (SPAWN-PLATE; the Discord: "Elite Dungeons that despawn stay on map ... no entrance anymore but are
    *  still marked"): standing on the ground is the BUILD's word - whether the pixel stood a location, never that it is
    *  built. A pixel built after the clock ran out is built EMPTY, and read as built it kept its found plate (the store
-   *  files a spawn for good) and its walk to bare grass whenever the traveller came within the grid. */
-  const tvSpawnGone = (x, y) => { const key = `${x},${y}`; return _spawnLedger.expired(key, _spawnClock()) && !_insideSpawn(key) && built.get(key)?.location == null; };
+   *  files a spawn for good) and its walk to bare grass whenever the traveller came within the grid.
+   *  AUDIT SPAWN-REBIRTH F2: and the build's word BOTH WAYS - a pixel built empty while its spawn was dead stands none
+   *  until it is built again, though the spawn has stood again since (its time over, `expired` answers false: the plate
+   *  and the walk came back over the same bare grass, 29h's report the other way round); off the built ground, the clocks. */
+  const tvSpawnGone = (x, y) => { const key = `${x},${y}`; if (_insideSpawn(key)) return false; const b = built.get(key); return b ? b.location == null : _spawnLedger.expired(key, _spawnClock()); };
   /** AUDIT OW4 D4: WHAT spawnedDungeonAt WOULD STAND on a pixel it has not built - its own gates (the sea, a path across
    *  the pixel, the clocks; the roll and the page are asked by the caller) and its clone, with none of its writes (the
-   *  index, the ledger's first sight, the roads' provisional keys): a far found spawn is marked, never built. */
+   *  index, the roads' provisional keys): a far found spawn is marked, never built. */
   function tvSpawnAt(px, py) {
     if (maps.getClimateIndex(px, py) === CLIMATES.Ocean || !_spawnGround(px, py) || tvSpawnGone(px, py)) return null;
     const roads = terrainGen.roads();
@@ -5010,11 +5028,11 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     if (!waterOn || !p._bed || !p.terrain) return;   // no vertex was under water: a cap only takes water away
     const stride = p._stride ?? 1;
     const halo = stride === 1 ? p._bed.halo : null;   // AUDIT WATER-NEXT F2: the seams' tiles the build read
-    const depths = waterBedDepths(bedBytesOf(p), { stride, halo });
-    const was = p._bed.depths;
-    if (depths === was || (depths && was && depths.length === was.length && depths.every((d, i) => d === was[i]))) return;
+    const fields = bedFields(bedBytesOf(p), { stride, halo });   // BANK-FLUSH: the ground's carve (`_bed.depths`) and the sheet's depths, one chamfer
+    const g = 128 / stride + 1, same = (a, b) => a === b || (a && b && a.length === b.length && a.every((d, i) => d === b[i]));
+    if (same(fields?.carve ?? null, p._bed.depths) && same(fields ? sheetDepthsOf(fields.depths, g, g) : null, p._bed.sheetDepths)) return;
     const grid = { positions: p._bed.sheet, normals: p._bed.normals };
-    const bed = depths ? gridBed(grid, bedBytesOf(p), stride, halo) : null;
+    const bed = fields ? gridBed(grid, bedBytesOf(p), stride, halo) : null;
     renderer.destroyMesh(p.terrain);
     p.terrain = renderer.createTerrainSurface(bed?.positions ?? grid.positions, bed?.normals ?? grid.normals,
       stride === 1 ? TERRAIN_INDICES : TERRAIN_INDICES_LOD);
@@ -7400,12 +7418,12 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
   // AUDIT LIVED1b K1: DFU's popup guard (PlayerEntity.cs:2385-2391 displayingExhaustedPopup - "Somnalius poison after
   // first exhaustion drop. Subsequent exhaustion events would otherwise stack on popup per poison round remaining"), as
   // the dungeon's has been since AUDIT 68 S19: while the collapse's box stands, a drain to nothing collapses nobody
-  // again. Online, where the hour's rounds now run under that box (the ticker walks J's raise at once); offline the
-  // hour still nests inside the latch below, as before (K6's recorded twin), and nothing offline reads differently.
+  // again. AUDIT C&C N2/H1: IN BOTH LANES, as DFU's own - K1 kept it online alone, and offline a Hard jump's replay
+  // collapsed the body again and again under one box after another (eighty-three on a three-day journey).
   let _exhaustedBox = null;
   const exhaustedShowing = () => !!_exhaustedBox && !_exhaustedBox.done && townTalk.containsOverlay(_exhaustedBox);
   function onExhaustedExterior() {
-    if (_inExhaustion || (sharedClockOn() && exhaustedShowing())) return;
+    if (_inExhaustion || exhaustedShowing()) return;
     _inExhaustion = true;
     try {
       const out = exhaustionOutcome({
@@ -7436,6 +7454,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
       _exhaustedBox = new ActionTextBox(lines);
       townTalk.pushOverlay(_exhaustedBox);
       if (out.kind === 'rest') {
+        markOutCold(playerEntity);   // AUDIT C&C N2: the needs feel the hour as a night on the ground (the body is out cold)
         playerTicker.advance(60);
         // CAMP-REST: the forced hour is a rest - its minutes are spent HERE, through the same tick the rest window uses, so the
         // frame never replays them as walking time (which is what let the 15-minute camp timer fire on waking)
@@ -7452,7 +7471,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
   }
   const drainExteriorFatigue = (n) => {
     if (n <= 0) return;
-    playerEntity.fatigue = Math.max(0, (playerEntity.fatigue ?? 0) - n);
+    playerEntity.fatigue = clampFatigue(playerEntity, (playerEntity.fatigue ?? 0) - n);   // AUDIT C&C N5: SetFatigue's clamp, the ceiling too
     surfacePlayer();
     if (playerEntity.fatigue <= 0 && playerEntity.health > 0) onExhaustedExterior();
   };
@@ -7466,15 +7485,18 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     const m = _mode();
     const feet = walkMode && playerSpawned ? player.pos : cam.pos;
     const wm = skyMinutes();   // TIME1: the air's month and hour are the sky's
-    const weather = currentWeather();
+    const weather = shownWeather();   // AUDIT TEMP-UI E11: the weather the land wears - the Sun Baby's clear day too (SUNBABY1); the sim's rain soaked a body under a clear sky
     const lyc = liveLycanthropy(playerEntity);
+    const hour = (((wm % 1440) + 1440) % 1440) / 60;
+    const sheltered = m === 'exterior' && !!playerEntity.isResting && !!camps.tentNear(feet);   // AUDIT C&C I2: a rest at a tent sleeps under its roof
     return {
       climateIndex: maps.getClimateIndex(playerTravelPixel().x, playerTravelPixel().y),
-      month: dateFromClassicMinutes(wm).month, hour: (((wm % 1440) + 1440) % 1440) / 60, weather,
+      month: dateFromClassicMinutes(wm).month, hour, weather,
       insideBuilding: m === 'interior', insideDungeon: m === 'dungeon',
-      inSunlight: m === 'exterior' && !isNight(minuteNow()) && (weather === 'sunny' || weather === 'cloudy'),
+      inSunlight: m === 'exterior' && sunlit({ hour, weather, sheltered }),   // AUDIT C&C: the sun's one law, the replay's too
       swimming: m === 'exterior' && !!(walkMode && playerSpawned && player.isPlayerSwimming), transport: !!player.riding,
-      byFire: m === 'exterior' && camps.byFire(feet),
+      submerged: m === 'exterior' && !!dwPlayer?.submerged,   // AUDIT C&C (lens T D3): the head under the sea soaks at once; a swim on the surface wades (env.js)
+      byFire: m === 'exterior' && camps.byFire(feet), sheltered,
       resting: !!playerEntity.isResting, sleeping: playerEntity.isResting && !playerEntity.isLoitering ? (playerEntity.restKind ?? 'rough') : null,
       lycanthrope: !!lyc, beastForm: !!lyc?.isTransformed,
       fireResist: elementalResistanceChance(playerEntity, ELEMENTS.Fire), frostResist: elementalResistanceChance(playerEntity, ELEMENTS.Frost),
@@ -16156,6 +16178,11 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     // AUDIT OH-F B4: never a save inside the descent (one frame in DFU): it would write the swimmer on the template's
     // land with the mod's record not yet Active. AUDIT REALM2 M5: said to a save pressed, never to the quiet checkpoint
     if (ohAbyss?.entering) { if (!quiet) townTalk.say('You cannot save now.'); return false; }   // cannotSaveNow (Internal_Strings)
+    // AUDIT C&C (lens H): nor inside a journey. DFU's fast travel is one frame - TeleportToCoordinates, then RaiseTime
+    // (DaggerfallTravelPopUp.cs :333, :344) - and here the teleport is awaited, frames running, before the clock moves:
+    // a save between them (the online checkpoint, the page's exit save, a key) wrote the arrival's place with the
+    // departure's clock and needs, and a load of it was there for nothing. The checkpoint tries again when next due.
+    if (_traveling) { if (!quiet) townTalk.say('You cannot save now.'); return false; }
     // AUDIT NAV1 (B14): nor in a boarding or on a ship of the sea's deck - the sea is never a save's, and the load set the
     // player over open water, the ship and her prize gone
     if (naval?.saveRefused?.()) { if (!quiet) townTalk.say('You cannot save now.'); return false; }
@@ -23181,26 +23208,27 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     const name = peerName(d.peer) ?? 'your opponent';
     _duelHud.update({ bar: [`Duel with ${name}`, theirs ? `${name}: ${theirs[1]} / ${theirs[2]}` : 'The referee sets the bout...'], sides: '', self: mine ? [`Your vitality: ${mine[1]} / ${mine[2]}`] : [], works: '', arms: null, card: null });
   };
-  /** THE ATTACKER: my blow out - INT8: rolled on my own sheet against a body of my own sheet (a siege's way: the
-   *  target's armour is not mine to read), the number sent for the RELAY to referee (net/duelRef.js clips it to the
-   *  weapon my look holds and the arms my token signs). A swing that rolled nothing is a miss, said here; the referee's
-   *  word on one that landed comes back as `duelHpIn`. */
+  /** THE ATTACKER: my blow out - INT8: rolled on my own sheet against the neutral stand-in (AUDIT C&C H5: a body of my
+   *  own sheet cancelled every attribute I brought and charged me for my own luck; the target's sheet is not mine to
+   *  read), the number sent for the RELAY to referee (net/duelRef.js clips it to the weapon my look holds and the arms
+   *  my token signs). A swing that rolled nothing is a miss, said here; the referee's word on one that landed comes
+   *  back as `duelHpIn`. */
   const duelStrikeOut = (by, weapon, swing, drawMs = 0, to = null) => {
     if (!duelMgr.fighting) return siegeStrikeOut(to, by, weapon, swing, drawMs);   // AUDIT-SEATS G5: outside a duel, my shaft on a battle's foe (`to`)
     const a = duelAttackerOf(playerEntity, weapon), w = duelWeaponOf(weapon), sw = duelSwingOf(swing);
     const at = drawMs > 0 ? { at: Math.min(60000, Math.trunc(drawMs)) } : {};
-    const r = resolveDuelStrike({ by, a, ...(w ? { w } : {}), ...(sw ? { sw } : {}), ...at }, duelStub(a).stub);
+    const r = resolveDuelStrike({ by, a, ...(w ? { w } : {}), ...(sw ? { sw } : {}), ...at }, duelStandIn());
     if (!(r.dmg > 0)) { reportPlayerAttack({ hit: false, damage: 0, critical: false, backstab: false, ineffective: false }); return true; }
     const n = duelMgr.blow('strike', { by, p: campToWire(player.feetAt()), d: Math.trunc(r.dmg), ...(w ? { w } : {}), ...(sw ? { sw } : {}), ...at });
     if (n) { _duelSent.set(n, { kind: 'strike', weapon }); _duelLastWeapon = weapon ?? null; if (_duelSent.size > 64) _duelSent.delete(_duelSent.keys().next().value); }
     return !!n;
   };
-  /** My spell reached my opponent (the cast engine's duel marks, scenes/hostMagic.js): INT8 - its harm counted on a
-   *  stand-in of my own sheet (combat/siegeCombat.js siegeSpellNumbers, a siege's way), to the referee as a cast. */
+  /** My spell reached my opponent (the cast engine's duel marks, scenes/hostMagic.js): INT8 - its harm counted on the
+   *  neutral stand-in (combat/siegeCombat.js siegeSpellNumbers, a siege's way - AUDIT C&C H5), to the referee as a cast. */
   const duelSpellOut = (peerId, sp) => {
     if (!duelMgr.fighting) return siegeSpellOut(peerId, sp);   // AUDIT-SEATS G5: outside a duel, my spell on a siege's foe
     if (peerId !== duelMgr.opponent) return false;
-    const { harm } = siegeSpellNumbers(sp, Math.max(1, Math.trunc(playerEntity.level || 1)), duelStub(duelAttackerOf(playerEntity)).stub, playerEntity);
+    const { harm } = siegeSpellNumbers(sp, Math.max(1, Math.trunc(playerEntity.level || 1)), duelStandIn(), playerEntity);
     if (!(harm > 0)) return false;
     const n = duelMgr.blow('spell', { p: campToWire(player.feetAt()), d: siegeCastClamp(harm, false) });
     if (n) { _duelSent.set(n, { kind: 'spell', weapon: null }); if (_duelSent.size > 64) _duelSent.delete(_duelSent.keys().next().value); }
@@ -23220,7 +23248,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     return duelStrikeOut('melee', weaponRig.playerWeapon.strikingWeapon, weaponRig.playerWeapon.machine?.state);
   };
   /** SEAT2a part four: THE MELEE ARM IN A SIEGE - the nearest foe (a fighter of the other side) within a weapon's reach,
-   *  in view and in sight (the duel's test); my swing rolled on my own sheet against a body of my own sheet, sent to the
+   *  in view and in sight (the duel's test); my swing rolled on my own sheet against the neutral stand-in, sent to the
    *  relay, which clips it to DFU's range for the weapon my look holds (net/siegeRef.js). True when the swing was theirs. */
   const siegeMeleeHit = (eye, inViewFn) => {
     const battle = royalSession?.active() ? royalSession : siegeSession;   // CROWN1 part two: a Royal Tourney's bout, the same arm
@@ -23256,7 +23284,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     if (Math.hypot(me[0] - at[0], me[2] - at[1]) / SIEGE_UNITS_PER_M > SIEGE_REACH.melee + size) return false;
     const weapon = weaponRig.playerWeapon.strikingWeapon;
     const a = duelAttackerOf(playerEntity, weapon), w = duelWeaponOf(weapon), sw = duelSwingOf(weaponRig.playerWeapon.machine?.state);
-    const r = resolveDuelStrike({ by: 'melee', a, ...(w ? { w } : {}), ...(sw ? { sw } : {}) }, duelStub(a).stub);
+    const r = resolveDuelStrike({ by: 'melee', a, ...(w ? { w } : {}), ...(sw ? { sw } : {}) }, duelStandIn());
     if (r.dmg > 0) {
       const held = weapon ? (composeLook(playerEntity)?.items ?? []).find((i) => i?.group === 'Weapons' && i.templateIndex === weapon.templateIndex) ?? null : null;
       siegeSession.workBlow(to, { w: weapon ? weapon.templateIndex : -1, m: held?.material ?? 0, d: r.dmg, r: siegeBlowKind('melee') });
@@ -23265,13 +23293,13 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
   };
   /** AUDIT-SEATS G5: MY BLOW ON A BATTLE'S FOE `to` - a swing or a shaft (`by` 'melee' or 'arrow': its kind on the wire,
    *  combat/siegeCombat.js siegeBlowKind - the referee takes a shaft from a bow alone, at a shaft's reach), rolled on my
-   *  own sheet against a body of my own sheet (a shaft's the release's StrikeDown and its draw's time), sent to the relay,
+   *  own sheet against the neutral stand-in (a shaft's the release's StrikeDown and its draw's time), sent to the relay,
    *  which clips it to DFU's range for the weapon my look holds (net/siegeRef.js). True when it was the battle's. */
   const siegeStrikeOut = (to, by, weapon, swing, drawMs = 0) => {
     const battle = royalSession?.active() ? royalSession : siegeSession;
     if (!to || !battle?.active() || !battle.foes().includes(to)) return wildStrikeOut(to, by, weapon, swing, drawMs);   // WILD1: not the battle's - perhaps a fair player of the open zone's
     const a = duelAttackerOf(playerEntity, weapon), w = duelWeaponOf(weapon), sw = duelSwingOf(swing);
-    const r = resolveDuelStrike({ by, a, ...(w ? { w } : {}), ...(sw ? { sw } : {}), ...(drawMs > 0 ? { at: Math.min(60000, Math.trunc(drawMs)) } : {}) }, duelStub(a).stub);
+    const r = resolveDuelStrike({ by, a, ...(w ? { w } : {}), ...(sw ? { sw } : {}), ...(drawMs > 0 ? { at: Math.min(60000, Math.trunc(drawMs)) } : {}) }, duelStandIn());
     if (r.dmg > 0) {
       const held = weapon ? (composeLook(playerEntity)?.items ?? []).find((i) => i?.group === 'Weapons' && i.templateIndex === weapon.templateIndex) ?? null : null;
       battle.blow(to, { w: weapon ? weapon.templateIndex : -1, m: held?.material ?? 0, d: r.dmg, r: siegeBlowKind(by) });
@@ -23304,11 +23332,11 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     const bodies = battleFoeBodies(siegeSession);
     return bodies.length ? bodies.map((b) => ({ ...b, name: b.name ?? peerName(b.id) ?? 'a foe' })) : wildSpellMarks();   // SEAT2b part two (c): a guard or a rebel by its own name; WILD1: no siege - the open zone's fair players
   };
-  /** AUDIT-SEATS G5: A SPELL OF MINE MET A SIEGE'S FOE - its harm, counted on a stand-in of my own sheet
+  /** AUDIT-SEATS G5: A SPELL OF MINE MET A SIEGE'S FOE - its harm, counted on the neutral stand-in
    *  (combat/siegeCombat.js siegeSpellNumbers), to the referee as a cast (it clips, and bounds the rate). */
   const siegeSpellOut = (peerId, sp) => {
     if (!siegeSession?.isFoe(peerId)) return wildSpellOut(peerId, sp);   // WILD1: not the siege's - perhaps a fair player of the open zone's
-    const { harm } = siegeSpellNumbers(sp, Math.max(1, Math.trunc(playerEntity.level || 1)), duelStub(duelAttackerOf(playerEntity)).stub, playerEntity);
+    const { harm } = siegeSpellNumbers(sp, Math.max(1, Math.trunc(playerEntity.level || 1)), duelStandIn(), playerEntity);
     return harm > 0 && siegeSession.cast(peerId, siegeCastClamp(harm, false));
   };
   /** AUDIT-SEATS G5: A GIFT OF MINE ON A SIEGE'S SIDE-MATE - its Heal Health, counted as the mate's own client would land
@@ -23316,7 +23344,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
    *  for anyone else, or a gift with no heal in it - the ordinary door takes it then. */
   const siegeHealOut = (id, frame) => {
     if (!siegeSession?.active() || !siegeSession.mates().includes(id)) return false;
-    const { heal } = siegeSpellNumbers(frame?.spell, Math.max(1, Math.trunc(frame?.level || 1)), duelStub(duelAttackerOf(playerEntity)).stub, playerEntity);
+    const { heal } = siegeSpellNumbers(frame?.spell, Math.max(1, Math.trunc(frame?.level || 1)), duelStandIn(), playerEntity);
     return heal > 0 && siegeSession.cast(id, siegeCastClamp(heal, true), true);
   };
   /** AUDIT-SEATS G5: whether I stand in a siege's own room - its wards hold there (Teleport, Recall, Levitate; the saddle). */
@@ -23862,25 +23890,26 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     _crimeResponse();
     townTalk.say('The town watch has seen you strike - the guards are coming!');
   };
-  /** MY BLOW ON A FAIR PLAYER `to` - a swing or a shaft. INT9: rolled on my own sheet against a body of my own sheet (a
-   *  siege's way: the target's armour is not mine to read), the number sent for the RELAY to referee (net/wildRef.js clips
-   *  it to the weapon my look holds and the arms my token signs); a swing that rolled nothing is a miss, said here, and the
-   *  referee's word on one that landed comes back as `wildHpIn`. True when the swing was the zone's. */
+  /** MY BLOW ON A FAIR PLAYER `to` - a swing or a shaft. INT9: rolled on my own sheet against the neutral stand-in (a
+   *  siege's way: the target's sheet is not mine to read - AUDIT C&C H5), the number sent for the RELAY to referee
+   *  (net/wildRef.js clips it to the weapon my look holds and the arms my token signs); a swing that rolled nothing is a
+   *  miss, said here, and the referee's word on one that landed comes back as `wildHpIn`. True when the swing was the
+   *  zone's. */
   const wildStrikeOut = (to, by, weapon, swing, drawMs = 0) => {
     if (!wildFair(to)) return false;
     const a = duelAttackerOf(playerEntity, weapon), w = duelWeaponOf(weapon), sw = duelSwingOf(swing);
     const at = drawMs > 0 ? { at: Math.min(60000, Math.trunc(drawMs)) } : {};
-    const r = resolveDuelStrike({ by, a, ...(w ? { w } : {}), ...(sw ? { sw } : {}), ...at }, duelStub(a).stub);
+    const r = resolveDuelStrike({ by, a, ...(w ? { w } : {}), ...(sw ? { sw } : {}), ...at }, duelStandIn());
     if (!(r.dmg > 0)) { reportPlayerAttack({ hit: false, damage: 0, critical: false, backstab: false, ineffective: false }); zoneWatchCall(); return true; }
     const n = wildFight.blow(to, 'strike', { by, p: campToWire(player.feetAt()), d: Math.trunc(r.dmg), ...(w ? { w } : {}), ...(sw ? { sw } : {}), ...at });
     if (n) { _wildLastWeapon = weapon ?? null; zoneWatchCall(); }
     return !!n;
   };
-  /** My harmful spell met a fair player (the cast engine's marks): INT9 - its harm counted on a stand-in of my own sheet
+  /** My harmful spell met a fair player (the cast engine's marks): INT9 - its harm counted on the neutral stand-in
    *  (combat/siegeCombat.js siegeSpellNumbers, a siege's way), to the referee as a cast (it clips, and bounds the rate). */
   const wildSpellOut = (peerId, sp) => {
     if (!wildFair(peerId)) return false;
-    const { harm } = siegeSpellNumbers(sp, Math.max(1, Math.trunc(playerEntity.level || 1)), duelStub(duelAttackerOf(playerEntity)).stub, playerEntity);
+    const { harm } = siegeSpellNumbers(sp, Math.max(1, Math.trunc(playerEntity.level || 1)), duelStandIn(), playerEntity);
     if (!(harm > 0)) return false;
     const n = wildFight.blow(peerId, 'spell', { p: campToWire(player.feetAt()), d: siegeCastClamp(harm, false) });
     if (n) zoneWatchCall();
@@ -26687,15 +26716,15 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
   const motherlodeMarks = () => {
     _lodeMarks.length = 0;
     if (!motherlodeBook || profBook?.state.open !== true || _mode() !== 'exterior') return _lodeMarks;
-    for (const l of motherlodeBook.standingAll(_lodesUp)) {
-      const tr = state.pixelTranslation(l.x, l.y, _lodeTr), m = _lodePool[_lodeMarks.length] ??= { profession: 'mining', at: [0, 0, 0], d: 0, reach: 1 };
+    for (const l of motherlodeBook.markedAll(_lodesUp)) {   // LODE-MARK (FIELD BUGS 2026-10-12g): from its warning on, in its own colour
+      const tr = state.pixelTranslation(l.x, l.y, _lodeTr), m = _lodePool[_lodeMarks.length] ??= { profession: 'motherlode', at: [0, 0, 0], d: 0, reach: 1 };
       m.at[0] = tr[0] + TERRAIN_SIZE / 2; m.at[1] = tr[1]; m.at[2] = tr[2] + TERRAIN_SIZE / 2; _lodeMarks.push(m);
     }
     return _lodeMarks;
   };
   const professionMarks = (feet = enchantFeet()) => {
     const near = nodeMarksAt(feet), far = motherlodeMarks();
-    return nodeCompassPoints(far.length ? [...(near ?? []), ...far] : near, trackerAnimals());   // PROF2b: the far Motherlodes beside the near nodes
+    return nodeCompassPoints(far.length ? [...far, ...(near ?? [])] : near, trackerAnimals());   // PROF2b: the far Motherlodes beside the near nodes - LODE-MARK: drawn over them
   };
   const nodeGlowPass = createNodeGlowPass(renderer);   // NODE-MARKS: kindled node by node, built at idle; never in a building (nodeMarksAt) nor under the travel view (the hook's own gate)
   /** COMPASS-PARTY (2026-09-27, Discord - Ashley: "being able to see where party members are on compass? - just lil
@@ -29591,27 +29620,9 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
   // RW1 (render/realWindows.js): THE STREET THROUGH A BUILDING'S GLASS - what the interior's view out draws (the mode
   // machine asks, renderer.outsideViewFrame runs it): the clock's light over the exterior the last street frame kept,
   // and the pixels' merged statics, odd models, ground and flats out to VIEW_RINGS, culled to the glass's own frustum.
-  // The building the player stands in is left out by its box (`clip`: the model the door's matrix stands, every door
-  // of a building carrying the building's own matrix) - from inside, its shell would stand between the pane and the street.
-  let _rwClipDoor = null, _rwClip = null;
-  const outsideViewClip = (doorMatrix) => {
-    if (doorMatrix === _rwClipDoor) return _rwClip;
-    _rwClipDoor = doorMatrix; _rwClip = null;
-    if (!doorMatrix) return null;
-    let best = -1;
-    for (const p of built.values()) {
-      const t = state.pixelTranslation(p.px, p.py);
-      for (const m of p.models) {
-        const l = m.local, b = m._box;
-        if (!l || !b || Math.abs(l[12] + t[0] - doorMatrix[12]) > 0.01 || Math.abs(l[13] + t[1] - doorMatrix[13]) > 0.01 || Math.abs(l[14] + t[2] - doorMatrix[14]) > 0.01) continue;
-        const vol = (b[3] - b[0]) * (b[4] - b[1]) * (b[5] - b[2]);
-        if (vol <= best) continue;
-        best = vol;
-        _rwClip = [b[0] + t[0] - VIEW_CLIP_PAD, b[1] + t[1] - VIEW_CLIP_PAD, b[2] + t[2] - VIEW_CLIP_PAD, b[3] + t[0] + VIEW_CLIP_PAD, b[4] + t[1] + VIEW_CLIP_PAD, b[5] + t[2] + VIEW_CLIP_PAD];
-      }
-    }
-    return _rwClip;
-  };
+  // The building the player stands in is drawn with the rest: its walls seen from inside are back faces, and what stands
+  // on the room's side of a pane the renderer leaves out (PANE-CLIP, FIELD BUGS 2026-10-12g - its model's box left out
+  // its own other wing and a neighbour's wall against it, "Wall missing through window").
   /** RW1 (AUDIT): the town's lanterns as the street frame lights them - its pool refilled, the nearest the installed set
    *  takes - for a street looked out on after dark (the kept frame's were the hour the player went in). */
   const outsideLanterns = (r) => {
@@ -29668,8 +29679,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     // every cut-out flat: the view out drew the bed under it dry
     if (deepWaters) drawDeepWatersSurfaces(performance.now(), ground);
   };
-  const outsideView = (doorMatrix) => ({
-    clip: outsideViewClip(doorMatrix),
+  const outsideView = () => ({
     setup: (r) => {   // the clock's light: an hour spent indoors is an hour later outside
       const clockMinute = minuteNow();
       const keptFog = r._fogColor, keptSun = r._sunScale;   // RW1 (AUDIT): the air the street was kept in, at the light it was kept at
@@ -29960,7 +29970,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     // dungeon. `onDungeonSpawned` only fires for a synthesized one, so
     // the note is unconditional; `onDungeonCleared` fires for ANY
     // dungeon, so _noteSpawnCleared checks the pixel first.
-    onDungeonSpawned: () => { const p = playerTravelPixel(); _spawnSeen(`${p.x},${p.y}`); },   // OW6L: the one first-sight door
+    onDungeonSpawned: () => { const p = playerTravelPixel(); _spawnSeen(`${p.x},${p.y}`); },   // OW6L: the one first-entry door (SPAWN-REBIRTH: the long clock starts here alone)
     onDungeonCleared: _noteSpawnCleared,
     spawnLedger: () => _spawnLedger,   // TTL1: so a save made INSIDE a dungeon carries the clocks too
     legacyWillRise: () => legacyHost?.willRise() ?? false,   // AUDIT LEGACY B5: Project Legacy will raise this death - Privateer's Hold's start-marker arm takes it offline too
