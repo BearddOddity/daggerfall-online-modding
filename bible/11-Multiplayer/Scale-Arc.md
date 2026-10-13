@@ -73,6 +73,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SLIM-FRAME | The second wire's place in its own units: a pose's height to the centimetre in every room, a dungeon's, a town's and a building's x and z with it, a cell's x and z whole world units - the relay's fan says the room | Yes, once | **Built** (2026-10-11, this branch; relay world194, one drop at the merge) |
 | D1-NEAR | The account Worker beside its database's primary, by name (`[placement] region`): Smart Placement ran it in Sydney, a Pacific from the primary, and every statement on the primary paid the crossing; every deploy says where it answers from, what a statement costs it there and where D1 says its primary is | No | **Built** (2026-10-12, this branch - no migration, no version, no drop; audited, AUDIT D1-NEAR) |
 | HOMES-SHED | The account database overloaded from 14:11 UTC (2026-10-13): the busiest route one D1 request where it was two (a town's homes and its Open Gates edict in one batch); the siege blackout's question answering a throw as every route does; a town unanswered backing off on the client, YARD-SHED's law | No | **Built** (2026-10-13, this branch - acct127, no migration, no drop) |
+| BUSY-GATE | After HOMES-SHED, the class: the reads a tab keeps asking stand back while the database is overloaded - the client holds them for a doubling wait, an isolate that meets an overload sheds them a moment without a statement, every overload answer says its Retry-After; one law at both ends (`src/net/busyLaw.js`) | No | **Built** (2026-10-13, this branch - acct128, no migration, no drop) |
 | SCALE6 | Abuse and backups: Turnstile on guest creation, /64 IPv6 rate keys, bans, report and ignore, `ALLOWED_ORIGIN`, R2 snapshots, a hub export | Some | Alongside |
 
 **Relay deploy policy (SCALE):** relay changes are batched into as few deploys as possible, each in a window announced beforehand. A deploy drops every player, and until SCALE2 every reconnect is a D1 write storm.
@@ -2041,6 +2042,47 @@ Left, each with its reason:
 
 Pins: `test/homes_shed.test.js` (3); `tools/mutants/homes_shed.json` (8 dead); SCALE4f's `overload-unread` and
 `every-fault-503` re-aimed at `thrown` (both dead).
+
+## BUSY-GATE: built (2026-10-13, this branch - acct128, no migration, no drop)
+
+From the HOMES-SHED outage, the owner: "Build whatever can harden our server." HOMES-SHED took the busiest book's flat
+retry away; this takes the class away. The one D1 primary overloaded from 14:11 UTC on 2026-10-13 and stayed down for
+over an hour because every book asked again on its own schedule the moment its answer failed - market, marks, notices,
+writs and the professions twice within 1.5 s, others on a fixed 1-5 s - and a release that sent players back to load
+(#869's desktop release, published 14:45) knocked it down again as it recovered: 12 asks of 12 answered at 14:41, 5 of
+15 refused at 14:51. Any burst tips a database that already runs near its ceiling (What 500 costs, above); the asking
+harder is what kept it down.
+
+- **One law, both ends.** `src/net/busyLaw.js` names the reads that stand back while the service is overloaded:
+  fourteen display reads, each checked statement by statement to write nothing - a town's homes, yards and layouts, the
+  caller's homes, a home's rooms and pieces, a pixel's nodes, the seats, a region's traders, the Marks held, the
+  invitations waiting, the lineages, the unions and the saves' list. They were some 157,000 of the outage hour's
+  250,000 asks. Left out: every write, sign-in and act, which must land; the heartbeat; a read that may settle
+  something on its way (the market's read, the chapters' list, the arena's board); and the reads a replica serves
+  (`REPLICA_ROUTES`), which the primary's queue does not slow.
+- **The client's gate.** `accountClient.js` `call`: an overload answer - a 503 that says `server`, or `queue`, the
+  sign-in line - holds those reads for a wait that doubles with each such answer in a row, from `BUSY_BASE_MS` (5 s) to
+  `BUSY_MAX_MS` (60 s), spread over its upper half so the clients one overload told do not all ask again in one second,
+  and never shorter than the answer's own Retry-After. A held read is answered as the service would have answered it -
+  `server`, 503, which every book asks again (SCALE4f) - without the request, and after `BUSY_HOLD_MS`, so a book that
+  asks again the moment it is refused is not a loop that spins. An answer starts the count again; a hold already
+  running runs out. A 500, a fault, and `offline`, the player's own line, hold nothing. A client change: a tab takes it
+  at its next load.
+- **The service's shed.** For the clients from before the gate: an isolate that meets an overloaded database (index.js
+  `thrown`) answers the same reads `server`, 503, for `BUSY_SHED_MS` (2 s) - each overload met keeping it open - before
+  the session's lookup or any statement (`server-account/src/service.js:"export const shedding"`), so every ask of them
+  costs the primary nothing while it drains. And every overload answer now says its Retry-After,
+  `BUSY_RETRY_AFTER_S` (5 s), which the gate reads.
+
+Left, each with its reason:
+- **What tipped the database at 14:11** - HOMES-SHED's, still open.
+- **The heartbeat, the sign-in and the acts keep their own retries.** A write must land, not wait on a gate; the
+  sign-in has its own line (ADMIT-LINE) and its own doubling (`MINT_COOL_MS` to `MINT_COOL_MAX_MS`).
+- **A slow database that is not yet refusing opens neither gate.** Both key on D1's own overload word; a breaker keyed
+  on latency would shed answers the database could still give, and needs a measured threshold first.
+
+Pins: `test/busy_gate.test.js` (3); `tools/mutants/busy_gate.json` (15 dead); SCALE4f's two catch mutants re-aimed at
+`thrown`'s guard (both dead).
 
 ## THE PLAN PAST 2,000 (2026-10-10)
 
