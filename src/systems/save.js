@@ -46,7 +46,7 @@ import { getEscortFacesSaveData, restoreEscortFacesSaveData } from '../ui/hudEsc
 import { quickslotSaveData, restoreQuickslotSaveData } from './quickslots.js';   // QS1: the quickslot diamond rides the one composer
 import { resetMagicRoundMarker, sharedClockOn, worldMinutes, alignEntityClocks, setOwnMinutes, ownMinutes, normalizeAcross, payAbsenceWhenHeard, worldMinutesToSave } from './worldTick.js';   // EntityEffectBroker.InitMagicRoundTimer, on the LOAD arm (:230-233); AUDIT WORLD5 C4: a load online is an arrival; AUDIT LIVED1b P4: its absence on the relay's clock
 import { questBlockOnOwnClock } from './quest/questStamps.js';   // TIME3: an online save from before TIME3, its quest countdowns onto the character's clock
-import { alignSurvival, ALIGN_GRACE_MINUTES } from './survival/needs.js';   // SURV7: the needs' markers on the load arm
+import { alignSurvival, ALIGN_GRACE_MINUTES, savedNotes } from './survival/needs.js';   // SURV7: the needs' markers on the load arm; AUDIT SURV-BOONS C3: the boons said; AUDIT C&C N6: and the stages
 import { saneSaveClock } from './offlineCopy.js';   // AUDIT LIVED1b F3: the envelope's clocks, read once - the doors' law too
 import { isMembershipStore } from './guilds.js';   // V2e: the two-book membership store rides the save whole
 import { createBankAccounts, createHouses, LOAN_AMNESTY } from './banking.js';   // JAN1: a save with no accounts restores the full table - an EMPTY one is truthy and the host's `??=` never minted it
@@ -789,7 +789,7 @@ export function restorePlayer(entity, snap, spellsByIndex = null) {
   // the player loaded at half health, still poisoned, and died again.
   const loadDeadOnline = isOnlinePage() && !((entity.health ?? 0) > 0);
   entity.stats = { ...snap.stats };
-  entity.survival = snap.survival && typeof snap.survival === 'object' ? { ...snap.survival, notes: {} } : null;   // SURV1: a pre-SURV save starts fresh at the host's first tick
+  entity.survival = snap.survival && typeof snap.survival === 'object' ? { ...snap.survival, notes: savedNotes(snap.survival) } : null;   // SURV1: a pre-SURV save starts fresh at the host's first tick; AUDIT SURV-BOONS C3: the notes are dropped but the boons it carries, said already - a well-kept body said every boon again at every load; AUDIT C&C N6: and every stage it stands at (five lines in the first minute after a load)
   // Pre-S15 saves carry no fatigue: default to rested (MaxFatigue =
   // (Str + End) x 64) - the additive-field shape DFU's serializer
   // gives missing members, so the envelope version holds at 1.
@@ -1281,7 +1281,8 @@ export function composeSessionState({ questBridge = null, talk = null, spawnLedg
     // ONE world host that owns `locationIndex`; the dungeon host
     // forwards the same object in, so a save made underground carries
     // it too. Null in the standalone ?dungeon scene, which has no
-    // overworld and therefore no spawns.
+    // overworld and therefore no spawns. SPAWN-REBIRTH: never a row
+    // whose spawn has stood again - the ledger's toJSON leaves it out.
     spawns: spawnLedger ? spawnLedger.toJSON() : null,
   };
 }
@@ -1374,9 +1375,10 @@ export function restoreSessionState(extras, { questBridge = null, talk = null, e
   // a pre-QS save and another character's never carry a stale kind.
   restoreQuickslotSaveData(extras?.quickslots ?? null);
   // TTL1: a save with no ledger LOADS AN EMPTY ONE, the same arm its
-  // neighbours take. That is not a loss: an unknown spawn is noted on
-  // the next build of its pixel and simply starts its seven days over,
-  // which is what every pre-TTL1 save has to mean.
+  // neighbours take. That is not a loss: an unknown spawn is noted when
+  // it is next entered (SPAWN-REBIRTH: never on its pixel's build) and
+  // simply starts its seven days over, which is what every pre-TTL1
+  // save has to mean - and the cell's welcome says the clocks it holds.
   spawnLedger?.load(extras?.spawns ?? null);
   if (extras?.talk && talk) {
     talk.mill.restoreSaveData(extras.talk);
