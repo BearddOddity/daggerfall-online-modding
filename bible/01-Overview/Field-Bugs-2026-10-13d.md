@@ -16,7 +16,7 @@ is a Ledger A row.
 | 3 | "Shared Guild quest doesn't give me map location after friend talked to the quest npc" (Starempire42) | a `reveal` marks the clicker's own map, and a shared quest's copy carried it complete without running it | fixed (SHARE-REVEAL) |
 | 4 | "The current situation where doors lock at shops and inns in Daggerfall Capital" - "Once you get stuck, there's no way out" (Nes) | one player's Lock spell, at the caster's level, reached every visitor through the building's act and its thirty-day memory | fixed (SPELL-LOCK) |
 | 5 | "Some locations have floating houses" - "Temple of Kynareth has floating houses due to terrain modifications" (SylviaBun) | the pack hills' stand-ins seat a plateau's houses at their origin and fall away under their edges | fixed (HILL-SEAT) |
-| 6 | "Cant complete quest 'the lost child'" - "accidentally said 'no' ... now i cant interact with it at all" (Ant1-Chr1st) | DFU's own soft-lock: K0C00Y05's No leads nowhere and its clicked-npc task never listens again | in progress (NO-ASKS-AGAIN) |
+| 6 | "Cant complete quest 'the lost child'" - "accidentally said 'no' ... now i cant interact with it at all" (Ant1-Chr1st) | DFU's own soft-lock: K0C00Y05's No leads nowhere and its clicked-npc task never listens again | fixed (NO-ASKS-AGAIN), a departure |
 | 7 | "Performance issues with boss AoE attacks circles and player sprites" (HellRay) | being measured | in progress (AOE-PERF) |
 | 8 | "Molag bal mace do nothing" - "It's effect is not working and it's extremely fragile" (Boar) | the strength arm raises a stat the port caps at 100 - DFU raises the cap with it | fixed (MACE-MAX) |
 | 9 | "Tavern in Issaqumbaa marked as a player house" (SylviaBun) | the door's plaque named the first building box holding the ray's point - a neighbour house's - while the click entered the tavern | fixed (DOOR-NAME) |
@@ -265,6 +265,41 @@ PIN MOVED, by intent: rest, audit26_streaming2, fb0930b_swimspent, auditworld5, 
 (two), effectarms (X1), playerdeath (AUDIT-DEATH1). Re-aimed by content, dead: audit_air1 (two DEATH1 records), csa_close
 (CSA-J-modes-exhaust-no-hook), fb0930b_swimspent (two).
 
+## NO-ASKS-AGAIN: a No that leads nowhere asks again, on the next click (6)
+
+`src/systems/quest/noAsksAgain.js` (new: inertNo, asksOnAClick, CLICK_TRIGGERS, askAgain); `src/systems/quest/quest.js`
+update, restoreSaveData.
+
+FOUND. The Lost Child is K0C00Y05: `_S.07_ task: clicked npc _child_` asks `prompt 1017 yes _S.09_ no _no_`, and nothing
+reads `variable _no_`. Prompt.cs asks once (`allowRearm = false`; it completes when shown); ClickedNpc.cs answers true
+for a set task, and Task.cs Update checks no trigger of one; nothing clears `_S.07_`. The quest still takes the child's
+click (QuestResourceBehaviour.DoClick), so no talk window opens - "now i cant interact with it at all" - and all three
+flags are saved, so a restart changes nothing. DFU soft-locks the same way: the port was faithful. Reproduced on the real
+script and click path.
+
+THE LIMIT, found in the corpus: 11 inert Nos. Ten are a robber's or a guard's "hand it over" under `injured _foe_`
+(A0C00Y14, A0C00Y15, K0C00Y03, O0B00Y00, O0B10Y00, R0C10Y00, R0C10Y01, R0C10Y02, R0C10Y18, R0C11Y19; O0B00Y01's three
+share one `_no_`): there No is the refusal and the quest goes on, and the injured trigger holds until the foe is stood
+again, so a re-armed demand would come back every tick until a Yes gave the goods away.
+
+FIXED, a departure under the owner's word ("I dont care about DFU. We're our own thing now") - one law, read off the
+parsed quest, never its text: a prompt whose No is a plain variable with no actions, named by nothing but that prompt,
+asked by a plain `_x_ task:` (never a global's) that nothing names and whose every trigger is a click, is re-armed once
+answered No - the task cleared as a `clear` clears it, the Prompt alone made incomplete, the No cleared. It runs every
+tick and at the end of every restore, so a save taken after the No loads asking again (and a shared or reclaimed copy,
+which restore through it). A No that does something stays DFU's. In the shipped corpus the law re-arms The Lost Child
+alone.
+
+FOR THE OWNER. C0C00Y10's healer answers No with `_no_ task: clear _S.10_` - the author meant the healer to ask again,
+and DFU's allowRearm blocks it there too, so the talisman can never be bought after a No. That No does something, so this
+law leaves it DFU's: the owner's call.
+
+NOT SEEN. Whether a quest's Yes/No box can be closed with neither answer (neither variable set) - this law does not
+cover that.
+
+`test/fb1013d_noasks.test.js` (5); `tools/mutants/fb1013d_noasks.json` (12, all dead; one killed by questsave.test.js's
+restore-order pin). No pin moved.
+
 ## THE FOUR HOSTS
 
 - SPELL-LOCK: the law is the ActionSystem's, every host's door graph. worldModes.js (a building: its act through
@@ -289,6 +324,8 @@ PIN MOVED, by intent: rest, audit26_streaming2, fb0930b_swimspent, auditworld5, 
   SetHealth(0) collapse - world.js and exterior.js (`onExhaustedExterior`; exterior.js has no CSA hook), worldModes.js
   (`onExhaustedInterior`, its CSA-J hook moved below the arm), dungeonContext.js (`onExhausted`, after the drown arm and
   the arena's sand's fall - a bout keeps its own law).
+- NO-ASKS-AGAIN: the quest machine's law, which world.js, exterior.js, worldModes.js and dungeonContext.js all tick and
+  restore the same way; no host edited.
 
 ## Pins
 
@@ -302,3 +339,4 @@ carries the mod's `.cs:701-702` that DOOR-NAME's comment cites.
 `test/fb1013d_macemax.test.js` (4); `tools/mutants/fb1013d_macemax.json` 8, all dead.
 `test/fb1013d_craftprocs.test.js` (5); `tools/mutants/fb1013d_craftprocs.json` 26, all dead.
 `test/fb1013d_spentashore.test.js` (4); `tools/mutants/fb1013d_spentashore.json` 14, all dead.
+`test/fb1013d_noasks.test.js` (5); `tools/mutants/fb1013d_noasks.json` 12, all dead.
