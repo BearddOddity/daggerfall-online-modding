@@ -20,7 +20,7 @@ is a Ledger A row.
 | 7 | "Performance issues with boss AoE attacks circles and player sprites" (HellRay) | being measured | in progress (AOE-PERF) |
 | 8 | "Molag bal mace do nothing" - "It's effect is not working and it's extremely fragile" (Boar) | the strength arm raises a stat the port caps at 100 - DFU raises the cap with it | fixed (MACE-MAX) |
 | 9 | "Tavern in Issaqumbaa marked as a player house" (SylviaBun) | the door's plaque named the first building box holding the ray's point - a neighbour house's - while the click entered the tavern | fixed (DOOR-NAME) |
-| 10 | "Delayed death after combat despite full health" (sxxlxxr, Knightshead) | DFU's exhaustion collapse: fatigue spent with a foe in the spawn band is death whatever the health, and the box saying so was replaced by the death screen before it drew | in progress (SPENT-ASHORE) |
+| 10 | "Delayed death after combat despite full health" (sxxlxxr, Knightshead) | DFU's exhaustion collapse: fatigue spent with a foe in the spawn band is death whatever the health, and the box saying so was replaced by the death screen before it drew | fixed (SPENT-ASHORE), a departure |
 
 ## SPELL-LOCK: a Lock spell's lock is its caster's, and no peer's word locks a door past its own data (4)
 
@@ -234,6 +234,37 @@ eight characters (the worst case 457 of 512).
 loot2, loot4 x3, prof3, prof10, prof7 x2, prof9 x2, audit30, and the account version's line in ten records. PIN MOVED:
 the account version's pin in 19 suites (acct127).
 
+## SPENT-ASHORE: the collapse among foes costs a tenth, never a death (10)
+
+`systems/rest.js` exhaustionOutcome (`spent`, EXHAUSTED_SPENT_SHARE, EXHAUSTED_FIGHTING_LINE); the four hosts' collapse.
+
+FOUND. DFU's SetFatigue raises OnExhausted when fatigue reaches 0 (DaggerfallEntity.cs:362-364), and PlayerEntity's
+OnExhausted SetHealth(0)s a dry-footed player when AreEnemiesNearby - any live foe inside the classic spawn band (1094
+classic units, about 27 m), seen or not (PlayerEntity.cs, EnemySenses.cs:262). The port kept it 1:1 on dry land. A
+fight's swings (8 each) and techniques (256-384; the technique gate leaves a sliver) drain the bar, nothing refills it
+awake, and walking after the fight charges 8 a game minute (five real seconds) - so the bar ran out seconds after the
+last kill, and the player died at full health, past the shield, FULL-GUARD and every death save (a SetHealth(0) asks
+none). Nothing said why: "You collapse from exhaustion." was pushed and replaced by the death screen in the same call.
+FIELD BUGS 2026-09-30b's "For Mac" item 5 had named it - "Exhaustion with foes about on dry feet is still DFU's death,
+whatever the health - the same shape SWIM-SPENT ended in the water". Reproduced on the real ticker with a real EnemyAI 20
+m off and unaware: never hit, health 100/100 at the call, dead five seconds after the kill; a death save always willing
+was never asked; a foe 30 m off, the rest hour.
+
+FIXED, a departure under the owner's word on SWIM-SPENT ("I dont care about DFU. We're our own thing now") and
+FULL-GUARD's (no kill from full health): on dry feet with foes about a drain to nothing costs SWIM-SPENT's share - a tenth
+of the health pool, never nothing (one constant, EXHAUSTED_SPENT_SHARE, the water's and the shore's) - said on the HUD
+("You are too exhausted to fight - get clear and rest!", drafted in the twenty-five languages), with no box, and Come Sail
+Away hears no death. Ten drains from full health, so the fighter has the bar's warning and fifty seconds to get clear.
+The `death` outcome, RSC 1072's id and every host's SetHealth(0) collapse are gone. With no foes about the collapse is
+the rest hour it always was; in the water, SWIM-SPENT's drown.
+
+NOT SEEN. Which foe stood in the band at Knightshead; reproduced on the real ticker, not on the reporter's save.
+
+`test/fb1013d_spentashore.test.js` (4, red on the code before); `tools/mutants/fb1013d_spentashore.json` (14, all dead).
+PIN MOVED, by intent: rest, audit26_streaming2, fb0930b_swimspent, auditworld5, disc28_fatigue, macro7_gate, csa_close
+(two), effectarms (X1), playerdeath (AUDIT-DEATH1). Re-aimed by content, dead: audit_air1 (two DEATH1 records), csa_close
+(CSA-J-modes-exhaust-no-hook), fb0930b_swimspent (two).
+
 ## THE FOUR HOSTS
 
 - SPELL-LOCK: the law is the ActionSystem's, every host's door graph. worldModes.js (a building: its act through
@@ -254,6 +285,10 @@ the account version's pin in 19 suites (acct127).
   enchant clock that stamps a strike.
 - CRAFT-PROCS: the craft's mint, run where a craft's answer, a temper or a market piece is minted (the board's and the
   stations' pages, every host alike); and the account service. No host seam.
+- SPENT-ASHORE: all four take the arm before any box and before Come Sail Away's death hook, and none keeps a
+  SetHealth(0) collapse - world.js and exterior.js (`onExhaustedExterior`; exterior.js has no CSA hook), worldModes.js
+  (`onExhaustedInterior`, its CSA-J hook moved below the arm), dungeonContext.js (`onExhausted`, after the drown arm and
+  the arena's sand's fall - a bout keeps its own law).
 
 ## Pins
 
@@ -266,3 +301,4 @@ carries the mod's `.cs:701-702` that DOOR-NAME's comment cites.
 `test/fb1013d_writwall.test.js` (3); `tools/mutants/fb1013d_writwall.json` 13, all dead.
 `test/fb1013d_macemax.test.js` (4); `tools/mutants/fb1013d_macemax.json` 8, all dead.
 `test/fb1013d_craftprocs.test.js` (5); `tools/mutants/fb1013d_craftprocs.json` 26, all dead.
+`test/fb1013d_spentashore.test.js` (4); `tools/mutants/fb1013d_spentashore.json` 14, all dead.

@@ -1208,12 +1208,15 @@ export function createWorldModes(host) {
   function onExhaustedInterior() {
     if (_inExhaustion || exhaustedShowing()) return;   // AUDIT C&C N2/H1: DFU's popup guard in both lanes (world.js's twin)
     _inExhaustion = true;
-    host.csaOnPlayerDeath?.();   // CSA-J (the audit): PlayerEntity.OnExhausted -> ComeSailAway.OnPlayerDeath, indoors too
     try {
       const out = exhaustionOutcome({
         enemiesNearby: interiorEnemiesNearby(), swimming: false, entity: playerEntity,
         day: false, inside: true,   // IF: a building interior CAN hold foes now; the feet stay dry
       });
+      // SPENT-ASHORE (rest.js): with foes in the building a share of the health and a line - no box, and Come Sail Away
+      // hears no death (world.js's twin); DFU SetHealth(0)s the player here, whatever the health
+      if (out.kind === 'spent') { say(out.line); hurtPlayer(playerEntity, out.damage, { bypassShield: true }); return; }
+      host.csaOnPlayerDeath?.();   // CSA-J (the audit): PlayerEntity.OnExhausted -> ComeSailAway.OnPlayerDeath, indoors too
       // ROAD-B B5: a PUSH. PlayerEntity's OnExhausted handler is a plain
       // DaggerfallUI.MessageBox, and DaggerfallUI.MessageBox is
       // `new DaggerfallMessageBox(...); mb.Show()` -> uiManager
@@ -1232,8 +1235,6 @@ export function createWorldModes(host) {
         playerEntity.fatigue = Math.min(maxFatigue(playerEntity), (playerEntity.fatigue ?? 0) + out.fatigue);
         playerEntity.magicka = Math.min(playerEntity.maxMagicka ?? Infinity, (playerEntity.magicka ?? 0) + out.magicka);
         tallySkill(playerEntity, SKILLS.Medical);
-      } else {
-        hurtPlayer(playerEntity, playerEntity.health, { bypassShield: true });   // SetHealth(0): no shield stands against the collapse
       }
     } finally { _inExhaustion = false; }
   }

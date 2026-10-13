@@ -7469,6 +7469,9 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
       // SWIM-SPENT (rest.js): in the water the drain to nothing is a share of the health and a line - no box, so the
       // swimmer can make for the shore; Come Sail Away hears no death
       if (out.kind === 'drown') { townTalk.say(out.line); hurtPlayer(playerEntity, out.damage, { bypassShield: true }); return; }
+      // SPENT-ASHORE (rest.js): on dry feet with foes about the same share and a line - no box, no death heard; the
+      // fighter can get clear (DFU SetHealth(0)s them there, whatever the health)
+      if (out.kind === 'spent') { townTalk.say(out.line); hurtPlayer(playerEntity, out.damage, { bypassShield: true }); return; }
       if (csaRuntime) csaCall(() => csaRuntime.OnPlayerDeath());   // CSA-D: PlayerEntity.OnExhausted -> ComeSailAway.OnPlayerDeath
       const lines = ['You collapse from exhaustion.'];
       // ROAD-B B5: a PUSH. PlayerEntity's OnExhausted handler is a plain
@@ -7493,8 +7496,6 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
         playerEntity.magicka = Math.min(playerEntity.maxMagicka ?? Infinity, (playerEntity.magicka ?? 0) + out.magicka);
         tallySkill(playerEntity, SKILLS.Medical);
         surfacePlayer();
-      } else {
-        hurtPlayer(playerEntity, playerEntity.health, { bypassShield: true });   // SetHealth(0)
       }
     } finally { _inExhaustion = false; }
   }

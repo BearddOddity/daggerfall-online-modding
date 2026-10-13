@@ -790,7 +790,11 @@ DaggerfallEntity.SetFatigue + PlayerEntity's OnExhausted handler:
   rounds, as DFU's broker does under RaiseTime), each pool recovers
   one hour's rate, Medical tallies, TEXT.RSC 1071 shows
   click-to-close; enemies nearby (1072) or swimming (the watery-
-  grave line) -> SetHealth(0), the fatal collapse.
+  grave line) -> SetHealth(0), the fatal collapse. [DEPARTED: in the
+  water since SWIM-SPENT (FIELD BUGS 2026-09-30b), near enemies since
+  SPENT-ASHORE (FIELD BUGS 2026-10-13d, 2026-10-13) - each drain to
+  nothing costs a tenth of the health pool and a HUD line, no box;
+  1072 is said by no host.]
 - **Parity fix en route**: DFU applies the per-minute fatigue loss
   ONCE per minute-CHANGE (a single DecreaseFatigue behind
   lastGameMinutes != gameMinutes - no loop over elapsed minutes);

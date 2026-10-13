@@ -1313,7 +1313,9 @@ export async function bootExterior(canvas, renderer, params, status) {
       });
       // SWIM-SPENT (rest.js): in the water a share of the health and a line - no box (world.js's twin)
       if (out.kind === 'drown') { townTalk.say(out.line); hurtPlayer(playerEntity, out.damage, { bypassShield: true }); return; }
-      // RSC 1071/1072 pend the reader in this host; classic strings fall back.
+      // SPENT-ASHORE (rest.js): on dry feet with foes about the same share and a line - no box (world.js's twin)
+      if (out.kind === 'spent') { townTalk.say(out.line); hurtPlayer(playerEntity, out.damage, { bypassShield: true }); return; }
+      // RSC 1071 pends the reader in this host; the classic string falls back.
       const lines = ['You collapse from exhaustion.'];
       // ROAD-B B5: a PUSH. PlayerEntity's OnExhausted handler is a plain
       // DaggerfallUI.MessageBox, and DaggerfallUI.MessageBox is
@@ -1336,8 +1338,6 @@ export async function bootExterior(canvas, renderer, params, status) {
         playerEntity.magicka = Math.min(playerEntity.maxMagicka ?? Infinity, (playerEntity.magicka ?? 0) + out.magicka);
         tallySkill(playerEntity, SKILLS.Medical);
         surfacePlayer();
-      } else {
-        hurtPlayer(playerEntity, playerEntity.health, { bypassShield: true });   // SetHealth(0) through the one damage door
       }
     } finally { _inExhaustion = false; }
   }
