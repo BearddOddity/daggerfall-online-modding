@@ -1212,12 +1212,26 @@ sprinkle. Two causes, both in the map's law:
   one where the map paints thunder). The same minute about 600 km east is the report's condition on the map as it
   stands: sunny, 11 clipped cells in range, no strike - and 208 strikes and 6 claps with the clip gate dropped.
 - `test/flow2_fast_tests.test.js`: the sky's and the cells' goldens taken again under the new law.
+- `test/weather3a_weathermap.test.js`, THE LAW SOLVES THE TABLE: the day's shares are now taken by the Cox law written
+  out in the test as well as by the module's own. With the storms halved, the gate's 2.6 points no longer told a linear
+  cell law from the true one (the solve then 1.5 points off), and `WEATHER3g-cells-linear` survived until this check.
+
+**The sweep.** Every mutant record judged by a test that reads the weather law was run against the merged head: 700,
+from 44 lists. 698 died. The two that lived were both WEATHER3g's, both judged by weather3a's file. One was
+`WEATHER3g-cells-linear`, which the check above now kills. The other, `WEATHER3g-front-covers-only-rain`, is recorded
+equivalent, measured: the day's re-aim absorbs a flat solve that leaves the cells out of the fronts' mean (every row's
+weights within 1e-4 of themselves, every share of the day within 1e-6 by the Cox law written out). Its one kill before
+was the thinning pin's rounding residue.
 
 **Scope.** The enhanced lane's world weather map only - on by default, and always online. The classic lane is DFU's,
 1:1. Off the map's lane (the `weather-events` row off - "Off uses the classic weather, the same everywhere in the
 region" - or `?wxmap=off`) the zones' words keep DFU's odds, and WX2's per-shower roll already varies their strength.
+The rain a winter table rolls is halved with the rest wherever it falls, as snow too on a ground that wears it
+(WEATHER2a): a woodland winter snows 30% of its hours where it snowed 35%; a mountain winter's 35% and a swamp
+winter's 15% stand.
 A thunderstorm is still a storm, half as often and never a sprinkle: `WET_HOURS.thunder` is the knob if storms should
 be rarer than rain.
 
-Pinned by `test/rainhours.test.js` (4); `tools/mutants/rainhours.json`, 9, all dead.
+Pinned by `test/rainhours.test.js` (4); `tools/mutants/rainhours.json`, 9, all dead; `weather3a.json` 14/14;
+`weather3g.json` 15 dead and 1 equivalent as recorded.
 

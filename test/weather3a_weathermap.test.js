@@ -32,7 +32,28 @@ test('WEATHER3a: the table moved whole - the sim re-exports the SAME objects, an
   assert.equal(rollWeather(CLIMATES.Mountain, SEASONS.Winter, () => 0.99), WEATHER_ENUM.snow);
 });
 
-test('WEATHER3a: THE LAW SOLVES THE TABLE - every climate and season, averaged over the day, is the Chronicles row', () => {
+/** A solved law's shares of the day by the Cox law written out here, apart from the module's own (WEATHER3g): the
+ *  fronts over a point Poisson(nu), the cells over it Poisson(c x the fronts), so no cell with chance exp(-nu (1 - e^-c)). */
+function coxShares(core, rings, season) {
+  const shares = Object.fromEntries(PRIORITY.map((w) => [w, 0]));
+  const bins = exposure('rain', season).length;
+  for (let i = 0; i < bins; i++) {
+    const mu = Object.fromEntries(PRIORITY.map((w) => [w, 0]));
+    for (const type of LATTICE_TYPES) {
+      const m = core[type] * exposure(type, season)[i];
+      const cell = CELL_OF[type];
+      const cells = cell ? m * (1 - Math.exp(-core[cell] * exposure(cell, season)[i])) : 0;
+      if (cell) mu[cell] += cells;
+      mu[type] += m - cells;
+      for (const [word, share] of rings[type]) mu[word] += m * share;
+    }
+    let free = 1;
+    for (const w of PRIORITY) { shares[w] += (free * (1 - Math.exp(-mu[w]))) / bins; free *= Math.exp(-mu[w]); }
+  }
+  return shares;
+}
+
+test('WEATHER3a: THE LAW SOLVES THE TABLE - every climate and season, averaged over the day, is the Chronicles row as the map wears it, by the module\'s law and by the Cox law written out', () => {
   for (const [name, table] of Object.entries(WEATHER_TABLE)) {
     for (const season of Object.values(SEASONS)) {
       const law = birthLaw(TABLE_CLIMATES[name], season);
@@ -42,6 +63,11 @@ test('WEATHER3a: THE LAW SOLVES THE TABLE - every climate and season, averaged o
       const got = dayShares({ core, rings: law.rings }, season);
       const want = targetShares(table, season);
       for (const w of PRIORITY) assert.ok(Math.abs(got[w] - want[w]) < 1e-4, `${name} season ${season} ${w}: ${got[w]} vs ${want[w]}`);
+      // RAIN-HOURS (2026-10-13): the solve, made by the module's own law, must be the table by the real one - with the
+      // storms halved, the sampled gate's 2.6 points no longer told a linear cell law (nu c for nu (1 - e^-c), the
+      // solve then 1.5 points off) from the true one, and WEATHER3g-cells-linear survived it
+      const cox = coxShares(core, law.rings, season);
+      for (const w of PRIORITY) assert.ok(Math.abs(cox[w] - want[w]) < 1e-4, `${name} season ${season} ${w} by the Cox law: ${cox[w]} vs ${want[w]}`);
       for (const t of PRIORITY) {
         assert.ok(law.weight[t] >= 0, 'never a negative birth');
         law.rings[t].forEach(([word, share], i) => {
