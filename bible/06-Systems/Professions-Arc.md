@@ -432,7 +432,8 @@ else Foraging's Fish (1605). A **trophy** is the species' own Deep Waters templa
   (`pixelOk`) - its isles stand the day's nodes by their climates, its water the schools, and an id there is read four
   digits east and a sign north (`herb:8009:-5194:...`), in its one spelling. The law knew the Bay alone: an isle's
   harvest was refused `bad-node`, its witnesses `bad-pixels`. The service at acct124; `world/ethericSea.js` in the account
-  deploy's path filter (the law imports it).
+  deploy's path filter (the law imports it). The ground's one home is `ethericSea.js` `onBayOrEther` (ETHER-OW,
+  2026-10-13: the Overworld's bands and raiders are born on it too; the law's answers unchanged).
 - **How many** - per wilderness map pixel per day, never inside a location's rect:
 
 | Climate | Trees | Herb patches | Veins | Boulders (quarry) |

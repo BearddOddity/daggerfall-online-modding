@@ -2,20 +2,22 @@
   {
     "name": "EN-bay-alone",
     "file": "src/net/nodeLaw.js",
-    "old": "  && ((x >= 0 && y >= 0 && x < MAX_MAP_PIXEL_X && y < MAX_MAP_PIXEL_Y) || inEther(x, y));",
-    "new": "  && ((x >= 0 && y >= 0 && x < MAX_MAP_PIXEL_X && y < MAX_MAP_PIXEL_Y));",
+    "old": "  && onBayOrEther(x, y);",
+    "new": "  && x >= 0 && y >= 0 && x < 1000 && y < 500;",
     "tests": [
       "test/ether_nodes.test.js"
-    ]
+    ],
+    "note": "RE-AIMED (ETHER-OW): the node law's ground the Bay's map alone again - its pixelOk reads the one home now (world/ethericSea.js onBayOrEther)."
   },
   {
     "name": "EN-law-margin",
-    "file": "src/net/nodeLaw.js",
-    "old": "  && ((x >= 0 && y >= 0 && x < MAX_MAP_PIXEL_X && y < MAX_MAP_PIXEL_Y) || inEther(x, y));",
-    "new": "  && ((x >= 0 && y >= 0 && x < MAX_MAP_PIXEL_X && y < MAX_MAP_PIXEL_Y) || inEtherLaw(x, y));",
+    "file": "src/world/ethericSea.js",
+    "old": "export const onBayOrEther = (x, y) => (x >= 0 && y >= 0 && x < MAX_MAP_PIXEL_X && y < MAX_MAP_PIXEL_Y) || inEther(x, y);",
+    "new": "export const onBayOrEther = (x, y) => (x >= 0 && y >= 0 && x < MAX_MAP_PIXEL_X && y < MAX_MAP_PIXEL_Y) || inEtherLaw(x, y);",
     "tests": [
       "test/ether_nodes.test.js"
-    ]
+    ],
+    "note": "RE-AIMED (ETHER-OW): the ground's box its law's margin too - the one home the node law reads (ethericSea.js onBayOrEther)."
   },
   {
     "name": "EN-node-three-digits",

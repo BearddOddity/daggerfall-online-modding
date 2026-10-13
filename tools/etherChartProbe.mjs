@@ -40,7 +40,7 @@ else { for (const i of islesNear(h.px - 40, h.py, 70)) charted.add(i.key); for (
 const word = { px: h.px - 18, py: h.py + 3, yaw: -1.87, charted: [...charted], day: 100, stats: { charted: charted.size, deepest: 31, crossings: 2, legends: 1 },
   legends: [{ id: 'queen', name: 'The Drowned Queen', trait: 'mends', sails: false }, { id: 'wake', name: "Sorrow's Wake", trait: 'swift', sails: true }, { id: 'hunger', name: 'Ninefold Hunger', trait: 'boarders', sails: true }] };
 window.__charted = charted.size;
-window.__chart = mountEtherChartWindow(document.body, { word: () => word });
+window.__chart = mountEtherChartWindow(document.body, { word: () => word, overworld: () => true });   // ETHER-OW: the Overworld's door stands, as it does for an enhanced captain in the open
 window.__ready = true;
 </script></body></html>`;
 
@@ -110,12 +110,15 @@ try {
       const body = document.querySelector('.dfchart-win .dfnaval-winbody'), h2 = document.querySelector('.dfnaval-wintitle h2');
       const tools = document.querySelector('.dfchart-tools').getBoundingClientRect(), win = document.querySelector('.dfchart-win').getBoundingClientRect();
       const map = document.querySelector('.dfchart-map').getBoundingClientRect();
-      return { scroll: body.scrollHeight - body.clientHeight, cut: h2.scrollWidth > h2.clientWidth, toolsIn: tools.bottom <= win.bottom + 0.5, map: [Math.round(map.width), Math.round(map.height)] };
+      const door = document.querySelector('.dfchart-over').getBoundingClientRect();   // ETHER-OW: the fourth press of the row
+      return { scroll: body.scrollHeight - body.clientHeight, cut: h2.scrollWidth > h2.clientWidth, toolsIn: tools.bottom <= win.bottom + 0.5, map: [Math.round(map.width), Math.round(map.height)],
+        doorIn: door.width >= 44 && door.left >= win.left - 0.5 && door.right <= win.right + 0.5 && door.bottom <= win.bottom + 0.5 };
     });
-    console.log(`2. ${s.name} ${s.w}x${s.h}: chart ${r.map.join('x')}, body scroll ${r.scroll}, title cut ${r.cut}, tools in view ${r.toolsIn}`);
+    console.log(`2. ${s.name} ${s.w}x${s.h}: chart ${r.map.join('x')}, body scroll ${r.scroll}, title cut ${r.cut}, tools in view ${r.toolsIn}, the Overworld's door in view ${r.doorIn}`);
     if (r.scroll > 0) fail(`${s.name}: the window scrolls ${r.scroll}px`);
     if (r.cut) fail(`${s.name}: the title is cut`);
     if (!r.toolsIn) fail(`${s.name}: the zoom and Ship are out of the window`);
+    if (!r.doorIn) fail(`${s.name}: the Overworld's door is out of the window`);
     if (OUT) await page.screenshot({ path: join(OUT, `etherchart-${s.name}.png`) });
     await ctx.close();
   }

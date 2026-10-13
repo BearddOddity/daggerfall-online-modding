@@ -34,7 +34,7 @@
 // Pure and deterministic, and worker-safe (TAMRIEL2-WORKER: it imports formats/ alone): every client and the terrain
 // worker grow the same isles.
 // ═══════════════════════════════════════════════════════════════════
-import { CLIMATES } from '../formats/mapsTables.js';
+import { CLIMATES, MAX_MAP_PIXEL_X, MAX_MAP_PIXEL_Y } from '../formats/mapsTables.js';
 
 /** The Eltheric Ocean's box on the Bay's own pixel grid: x from x0 up to x1, y from y0 up to y1. Inside the wire's world
  *  (net/wire.js WORLD_PIXEL_BOUND and POSE_BOUND: a pose's z, (499 - y) pixels, within 8192 of them - so y over -7693)
@@ -66,6 +66,10 @@ export const VEIL_X = ETHER_BOX.x1 - VEIL_PX;
 export const inEther = (x, y) => x >= ETHER_BOX.x0 && x < ETHER_BOX.x1 && y >= ETHER_BOX.y0 && y < ETHER_BOX.y1;
 /** ...in the box or its margin - where the law answers the ground. */
 export const inEtherLaw = (x, y) => x >= ETHER_BOX.x0 - ETHER_MARGIN && x < ETHER_BOX.x1 + ETHER_MARGIN && y >= ETHER_BOX.y0 - ETHER_MARGIN && y < ETHER_BOX.y1 + ETHER_MARGIN;
+/** ETHER-OW (2026-10-13): THE GROUND THE WORLD'S SEEDED THINGS STAND ON - the Bay's map, or the Eltheric Ocean's box: the
+ *  professions' nodes (net/nodeLaw.js pixelOk - ETHER-NODES) and the Overworld's roaming bands and raiders
+ *  (scenes/world.js bandOk, tvRaidOpen, tvRaidSea). Past both, the world streams nothing these are born of. */
+export const onBayOrEther = (x, y) => (x >= 0 && y >= 0 && x < MAX_MAP_PIXEL_X && y < MAX_MAP_PIXEL_Y) || inEther(x, y);
 /** ...in the Veil. */
 export const inVeil = (x, y) => inEther(x, y) && x >= VEIL_X;
 /** The box as the stream's frames hold one (world/streamingWorld.js StreamingWorldState.frames): `{ x0, y0, w, h }`. */

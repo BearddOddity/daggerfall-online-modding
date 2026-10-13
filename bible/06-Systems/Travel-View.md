@@ -2034,3 +2034,20 @@ sea; `apart` leaves an end past the table to the search; a step past the table r
 `tvWater`'s own answer, which is the ground's where TAMRIEL2 composed the reader and the sea off the map where it did
 not (`scenes/world.js`). The record, and the wire's half: `01-Overview/Field-Bugs-2026-10-09.md` TV-BEYOND;
 `test/fb1009_beyond.test.js`, `tools/mutants/fb1009_beyond.json`.
+
+## ETHER-OW - the Overworld past the Veil (2026-10-13, the owner)
+
+*"Also allow the player to zoom out into the overworld like in the Iliac Bay for easy travel. Enemies should show on
+the world map just like in the bay"*. The record is `03-World/Eltheric-Ocean.md` ETHER-OW; what it moved here:
+- **The door.** TV1's Overworld door stood on the held map alone, and past the Veil the map's answer is the Eltheric
+  chart: it wears the same door now (its button and its key O, the words `scenes/travelView.js` TRAVEL_VIEW_BUTTON -
+  moved out of `ui/heldMap.js`, which re-exports it).
+- **The places.** `tvPlaceSummary` answers an isle's place past the Veil (known by the captain's charts or found);
+  TV5's far list takes the port isles within its range and TV6's lists the ruin isles (`tvDungeonRowsAt`,
+  `tvDungeonAt` - one pair the three lists read). The settlements gathered once never keep an isle's place.
+- **The load.** TV2's governor reads the stream's own law (`StreamingWorldState.streams`) for what is owed: off the map
+  is no longer built where the world streams (the continent's frame, the Eltheric's box).
+- **The enemies.** TV7's bands (`bandOk`) and OWS3's raiders (`tvRaidOpen`, `tvRaidSea` - S5's floored pixel kept) are
+  born on the Bay's map or the Eltheric's box (`world/ethericSea.js` `onBayOrEther`), and TV7b's chase word holds a
+  place anywhere on the world's pixels (`chaserPlaceOk`, the wire's `worldPixelOk`).
+`test/ether_ow.test.js`, `tools/mutants/ether_ow.json`; the pins moved are the Eltheric page's list.

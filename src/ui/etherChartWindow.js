@@ -13,6 +13,12 @@
 // it (the travel map's or the map's, by binding) closes it. Nothing on it is pressed: the Eltheric Ocean is sailed. AUDIT
 // CAPTAIN'S SEA X6/X7/X8/X12/X13/X14/X17/X18.
 //
+// ETHER-OW (2026-10-13, the owner: "Also allow the player to zoom out into the overworld like in the Iliac Bay for easy
+// travel") - THE DOOR UP: past the Veil this chart is the map's answer, and the held map's Overworld door (ui/heldMap.js,
+// TV1) was on no sheet a captain there could open - so the chart wears it, in its tools row and on its key, O, the
+// view's own words (scenes/travelView.js TRAVEL_VIEW_BUTTON): shown where the host can lift the camera (`overworld()`),
+// it shuts the chart with its own reason, 'overworld', and the host lifts the view once the chart is down.
+//
 // ETHER-CHART2 (2026-10-12, the owner: "I want to improve the [Eltheric] sea map, its icons, the highlight areas, etc and
 // improve readability") - THE CHART READ AT A GLANCE. Its words are the enhanced face (FONT1's law - every enhanced
 // surface in the pixel face; the chart named "Cormorant Garamond", which no request loads, so every name on it was
@@ -28,7 +34,7 @@
 // a DEPTH RULER over it names each water in view, the Veil's and the world's edge, and the scale stands in the KEY under
 // it, which says what each mark is.
 //
-// deps = { word() -> etherHost.js chart's, onExit(reason) }. Pure beside the mount: the view's sums (`toScreen`,
+// deps = { word() -> etherHost.js chart's, onExit(reason), overworld() -> whether the Overworld's door stands (ETHER-OW) }. Pure beside the mount: the view's sums (`toScreen`,
 // `toChart`, `chartZoomAt`), the chart's model (`chartModel`), the scale (`scaleBar`), a name's two sides
 // (`labelBoxes`) and the edge's pointer (`edgePointer`). The painters are handed their contexts: `paintChart` the
 // chart, `paintRuler` the ruler, `paintScale` the key's bar, `paintMark` and `paintKey` a mark and a key's mark.
@@ -39,6 +45,7 @@ import { injectEnhancedStyle, injectEnhancedFonts } from './enhancedStyle.js';
 import { injectNavalKit } from './navalHud.js';
 import { injectNavalWindowStyle } from './navalPlunderWindow.js';
 import { PIXEL_STACK } from './pixelifyFive.js';
+import { TRAVEL_VIEW_BUTTON } from '../scenes/travelView.js';   // ETHER-OW: the Overworld door's words, the held map's own
 import { isleByKey, BANDS, VEIL_X, LEAGUE_PX, KIND_WORDS, ETHER_BOX, compassPoint, veilhaven, ETHER_SEA_NAME } from '../world/ethericSea.js';
 import { hauntOf, legendById, HAUNT_PX } from '../systems/naval/etherShips.js';
 
@@ -542,6 +549,7 @@ export const ETHER_CHART_CSS = `
 .dfchart-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; flex: 1 1 320px; font-size: 12px; color: #c9bfa4; }
 .dfchart-key > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .dfchart-tools { display: flex; gap: 8px; justify-content: flex-end; flex: 0 0 auto; }
+.dfchart-over[hidden] { display: none; }
 .dfchart-hint { flex: 0 0 auto; }
 @media (max-width: 560px) {
   .dfchart-win .dfnaval-wintitle h2 { white-space: normal; text-overflow: clip; }
@@ -571,7 +579,7 @@ const el = (tag, cls = null, text = null) => {
 
 /**
  * THE WINDOW: `{ repaint, unmount }`.
- * @param {HTMLElement} host @param {{ word: () => any, onExit?: (reason?: string) => void }} deps
+ * @param {HTMLElement} host @param {{ word: () => any, onExit?: (reason?: string) => void, overworld?: () => boolean }} deps
  */
 export function mountEtherChartWindow(host, deps) {
   injectEnhancedStyle();
@@ -666,7 +674,15 @@ export function mountEtherChartWindow(host, deps) {
   tool('-', () => zoomMid(-1)); tool('+', () => zoomMid(1)); tool('Ship', toShip);
   const [zoomOut, zoomIn, shipBtn] = /** @type {HTMLButtonElement[]} */ ([...tools.children]);
   zoomOut.setAttribute('aria-label', 'Zoom out'); zoomIn.setAttribute('aria-label', 'Zoom in'); shipBtn.setAttribute('aria-label', 'Find your ship');
-  for (const b of [zoomOut, zoomIn, shipBtn]) { b.style.flex = '0 0 auto'; b.style.minWidth = '44px'; }
+  // ETHER-OW: THE DOOR UP - the held map's own (TV1), standing only where the host can lift the camera, asked again at
+  // every paint (the open air, the enhanced lane, a body that lives - scenes/world.js travelViewAllowed)
+  const overworldShown = () => typeof deps.overworld === 'function' && !!deps.overworld();
+  const overBtn = /** @type {HTMLButtonElement} */ (el('button', 'dfnaval-btn dfchart-over', TRAVEL_VIEW_BUTTON));
+  overBtn.type = 'button';
+  overBtn.setAttribute('aria-label', 'Rise to the Overworld');
+  overBtn.addEventListener('click', () => { if (overworldShown()) exit('overworld'); });
+  tools.append(overBtn);
+  for (const b of [zoomOut, zoomIn, shipBtn, overBtn]) { b.style.flex = '0 0 auto'; b.style.minWidth = '44px'; }
   const g = canvas.getContext('2d'), rg = ruler.getContext('2d');
   /** A name's width in a face, the canvas's own measure (FONT3's tracking on). */
   const measure = (t, font) => { if (!g) return t.length * LABEL_CHAR_PX; g.font = font; track(g, CHART_TRACKING); return g.measureText(t).width; };
@@ -685,6 +701,7 @@ export function mountEtherChartWindow(host, deps) {
     sub.textContent = model.sub;
     zoomOut.disabled = view.zoom === 0;
     zoomIn.disabled = view.zoom === CHART_ZOOMS.length - 1;
+    overBtn.hidden = !overworldShown();   // ETHER-OW
     paintChart(g, model, w, h);
     if (rg) { rg.setTransform(dpr, 0, 0, dpr, 0, 0); paintRuler(rg, model, w); }
   }
@@ -764,6 +781,7 @@ export function mountEtherChartWindow(host, deps) {
     // EM-BUG2's law); V opened it and did nothing, a rebound map key was ignored
     const acts = actionsForCode(bindings(), e.code);
     if (overlayAction(e) === 'back' || acts.includes('TravelMap') || acts.includes('AutoMap')) { e.preventDefault(); e.stopPropagation(); exit('close'); return; }
+    if (e.code === 'KeyO' && overworldShown()) { e.preventDefault(); e.stopPropagation(); exit('overworld'); return; }   // ETHER-OW: the sheet's own key for the door (heldMap.js TV1)
     const [w, h] = size();
     const k = CHART_ZOOMS[view.zoom];
     const pan = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.code];

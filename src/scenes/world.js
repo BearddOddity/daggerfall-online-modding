@@ -284,8 +284,8 @@ import { landformsOn, tamrielLandOn, tamrielTraceOn, etherSeaOn, etherCrossOutOn
 import { preloadTamrielTrace } from '../ui/tamrielTrace.js';   // TAMRIEL3: Daggerfall's own map of Tamriel, off the player's two files
 import { fitBayToPicture } from '../world/tamrielLand.js';   // TAMRIEL3: where the Bay stands on it
 import { groundWoods, groundClimateIndex } from '../world/tamrielGround.js';   // TAMRIEL2: the continent's ground round the Bay, for the kernels and the far ring
-import { etherWoods, etherClimateIndex, etherPoliticIndex, etherFrame, inEther, inEtherLaw, isleAt, islesNear, veilhaven, ETHER_HARBOUR_REACH, ETHER_SEA_NAME, ETHER_SEA_TITLE, CROSS_X, CROSS_LAND_PX, etherLight, ETHER_KEY_TINT } from '../world/ethericSea.js';   // ETHER-SEA: the Eltheric Ocean's ground and its box
-import { etherTemplates, etherTemplateOf, synthesizeEtherLocation, ETHER_REGION, ETHER_REGION_NAME } from '../world/etherPlaces.js';   // ETHER-PLACES: the isles' towns and ruins
+import { etherWoods, etherClimateIndex, etherPoliticIndex, etherFrame, inEther, inEtherLaw, onBayOrEther, isleAt, islesNear, veilhaven, ETHER_HARBOUR_REACH, ETHER_SEA_NAME, ETHER_SEA_TITLE, CROSS_X, CROSS_LAND_PX, etherLight, ETHER_KEY_TINT } from '../world/ethericSea.js';   // ETHER-SEA: the Eltheric Ocean's ground and its box
+import { etherTemplates, etherTemplateOf, synthesizeEtherLocation, etherPlaceIsle, etherPlaceRows, ETHER_REGION, ETHER_REGION_NAME } from '../world/etherPlaces.js';   // ETHER-PLACES: the isles' towns and ruins; ETHER-OW: their pixels and far rows, the Overworld's
 import { tamrielFrameInBay, inBay as onTheBay } from '../world/tamrielFrame.js';   // TAMRIEL2: the frame the world streams over, and the Bay's own ground
 import { createLandforms, landformLiftField, landformSites, landformClimates, cliffFadeAt } from '../world/landforms.js';   // LANDFORM1-3: the shaped ground, and what it lifts a point by; AUDIT LANDFORMS II I1: the lift's fade beside the sea
 import { vergeClear, natureReach, pathTileMask, lptFitCap } from '../world/roadVerge.js';   // VERGE1: a wild flat's footprint off the roads; LPT-FIT: every Low Poly tree's crown off them
@@ -473,7 +473,7 @@ import { createWildAlert, noticeChance, WILD_MARK, WILD_MARK_S } from '../system
 import { drawWildMarks, WILD_MARK_RANGE } from '../ui/wildMarks.js';   // WILD-ALERT: the "!" over an alerted foe
 import { playerOnPathAt, pathsDataPoint } from '../systems/travelPaths.js';   // RATE-LAW: the traveller on a road's lane or off it
 import { threatCap, foePaced } from '../systems/travelThreat.js';   // OW6: the journey slows as enemies close; ENEMY-PACE's floor, fixed (RATE-LAW)
-import { farPlaces, settlementPixels, farDistanceText, PIXEL_KM } from '../systems/travelFarPlaces.js';   // TV5: the far places, held at the view's edge
+import { farPlaces, settlementPixels, farDistanceText, PIXEL_KM, TV_FAR_RANGE } from '../systems/travelFarPlaces.js';   // TV5: the far places, held at the view's edge
 import { dungeonRows, spawnedPixels, filedSpawns, nearDungeons, dungeonApproach, pixelBox, lastLegStart, dungeonToFind, dungeonFoundText, NATIVE_PER_M } from '../systems/travelDungeons.js';   // TV6: the dungeons, discovered on approach; AUDIT OW3 D1/D3: off the map rows, and the spawns with them; AUDIT OW4 D4/D6: the far found spawns, the last leg's start
 import { routeGround, joinPoint, routeDrawPoints, TV_MOUNTAIN_CLIMATE } from '../systems/travelRoute.js';   // OW-MOUNTAINS, OW-ROADSIDE; AUDIT OW3 J4: the drawn route's points; AUDIT OW4 J3: the ground read once
 import { bandsNear, wanderAt, bandSight, bandChaseStep, bandLabel, bandMakeSeed, bandSizeOf, bandLevelOf, BAND_LIFE_MS, BAND_CONTACT_M, BAND_CHASE_MPS, BAND_STAND_M, BAND_STAND_MIN_M, BAND_STAND_RETRY_MS, BAND_STAND_TRIES } from '../systems/travelBands.js';   // TV7: the roaming bands; OW6: their number and their level
@@ -2421,12 +2421,18 @@ export async function bootWorld(canvas, renderer, params, status) {
     if (had?.ether) return had;
     const isle = isleAt(px, py);
     if (!isle || isle.px !== px || isle.py !== py) return null;
-    const template = etherTemplateOf(_etherTemplates, isle);
-    if (!template) return null;
-    const loc = synthesizeEtherLocation(template, isle, { regionIndex: ETHER_REGION, regionName: REGION_NAMES[ETHER_REGION] ?? ETHER_REGION_NAME, politic: 128 + ETHER_REGION, climate: getWorldClimateSettings(isle.climate) });   // AUDIT CAPTAIN'S SEA P8: its region's own name - the quests resolve and gate a site by it
+    const loc = etherPlaceClone(isle);
+    if (!loc) return null;
     _locIndexGen += 1;
     locationIndex.set(key, loc);
     return loc;
+  }
+  /** ETHER-OW: an isle's place, cloned and NOT stood (etherPlaceAt stands it as its pixel builds) - the Overworld marks a
+   *  far isle's place without building it (tvSpawnAt's law), or null: a wild isle, a rock, no templates. */
+  function etherPlaceClone(isle) {
+    const template = etherTemplateOf(_etherTemplates, isle);
+    if (!template) return null;
+    return synthesizeEtherLocation(template, isle, { regionIndex: ETHER_REGION, regionName: REGION_NAMES[ETHER_REGION] ?? ETHER_REGION_NAME, politic: 128 + ETHER_REGION, climate: getWorldClimateSettings(isle.climate) });   // AUDIT CAPTAIN'S SEA P8: its region's own name - the quests resolve and gate a site by it
   }
   /** AUDIT OW4 D4: THE CLONE a pixel's spawn IS - the template its hash picks, dressed as where it stands (region, politic,
    *  climate, elite). Pure in the salt, the pixel and the map files, so the one answer serves spawnedDungeonAt (which stands
@@ -10396,9 +10402,13 @@ export async function bootWorld(canvas, renderer, params, status) {
     // AUDIT CAPTAIN'S SEA X16: the ship's heading at her helm (the camera's yaw is where the captain looks - astern, as often)
     const heading = () => { const boat = csaRuntime?.isSailing?.() ? csaRuntime.state.CurrentBoat : null; if (!boat) return cam.yaw; const f = boatForward(boat); return Math.atan2(f[0], f[2]); };
     const word = () => { const p = playerTravelPixel(); return etherHost.chart(p.x, p.y, heading()); };
-    const win = createEtherChartOverlay({ word });
+    // ETHER-OW (2026-10-13, the owner: "Also allow the player to zoom out into the overworld like in the Iliac Bay for easy
+    // travel"): THE CHART'S OVERWORLD DOOR - the held map's own (TV1: shown where the view can rise, a driver's never),
+    // taken once the chart is down and its slot empty (the slot is emptied before the occupant is told)
+    let why = 'close';
+    const win = createEtherChartOverlay({ word, overworld: () => !!travelView && travelViewAllowed().ok, onClose: (reason) => { why = reason; } });
     if (!win) return false;
-    townTalk.showOverlay(win);
+    townTalk.showOverlay(win, () => { if (why === 'overworld') travelView?.enter(); });
     return true;
   }
   /** AUDIT NAV1 (the helm): the shipwright's window over the world (navalPlunderDoor.js's yard door). */
@@ -30995,7 +31005,19 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     if (!f) _seatTipFns.set(mapId, (f = () => seatTipOf(seatHere(mapId))));
     return f;
   };
+  // ETHER-OW (2026-10-13, the owner: "Also allow the player to zoom out into the overworld like in the Iliac Bay for easy
+  // travel"): THE ISLES' PLACES ON THE OVERWORLD. Past the Veil no place is a row of the Bay's dictionary - an isle's town
+  // or ruin is its own (world/etherPlaces.js), the index's once its pixel has built, else its clone, marked and never
+  // stood (etherPlaceClone). KNOWN as the Eltheric knows a place: its isle on the captain's charts (etherHost.js `sight`
+  // within three pixels, a harbourmaster's chart, a corsair's papers - the chart's own isles), or the place found.
+  const tvEtherPlace = (px, py) => { const isle = etherPlaceIsle(px, py); return isle ? (locationIndex.get(`${px},${py}`) ?? etherPlaceClone(isle)) : null; };
+  const tvEtherKnown = (loc) => captainLedger.isCharted(loc.ether) || hasDiscoveredLocationId(loc.mapTableData.mapId);
   const tvPlaceSummary = (px, py) => {
+    // ETHER-OW: past the Veil, an isle's place - known, it is its own summary (HALL-JOURNEY's way), its region the isles'
+    if (etherSea && inEther(px, py)) {
+      const loc = tvEtherPlace(px, py);
+      return loc && tvEtherKnown(loc) ? { pixel: { x: px, y: py }, name: loc.name, mapId: loc.mapTableData.mapId, regionIndex: loc.regionIndex, locationIndex: loc.locationIndex, loc } : null;
+    }
     // HALL-JOURNEY (2026-10-08, the owner: "when i want to travel there with begin journey nothing happens"): a zone hall
     // is no row of the map's dictionary (it is spawned, by the day) - it is its own summary, always known, so the
     // Overworld walks to its door as to any place's
@@ -31673,7 +31695,10 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     const near = Math.max(1, state.terrainDistance ?? 3);
     const dg = discoveryGeneration();   // AUDIT DEEP2 B-3: and a far one found (a quest, a map) stands at the edge at once
     if (tvFar.at && tvFar.at.x === at.x && tvFar.at.y === at.y && tvFar.near === near && tvFar.dg === dg) return tvFar.list;
-    const list = farPlaces({ at, near, settlements: (_tvSettlements ??= settlementPixels(locationIndex)), summaryOf: tvPlaceSummary })
+    // ETHER-OW: the map's settlements (gathered once - never an isle's, which the index holds only once built), and past the
+    // Veil the port isles within the edge's range
+    const settlements = (_tvSettlements ??= settlementPixels(locationIndex).filter((t) => !t.loc.ether));
+    const list = farPlaces({ at, near, settlements: etherSea && inEther(at.x, at.y) ? [...settlements, ...etherPlaceRows(at, TV_FAR_RANGE, 'port')] : settlements, summaryOf: tvPlaceSummary })
       .map((f) => { const rect = tvPlaceRect(f.summary); return { key: f.key, summary: f.summary, x: rect.cx, z: rect.cz }; });
     tvFar = { at, near, dg, list };
     return list;
@@ -31685,6 +31710,14 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   // live index (streaming and the spawns change it: a spawn in it at the first ask stood for good, a later one never
   // did); the index is read afresh for each list, and the list is filtered before its twelve are taken (nearDungeons)
   let _tvDungeonRows = null;
+  /** ETHER-OW: THE DUNGEONS TV6's law reads about the traveller - the map's rows, and past the Veil the ruin isles within
+   *  `range` (their places' own rows, world/etherPlaces.js etherPlaceRows) - and what stands on a row's pixel: the
+   *  index's, else past the Veil the isle's place (tvEtherPlace: marked, never built). */
+  const tvDungeonRowsAt = (at, range = TV_FAR_RANGE) => {
+    const bay = (_tvDungeonRows ??= dungeonRows(mapDict));
+    return etherSea && inEther(at.x, at.y) ? [...bay, ...etherPlaceRows(at, range, 'ruin')] : bay;
+  };
+  const tvDungeonAt = (x, y) => locationIndex.get(`${x},${y}`) ?? (etherSea && inEther(x, y) ? tvEtherPlace(x, y) : null);
   /** AUDIT OW3 D1: what the spawned feature has told the player of a spawn - its pixel's line (announceNearbySpawns, this
    *  session), or the pixel entry's filing in the store (syncTopics' discoverLocation, the same crossing, saved): the
    *  store's is its name too. Nothing else - a spawn not yet said is not marked (that feature never says one next door). */
@@ -31705,7 +31738,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // AUDIT OW4 D2: and time - a kept spawn whose clock has run out since is dropped now, asked of the kept list each time
     if (tvDng.list.some((g) => g.spawn && tvSpawnGone(g.px, g.py))) tvDng.at = null;
     if (tvDng.at && tvDng.at.x === at.x && tvDng.at.y === at.y && tvDng.dg === dg && tvDng.grid === grid && tvDng.n === n) return tvDng.list;
-    const dungeons = (_tvDungeonRows ??= dungeonRows(mapDict)), locAt = (x, y) => locationIndex.get(`${x},${y}`), isFound = (x, y) => !!tvPlaceSummary(x, y);
+    const dungeons = tvDungeonRowsAt(at), locAt = tvDungeonAt, isFound = (x, y) => !!tvPlaceSummary(x, y);
     const placed = (g) => {
       const r = locationWorldRect(g.loc, g.x, g.y);
       return { key: g.key, row: g.row, loc: g.loc, found: g.found, spawn: g.spawn, summary: g.found && !g.spawn ? tvPlaceSummary(g.x, g.y) : null,
@@ -31726,7 +31759,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     const at = playerTravelPixel(), dg = discoveryGeneration(), n = _locIndexGen;
     if (tvDngModels.list.some((g) => g.spawn && !g.loc?.superTier && tvSpawnGone(g.px, g.py))) tvDngModels.at = null;   // AUDIT OW4 D2's law: a spawn whose time ran out goes
     if (tvDngModels.at && tvDngModels.at.x === at.x && tvDngModels.at.y === at.y && tvDngModels.dg === dg && tvDngModels.n === n) return tvDngModels.list;
-    const near = nearDungeons({ at, dungeons: (_tvDungeonRows ??= dungeonRows(mapDict)), locAt: (x, y) => locationIndex.get(`${x},${y}`), isFound: (x, y) => !!tvPlaceSummary(x, y),
+    const near = nearDungeons({ at, dungeons: tvDungeonRowsAt(at), locAt: tvDungeonAt, isFound: (x, y) => !!tvPlaceSummary(x, y),
       spawns: [...spawnedPixels(locationIndex), ...tvFiledSpawns(at)], spawnKnown: (s) => !!s.loc?.superTier || tvSpawnKnown(s), spawnFound: tvSpawnFound,
       spawnGone: (s) => !s.loc?.superTier && tvSpawnGone(s.x, s.y), max: Infinity });
     const list = dungeonModelSet(near).map((g) => ({ key: g.key, px: g.x, py: g.y, loc: g.loc, spawn: g.spawn }));
@@ -31810,8 +31843,8 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     if (typeof _tvListsReady !== 'undefined' && !_tvListsReady) return [];   // BOOT-TDZ II (typeof: a slice lifted without the flag reads as standing)
     const at = playerTravelPixel(), dg = discoveryGeneration(), n = _locIndexGen;
     if (tvFind.at && tvFind.at.x === at.x && tvFind.at.y === at.y && tvFind.dg === dg && tvFind.n === n) return tvFind.list;
-    const list = nearDungeons({ at, range: TV_FIND_REACH, max: Infinity, dungeons: (_tvDungeonRows ??= dungeonRows(mapDict)),
-      locAt: (x, y) => locationIndex.get(`${x},${y}`), isFound: (x, y) => !!tvPlaceSummary(x, y) }).filter((g) => !g.found).map((g) => {
+    const list = nearDungeons({ at, range: TV_FIND_REACH, max: Infinity, dungeons: tvDungeonRowsAt(at, TV_FIND_REACH),
+      locAt: tvDungeonAt, isFound: (x, y) => !!tvPlaceSummary(x, y) }).filter((g) => !g.found).map((g) => {
       const r = locationWorldRect(g.loc, g.x, g.y);
       return { key: g.key, row: g.row, loc: g.loc, found: false, spawn: false, x: (r.minX + r.maxX) / 2, z: (r.minZ + r.maxZ) / 2 };
     });
@@ -31950,10 +31983,12 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     }
   }
   const bandNight = (ms) => { const m = ((online ? skyClassicMinutes(ms) : skyMinutes()) % 1440 + 1440) % 1440; return m < 360 || m > 1080; };   // TIME1: the sky's night at the instant given (the life's middle) - a pure function of the relay's ms, the same for every player
-  /** The land a band may stand on: a map pixel with no water and no place in it (native units). */
+  /** The land a band may stand on: a map pixel with no water and no place in it (native units). ETHER-OW (2026-10-13, the
+   *  owner: "Enemies should show on the world map just like in the bay"): the Bay's map or the Eltheric Ocean's box
+   *  (ethericSea.js onBayOrEther, the nodes' own ground) - an isle's land, never its town's or its ruin's pixel. */
   const bandOk = (x, z) => {
     const px = Math.floor(x / 32768), py = 499 - Math.floor(z / 32768);
-    return px >= 0 && py >= 0 && px < 1000 && py < 500 && !tvWater(px, py) && !_bandPlacePixels.has(`${px},${py}`);   // AUDIT OW4 B2
+    return onBayOrEther(px, py) && !tvWater(px, py) && !_bandPlacePixels.has(`${px},${py}`) && !etherPlaceIsle(px, py);   // AUDIT OW4 B2
   };
   function travelViewBands() {
     const at = bandPixelOf(playerTravelPixel()), ms = bandNowMs(), life = Math.floor(ms / BAND_LIFE_MS);   // AUDIT OW4 B1: the bands' own rows
@@ -32433,18 +32468,20 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
   /** A raider's birth: the open sea - its pixel and every one about it water, the ocean's (never a lake, a bay's mouth).
    *  AUDIT OW5b S5: and ON THE MAP - `tvWater` counts off the map as water (the planner's edge is the sea), and a column
    *  off it read the PAK's first for its climate: a raider was born a pixel past the map's edge. */
+  // ETHER-OW (2026-10-13, the owner: "Enemies should show on the world map just like in the bay"): and ON THE ELTHERIC
+  // OCEAN'S - the Bay's map or its box (ethericSea.js onBayOrEther), the sea's climate the composed index's there
   const tvRaidOpen = (px, py) => {
-    if (px < 0 || py < 0 || px >= 1000 || py >= 500 || maps.getClimateIndex(px, py) !== CLIMATES.Ocean) return false;
+    if (!onBayOrEther(px, py) || maps.getClimateIndex(px, py) !== CLIMATES.Ocean) return false;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!tvWater(px + dx, py + dy)) return false;
     return true;
   };
-  /** A native point on the water, by its pixel's byte (the planner's sea) - AUDIT OW5b S5: on the map alone (the pixel law
-   *  truncates, so the strip a pixel wide past the west and south edges read as the edge's own water, and past it all was
-   *  water: a raider sailed off the world). */
+  /** A native point on the water, by its pixel's byte (the planner's sea) - AUDIT OW5b S5: on the raiders' ground alone,
+   *  the map (ETHER-OW: or the Eltheric Ocean's box - onBayOrEther, their birth's), by the point's own pixel FLOORED (the
+   *  pixel law truncates, so the strip a pixel wide past the west and south edges read as the edge's own water, and past
+   *  it all was water: a raider sailed off the world). */
   const tvRaidSea = (x, z) => {
-    if (!(x >= 0 && z >= 0 && x < 1000 * RAID_NATIVE_PIXEL && z < 500 * RAID_NATIVE_PIXEL)) return false;
-    const p = pixelOfNative(x, z);
-    return tvWater(p.x, p.y);
+    const px = Math.floor(x / RAID_NATIVE_PIXEL), py = 499 - Math.floor(z / RAID_NATIVE_PIXEL);
+    return onBayOrEther(px, py) && tvWater(px, py);
   };
   /** The raiders about the traveller at the shared clock, read again each TV_RAID_LIST_MS. */
   function travelViewRaiders() {
@@ -32815,7 +32852,10 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
     // PERF-TV: counted again only when the ground, the pixel or the reach moved - not every frame
     const px = playerTravelPixel(), gen = tvGroundGenNow(), uc = _tvUnbuilt;
     if (uc.gen !== gen || uc.x !== px.x || uc.y !== px.y || uc.r !== radius) {
-      uc.n = unbuiltAround(px, radius, (x, y) => x < 0 || y < 0 || x >= 1000 || y >= 500 || built.has(`${x},${y}`));
+      // ETHER-OW: nothing to build where the world streams nothing - the stream's own law (StreamingWorldState.streams: the
+      // map, the continent's frame, the Eltheric Ocean's box). "Off the map" was that law before the world streamed past
+      // it, and past the Veil (and on the land past the Bay) every pixel read built: the clock was never held for the load
+      uc.n = unbuiltAround(px, radius, (x, y) => !StreamingWorldState.streams(x, y) || built.has(`${x},${y}`));
       uc.gen = gen; uc.x = px.x; uc.y = px.y; uc.r = radius;
     }
     const unbuilt = uc.n;

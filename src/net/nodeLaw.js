@@ -26,7 +26,7 @@
 
 import { gateHash } from './gateLaw.js';   // the one mix every clock-law in the world rolls with
 import { skyClassicMinutes } from './skyLaw.js';   // TIME1: a UTC day's season and month are the SKY's (bible/06-Systems/Online-Time-Arc.md section 4)
-import { CLIMATES, REGION_NAMES, MAX_MAP_PIXEL_X, MAX_MAP_PIXEL_Y } from '../formats/mapsTables.js';
+import { CLIMATES, REGION_NAMES } from '../formats/mapsTables.js';
 import { SEASONS, seasonValue, dateFromClassicMinutes } from '../systems/gameDate.js';
 import { basketBlock, BASKET_BLOCKS } from '../systems/foragingCore.js';   // the Basket's blocks and foods - the IL's, one home
 import {
@@ -36,7 +36,7 @@ import {
   PEARL, SLAUGHTERFISH_SCALES, SCHOOL_FISH, FISH_CHANCE,   // PROF8
 } from './professionLaw.js';
 import { kingdomOf, FREE_LANDS, MARCH_REGIONS, isMarch } from './kingdomLaw.js';   // SEAT0 4.3's map, one home (PROF2)
-import { inEther } from '../world/ethericSea.js';   // ETHER-NODES: the Eltheric Ocean's box, one home (pure: formats/ alone)
+import { onBayOrEther } from '../world/ethericSea.js';   // ETHER-NODES: the Bay's map or the Eltheric Ocean's box, one home (ETHER-OW; pure: formats/ alone)
 
 /** The one salt every client stands a day's nodes with. Changing it moves every node in the world. */
 export const NODE_SALT = 0x5e3d;
@@ -135,9 +135,10 @@ export const dayMonth = (day) => dayDate(day).month;
 /** Whether (x, y) is a pixel of the world's ground: the Bay's map, or ETHER-NODES (2026-10-12, the owner: "We also need
  *  to implement gathering nodes within the area") the Eltheric Ocean's box (world/ethericSea.js inEther) - its isles
  *  stood the day's nodes and its open water the schools, and the law knew the Bay's 1000 x 500 alone: every id there
- *  was refused (`bad-node`), and every ask after its pixels' witnesses (`bad-pixels`). */
+ *  was refused (`bad-node`), and every ask after its pixels' witnesses (`bad-pixels`). The ground is ethericSea.js
+ *  onBayOrEther's - the Overworld's bands and raiders are born on the same (ETHER-OW). */
 export const pixelOk = (x, y) => Number.isSafeInteger(x) && Number.isSafeInteger(y)
-  && ((x >= 0 && y >= 0 && x < MAX_MAP_PIXEL_X && y < MAX_MAP_PIXEL_Y) || inEther(x, y));
+  && onBayOrEther(x, y);
 /** Whether `r` is a region index. */
 export const regionOk = (r) => Number.isSafeInteger(r) && r >= 0 && r < REGION_NAMES.length;
 /** A node's id: `herb:412:188:20724:2` - its kind, its pixel, its UTC day and its slot. A dungeon's vein names its

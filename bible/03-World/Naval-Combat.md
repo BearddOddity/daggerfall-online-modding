@@ -309,6 +309,9 @@ With the sea fight on, a raider IS a pirate of the sea (`systems/naval/navalRaid
   said in that client's word like any ship; a peer's copy of the same seed with the lower id keeps her (TV7b's
   `chaseYields`), and mine goes.
 - With no sea fight (the switch off), OWS3 stands as it was: the chase on the Overworld and the mod's raid alongside.
+- **Past the Veil** (ETHER-OW, 2026-10-13, `03-World/Eltheric-Ocean.md`): the raiders are seeded on the Eltheric Ocean's
+  open sea too, and one stood there is the sea's own corsair - `launch` dresses her (its names, its colours, no crown's
+  law) and `raiders` draws her class the band's levels over the captain's, as the director draws every class there.
 
 **THE MERGE with main's OW6 (2026-09-29).** Main shared the Overworld's raider chase on the cell's foes frames (OW6,
 `bible/06-Systems/Travel-View.md`: a chase said where it sails, a spent raider said and kept by the cell's ledger, never

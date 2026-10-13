@@ -1,4 +1,4 @@
-# The Eltheric Ocean - past the Veil (ETHER-SEA, ETHER-PLACES, ETHER-PORTS, ETHER-SHIPS, ETHER-LEGENDS, ETHER-CROSSING, ETHER-CHART, ETHER-LIGHT, 2026-10-11; ETHER-CHART2, ELTHERIC, ETHER-DEEP, ETHER-NODES, 2026-10-12)
+# The Eltheric Ocean - past the Veil (ETHER-SEA, ETHER-PLACES, ETHER-PORTS, ETHER-SHIPS, ETHER-LEGENDS, ETHER-CROSSING, ETHER-CHART, ETHER-LIGHT, 2026-10-11; ETHER-CHART2, ELTHERIC, ETHER-DEEP, ETHER-NODES, 2026-10-12; ETHER-OW, 2026-10-13)
 
 The owner, 2026-10-11: *"A brand new open sea map that allows you to traverse to the etheric sea. Sail far enough and
 you are prompted to travel into the open sea. The etheric sea is a infinite procedural oceanscape with procedural
@@ -10,6 +10,10 @@ The owner, 2026-10-12: *"Apparently the ocean is suppose to be eltheric not ethe
 is very shallow and has no depth. We also need to implement gathering nodes within the area"* - three slices: its name
 (ELTHERIC - it was "the Etheric Sea"), its depth (ETHER-DEEP) and the professions' nodes on its isles and in its water
 (ETHER-NODES). The owner's words above keep their own spelling.
+
+The owner, 2026-10-13: *"Also allow the player to zoom out into the overworld like in the Iliac Bay for easy travel.
+Enemies should show on the world map just like in the bay"* - ETHER-OW: the Overworld (`06-Systems/Travel-View.md`)
+risen past the Veil, its places the isles' and its enemies the Bay's own, seeded on the sea.
 
 The pre-merge audit (AUDIT CAPTAIN'S SEA, the owner: "Lets do a comprehensive audit, enaure this is insanely detailed
 and perfection. No exceptions") is `01-Overview/Audit-Captains-Sea.md`: its fixes stand in the sections below, each
@@ -40,6 +44,9 @@ thousand leagues:
   starglass and voidsilk made on the isles and wanted in every port of the Bay; the Bay's goods wanted on the isles.
 - **A CHART OF ITS OWN** (ETHER-CHART): the travel map's door past the Veil opens the captain's chart of the isles
   charted, the depths, the Veil and the legends' haunts heard of.
+- **THE OVERWORLD** (ETHER-OW): the chart's door up into the Overworld, as the held map's is in the Bay - the isles'
+  ports and ruins plated and travelled to, the bands roaming the isles and the raiders sailing the open sea, marked as
+  the Bay's are.
 
 ## The slices
 
@@ -57,6 +64,7 @@ thousand leagues:
 | ELTHERIC | THE SEA'S NAME: the Eltheric Ocean, one word's home for every word a player reads of it | `world/ethericSea.js` (`ETHER_WORD`, `ETHER_SEA_NAME`, `ETHER_SEA_TITLE`), `world/etherPlaces.js` (`ETHER_REGION_NAME`), `ui/etherChartWindow.js`, `ui/navalYardWindow.js`, `scenes/etherHost.js`, `scenes/world.js`, `systems/naval/captainLedger.js`, `systems/naval/etherCrossing.js` |
 | ETHER-DEEP | ITS DEPTH: Iliac Puddle No More's bake over the sea's own frame - its floor carved, swum and walked as the Bay's; the pits held to the Bay | `world/etherWatersBake.js`, `world/deepWatersBake.js` (the frame, the flood, the raw reader's own bytes), `world/deepWaterTileData.js` (the frame's clamps), `world/deepWatersClient.js`, `world/deepWatersWorker.js`, `scenes/deepWatersHost.js` (the one gate, the frame's climates), `scenes/oceanHolesHost.js` (the hold), `scenes/world.js` (the places' rects, the near promote) |
 | ETHER-NODES | ITS NODES: the nodes' law knows the sea's ground - an isle's node, a haul and a pixel's witnesses taken by the service as the Bay's | `net/nodeLaw.js` (`pixelOk`, the ids' spelling) - both ends |
+| ETHER-OW | THE OVERWORLD PAST THE VEIL: the chart's Overworld door; an isle's place the view's own (plated, at the edge, TV6's); the governor's ground the stream's; the bands and the raiders seeded on the sea, their chases heard; a raider stood there the sea's own corsair | `ui/etherChartWindow.js` (the door), `scenes/travelView.js` (`TRAVEL_VIEW_BUTTON`), `world/ethericSea.js` (`onBayOrEther`), `world/etherPlaces.js` (`etherPlaceIsle`, `etherPlaceRows`), `scenes/world.js` (`openEtherChart`, `etherPlaceClone`, `tvEtherPlace`, `tvPlaceSummary`, `travelViewFarPlaces`, `tvDungeonRowsAt`, the governor, `bandOk`, `tvRaidOpen`, `tvRaidSea`), `systems/travelBands.js` (`chaserPlaceOk`), `scenes/navalHost.js` (`raiders`) |
 | (the ledger) | WHAT A CAPTAIN KEEPS OF IT: the isles charted, the legends ended and heard of, the strands gathered, the way out, the crossings - in the Captain save | `systems/naval/captainLedger.js` (`ether`, `chartIsle`, `endLegend`, `gathered`, `setCrossedFrom`, `crossed`, `hearLegend`), `scenes/etherHost.js` |
 
 THE FOUR HOSTS (Home.md; AUDIT CAPTAIN'S SEA H12 - the slices named none): the sea, its ships, the crossing, the chart
@@ -323,7 +331,8 @@ captain back where they set out, at her helm, the way out as it was (CROSS_FAILE
 ## ETHER-CHART - the chart of the Eltheric Ocean
 
 Past the Veil the travel map's door (`toggleTravelMap`) opens the captain's chart (`ui/etherChartWindow.js`, the naval
-windows' door's third slot) - the Bay's travel map has no sea there to show, and nothing on the chart is travelled to.
+windows' door's third slot) - the Bay's travel map has no sea there to show, and nothing on the chart is travelled to:
+its Overworld door is the way to travel (ETHER-OW).
 On a canvas: the sea, each depth its own water (ETHER-CHART2); the BANDS' bounds, and each band's water named in its
 own water on the depth ruler over the chart, the Shallows by the Veil (X12; AUDIT ETHER-CHART2 U2); THE VEIL down the
 east edge, "to the Iliac Bay" on the ruler; the HAUNTS of the legends heard of (the square a haunt is - X13 - red while
@@ -505,8 +514,8 @@ nothing here to gather."), and every ask after an isle pixel's witnesses was ref
 apart for as long as the captain stood there.
 
 THE LAW. The nodes' ground is the Bay's map and the Eltheric's box
-(`nodeLaw.js:"export const pixelOk = (x, y) => Number.isSafeInteger(x) && Number.isSafeInteger(y)"`, the box's
-`inEther` one home), and a node's and a haul's ids are read in their one spelling with four digits and a sign. Nothing
+(`nodeLaw.js:"export const pixelOk = (x, y) => Number.isSafeInteger(x) && Number.isSafeInteger(y)"`; the ground's one
+home is `world/ethericSea.js` `onBayOrEther` since ETHER-OW, where the Overworld's bands and raiders are born too), and a node's and a haul's ids are read in their one spelling with four digits and a sign. Nothing
 else moves: the day's counts by climate, the tiers, the witnessed world (an isle pixel is unconfirmed until three
 week-old accounts agree, worth its kind's least till then), the regions' materials (an isle's herbs are Betony's), a
 Levy in Betony's seat. The service reads the same law: it takes an isle's harvest and answers its pixels' witnesses -
@@ -515,6 +524,62 @@ that did not happen looks exactly like one that did), and `world/ethericSea.js` 
 Worker's bundle, so the deploy's path filter carries it (`.github/workflows/account-deploy.yml`, held to the import
 graph by `test/accountdeploy.test.js`, which caught it in CI). `test/ether_nodes.test.js` holds the ground, the spelling, and the service end to end
 over the real database.
+
+## ETHER-OW - the Overworld past the Veil
+
+The Overworld - the real world from a raised eye, a click a journey, its enemies marked (`06-Systems/Travel-View.md`) -
+already stood over the sea's ground (G5: `tvWater`, `tvSceneOf` read an isle's land as land), and its journeys already
+cross water in a boat (OWS2). Five of its reads still held the Bay:
+
+1. **THE DOOR.** The way up is the held map's Overworld door (TV1: the foot's button, its key O), and past the Veil the
+   map's answer is this chart, which had none - a captain there rose only by a key nobody binds (the `TravelView`
+   action ships unbound). The chart wears the held map's door now (`ui/etherChartWindow.js`, in its tools row, a
+   finger's 44 px, and on its key O): its words one home (`scenes/travelView.js` TRAVEL_VIEW_BUTTON - the held map's,
+   moved there so a lazy chunk need not load the held map for them), shown where the view can rise (the host's
+   `travelViewAllowed`: the open air, the enhanced lane, a body alive), asked at every paint. It shuts the chart with its
+   own reason, 'overworld', and the host lifts the view once the chart's slot is empty (`openEtherChart` - the slot is
+   emptied before the occupant is told).
+2. **THE PLACES.** The view's places were the Bay's dictionary's rows (`tvPlaceSummary` read
+   `travelLocationSummaryAt(mapDict)`), and an isle's port or ruin is none: no plate, no far place, a click on its town a
+   walk to bare ground. Past the Veil an isle's place is its own summary (HALL-JOURNEY's way): the index's once its
+   pixel has built, else its clone, marked and never stood (`etherPlaceClone`, the build's own half of `etherPlaceAt` -
+   `tvSpawnAt`'s law: a far place is marked, never built). It is KNOWN as the sea knows a place: its isle on the
+   captain's charts (`sight` within three pixels, a harbourmaster's chart, a corsair's papers - the chart's own isles),
+   or the place found (its door entered, or met on approach). A known port or ruin within the grid wears TV2's plate; a
+   known port within the edge's range (TV_FAR_RANGE, 24 pixels) is TV5's far plate, a journey there; a ruin within it is
+   TV6's - a lair where it lies until known, a far plate once - and among the nearest, OW-DUNGEONS' model, as any
+   dungeon's (`world/etherPlaces.js` `etherPlaceRows`, world.js `tvDungeonRowsAt`, `tvDungeonAt`). The map's settlements, gathered once, never keep an isle's place the
+   index held at the first ask.
+3. **THE LOAD.** A journey under the view is held while the land the view can see is unraised (TV2's cap), and the
+   governor counted every pixel off the map as built - the law before the world streamed past it. Past the Veil (and on
+   the land past the Bay, TAMRIEL2) a fast crossing outran the stream unheld. It asks the stream's own law now
+   (`StreamingWorldState.streams`): where the world streams nothing, nothing is owed.
+4. **THE ENEMIES.** The Overworld's own enemies - the roaming bands (TV7, OW6) and Warm Ashes' raiders (OWS3) - are
+   seeded of the land and the shared clock, and were seeded on the Bay's map alone (`bandOk`, `tvRaidOpen`, `tvRaidSea`
+   - AUDIT OW4 B2's and AUDIT OW5b S5's bounds). Their ground is the Bay's map or the Eltheric's box now - one home,
+   `world/ethericSea.js` `onBayOrEther`, the nodes' own - over the sea's composed ground: a band roams an isle's land,
+   never its town's or its ruin's pixel (`etherPlaceIsle`) nor the sea; a raider is born on the open sea (the ocean's
+   climate, every pixel about it water) and sails it, never past the box (S5's floored pixel - the Bay's bounds exactly
+   as they were). They are marked, chased, slowed for and met as the Bay's are, by the same code; the camps already were
+   (they are the foes standing). A raider stood as a ship past the Veil (NAV-R) is the sea's own corsair - `launch`
+   dresses every ship launched there (its names, its colours, no crown's law) - and her class is drawn the band's levels
+   over the captain's, as every class the director draws there is (`navalHost.js` `raiders`; it read the captain's
+   level alone).
+5. **THE WORD.** A chase is shared on the chaser's frame (TV7b, OW6), and the word's place was the Bay's extent: every
+   chase said past the Veil was dropped by the peers who heard it. A chaser's place is a pixel of the world now
+   (`systems/travelBands.js` `chaserPlaceOk` - `net/wire.js` `worldPixelOk`, TV-BEYOND's law). The relay's ids and cells
+   took a sign already (TV-BEYOND): no relay version.
+
+**Measured, kept.** The route planner (OWS2's sea, TV-BEYOND's ground past the map) plans past the Veil as it does past
+the Bay: a crossing of 12 pixels between two isles by Veilhaven in 12 ms, and "no way by land" on foot in 14 ms - its
+widest box held about the two ends, under twice the Bay's whole map.
+**Held.** The sea lanes (`laneOpen`: the Bay's packets between its ports) and the serpent's site stay the Bay's. The sea
+fight's own traffic - the director's corsairs and the legends - is drawn under the view as hulls and is not marked, as
+the Bay's own pirates are not; a raider is marked where she stands as a ship (NAV-R). The chart is still never pressed
+to travel: the Overworld is. The node law reads the one home with every answer unchanged (`test/ether_nodes.test.js`
+as it stood), so the account Worker's law did not move and `ACCOUNT_VERSION` stays acct124.
+**THE FOUR HOSTS.** The Overworld is the streaming host's alone (`06-Systems/Travel-View.md`): `scenes/world.js` wired;
+`scenes/exterior.js`, `scenes/worldModes.js` and `scenes/dungeonContext.js` raise no view - FLAGGED, as TV's.
 
 ## The ledger's record
 
@@ -545,6 +610,8 @@ the Veil", "Legends ended"; its trades count 'ether' and 'legend' ships.
   (test/ethersea_dwhold.test.js). Ocean Holes' pits stay the Bay's.
 - **Online**, the crossing is each player's own; a party is not carried across together, and a player aboard another's
   ship holds the crossing back.
+- **The Overworld's enemies, seeded on the sea** (ETHER-OW): the bands roam the isles and Warm Ashes' raiders sail the
+  open sea past the Veil as on the Bay's map - the Bay's own law on a ground the mods never knew.
 
 ## Pins
 
@@ -619,10 +686,26 @@ of the sea's words (`test/ethersea.test.js`, `test/ethercross.test.js`, `test/au
 `test/ethersea_dwhold.test.js` (a host told nothing of the sea), and `tools/mutants/dwa.json`'s two border seeds (the
 flood's names the frame's).
 
+ETHER-OW: `test/ether_ow.test.js` (8) - the chart's door mounted (hidden, shown at a paint, pressed, its key) and the
+host's (handed where the view can rise, the view lifted once the slot is empty), the governor's line over the real
+stream law, the places (the summary, known by chart or find, never stood, the index's first), the far ports and the
+ruins as TV6's (lifted and run), the bands' land and the raiders' sea over the sea's composed ground (bands and raiders
+seeded there, life by life), the chase word; `test/nav_r_raiders.test.js` (+1) - a raider stood past the Veil the sea's
+corsair, drawn the band's levels over the captain's. Mutants `tools/mutants/ether_ow.json` (24). PIN MOVED (each to its
+new law): `test/ows3_raiders.test.js` (the raiders' open sea, the host's ground, the word's place past the world's edge),
+`test/tv7_bands.test.js` (the bands' land, the word's place), `test/tv5_far_places.test.js` (the settlements),
+`test/tv6_dungeons.test.js` and `test/ow5_audit.test.js` (the lists' rows lifted beside them), `test/tv2_click_to_move.test.js`
+and `test/tv_wasd.test.js` (the governor's ground), `test/audit_etherchart2.test.js` (the door a press of the row);
+re-aimed by content: `tools/mutants/ether_nodes.json` (EN-bay-alone, EN-law-margin), `ow3d.json` (OW3D3-rows-off-the-index),
+`ow4t.json` (OW4-B2-live-index), `ow5s.json` (the two S5 records), `tv7.json` (TV7b-off-the-map).
+
 **Not verified here:** the look and feel in a real browser (the isles on the horizon, the light - the chart was read in
 Chromium at ETHER-CHART2, mounted alone), a crossing end to end in a running world (its jump, the ship brought round,
 the stream past the Veil), a town's buildings and a ruin's halls entered on an isle, and online play past the Veil -
 ETHER-DEEP's seabed seen and swum in a running world (its pins build real Eltheric pixels through the mod's own
 builder; the renderer and the swim's motor are the Bay's, unchanged), the places' rects read off the player's MAPS.BSA
 and BLOCKS.BSA (no archive here: their pick is pinned, their reading is `setLocationTiles`'s), and ETHER-NODES' harvest
-from a live client against the deployed service (pinned over the service's own code and migrations).
+from a live client against the deployed service (pinned over the service's own code and migrations); ETHER-OW's
+Overworld risen past the Veil in a running world - the view over the sea, a crossing sailed from a click, the isles'
+plates, the bands and raiders marked (the host's own code is run over the sea's real ground here; the view, its marks'
+painter and its journeys are the Bay's, unchanged).

@@ -2458,7 +2458,11 @@ export function createNavalHost(deps) {
       retire(e);   // SHIP-FADE: she sails on out of sight
     }
     for (const e of sea.values()) if (!e.owner && e.raider && !plan.drop.includes(e.raider.id)) { e.handOn = null; e.retiring = false; }   // SHIP-FADE: back in range as she faded - she stays
-    const level = deps.level?.() ?? 1;
+    // ETHER-OW (2026-10-13): past the Veil the raiders are born on the Eltheric Ocean too (world.js tvRaidOpen), and a
+    // ship launched there is the sea's own (launch: its names, its colours, no crown's law) - her class drawn the band's
+    // levels over the captain's own, as every class the director draws there is (navalDirector.js ctx.ether)
+    const w = where();
+    const level = (deps.level?.() ?? 1) + (w.ether ? BANDS.find((b) => b.id === w.ether.band)?.level ?? 0 : 0);
     for (const id of plan.stand) {
       const r = list.find((x) => x.id === id);
       const cls = raiderClassOf(r.seed, level);
