@@ -224,8 +224,8 @@ the piece moves but its worth, by the line's. The Loot Rarity switch is not aske
 on every client; the line's reader asks the switch). THE RECORD SAYS ITS LAW: the market and a temper mint a piece again
 from its record, so a craft's product record now carries its mint version (`v` 1, stamped by the service at the craft,
 kept by a temper's re-sign, carried by the market's piece), and a record made before has none and mints byte for byte
-as it did - no piece already made changes, here or on another client. The account service's acct127 (no migration;
-acct126 on the branch, renumbered past MINE-PERKS at the merge).
+as it did - no piece already made changes, here or on another client. The account service's acct128 (no migration;
+acct126, then acct127, on the branch - renumbered past MINE-PERKS and HOMES-SHED at the merges).
 
 NOT SEEN. Pieces made before keep no line, by the version's design. A client not yet updated mints a `v` 1 record
 without its line until it updates. Crafts still take no technique, curse or socket pass (not reported). A record grows
@@ -233,7 +233,7 @@ eight characters (the worst case 457 of 512).
 
 `test/fb1013e_craftprocs.test.js` (5); `tools/mutants/fb1013e_craftprocs.json` (26, all dead). Re-aimed by content, dead:
 loot2, loot4 x3, prof3, prof10, prof7 x2, prof9 x2, audit30, and the account version's line in ten records. PIN MOVED:
-the account version's pin in 19 suites (acct127).
+the account version's pin in 19 suites (acct128).
 
 ## SPENT-ASHORE: the collapse among foes costs a tenth, never a death (10)
 
@@ -263,7 +263,9 @@ NOT SEEN. Which foe stood in the band at Knightshead; reproduced on the real tic
 
 `test/fb1013e_spentashore.test.js` (4, red on the code before); `tools/mutants/fb1013e_spentashore.json` (14, all dead).
 PIN MOVED, by intent: rest, audit26_streaming2, fb0930b_swimspent, auditworld5, disc28_fatigue, macro7_gate, csa_close
-(two), effectarms (X1), playerdeath (AUDIT-DEATH1). Re-aimed by content, dead: audit_air1 (two DEATH1 records), csa_close
+(two), effectarms (X1), playerdeath (AUDIT-DEATH1); and, at the merge with main's FIELD BUGS 2026-10-13d (REMAINS, which
+kept DFU's collapse and stood its elder's death on it), `fb1013d_remains`'s fall - she dies of the collapses as they come,
+through the same door, and her remains stand as that batch pins them. Re-aimed by content, dead: audit_air1 (two DEATH1 records), csa_close
 (CSA-J-modes-exhaust-no-hook), fb0930b_swimspent (two).
 
 ## NO-ASKS-AGAIN: a No that leads nowhere asks again, on the next click (6)
