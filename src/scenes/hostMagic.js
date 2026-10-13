@@ -76,6 +76,7 @@ import { noteFeudHarm, elementFeudClass } from '../systems/feudLedger.js';   // 
 import { noteSkillChallenge } from '../systems/skillSoftcap.js';   // BAL9: a spell answers its foe, as a blow does
 import { sandSpellRefusal } from '../systems/arenaKit.js';   // AUDIT ARENA-LADDER: the sand's kit law
 import { createMwMagicFx } from './mwMagicFx.js';   // MW-SPELLFX1: Morrowind's spell effects, drawn by every host through this engine
+import { createGuideTrailFx } from './guideTrailFx.js';   // GUIDE10: the guide trail's embers, drawn by every host through this engine too
 import { fpsSpellCasting } from '../combat/fpsSpellCasting.js';   // CAST-SPEED: the ONE pair of hands, whose motion gates the click
 
 /** SUNBABY2: a sky fireball (skyFire) is drawn this many times its flat's size, its flash too - a ball a sun throws,
@@ -208,8 +209,13 @@ export function createPlayerMagic({
   // drawn by drawFx with the impact pass. Every door is quiet without Morrowind data or with the switch off; a test may
   // hand its own.
   mwMagicFx = null,
+  // GUIDE10 (systems/guideTrail.js): THE GUIDE TRAIL - the host's word on where the player is going: asked every frame
+  // from drawFx, it answers `{ path, feet, brightness? }` (the way from the player's feet to the goal, as points in the
+  // pass's space) or null where the tier is off or there is nowhere to lead. A host that hands none draws no trail.
+  guideTrailPath = null,
 }) {
   const mwFx = mwMagicFx ?? createMwMagicFx({ renderer });
+  const guideTrail = createGuideTrailFx({ renderer });   // GUIDE10: made lazily on first draw; freed in destroy
   const playerCaster = () => ({ entity: playerEntity, sinks: playerSinks });
   /** GIFT-QUIET (systems/allyCast.js GIFT_LINE_QUIET_S): a gift's line - an armed ready's, a caster's - said at most once
    *  in the window (createGiftLineGate); `fresh` says it whatever the window. */
@@ -1617,6 +1623,7 @@ export function createPlayerMagic({
       peerCandleMounts.clear();
       clearSparks(); fx.clear();   // IMPACTFX: the bursts die with the engine
       mwFx.destroy();   // MW-SPELLFX1: and the Morrowind effects, GL and all
+      guideTrail.dispose();   // GUIDE10: and the trail's embers
       if (fxPass) { const p = fxPass; fxPass = null; fxBroken = true; p.destroy(); }   // IMPACTFX: and their GL pass (the slot emptied first; a draw after this builds nothing)
       impacts.clear();   // AUDIT 68 S21-magic-destroy-impacts: a flash still warming its archive is marked dead, so it publishes nothing into this dead engine
       for (const b of batches) { flatAnims.remove(b); renderer.destroyBillboardBatch(b); }
@@ -1646,6 +1653,8 @@ export function createPlayerMagic({
     /** IMPACTFX: THE BURSTS' PASS - the hosts call this right after this engine's billboards, in their world pass,
      *  under the renderer's own camera and fog. Answers whether it drew (it marks the foreign pass itself). */
     drawFx() {
+      const gp = guideTrailPath?.() ?? null;   // GUIDE10: the guide trail's embers, through the renderer's same particle path, under the same camera (no host reads whether drawFx drew)
+      guideTrail.draw(gp?.path ?? null, gp?.feet ?? null, { brightness: gp?.brightness });
       const mw = mwFx.draw();   // MW-SPELLFX1: Morrowind's spell effects, through the renderer's own particle path
       if (!fx.live || fxBroken || !renderer?.gl || !renderer._proj || !renderer._view) return mw;
       const n = fx.build();

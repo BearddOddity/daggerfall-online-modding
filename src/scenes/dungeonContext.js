@@ -81,8 +81,10 @@ import { worldAabb, objectAabb, peacefulFoePass, doorDistanceOf } from '../playe
 import { getInteractionMode, interactionModeAsks } from '../player/interactionMode.js';   // AUDIT TACT C5: a pickpocket's plaque names the mark; SENSE1: the asks for Info, the look round's cue
 import { SENSE_PREF, senseTier, senseFinds, senseSecrets, senseRound, senseMarks, senseFlat, inPlainSight, createSensePulse, senseCard, boxDistance } from '../systems/dungeonSense.js';   // SENSE1 (the delve arc): the look round
 import { WAY_PREF, createWayOut, stepHitCuts } from '../systems/wayOut.js';   // WAYOUT1 (the delve arc): the way out on the compass
+import { guideTrailTier, createGoalPath, nearestPoint, smoothPath } from '../systems/guideTrail.js';   // GUIDE10: the guide trail's tiers, its kept path, its waypoint pick and its smoothing
+import { findPath } from '../ai/navmesh.js';   // GUIDE10: the navigation mesh's own query, for a trail to a place the walked trail has not reached
 import { ECHO_PREF, ECHO_NEAR_M, ECHO_FIND_M, ECHO_LOOK_S, isEchoMover, echoState, echoMoved, echoLine, examineLine, boxMiddle, createEchoBook } from '../systems/dungeonEcho.js';   // ECHO1 (the delve arc): the chain's echo, and its examine
-import { questCompassPick } from '../systems/questGuidance.js';   // AUDIT DELVE C6: the Exact tier's compass pick
+import { questCompassPick, questMarkPick } from '../systems/questGuidance.js';   // AUDIT DELVE C6: the Exact tier's compass pick; GUIDE10: and the pick whole
 import { createNodeGlowPass } from '../render/nodeGlow.js';   // SENSE1: the professions' glow, for what the look round finds
 import { createWeaponRig, envAttack, sheetHolderOf } from '../combat/weaponRig.js';   // C10: the shared FP-weapon surface; MW-MAP1: the held map's holder
 import { mwViewFirstPerson } from '../player/mwView.js';   // MW-MAP1: the automap is read in the head (MAP-POV's law), underground too
@@ -3396,6 +3398,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
   }
 
   const magic = createPlayerMagic({
+    guideTrailPath: () => guideTrailPath(),   // GUIDE10: the guide trail's embers, drawn by the engine's drawFx
     isPuppet: (f) => isPuppetFoe(f),   // AUDIT FEUD 2: a room's foe another client runs - no rout of mine
     lairHere: () => {   // RVN7 (bible/12-Enhanced-AI/Feud-Arc.md 18.1): a deed underground - this dungeon is its lair
       const mt = dfLocation.mapTableData;
@@ -8546,7 +8549,53 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
   function questCompassMark(feet) {
     return questCompassPick(feet ? opts.questMarks?.() ?? null : null, feet);   // AUDIT DELVE C6: the pick's one home
   }
-  // ECHO1 (the delve arc, systems/dungeonEcho.js): THE CHAIN'S ECHO. Every Receive the action system lets through
+  // GUIDE10 (systems/guideTrail.js): THE GUIDE TRAIL'S PATHS - the host's word, every frame, on where the player is going
+  // and the way there. Three tiers: EXIT, the walked trail walked back to the way in (the way-out reader's own field,
+  // kept current here whatever the compass mark's row says); QUEST, the followed quest's nearest resource the Exact tier
+  // marks (opts.questMarks - a tier below Exact marks none, so the trail leads nowhere rather than spoil one); WAYPOINT,
+  // the nearest note the player has put on this dungeon's map. The last two go by the navigation mesh where the enhanced
+  // AI has baked one, else the straight line while a wall-free line is seen, else nowhere.
+  const guideGoal = createGoalPath({
+    route: (from, to) => {
+      const a = [from[0], from[1] + 0.1, from[2]], b = [to[0], to[1] + 0.1, to[2]];
+      if (enhancedNav.chf) { const r = findPath(enhancedNav.chf, a, b); if (r) return r; }
+      const eye = [from[0], from[1] + 1.4, from[2]], dx = b[0] - eye[0], dy = b[1] + 1 - eye[1], dz = b[2] - eye[2], len = Math.hypot(dx, dy, dz);
+      return len > 1e-3 && !(collider.raycast(eye, [dx / len, dy / len, dz / len], len) < len - 0.2) ? [a, b] : null;
+    },
+  });
+  /** The way-out field kept current for the exit tier (the reader keeps its own, `wayOut`): the compass's `wayOutMark` does this
+   *  while the `dungeon-way-out` row is on and stands down when it is off - the trail asks for itself, at the same pace. */
+  let _guideAimT = -Infinity;
+  function guideExitAim(feet, eye) {
+    const sm = dungeon.startMarker;
+    if (!sm || !automapRec?.entranceDiscovered) return;
+    const t = performance.now() / 1000;
+    if (t - _guideAimT < 0.25) return;
+    _guideAimT = t;
+    const sees = (p) => {
+      const dx = p[0] - eye[0], dy = p[1] + 1 - eye[1], dz = p[2] - eye[2], len = Math.hypot(dx, dy, dz);
+      return !(len > 1e-3) || !(collider.raycast(eye, [dx / len, dy / len, dz / len], len) < len - 0.1);
+    };
+    wayOut.aim(automapRec.trail, automapWaySteps(automapRec), [sm.x, sm.y, sm.z], feet, sees, t, wayStepClear);
+  }
+  function guideTrailPath() {    const tier = guideTrailTier();
+    const feet = lastPlayerFeet;
+    if (tier === 'off' || !feet) return null;
+    const t = performance.now() / 1000;
+    if (tier === 'exit') {
+      guideExitAim(feet, [feet[0], feet[1] + 1.6, feet[2]]);
+      const p = wayOut.path(feet);
+      return p && p.length > 1 ? { path: smoothPath(p), feet } : null;
+    }
+    if (tier === 'quest') {
+      const m = questMarkPick(opts.questMarks?.() ?? null, feet);
+      const path = m ? guideGoal.get(`q|${m.name}`, feet, m.at, t) : null;
+      return path ? { path, feet } : null;
+    }
+    const note = nearestPoint([...(automapRec?.notes?.values() ?? [])].map((n) => n.position), feet);
+    const path = note ? guideGoal.get(`n|${note.join(',')}`, feet, note, t) : null;
+    return path ? { path, feet } : null;
+  }  // ECHO1 (the delve arc, systems/dungeonEcho.js): THE CHAIN'S ECHO. Every Receive the action system lets through
   // (`onPlayed`) is heard; a cascade's play (ActionObject - what a press set going, never what was pressed) of a mover
   // farther than ECHO_NEAR_M from the eye and out of plain sight is said once a press (the first such, in chain order),
   // goes in the book the held map draws (`echoes`), and is FOUND - glowing in the secrets' colour for the hold - when it
@@ -10526,6 +10575,7 @@ export async function buildDungeonContext(deps, dfLocation, blocks, climateBaseT
       exitDungeonAutomap(classicMinutesRef.value);   // AUDIT-AMAP F11: stamped with the EXIT time (:2155)
       _unregisterHolds();   // TUT1 audit: the holds-only presenter leaves with the context too (below the exit law: test/automap.test.js measures the walk to it)
       senseGlow.dispose(); sensePulse.clear(); echoPulse.clear(); echoBook.clear(); wayOut.reset(); actions.onPlayed = null;   // SENSE1/ECHO1: the look round's glow is OURS - its program ends with the context
+      guideGoal.reset();   // GUIDE10 (HARD1): the guide trail's kept path leaves with the context
       bloodMarks.dispose();   // BLOOD1a (HARD1): the ring is OURS - a vertex buffer and a VAO handed to nobody - so it ends here, by its own name and not through the hand-off pool
       // ROAD-B B1: RemoveWindow runs OnPop on every window it removes
       // (UserInterfaceManager.cs:189-196) and ChangeWindow removes them

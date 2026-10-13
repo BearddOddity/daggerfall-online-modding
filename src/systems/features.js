@@ -1373,6 +1373,21 @@ export const FEATURES = Object.freeze([
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'questWaypoint', initial: false, online: 'player' }),   // ui/questWaypoint.js WAYPOINT_PREF
   }),
+  // GUIDE10 (2026-10-13): THE GUIDE TRAIL - warm gold embers drifting along the way to where you are going, in the world
+  // itself (systems/guideTrail.js, scenes/guideTrailFx.js, drawn by every host's magic engine). Four tiers, one key
+  // (GuideTrail) cycles them: it leads to your tracked quest, to the way out of a dungeon, or to the nearest waypoint you
+  // have put on a dungeon's map. For new players lost underground, and for players who need help keeping track of where
+  // they are going. Off by default; Settings > Accessibility > Wayfinding lists it.
+  Object.freeze({
+    id: 'guide-trail',
+    group: 'interface',
+    get title() { return t('features.guideTrail.title', 'Guide trail'); },
+    get note() { return t('features.guideTrail.note', 'Gold embers drift along the way to where you are going: your tracked quest, the way out of a '
+      + 'dungeon, or your nearest map waypoint. Bind a key to cycle them under Controls.'); },
+    get effect() { return t('features.effect.atOnce', 'Takes effect at once.'); },
+    kinds: Object.freeze(['enhanced']),
+    control: Object.freeze({ store: 'prefs', key: 'guideTrail', initial: 'off', online: 'player', tiers: Object.freeze([['off', 'Off'], ['quest', 'Tracked quest'], ['exit', 'Way out'], ['waypoint', 'Map waypoint']]) }),   // systems/guideTrail.js GUIDE_TRAIL_PREF, GUIDE_TRAIL_TIERS
+  }),
   // SENSE1 (2026-10-05, the delve arc - bible/03-World/Delve-Arc.md): THE LOOK ROUND. Asking for Info mode underground
   // lights what is near, in sight, and named by the plaque (systems/dungeonSense.js, read by scenes/dungeonContext.js
   // at the ask). On by default: it lights nothing a press or the plaque would not reach. The secrets tier lights what

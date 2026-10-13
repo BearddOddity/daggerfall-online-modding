@@ -167,6 +167,29 @@ export function wayPoint(cells, field, from, sees, look = WAY_LOOK_CELLS) {
   return best ?? first ?? cells.pts[from];
 }
 
+/**
+ * GUIDE10 (the guide trail, systems/guideTrail.js): THE WAY OUT AS A PATH - the cells along the field from `from` toward
+ * the way in, up to `maxCells` of them (a cell is TRAIL_CELL, a metre), as points; null when `from` has no way out. It
+ * ends at a teleporter's jump (the trail's embers stand on the teleporter until it is taken, as the compass's mark does).
+ * Pure.
+ * @param {TrailCells} cells @param {{ next: Int32Array, jump: Uint8Array }} field @param {number} from
+ * @param {number} [maxCells]
+ * @returns {number[][]|null}
+ */
+export function wayPath(cells, field, from, maxCells = 64) {
+  if (!(from >= 0) || !(from < field.next.length) || field.next[from] < 0) return null;
+  const out = [cells.pts[from]];
+  let i = from;
+  for (let s = 0; s < maxCells; s++) {
+    if (field.jump[i] === 1) break;
+    const j = field.next[i];
+    if (j < 0 || j === i) break;
+    out.push(cells.pts[j]);
+    i = j;
+  }
+  return out;
+}
+
 /** AUDIT SD III (D4): the most one aim spends asking `stepClear`, ms - a long trail loaded whole asked its 2,000 wall
  *  rays in one build (31 ms on a 135k-triangle level), and the steps left were asked by building the whole field again
  *  each second (30-40 ms, a second, for fifteen seconds). */
@@ -297,6 +320,11 @@ export function createWayOut({ fieldEvery = WAY_FIELD_S, refieldEvery = WAY_REFI
       return p ? [p[0], p[2]] : [exitAt[0], exitAt[2]];   // no walked way: the way in, as the crow flies
     },
     reset,
+    /** GUIDE10: the way out as a path of points from `feet` (the last aim's field), or null while there is none. */
+    path(feet, maxCells = 64) {
+      if (!cells || !field || !feet) return null;
+      return wayPath(cells, field, nearestCell(cells, feet), maxCells);
+    },
     /** How many times the whole field has been built (the tests', and a probe's). */
     builds: () => builds,
   };

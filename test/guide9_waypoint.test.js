@@ -92,7 +92,7 @@ test('GUIDE9: ITS ROW AND ITS KEY - a Features row on the switch\'s key, off by 
   assert.ok(row, 'the Features row');
   assert.deepEqual([row.control.store, row.control.key, row.control.initial], ['prefs', WAYPOINT_PREF, false]);
   const acc = CATEGORIES.find((c) => c.id === 'accessibility');
-  assert.deepEqual(acc.sections.find((s) => s.id === 'wayfinding')?.items, ['feat:quest-waypoint']);
+  assert.deepEqual(acc.sections.find((s) => s.id === 'wayfinding')?.items, ['feat:quest-waypoint', 'feat:guide-trail']);   // PIN MOVED (GUIDE10): the guide trail beside it
   assert.ok(ACTIONS.includes(WAYPOINT_ACTION) && PORT_ACTIONS.includes(WAYPOINT_ACTION));
   assert.ok(JSON.stringify(ACTION_GROUPS).includes(`"${WAYPOINT_ACTION}"`), 'drawn in the controls pane');
   assert.ok(!DEFAULT_BINDINGS.some(([, a]) => a === WAYPOINT_ACTION), 'ships unbound');

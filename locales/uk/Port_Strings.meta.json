@@ -1,4 +1,14 @@
 {
+ "features.guideTrail.note": {
+  "en": "b8995f62c1cc",
+  "tr": "11ae99dc3454",
+  "by": "claude-in-session"
+ },
+ "features.guideTrail.title": {
+  "en": "3d840f425646",
+  "tr": "76afa669bf0d",
+  "by": "claude-in-session"
+ },
  "features.questWaypoint.note": {
   "en": "0e884b50b9c8",
   "tr": "ed37a454cb81",
@@ -7,6 +17,26 @@
  "features.questWaypoint.title": {
   "en": "c876eb411f46",
   "tr": "aa2c8168bbe6",
+  "by": "claude-in-session"
+ },
+ "guideTrail.said.exit": {
+  "en": "1bca4c58320b",
+  "tr": "6d4f04f5a411",
+  "by": "claude-in-session"
+ },
+ "guideTrail.said.off": {
+  "en": "6ac967c613cd",
+  "tr": "df4480e38297",
+  "by": "claude-in-session"
+ },
+ "guideTrail.said.quest": {
+  "en": "8951ed10540d",
+  "tr": "b9cdaaca4bba",
+  "by": "claude-in-session"
+ },
+ "guideTrail.said.waypoint": {
+  "en": "4a55e02b806d",
+  "tr": "dcd488502657",
   "by": "claude-in-session"
  },
  "lang.offer": {

@@ -341,6 +341,7 @@ Generated from `ACTION_GROUPS` and the two default tables; the enhanced pane dra
 | `AutoMap` | M |  | Map |
 | `TravelMap` | V |  | Travel map |
 | `QuestWaypoint` | (unbound) |  | Quest waypoint on / off |
+| `GuideTrail` | (unbound) |  | Guide trail: off / quest / way out / waypoint |
 | `QuickDial` | TAB |  | Quick dial |
 | `TravelView` | (unbound) |  | Overworld (the travel view) |
 

@@ -2,7 +2,7 @@
 // CITE-ANCHOR (2026-10-06, Mac - asked how to stop the merge conflicts the cites made, "Merge #630, then fix cites"):
 // A CITE INTO OUR OWN CODE NAMES WHAT IT POINTS AT, NOT WHERE IT STOOD.
 //
-// WHY. A line number is a claim about every line above it. `world.js:6153` was true until anything above line 6153
+// WHY. A line number is a claim about every line above it. `world.js:6154` was true until anything above line 6153
 // moved, and world.js is 29,000 lines: every change to it shifted every cite below the change, citeShift rewrote them
 // in every doc that carried one (191 cites in 40 files for one feature), and any two branches that touched world.js
 // then rewrote the same doc lines with different numbers. Every merge of main into PR #630 conflicted, and every
@@ -19,8 +19,8 @@
 // file touches the docs that cite the lines it changed, and no others. A quote that stops being true is the gate's
 // (test/citeanchor.test.js CA1) in the change that made it so, and it names the doc and the quote.
 //
-// WHAT IT COVERS. A cite into a tracked .js/.mjs - the path form (`src/scenes/world.js:6153`), the basename form
-// (`world.js:6153`), a range (`:6153-6160`, anchored at its first line: the anchor names the place, the code shows the
+// WHAT IT COVERS. A cite into a tracked .js/.mjs - the path form (`src/scenes/world.js:6154`), the basename form
+// (`world.js:6154`), a range (`:6154-6161`, anchored at its first line: the anchor names the place, the code shows the
 // block), and the bare continuations after one (`/:N`, `` `:N` ``, `(:N`, `, :N`, `/N`, `against :N` - citeShift's
 // RF3/RF4/RF5/CITE-SLASH/CITE-CS law, imported, so a continuation belongs to the same cite here as there), each written
 // out in full (`world.js:"a"/world.js:"b"`). NOT covered, and held as they are: a cite inside STRUCK text (`~~...~~` -
@@ -88,7 +88,7 @@ export const relayFiles = (root = ROOT) => new Set(closureOf('server/src/index.j
 
 /** A numeric cite into a .js/.mjs, path or basename, with an optional range end. Not the tests' escaped spelling. */
 export const NUM_CITE = /(?<![\w/\\])((?:[\w./-]*\/)?[\w.-]+\.m?js):(\d+)(?:-(\d+))?/g;
-/** The same in a test's regex spelling (`world\.js:6153`) - converted by hand, reported here. Not a `git grep` hit's
+/** The same in a test's regex spelling (`world\.js:6154`) - converted by hand, reported here. Not a `git grep` hit's
  *  `file:N:` (brand.test.js reads grep's own output). */
 export const ESCAPED_NUM_CITE = /(?<![\w\\])(?:[\w.-]+\\\/)*[\w.-]+\\\.m?js:\d+(?![\d:])/g;
 /** An anchor: path or basename, the quote, and the after-form's line. */

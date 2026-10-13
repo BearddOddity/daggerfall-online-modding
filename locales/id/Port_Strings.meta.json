@@ -3964,6 +3964,16 @@
   "tr": "eac72a0cf226",
   "by": "claude-in-session"
  },
+ "features.guideTrail.note": {
+  "en": "b8995f62c1cc",
+  "tr": "c9039bfcf433",
+  "by": "claude-in-session"
+ },
+ "features.guideTrail.title": {
+  "en": "3d840f425646",
+  "tr": "815d025d2b60",
+  "by": "claude-in-session"
+ },
  "features.kind.classic": {
   "en": "706514b2ff2d",
   "tr": "7f1b319cbcf5",
@@ -4417,6 +4427,26 @@
  "features.wind.wisps": {
   "en": "e14414c1ce9d",
   "tr": "2dabbd539b3c",
+  "by": "claude-in-session"
+ },
+ "guideTrail.said.exit": {
+  "en": "1bca4c58320b",
+  "tr": "5463cdae71f6",
+  "by": "claude-in-session"
+ },
+ "guideTrail.said.off": {
+  "en": "6ac967c613cd",
+  "tr": "f6da4bfcdc43",
+  "by": "claude-in-session"
+ },
+ "guideTrail.said.quest": {
+  "en": "8951ed10540d",
+  "tr": "0adc292b78cf",
+  "by": "claude-in-session"
+ },
+ "guideTrail.said.waypoint": {
+  "en": "4a55e02b806d",
+  "tr": "64cfd212ede5",
   "by": "claude-in-session"
  },
  "lang.offer": {

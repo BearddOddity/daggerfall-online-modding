@@ -230,6 +230,7 @@ import { stampResidenceQuestNames, registerExteriorAutomapConsoleCommands } from
 import { createTownMapWindow, townMapDoorReady } from '../ui/townMapDoor.js';
 import { WORLD_PER_PX } from '../ui/inkTown.js';   // EM4: the town plan's own scale
 import { buildingSummaries } from '../world/buildingSummaries.js';   // ROAD-C c2/S10: the plate anchor's Position-bearing walk
+import { guideTrailTier, createGoalPath, groundPath } from '../systems/guideTrail.js';   // GUIDE10: the guide trail's tiers, its kept path and its path over open ground
 import { townTierOn, townQuestBuildings, townBuildingLocal } from '../systems/questGuidance.js';   // GUIDE8's Town tier (AUDIT DELVE): the building a quest's journal names, in its town
 import { hasCustomLocationPosition } from '../world/locationLayout.js';   // ROAD-C c2/S10: the marker's custom-location offsets
 import { FootstepMachine, pickFootstepSet, pickFootstepKind } from '../systems/footsteps.js';   // FS-slice; PEER-FS1: pickFootstepKind for the pose's own `fk`
@@ -13005,6 +13006,7 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
   const peerRange = createPeerRange();   // PEER-RANGE: past the Other players card's distance the others stand nowhere on this screen (net/peerRange.js) - held a little past it frame to frame
   const crowdDrawnHere = (p) => gateCrowd.shows(p.id) && peerRange.shows(p.id);   // GATE-CROWD: a player the court's crowd leaves undrawn is not there to press or aim a gift at; PEER-RANGE: nor one past the distance
   const magic = createPlayerMagic({
+    guideTrailPath: () => guideTrailPath(),   // GUIDE10: the guide trail's embers, drawn by the engine's drawFx
     renderer, audio, getTexture, uploadRecord, uploadRecordFrame,
     lairHere: () => {   // RVN7 (bible/12-Enhanced-AI/Feud-Arc.md 18.1): a deed in the open world - my map pixel, and the named dungeons in the boards' ring about it
       const p = playerTravelPixel();
@@ -26392,7 +26394,22 @@ export async function bootWorld(canvas, renderer, params, status) { handHeroGend
     const t = state.pixelTranslation(px.x, px.y);
     return [_townQuestAt.at[0] + t[0] + b.locOrigin[0], _townQuestAt.at[1] + t[2] + b.locOrigin[2]];
   };
-  const gateCompassMark = () => {
+  // GUIDE10 (systems/guideTrail.js): THE GUIDE TRAIL ON THE STREET - the quest tier only (the way out and the waypoint are
+  // a dungeon's: its walked trail and its map's notes). The embers lead from the player's feet to the very place the
+  // compass marks - the Town tier's building, else GUIDE5's place (so the trail follows the same laws the compass does:
+  // a tracked quest, a place the map holds) - in a straight line laid on the ground, kept four seconds a goal and asked
+  // again when the player leaves it. THE LIMIT, recorded: a straight line knows no wall; across a town it can cross a
+  // building, and the embers lead the way a crow flies. The compass and the waypoint say the same.
+  const guideStreet = createGoalPath({ route: (from, to) => groundPath(from, to, heightAt, 3) });
+  const guideTrailPath = () => {
+    if (guideTrailTier() !== 'quest' || (modes?.mode ?? 'exterior') !== 'exterior' || !playerSpawned) return null;
+    const at = townQuestCompassMark() ?? questCompassMark();
+    if (!at) return null;
+    const feet = [player.pos[0], player.pos[1], player.pos[2]];
+    const gy = heightAt(at[0], at[1]);
+    const path = guideStreet.get(`q|${at[0].toFixed(0)},${at[1].toFixed(0)}`, feet, [at[0], Number.isFinite(gy) ? gy : feet[1], at[1]], performance.now() / 1000);
+    return path ? { path, feet } : null;
+  };  const gateCompassMark = () => {
     const g = gateOmen?.standing();
     const mark = g ? gateOmen.mapMark() : null;
     if (!g || !mark || (modes?.mode ?? 'exterior') !== 'exterior') return null;

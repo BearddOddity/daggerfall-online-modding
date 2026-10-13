@@ -1,6 +1,12 @@
 Key,Value
+features.guideTrail.note,"Золоті іскри пливуть шляхом туди, куди ви йдете: до завдання, що відстежується, до виходу з підземелля або до найближчої точки на карті. Клавішу для перемикання призначте в Controls."
+features.guideTrail.title,"Путівний слід"
 features.questWaypoint.note,"Мітка в полі зору над місцем, на яке вказує компас для завдання, що відстежується, із відстанню до нього. Працює разом із Мітки завдань та Quest guidance. Клавішу можна призначити в Controls."
 features.questWaypoint.title,"Шляхова точка завдання"
+guideTrail.said.exit,"Путівний слід: вихід"
+guideTrail.said.off,"Путівний слід вимкнено"
+guideTrail.said.quest,"Путівний слід: відстежуване завдання"
+guideTrail.said.waypoint,"Путівний слід: найближча точка"
 lang.offer,"Грати українською?"
 lang.offer.machine,"Це машинний переклад, його ще перевіряють."
 lang.offer.no,"Ні, залишити англійську"

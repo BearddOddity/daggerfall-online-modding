@@ -705,6 +705,44 @@ the classic HUD has no quest mark to follow.
 Pinned: `test/guide9_waypoint.test.js` (7). Ledger A: THE QUEST
 WAYPOINT. Not yet looked at on a real install by the arc's owner.
 
+## GUIDE10 - THE GUIDE TRAIL (2026-10-13, offered by a player)
+
+A player, after Fallout 4's glowing route on the ground: "something like this waypoint trail for Accessibility Mod
+but I want the trail to fit the game" - and, asked, "gold embers, tracked mission and waypoint markers on maps and
+dungeons, the trail should be used to help new players find their way out of dungeons and help disabled people keep
+track of where they are going".
+
+WHAT IT IS. A stream of warm gold embers drifting up off the floor along the way to where the player is going
+(`systems/guideTrail.js`, drawn by `scenes/guideTrailFx.js`). Not a green ribbon - Daggerfall's own light: the quest
+diamond's gold, an ember's deeper orange, small enough to read as the game's pixels. The embers are a pure function of
+the path and the clock (`createEmberField`) - nothing is simulated, and the pool they are written into is made once.
+They stream TOWARD the goal, so the way they move is the way to go; nothing shows within 2.5 m of the feet; the window
+is 30 m ahead and fades at its far end, or thins over the last 2 m when the goal is inside it.
+
+WHAT IT LEADS TO. The `guideTrail` switch has four tiers - Off, Tracked quest, Way out, Map waypoint - and the
+`GuideTrail` action (unbound by default) cycles them and says which it chose through the HUD's own line.
+- QUEST: the place the compass marks for the tracked quest, so it follows the compass's laws - the street's place
+  (GUIDE5) and the Town tier's building (GUIDE8); underground, the Exact tier's marks (`questMarkPick`, the compass's
+  own pick whole). Below Exact it leads nowhere underground rather than spoil a search.
+- WAY OUT: `systems/wayOut.js` `wayPath` - the field WAYOUT1 builds from the walked trail, walked cell by cell from the
+  player to the way in, smoothed (`smoothPath`), ending on a teleporter's jump as the compass's mark does. The reader's
+  field is kept current here whatever the compass mark's row says (`wayOutMark(..., force)`).
+- WAYPOINT: the nearest note the player has put on the dungeon's map (the automap's user notes).
+Quest and waypoint paths go by the navigation mesh where the enhanced AI has baked one (`ai/navmesh.js findPath`), else
+the straight line while a wall-free line is seen, else nowhere; a path is kept four seconds a goal (`createGoalPath`).
+
+WHERE IT DRAWS. One more stream through the renderer's own world-space particle path (`createParticleEffect`,
+`drawWorldParticleEffects` - the path Morrowind's spell effects take), additive, depth-tested against the world and
+never written: a corner hides it. `scenes/hostMagic.js` drawFx draws it beside the spell effects, so every host that
+draws the shared engine draws it, from the host's own `guideTrailPath`.
+
+THE FOUR HOSTS. WIRED: the dungeon (`scenes/dungeonContext.js` - exit, quest, waypoint) and the street
+(`scenes/world.js` - quest, a straight line laid on the ground, kept four seconds a goal). FLAGGED: a building's
+interior (the street host, worldModes) and the fixed-town host (`scenes/exterior.js`) hand no path yet; the street's
+straight line knows no wall and can cross a building, as the compass and the waypoint can.
+
+Pinned: `test/guide10_trail.test.js` (15). Ledger A: THE GUIDE TRAIL. Not yet looked at on a real install by the arc's
+owner.
 ## THE AUDIT (2026-09-29, Mac: "Lets do an audit on this before we merge")
 
 GUIDE1-GUIDE5 read by eight lenses over a frozen tree, main merged in

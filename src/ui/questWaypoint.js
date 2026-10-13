@@ -22,6 +22,9 @@
 import { isEnhanced } from '../systems/uiSkin.js';
 import { getPref, setPref } from '../systems/uiPrefs.js';
 import { eventMeans } from './input.js';
+import { cycleGuideTrail, GUIDE_TRAIL_ACTION } from '../systems/guideTrail.js';   // GUIDE10: the guide trail's key rides the waypoint's one listener
+import { hudText } from '../systems/notify.js';   // GUIDE10: and says the tier it cycled to
+import { t } from '../systems/textManager.js';
 
 /** The switch's prefs key (systems/features.js row `quest-waypoint`). */
 export const WAYPOINT_PREF = 'questWaypoint';
@@ -99,6 +102,14 @@ export function waypointPlace(quest, playerXZ, heading01, { width, height, fovY 
   };
 }
 
+/** GUIDE10: what the guide trail's key says it did, in the player's language (L10N4) - the tier is nothing to see until the embers show. */
+export const GUIDE_TRAIL_SAID = Object.freeze({
+  off: () => t('guideTrail.said.off', 'Guide trail off'),
+  quest: () => t('guideTrail.said.quest', 'Guide trail: your tracked quest'),
+  exit: () => t('guideTrail.said.exit', 'Guide trail: the way out'),
+  waypoint: () => t('guideTrail.said.waypoint', 'Guide trail: your nearest waypoint'),
+});
+
 let _keyListening = false;
 /** The action's key, from anywhere: one capture listener, installed once (the enhanced HUD's first frame). A text field
  *  owns its keys. */
@@ -106,9 +117,12 @@ export function listenWaypointKey(win = typeof window === 'undefined' ? null : w
   if (_keyListening || !win) return;
   _keyListening = true;
   win.addEventListener('keydown', (e) => {
-    if (e.repeat || !eventMeans(e, WAYPOINT_ACTION)) return;
-    const t = /** @type {any} */ (e.target);
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-    toggleWaypoint();
+    if (e.repeat) return;
+    const waypoint = eventMeans(e, WAYPOINT_ACTION), trail = !waypoint && eventMeans(e, GUIDE_TRAIL_ACTION);
+    if (!waypoint && !trail) return;
+    const target = /** @type {any} */ (e.target);
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+    if (waypoint) { toggleWaypoint(); return; }
+    hudText(GUIDE_TRAIL_SAID[cycleGuideTrail()]());   // GUIDE10: the key says what it did - the tier is nothing to see until the embers show
   }, true);
 }

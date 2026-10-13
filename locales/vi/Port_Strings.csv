@@ -1,6 +1,12 @@
 Key,Value
+features.guideTrail.note,"Những đốm lửa vàng bay dọc theo đường tới nơi bạn muốn đến: nhiệm vụ đang theo dõi, lối ra khỏi hầm ngục hoặc điểm đánh dấu gần nhất trên bản đồ. Gán phím để chuyển đổi trong Controls."
+features.guideTrail.title,"Vệt dẫn đường"
 features.questWaypoint.note,"Một dấu hiệu trong tầm nhìn phía trên nơi la bàn chỉ tới cho nhiệm vụ bạn đang theo dõi, kèm khoảng cách. Dấu hiệu này theo Dấu nhiệm vụ và Quest guidance. Gán phím cho nó trong Controls."
 features.questWaypoint.title,"Điểm dẫn đường nhiệm vụ"
+guideTrail.said.exit,"Vệt dẫn đường: lối ra"
+guideTrail.said.off,"Vệt dẫn đường tắt"
+guideTrail.said.quest,"Vệt dẫn đường: nhiệm vụ đang theo dõi"
+guideTrail.said.waypoint,"Vệt dẫn đường: điểm gần nhất"
 lang.offer,"Chơi bằng tiếng Việt?"
 lang.offer.machine,"Bản dịch này là bản dịch máy và vẫn đang được kiểm tra."
 lang.offer.no,"Không, giữ tiếng Anh"

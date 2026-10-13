@@ -186,7 +186,7 @@ export const CATEGORIES = Object.freeze([
       "GUI/LargeHUD", "GUI/LargeHUDDocked", "GUI/LargeHUDUndockedScale", "GUI/LargeHUDUndockedAlignment", "GUI/LargeHUDUndockedOffsetWeapon",
       "GUI/LargeHUDOffsetHorse"]),
     sec("wayfinding", "Wayfinding", [
-      "feat:quest-waypoint"]),
+      "feat:quest-waypoint", "feat:guide-trail"]),
   ]),
   tab("mods", "Mods & files", [
     sec("files", "Your files", [

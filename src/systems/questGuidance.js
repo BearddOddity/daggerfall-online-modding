@@ -97,6 +97,17 @@ export function dungeonQuestMarks({ stands = [], foes = [], people = [], boxOf, 
  * @returns {number[]|null}
  */
 export function questCompassPick(marks, feet) {
+  const best = questMarkPick(marks, feet);
+  return best ? [best.at[0], best.at[2]] : null;
+}
+
+/**
+ * GUIDE10: THE PICK ITSELF - the mark the compass points at (the followed quest's nearest, else the nearest of all), whole,
+ * so a path can be made to its place in three dimensions (systems/guideTrail.js). Pure.
+ * @param {ReadonlyArray<QuestMark>|null|undefined} marks @param {number[]|null|undefined} feet
+ * @returns {QuestMark|null}
+ */
+export function questMarkPick(marks, feet) {
   if (!feet || !marks?.length) return null;
   let best = null, bestD = Infinity;
   for (const pass of [true, false]) {
@@ -107,7 +118,7 @@ export function questCompassPick(marks, feet) {
     }
     if (best) break;
   }
-  return best ? [best.at[0], best.at[2]] : null;
+  return best;
 }
 
 /**
