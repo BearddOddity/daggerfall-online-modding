@@ -77,7 +77,7 @@ import { waterBedDepths } from '../world/waterBed.js';   // WATER-NEXT 2: the be
 import { createRipples, createRippleStir, RIPPLE_SPAN, RIPPLE_CELLS, BOAT_STIR, BOAT_WAKE_SPEED } from '../world/waterRipples.js';   // WATER-NEXT 4: the rings and wakes
 import { waterCorners, WATER_DRAW_MASK_TABLE } from '../world/waterCorners.js';   // GRASS-WET1: the one table that says which of a tile's corners stand in water - the DRAW's, because a blade in a puddle is a picture, not a physics
 import { windowEmissionRGB } from '../render/windowEmission.js';
-import { realWindowsMode, VIEW_RINGS, VIEW_CLIP_PAD, clockFogColor } from '../render/realWindows.js';   // RW1: the rooms behind the glass, and the street a building's glass looks out on
+import { realWindowsMode, VIEW_RINGS, clockFogColor } from '../render/realWindows.js';   // RW1: the rooms behind the glass, and the street a building's glass looks out on
 import { CITY_LIGHT_COLOR, CITY_LIGHT_RANGE, LIGHTS_ARCHIVE, collectCityLights, nearestLights, capFadeColors, capFadePairs, fillLanternPool, rangesFor } from '../world/cityLights.js';
 import { isHearthFlat, HEARTH_NEAR } from '../systems/survival/hearth.js';   // HEARTH1: which of those lanterns is a fire you could cook on, and how far one can matter
 import { withPlayerLights } from './magicCandle.js';   // X11/T1: the lights the PLAYER carries
@@ -672,7 +672,7 @@ import { planTake, CANNOT_CARRY_TEXT } from '../systems/itemTransfer.js';   // S
 import { createUpkeep, horseWhereOf, upkeepReach, registerUpkeepUses } from '../systems/upkeepRuntime.js';   // STEED1/WAGONS4: horse care and wagon upkeep, a frame at a time
 import { mendWagon, wagonWord, WAGON_UPKEEP_TEXT } from '../systems/wagonUpkeep.js';   // WAGONS4: the Wagon Yard's wright
 import { horseCareOn, wagonUpkeepOn } from '../systems/upkeepSwitch.js';   // STEED1/WAGONS4: their Features switches
-import { setGallopGate } from '../systems/transport.js';   // STEED1: horse care's word on a gallop
+import { setGallopGate, setRideWalk } from '../systems/transport.js';   // STEED1: horse care's word on a gallop; HORSE-WALK: and on the walk
 import { wagonKgFor, activeWagonItem, activeWagonKind, WAGON_KINDS, horseCountOf, wagonTeamShort } from '../systems/wagonKinds.js';   // WAGONS1: HCC's ItemHelper.WagonKgLimit, the driven wagon's
 import { SEATED_EYE_HEIGHT } from '../player/seatPose.js';   // WAGONS3: the driver's seated eye
 import { wagonLookOf, paintDrivenWagon } from '../systems/wagonLooks.js';
@@ -741,9 +741,9 @@ import { pageWave } from '../net/reconnectWave.js';   // SCALE2c: a relay deploy
 import { quietFoesGate } from '../net/foesQuiet.js';   // SCALE2c: a full foes frame that says nothing, said once
 import { createSeatLock, SEAT_NOTICE, SEAT_MID_TEXT, PLAY_HERE_LABEL } from '../net/oneSeat.js';   // ONE-SEAT: one tab of a player online - the browser's arm, beside the hub's
 import { readAccount, buyInsignia, equipTitle, equipAura, adoptIdentity as adoptSessionIdentity } from '../net/accountClient.js';   // WB9g: the Broker's insignia - the account's wardrobe, its sale and its wearing, and my own screen's word of it
-import { ownAura } from '../systems/ownGlyphs.js';   // WB9g: the aura at my own feet - the service's last word, kept on the stored session
+import { ownAura, ownNameAsAt } from '../systems/ownGlyphs.js';   // WB9g: the aura at my own feet - the service's last word, kept on the stored session; NAME-AS: and when this device last chose the name its player wears
 import { INSIGNIA, insigniaRefusal } from '../net/insignia.js';   // WB9g
-import { accountTokenMinter, storedSession, muteAccount, serviceBase, accountRefusalText, accountDuels, accountWild, accountRenown, accountRoll, accountHomes, accountDecor, accountGuilds, accountGates, accountMarks, accountCards, accountBoard, accountProf, accountRaids, accountMarket, accountWrits, accountSeats, accountSerpents, accountSds } from '../net/accountClient.js';   // ACC1d: the hello's signed word, minted per connection from the account session this device holds   // ACC4's beat knocks through the tab's heartbeat (SCALE4c), not from here
+import { accountTokenMinter, storedSession, muteAccount, serviceBase, accountRefusalText, accountDuels, accountWild, accountRenown, accountRoll, accountHomes, accountDecor, accountGuilds, accountGates, accountMarks, accountCards, accountBoard, accountProf, accountRaids, accountMarket, accountWrits, accountSeats, accountSerpents, accountSds, nameWhyText } from '../net/accountClient.js';   // NAME-AS: nameWhyText, why my character's name stood aside   // ACC1d: the hello's signed word, minted per connection from the account session this device holds   // ACC4's beat knocks through the tab's heartbeat (SCALE4c), not from here
 import { parseModCommand, runModCommand, mutedText, mutedNotices } from '../net/moderation.js';   // MOD1: /mute and /unmute, and the line a muted player reads
 import { createHeartbeat, whileLive } from '../net/heartbeat.js';   // SCALE4c: the beat, the letterbox and the town's board in one request
 import { startPlayClock } from '../net/playClock.js';   // ACC4: time played, knocked from here and measured by the account service's clock
@@ -908,7 +908,7 @@ import { createQuestBridge, tokensToRows } from './questBridge.js';
 import { loadQuestPack } from './questData.js';
 import { ensureFactionRep, getReputation, changeReputation } from '../systems/factionRep.js';
 import { changeLegalRep, legalRepOf, CRIMES, setCrimeCommitted, lowerRepForCrime, setCrimeRepFactor } from '../systems/court.js';   // the region's LegalRep: the status box, the quest actions, the crimes (REP1 retired :498-511's levy)
-import { isEquipped, unequipSlot, unequipItem } from '../systems/equip.js';
+import { isEquipped, unequipSlot, unequipItem, wearableItem } from '../systems/equip.js';   // HACKED-GOLD: a worn offer holds what can be worn
 import { ServiceFlowWindow } from '../ui/guildServiceWindows.js';
 import { makeItemPermanent } from '../systems/quest/item.js';
 import { isShelved } from '../systems/quest/quest.js';   // QUEST-SHELF: a quest set aside
@@ -8565,6 +8565,14 @@ export async function bootWorld(canvas, renderer, params, status) {
   });
   /** The clock passed by an act of upkeep (a kit's hour), as a camp meal's: the ticker, then the encounters it owes. */
   const upkeepPass = (n) => { playerTicker.advance(n); runEncounterTick(walkMode && playerSpawned ? player.pos : cam.pos, true); };
+  /** HORSE-WALK x THE OVERWORLD (2026-10-12, the owner: "Ensure the overworld speed isnt affected"): ON THE ROAD THE RIDE
+   *  KEEPS ITS PACE. Under the Overworld's view (rising, up or falling) or while a Travel Options journey's autopilot
+   *  drives the motor (walkJourneying's test - the view's journeys, First-Person Travel's, a party's), the horse rides at
+   *  the ride's own pace as it always did: the travel clock and its governor, the steering's reach, a band's chase (5.2
+   *  m/s at the world's scale) and a ride's time across the map are all set against it. Declared over the two bindings
+   *  declared above it (BOOT-TDZ), never walkJourneying itself, which stands below. */
+  const rideOnTheRoad = () => !!travelView?.active || !!(travelOptions?.isTravelActive && travelOptions.state?.autopilot);
+  setRideWalk((mode) => !rideOnTheRoad() && upkeep.rideWalks(mode));   // HORSE-WALK: horse care's horse walks unless it gallops - never on the road (bible/06-Systems/Horse-Care.md)
   setGallopGate((mode, mods) => upkeep.gallopGate(mode, mods));
   registerUpkeepUses(upkeep, {   // the inventory's Use on the oats and the kit
     reach: () => upkeepReach(hccRuntimeOn(), !!hccRuntimeOn()), horseCare: horseCareOn, wagonUpkeep: wagonUpkeepOn,
@@ -11850,6 +11858,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     levelBonus: () => seatEdicts.guardLevelBonus(Math.floor(skyMinutes())),   // SEAT1d: a Curfew's night watch - AUDIT SEATS-3 E1: the sky's night (TIME1), the one the town sees
     fightHere: () => areEnemiesNearby([...cityGuards.guards, ...exteriorFoes.foes]),   // PROTECT-FIGHT: under the protection, a fight spares the street's walkers
     oneVoice: () => livingWorldOn(), windowUp: () => townTalk.overlayActive,   // HALT-ONE: the living watch calls as one, and nobody under a window (cityGuards.js)
+    viewYaw: () => cam.yaw,   // WATCH-LEAVES: a defender walking off goes behind the view the street's walkers come and go behind (population.update's yaw)
     say: (l) => townTalk.say(l),   // C-slice: equipment breaks speak
     currentMinute: () => Math.floor(playerTicker.ownMinutes),   // AUDIT 23 (hosts-3): the poison clock
     currentPixelKey: () => `${playerTravelPixel().x},${playerTravelPixel().y}`,   // TrackLooseObject's stamp - the pile seam's key, one shape
@@ -21535,6 +21544,32 @@ export async function bootWorld(canvas, renderer, params, status) {
     who = { ...who, glyphs: _staffGlyphs.filter((g) => !off.includes(g)) };
     online?.adoptIdentity?.(who); if (who && 'aura' in who) _auraHeard = who.aura ?? null;
     for (const link of chatLinks?.values?.() ?? []) link.adoptIdentity?.(who);
+    // NAME-AS (2026-10-12): I chose my character's name and the mint signed my account's - its name cannot be worn as it
+    // stands (too long, letters the wire drops, the filter's word, another account's username). Said ONCE, in the chat,
+    // until the reason changes or goes: every room I open mints, and the line is the player's, not a room's.
+    const said = nameWhyText(who);
+    if (said == null) _nameWhySaid = null;
+    else if (said !== _nameWhySaid && chatLog) { _nameWhySaid = said; chatNotice(said); }
+  };
+  /** NAME-AS: the reason the chat last said for my character's name standing aside, or null. */
+  let _nameWhySaid = null;
+  /** NAME-AS (2026-10-12): A NAME CHOSEN ON THIS DEVICE REACHES THE ROOM AT ONCE. The account card stamps the stored
+   *  session when the service has taken a new choice (ui/accountFlow.js chooseName, `nameAsAt`); a stamp this page has
+   *  not acted on says hello again in every room I hold - the presence session's and every chat channel's, since a line's
+   *  name and the roster's are the channel's own - on a fresh token, which signs the new name (AURA-LIVE's door,
+   *  net/online.js rehello). Never on a mint's word: a mint already in flight when the choice landed answers the old
+   *  name, and the stamp is not its to move - so a late answer can neither hide a choice nor loop one, and a choice made
+   *  on another device (no stamp moved here) is simply what every later mint signs. A stamp from before this page is
+   *  read once and is no news. */
+  let _nameAsAtSeen;
+  const nameAsFrame = () => {
+    const at = ownNameAsAt();
+    if (at === _nameAsAtSeen) return;
+    const first = _nameAsAtSeen === undefined;
+    _nameAsAtSeen = at;
+    if (first || !online) return;
+    online.rehello?.();
+    for (const link of chatLinks?.values?.() ?? []) link.rehello?.();
   };
   /** STAFF1: MY GLYPHS AS THE ACCOUNT SERVICE LAST ISSUED THEM (never the device's stored copy, which is only a cache). */
   const staffGlyphs = () => _staffGlyphs;
@@ -23959,7 +23994,10 @@ export async function bootWorld(canvas, renderer, params, status) {
     remotePlayers?.holdCorpse?.(from, WILD_DEATH_HOLD_S * 1000);   // "the body ... disappears in 2 minutes"
     // AUDIT INT9: each record minted alone, its place in the offer kept - a record the law refused shifted every later one,
     // and the pick named another piece
-    const minted = (Array.isArray(body.items) ? body.items : []).map((it) => validLootList([it])?.[0] ?? null);
+    // HACKED-GOLD: and a WORN offer holds what can be worn (systems/wildDropLaw.js wornOffer: the fallen's worn pieces
+    // alone) - a coin pile in one went through the window's gold arm, which pays the purse and answers before the
+    // choice, so a modified client's offer paid its killer up to a million gold and was never chosen
+    const minted = (Array.isArray(body.items) ? body.items : []).map((it) => { const r = validLootList([it])?.[0] ?? null; return r && wearableItem(r) ? r : null; });
     const items = minted.filter(Boolean);
     if (!items.length || !wildOutdoors()) return;
     const mark = remotePlayers?.corpseMarks?.(onlineToScene)?.find((c) => c.id === from) ?? null;
@@ -26645,15 +26683,15 @@ export async function bootWorld(canvas, renderer, params, status) {
   const motherlodeMarks = () => {
     _lodeMarks.length = 0;
     if (!motherlodeBook || profBook?.state.open !== true || _mode() !== 'exterior') return _lodeMarks;
-    for (const l of motherlodeBook.standingAll(_lodesUp)) {
-      const tr = state.pixelTranslation(l.x, l.y, _lodeTr), m = _lodePool[_lodeMarks.length] ??= { profession: 'mining', at: [0, 0, 0], d: 0, reach: 1 };
+    for (const l of motherlodeBook.markedAll(_lodesUp)) {   // LODE-MARK (FIELD BUGS 2026-10-12g): from its warning on, in its own colour
+      const tr = state.pixelTranslation(l.x, l.y, _lodeTr), m = _lodePool[_lodeMarks.length] ??= { profession: 'motherlode', at: [0, 0, 0], d: 0, reach: 1 };
       m.at[0] = tr[0] + TERRAIN_SIZE / 2; m.at[1] = tr[1]; m.at[2] = tr[2] + TERRAIN_SIZE / 2; _lodeMarks.push(m);
     }
     return _lodeMarks;
   };
   const professionMarks = (feet = enchantFeet()) => {
     const near = nodeMarksAt(feet), far = motherlodeMarks();
-    return nodeCompassPoints(far.length ? [...(near ?? []), ...far] : near, trackerAnimals());   // PROF2b: the far Motherlodes beside the near nodes
+    return nodeCompassPoints(far.length ? [...far, ...(near ?? [])] : near, trackerAnimals());   // PROF2b: the far Motherlodes beside the near nodes - LODE-MARK: drawn over them
   };
   const nodeGlowPass = createNodeGlowPass(renderer);   // NODE-MARKS: kindled node by node, built at idle; never in a building (nodeMarksAt) nor under the travel view (the hook's own gate)
   /** COMPASS-PARTY (2026-09-27, Discord - Ashley: "being able to see where party members are on compass? - just lil
@@ -28090,7 +28128,10 @@ export async function bootWorld(canvas, renderer, params, status) {
    *  JOURNAL1's PENDING DOOR (`_letterPending`), opened the first frame the panel may stand - the board it was pressed
    *  on still held the slot this frame, so a direct open was refused, and the board closed on nothing at all. */
   const answerNote = (note) => {
-    const peer = note?.button === 'duel' ? [...(online?.peers?.values?.() ?? [])].find((q) => q?.name === note.from) : null;
+    // NAME-AS: the author found by ACCOUNT - the relay's `sub` against the note's `by` - since the name the room reads them
+    // by may be their character's, never the account's name the note was signed with; a service from before it says
+    // no `by`, and the name stands in as it did
+    const peer = note?.button === 'duel' ? [...(online?.peers?.values?.() ?? [])].find((q) => (typeof note.by === 'string' && note.by ? q?.sub === note.by : q?.name === note.from)) : null;
     const plan = planNoteAnswer(note, {
       duelHere: !!peer && duelCan() == null && duelNear(peer.id),
       mail: mail?.state ?? null, letters: !!socialPanel, signedOutText: LETTERS_SIGNED_OUT_TEXT,
@@ -29107,6 +29148,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     rollTracker?.tick();   // CHAP1: this character's standing with the guilds - read once, then what moved claimed when due
     peerMenuFrame();   // PEERMENU1: the bind's hold timer
     peerFxFrame();   // PEERFX1: the others' blows and hurts, played
+    nameAsFrame();   // NAME-AS: a name chosen on this device said again in every room I hold - before the dead return, as the chat's channels keep theirs
     // REALM-DOOR: the relay shut its door on this tab's token as naming no realm character of its account - the character
     // deleted elsewhere, or the account signed out and another in: the realm's own end, to the Online door with the realm's
     // word (the relay's words are for a build from before the realm), before anything else this frame draws over it
@@ -29226,7 +29268,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     const carrier = csaOn() ? (csaAboard.aboard?.boat ?? (csaRuntime?.isSailing() ? csaRuntime.state.CurrentBoat : null) ?? null) : null;
     const here = (carrier && csaLocalOf(csaDeckPose(carrier), [player.pos[0], player.pos[1] + player.height / 2, player.pos[2]])) || player.pos;
     const movedThisFrame = _onlineLast && _onlineLastOn === carrier ? (here[0] - _onlineLast[0]) ** 2 + (here[2] - _onlineLast[2]) ** 2 > 1e-6 : false;
-    if (movedThisFrame) { _onlineMovingUntil = now + ONLINE_MOVE_HOLD_MS; _hsLatch = !!player.movingLessThanHalfSpeed; }
+    if (movedThisFrame) { _onlineMovingUntil = now + ONLINE_MOVE_HOLD_MS; _hsLatch = player.slowRide; }   // HORSE-WALK: the slow ride - under half its base, or walked (motor.js slowRide) - the slow clop theirs as mine
     const moved = now < _onlineMovingUntil;
     _onlineLast = [here[0], here[1], here[2]]; _onlineLastOn = carrier;
     if (key !== _onlineKey) { _onlineKey = key; _onlineKeySince = now; }
@@ -29545,27 +29587,9 @@ export async function bootWorld(canvas, renderer, params, status) {
   // RW1 (render/realWindows.js): THE STREET THROUGH A BUILDING'S GLASS - what the interior's view out draws (the mode
   // machine asks, renderer.outsideViewFrame runs it): the clock's light over the exterior the last street frame kept,
   // and the pixels' merged statics, odd models, ground and flats out to VIEW_RINGS, culled to the glass's own frustum.
-  // The building the player stands in is left out by its box (`clip`: the model the door's matrix stands, every door
-  // of a building carrying the building's own matrix) - from inside, its shell would stand between the pane and the street.
-  let _rwClipDoor = null, _rwClip = null;
-  const outsideViewClip = (doorMatrix) => {
-    if (doorMatrix === _rwClipDoor) return _rwClip;
-    _rwClipDoor = doorMatrix; _rwClip = null;
-    if (!doorMatrix) return null;
-    let best = -1;
-    for (const p of built.values()) {
-      const t = state.pixelTranslation(p.px, p.py);
-      for (const m of p.models) {
-        const l = m.local, b = m._box;
-        if (!l || !b || Math.abs(l[12] + t[0] - doorMatrix[12]) > 0.01 || Math.abs(l[13] + t[1] - doorMatrix[13]) > 0.01 || Math.abs(l[14] + t[2] - doorMatrix[14]) > 0.01) continue;
-        const vol = (b[3] - b[0]) * (b[4] - b[1]) * (b[5] - b[2]);
-        if (vol <= best) continue;
-        best = vol;
-        _rwClip = [b[0] + t[0] - VIEW_CLIP_PAD, b[1] + t[1] - VIEW_CLIP_PAD, b[2] + t[2] - VIEW_CLIP_PAD, b[3] + t[0] + VIEW_CLIP_PAD, b[4] + t[1] + VIEW_CLIP_PAD, b[5] + t[2] + VIEW_CLIP_PAD];
-      }
-    }
-    return _rwClip;
-  };
+  // The building the player stands in is drawn with the rest: its walls seen from inside are back faces, and what stands
+  // on the room's side of a pane the renderer leaves out (PANE-CLIP, FIELD BUGS 2026-10-12g - its model's box left out
+  // its own other wing and a neighbour's wall against it, "Wall missing through window").
   /** RW1 (AUDIT): the town's lanterns as the street frame lights them - its pool refilled, the nearest the installed set
    *  takes - for a street looked out on after dark (the kept frame's were the hour the player went in). */
   const outsideLanterns = (r) => {
@@ -29622,8 +29646,7 @@ export async function bootWorld(canvas, renderer, params, status) {
     // every cut-out flat: the view out drew the bed under it dry
     if (deepWaters) drawDeepWatersSurfaces(performance.now(), ground);
   };
-  const outsideView = (doorMatrix) => ({
-    clip: outsideViewClip(doorMatrix),
+  const outsideView = () => ({
     setup: (r) => {   // the clock's light: an hour spent indoors is an hour later outside
       const clockMinute = minuteNow();
       const keptFog = r._fogColor, keptSun = r._sunScale;   // RW1 (AUDIT): the air the street was kept in, at the light it was kept at
@@ -34294,7 +34317,7 @@ const _pixelOrder = [];   // NEAR-FIRST: the frame's pixel walk, nearest first -
       eyeOverride: travelView?.eye ?? null,
       fpEye: cam.pos, feet: player.feetAt(), yaw: cam.yaw, pitch: cam.pitch,
       dt, riding: !!player.riding && !_driverSeat && !(player.transportMode === TRANSPORT_MODES.Cart && hcc.benchKind()),   // AUDIT-EOTB F3/F4: the host's own clock, and the one state only it has; WAGONS3: the bench is no saddle (AUDIT WAGONS3 B2: on a frame with no seat either)
-      horse: player.transportMode === TRANSPORT_MODES.Horse ? { look: riddenHorseLook(playerEntity.items ?? []) } : null,   // COATS3D: on a horse (never the cart), the Morrowind body sits a 3D horse in this look
+      horse: player.transportMode === TRANSPORT_MODES.Horse ? { look: riddenHorseLook(playerEntity.items ?? []), slow: player.slowRide } : null,   // COATS3D: on a horse (never the cart), the Morrowind body sits a 3D horse in this look; HORSE-WALK: held under the gallop on a slow ride
       ...(_driverSeat ? { seated: true, stopped: true, feet: _driverSeat.feet } : {}),   // WAGONS3: seated on it, still on it (the sprite plays no stride), the camera's feet the seat's (after `feet`: it wins)
       pivotFloor: _driverSeat ? hcc.cameraFloor() : null,   // BENCH-CAM: the third-person camera turns about a pivot over my wagon's roof, never in my head
       cart: player.transportMode === TRANSPORT_MODES.Cart, onExteriorPath: _surfPath,   // EOTB-IL: UpdateWagon's two host facts

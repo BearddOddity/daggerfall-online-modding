@@ -520,7 +520,7 @@ test('AUDIT OW4 D5/D3 host: every write to the index after the boot\'s fill bump
   });
   assert.equal(env.at(7, 8).name, 'Old Keep (7,8)');
   assert.deepEqual([env.gen(), index.has('7,8')], [1, true], 'stood: bumped');
-  env.enter('7,8');   // PIN MOVED (SPAWN-REBIRTH, Field-Bugs-2026-10-12e.md): standing a spawn starts no clock - entering it does
+  env.enter('7,8');   // PIN MOVED (SPAWN-REBIRTH, Field-Bugs-2026-10-12h.md): standing a spawn starts no clock - entering it does
   clock = GENERAL_TTL_MINUTES;
   assert.equal(env.at(7, 8), null);
   assert.deepEqual([env.gen(), index.has('7,8')], [2, false], 'expired: bumped');

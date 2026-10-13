@@ -85,7 +85,9 @@ names the departure (TV1, 2026-09-28).
    well under one a second (PERF-EXT24: 3-6 ms of build a frame). At ground level fog
    hides the edge; from above the unbuilt pixels are holes. Hence Mac's call 3: the cap
    is MEASURED (TV2), not guessed, and the builder may take a bigger slice while the view
-   is up (no combat, no HUD work).
+   is up (no combat, no HUD work). HORSE-WALK (2026-10-12) keeps that horse at that pace:
+   horse care's walk is never the road's - under the view and on a journey the ride keeps
+   its own pace (`06-Systems/Horse-Care.md` THE WALK, ON THE ROAD THE RIDE KEEPS ITS PACE).
 2. **Online the clock cannot be sped up.** WORLD5: the clock is computed from wall time
    and nobody keeps it. Offline the cap speeds the calendar too (Travel Options' law);
    online it speeds the body only, as TO-ONLINE's journey already does. At the cap a pose
@@ -1708,7 +1710,7 @@ CAMP-SIGHT, CAMP-TRAVEL, CAMP-NOTIMER, TTL1, WORLD1's "True persistance"); the d
   players disagreed for days whether a spawn stood). Each CELL ROOM now keeps a ledger: the spent ids (their own life
   and the next), and a row a spawned pixel - `[px, py, seen, cleared?]` in shared classic minutes, MIN-MERGED, so the
   earliest sight and the earliest clear anyone had win (the spawn ledger's `merge`), kept sixty real days (SPAWN-REBIRTH,
-  2026-10-12, `01-Overview/Field-Bugs-2026-10-12e.md`: a row is a first ENTRY now, kept until its spawn stands again -
+  2026-10-12, `01-Overview/Field-Bugs-2026-10-12h.md`: a row is a first ENTRY now, kept until its spawn stands again -
   its death and twenty-four real hours - and the same dungeon stands then on fresh clocks). A player's
   spends and first sights and clears are owed to the cell until it takes them (world.js `overworldLedgerFrame`: said a
   second apart, what was not taken said again, nothing to an older relay), and every change is said to everyone in the
