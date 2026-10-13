@@ -1,308 +1,308 @@
 [
   {
-    "name": "FB1013c-REMAINS-STAND-no-body",
+    "name": "FB1013d-REMAINS-STAND-no-body",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        if (stood.has(id)) continue;",
     "new": "        continue;",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-body-not-the-record-s-list",
+    "name": "FB1013d-REMAINS-STAND-the-body-not-the-record-s-list",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        const pile = p.seedPile(r.items, feet, icon, null, pixelKeyOf(r.place), { unsaved: true, owner: REMAINS_STAND_OWNER });",
     "new": "        const pile = p.seedPile([...r.items], feet, icon, null, pixelKeyOf(r.place), { unsaved: true, owner: REMAINS_STAND_OWNER });",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-saved",
+    "name": "FB1013d-REMAINS-STAND-saved",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        const pile = p.seedPile(r.items, feet, icon, null, pixelKeyOf(r.place), { unsaved: true, owner: REMAINS_STAND_OWNER });",
     "new": "        const pile = p.seedPile(r.items, feet, icon, null, pixelKeyOf(r.place), { owner: REMAINS_STAND_OWNER });",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-kept-when-left",
+    "name": "FB1013d-REMAINS-STAND-kept-when-left",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        if (!w || s.pool !== p || s.pile.dead || s.pile.inactive || s.pile.items !== w.r.items) unstand(id);",
     "new": "        if (w && (s.pool !== p || s.pile.dead || s.pile.inactive || s.pile.items !== w.r.items)) unstand(id);",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-kept-in-the-old-pool",
+    "name": "FB1013d-REMAINS-STAND-kept-in-the-old-pool",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        if (!w || s.pool !== p || s.pile.dead || s.pile.inactive || s.pile.items !== w.r.items) unstand(id);",
     "new": "        if (!w || s.pile.dead || s.pile.inactive || s.pile.items !== w.r.items) unstand(id);",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-a-dead-pile-kept",
+    "name": "FB1013d-REMAINS-STAND-a-dead-pile-kept",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        if (!w || s.pool !== p || s.pile.dead || s.pile.inactive || s.pile.items !== w.r.items) unstand(id);",
     "new": "        if (!w || s.pool !== p || s.pile.inactive || s.pile.items !== w.r.items) unstand(id);",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-a-put-away-pile-kept",
+    "name": "FB1013d-REMAINS-STAND-a-put-away-pile-kept",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        if (!w || s.pool !== p || s.pile.dead || s.pile.inactive || s.pile.items !== w.r.items) unstand(id);",
     "new": "        if (!w || s.pool !== p || s.pile.dead || s.pile.items !== w.r.items) unstand(id);",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-a-replaced-list-kept",
+    "name": "FB1013d-REMAINS-STAND-a-replaced-list-kept",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        if (!w || s.pool !== p || s.pile.dead || s.pile.inactive || s.pile.items !== w.r.items) unstand(id);",
     "new": "        if (!w || s.pool !== p || s.pile.dead || s.pile.inactive) unstand(id);",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-unnamed",
+    "name": "FB1013d-REMAINS-STAND-unnamed",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        pile.label = label(r);",
     "new": "        pile.label = null;",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-plaque-not-the-ring-s-name",
+    "name": "FB1013d-REMAINS-STAND-the-plaque-not-the-ring-s-name",
     "file": "src/scenes/world.js",
     "old": "    label: (r) => LEGACY_TEXT.remainsName(r.name),",
     "new": "    label: (r) => r.name,",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-ring-not-the-plaque-s-name",
+    "name": "FB1013d-REMAINS-STAND-the-ring-not-the-plaque-s-name",
     "file": "src/scenes/legacyHost.js",
     "old": "label: LEGACY_TEXT.remainsName(r.name), id:",
     "new": "label: `Where ${r.name} fell`, id:",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-no-line",
+    "name": "FB1013d-REMAINS-STAND-no-line",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        pile.mark = REMAINS_MARK;",
     "new": "        pile.mark = null;",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-a-find-in-the-remains",
+    "name": "FB1013d-REMAINS-STAND-a-find-in-the-remains",
     "file": "src/scenes/legacyRemainsStand.js",
     "old": "        pile.noFind = true;",
     "new": "        pile.noFind = false;",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-mark-dropped-from-lootFinds",
+    "name": "FB1013d-REMAINS-STAND-the-mark-dropped-from-lootFinds",
     "file": "src/scenes/droppedLoot.js",
     "old": " : p.mark ? { root: lootCrown(p.pos, p.size), items: p.items, mark: p.mark } : ",
     "new": " : ",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-one-word-for-every-kind",
+    "name": "FB1013d-REMAINS-STAND-one-word-for-every-kind",
     "file": "src/scenes/lootLines.js",
     "old": "export const setLootMarksLive = (on, by = 'wild') => { if (on) _marksLive.add(by); else _marksLive.delete(by); };",
     "new": "export const setLootMarksLive = (on) => { if (on) _marksLive.add('wild'); else _marksLive.delete('wild'); };",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-find-rolled",
+    "name": "FB1013d-REMAINS-STAND-the-find-rolled",
     "file": "src/systems/silverFinds.js",
     "old": "  if (typeof container === 'object' && /** @type {any} */ (container).noFind === true) return false;",
     "new": "",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-stood-for-a-waiting-succession",
+    "name": "FB1013d-REMAINS-STAND-stood-for-a-waiting-succession",
     "file": "src/scenes/legacyHost.js",
     "old": "    if (!family || !deps.on() || past || family.pending || !deps.entity?.chargenDone) return [];",
     "new": "    if (!family || !deps.on() || past || !deps.entity?.chargenDone) return [];",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-stood-with-the-switch-off",
+    "name": "FB1013d-REMAINS-STAND-stood-with-the-switch-off",
     "file": "src/scenes/legacyHost.js",
     "old": "    if (!family || !deps.on() || past || family.pending || !deps.entity?.chargenDone) return [];",
     "new": "    if (!family || past || family.pending || !deps.entity?.chargenDone) return [];",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-stood-on-a-page-not-theirs",
+    "name": "FB1013d-REMAINS-STAND-stood-on-a-page-not-theirs",
     "file": "src/scenes/legacyHost.js",
     "old": "    if (!p || !isAlive(p) || !playedHere(p)) return [];",
     "new": "    if (!p || !isAlive(p)) return [];",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-list-not-made-ready",
+    "name": "FB1013d-REMAINS-STAND-the-list-not-made-ready",
     "file": "src/scenes/legacyHost.js",
     "old": "    return openRemains().filter((r) => r.state === 'lying' && r.place).map((r) => { readyList(r); return r; });",
     "new": "    return openRemains().filter((r) => r.state === 'lying' && r.place);",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-height-dropped",
+    "name": "FB1013d-REMAINS-STAND-the-height-dropped",
     "file": "src/scenes/world.js",
     "old": "      world: mode === 'exterior' ? { ...state.worldCoords(pos), y: groundFrameHeight(pos[1] - state.compensation[1], pos[0], pos[2]), terrainScale: STREAMING_TERRAIN_SCALE } : null,",
     "new": "      world: mode === 'exterior' ? state.worldCoords(pos) : null,",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-height-unread",
+    "name": "FB1013d-REMAINS-STAND-the-height-unread",
     "file": "src/scenes/world.js",
     "old": "    const y = Number.isFinite(place.world.y) ? restandHeight(place.world.y, x, z, scaleOf(place.world.terrainScale)) + state.compensation[1] : ground;",
     "new": "    const y = ground;",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-height-in-the-landforms-frame",
+    "name": "FB1013d-REMAINS-STAND-the-height-in-the-landforms-frame",
     "file": "src/scenes/world.js",
     "old": "      world: mode === 'exterior' ? { ...state.worldCoords(pos), y: groundFrameHeight(pos[1] - state.compensation[1], pos[0], pos[2]), terrainScale: STREAMING_TERRAIN_SCALE } : null,",
     "new": "      world: mode === 'exterior' ? { ...state.worldCoords(pos), y: pos[1] - state.compensation[1], terrainScale: STREAMING_TERRAIN_SCALE } : null,",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-height-stood-raw",
+    "name": "FB1013d-REMAINS-STAND-the-height-stood-raw",
     "file": "src/scenes/world.js",
     "old": "    const y = Number.isFinite(place.world.y) ? restandHeight(place.world.y, x, z, scaleOf(place.world.terrainScale)) + state.compensation[1] : ground;",
     "new": "    const y = Number.isFinite(place.world.y) ? place.world.y + state.compensation[1] : ground;",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-stamp-dropped",
+    "name": "FB1013d-REMAINS-STAND-the-stamp-dropped",
     "file": "src/scenes/world.js",
     "old": "    const y = Number.isFinite(place.world.y) ? restandHeight(place.world.y, x, z, scaleOf(place.world.terrainScale)) + state.compensation[1] : ground;",
     "new": "    const y = Number.isFinite(place.world.y) ? restandHeight(place.world.y, x, z, scaleOf(undefined)) + state.compensation[1] : ground;",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-stood-on-an-unbuilt-pixel",
+    "name": "FB1013d-REMAINS-STAND-stood-on-an-unbuilt-pixel",
     "file": "src/scenes/world.js",
     "old": "    if (!Number.isFinite(ground)) return null;   // its pixel not built yet - stood once it is",
     "new": "",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-a-street-body-indoors",
+    "name": "FB1013d-REMAINS-STAND-a-street-body-indoors",
     "file": "src/scenes/world.js",
     "old": "    if (mode !== 'exterior' || place.mode !== 'exterior' || !place.world) return null;",
     "new": "    if (place.mode !== 'exterior' || !place.world) return null;",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-stood-in-any-dungeon",
+    "name": "FB1013d-REMAINS-STAND-stood-in-any-dungeon",
     "file": "src/scenes/world.js",
     "old": "      if (mode !== 'dungeon' || !Array.isArray(place.pos) || !legacyInDungeonOf(legacyHere(), place)) return null;",
     "new": "      if (mode !== 'dungeon' || !Array.isArray(place.pos)) return null;",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-in-the-air-not-on-the-floor",
+    "name": "FB1013d-REMAINS-STAND-in-the-air-not-on-the-floor",
     "file": "src/scenes/world.js",
     "old": "      return modes?.dungeonCtx?.floorAt?.(place.pos[0], place.pos[1], place.pos[2]) ?? [place.pos[0], place.pos[1], place.pos[2]];",
     "new": "      return [place.pos[0], place.pos[1], place.pos[2]];",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-the-street-s-pool-everywhere",
+    "name": "FB1013d-REMAINS-STAND-the-street-s-pool-everywhere",
     "file": "src/scenes/world.js",
     "old": "    pool: () => ((modes?.mode ?? 'exterior') === 'exterior' ? droppedLoot : (modes?.droppedPool?.() ?? null)),",
     "new": "    pool: () => droppedLoot,",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-dies-with-no-pixel",
+    "name": "FB1013d-REMAINS-STAND-dies-with-no-pixel",
     "file": "src/scenes/world.js",
     "old": "    pixelKeyOf: (place) => (place?.mode === 'exterior' && place.pixel ? `${place.pixel.x},${place.pixel.y}` : null),",
     "new": "    pixelKeyOf: () => null,",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-REMAINS-STAND-never-framed",
+    "name": "FB1013d-REMAINS-STAND-never-framed",
     "file": "src/scenes/world.js",
     "old": "    setLootMarksLive(legacyRemainsStand.frame(legacyHost.remainsToStand()) > 0, 'legacy');",
     "new": "",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-LIVE-FIGHT-the-street-s-pools-underground",
+    "name": "FB1013d-LIVE-FIGHT-the-street-s-pools-underground",
     "file": "src/scenes/world.js",
     "old": "    inFight: () => areEnemiesNearby((modes?.mode ?? 'exterior') === 'exterior' ? exteriorFoePool() : (modes?.insideFoes?.() ?? [])),",
     "new": "    inFight: () => areEnemiesNearby([...(cityGuards?.guards ?? []), ...(exteriorFoes?.foes ?? []), ...(modes?.dungeonCtx?.foes ?? [])]),",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   },
   {
-    "name": "FB1013c-LIVE-FIGHT-the-place-s-own-unread",
+    "name": "FB1013d-LIVE-FIGHT-the-place-s-own-unread",
     "file": "src/scenes/world.js",
     "old": "    inFight: () => areEnemiesNearby((modes?.mode ?? 'exterior') === 'exterior' ? exteriorFoePool() : (modes?.insideFoes?.() ?? [])),",
     "new": "    inFight: () => areEnemiesNearby((modes?.mode ?? 'exterior') === 'exterior' ? exteriorFoePool() : []),",
     "tests": [
-      "test/fb1013c_remains.test.js"
+      "test/fb1013d_remains.test.js"
     ]
   }
 ]

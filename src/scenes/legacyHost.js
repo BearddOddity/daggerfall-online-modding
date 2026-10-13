@@ -85,7 +85,7 @@ export const LEGACY_TEXT = Object.freeze({
   // PERMADEATH-HOUSES: a house of the line's dead, taken up by whoever carries the line - or waiting on a bank's one deed a region
   deed: (loc, given) => `${given}'s house${loc ? ` in ${loc}` : ''} passes to you. Its deed is yours now.`,
   deedWaits: (loc, given) => `${given}'s house${loc ? ` in ${loc}` : ''} waits for you - you keep a house in that region already, and the bank deeds one a region. Sell yours there to take it up.`,
-  remainsName: (name) => `The remains of ${name}`,   // FB1013c: their own name - the map's ring and the body's plaque, one home
+  remainsName: (name) => `The remains of ${name}`,   // FB1013d: their own name - the map's ring and the body's plaque, one home
   remainsFound: (name) => `You have found the remains of ${name}.`,
   remainsTaken: (name) => `You carry the remains of ${name}. Lay them to rest at a temple, or at the family's seat.`,
   remainsReturned: (name) => `The remains of ${name} are no longer with you. They lie where ${name} fell.`,
@@ -604,7 +604,7 @@ export function createLegacyHost(deps) {
       touch(family);
     }
   }
-  /** FB1013c REMAINS-STAND: A LIST MADE READY TO BE TAKEN FROM where it lies - by its own window, or by its body (the
+  /** FB1013d REMAINS-STAND: A LIST MADE READY TO BE TAKEN FROM where it lies - by its own window, or by its body (the
    *  world's stand, remainsToStand). It wears its remains' mark (AUDIT LEGACY II H4: the bones go back into it, and into
    *  nothing that is not the character's own keeping - systems/itemTransfer.js planStore); the load's item repairs run
    *  on it once (ITEM-WALK B: whichever copy it came from) before its claim's mark; and, nobody's, it is noted as it
@@ -706,7 +706,7 @@ export function createLegacyHost(deps) {
   const mapMarks = () => (family && deps.on() && !past ? openRemains() : []).filter((r) => r.state === 'lying' && r.place?.pixel).map((r) => ({
     cx: r.place.pixel.x + 0.5, cy: r.place.pixel.y + 0.5, r: LEGACY_RING_R, label: LEGACY_TEXT.remainsName(r.name), id: `${LEGACY_QUEST_PREFIX}${r.id}`, place: r.place.mode === 'dungeon', farmKey: null,
   }));
-  /** FB1013c REMAINS-STAND (FIELD BUGS 2026-10-13c, "remains did not appear"): THE REMAINS THE WORLD STANDS - every row
+  /** FB1013d REMAINS-STAND (FIELD BUGS 2026-10-13d, "remains did not appear"): THE REMAINS THE WORLD STANDS - every row
    *  of the line still lying where its fallen fell that the one played may seek (openRemains), its list made ready to be
    *  taken from (readyList), for the world host to stand as a body where it lies (scenes/legacyRemainsStand.js). None for
    *  the past, a waiting Succession, a page not the one played's, or with the switch off - the slow tick's own guards. */

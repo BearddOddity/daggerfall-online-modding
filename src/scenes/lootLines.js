@@ -66,7 +66,7 @@ export function pickLootLines(finds, eye, { max = LOOT_LINES_MAX, reach = LOOT_L
 }
 
 /** WILD1: whether a MARKED find stands in the scene (my remains in the open zone - net/wildRemains.js hasMine). With the
- *  rarity row off the pass gathers the finds only then: off stays DFU exactly everywhere else. FB1013c: each standing
+ *  rarity row off the pass gathers the finds only then: off stays DFU exactly everywhere else. FB1013d: each standing
  *  kind says its own word under its own name - the open zone's (`wild`) and the house's fallen (`legacy`,
  *  scenes/legacyRemainsStand.js) - and either keeps the pass gathering: one saying none never puts out the other's. */
 const _marksLive = new Set();

@@ -1,145 +1,87 @@
-# FIELD BUGS 2026-10-13c - one thread from the bug-reports channel
+# FIELD BUGS 2026-10-13c - "Even the port quests sending you to non port places"
 
-One Discord thread from 2026-10-13, handed over as a screenshot, read on the code as it stands at main's `8b0d093a`.
+The owner's report, 2026-10-13, in a session: "Bug: Even the port quests sending you to non port places". Read on the
+code as it stands at main's `3f66ff06`, and measured on the real ARENA2 (the freeware DaggerfallGameFiles,
+`tools/fetch-data.sh`, outside the tree).
 
 | | Report | What it was | Done |
 |---|---|---|---|
-| 1 | "[ANGRY] Died of fatigue in wayrest palace, character aged past limit and remains did not appear" (TheHalfinStream) - "Because of this horrible bug, I have lost: My caravan, horses, and all wagon stored goods; All of my gear and items; My bank account with all of my gold; All my progression. I got to keep: My house and windmill, 3000g" | an Enduring member whose span was spent fell for good in Castle Wayrest - the palace's door is its dungeon's entrance - and the line's Succession passed the mantle. The remains were laid where she fell as a list the record owns, and nothing was ever drawn for them: the list opens by itself within six paces of the very spot underground, and nothing said where the spot was. And the gate that keeps it shut "in a fight" read the street's foe pools, frozen while the castle stood, so a street walker sensed on the way in kept it shut on the spot | fixed (REMAINS-STAND, LIVE-FIGHT); the collapse and the final death are the laws as written (THE DEATH); what passes to the heir answered, the wagon and the bank's balance the owner's call (ESTATE-WIDER, planned) |
+| 1 | "Even the port quests sending you to non port places" (the owner) | the harbourmaster's board (CAPT-BOARD) read Travel Options' port table - every place a ship may put in at - as the map's ports: 223 of its 378 are tombs, farms, inns, temples, manors, graveyards and ruins, and 31 of the region capitals on it stand with no sea within six pixels. Of the cargoes the towns' boards posted, 71% went where no harbourmaster keeps a quay | fixed (PORT-TOWNS) |
 
-## THE DEATH: the collapse, and the span (1) - NOT CHANGED, the laws as written
+## PORT-TOWNS: a port is a town, and a cargo goes to one on the sea (1)
 
-THE COLLAPSE IS DFU'S. At no fatigue left, `PlayerEntity_OnExhausted` (PlayerEntity.cs:2380-2441) asks
-`AreEnemiesNearby` (GameManager.cs:684-732): none, and the player drops to the ground for an hour (TEXT.RSC 1071); a
-hostile foe that sees the player or stands inside classic's spawn band, and it is `SetHealth(0)` (1072). The port's is
-`systems/rest.js exhaustionOutcome`, and underground `dungeonContext.js onExhausted` takes the one damage door's
-SetHealth(0) arm (`hurtPlayer`, `bypassShield`), which the Legacy host hears as any death (`setDeathListener`). Castle
-Wayrest's guards stand passive - RDBLayout.AddEnemy's Passive reaction, `isHostile` false - and count for nothing until
-the castle is turned on the player: a door bashed inside it (`world/actionSystem.js attemptBash`, DaggerfallActionDoor's
-`MakeEnemiesHostile`) or a blow. So a collapse that kills in the castle is one with a hostile foe near. SWIM-SPENT
-(`Field-Bugs-2026-09-30b.md`) changed the water's arm of this law and no other.
+`src/scenes/world.js` navalPortList; `src/systems/portPlaces.js` isPortTownType; `src/systems/naval/harbourBoard.js`
+deliveryPort, advance; `src/scenes/harbourOffice.js` tick, event; `src/systems/naval/captainLedger.js` contractEvent.
 
-THE SPAN IS THE ENDURING MODEL'S. Each death took Arkay's toll, years off a span (a Breton's 90, born at 23, five
-years a death at the Standard toll); spent, the next death is the last (`systems/legacy/age.js payToll`), and she
-died of her years (`cause: 'years'`). It was said: the rise that spent it ("... and Arkay will not grant another"),
-the Stats page's sheet ("Your span is spent: your next death is your last."), the elder's line once a load. The
-mantle then passed exactly as in a Bloodline (Legacy-Arc section 6).
+THE REPORT. The port's quests are the harbourmaster's contracts (`03-World/Captains-Sea.md` CAPT-BOARD), and of their
+five kinds the cargo is the one that names a place: "Cargo for X - to X's harbourmaster within N days". A bounty and a
+salvage are sited in open water off the board's own port, a hunt and a survey in the crown's waters.
 
-WHAT PASSES (Legacy-Arc sections 5, 7 and 10c). The estate - a quarter of the gold she CARRIED, at most 9,900, as a
-letter of credit (the reporter's 3,000 is that); her houses, deed and all (PERMADEATH-HOUSES: the house and the
-windmill); and the remains - the bones (laid to rest, their blessing), the heirloom (always, for an Enduring elder dead
-of their years: the best weapon or armour she wore) and a tenth of her purse (at most 2,500). THE REMAINS NEVER
-REACHED THE HEIR: that is the bug (REMAINS-STAND). The rest - the wagon with its horses and its hold, the pack, the
-bank's balance, the levels and skills - stays in her own save, which the line refuses to play (THE PAST, section 3), as
-her house did before PERMADEATH-HOUSES (ESTATE-WIDER).
+FOUND. The board's ports - the port a captain lies at (`navalPortHere`, the nearest within a map pixel), a cargo's
+destinations (`boardFor`'s `ports`), a treasure chart's port - were `navalPortList`: every entry of Travel Options'
+`portLocationIds` (`systems/travelPorts.js`), read as "every port of the map". That table is not the map's harbours:
 
-## REMAINS-STAND: the remains are seen where they lie (1)
+- Its main block is exactly MAPS.BSA's 343 locations whose PortTownAndUnknown byte is not nought, and the byte flags any
+  place on the coast. Of the table's 378 distinct entries 223 are not towns: 39 labyrinths (Corranoth's Tomb, the
+  Masoleum of Darkivaron, the Prison of Grictke), 33 farms, 27 manors and halls, 27 inns and taverns, 22 ruins, 21 shacks
+  and hovels, 19 keeps, 17 temples, 10 graveyards and 8 cult sites. 155 are cities, towns and villages.
+- The byte is two things. Its low four bits name sides of a place the sea lies on - east 1, south 2, west 4, north 8:
+  every one of the 304 locations that carry one has the sea on each side its bits name (291 exactly the sides it has).
+  0x10 is the region capitals' mark: 39 cities, none of them carrying a low bit, and 31 of them with no sea within six
+  pixels (Wrothgaria, Dragontail, Alik'ra, Dwynnen...); Daggerfall, Sentinel and Wayrest stand two pixels off it. DFU's
+  `PortTownAndUnknown != 0` reads every one of them as a port, and Hazelnut's table copied the byte's list.
+- So a cargo was drawn among the six nearest of those "ports" DELIVERY_PX_MIN or more off. Over 30 days of every town's
+  board (155 boards, 3,271 cargoes): 1,980 (60.5%) for a place that is no town - The V'uchin Farmstead, Kieran Theatre,
+  Djen Lodge, the Moorwing Cemetery, the Grave of Lithogheon - 351 (10.7%) for a town with no sea beside it (Glenumbra
+  among the most), and 940 (28.7%) for a port on the sea. A cargo for a tomb on the coast could be delivered by lying
+  slow within a pixel of it (the berth asks only that her boat lie slow in a port's waters, `navalHost.js yardHere`, and
+  a flagged tomb's are a port's to Come Sail Away); one for an inland capital never could, and failed at its term with
+  STANDING_FAILED.
+- And a board stood at such a place: the nearest of the 378 within a pixel was the port lain at, so a captain off a
+  tomb's or a farm's water read the tomb's name over its harbourmaster's tab.
 
-`src/scenes/legacyRemainsStand.js` createRemainsStand; `src/scenes/legacyHost.js` readyList, remainsToStand;
-`src/scenes/world.js` legacyHere, legacyInDungeonOf, legacyRemainsFeet, the stand, legacyStep;
-`src/scenes/droppedLoot.js` lootFinds; `src/scenes/lootLines.js` setLootMarksLive; `src/systems/silverFinds.js`.
+FIXED, at the root of each:
 
-FOUND. AUDIT LEGACY H1 (`Audit-Legacy.md`) found the remains' world pile laid again at every visit and every reload,
-the heirloom in each, and made the remains a list the RECORD owns, opened as a container where they lie - and the
-pile's picture went with the pile: NOTHING WAS EVER DRAWN FOR THEM. The death records where they lie
-(`legacyHost.js onDeath` -> `layDeathRemains`; the place is `world.js legacyHere`'s - underground the dungeon by its
-location and the fallen's own floor position), and the slow tick opens the list (`remainsStep`) only where
-`legacyAtPlace` answers: underground within six paces (`LEGACY_REMAINS_NEAR_DUNGEON`) of that position, in its own
-dungeon. The world map rings the dungeon's pixel - for a castle, its city's - and the journal says "deep inside"; in the
-castle nothing marks the spot, nothing stands on it, and the heir walks past it. Reproduced through the producers: a
-founder of an Enduring house, her span spent, killed in a castle by the collapse's own SetHealth(0) door, the newborn
-heir landing through the birth's door - thirty metres from where she fell nothing opened and nothing stood in any pool.
+- THE BOARD'S PORTS ARE TOWNS. `navalPortList` keeps the table's cities, towns and villages (`portPlaces.js
+  isPortTownType`, PORT_TOWN_TYPES - the half of the shipyard law's `isPortTown` a map summary answers alone). Every
+  entry is a port by its data (the table is `hasPort`), so the list is exactly the towns that stand the port's places -
+  the shipyard, the crew hall, the lighthouse and the docks the player sees on the maps: 155, pinned on the real map both
+  ways. A tomb's or a farm's water has no harbourmaster now.
+- A CARGO GOES TO A PORT ON THE SEA. `harbourBoard.js deliveryPort`: a board port whose own map pixel or one of the
+  eight about it is sea (`seaAt`, the world's - `isWaterPixel`; `net/fortLaw.js coastalAt`, the coast's one law, the
+  seats' Harbour's), where a ship lies within the berth's reach of one pixel. 113 of the 155, and every one of them
+  answers to its own name from a sea pixel beside it (`navalPortHere`'s nearest, no neighbouring port first). A cargo is
+  drawn among those alone, and a board with none far enough posts none.
+- A CARGO ALREADY HELD FOR NO SUCH PORT IS VOID. A save holds the board's cargoes two days and more of the captain's own
+  clock, and one for a tomb could not be delivered now. The harbour office's tick voids each - `advance`'s
+  `{ type: 'unported', port }`, the bounty's void beside it (AUDIT CAPTAIN'S SEA B4): off the list, no regard lost - and
+  says it: "Contract void - Cargo for Corranoth's Tomb. No ship can make port there." (the text core's
+  `sea.board.cargoVoid`, drafted in the thirteen whole languages). It asks only once the map's ports and the sea stand.
 
-FIXED. THE REMAINS STAND AS A BODY where they lie, in the ground pool of the host the one played stands in - the
-street's, or a dungeon's through worldModes' `droppedPool` - their own picture (`REMAINS_FLAT`) on the floor under the
-fallen's last position (the dungeon's `floorAt`) underground, and outdoors at the native spot where they fell, at the
-height they stood at (`legacyHere` keeps it now: a roof, a bridge; an older row stands on the ground) - a record's
-height, so in DFU's frame on the ground it was measured on, as the Recall anchor keeps its own (AUDIT LANDFORMS C1 and
-TERRAIN-SCALE1: `groundFrameHeight` in, `restandHeight` with its stamp out) - once its pixel is built and dying with its
-pixel. THE BODY'S LIST IS THE RECORD'S: the same array, so a take from it is a take from the record, as the list's own
-window always was - claimed by the member who changes it (AUDIT LEGACY II H5), the bones going back into it and into no
-other pile (H4: it wears its mark). It is `unsaved`: no save, no scene cache and no room's memory carries it, so nothing
-is laid twice (H1 stands) - stood afresh at each visit, and let go when its place is left, its pool goes (a door, a
-load, a pixel collected), its list is taken home, laid to rest or replaced (a load's merge: stood again over the new
-one), or the switch is off. The plaque names it ("The remains of Ysolde Hlaalu" - the map's ring's own words, one home:
-`LEGACY_TEXT.remainsName`, so no new English reaches the L10N4 ratchet), a line of light stands over it with the
-loot-rarity row on or off (`REMAINS_MARK`, the open zone's own remains' way, WILD1), and it holds no silver find
-(`noFind`: the line's list, stood afresh at every visit, would have paid for coming back). The host hands the world only
-the rows it may stand (`remainsToStand`: the slow tick's own guards - never for the past played back, a waiting
-Succession or a page not the one played's), each list made ready as its window makes it (`readyList`, one home: its
-mark, the load's repairs once, and nobody's list noted as it stands - a change from there is a claim). The world frames
-the stand once a second, after the tick (which lays the bones again and lets a claim lapse before a list is made ready).
-The lines' liveness is each kind's own word now (`setLootMarksLive(on, by)`): the open zone says its own every frame
-online, and one word for every kind would have put the house's line out.
+After: the same 30 days, the same 3,271 cargoes, every one for a port on the sea.
 
-THE LIST'S OWN WINDOW STANDS (Legacy-Arc section 7: within six paces underground, sixty metres outdoors, anywhere on its
-town's pixel for a death in a building; once a visit, never in a fight). The body is a second door to the same list,
-pressed as any body - in a fight too, where DFU's loot window pauses the world.
+THE LINE DRAWN. The berth's reach is a map pixel, and the map can promise a ship there only where a sea pixel lies
+within it. Measured against the terrain (DFU's kernel as the port runs it - `world/terrainSampler.js` generateSamples,
+`world/terrainTiles.js` generateTileData - which Deep Waters carves only where it put water): 111 of the 113 have water
+within a pixel. The two that do not, Kaluhbia and Whitewych Commons, face a one-pixel pond the map marks as sea and the
+kernel smooths away - the one water law's own reading, left as it stands. Sentinel and Wayrest stand two pixels off the
+sea and the kernel puts water within a pixel of both (683 m and 1,074 m off their footprints); Daggerfall's is 1.5 km
+off. The three stay the board's ports - a captain who lies there reads their boards - and take no cargo: the map cannot
+tell Sentinel's inlet from Daggerfall's dry shore.
 
-A DEATH IN A BUILDING STANDS NO BODY: its law is the street's - the place names no building, and the list opens anywhere
-on its town's pixel in the street, the moment the heir walks it.
+NOT TOUCHED - the same table and byte read by other laws, each that law's own:
 
-## LIVE-FIGHT: the fight is the place the one played stands in (1)
+- Come Sail Away's deed (DEED-PORT, `csaIsPortTown`), the merchantmen's water (`navalNearPort`) and the harbour SHIP-LIFE
+  sounds (`navalHarbourNear`) read the table and the byte as the mod does: a ship may be put in the water, and a quay is
+  sought, at a flagged farm or tomb on the coast.
+- The shipyard law (`isPortTown`) stands a shipyard and a lighthouse in every town on the table - the 31 inland capitals
+  among them, at the town's middle where no sea bears on it (`world/portSites.js` seaField's `middle`). Neither a board's
+  nor a cargo's; left for the owner.
+- CAPT-WATERS' distance from the nearest port (`navalPortPx`) reads the table's pixels.
 
-`src/scenes/world.js` the Legacy host's `inFight`.
-
-FOUND. The remains' "never in a fight" - and Play as, Pass the mantle and a wedding with it (`switchRefusal`,
-`mantleRefusal`, `wedRefusal`) - asked `areEnemiesNearby` over the street's pools (the watch, the street's foes) and the
-dungeon's, in every mode. A mounted mode's frame returns before the street's, so the street's foes are not stepped while
-a dungeon or a building stands, and their senses stay as they were when the player went in - `wouldBeSpawned` latched
-for a hostile walker within classic's exterior band (`CLASSIC_SPAWN_DESPAWN_EXTERIOR`, 102.4 m). DFU walks the ACTIVE
-enemies alone (`ActiveGameObjectDatabase.GetActiveEnemyBehaviours`, GameManager.cs:690), and underground the street is
-not active. So one hostile walker near the castle's door - a city at night - kept the whole visit "in a fight": the
-list stayed shut on the very spot. A building's own foes (IF) were never read at all. Reproduced: the heir two metres
-from where she fell, a street foe latched: the list did not open.
-
-FIXED. The street's pools outdoors, the place's own inside (`modes.insideFoes` - the dungeon's, or the building's foes and
-its watch), as the host's other fight reads already ask (the giant's notice, the time scale's).
-
-## ESTATE-WIDER: the wagon and the bank's balance (1) - NOT CHANGED, the owner's call
-
-The reporter's list is the design's: what the fallen held that is no estate, house or remains stays in the past's save.
-PERMADEATH-HOUSES was the owner's answer for houses alone (2026-10-09: "now all that needs to be looked at is what
-happens to houses owned by dead permadeath characters", then "the heir inherits: the deed is the estate's, as the gold
-is"). Handing more down is new law. THE PLAN, if taken:
-
-- THE WAGON. The fallen's wagon - its kind's item, its hold (`wagonItems`), its horses (Horse Cart and Cargo's stable) -
-  taken up by whoever carries the line, as a deed is (`takeDeeds`' shape: the taker's save's word, so a reload never
-  loses it and never gives it twice), read out of the fallen's newest save offline and their tombstone's realm record
-  online. One wagon a character: a taker who holds one finds the other WAITING, as a second house in a region does.
-- THE BANK. Some share of the fallen's balance into the estate. Online the birth law (`realm.js firstSaveRefusal`: a
-  newborn's liquid wealth at most 10,000) holds the first save, so it would be paid into the heir's bank account after
-  it, as the deeds are taken up the first tick after the birth.
-
-## THE FOUR HOSTS (1)
-
-`scenes/world.js`: wired - the stand, its pool and its places, and the Legacy host's fight. `scenes/worldModes.js`: wired
-through its pool (`droppedPool`: the dungeon's, and the building's - where no body stands, its law the street's) and its
-fight (`insideFoes`). `scenes/dungeonContext.js`: wired through its pool, its floor (`floorAt`) and its loot door (a
-dropped pile's `takeLoot` opens the body as any pile). `scenes/exterior.js`: FLAGGED (Legacy-Arc section 3) - the fixed
-city keeps DFU's death: no house, no remains.
-
-## ASKED OF THE REPORTER
-
-Which heir carried the line on (a newborn, or a living member); whether they went into the castle, and how near the spot
-she fell on; whether the castle had been turned on her before the collapse (a door bashed, a blow); and whether they
-play online.
-
-## Pins (1)
-
-- `test/fb1013c_remains.test.js` (5): the report end to end through the producers (the Legacy host, its death at the
-  collapse's own SetHealth(0) door, the Succession and the birth; a real ground pool; the world host's own `legacyHere`,
-  `legacyAtPlace`, `legacyRemainsFeet`, the stand and `inFight` run off its text) - the body stands in the castle's pool
-  on the floor under her last position, its list the record's own array, named, marked, on the ray, in no save, never
-  laid twice, in no other dungeon and not in the street; a take through it is the heir's claim, the bones go back into it
-  and into no other pile, carried home it is let go and laid again it stands again, and it is stood afresh at every
-  change of its pool, its pile or its list, never for a waiting Succession, a page not the one played's or with the
-  switch off; in the open at the height she stood (written in DFU's frame with its stamp, stood again through them),
-  once its pixel is built, dying with its pixel, an older row on the ground and a building's none; the fight read off
-  the place (a latched street walker no fight underground, the list opening on the spot; the dungeon's and the
-  building's own foes a fight); its line with the rarity row off under the house's own word, no silver find, and the
-  hosts by source.
-- `tools/mutants/fb1013c_remains.json` (34, all dead). Re-aimed by content: `auditlegacy2.json`
-  AUDIT-LEGACY-II-H5-claimed-at-the-open and `itemwalk.json` ITEM-WALK-B-remains-unrepaired (a list's readiness has one
-  home now, `readyList`); `loot11.json` LOOT11-pass-off and LOOT11-drop-pool-no-finds (the lines' word, each kind's own;
-  a pile's own mark). Each list run whole: `auditlegacy2.json` and `itemwalk.json` 59 dead, `loot11.json` and
-  `silverfinds.json` 101 dead. No relay or account file is touched: RELAY_VERSION and ACCOUNT_VERSION stand.
+`test/fb1013c_porttowns.test.js` (6): the host's port list and port-here lifted off world.js over eight of the table's
+harbours - three towns its ports, no tomb, farm, inn, temple or graveyard; the delivery law and 300 days of a board; a
+held cargo's void, said once and in French; the world's wiring; and on the real map (ARENA2_PATH) the counts above and
+the byte's two readings. `tools/mutants/fb1013c_porttowns.json` 13/13 dead. Re-aimed by content, all dead: auditcaptsea
+ACS-B4-said, captboard BOARD-delivery-near, shipyards1 SHIPYARDS-every-town-a-port; the 161 records aimed at
+harbourBoard.js, harbourOffice.js, portPlaces.js and captainLedger.js run again, all dead.
