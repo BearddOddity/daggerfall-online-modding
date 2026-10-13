@@ -35,17 +35,17 @@ function swimmer({ fatigue = 0, swimmingSkill = 5 } = {}) {
   return entity;
 }
 
-test('SWIM-SPENT: the law - in the water a drain to nothing is a tenth of the health and a line, foes about or not; on dry feet the safe collapse rests and foes about cost the same share (SPENT-ASHORE; they killed until 2026-10-13d)', () => {
+test('SWIM-SPENT: the law - in the water a drain to nothing is a tenth of the health and a line, foes about or not; on dry feet the safe collapse rests and foes about cost the same share (SPENT-ASHORE; they killed until 2026-10-13e)', () => {
   const e = swimmer();
   const wet = exhaustionOutcome({ enemiesNearby: false, swimming: true, entity: e });
   assert.deepEqual({ kind: wet.kind, damage: wet.damage, line: wet.line, inWater: wet.inWater }, { kind: 'drown', damage: 10, line: EXHAUSTED_SWIMMING_LINE, inWater: true });
-  assert.equal(EXHAUSTED_SPENT_SHARE, 0.1);   // PIN MOVED (FIELD BUGS 2026-10-13d SPENT-ASHORE): renamed - the water's share and the shore's, one constant
+  assert.equal(EXHAUSTED_SPENT_SHARE, 0.1);   // PIN MOVED (FIELD BUGS 2026-10-13e SPENT-ASHORE): renamed - the water's share and the shore's, one constant
   assert.equal(exhaustionOutcome({ enemiesNearby: true, swimming: true, entity: e }).kind, 'drown', 'foes about change nothing in the water');
   assert.equal(exhaustionOutcome({ swimming: true, entity: { ...e, maxHealth: 7 } }).damage, 1, 'rounded up - never nothing');
   assert.equal(exhaustionOutcome({ swimming: true, entity: { ...e, maxHealth: 0 } }).damage, 1, 'never nothing');
   assert.equal(exhaustionOutcome({ enemiesNearby: false, swimming: false, entity: e }).kind, 'rest');
-  // PIN MOVED (FIELD BUGS 2026-10-13d SPENT-ASHORE): foes about on dry feet no longer kill - the water's share, its own
-  // line (test/fb1013d_spentashore.test.js)
+  // PIN MOVED (FIELD BUGS 2026-10-13e SPENT-ASHORE): foes about on dry feet no longer kill - the water's share, its own
+  // line (test/fb1013e_spentashore.test.js)
   const near = exhaustionOutcome({ enemiesNearby: true, swimming: false, entity: e });
   assert.deepEqual([near.kind, near.damage, near.line, near.inWater], ['spent', 10, EXHAUSTED_FIGHTING_LINE, false]);
 });

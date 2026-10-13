@@ -1,4 +1,4 @@
-// SHARE-REVEAL (FIELD BUGS 2026-10-13d, Starempire42: "Shared Guild quest doesn't give me map location after friend
+// SHARE-REVEAL (FIELD BUGS 2026-10-13e, Starempire42: "Shared Guild quest doesn't give me map location after friend
 // talked to the quest npc" - "my friend found the quest npc and advanced the quest ... I do not have the next dungeon
 // destination. it tells me to ask for directions yet none of the npcs know where it is"; the journal: "The Nest of
 // Aneloth - Not on your map yet. Ask around for directions.").

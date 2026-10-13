@@ -203,7 +203,7 @@ test('AUDIT WORLD5 C6 (LIVED1): every collapse costs its hour and pays it in ful
   } finally { offline(); }
   const o = P();
   assert.ok(exhaustionOutcome({ entity: o }).health > 0 && exhaustionOutcome({ entity: o }).health > 0, 'offline: every collapse, in full');
-  // PIN MOVED (FIELD BUGS 2026-10-13d SPENT-ASHORE): the foes-about arm is no longer DFU's death but a tenth of the
+  // PIN MOVED (FIELD BUGS 2026-10-13e SPENT-ASHORE): the foes-about arm is no longer DFU's death but a tenth of the
   // health - still no hour paid there, which is what this line holds
   assert.deepEqual(exhaustionOutcome({ entity: P(), enemiesNearby: true }).kind, 'spent', 'the foes-about arm untouched by the hour');
   assert.doesNotMatch(rd('src/systems/rest.js'), /lastExhaustionHour/, 'no once-a-world-hour gate');

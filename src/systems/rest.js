@@ -97,7 +97,7 @@ export const exhaustedInWaterText = () => localizedText('exhaustedInWater', EXHA
 export const EXHAUSTED_SPENT_SHARE = 0.1;
 export const EXHAUSTED_SWIMMING_LINE = 'You are too exhausted to swim - get out of the water!';
 /**
- * FIELD BUGS 2026-10-13d (SPENT-ASHORE; a player near Knightshead: "the death screen suddenly appeared ... several
+ * FIELD BUGS 2026-10-13e (SPENT-ASHORE; a player near Knightshead: "the death screen suddenly appeared ... several
  * seconds after combat, despite having full health"; Mac on SWIM-SPENT: "We're our own thing now", and on FULL-GUARD:
  * "No kill from full health"): A FIGHTER WHO RUNS OUT OF FATIGUE WITH FOES ABOUT IS SPENT, NOT DEAD. DFU's OnExhausted
  * SetHealth(0)s a player on dry feet when AreEnemiesNearby - any live foe inside the classic spawn band, seen or not -

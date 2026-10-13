@@ -15,7 +15,7 @@
 //           dish (it never spoils) - so a dish bought at the market keeps what its cook gave it; absent for every other.
 //           PROF10: or a piece of jewellery's jeweller's hand (recipeLaw jewelHand) - 1 a Goldsmith's Silver (its points
 //           Gold's), 2 a Gemcutter's gem (+20%, not +10%)
-//         v CRAFT-PROCS (FIELD BUGS 2026-10-13d): the mint's version, stamped at the craft and kept by a temper's re-sign
+//         v CRAFT-PROCS (FIELD BUGS 2026-10-13e): the mint's version, stamped at the craft and kept by a temper's re-sign
 //           - the law the piece is minted under (systems/smithItems.js mintPiece): 1 its quality's roll and the ladder's
 //           last pass (MINT_V_LAST_PASS); absent on every record made before, which mints as it always did
 //
@@ -35,7 +35,7 @@ import { PROVENANCE_RE, MAKER_MAX, recipeById, MASTERWORK, rollsQuality, dyeOk, 
 export const PRODUCT_RECORD_V = 'p1';
 /** The bound on a record's length. */
 export const PRODUCT_RECORD_MAX = 512;
-/** CRAFT-PROCS (FIELD BUGS 2026-10-13d, a player: "Added potency and cast speed, cast cost affixes are not rolling on
+/** CRAFT-PROCS (FIELD BUGS 2026-10-13e, a player: "Added potency and cast speed, cast cost affixes are not rolling on
  *  crafted jewelry"): the first mint version whose Superior and Masterwork take the ladder's last pass - a line that does
  *  something, as a loot door's Magic and Rare take one (systems/smithItems.js mintPiece). */
 export const MINT_V_LAST_PASS = 1;

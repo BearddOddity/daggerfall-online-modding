@@ -1,4 +1,4 @@
-// FIELD BUGS 2026-10-13d (SPENT-ASHORE) - a player near Knightshead, "Delayed death after combat despite full health":
+// FIELD BUGS 2026-10-13e (SPENT-ASHORE) - a player near Knightshead, "Delayed death after combat despite full health":
 // "I killed all enemies without being hit. My health was full ... After the fight ended, the death screen suddenly
 // appeared. There was no visible attack, spell, trap, fall, or warning before death." Mac, on SWIM-SPENT: "I dont care
 // about DFU. We're our own thing now"; on FULL-GUARD: "No kill from full health".

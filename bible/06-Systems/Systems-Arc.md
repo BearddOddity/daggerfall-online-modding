@@ -792,7 +792,7 @@ DaggerfallEntity.SetFatigue + PlayerEntity's OnExhausted handler:
   click-to-close; enemies nearby (1072) or swimming (the watery-
   grave line) -> SetHealth(0), the fatal collapse. [DEPARTED: in the
   water since SWIM-SPENT (FIELD BUGS 2026-09-30b), near enemies since
-  SPENT-ASHORE (FIELD BUGS 2026-10-13d, 2026-10-13) - each drain to
+  SPENT-ASHORE (FIELD BUGS 2026-10-13e, 2026-10-13) - each drain to
   nothing costs a tenth of the health pool and a HUD line, no box;
   1072 is said by no host.]
 - **Parity fix en route**: DFU applies the per-minute fatigue loss
@@ -4146,7 +4146,7 @@ the unmounted door pinned ABSENT, the Wabbajack's forced reroll and
 latch with the world door's three laws, and Namira's four team arms
 plus the no-ring null.
 
-MACE-MAX (FIELD BUGS 2026-10-13d, "Molag bal mace do nothing"): the
+MACE-MAX (FIELD BUGS 2026-10-13e, "Molag bal mace do nothing"): the
 strength arm moves the MAX too. DFU's live effect raises its stat MAX
 mod beside its stat mod (`ChangeStatMaxMod` then `ChangeStatMod`,
 MaceOfMolagBalEffect.cs:138-139) and GetLiveStatValue clamps at
@@ -4166,7 +4166,7 @@ the type-26 row's new `unequipped` hook - the twelve-minute decay never
 ran for a Mace no longer worn, so its Strength stood for good. The
 condition bill was already DFU's (DamageEquipment's wear plus
 durabilityLoss = the blow's damage on a failed save). Pins:
-`test/fb1013d_macemax.test.js` (4), `tools/mutants/fb1013d_macemax.json`
+`test/fb1013e_macemax.test.js` (4), `tools/mutants/fb1013e_macemax.json`
 (8, all dead).
 
 ## V4 - THE BEAST IN TOWN: the transformed host laws (2026-08-27)

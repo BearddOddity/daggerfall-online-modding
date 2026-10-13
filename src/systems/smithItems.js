@@ -207,7 +207,7 @@ export function mintPiece({ recipe, quality, seed, maker = null, marked = false,
     if (eff.rarity && rarityEligible(item)) {
       const rolls = seededRng(seed >>> 0);
       applyRarity(item, eff.rarity, rolls, null, { fits });
-      // CRAFT-PROCS (FIELD BUGS 2026-10-13d): AND THE LADDER'S LAST PASS, on the same stream after the roll - a Superior's
+      // CRAFT-PROCS (FIELD BUGS 2026-10-13e): AND THE LADDER'S LAST PASS, on the same stream after the roll - a Superior's
       // (a Magic's) and a Masterwork's (a Rare's) chance at ONE line that does something, as every loot door's piece of its
       // tier takes it (lootRarity.js lastPass): a jewel's of four kinds (focus, castSpeed, potency, wellspring), a
       // weapon's of five, armour's thorns. On whatever the switch - the piece is its record's on every client, and the

@@ -269,7 +269,7 @@ test('AUDIT-DEATH1: the lethal exhaustion collapse goes through the ONE damage d
   // away, and a file-wide grep passed on THAT call while this one was
   // mutated back to a raw zero. A pin that another site can satisfy is
   // not a pin for this one.
-  // PIN MOVED (FIELD BUGS 2026-10-13d SPENT-ASHORE): the collapse has no lethal branch left - with foes about it costs a
+  // PIN MOVED (FIELD BUGS 2026-10-13e SPENT-ASHORE): the collapse has no lethal branch left - with foes about it costs a
   // tenth of the health, and the tenth that reaches nothing is what kills. So the law moves with it: the foes-about arm
   // takes its share through the damage door, shield bypassed, and the collapse writes no health raw.
   for (const h of ['scenes/world.js', 'scenes/exterior.js', 'scenes/worldModes.js', 'scenes/dungeonContext.js']) {

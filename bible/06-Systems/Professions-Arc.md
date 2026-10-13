@@ -702,7 +702,7 @@ Then **+1 step** each, at most: a seat's Forge / Workshop / Apothecary (SEAT0 7.
 specialisation that says so; Heartwood or a Warforged ingot among the inputs. Masterwright adds 5 points to
 Masterwork. Nothing passes Masterwork.
 
-CRAFT-PROCS (FIELD BUGS 2026-10-13d; a player: "Added potency and cast speed, cast cost affixes are not rolling on
+CRAFT-PROCS (FIELD BUGS 2026-10-13e; a player: "Added potency and cast speed, cast cost affixes are not rolling on
 crafted jewelry"): the roll is the loot door's whole roll now. The mint took the tier's `applyRarity` and never the
 door's last pass, and every line that does something is drawn in that pass alone (LOOT4), so no crafted piece carried
 one. A Superior and a Masterwork take the pass after the roll, on the same stream off the

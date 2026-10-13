@@ -25,11 +25,11 @@
 //     dashes flowing to him. Nothing flashes faster than three times a second.
 //   - Premultiplied: the light ADDED, the floor under a fill DARKENED (ONE, ONE_MINUS_SRC_ALPHA). A quad per shape.
 //
-// FIELD BUGS 2026-10-13d AOE-PERF (HellRay: "massive FPS drops when the boss performs AoE attacks and circles appear"): a
+// FIELD BUGS 2026-10-13e AOE-PERF (HellRay: "massive FPS drops when the boss performs AoE attacks and circles appear"): a
 // quad is laid over the ground its shape can draw on, and no more. A blow's reaches TELEGRAPH_REACH past it - its glow,
 // keyline and wave reach as far as the pixel is large - but his mark (telegraphMarkReach) and a path or a tether
 // (telegraphStrip) draw nothing past their own ground at any pixel's size, and theirs are that ground: an AoE frame at a
-// fighter's eye rasterised 3.4 screens of this pass, 2.1 now (tools/fb1013dPerfProbe.mjs). The fragment stage is the one
+// fighter's eye rasterised 3.4 screens of this pass, 2.1 now (tools/fb1013ePerfProbe.mjs). The fragment stage is the one
 // it was, byte for byte (bible/07-Rendering/Performance-Rig.md AOE-PERF).
 //
 // Not a DFU member. Ledger A (WB).
@@ -56,7 +56,7 @@ export const TELEGRAPH_POINTS_MAX = 10;
 export const TELEGRAPH_LIFT = 0.05;
 export const TELEGRAPH_MARGIN = 0.5;
 export const TELEGRAPH_REACH = 4;
-/** FIELD BUGS 2026-10-13d AOE-PERF: how far past its ring his mark's ring is drawn (its smoothstep's outer edge - the
+/** FIELD BUGS 2026-10-13e AOE-PERF: how far past its ring his mark's ring is drawn (its smoothstep's outer edge - the
  *  shader reads it from here), and how far past the ground a shape draws its quad is laid where that ground is all it
  *  draws (his mark; a path or a tether) - a hair, for the rounding of the quad's corners. */
 export const TELEGRAPH_MARK_RING = 0.2;
@@ -202,7 +202,7 @@ export function telegraphBounds(sh) {
 }
 
 /**
- * FIELD BUGS 2026-10-13d AOE-PERF: HOW FAR FROM WHERE HE STANDS HIS MARK CAN DRAW ANYTHING - its pass draws its ring
+ * FIELD BUGS 2026-10-13e AOE-PERF: HOW FAR FROM WHERE HE STANDS HIS MARK CAN DRAW ANYTHING - its pass draws its ring
  * (TELEGRAPH_MARK_RING about it), the floor inside it and the chevron before it (its base `halfW` either side at the ring,
  * its tip `r1` past it), and discards every fragment else whatever the pixel's size: no glow, no keyline, no wave. Its
  * quad was TELEGRAPH_REACH past the chevron's tip - three times the ground, a third of a fighter's screen, every frame
@@ -211,7 +211,7 @@ export function telegraphBounds(sh) {
 export const telegraphMarkReach = (sh) => Math.max(sh.r + TELEGRAPH_MARK_RING, Math.hypot(sh.r, sh.halfW), sh.r + sh.r1) + TELEGRAPH_TIGHT_PAD;
 
 /**
- * FIELD BUGS 2026-10-13d AOE-PERF: A PATH'S OR A TETHER'S OWN STRIP - { a, u, len, w }: its start (TELEGRAPH_TIGHT_PAD
+ * FIELD BUGS 2026-10-13e AOE-PERF: A PATH'S OR A TETHER'S OWN STRIP - { a, u, len, w }: its start (TELEGRAPH_TIGHT_PAD
  * past the capsule's end), its direction, its length and its half-width - or null for any other shape. A path's pass
  * (TELEGRAPH_POOL.path) writes its colour inside the lane alone (`fin`, the dashes flowing to him) and nothing past it at
  * any pixel's size - no line, no glow - so its quad is the strip, laid along it; it was the box about its whole run,

@@ -35,7 +35,7 @@ export const MAX_STAT_VALUE = 100;
  *  unbounded, as DFU's do. Combat and advancement read THIS, never
  *  the raw base.
  *
- *  MACE-MAX (FIELD BUGS 2026-10-13d): THE MAX MODS. maxMods is
+ *  MACE-MAX (FIELD BUGS 2026-10-13e): THE MAX MODS. maxMods is
  *  EntityEffectManager.MergeStatMaxMods (:1878-1883) - the sum of
  *  every live effect's StatMaxMods, assigned beside the stat mods
  *  (AssignMods, DaggerfallStats.cs:225-229) and saved with the effect

@@ -1,4 +1,4 @@
-// FIELD BUGS 2026-10-13d - WRIT-WALL, the Discord's "Cant turn in writs": "Have the materials literally on hand. They
+// FIELD BUGS 2026-10-13e - WRIT-WALL, the Discord's "Cant turn in writs": "Have the materials literally on hand. They
 // don't accept them. Doesn't really seem to matter if they're in the 'stores' part of your character. Or in the bag."
 // The screenshots: "Chapter writ - Wanted: 40 Iron, for the Mages Guild in Alik'r Desert - Pays 48 silver, 75 Renown ...
 // [Take] 0 held", and the inventory's "Iron - 100 of them".
@@ -11,7 +11,7 @@
 // card and on Take's title, what is held and walled and why (profBook.js walled, workTab.js writWalledText); a guild
 // writ's card the same; the service's gold refusal no longer sends the reader to withdraw what withdrawn is walled still.
 // Driven through the real Worker over node:sqlite (test/accountDb.mjs), the real books and the real board.
-// `01-Overview/Field-Bugs-2026-10-13d.md` WRIT-WALL; `06-Systems/Materials-Bag.md` section 4.
+// `01-Overview/Field-Bugs-2026-10-13e.md` WRIT-WALL; `06-Systems/Materials-Bag.md` section 4.
 import './chargenDom.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

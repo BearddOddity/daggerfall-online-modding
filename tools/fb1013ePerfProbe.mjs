@@ -1,4 +1,4 @@
-// FIELD BUGS 2026-10-13d AOE-PERF - THE BOSS'S CIRCLES AND THE CROWD'S SPRITES, MEASURED ON A REAL GL.
+// FIELD BUGS 2026-10-13e AOE-PERF - THE BOSS'S CIRCLES AND THE CROWD'S SPRITES, MEASURED ON A REAL GL.
 //
 // HellRay (Discord, "Performance issues with boss AoE attacks circles and player sprites"): "massive FPS drops when the
 // boss performs AoE attacks and circles appear on the ground ... Player sprites also cause severe performance drops,
@@ -31,7 +31,7 @@
 // fragments each case rasterises for the telegraph (every quad it lays, projected through the frame's own lens and
 // clipped to the screen - its pixels), and the GL draws.
 //
-// Usage: node tools/fb1013dPerfProbe.mjs [--w 960] [--h 540] [--frames 3] [--lane on|off] [--only court|crowd]
+// Usage: node tools/fb1013ePerfProbe.mjs [--w 960] [--h 540] [--frames 3] [--lane on|off] [--only court|crowd]
 //          [--before src/render/<a copy of gateTelegraph.js as it stood before, 3f66ff064's>.js]
 import { createServer } from 'vite';
 import { chromium } from 'playwright';

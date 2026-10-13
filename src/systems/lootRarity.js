@@ -1350,7 +1350,7 @@ export function wardrobePass(items, source, { rolls = Math.random, luck = 50, fi
  *  Magic's and Rare's chance at a line that does something, then each Legendary's one-in-ten Exalted - taken after
  *  every draw the door already makes, so a seeded door's earlier pieces are still its seed's (SET6's law: the gate's
  *  spoils, a town's thanks). The commoner draw first: an Exalted never moves a proc line's roll. CRAFT-PROCS (FIELD BUGS
- *  2026-10-13d): `on` the switch as the pass reads it - a door's is the ladder's own; a crafted piece's is on whatever
+ *  2026-10-13e): `on` the switch as the pass reads it - a door's is the ladder's own; a crafted piece's is on whatever
  *  the switch (systems/smithItems.js mintPiece: the piece is its record's on every client, as its quality's roll is, and
  *  the line's READER asks the switch - systems/lootPowers.js). */
 export function lastPass(pieces, rolls = Math.random, { on = lootRarityOn() } = {}) {

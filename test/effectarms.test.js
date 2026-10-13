@@ -392,7 +392,7 @@ test('X1 REVIEW: the four SetHealth(0) callers all say bypassShield, and each na
     // aliased at import, because a one-argument wrapper owns the name here
     'src/scenes/dungeonContext.js': 'hurtEntity',
   };
-  // PIN MOVED (FIELD BUGS 2026-10-13d SPENT-ASHORE): the exhaustion collapse is no SetHealth(0) in any host now - with
+  // PIN MOVED (FIELD BUGS 2026-10-13e SPENT-ASHORE): the exhaustion collapse is no SetHealth(0) in any host now - with
   // foes about (and in the water, SWIM-SPENT) it costs a share of the health through the same door, the shield still
   // bypassed - so exterior.js and worldModes.js, whose only SetHealth(0) it was, are held to that arm; the drownings
   // (world.js's Deep Waters breath, the dungeon's) still kill.

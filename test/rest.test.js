@@ -49,7 +49,7 @@ test('rest: the exhaustion outcome - a safe collapse rests an hour, enemies spen
   assert.equal(safe.health, 4);
   assert.equal(safe.fatigue, 800);   // maxFatigue (50+50)*64 = 6400 -> /8
   assert.equal(safe.magicka, 5);
-  // Enemies nearby: PIN MOVED (FIELD BUGS 2026-10-13d SPENT-ASHORE): no longer DFU's death with the 1072 text whatever
+  // Enemies nearby: PIN MOVED (FIELD BUGS 2026-10-13e SPENT-ASHORE): no longer DFU's death with the 1072 text whatever
   // the health, but the water's tenth of the health pool a drain and a line of its own - no box, so no text id
   const near = exhaustionOutcome({ enemiesNearby: true, swimming: false, entity: P() });
   assert.equal(near.kind, 'spent');
@@ -61,7 +61,7 @@ test('rest: the exhaustion outcome - a safe collapse rests an hour, enemies spen
   // of the health pool a drain and a line, with or without enemies about
   const wet = exhaustionOutcome({ enemiesNearby: false, swimming: true, entity: P() });
   assert.equal(wet.kind, 'drown');
-  assert.equal(wet.damage, Math.ceil(P().maxHealth * EXHAUSTED_SPENT_SHARE));   // PIN MOVED (FIELD BUGS 2026-10-13d SPENT-ASHORE): the share is the water's and the shore's, one constant
+  assert.equal(wet.damage, Math.ceil(P().maxHealth * EXHAUSTED_SPENT_SHARE));   // PIN MOVED (FIELD BUGS 2026-10-13e SPENT-ASHORE): the share is the water's and the shore's, one constant
   assert.equal(wet.line, EXHAUSTED_SWIMMING_LINE);
   assert.equal(wet.textId, null);
   assert.ok(wet.inWater);

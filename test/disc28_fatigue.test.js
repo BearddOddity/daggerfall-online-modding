@@ -44,7 +44,7 @@ function dieAndRise(screenMinutes) {
       if (n <= 0) return;
       e.fatigue = Math.max(0, e.fatigue - n);
       if (e.fatigue <= 0 && e.health > 0) {
-        // PIN MOVED (FIELD BUGS 2026-10-13d SPENT-ASHORE): foes about, a collapse is no longer a death but a tenth of the
+        // PIN MOVED (FIELD BUGS 2026-10-13e SPENT-ASHORE): foes about, a collapse is no longer a death but a tenth of the
         // health a drain (the hosts' arm, through the damage door) - the hunted body still dies of the drain, ten minutes on
         const o = exhaustionOutcome({ enemiesNearby: true, entity: e });
         events.push(o.kind);

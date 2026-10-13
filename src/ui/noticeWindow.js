@@ -515,7 +515,7 @@ export function mountNoticeBoard(host, deps) {
     li.append(el('p', 'writ-pay', `Pays ${w.pay.toLocaleString('en-US')} silver, ${w.renown.toLocaleString('en-US')} Renown${own && earns ? `, standing and Merit with the ${poster}` : poster ? ` and standing with the ${poster}` : ''}`));
     li.append(el('p', 'writ-left', w.state === 'mine' ? 'Taken by you' : w.state === 'taken' ? 'Filled by another' : timeLeftText(w.expiresAt, nowS())));
     const held = work.book.held(w.material);
-    // WRIT-WALL (FIELD BUGS 2026-10-13d, "Cant turn in writs": 100 Iron in the pack, "0 held" on the card and nothing
+    // WRIT-WALL (FIELD BUGS 2026-10-13e, "Cant turn in writs": 100 Iron in the pack, "0 held" on the card and nothing
     // said why): what is held and no writ may spend - looted, shop-bought, traded or gold-bought (net/profBook.js walled) -
     // named on the card and on Take's title, wherever it is why the writ cannot be filled
     const walled = w.state === 'open' && held < w.qty ? Number(work.book.walled?.(w.material)) || 0 : 0;

@@ -67,7 +67,7 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const RACES = range(2000, 2007), CLASSES = range(2100, 2117);
 const CHARGEN_TEXT = [300, 301, 302, 303, 306, ...range(2400, 2407)];
 // the rest boxes, off the constants the rest law speaks them from
-// PIN MOVED (FIELD BUGS 2026-10-13d SPENT-ASHORE): 1072 (EXHAUSTED_ENEMIES_TEXT_ID) left the list with the constant -
+// PIN MOVED (FIELD BUGS 2026-10-13e SPENT-ASHORE): 1072 (EXHAUSTED_ENEMIES_TEXT_ID) left the list with the constant -
 // the collapse with foes about is a HUD line now, no box, and no host speaks the record
 const REST_BOXES = [...Object.values(REST_TEXT), EXHAUSTED_SAFE_TEXT_ID, NOT_SATED_TEXT_ID];
 

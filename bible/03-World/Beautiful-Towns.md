@@ -406,7 +406,7 @@ loader: all 410 rings shut, none open at either end of any line; every one of th
 author's farms stand inside the ring by design and reach at most 50 units into a wall piece (house `215` in
 `WALLAA06/12/13.FARMAA01`), as Daggerfall Unity places them too: recorded, unchanged.
 
-**What a hill holds** (FIELD BUGS 2026-10-13d HILL-SEAT, 2026-10-13; SylviaBun: "Temple of Kynareth has floating
+**What a hill holds** (FIELD BUGS 2026-10-13e HILL-SEAT, 2026-10-13; SylviaBun: "Temple of Kynareth has floating
 houses due to terrain modifications"). A hill's stand-in is each cell's median, which seats a model at its origin but
 falls away towards a plateau's edge: TEMPASH3 (about a fifth of Beautiful Villages' Kynareth temples) stands houses
 `127`, `129`, `201` and temple `402` on hill `52758`'s plateau, and a house's far wall hung over the drawn slope - at
@@ -418,7 +418,7 @@ footprint and 0.25 m past it, and a 45-degree bank down until it is under the hi
 picture, laid in the hill's own frame, so the grass runs on where they meet. No model moves and nothing is raised
 over a base. The streamed world merges the pads with the pixel's statics and its collider bucket, both freed with the
 pixel; the fixed city (`?exterior`) draws and collides them for its life; TREES-SEATED's seat reads them. Every point
-of every such footprint now stands within 0.15 m of what is drawn (`test/fb1013d_hillseat.test.js`; the whole packs
+of every such footprint now stands within 0.15 m of what is drawn (`test/fb1013e_hillseat.test.js`; the whole packs
 swept with the player's ARCH3D on `ARENA2_PATH`).
 
 ### Not stood in

@@ -597,11 +597,11 @@ open from this page: the build is a long main-thread task - MWNPC3 (section 8 th
 peer's reach sweep; a build gate across lanes is MWNPC4's. MWNPC2 (section 7 there) closed the other: every
 seen body's picture is taken in ONE bind of the sprite target now, a tile each, where each body took its own pass.
 
-## AOE-PERF - the boss's circles laid over their own ground; the crowd measured (FIELD BUGS 2026-10-13d, 2026-10-13)
+## AOE-PERF - the boss's circles laid over their own ground; the crowd measured (FIELD BUGS 2026-10-13e, 2026-10-13)
 
-HellRay on Discord, `01-Overview/Field-Bugs-2026-10-13d.md`: *"massive FPS drops when the boss performs AoE attacks and
+HellRay on Discord, `01-Overview/Field-Bugs-2026-10-13e.md`: *"massive FPS drops when the boss performs AoE attacks and
 circles appear on the ground ... Player sprites also cause severe performance drops, especially when more than 10 players
-are gathered in one area."* Measured first, by `tools/fb1013dPerfProbe.mjs`: the real Renderer in Chromium on SwiftShader
+are gathered in one area."* Measured first, by `tools/fb1013ePerfProbe.mjs`: the real Renderer in Chromium on SwiftShader
 (software GL - its time grows with the fragments and vertices it shades, so it measures overdraw; it is no GPU and its
 milliseconds are relative), 960x540, the enhanced lane on, the Burning Court's own mesh, art, lights and fog, the GL synced
 by a 1x1 read-back before and after the part measured, every case once a round and the median of five rounds. The
@@ -657,8 +657,8 @@ court's braziers flicker its light - so keeping it would change what it looks li
 drawn and their size on the screen, and nothing in it is drawn for nothing. NOT SEEN: the classic class sprite and the
 paperdoll (they need ARENA2), the name layer and the auras (not drawn by the probe), and any of this on a GPU.
 
-Pinned: `test/fb1013d_aoeperf.test.js` (4) - his mark's quad holds every fragment the shader draws for it at four
+Pinned: `test/fb1013e_aoeperf.test.js` (4) - his mark's quad holds every fragment the shader draws for it at four
 pixel sizes under each term of its reach and is a third of the box it was; a path's strip, as the vertex stage lays it,
 holds every fragment the shader draws for it, the pass laying it on the walkways' quad and putting the court's back;
 every other shape keeps TELEGRAPH_REACH; and the count at a fighter's eye at 960x540 and 1920x1080 (the AoE frame under
-0.65 of what it rasterised, his mark and his host's a third). `tools/mutants/fb1013d_aoeperf.json`: 11 mutants, all dead.
+0.65 of what it rasterised, his mark and his host's a third). `tools/mutants/fb1013e_aoeperf.json`: 11 mutants, all dead.

@@ -1,4 +1,4 @@
-// MACE-MAX (FIELD BUGS 2026-10-13d, a player: "Molag bal mace do nothing" - "It's effect is not working and it's
+// MACE-MAX (FIELD BUGS 2026-10-13e, a player: "Molag bal mace do nothing" - "It's effect is not working and it's
 // extremely fragile"; the tooltip: THE MACE OF MOLAG BAL, "drains its victims of spell points and gives them to the
 // bearer. If the victim has no spell points, he is drained of strength, which is also transferred to the wielder.
 // Using the Mace of Molag Bal can actually give its bearer more spell points or more strength than he would have

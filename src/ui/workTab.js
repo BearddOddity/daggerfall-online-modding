@@ -130,7 +130,7 @@ const commissionSaid = (state) => (state === 'filled' ? t('prof.work.said.filled
  *  "114 struck, less 6 tax", which reads as 108. */
 export const paidText = (pay, tax) => (tax > 0 ? t('prof.work.paidTax', '{pay} struck to your account ({tax} tax taken)', { pay: marksText(pay), tax: marksText(tax) })
   : t('prof.work.paid', '{pay} struck to your account', { pay: marksText(pay) }));
-/** WRIT-WALL (FIELD BUGS 2026-10-13d, "Cant turn in writs": "Have the materials literally on hand. They don't accept
+/** WRIT-WALL (FIELD BUGS 2026-10-13e, "Cant turn in writs": "Have the materials literally on hand. They don't accept
  *  them"): what a writ's card says of the units held that no writ may spend (net/profBook.js `walled`) - law 3 and the
  *  gold wall in UNCOUNTED's words, on the card and on its button's title alike: a Court or chapter writ's
  *  (ui/noticeWindow.js writNode) and a guild writ's (guildWritCard). `material` its name, counted. */

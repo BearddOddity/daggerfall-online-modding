@@ -654,7 +654,7 @@ longer at once, since SWIM-SPENT (FIELD BUGS 2026-09-30b): each drain to
 nothing there costs a tenth of the health pool, said on the HUD, until
 the swimmer reaches the shore (`systems/rest.js` `exhaustionOutcome`'s
 `drown` - AUDIT C&C N7).] [Near enemies no longer at once either, since
-SPENT-ASHORE (FIELD BUGS 2026-10-13d, 2026-10-13: a player killed at full
+SPENT-ASHORE (FIELD BUGS 2026-10-13e, 2026-10-13: a player killed at full
 health seconds after a fight): on dry feet with a foe in the classic
 spawn band a drain to nothing costs the same tenth, with its own HUD line
 ("You are too exhausted to fight - get clear and rest!") and no box, in

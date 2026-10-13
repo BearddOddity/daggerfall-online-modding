@@ -195,7 +195,7 @@ const HANDLERS = new Map([
         st.statMods = {};   // SetStatMod(Strength, 0) (:76)
       }
     },
-    /** MACE-MAX (FIELD BUGS 2026-10-13d): UnequipHeldItem's bundle sweep (EntityEffectManager.cs:1073-1083) - the
+    /** MACE-MAX (FIELD BUGS 2026-10-13e): UnequipHeldItem's bundle sweep (EntityEffectManager.cs:1073-1083) - the
      *  live effect is the Held bundle StartHeldItem assigned when the Mace was worn (:1045-1061, `FromEquippedItem`),
      *  and taking the Mace off removes it with its mods, its max mods and its magicka increase; a Mace worn again
      *  starts a fresh one. The entry is not item-pinned (a pin is stripped from the save - save.js - and DFU saves

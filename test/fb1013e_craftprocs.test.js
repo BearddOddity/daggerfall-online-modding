@@ -1,4 +1,4 @@
-// CRAFT-PROCS (FIELD BUGS 2026-10-13d, a player, "Boar": "New affixes on crafted items - Added potency and cast speed,
+// CRAFT-PROCS (FIELD BUGS 2026-10-13e, a player, "Boar": "New affixes on crafted items - Added potency and cast speed,
 // cast cost affixes are not rolling on crafted jewelry").
 //
 // Every line that DOES something - LOOT4's proc kinds: a jewel's focus ("cast cost"), castSpeed, potency and wellspring; a

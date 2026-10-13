@@ -6625,9 +6625,9 @@ an Abandon only for a bounty and a revenant's hunt.
 
 `test/questshelfmain.test.js` (4); `tools/mutants/questshelfmain.json` (14), all dead.
 
-## NO-ASKS-AGAIN - a No that leads nowhere asks again, on the next click (2026-10-13, FIELD BUGS 2026-10-13d)
+## NO-ASKS-AGAIN - a No that leads nowhere asks again, on the next click (2026-10-13, FIELD BUGS 2026-10-13e)
 
-The batch's record: `01-Overview/Field-Bugs-2026-10-13d.md`, report 6.
+The batch's record: `01-Overview/Field-Bugs-2026-10-13e.md`, report 6.
 
 The report, "Cant complete quest 'the lost child'": *"I found the child in the dungeon, interacted with it, accidentally
 said 'no' when it asked me to get it, and now i cant interact with it at all. Tried restarting the game, didnt help."*
@@ -6662,12 +6662,12 @@ defeats it in DFU as here: the healer says 1013 on every click and never asks ag
 No that does something is outside this law by its own terms; it is the corpus's one prompt whose answer clears the task
 that asks it.
 
-`test/fb1013d_noasks.test.js` (5): the real scripts through the real parser and machine over a crafted region, every
+`test/fb1013e_noasks.test.js` (5): the real scripts through the real parser and machine over a crafted region, every
 click through QuestResourceBehaviour.doClick and every answer through the box's own callback - The Lost Child asked
 again after a No, twice, and a Yes then leaving every task and action as a first Yes does; a save taken after the No
 loading asked again; M0B00Y16's refused villager and K0C00Y03's refused guard asked once (DFU's law); the action and the
 asking-task guards on the script's own variants (a `_no_ task:` merged in, a reader of `_S.07_`, `_S.07_` linked to a
 global); the corpus read by the law itself (the inert Nos, the prompts asked on a click, and the one it re-arms).
-`tools/mutants/fb1013d_noasks.json` (12), all dead - one of them killed by `test/questsave.test.js`'s restore-order pin:
+`tools/mutants/fb1013e_noasks.json` (12), all dead - one of them killed by `test/questsave.test.js`'s restore-order pin:
 the law reads no task's state before its verdict, so a load never reads a global's task (whose read writes it from the
 store).

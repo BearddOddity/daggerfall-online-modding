@@ -380,7 +380,7 @@ does not, its tier's band, appended after its numbers, the price with it. Every 
 Exalted, so neither moves the other's roll whatever a list's order. The gate's spoils and a town's thanks take them in
 the same pass, after every earlier draw.
 
-CRAFT-PROCS (FIELD BUGS 2026-10-13d): and a crafted Superior or Masterwork. The craft's mint (`systems/smithItems.js`
+CRAFT-PROCS (FIELD BUGS 2026-10-13e): and a crafted Superior or Masterwork. The craft's mint (`systems/smithItems.js`
 mintPiece) took its quality's `applyRarity` and never this pass, so no crafted piece carried a line that does
 something - a jewel none of its four, the caster's lines. It takes the pass now, on its record's stream after the roll,
 with `lastPass`'s `on` set: the switch is not asked, because the piece is its record's on every client and the line's
@@ -812,7 +812,7 @@ drought counted once at the take and none in a new game; the codex's silent back
 `CHAMPION_TRAIT_MAX` (world139); the four item fields declared and the Broker's wares bound (no salvage); the guild
 popup's F free of DFU's four letters; the lines' finds never a peer's street body.
 
-CRAFT-PROCS (FIELD BUGS 2026-10-13d): "a Masterwork's roll never reach[es] it" was read for the doors' order, and was
+CRAFT-PROCS (FIELD BUGS 2026-10-13e): "a Masterwork's roll never reach[es] it" was read for the doors' order, and was
 written when focus was a jewel's only proc line. No page kept crafted pieces from the proc lines on purpose. A crafted
 Superior's and Masterwork's roll takes the last pass since, on its own record's stream (the LOOT4 record's CRAFT-PROCS
 note, section 15); the Broker's `applyRarity` still never does.

@@ -177,7 +177,7 @@ function witnessStatements(db, player, nowS, regions, own, guardSql, guardBinds)
 
 // ─── WHAT A ROW LOOKS LIKE TO THE CLIENT ─────────────────────────────
 
-/** CRAFT-PROCS (FIELD BUGS 2026-10-13d): a piece's `version` as the client's mint reads it (smithItems.js mintPiece) -
+/** CRAFT-PROCS (FIELD BUGS 2026-10-13e): a piece's `version` as the client's mint reads it (smithItems.js mintPiece) -
  *  its record's, so every row a piece is read from selects `p.record`; none for a record made before the stamp. */
 const mintVersionView = (record) => { const v = mintVersionOf(record); return v ? { version: v } : {}; };
 const pieceOf = (p, wear) => (p ? {
