@@ -132,8 +132,8 @@
   {
     "name": "SCALE4f-overload-unread",
     "file": "server-account/src/index.js",
-    "old": "      return no('server', d1Overloaded(e) ? 503 : 500, origin);",
-    "new": "      return no('server', 500, origin);",
+    "old": "  return no('server', d1Overloaded(e) ? 503 : 500, origin);",
+    "new": "  return no('server', 500, origin);",
     "tests": [
       "test/scale4f.test.js"
     ],
@@ -142,8 +142,8 @@
   {
     "name": "SCALE4f-every-fault-503",
     "file": "server-account/src/index.js",
-    "old": "      return no('server', d1Overloaded(e) ? 503 : 500, origin);",
-    "new": "      return no('server', 503, origin);",
+    "old": "  return no('server', d1Overloaded(e) ? 503 : 500, origin);",
+    "new": "  return no('server', 503, origin);",
     "tests": [
       "test/scale4f.test.js"
     ],

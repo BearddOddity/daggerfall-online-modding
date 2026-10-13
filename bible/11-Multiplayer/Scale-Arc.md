@@ -72,6 +72,7 @@ Four read-only audits covered the relay (`server/src/index.js`), the account ser
 | SCALE4h | 10k writes: a player's hot state off the one primary (per-account objects or shards) | No | **Built** (2026-10-11, this branch; acct112) - measured first: written less at the source, not moved - Renown coalesced, the session touched hourly, the metrics by table; a token bound to a key considered |
 | SLIM-FRAME | The second wire's place in its own units: a pose's height to the centimetre in every room, a dungeon's, a town's and a building's x and z with it, a cell's x and z whole world units - the relay's fan says the room | Yes, once | **Built** (2026-10-11, this branch; relay world194, one drop at the merge) |
 | D1-NEAR | The account Worker beside its database's primary, by name (`[placement] region`): Smart Placement ran it in Sydney, a Pacific from the primary, and every statement on the primary paid the crossing; every deploy says where it answers from, what a statement costs it there and where D1 says its primary is | No | **Built** (2026-10-12, this branch - no migration, no version, no drop; audited, AUDIT D1-NEAR) |
+| HOMES-SHED | The account database overloaded from 14:11 UTC (2026-10-13): the busiest route one D1 request where it was two (a town's homes and its Open Gates edict in one batch); the siege blackout's question answering a throw as every route does; a town unanswered backing off on the client, YARD-SHED's law | No | **Built** (2026-10-13, this branch - acct127, no migration, no drop) |
 | SCALE6 | Abuse and backups: Turnstile on guest creation, /64 IPv6 rate keys, bans, report and ignore, `ALLOWED_ORIGIN`, R2 snapshots, a hub export | Some | Alongside |
 
 **Relay deploy policy (SCALE):** relay changes are batched into as few deploys as possible, each in a window announced beforehand. A deploy drops every player, and until SCALE2 every reconnect is a D1 write storm.
@@ -1997,6 +1998,49 @@ are its page's.
 - **The replicas' share** (AUDIT D1-NEAR P3): beside the primary, the reads SCALE4d's sessions offer a replica may land
   on the primary itself - `double7` over `double3` for the mint and the heartbeat, a day either side of the deploy, says.
 - **Where the clock runs** (above): its own metrics points say it (`cron:<job>`, the D1 wait by job).
+
+## HOMES-SHED: built (2026-10-13, this branch - acct127, no migration, no drop)
+
+From play, 2026-10-13: the account database overloaded from 14:11 UTC ("servers are under really heavy load. Fix
+whatever you can and quick"). The Account database load run at 14:29 read the hour before it: the D1 wait went from
+714-856 s a minute at 14:09-14:10 (about 0.2 s a request) to 20,000-178,000 s a minute from 14:11 (9 s a request at
+14:11, 31 s at 14:14) while the statements a minute fell, every route's p95 10 to 95 seconds - past the client's own
+waits, so each ask failed and was asked again. `/v1/homes/town` led the hour: 88,079 asks, six times the heartbeat's
+15,091, carrying 324,034 of the hour's some 920,000 statements and 328,039 s of its D1 wait. From outside,
+`/v1/seats/sieges/live` answered 11 of 25 asks at 14:30 with a bare 500 in about 0.3 s, no body at all.
+
+What it was not: no deploy, cron or workflow ran at 14:11 (the account crons fire each minute and at :41), Cloudflare's
+status named no D1 incident, and the update before it (#868 GATHER-FEEL I-II) changed no call to the account service.
+What tipped the database at 14:11 is NOT found here (left, below). What kept it down, and what this slice takes away:
+
+- **The busiest route asked the database twice.** `homesInTown` read the town's Open Gates edict in a request of its
+  own before the homes read, on every ask while the seats are open (production's `SEATS_OPEN`) - D1's query insights
+  counted the two at 1.63 million a day each. Now `seatHolding.js:"export const openGatesRead"` is the edict's
+  statement and `homesInTown` sends it in the homes read's own batch: one request where there were two, the answer the
+  same.
+- **A town unanswered was asked six times as often.** `onlineHomes.js` asked a failed town again every `HOME_RETRY_MS`
+  (10 s) where an answered one waits `HOME_TOWN_TTL_MS` (60 s) - YARD-SHED's fault on the yards (`homeYards.js`
+  `yardRetryMs`), never taken away from the homes. Now `homeRetryMs` doubles each failure in a row to
+  `HOME_RETRY_MAX_MS` (five minutes) and an answer starts the count again; a forced ask (a write of mine read back) is
+  never held. A client change: a tab takes it at its next load.
+- **The siege blackout's question threw past the service.** `/v1/seats/sieges/live` is the one route above the
+  service's try that asks the database, so an overloaded D1's throw left the Worker as a bare 500 - no body, no log
+  line and no metrics point (`measured()` never reached its write). Now `server-account/src/index.js:"const thrown = (path, e, origin) =>"`
+  is the service's one answer to a throw, the try's catch and that route's alike: an overload a 503 `server`, any
+  other throw a 500, each logged with its path and counted. SCALE4f's two catch mutants follow it there.
+
+Left, each with its reason:
+- **What tipped the database at 14:11.** The run's minute rows before 14:09, its clock and its non-2xx answers would say
+  whether 13:28's relay deploy (world200: every player dropped and reconnected) began it; they were not read here.
+- **Every other caller that asks harder when the service fails.** Market, marks, notices, writs and the professions
+  retry twice within 1.5 s; several others on a fixed 1-5 s. One rule in `accountClient.js` - an overload's 503, or no
+  answer, backing every read off together, a write delayed and never dropped - is the fix for the class, and it
+  touches every caller: the owner's call, not this slice's.
+- **The healthy rate.** `HOME_TOWN_TTL_MS` is what sets the route's rate when the service answers; a longer one cuts it
+  further and shows another player's changes to a home later - also the owner's call.
+
+Pins: `test/homes_shed.test.js` (3); `tools/mutants/homes_shed.json` (8 dead); SCALE4f's `overload-unread` and
+`every-fault-503` re-aimed at `thrown` (both dead).
 
 ## THE PLAN PAST 2,000 (2026-10-10)
 
