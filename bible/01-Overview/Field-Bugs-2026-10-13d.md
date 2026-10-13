@@ -17,7 +17,7 @@ is a Ledger A row.
 | 4 | "The current situation where doors lock at shops and inns in Daggerfall Capital" - "Once you get stuck, there's no way out" (Nes) | one player's Lock spell, at the caster's level, reached every visitor through the building's act and its thirty-day memory | fixed (SPELL-LOCK) |
 | 5 | "Some locations have floating houses" - "Temple of Kynareth has floating houses due to terrain modifications" (SylviaBun) | the pack hills' stand-ins seat a plateau's houses at their origin and fall away under their edges | fixed (HILL-SEAT) |
 | 6 | "Cant complete quest 'the lost child'" - "accidentally said 'no' ... now i cant interact with it at all" (Ant1-Chr1st) | DFU's own soft-lock: K0C00Y05's No leads nowhere and its clicked-npc task never listens again | fixed (NO-ASKS-AGAIN), a departure |
-| 7 | "Performance issues with boss AoE attacks circles and player sprites" (HellRay) | being measured | in progress (AOE-PERF) |
+| 7 | "Performance issues with boss AoE attacks circles and player sprites" (HellRay) | being measured | the telegraphs' overdraw cut (AOE-PERF); the crowd measured, nothing drawn for nothing |
 | 8 | "Molag bal mace do nothing" - "It's effect is not working and it's extremely fragile" (Boar) | the strength arm raises a stat the port caps at 100 - DFU raises the cap with it | fixed (MACE-MAX) |
 | 9 | "Tavern in Issaqumbaa marked as a player house" (SylviaBun) | the door's plaque named the first building box holding the ray's point - a neighbour house's - while the click entered the tavern | fixed (DOOR-NAME) |
 | 10 | "Delayed death after combat despite full health" (sxxlxxr, Knightshead) | DFU's exhaustion collapse: fatigue spent with a foe in the spawn band is death whatever the health, and the box saying so was replaced by the death screen before it drew | fixed (SPENT-ASHORE), a departure |
@@ -300,6 +300,42 @@ cover that.
 `test/fb1013d_noasks.test.js` (5); `tools/mutants/fb1013d_noasks.json` (12, all dead; one killed by questsave.test.js's
 restore-order pin). No pin moved.
 
+## AOE-PERF: the boss's circles shaded ground they never draw on (7)
+
+`src/render/gateTelegraph.js` telegraphMarkReach, telegraphStrip, the vertex stage's `uStrip`; `tools/fb1013dPerfProbe.mjs`.
+
+MEASURED FIRST (a recording GL in Node found the CPU's side small - the passes make no buffer, program or texture a frame
+and stall nothing - so the cost had to be measured where it is spent): `tools/fb1013dPerfProbe.mjs` runs the real
+Renderer in Chromium on SwiftShader at 960x540, the court's own mesh, art, lights and fog, the shapes from the real
+producers, the GL synced by a 1x1 read before and after the part timed, cases interleaved, the median of five rounds, at
+a load average of 8-10 on four cores (a first pass at 40-50 gave the same ratios at about four times the milliseconds).
+SwiftShader pays for every fragment a quad covers, discarded or not - the overdraw a GPU pays too. At a fighter's eye 8 m
+from him, the court frame itself takes about 2.0 s here, and an AoE frame laid twelve blended telegraph passes over 3.4-3.7
+screens of fragments: 575 ms on top of it - more than forty players cost (265 ms; eight Morrowind bodies 157 ms, forty
+sprite walkers 190 ms). Two kinds of shape were laid over ground they never draw on at any pixel's size: his MARK (ring,
+floor, chevron - every frame of the fight), its quad 4 m past the chevron's tip; and his host's PATHS and TETHERS, each
+quad the box about the lane's whole run for a strip 0.7 m wide.
+
+FIXED. The mark's quad is its own ground (`telegraphMarkReach`) and a path's or a tether's its own strip (`telegraphStrip`,
+the vertex stage laying the walkways' quad along it, `uStrip`). Every other shape keeps TELEGRAPH_REACH - its glow, keyline
+and wave reach as far as the pixel is large. The fragment stage is byte for byte the one it was; the AoE frames read back
+differ from before in 675-885 texels on hard edges, fewer than the old pass differs from itself with the eye moved a
+millimetre. His mark 0.39 -> 0.05 screens (60 -> 9 ms), his host's eight shapes 1.51 -> 0.54 (303 -> 100 ms), an AoE frame
+3.37 -> 2.06 (575 -> 430 ms; 300-373 ms at a first-person eye). A single blow is unchanged (0.45-0.51 screens). ONE PASS A
+COURT, the shapes looped in one fragment stage, was built and measured: slower in every case on SwiftShader and failing the
+look check - not shipped.
+
+THE CROWD, MEASURED AND NOT CHANGED. Past eight a peer is one billboard (an Eye Of The Beholder walker); the eight bodies
+nearest are posed and drawn each frame, about 20 ms each here, the cost growing with the players drawn and nothing drawn
+for nothing. A body's picture kept across frames would change its look (it breathes; the braziers flicker its light).
+The CPU's side is under 5 ms in every case.
+
+NOT SEEN. A GPU; the classic class sprite and the paperdoll lane (they need ARENA2); the names and the auras (the probe
+draws neither). The reporter's machine and settings.
+
+`test/fb1013d_aoeperf.test.js` (4); `tools/mutants/fb1013d_aoeperf.json` (11, all dead; wb4's and wb13a's campaigns re-run,
+62 of 62 dead). No pin moved. `07-Rendering/Performance-Rig.md` AOE-PERF, `11-Multiplayer/World-Bosses.md` WB13a.
+
 ## THE FOUR HOSTS
 
 - SPELL-LOCK: the law is the ActionSystem's, every host's door graph. worldModes.js (a building: its act through
@@ -326,6 +362,10 @@ restore-order pin). No pin moved.
   the arena's sand's fall - a bout keeps its own law).
 - NO-ASKS-AGAIN: the quest machine's law, which world.js, exterior.js, worldModes.js and dungeonContext.js all tick and
   restore the same way; no host edited.
+- AOE-PERF: the pass is the one the hosts share, none edited - world.js hands the court's and the Hour's pass
+  (drawGateCourt, drawSdTelegraph) and draws the street's peers; worldModes.js draws both passes in the dungeon arm and the
+  peers in the dungeon and the building; dungeonContext.js stands the court's level and draws neither; exterior.js stands
+  no gate and no peers.
 
 ## Pins
 
@@ -340,3 +380,4 @@ carries the mod's `.cs:701-702` that DOOR-NAME's comment cites.
 `test/fb1013d_craftprocs.test.js` (5); `tools/mutants/fb1013d_craftprocs.json` 26, all dead.
 `test/fb1013d_spentashore.test.js` (4); `tools/mutants/fb1013d_spentashore.json` 14, all dead.
 `test/fb1013d_noasks.test.js` (5); `tools/mutants/fb1013d_noasks.json` 12, all dead.
+`test/fb1013d_aoeperf.test.js` (4); `tools/mutants/fb1013d_aoeperf.json` 11, all dead.
