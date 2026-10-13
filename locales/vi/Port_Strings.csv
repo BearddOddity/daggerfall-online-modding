@@ -1,4 +1,6 @@
 Key,Value
+features.questWaypoint.note,"Một dấu hiệu trong tầm nhìn phía trên nơi la bàn chỉ tới cho nhiệm vụ bạn đang theo dõi, kèm khoảng cách. Dấu hiệu này theo Dấu nhiệm vụ và Quest guidance. Gán phím cho nó trong Controls."
+features.questWaypoint.title,"Điểm dẫn đường nhiệm vụ"
 lang.offer,"Chơi bằng tiếng Việt?"
 lang.offer.machine,"Bản dịch này là bản dịch máy và vẫn đang được kiểm tra."
 lang.offer.no,"Không, giữ tiếng Anh"

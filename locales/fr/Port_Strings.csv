@@ -851,6 +851,8 @@ features.questMarks.note,"Les lieux de vos quêtes sont marqués sur la carte, e
 features.questMarks.title,"Marqueurs de quête"
 features.questTracker.note,"Une carte en haut à droite montre la quête dont le journal a changé en dernier - sa plus récente entrée, où elle mène et le temps restant - ou celle que vous suivez depuis le journal. Désactivé correspond à l’ATH classique, qui ne dit rien des quêtes."
 features.questTracker.title,"Suivi de quête"
+features.questWaypoint.note,"Un repère dans la vue, au-dessus du lieu que votre boussole indique pour la quête suivie, avec la distance. Il suit Marqueurs de quête et Quest guidance. Assignez-lui une touche dans Controls."
+features.questWaypoint.title,"Point de passage de quête"
 features.quickLoot.note,"Pillez sans fenêtre : la molette parcourt la liste, Activer prend un objet et une touche prend tout (Prendre l’équipement choisit quel équipement ; la camelote est laissée). Désactivé utilise la fenêtre d’inventaire."
 features.quickLoot.title,"Pillage rapide"
 features.quickSlots.note,"Losange place votre arme, votre main secondaire et deux objets rapides dans un losange en bas à gauche, réglés depuis l’inventaire. Barre de raccourcis place dix emplacements au-dessus de vos barres de santé sur les touches 1 à 0, remplis en glissant depuis votre sac et votre grimoire. Désactivé masque le losange, mais ses touches fonctionnent toujours."

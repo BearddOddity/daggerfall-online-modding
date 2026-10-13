@@ -851,6 +851,8 @@ features.questMarks.note,"I luoghi delle tue missioni sono segnati sulla mappa, 
 features.questMarks.title,"Segni delle missioni"
 features.questTracker.note,"Una scheda in alto a destra mostra la missione che il tuo diario ha cambiato per ultima - la voce più recente, dove indica e il tempo rimasto - o quella che segui dal diario. Disattivato è l’HUD classico, che non dice nulla delle missioni."
 features.questTracker.title,"Monitor delle missioni"
+features.questWaypoint.note,"Un indicatore nella visuale sopra il luogo che la bussola indica per la missione seguita, con la distanza. Segue Segni delle missioni e Quest guidance. Assegnagli un tasto in Controls."
+features.questWaypoint.title,"Waypoint della missione"
 features.quickLoot.note,"Saccheggia senza finestra: la rotellina scorre l’elenco, Attiva prende un oggetto e un tasto prende tutto (Prendi equipaggiamento decide quale equipaggiamento; la cianfrusaglia resta). Disattivato usa la finestra dell’inventario."
 features.quickLoot.title,"Bottino rapido"
 features.quickSlots.note,"Rombo mette la tua arma, l’altra mano e due oggetti rapidi in un rombo in basso a sinistra, impostati dall’inventario. Barra rapida mette dieci slot sopra le barre della salute sui tasti da 1 a 0, riempiti trascinando dallo zaino e dal libro degli incantesimi. Disattivato nasconde il rombo, ma i suoi tasti funzionano ancora."

@@ -851,6 +851,8 @@ features.questMarks.note,"Os lugares das suas missões são marcados no mapa, e 
 features.questMarks.title,"Marcas de missão"
 features.questTracker.note,"Um cartão no canto superior direito mostra a missão que o seu diário mudou por último - a entrada mais nova, para onde ela aponta e o tempo restante - ou a que você acompanha pelo diário. Desligado é o HUD clássico, que não fala de missões."
 features.questTracker.title,"Rastreador de missões"
+features.questWaypoint.note,"Um marcador na visão sobre o lugar que sua bússola aponta para a missão que você acompanha, com a distância até ele. Segue Marcas de missão e Quest guidance. Atribua uma tecla em Controls."
+features.questWaypoint.title,"Ponto de rota da missão"
 features.quickLoot.note,"Saqueie sem janela: a roda percorre a lista, Ativar pega um item e uma tecla pega tudo (Pegar equipamento define qual equipamento; o lixo fica). Desligado usa a janela do inventário."
 features.quickLoot.title,"Saque rápido"
 features.quickSlots.note,"Losango põe sua arma, a mão secundária e dois itens rápidos num losango no canto inferior esquerdo, definidos pelo inventário. Barra rápida põe dez espaços acima das suas barras de saúde nas teclas 1 a 0, preenchidos arrastando da mochila e do grimório. Desligado esconde o losango, mas as teclas dele continuam funcionando."

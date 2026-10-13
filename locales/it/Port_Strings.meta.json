@@ -4259,6 +4259,16 @@
   "tr": "41f5a72f47e2",
   "by": "claude-in-session"
  },
+ "features.questWaypoint.note": {
+  "en": "0e884b50b9c8",
+  "tr": "dffecf35465b",
+  "by": "claude-in-session"
+ },
+ "features.questWaypoint.title": {
+  "en": "c876eb411f46",
+  "tr": "dbbf027571aa",
+  "by": "claude-in-session"
+ },
  "features.quickLoot.note": {
   "en": "8ea9d94b8c5f",
   "tr": "226098bc5458",

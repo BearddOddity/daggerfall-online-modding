@@ -851,6 +851,8 @@ features.questMarks.note,"Tempat-tempat misimu ditandai di peta, dan yang kamu i
 features.questMarks.title,"Tanda misi"
 features.questTracker.note,"Kartu di kanan atas menampilkan misi yang terakhir berubah di jurnalmu - entri terbarunya, ke mana arahnya, dan sisa waktunya - atau misi yang kamu lacak dari jurnal. Mati adalah HUD klasik, yang tidak menyebut apa pun tentang misi."
 features.questTracker.title,"Pelacak misi"
+features.questWaypoint.note,"Penanda di tampilan di atas tempat yang ditunjuk kompasmu untuk misi yang kamu lacak, beserta jaraknya. Mengikuti Tanda misi dan Quest guidance. Atur tombolnya di Controls."
+features.questWaypoint.title,"Titik tujuan misi"
 features.quickLoot.note,"Menjarah tanpa jendela: roda gulir bergerak di sepanjang daftar, Aktifkan mengambil satu barang dan satu tombol mengambil semuanya (Ambil perlengkapan menentukan perlengkapan mana; Rongsokan ditinggalkan). Mati memakai jendela inventaris."
 features.quickLoot.title,"Jarah cepat"
 features.quickSlots.note,"Berlian menaruh senjatamu, tangan samping, dan dua barang cepat dalam bentuk berlian di kiri bawah, diatur dari inventaris. Bilah pintas menaruh sepuluh slot di atas bilah kesehatanmu pada tombol 1 sampai 0, diisi dengan menyeret dari ransel dan buku mantramu. Mati menyembunyikan berlian, tetapi tombolnya tetap berfungsi."

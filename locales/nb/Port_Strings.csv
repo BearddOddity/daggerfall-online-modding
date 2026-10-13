@@ -851,6 +851,8 @@ features.questMarks.note,"Stedene i oppdragene dine markeres på kartet, og det 
 features.questMarks.title,"Oppdragsmerker"
 features.questTracker.note,"Et kort øverst til høyre viser oppdraget dagboken din sist endret - den nyeste oppføringen, hvor den peker og gjenstående tid - eller det du følger fra dagboken. Av er den klassiske HUD-en, som ikke sier noe om oppdrag."
 features.questTracker.title,"Oppdragsfølger"
+features.questWaypoint.note,"En markør i synsfeltet over stedet kompasset ditt peker mot for oppdraget du følger, med avstanden dit. Den følger Oppdragsmerker og Quest guidance. Gi den en tast under Controls."
+features.questWaypoint.title,"Oppdragspunkt"
 features.quickLoot.note,"Plyndre uten vindu: hjulet blar gjennom listen, Aktiver tar én gjenstand og én tast tar alt (Ta utstyr bestemmer hvilket utstyr; Skrap blir liggende). Av bruker inventarvinduet."
 features.quickLoot.title,"Rask plyndring"
 features.quickSlots.note,"Diamant legger våpenet ditt, den andre hånden og to hurtiggjenstander i en diamant nede til venstre, satt fra inventaret. Hurtiglinje legger ti plasser over helsestolpene dine på tastene 1 til 0, fylt ved å dra fra sekken og trolldomsboken. Av skjuler diamanten, men tastene virker fortsatt."

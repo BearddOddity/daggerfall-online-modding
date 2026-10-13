@@ -851,6 +851,8 @@ features.questMarks.note,"Your quests’ places are marked on the map, and the o
 features.questMarks.title,"Quest marks"
 features.questTracker.note,"A card at the top right shows the quest your journal last changed - its newest entry, where it points and the time left - or the one you track from the journal. Off is the classic HUD, which says nothing of quests."
 features.questTracker.title,"Quest tracker"
+features.questWaypoint.note,"A marker in the view over the place your compass points for the quest you track, with how far it is. It follows Quest marks and Quest guidance. Bind a key to it under Controls."
+features.questWaypoint.title,"Quest waypoint"
 features.quickLoot.note,"Loot without a window: the wheel moves through the list, Activate takes one item and one key takes all (Take gear sets which gear; Junk is left). Off uses the inventory window."
 features.quickLoot.title,"Quick loot"
 features.quickSlots.note,"Diamond puts your weapon, off hand and two quick items in a diamond at the bottom left, set from the inventory. Hotbar puts ten slots above your health bars on keys 1 to 0, filled by dragging from your pack and spellbook. Off hides the diamond, but its keys still work."

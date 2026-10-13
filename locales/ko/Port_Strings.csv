@@ -851,6 +851,8 @@ features.questMarks.note,"퀘스트 장소가 지도에, 따라가는 퀘스트�
 features.questMarks.title,"퀘스트 표시"
 features.questTracker.note,"오른쪽 위 카드에 일지가 마지막으로 바뀐 퀘스트(최신 항목, 가리키는 곳, 남은 시간) 또는 일지에서 추적하는 퀘스트를 보여 줍니다. 끄면 퀘스트에 대해 아무것도 보여 주지 않는 클래식 HUD입니다."
 features.questTracker.title,"퀘스트 추적기"
+features.questWaypoint.note,"추적 중인 퀘스트에 대해 나침반이 가리키는 장소 위에, 거리와 함께 표시를 화면에 띄웁니다. 퀘스트 표시와 Quest guidance 설정을 따릅니다. 키는 Controls에서 지정하세요."
+features.questWaypoint.title,"퀘스트 길잡이"
 features.quickLoot.note,"창 없이 전리품을 챙깁니다. 휠로 목록을 넘기고, 활성화로 하나를 가지며, 키 하나로 모두 가집니다(장비 가져가기가 어떤 장비인지 정하고, 잡동사니는 남깁니다). 끄면 인벤토리 창을 씁니다."
 features.quickLoot.title,"빠른 전리품"
 features.quickSlots.note,"다이아몬드는 무기, 보조 손, 퀵 아이템 두 개를 왼쪽 아래 다이아몬드에 놓으며 인벤토리에서 설정합니다. 핫바는 체력 막대 위에 1~0 키의 칸 열 개를 두며, 소지품과 주문서에서 끌어다 채웁니다. 끄면 다이아몬드를 숨기지만 키는 계속 작동합니다."

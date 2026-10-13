@@ -114,6 +114,8 @@ import { getInteractionMode } from '../player/interactionMode.js';
 import { tickHudLayout } from './hudLayout.js';   // HUD-MOVE: the movable pieces, the lock and the reset
 import { mountHotbarDock, drawEnhancedHotbar, detachHotbarDock, hotbarMode } from './enhancedHotbar.js';   // HB1: the hotbar, the diamond's alternative (one or the other)
 import { setEnhancedMidTextScale } from './enhancedHudText.js';   // AUDIT FONT F2: the mid-screen label is a layer beside this one, not inside it (the popup column it once scaled too is a toast in the notice stack since ENH-NOTICE3)
+import { waypointOn, waypointPlace, listenWaypointKey } from './questWaypoint.js';   // GUIDE9: the compass's quest mark in the view
+import { fieldOfView } from './viewSettings.js';   // GUIDE9: the world's own lens, so the view's mark stands over its place
 import { QUEST_MARK_CSS } from './questMarks.js'; import { nodeMarkCss } from './nodeMarks.js';   // GUIDE5: the tracker's quest on the compass, in the marks' one gold; NODE-MARKS: a profession's nodes in its own colour
 import { WAY_MARK_CSS, WAY_BODY_CSS } from '../systems/wayOut.js';   // WAYOUT1: the way out's mark
 import { BOAT_GLYPH_URL } from './boatMarks.js';   // BOAT-MARK: my boats on the strip, a sail over a hull
@@ -335,6 +337,43 @@ function drawQuestMark(quest, playerXZ, heading01) {
   const at = Math.min(1, Math.max(0, compassMarkerLerp(quest, playerXZ, heading01)));
   const l = `${(at * 100).toFixed(1)}%`;
   if (node.style.left !== l) node.style.left = l;
+}
+
+// GUIDE9: THE WAYPOINT - the compass's quest mark (above) stood in the view (ui/questWaypoint.js): the diamond over its
+// place at its bearing through the world's lens, how far under it, and an arrow at the view's edge while it is off the
+// view, on the side to turn toward. Built on its first frame and hidden, never removed - the updated-not-rebuilt law.
+const waypointCss = () => 'position:absolute;left:0;top:0;transform:translate(-50%,-50%);text-align:center;white-space:nowrap;'
+  + 'font-size:calc(14px * var(--hud-scale, 1));color:#f2e6c4;text-shadow:0 0 3px #000,0 1px 2px #000;pointer-events:none';
+const waypointGemCss = () => 'display:block;width:16px;height:16px;margin:0 auto 6px;transform:rotate(45deg);box-sizing:border-box;'
+  + `border:3px solid ${QUEST_MARK_CSS};background:rgba(10,12,17,0.6);box-shadow:0 0 6px 2px rgba(0,0,0,0.8)`;
+function drawQuestWaypoint(quest, playerXZ, heading01) {
+  if (!parts.waypoint) {
+    listenWaypointKey();
+    const node = el('div', 'hud-waypoint');
+    node.style.cssText = waypointCss();
+    const gem = el('i', 'hud-waypoint-gem');
+    gem.style.cssText = waypointGemCss();
+    const arrow = el('b', 'hud-waypoint-arrow');
+    arrow.style.cssText = `display:none;font-size:28px;color:${QUEST_MARK_CSS}`;
+    const dist = el('span', 'hud-waypoint-dist');
+    node.append(gem, arrow, dist);
+    parts.root.append(node);
+    parts.waypoint = { node, gem, arrow, dist, said: '', side: 0 };
+  }
+  const w = parts.waypoint;
+  const at = waypointPlace(quest, playerXZ, heading01, { width: parts.root.clientWidth, height: parts.root.clientHeight, fovY: fieldOfView() });
+  if (!at) { if (w.node.style.display !== 'none') w.node.style.display = 'none'; return; }
+  if (w.node.style.display === 'none') w.node.style.display = '';
+  if (w.side !== at.side) {
+    w.side = at.side;
+    w.gem.style.display = at.side ? 'none' : 'block';
+    w.arrow.style.display = at.side ? 'block' : 'none';
+    w.arrow.textContent = at.side > 0 ? '▶' : at.side < 0 ? '◀' : '';
+  }
+  if (w.said !== at.said) { w.said = at.said; w.dist.textContent = at.said; }
+  const l = `${at.x.toFixed(0)}px`, t = `${at.y.toFixed(0)}px`;
+  if (w.node.style.left !== l) w.node.style.left = l;
+  if (w.node.style.top !== t) w.node.style.top = t;
 }
 
 // WAYOUT1 (the delve arc): THE WAY OUT - underground, an arrow pointing up and out in the parchment's light, where the
@@ -908,7 +947,7 @@ function build(doc) {
   cells.main.cell.addEventListener('pointerdown', tap(() => { liveOpts.quickSwitchHand?.(); }));
 
   doc.body.append(root);
-  return { root, bottom, compass, marks, detectMarks: [], partyMarks: [], shipMarks: [], nodeMarks: [], boatMarks: [], gateMark: null, serpentMark: null, sdMark: null, questMark: null, wayOutMark: null, foe, foeName, foeFill, foeGhost, foeChunks, foeBladeFull, foePoise, foePoiseFill, foePoiseWord, magicka, health, fatigue,
+  return { root, bottom, compass, marks, detectMarks: [], partyMarks: [], shipMarks: [], nodeMarks: [], boatMarks: [], gateMark: null, serpentMark: null, sdMark: null, questMark: null, wayOutMark: null, foe, foeName, foeFill, foeGhost, foeChunks, foeBladeFull, foePoise, foePoiseFill, foePoiseWord, magicka, health, fatigue, waypoint: null,
     temp: { el: temp, glyph: tempGlyph, num: tempNum, word: tempWord, mark: tempMark },   // TEMP-UI: the temperature plate
     stat, quickCap: cap, quickDiamond: diamond, top,   // UI3: the status widget, the caption it stands on, the diamond it may stand beside and the top block over it (its band is measured from them)
     renown, renownBox, renownFill, renownGhost, renownNum,
@@ -1060,6 +1099,7 @@ export function drawEnhancedHud(vitals, heading01, dt = 0, opts = {}) {
   drawSerpentMark(opts.serpent ?? null, opts.playerXZ ?? null, heading01);   // SERPENT1
   drawSdMark(opts.sd ?? null, opts.playerXZ ?? null, heading01);   // SD2c
   drawQuestMark(opts.quest ?? null, opts.playerXZ ?? null, heading01);   // GUIDE5
+  drawQuestWaypoint(waypointOn() ? opts.quest ?? null : null, opts.playerXZ ?? null, heading01);   // GUIDE9: the same mark, in the view
   drawWayOutMark(opts.wayOut ?? null, opts.playerXZ ?? null, heading01);   // WAYOUT1
   drawPartyMarks(opts.party ?? null, opts.playerXZ ?? null, heading01);   // COMPASS-PARTY
   drawShipMarks(opts.ships ?? null, opts.playerXZ ?? null, heading01);   // AUDIT NAV1: the sea's ships

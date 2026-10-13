@@ -353,7 +353,7 @@ const HARDCODED = {
   'src/systems/immersiveFootsteps.js': 10,
   'src/systems/immersiveTravel.js': 13,
   'src/systems/improvedInteriorLighting.js': 1,
-  'src/systems/inputActions.js': 85,
+  'src/systems/inputActions.js': 86,
   'src/systems/inventory.js': 2,
   'src/systems/itemBound.js': 4,
   'src/systems/itemIds.js': 2,

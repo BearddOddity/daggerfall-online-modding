@@ -851,6 +851,8 @@ features.questMarks.note,"Dine opgavers steder markeres på kortet, og den, du f
 features.questMarks.title,"Opgavemarkeringer"
 features.questTracker.note,"Et kort øverst til højre viser den opgave, din dagbog senest ændrede - dens nyeste post, hvor den peger hen, og den resterende tid - eller den, du følger fra dagbogen. Fra er det klassiske HUD, som intet siger om opgaver."
 features.questTracker.title,"Opgavesporing"
+features.questWaypoint.note,"En markør i synsfeltet over det sted, dit kompas peger på for den opgave, du følger, med afstanden dertil. Den følger Opgavemarkeringer og Quest guidance. Tildel den en tast under Controls."
+features.questWaypoint.title,"Opgavemål"
 features.quickLoot.note,"Plyndr uden et vindue: hjulet bevæger sig gennem listen, Aktiver tager én genstand, og én tast tager alt (Tag udstyr bestemmer hvilket udstyr; Skrammel bliver liggende). Fra bruger inventarvinduet."
 features.quickLoot.title,"Hurtig plyndring"
 features.quickSlots.note,"Diamant lægger dit våben, din anden hånd og to hurtige genstande i en diamant nederst til venstre, valgt fra inventaret. Genvejslinje lægger ti pladser over dine helbredsbjælker på tasterne 1 til 0, fyldt ved at trække fra din oppakning og trylleformelbog. Fra skjuler diamanten, men dens taster virker stadig."

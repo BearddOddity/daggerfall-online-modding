@@ -816,6 +816,8 @@ features.questMarks.note,"A küldetéseid helyszínei jelölve vannak a térkép
 features.questMarks.title,"Küldetésjelölők"
 features.questTracker.note,"Egy kártya jobbra fent mutatja azt a küldetést, amelyet a naplód legutóbb módosított – a legújabb bejegyzését, hová mutat és mennyi idő van hátra –, vagy azt, amelyet a naplóból követsz. Kikapcsolva a klasszikus kijelző, amely semmit sem mond a küldetésekről."
 features.questTracker.title,"Küldetéskövető"
+features.questWaypoint.note,"Egy jelölő a nézetben annak a helynek a felett, amerre az iránytű a követett küldetésnél mutat, a távolsággal együtt. A Küldetésjelölők és a Quest guidance beállítást követi. Billentyűt a Controls alatt rendelhet hozzá."
+features.questWaypoint.title,"Küldetés-útpont"
 features.quickLoot.note,"Fosztogatás ablak nélkül: a görgő a listán halad, az Aktiválás egy tárgyat vesz el, egy billentyű pedig mindent (a Felszerelés felvétele szabja meg, melyik felszerelést; a Lom ott marad). Kikapcsolva a leltárablakot használja."
 features.quickLoot.title,"Gyors fosztogatás"
 features.quickSlots.note,"A Rombusz a fegyveredet, a másik kezedet és két gyorstárgyat egy rombuszba teszi balra lent, a leltárból beállítva. A Gyorssáv tíz helyet tesz az életerősávjaid fölé az 1–0 billentyűkre, amelyeket a csomagodból és a varázskönyvedből húzva töltesz fel. Kikapcsolva a rombusz rejtve van, de a billentyűi továbbra is működnek."

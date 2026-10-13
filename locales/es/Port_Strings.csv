@@ -851,6 +851,8 @@ features.questMarks.note,"Los lugares de tus misiones se marcan en el mapa, y el
 features.questMarks.title,"Marcas de misión"
 features.questTracker.note,"Una tarjeta arriba a la derecha muestra la misión cuyo diario cambió por última vez (su entrada más reciente, adónde apunta y el tiempo que queda) o la que sigues desde el diario. Desactivado es la interfaz clásica, que no dice nada de las misiones."
 features.questTracker.title,"Seguimiento de misiones"
+features.questWaypoint.note,"Un marcador en la vista sobre el lugar al que apunta tu brújula para la misión que sigues, con la distancia que falta. Sigue Marcas de misión y Quest guidance. Asígnale una tecla en Controls."
+features.questWaypoint.title,"Punto de ruta de misión"
 features.quickLoot.note,"Saquea sin ventana: la rueda recorre la lista, Activar coge un objeto y una tecla lo coge todo (Coger equipo fija qué equipo; la basura se queda). Desactivado usa la ventana del inventario."
 features.quickLoot.title,"Saqueo rápido"
 features.quickSlots.note,"Rombo pone tu arma, tu mano libre y dos objetos rápidos en un rombo abajo a la izquierda, fijados desde el inventario. Barra rápida pone diez huecos sobre tus barras de salud en las teclas 1 a 0, que se llenan arrastrando desde tu mochila y tu libro de hechizos. Desactivado oculta el rombo, pero sus teclas siguen funcionando."

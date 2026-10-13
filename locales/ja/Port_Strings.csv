@@ -816,6 +816,8 @@ features.questMarks.note,"クエストの場所がマップに、追跡中のク
 features.questMarks.title,"クエストマーカー"
 features.questTracker.note,"画面右上のカードに、日誌で最後に更新されたクエスト（最新の記述、示す場所、残り時間）か、日誌から追跡しているクエストを表示します。オフは従来のHUDで、クエストについて何も表示しません。"
 features.questTracker.title,"クエストトラッカー"
+features.questWaypoint.note,"追跡中のクエストについてコンパスが指す場所の上に、距離とともにマーカーを視界内に表示します。クエストマーカーと Quest guidance の設定に従います。キーは Controls で割り当てられます。"
+features.questWaypoint.title,"クエストウェイポイント"
 features.quickLoot.note,"ウィンドウを開かずに戦利品を拾います：ホイールでリストを移動し、アクティベートで1つ取り、1つのキーですべて取ります（「Take gear」でどの装備を取るかを設定し、「Junk」は残します）。オフでは所持品ウィンドウを使います。"
 features.quickLoot.title,"クイックルート"
 features.quickSlots.note,"「ダイヤ」は、武器、もう一方の手、2つのクイックアイテムを左下のひし形に配置し、所持品画面から設定します。「ホットバー」は体力バーの上に、キー1〜0に対応する10個のスロットを置き、所持品と呪文書からドラッグして登録します。オフではひし形は非表示になりますが、キーは引き続き使えます。"

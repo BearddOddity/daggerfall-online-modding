@@ -1,4 +1,14 @@
 {
+ "features.questWaypoint.note": {
+  "en": "0e884b50b9c8",
+  "tr": "ca6d4b378f2a",
+  "by": "claude-in-session"
+ },
+ "features.questWaypoint.title": {
+  "en": "c876eb411f46",
+  "tr": "d148b5f50821",
+  "by": "claude-in-session"
+ },
  "lang.offer": {
   "en": "4417f5798650",
   "tr": "c181d4ba4802",

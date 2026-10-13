@@ -816,6 +816,8 @@ features.questMarks.note,"Dina uppdrags platser markeras på kartan, och det du 
 features.questMarks.title,"Uppdragsmarkeringar"
 features.questTracker.note,"Ett kort uppe till höger visar uppdraget som din dagbok senast ändrade – dess senaste anteckning, vart den pekar och återstående tid – eller det du följer från dagboken. Av är det klassiska HUD:et, som inte säger något om uppdrag."
 features.questTracker.title,"Uppdragsspårare"
+features.questWaypoint.note,"En markör i bilden över platsen som kompassen pekar mot för uppdraget du följer, med avståndet dit. Den följer Uppdragsmarkeringar och Quest guidance. Tilldela den en tangent under Controls."
+features.questWaypoint.title,"Uppdragspunkt"
 features.quickLoot.note,"Plundra utan fönster: scrollhjulet rör sig genom listan, Aktivera tar ett föremål och en tangent tar allt (Ta utrustning anger vilken utrustning; skräp lämnas kvar). Av använder inventariefönstret."
 features.quickLoot.title,"Snabbplundring"
 features.quickSlots.note,"Diamant lägger ditt vapen, din andra hand och två snabbföremål i en diamant nere till vänster, inställda från inventariet. Snabbfält lägger tio platser ovanför dina hälsomätare på tangenterna 1 till 0, fyllda genom att dra från din packning och trollbok. Av döljer diamanten, men dess tangenter fungerar ändå."

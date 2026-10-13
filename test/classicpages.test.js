@@ -90,8 +90,8 @@ test('CLASSIC-PAGES: with no pages to show (offline, the switch shut) the door s
 });
 
 test('CLASSIC-PAGES: THE PROFESSIONS KEY - appended, a default share on the down arrow beside less sail (as more sail shares the act choice\'s up arrow), in the Professions group, a port row; the router opens the pause on the Professions page, and nothing while sailing', () => {
-  // PIN MOVED (SPYGLASS, 2026-10-11): the captain's glass appended after them, last
-  assert.deepEqual(ACTIONS.slice(-5), ['Professions', 'LegacyFamily', 'ModeWheel', 'WeaponTechnique', 'Spyglass'], 'appended after HELM-KEYS\' two: the classic grid and a saved file resolve by position (LEGACY1\'s family tree after it, MODE-WHEEL\'s wheel, TECH1\'s technique, SPYGLASS\'s glass last)');
+  // PIN MOVED (SPYGLASS, 2026-10-11): the captain's glass appended after them; PIN MOVED (GUIDE9, 2026-10-13): the quest waypoint's switch last
+  assert.deepEqual(ACTIONS.slice(-6), ['Professions', 'LegacyFamily', 'ModeWheel', 'WeaponTechnique', 'Spyglass', 'QuestWaypoint'], 'appended after HELM-KEYS\' two: the classic grid and a saved file resolve by position (LEGACY1\'s family tree after it, MODE-WHEEL\'s wheel, TECH1\'s technique, SPYGLASS\'s glass, GUIDE9\'s waypoint last)');
   assert.ok(DEFAULT_SHARES.some(([c, a, partner]) => c === 'ArrowDown' && a === 'Professions' && partner === 'BoatSailDown'), 'shared onto less sail\'s own key');
   assert.ok(!DEFAULT_BINDINGS.some(([, a]) => a === 'Professions'), 'it owns no key - KB1 law 3 keeps every owner once');
   assert.ok(DEFAULT_BINDINGS.some(([c, a]) => c === 'ArrowUp' && a === 'ActChoice'), 'the professions\' two keys on the arrows');

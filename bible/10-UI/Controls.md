@@ -340,6 +340,7 @@ Generated from `ACTION_GROUPS` and the two default tables; the enhanced pane dra
 | `NoteBook` | N |  | Notebook |
 | `AutoMap` | M |  | Map |
 | `TravelMap` | V |  | Travel map |
+| `QuestWaypoint` | (unbound) |  | Quest waypoint on / off |
 | `QuickDial` | TAB |  | Quick dial |
 | `TravelView` | (unbound) |  | Overworld (the travel view) |
 

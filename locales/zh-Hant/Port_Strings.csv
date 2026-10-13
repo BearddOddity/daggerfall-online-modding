@@ -1,4 +1,6 @@
 Key,Value
+features.questWaypoint.note,"在視野中於羅盤為所追蹤任務指示的地點上方顯示標記，並標出距離。它遵循「任務標記」與 Quest guidance 的設定。可在 Controls 中為其綁定按鍵。"
+features.questWaypoint.title,"任務路點"
 lang.offer,"使用繁體中文進行遊戲？"
 lang.offer.machine,"此翻譯為機器翻譯，仍在校對中。"
 lang.offer.no,"不，保持英文"

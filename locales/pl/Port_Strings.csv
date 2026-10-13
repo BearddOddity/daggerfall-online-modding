@@ -816,6 +816,8 @@ features.questMarks.note,"Miejsca twoich zadań są zaznaczone na mapie, a śled
 features.questMarks.title,"Znaczniki zadań"
 features.questTracker.note,"Karta w prawym górnym rogu pokazuje zadanie, które ostatnio zmieniło dziennik - jego najnowszy wpis, cel i pozostały czas - lub to, które śledzisz z dziennika. Wył. to klasyczny HUD, który nic nie mówi o zadaniach."
 features.questTracker.title,"Śledzenie zadań"
+features.questWaypoint.note,"Znacznik w widoku nad miejscem, na które wskazuje kompas dla śledzonego zadania, wraz z odległością. Podąża za ustawieniami Znaczniki zadań i Quest guidance. Klawisz przypiszesz w Controls."
+features.questWaypoint.title,"Punkt trasy zadania"
 features.quickLoot.note,"Łupienie bez okna: kółko przewija listę, Użyj bierze jeden przedmiot, a jeden klawisz bierze wszystko (Zabierany sprzęt ustala, jaki sprzęt; Śmieci zostają). Wył. używa okna ekwipunku."
 features.quickLoot.title,"Szybkie łupienie"
 features.quickSlots.note,"Romb umieszcza twoją broń, drugą rękę i dwa szybkie przedmioty w rombie w lewym dolnym rogu, ustawiane z ekwipunku. Pasek umieszcza dziesięć miejsc nad paskami zdrowia pod klawiszami od 1 do 0, wypełniane przeciąganiem z plecaka i księgi czarów. Wył. ukrywa romb, ale jego klawisze nadal działają."

@@ -851,6 +851,8 @@ features.questMarks.note,"Die Orte deiner Quests werden auf der Karte markiert u
 features.questMarks.title,"Quest-Markierungen"
 features.questTracker.note,"Eine Karte oben rechts zeigt die Quest, die dein Tagebuch zuletzt geändert hat - ihren neuesten Eintrag, wohin er weist, und die verbleibende Zeit - oder die, die du aus dem Tagebuch verfolgst. Aus ist das klassische HUD, das nichts über Quests sagt."
 features.questTracker.title,"Quest-Verfolgung"
+features.questWaypoint.note,"Eine Markierung im Blickfeld über dem Ort, auf den Ihr Kompass bei der verfolgten Quest zeigt, mit der Entfernung dorthin. Sie folgt Quest-Markierungen und Quest guidance. Eine Taste dafür legen Sie unter Controls fest."
+features.questWaypoint.title,"Quest-Wegpunkt"
 features.quickLoot.note,"Plündern ohne Fenster: Das Mausrad bewegt sich durch die Liste, „Aktivieren“ nimmt einen Gegenstand und eine Taste nimmt alles (Ausrüstung nehmen bestimmt, welche Ausrüstung; Plunder bleibt liegen). Aus verwendet das Inventarfenster."
 features.quickLoot.title,"Schnelles Plündern"
 features.quickSlots.note,"Raute legt deine Waffe, deine Nebenhand und zwei Schnellgegenstände in einer Raute unten links ab, festgelegt im Inventar. Schnellleiste legt zehn Plätze über deine Lebensbalken auf die Tasten 1 bis 0, befüllt durch Ziehen aus deinem Gepäck und Zauberbuch. Aus blendet die Raute aus, ihre Tasten funktionieren aber weiter."

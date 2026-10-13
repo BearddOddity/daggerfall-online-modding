@@ -674,6 +674,37 @@ enhanced strip, the filled and the hollow diamonds above their places
 on a parchment the real `paintQuestMark` inks, and the card's quiet
 note.
 
+## GUIDE9 - THE WAYPOINT (2026-10-13, offered by a player)
+
+A player: "a client side Waypoint marker kind of like how other single
+player games guide the player to a location". The compass already knows
+where to point; this stands that point in the view.
+
+WHAT IT SHOWS. Nothing the compass does not: `ui/enhancedHud.js` draws
+it beside `drawQuestMark`, from the same `opts.quest` - so the street's
+place (GUIDE5), the Town tier's building and the Exact tier's person,
+item or foe indoors and underground (GUIDE8, `questCompassPick`) are
+all it can mark, and only for a tracked quest. No mark on the compass,
+nothing in the view.
+
+WHERE. `ui/questWaypoint.js` `waypointPlace`: across the view by the
+bearing (`questBearing` - the compass's own angle, pinned against
+`compassMarkerLerp` so the strip and the view never disagree) through
+the world's lens (`fieldOfView`, DFU's Video/FieldOfView, vertical);
+down, a fixed height, because the hosts hand the HUD a heading and no
+pitch. Behind, or within 40 px of a side, it is an arrow at that side,
+the side to turn toward. Under it, how far, flat, in metres or km.
+
+THE SWITCH. The Features row `quest-waypoint`, OFF by default - one
+more thing over the view - and placed in Settings > Accessibility >
+Wayfinding; the `QuestWaypoint` action flips it from anywhere a key
+reaches the page, and ships UNBOUND (every letter is spent, F7 is the
+browser's caret browsing, F10 DFU's HUD toggle). Enhanced skin only:
+the classic HUD has no quest mark to follow.
+
+Pinned: `test/guide9_waypoint.test.js` (7). Ledger A: THE QUEST
+WAYPOINT. Not yet looked at on a real install by the arc's owner.
+
 ## THE AUDIT (2026-09-29, Mac: "Lets do an audit on this before we merge")
 
 GUIDE1-GUIDE5 read by eight lenses over a frozen tree, main merged in

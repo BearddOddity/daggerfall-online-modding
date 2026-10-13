@@ -851,6 +851,8 @@ features.questMarks.note,"Místa tvých úkolů jsou označena na mapě a to, kt
 features.questMarks.title,"Značky úkolů"
 features.questTracker.note,"Karta vpravo nahoře ukazuje úkol, který tvůj deník naposledy změnil - jeho nejnovější záznam, kam ukazuje a zbývající čas - nebo ten, který sleduješ z deníku. Vypnuto je klasické HUD, které o úkolech nic neříká."
 features.questTracker.title,"Sledování úkolů"
+features.questWaypoint.note,"Značka v pohledu nad místem, na které ukazuje váš kompas pro sledovaný úkol, s uvedením vzdálenosti. Řídí se nastavením Značky úkolů a Quest guidance. Klávesu mu přiřadíte v Controls."
+features.questWaypoint.title,"Cílová značka úkolu"
 features.quickLoot.note,"Kořist bez okna: kolečko prochází seznamem, Aktivace vezme jeden předmět a jedna klávesa vezme vše (Brát výbavu určuje kterou; Harampádí zůstane). Vypnuto používá okno inventáře."
 features.quickLoot.title,"Rychlá kořist"
 features.quickSlots.note,"Kosočtverec umístí tvou zbraň, druhou ruku a dva rychlé předměty do kosočtverce vlevo dole, nastavené z inventáře. Lišta umístí deset slotů nad ukazatele zdraví na klávesy 1 až 0, plněných přetažením z batohu a knihy kouzel. Vypnuto skryje kosočtverec, ale jeho klávesy stále fungují."

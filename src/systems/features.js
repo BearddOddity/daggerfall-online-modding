@@ -1359,6 +1359,20 @@ export const FEATURES = Object.freeze([
     kinds: Object.freeze(['enhanced']),
     control: Object.freeze({ store: 'prefs', key: 'questGuidance', initial: 'journal', online: 'player', classic: 'journal', tiers: Object.freeze([['journal', 'Journal'], ['town', 'Town'], ['exact', 'Exact']]) }),   // systems/questGuidance.js GUIDANCE_PREF, GUIDANCE_TIERS
   }),
+  // GUIDE9 (2026-10-13): THE WAYPOINT - the compass's quest mark stood in the view, with how far it is
+  // (ui/questWaypoint.js, drawn by ui/enhancedHud.js). It shows only what the compass already marks, so Quest marks and
+  // Quest guidance decide where it can point. Off by default (one more thing over the view); its key (QuestWaypoint)
+  // ships unbound. Settings > Accessibility > Wayfinding lists it.
+  Object.freeze({
+    id: 'quest-waypoint',
+    group: 'interface',
+    get title() { return t('features.questWaypoint.title', 'Quest waypoint'); },
+    get note() { return t('features.questWaypoint.note', 'A marker in the view over the place your compass points for the quest you track, with how far it is. It follows '
+      + 'Quest marks and Quest guidance. Bind a key to it under Controls.'); },
+    get effect() { return t('features.effect.atOnce', 'Takes effect at once.'); },
+    kinds: Object.freeze(['enhanced']),
+    control: Object.freeze({ store: 'prefs', key: 'questWaypoint', initial: false, online: 'player' }),   // ui/questWaypoint.js WAYPOINT_PREF
+  }),
   // SENSE1 (2026-10-05, the delve arc - bible/03-World/Delve-Arc.md): THE LOOK ROUND. Asking for Info mode underground
   // lights what is near, in sight, and named by the plaque (systems/dungeonSense.js, read by scenes/dungeonContext.js
   // at the ask). On by default: it lights nothing a press or the plaque would not reach. The secrets tier lights what

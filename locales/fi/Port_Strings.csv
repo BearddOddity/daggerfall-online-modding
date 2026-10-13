@@ -816,6 +816,8 @@ features.questMarks.note,"Tehtäviesi paikat merkitään karttaan, ja seuraamasi
 features.questMarks.title,"Tehtävämerkit"
 features.questTracker.note,"Kortti oikeassa yläkulmassa näyttää tehtävän, jota päiväkirjasi viimeksi muutti – sen uusimman merkinnän, mihin se osoittaa ja jäljellä olevan ajan – tai sen, jota seuraat päiväkirjasta. Pois on klassinen HUD, joka ei kerro tehtävistä mitään."
 features.questTracker.title,"Tehtävän seuranta"
+features.questWaypoint.note,"Näkymässä oleva merkki sen paikan päällä, johon kompassisi osoittaa seuraamasi tehtävän osalta, etäisyyden kera. Se noudattaa asetuksia Tehtävämerkit ja Quest guidance. Määritä sille näppäin kohdassa Controls."
+features.questWaypoint.title,"Tehtävän reittipiste"
 features.quickLoot.note,"Ryöstä ilman ikkunaa: rulla liikkuu luettelossa, Aktivoi ottaa yhden esineen ja yksi näppäin ottaa kaiken (Otettavat varusteet määrää, mitkä varusteet; roina jätetään). Pois käyttää inventaarioikkunaa."
 features.quickLoot.title,"Pikaryöstö"
 features.quickSlots.note,"Timantti asettaa aseesi, toisen kätesi ja kaksi pikaesinettä timanttiin vasempaan alakulmaan, inventaariosta asetettuina. Pikapalkki asettaa kymmenen paikkaa terveyspalkkiesi yläpuolelle näppäimiin 1–0, täytettyinä vetämällä repusta ja loitsukirjasta. Pois piilottaa timantin, mutta sen näppäimet toimivat edelleen."

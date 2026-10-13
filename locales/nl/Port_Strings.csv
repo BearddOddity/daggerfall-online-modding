@@ -816,6 +816,8 @@ features.questMarks.note,"De plekken van je opdrachten worden op de kaart gemark
 features.questMarks.title,"Opdrachtmarkeringen"
 features.questTracker.note,"Een kaart rechtsboven toont de opdracht die je dagboek het laatst wijzigde - de nieuwste notitie, waar die naar wijst en de resterende tijd - of de opdracht die je vanuit het dagboek volgt. Uit is de klassieke HUD, die niets over opdrachten zegt."
 features.questTracker.title,"Opdrachtvolger"
+features.questWaypoint.note,"Een markering in beeld boven de plek waar je kompas naar wijst voor de opdracht die je volgt, met de afstand erheen. Volgt Opdrachtmarkeringen en Quest guidance. Wijs er een toets aan toe onder Controls."
+features.questWaypoint.title,"Opdrachtwegpunt"
 features.quickLoot.note,"Buit zonder venster: het muiswiel gaat door de lijst, Activeren neemt één voorwerp en één toets neemt alles (Uitrusting nemen bepaalt welke uitrusting; Rommel blijft liggen). Uit gebruikt het inventarisvenster."
 features.quickLoot.title,"Snel plunderen"
 features.quickSlots.note,"Ruit zet je wapen, je andere hand en twee snelle voorwerpen in een ruit linksonder, in te stellen vanuit de inventaris. Sneltoetsbalk zet tien vakken boven je gezondheidsbalken op de toetsen 1 tot 0, gevuld door te slepen vanuit je bepakking en spreukenboek. Uit verbergt de ruit, maar de toetsen ervan werken nog."
